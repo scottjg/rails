@@ -2,6 +2,10 @@
 
 * Avoid remote_ip spoofing.  [Brian Candler]
 
+* Allow file uploads in Integration Tests.  Closes #11091 [RubyRedRick]
+
+* Refactor partial rendering into a PartialTemplate class. [Pratik]
+
 * Correct inconsistencies in RequestForgeryProtection docs.  #11032 [mislav]
 
 * Make assert_routing aware of the HTTP method used.  #8039 [mpalmer]
