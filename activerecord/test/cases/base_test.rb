@@ -1889,9 +1889,16 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal '"The First Topic Now Has A Title With\nNewlines And M..."', t.attribute_for_inspect(:title)
   end
 
-  def test_becomes
+  def test_becomes_changes_class
     assert_kind_of Reply, topics(:first).becomes(Reply)
+  end
+  
+  def test_becomes_keeps_attributes
     assert_equal "The First Topic", topics(:first).becomes(Reply).title
+  end
+
+  def test_becomes_sets_inheritance_column
+    assert_equal "Reply", topics(:first).becomes(Reply).send(Topic.inheritance_column)
   end
 
   def test_silence_sets_log_level_to_error_in_block
