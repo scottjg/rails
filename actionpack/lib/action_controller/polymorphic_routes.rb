@@ -67,6 +67,13 @@ module ActionController
     #   record = Comment.new
     #   polymorphic_url(record)  #->  comments_url()
     #
+    #   # it supports extra flexibility for STI by walking the inheritance chain if the route is missing
+    #   # (note this only works for the last (leaf) argument in nested routes)
+    #   #
+    #   # an Editorial record, where Editorial is a subclass of Article and routes exist for article_* but not editorial_*
+    #   polymorphic_url(editorial_record) #=> article_url(editorial_record)
+    #   polymorphic_url(editorial_record, comment_record) #=> editorial_comment_url(editorial_record, comment_record) #not yet smart enough to find the article_comment_url
+    #
     def polymorphic_url(record_or_hash_or_array, options = {})
       if record_or_hash_or_array.kind_of?(Array)
         record_or_hash_or_array = record_or_hash_or_array.dup
@@ -138,9 +145,20 @@ module ActionController
             string << "#{RecordIdentifier.send!("singular_class_name", parent)}_"
           end
         end
-
-        route << "#{RecordIdentifier.send!("#{inflection}_class_name", record)}_"
-
+        
+        candidate_class = record.class
+        initial_candidate = candidate_route = build_candidate_named_route_call(route, namespace, inflection, candidate_class, options)
+        while (!respond_to?(candidate_route)) #walk up the inheritance chain to find an existing route, supports routing flexibility with STI
+          candidate_class = candidate_class.superclass
+          return initial_candidate if candidate_class == Object
+          candidate_route = build_candidate_named_route_call(route, namespace, inflection, candidate_class, options)
+        end
+        candidate_route || initial_candidate
+      end
+      
+      def build_candidate_named_route_call(route_base, namespace, inflection, candidate_class, options = {})
+        route = route_base.dup
+        route << "#{RecordIdentifier.send!("#{inflection}_class_name", candidate_class)}_"
         action_prefix(options) + namespace + route + routing_type(options).to_s
       end
 
