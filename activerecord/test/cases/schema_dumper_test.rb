@@ -103,6 +103,15 @@ if ActiveRecord::Base.connection.respond_to?(:tables)
       end
     end
 
+    if current_adapter?(:SQLiteAdapter) || current_adapter?(:SQLite3Adapter)
+      def test_sqlite_schema_dump_should_honor_nonstandard_primary_keys
+        output = standard_dump
+        match = output.match(%r{create_table "movies"(.*)do})
+        assert_not_nil(match, "nonstandardpk table not found")
+        assert_match %r(:primary_key => "movieid"), match[1], "non-standard primary key not preserved"
+      end
+    end
+
     if current_adapter?(:MysqlAdapter)
       def test_schema_dump_should_not_add_default_value_for_mysql_text_field
         output = standard_dump

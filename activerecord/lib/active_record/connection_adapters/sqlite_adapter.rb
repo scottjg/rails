@@ -199,6 +199,10 @@ module ActiveRecord
           index
         end
       end
+      
+      def pk_and_sequence_for(table) #:nodoc:
+        return [primary_key(table), nil]
+      end
 
       def primary_key(table_name) #:nodoc:
         column = table_structure(table_name).find {|field| field['pk'].to_i == 1}
