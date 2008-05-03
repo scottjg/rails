@@ -112,4 +112,10 @@ class NamedScopeTest < ActiveRecord::TestCase
 
     assert_equal Topic.find(:all, scope), Topic.scoped(scope)
   end
+
+  def test_scope_options
+    expected_scope_options = { :conditions => { :approved => true } }
+    assert_equal expected_scope_options, Topic.approved.scope_options
+  end
+
 end
