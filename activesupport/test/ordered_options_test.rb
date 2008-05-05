@@ -48,6 +48,18 @@ class OrderedHashTest < Test::Unit::TestCase
 
     assert_equal @keys,   out.collect {|i| i[0] }
     assert_equal @values, out.collect {|i| i[1] }
+
+  def test_delete
+    key, value = 'white', 'ffffff'
+    bad_key = 'black'
+
+    @ordered_hash[key] = value
+    assert_equal @keys.length + 1, @ordered_hash.length
+
+    assert_equal value, @ordered_hash.delete(key)
+    assert_equal @keys.length, @ordered_hash.length
+
+    assert_nil @ordered_hash.delete(bad_key)
   end
 end
 
