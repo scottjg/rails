@@ -1471,13 +1471,9 @@ module ActiveRecord #:nodoc:
 
         # Merges conditions so that the result is a valid +condition+
         def merge_conditions(*conditions)
-          segments = []
-
-          conditions.each do |condition|
-            unless condition.blank?
-              sql = sanitize_sql(condition)
-              segments << sql unless sql.blank?
-            end
+          segments = conditions.inject([]) do |s, condition|
+            next s if condition.blank? || (sanitized = sanitize_sql(condition)).blank?
+            s << sanitized
           end
 
           "(#{segments.join(') AND (')})" unless segments.empty?
