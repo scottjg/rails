@@ -113,15 +113,9 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal Topic.find(:all, scope), Topic.scoped(scope)
   end
 
-<<<<<<< HEAD:activerecord/test/cases/named_scope_test.rb
-  def test_scope_options
-    expected_scope_options = { :conditions => { :approved => true } }
-    assert_equal expected_scope_options, Topic.approved.scope_options
-=======
   def test_proxy_options
     expected_proxy_options = { :conditions => { :approved => true } }
     assert_equal expected_proxy_options, Topic.approved.proxy_options
->>>>>>> 2d372d704987e05712ccd937e78d8dbd41242efe:activerecord/test/cases/named_scope_test.rb
   end
 
 end
