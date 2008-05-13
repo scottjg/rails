@@ -29,6 +29,10 @@ class EagerAssociationTest < ActiveRecord::TestCase
     post = Post.find(:first, :include => :comments, :conditions => "posts.title = 'Welcome to the weblog'")
     assert_equal 2, post.comments.size
     assert post.comments.include?(comments(:greetings))
+
+    posts = Post.find(:all, :include => :last_comment)
+    post = posts.find { |p| p.id == 1 }
+    assert_equal Post.find(1).last_comment, post.last_comment
   end
 
   def test_loading_conditions_with_or
@@ -269,6 +273,17 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal Author.find(:first, :include => :hello_post_comments,
                              :order => 'authors.id').hello_post_comments.sort_by(&:id),
                  Author.find(:first, :order => 'authors.id').hello_post_comments.sort_by(&:id)
+  end
+
+  def test_eager_with_has_many_through_join_model_with_conditions_on_top_level
+    assert_equal comments(:more_greetings), Author.find(authors(:david).id, :include => :comments_with_order_and_conditions).comments_with_order_and_conditions.first
+  end
+
+  def test_eager_with_has_many_through_join_model_with_include
+    author_comments = Author.find(authors(:david).id, :include => :comments_with_include).comments_with_include.to_a
+    assert_no_queries do
+      author_comments.first.post.title
+    end
   end
 
   def test_eager_with_has_many_and_limit
@@ -586,6 +601,12 @@ class EagerAssociationTest < ActiveRecord::TestCase
       assert_equal 3, authors(:david).posts_with_comments.count(:conditions => "length(FETCHBLOB(comments.body)) > 15")
     else
       assert_equal 3, authors(:david).posts_with_comments.count(:conditions => "length(comments.body) > 15")
+    end
+  end
+
+  def test_load_with_sti_sharing_association
+    assert_queries(2) do #should not do 1 query per subclass
+      Comment.find :all, :include => :post
     end
   end
 end

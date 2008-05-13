@@ -73,7 +73,7 @@ module ActiveRecord
       #
       #
       # For testing complex named scopes, you can examine the scoping options using the
-      # <tt>scope_options</tt> method on the proxy itself.
+      # <tt>proxy_options</tt> method on the proxy itself.
       #
       #   class Shirt < ActiveRecord::Base
       #     named_scope :colored, lambda { |color|
@@ -82,7 +82,7 @@ module ActiveRecord
       #   end
       #
       #   expected_options = { :conditions => { :colored => 'red' } }
-      #   assert_equal expected_options, Shirt.colored('red').scope_options
+      #   assert_equal expected_options, Shirt.colored('red').proxy_options
       def named_scope(name, options = {}, &block)
         scopes[name] = lambda do |parent_scope, *args|
           Scope.new(parent_scope, case options

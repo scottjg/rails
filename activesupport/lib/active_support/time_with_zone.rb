@@ -78,7 +78,7 @@ module ActiveSupport
   
     def to_json(options = nil)
       if ActiveSupport.use_standard_json_time_format
-        utc.xmlschema.inspect
+        xmlschema.inspect
       else
         %("#{time.strftime("%Y/%m/%d %H:%M:%S")} #{formatted_offset(false)}")
       end
@@ -161,6 +161,14 @@ module ActiveSupport
     
     def advance(options)
       utc.advance(options).in_time_zone(time_zone)
+    end
+    
+    %w(year mon month day mday hour min sec).each do |method_name|
+      class_eval <<-EOV
+        def #{method_name}
+          time.#{method_name}
+        end
+      EOV
     end
     
     def usec
