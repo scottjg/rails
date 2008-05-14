@@ -35,6 +35,7 @@ require 'active_support/buffered_logger'
 require 'active_support/dependencies'
 require 'active_support/deprecation'
 
+require 'active_support/ordered_hash'
 require 'active_support/ordered_options'
 require 'active_support/option_merger'
 
