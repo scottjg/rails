@@ -234,6 +234,52 @@ module ActionController
           end
         end
 
+        # :nodoc:
+        #
+        # HTTP Response parser, extracted into class for ease of testing
+        class Result
+          attr_reader :headers, :status, :status_message, :cookies
+
+          def initialize(result)
+            @cookies = HashWithIndifferentAccess.new
+            response_headers, result_body = result.split(/\r\n\r\n/, 2)
+
+            @headers = Hash.new { |h,k| h[k] = [] }
+            response_headers.to_s.each_line do |line|
+              key, value = line.strip.split(/:\s*/, 2)
+              @headers[key.downcase] << value
+            end
+
+            (@headers['set-cookie'] || [] ).each do |string|
+              string.split(',').each do |cookie|
+                av_pairs = cookie.split(';')
+                name, value = parse_av_pair(av_pairs.shift)
+                attrs = HashWithIndifferentAccess.new({:value => value})
+                av_pairs.inject(attrs) do |attrs, pair|
+                  attr_name, attr_value = parse_av_pair(pair)
+                  attrs.merge!({attr_name.downcase => attr_value})
+                end
+                @cookies[name] = attrs.size > 1 ? attrs : value
+              end
+            end
+
+            @status, @status_message = @headers["status"].first.to_s.split(/ /)
+            @status = @status.to_i
+          end
+
+          private
+
+          def parse_av_pair(pair)
+            attribute, value = pair.split('=')
+            return parse_token(attribute), parse_token(value)
+          end
+
+          def parse_token(token)
+            token.tr("'\"", "").strip
+          end
+
+        end
+
         # Tailors the session based on the given URI, setting the HTTPS value
         # and the hostname.
         def interpret_uri(path)
@@ -308,21 +354,11 @@ module ActionController
         # Parses the result of the response and extracts the various values,
         # like cookies, status, headers, etc.
         def parse_result
-          response_headers, result_body = @result.split(/\r\n\r\n/, 2)
-
-          @headers = Hash.new { |h,k| h[k] = [] }
-          response_headers.to_s.each_line do |line|
-            key, value = line.strip.split(/:\s*/, 2)
-            @headers[key.downcase] << value
-          end
-
-          (@headers['set-cookie'] || [] ).each do |string|
-            name, value = string.match(/^([^=]*)=([^;]*);/)[1,2]
-            @cookies[name] = value
-          end
-
-          @status, @status_message = @headers["status"].first.to_s.split(/ /)
-          @status = @status.to_i
+          result = Result.new(@response)
+          @headers        = result.headers
+          @status         = result.status
+          @status_message = result.status_message
+          @cookies        = result.cookies
         end
 
         # Encode the cookies hash in a format suitable for passing to a

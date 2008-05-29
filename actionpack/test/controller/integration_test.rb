@@ -12,12 +12,12 @@ end
 
 class SessionTest < Test::Unit::TestCase
   include IntegrationSessionStubbing
-  
+
   def setup
     @session = ActionController::Integration::Session.new
     stub_integration_session(@session)
   end
-  
+
   def test_https_bang_works_and_sets_truth_by_default
     assert !@session.https?
     @session.https!
@@ -196,7 +196,7 @@ class SessionTest < Test::Unit::TestCase
     @session.expects(:process).with(:head,path,params,headers_after_xhr)
     @session.xml_http_request(:head,path,params,headers)
   end
-  
+
   def test_xml_http_request_override_accept
     path = "/index"; params = "blah"; headers = {:location => 'blah', "Accept" => "application/xml"}
     headers_after_xhr = headers.merge(
@@ -204,6 +204,47 @@ class SessionTest < Test::Unit::TestCase
     )
     @session.expects(:process).with(:post,path,params,headers_after_xhr)
     @session.xml_http_request(:post,path,params,headers)
+  end
+end
+
+class IntegrationResultTest < Test::Unit::TestCase
+  def parse_headers(headers)
+    response = "#{headers}\r\n\r\n"
+    @result = ActionController::Integration::Session::Result.new(response)
+  end
+
+  def test_single_cookie
+    parse_headers("Set-Cookie: foo=bar;")
+    assert_equal({'foo' => 'bar'}, @result.cookies)
+  end
+
+  def test_two_cookies
+    parse_headers("Set-Cookie: foo=bar, baz=buz")
+    assert_equal({'foo' => 'bar', 'baz' => 'buz'}, @result.cookies)
+  end
+
+  def test_indifferent_cookie_access
+    parse_headers("Set-Cookie: foo=bar;")
+    assert_equal 'bar', @result.cookies['foo']
+    assert_equal 'bar', @result.cookies[:foo]
+  end
+
+  def test_cookie_attributes
+    parse_headers("Set-Cookie: oatmeal=raisin; Domain=example.org; Path=/foo,"\
+                  "chocolate=chip; Version=1; Comment=Best with milk")
+    expected = {
+      'oatmeal' => {
+        'value'  => 'raisin',
+        'domain' => 'example.org',
+        'path'   => '/foo'
+      },
+      'chocolate' => {
+        'value'   => 'chip',
+        'version' => '1',
+        'comment' => 'Best with milk'
+      }
+    }
+    assert_equal(expected, @result.cookies)
   end
 end
 
