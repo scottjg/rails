@@ -1,6 +1,7 @@
 require "cases/helper"
 require 'models/post'
 require 'models/topic'
+require 'models/approved_topic'
 require 'models/comment'
 require 'models/reply'
 require 'models/author'
@@ -116,6 +117,18 @@ class NamedScopeTest < ActiveRecord::TestCase
   def test_proxy_options
     expected_proxy_options = { :conditions => { :approved => true } }
     assert_equal expected_proxy_options, Topic.approved.proxy_options
+  end
+
+  def test_default_scope_uses_conditions
+    assert !ApprovedTopic.find(:all).empty?, 'Some ApprovedTopics should have been found'
+
+    approved_topics = ApprovedTopic.all.map { |topic| topic.attributes }
+    topics_scoped_to_approved = Topic.approved.map { |topic| topic.attributes }
+
+    all_approved_topics_included = topics_scoped_to_approved.all? { |topic| approved_topics.include?(topic) }
+
+    assert all_approved_topics_included, 'ApprovedTopics should include all Topics scoped to approved'
+    assert_equal ApprovedTopic.count, Topic.approved.count, 'ApprovedTopics count should match count of Topics scoped to approved'
   end
 
 end

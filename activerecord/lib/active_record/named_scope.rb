@@ -98,6 +98,27 @@ module ActiveRecord
           end
         end
       end
+
+      # Adds a class method that provides a scope for all finds on a class
+      #
+      #   class User < ActiveRecord::Base
+      #     default_scope :conditions => { :banned => false }
+      #   end
+      #
+      # To issue queries outside the default scope, internal class methods
+      # may use <tt>with_exclusive_scope</tt>
+      #
+      #   class User < ActiveRecord::Base
+      #     default_scope :conditions => { :banned => false }
+      #     def self.with_banned
+      #       with_exclusive_scope { :banned => true } do
+      #         yield
+      #       end
+      #     end
+      #   end
+      def default_scope default_scope_options
+        scoped_methods << { :find => default_scope_options }
+      end
     end
     
     class Scope
