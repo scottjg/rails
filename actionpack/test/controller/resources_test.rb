@@ -112,7 +112,13 @@ class ResourcesTest < Test::Unit::TestCase
       assert_recognizes(expected_options, :path => 'messages/1.1.1', :method => :get)
     end
   end
-
+  def test_irregular_id_requirements_should_get_passed_to_member_actions 
+    expected_options = {:controller => 'messages', :action => 'custom', :id => '1.1.1'} 
+   
+    with_restful_routing(:messages, :member => {:custom => :get}, :requirements => {:id => /[0-9]\.[0-9]\.[0-9]/}) do 
+      assert_recognizes(expected_options, :path => 'messages/1.1.1/custom', :method => :get) 
+    end 
+  end
   def test_with_path_prefix_requirements
     expected_options = {:controller => 'messages', :action => 'show', :thread_id => '1.1.1', :id => '1'}
     with_restful_routing :messages, :path_prefix => '/thread/:thread_id', :requirements => {:thread_id => /[0-9]\.[0-9]\.[0-9]/} do

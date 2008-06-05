@@ -68,7 +68,7 @@ module ActionController
         @requirements   ||= @options[:requirements] || {}
         @id_requirement ||= { :id => @requirements.delete(:id) || /[^#{Routing::SEPARATORS.join}]+/ }
 
-        with_id ? @requirements.merge(@id_requirement) : @requirements
+        (with_id && !self.kind_of?(SingletonResource)) ? @requirements.merge(@id_requirement) : @requirements
       end
 
       def conditions
@@ -523,7 +523,7 @@ module ActionController
       def map_member_actions(map, resource)
         resource.member_methods.each do |method, actions|
           actions.each do |action|
-            action_options = action_options_for(action, resource, method)
+            action_options = action_options_for(action, resource, method, true)
 
             action_path = resource.options[:path_names][action] if resource.options[:path_names].is_a?(Hash)
             action_path ||= Base.resources_path_names[action] || action
@@ -533,15 +533,15 @@ module ActionController
           end
         end
 
-        show_action_options = action_options_for("show", resource)
+        show_action_options = action_options_for("show", resource, nil, true)
         map.named_route("#{resource.name_prefix}#{resource.singular}", resource.member_path, show_action_options)
         map.named_route("formatted_#{resource.name_prefix}#{resource.singular}", "#{resource.member_path}.:format", show_action_options)
 
-        update_action_options = action_options_for("update", resource)
+        update_action_options = action_options_for("update", resource, nil, true)
         map.connect(resource.member_path, update_action_options)
         map.connect("#{resource.member_path}.:format", update_action_options)
 
-        destroy_action_options = action_options_for("destroy", resource)
+        destroy_action_options = action_options_for("destroy", resource, nil, true)
         map.connect(resource.member_path, destroy_action_options)
         map.connect("#{resource.member_path}.:format", destroy_action_options)
       end
@@ -552,16 +552,15 @@ module ActionController
         end
       end
 
-      def action_options_for(action, resource, method = nil)
+      def action_options_for(action, resource, method = nil, require_id = false)
         default_options = { :action => action.to_s }
-        require_id = !resource.kind_of?(SingletonResource)
         case default_options[:action]
           when "index", "new"; default_options.merge(add_conditions_for(resource.conditions, method || :get)).merge(resource.requirements)
           when "create";       default_options.merge(add_conditions_for(resource.conditions, method || :post)).merge(resource.requirements)
           when "show", "edit"; default_options.merge(add_conditions_for(resource.conditions, method || :get)).merge(resource.requirements(require_id))
           when "update";       default_options.merge(add_conditions_for(resource.conditions, method || :put)).merge(resource.requirements(require_id))
           when "destroy";      default_options.merge(add_conditions_for(resource.conditions, method || :delete)).merge(resource.requirements(require_id))
-          else                  default_options.merge(add_conditions_for(resource.conditions, method)).merge(resource.requirements)
+          else                  default_options.merge(add_conditions_for(resource.conditions, method)).merge(resource.requirements(require_id))
         end
       end
   end
