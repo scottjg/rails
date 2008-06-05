@@ -1,6 +1,7 @@
 require "cases/helper"
 require 'models/developer'
 require 'models/project'
+require 'models/circular_belonging'
 require 'models/company'
 require 'models/topic'
 require 'models/reply'
@@ -382,6 +383,31 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_cant_save_readonly_association
     assert_raise(ActiveRecord::ReadOnlyRecord) { companies(:first_client).readonly_firm.save! }
     assert companies(:first_client).readonly_firm.readonly?
+  end
+
+  def test_save_fails_for_invalid_belongs_to
+    assert log = AuditLog.create(:developer_id=>0,:message=>"")
+    
+    log.developer = Developer.new
+    
+    assert !log.developer.valid?
+    assert !log.valid?
+    assert !log.save
+    assert_equal "is invalid", log.errors.on("developer")
+  end
+  
+  # This is supposed to test against the problem described here:
+  # http://groups.google.com/group/rubyonrails-core/browse_thread/thread/652d0d7e6d455c08
+  # (which reverted this patch the first time)
+  # However, I cannot reproduce the problem. Perhaps changes in the core
+  # have made it go away?
+  def test_circular_save_for_belongs_to
+    assert romeo = Romeo.create(:montague=>true)
+    romeo.juliet = Juliet.new
+    
+    assert !romeo.valid?
+    assert !romeo.save
+    assert_equal "is invalid", romeo.errors.on("juliet")
   end
   
   def test_polymorphic_assignment_foreign_type_field_updating
