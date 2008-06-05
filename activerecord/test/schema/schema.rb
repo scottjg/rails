@@ -166,6 +166,10 @@ ActiveRecord::Schema.define do
   create_table :jobs, :force => true do |t|
     t.integer :ideal_reference_id
   end
+  
+  create_table :juliets, :force => true do |t|
+    t.integer :romeo_id
+  end
 
   create_table :keyboards, :force => true, :id  => false do |t|
     t.primary_key :key_number
@@ -320,6 +324,10 @@ ActiveRecord::Schema.define do
   create_table :readers, :force => true do |t|
     t.integer :post_id, :null => false
     t.integer :person_id, :null => false
+  end
+  
+  create_table :romeos, :force => true do |t|
+    t.integer :juliet_id
   end
 
   create_table :shape_expressions, :force => true do |t|

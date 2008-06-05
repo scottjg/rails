@@ -936,7 +936,9 @@ module ActiveRecord
             "#{reflection.class_name}.send(:attr_readonly,\"#{cache_column}\".intern) if defined?(#{reflection.class_name}) && #{reflection.class_name}.respond_to?(:attr_readonly)"
           )
         end
-
+        
+        add_single_associated_save_callbacks(reflection.name) 
+        
         configure_dependency_for_belongs_to(reflection)
       end
 
