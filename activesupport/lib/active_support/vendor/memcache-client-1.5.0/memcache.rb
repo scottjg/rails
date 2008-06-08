@@ -1,10 +1,10 @@
 # All original code copyright 2005, 2006, 2007 Bob Cottrell, Eric Hodel,
 # The Robot Co-op.  All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
 # 2. Redistributions in binary form must reproduce the above copyright
@@ -13,7 +13,7 @@
 # 3. Neither the names of the authors nor the names of their contributors
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE AUTHORS ``AS IS'' AND ANY EXPRESS
 # OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -69,7 +69,7 @@ class MemCache
   ##
   # The version of MemCache you are using.
 
-  VERSION = '1.5.0'
+  VERSION = '1.5.0.3'
 
   ##
   # Default options for the cache object.
@@ -212,14 +212,11 @@ class MemCache
   # 0.  +key+ can not be decremented below 0.
 
   def decr(key, amount = 1)
-    server, cache_key = request_setup key
-
-    if @multithread then
-      threadsafe_cache_decr server, cache_key, amount
-    else
+    raise MemCacheError, "Update of readonly cache" if @readonly
+    with_server(key) do |server,cache_key|
       cache_decr server, cache_key, amount
     end
-  rescue TypeError, SocketError, SystemCallError, IOError => err
+  rescue TypeError => err
     handle_error server, err
   end
 
@@ -229,19 +226,13 @@ class MemCache
 
   def get(key, raw = false)
     server, cache_key = request_setup key
-
-    value = if @multithread then
-              threadsafe_cache_get server, cache_key
-            else
-              cache_get server, cache_key
-            end
-
-    return nil if value.nil?
-
-    value = Marshal.load value unless raw
-
-    return value
-  rescue TypeError, SocketError, SystemCallError, IOError => err
+    with_server(key) do |server,cache_key|
+      value = cache_get server, cache_key
+      return nil if value.nil?
+      value = Marshal.load value unless raw
+      return value
+    end
+  rescue TypeError => err
     handle_error server, err
   end
 
@@ -280,18 +271,14 @@ class MemCache
 
     server_keys.each do |server, keys_for_server|
       keys_for_server = keys_for_server.join ' '
-      values = if @multithread then
-                 threadsafe_cache_get_multi server, keys_for_server
-               else
-                 cache_get_multi server, keys_for_server
-               end
+      values = cache_get_multi server, keys_for_server
       values.each do |key, value|
         results[cache_keys[key]] = Marshal.load value
       end
     end
 
     return results
-  rescue TypeError, SocketError, SystemCallError, IOError => err
+  rescue TypeError => err
     handle_error server, err
   end
 
@@ -301,14 +288,11 @@ class MemCache
   # 0.
 
   def incr(key, amount = 1)
-    server, cache_key = request_setup key
-
-    if @multithread then
-      threadsafe_cache_incr server, cache_key, amount
-    else
+    raise MemCacheError, "Update of readonly cache" if @readonly
+    with_server(key) do |server,cache_key|
       cache_incr server, cache_key, amount
     end
-  rescue TypeError, SocketError, SystemCallError, IOError => err
+  rescue TypeError => err
     handle_error server, err
   end
 
@@ -321,23 +305,16 @@ class MemCache
 
   def set(key, value, expiry = 0, raw = false)
     raise MemCacheError, "Update of readonly cache" if @readonly
-    server, cache_key = request_setup key
-    socket = server.socket
+    with_server(key) do |server,cache_key|
+      value = Marshal.dump value unless raw
+      command = "set #{cache_key} 0 #{expiry} #{value.size}\r\n#{value}\r\n"
 
-    value = Marshal.dump value unless raw
-    command = "set #{cache_key} 0 #{expiry} #{value.size}\r\n#{value}\r\n"
-
-    begin
-      @mutex.lock if @multithread
-      socket.write command
-      result = socket.gets
-      raise_on_error_response! result
-      result
-    rescue SocketError, SystemCallError, IOError => err
-      server.close
-      raise MemCacheError, err.message
-    ensure
-      @mutex.unlock if @multithread
+      with_socket_management(server) do |socket|
+        socket.write command
+        result = socket.gets
+        raise_on_error_response! result
+        result
+      end
     end
   end
 
@@ -351,23 +328,16 @@ class MemCache
 
   def add(key, value, expiry = 0, raw = false)
     raise MemCacheError, "Update of readonly cache" if @readonly
-    server, cache_key = request_setup key
-    socket = server.socket
+    with_server(key) do |server,cache_key|
+      value = Marshal.dump value unless raw
+      command = "add #{cache_key} 0 #{expiry} #{value.size}\r\n#{value}\r\n"
 
-    value = Marshal.dump value unless raw
-    command = "add #{cache_key} 0 #{expiry} #{value.size}\r\n#{value}\r\n"
-
-    begin
-      @mutex.lock if @multithread
-      socket.write command
-      result = socket.gets
-      raise_on_error_response! result
-      result
-    rescue SocketError, SystemCallError, IOError => err
-      server.close
-      raise MemCacheError, err.message
-    ensure
-      @mutex.unlock if @multithread
+      with_socket_management(server) do |socket|
+        socket.write command
+        result = socket.gets
+        raise_on_error_response! result
+        result
+      end
     end
   end
 
@@ -375,26 +345,15 @@ class MemCache
   # Removes +key+ from the cache in +expiry+ seconds.
 
   def delete(key, expiry = 0)
-    @mutex.lock if @multithread
-
-    raise MemCacheError, "No active servers" unless active?
-    cache_key = make_cache_key key
-    server = get_server_for_key cache_key
-
-    sock = server.socket
-    raise MemCacheError, "No connection to server" if sock.nil?
-
-    begin
-      sock.write "delete #{cache_key} #{expiry}\r\n"
-      result = sock.gets
-      raise_on_error_response! result
-      result
-    rescue SocketError, SystemCallError, IOError => err
-      server.close
-      raise MemCacheError, err.message
+    raise MemCacheError, "Update of readonly cache" if @readonly
+    with_server(key) do |server,cache_key|
+      with_socket_management(server) do |socket|
+        sock.write "delete #{cache_key} #{expiry}\r\n"
+        result = sock.gets
+        raise_on_error_response! result
+        result
+      end
     end
-  ensure
-    @mutex.unlock if @multithread
   end
 
   ##
@@ -406,16 +365,12 @@ class MemCache
     begin
       @mutex.lock if @multithread
       @servers.each do |server|
-        begin
-          sock = server.socket
-          raise MemCacheError, "No connection to server" if sock.nil?
+        next unless server.alive?
+        with_socket_management(server) do |socket|
           sock.write "flush_all\r\n"
           result = sock.gets
           raise_on_error_response! result
           result
-        rescue SocketError, SystemCallError, IOError => err
-          server.close
-          raise MemCacheError, err.message
         end
       end
     ensure
@@ -472,11 +427,11 @@ class MemCache
       sock = server.socket
       raise MemCacheError, "No connection to server" if sock.nil?
 
-      value = nil
-      begin
+      with_socket_management(server) do |socket|
+        value = nil # TODO: why is this line here?
         sock.write "stats\r\n"
         stats = {}
-        while line = sock.gets do
+        while line = socket.gets do
           raise_on_error_response! line
           break if line == "END\r\n"
           if line =~ /\ASTAT ([\w]+) ([\w\.\:]+)/ then
@@ -498,9 +453,6 @@ class MemCache
           end
         end
         server_stats["#{server.host}:#{server.port}"] = stats
-      rescue SocketError, SystemCallError, IOError => err
-        server.close
-        raise MemCacheError, err.message
       end
     end
 
@@ -568,12 +520,13 @@ class MemCache
   # found.
 
   def cache_decr(server, cache_key, amount)
-    socket = server.socket
-    socket.write "decr #{cache_key} #{amount}\r\n"
-    text = socket.gets
-    raise_on_error_response! text
-    return nil if text == "NOT_FOUND\r\n"
-    return text.to_i
+    with_socket_management(server) do |socket|
+      socket.write "decr #{cache_key} #{amount}\r\n"
+      text = socket.gets
+      raise_on_error_response! text
+      return nil if text == "NOT_FOUND\r\n"
+      return text.to_i
+    end
   end
 
   ##
@@ -581,52 +534,54 @@ class MemCache
   # miss.
 
   def cache_get(server, cache_key)
-    socket = server.socket
-    socket.write "get #{cache_key}\r\n"
-    keyline = socket.gets # "VALUE <key> <flags> <bytes>\r\n"
+    with_socket_management(server) do |socket|
+      socket.write "get #{cache_key}\r\n"
+      keyline = socket.gets # "VALUE <key> <flags> <bytes>\r\n"
 
-    if keyline.nil? then
-      server.close
-      raise MemCacheError, "lost connection to #{server.host}:#{server.port}"
+      if keyline.nil? then
+        server.close
+        raise MemCacheError, "lost connection to #{server.host}:#{server.port}"
+      end
+
+      raise_on_error_response! keyline
+      return nil if keyline == "END\r\n"
+
+      unless keyline =~ /(\d+)\r/ then
+        server.close
+        raise MemCacheError, "unexpected response #{keyline.inspect}"
+      end
+      value = socket.read $1.to_i
+      socket.read 2 # "\r\n"
+      socket.gets   # "END\r\n"
+      return value
     end
-
-    raise_on_error_response! keyline
-    return nil if keyline == "END\r\n"
-
-    unless keyline =~ /(\d+)\r/ then
-      server.close
-      raise MemCacheError, "unexpected response #{keyline.inspect}"
-    end
-    value = socket.read $1.to_i
-    socket.read 2 # "\r\n"
-    socket.gets   # "END\r\n"
-    return value
   end
 
   ##
   # Fetches +cache_keys+ from +server+ using a multi-get.
 
   def cache_get_multi(server, cache_keys)
-    values = {}
-    socket = server.socket
-    socket.write "get #{cache_keys}\r\n"
+    with_socket_management(server) do |socket|
+      values = {}
+      socket.write "get #{cache_keys}\r\n"
 
-    while keyline = socket.gets do
-      return values if keyline == "END\r\n"
-      raise_on_error_response! keyline
+      while keyline = socket.gets do
+        return values if keyline == "END\r\n"
+        raise_on_error_response! keyline
 
-      unless keyline =~ /\AVALUE (.+) (.+) (.+)/ then
-        server.close
-        raise MemCacheError, "unexpected response #{keyline.inspect}"
+        unless keyline =~ /\AVALUE (.+) (.+) (.+)/ then
+          server.close
+          raise MemCacheError, "unexpected response #{keyline.inspect}"
+        end
+
+        key, data_length = $1, $3
+        values[$1] = socket.read data_length.to_i
+        socket.read(2) # "\r\n"
       end
 
-      key, data_length = $1, $3
-      values[$1] = socket.read data_length.to_i
-      socket.read(2) # "\r\n"
+      server.close
+      raise MemCacheError, "lost connection to #{server.host}:#{server.port}"
     end
-
-    server.close
-    raise MemCacheError, "lost connection to #{server.host}:#{server.port}"
   end
 
   ##
@@ -634,21 +589,69 @@ class MemCache
   # found.
 
   def cache_incr(server, cache_key, amount)
-    socket = server.socket
-    socket.write "incr #{cache_key} #{amount}\r\n"
-    text = socket.gets
-    raise_on_error_response! text
-    return nil if text == "NOT_FOUND\r\n"
-    return text.to_i
+    with_socket_management(server) do |socket|
+      socket.write "incr #{cache_key} #{amount}\r\n"
+      text = socket.gets
+      raise_on_error_response! text
+      return nil if text == "NOT_FOUND\r\n"
+      return text.to_i
+    end
+  end
+
+  ##
+  # Gets or creates a socket connected to the given server, and yields it
+  # to the block.  If a socket error (SocketError, SystemCallError, IOError)
+  # or protocol error (MemCacheError) is raised by the block, closes the
+  # socket, attempts to connect again, and retries the block (once).  If
+  # an error is again raised, reraises it as MemCacheError.
+  # If unable to connect to the server (or if in the reconnect wait period),
+  # raises MemCacheError - note that the socket connect code marks a server
+  # dead for a timeout period, so retrying does not apply to connection attempt
+  # failures (but does still apply to unexpectedly lost connections etc.).
+  # Wraps the whole lot in mutex synchronization if @multithread is true.
+
+  def with_socket_management(server, &block)
+    @mutex.lock if @multithread
+    retried = false
+    begin
+      socket = server.socket
+      # Raise an IndexError to show this server is out of whack.
+      # We'll catch it in higher-level code and attempt to restart the operation
+      raise IndexError, "No connection to server (#{server.status})" if socket.nil?
+      block.call(socket)
+    rescue MemCacheError, SocketError, SystemCallError, IOError => err
+      handle_error(server, err) if retried || socket.nil?
+      retried = true
+      retry
+    end
+  ensure
+    @mutex.unlock if @multithread
+  end
+
+  def with_server(key)
+    retried = false
+    begin
+      server, cache_key = request_setup(key)
+      yield server, cache_key
+    rescue IndexError => e
+      if !retried && @servers.size > 1
+        puts "Connection to server #{server.inspect} DIED!  Retrying operation..."
+        retried = true
+        retry
+      end
+      handle_error(nil, e)
+    end
   end
 
   ##
   # Handles +error+ from +server+.
 
   def handle_error(server, error)
+    raise error if error.is_a?(MemCacheError)
     server.close if server
     new_error = MemCacheError.new error.message
     new_error.set_backtrace error.backtrace
+
     raise new_error
   end
 
@@ -660,40 +663,16 @@ class MemCache
     raise MemCacheError, 'No active servers' unless active?
     cache_key = make_cache_key key
     server = get_server_for_key cache_key
-    raise MemCacheError, 'No connection to server' if server.socket.nil?
     return server, cache_key
   end
 
-  def threadsafe_cache_decr(server, cache_key, amount) # :nodoc:
-    @mutex.lock
-    cache_decr server, cache_key, amount
-  ensure
-    @mutex.unlock
-  end
-
-  def threadsafe_cache_get(server, cache_key) # :nodoc:
-    @mutex.lock
-    cache_get server, cache_key
-  ensure
-    @mutex.unlock
-  end
-
-  def threadsafe_cache_get_multi(socket, cache_keys) # :nodoc:
-    @mutex.lock
-    cache_get_multi socket, cache_keys
-  ensure
-    @mutex.unlock
-  end
-
-  def threadsafe_cache_incr(server, cache_key, amount) # :nodoc:
-    @mutex.lock
-    cache_incr server, cache_key, amount
-  ensure
-    @mutex.unlock
-  end
-
   def raise_on_error_response!(response)
+    if response.nil?
+      server.close
+      raise MemCacheError, "lost connection to #{server.host}:#{server.port}"
+    end
     if response =~ /\A(?:CLIENT_|SERVER_)?ERROR (.*)/
+      server.close
       raise MemCacheError, $1.strip
     end
   end
