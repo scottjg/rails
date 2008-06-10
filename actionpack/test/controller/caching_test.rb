@@ -436,6 +436,8 @@ class FragmentCachingTest < Test::Unit::TestCase
     @controller.request = @request
     @controller.response = @response
     @controller.send(:initialize_current_url)
+    @controller.send(:initialize_template_class, @response)
+    @controller.send(:assign_shortcuts, @request, @response)
   end
 
   def test_fragment_cache_key
@@ -525,7 +527,7 @@ class FragmentCachingTest < Test::Unit::TestCase
 
   def test_cache_erb_fragment
     @store.write('views/expensive', 'fragment content')
-    _erbout = 'generated till now -> '
+    @controller.response.template.output_buffer = 'generated till now -> '
 
     assert_equal( 'generated till now -> fragment content',
                   ActionView::TemplateHandlers::ERB.new(@controller).cache_fragment(Proc.new{ }, 'expensive'))
