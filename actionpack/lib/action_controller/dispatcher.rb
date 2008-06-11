@@ -10,10 +10,10 @@ module ActionController
           # Development mode callbacks
           before_dispatch :reload_application
           after_dispatch :cleanup_application
-
-          to_prepare :reload_view_path_cache do
-            ActionView::TemplateFinder.reload! unless ActionView::Base.cache_template_loading
-          end
+        end
+        
+        to_prepare :reload_view_path_cache do
+          ActionView::TemplateFinder.reload!
         end
 
         # Common callbacks
