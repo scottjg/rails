@@ -11,10 +11,6 @@ module ActionController
           before_dispatch :reload_application
           after_dispatch :cleanup_application
         end
-        
-        to_prepare :reload_view_path_cache do
-          ActionView::TemplateFinder.reload!
-        end
 
         # Common callbacks
         to_prepare :load_application_controller do
@@ -23,6 +19,10 @@ module ActionController
           rescue LoadError => error
             raise unless error.message =~ /application\.rb/
           end
+        end
+
+        to_prepare :reload_view_path_cache do
+          ActionView::TemplateFinder.reload!
         end
 
         if defined?(ActiveRecord)
