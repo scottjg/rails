@@ -40,7 +40,7 @@ module ActiveModel
 
     def [](attribute)
       # Note: Can't use Hash#default_proc for this because it would make AR:B unserializable.
-      @on[attribute] || []
+      @on[attribute] ||= []
     end
 
     def each
