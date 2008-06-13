@@ -2,7 +2,13 @@ module ActiveModel
   module DeprecatedErrorMethods
     def on(attribute)
       ActiveSupport::Deprecation.warn "Errors#on have been deprecated, use Errors#[] instead"
-      self[attribute]
+      errs = self[attribute]
+      if errs.size == 1
+        ActiveSupport::Deprecation.warn "Errors#on / Errors#[] returning anything but an array is deprecated, always expect with an array instead"
+        errs[0]
+      else
+        errs
+      end
     end
 
     def on_base
