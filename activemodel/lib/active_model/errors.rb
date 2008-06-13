@@ -1,6 +1,7 @@
 module ActiveModel
-  class Errors < Hash
+  class Errors
     include DeprecatedErrorMethods
+    include Enumerable
     
     @@default_error_messages = {
       :inclusion                => "is not included in the list",
@@ -26,24 +27,24 @@ module ActiveModel
   
     # Holds a hash with all the default error messages that can be replaced by your own copy or localizations.
     cattr_accessor :default_error_messages
-
-    alias_method :get, :[]
-    alias_method :set, :[]=
-
-    def [](attribute)
-      if errors = get(attribute.to_sym)
-        errors.size == 1 ? errors.first : errors
-      else
-        set(attribute.to_sym, [])
-      end
+    
+    # Delegate Hash methods that actually make sense for Errors
+    delegate :[]=, :clear, :delete, :delete_if, :empty?, :include?, :length, :size, 
+             :merge, :merge!, :reject, :reject!, :replace,  :select, :shift, :update,
+             :to=>:errors_hash
+    
+    def initialize(base)
+      @base = base
+      @on = {}
     end
 
-    def []=(attribute, error)
-      self[attribute.to_sym] << error
+    def [](attribute)
+      # Note: Can't use Hash#default_proc for this because it would make AR:B unserializable.
+      @on[attribute] || []
     end
 
     def each
-      each_key do |attribute| 
+      @on.each_key do |attribute| 
         self[attribute].each { |error| yield attribute, error }
       end
     end
@@ -76,5 +77,12 @@ module ActiveModel
         to_a.each { |error| e.error(error) }
       end
     end
+    
+    private
+    
+    def errors_hash
+      @on
+    end
+    
   end
 end
