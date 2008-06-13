@@ -601,7 +601,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t.title = "uhoh"
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "is not included in the list", t.errors["title"]
+    assert_equal "is not included in the list", t.errors.on("title")
 
     assert_raise(ArgumentError) { Topic.validates_inclusion_of( :title, :in => nil ) }
     assert_raise(ArgumentError) { Topic.validates_inclusion_of( :title, :in => 0) }
@@ -652,7 +652,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhoh", "content" => "abc")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "option uhoh is not in the list", t.errors["title"]
+    assert_equal "option uhoh is not in the list", t.errors.on("title")
   end
 
   def test_numericality_with_allow_nil_and_getter_method
@@ -677,7 +677,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "monkey")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "option monkey is restricted", t.errors["title"]
+    assert_equal "option monkey is restricted", t.errors.on("title")
   end
 
   def test_validates_length_of_using_minimum
@@ -689,17 +689,17 @@ class ValidationsTest < ActiveRecord::TestCase
     t.title = "not"
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "is too short (minimum is 5 characters)", t.errors["title"]
+    assert_equal "is too short (minimum is 5 characters)", t.errors.on("title")
 
     t.title = ""
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "is too short (minimum is 5 characters)", t.errors["title"]
+    assert_equal "is too short (minimum is 5 characters)", t.errors.on("title")
 
     t.title = nil
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "is too short (minimum is 5 characters)", t.errors["title"]
+    assert_equal "is too short (minimum is 5 characters)", t.errors.on("title")
   end
 
   def test_optionally_validates_length_of_using_minimum
@@ -721,7 +721,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t.title = "notvalid"
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "is too long (maximum is 5 characters)", t.errors["title"]
+    assert_equal "is too long (maximum is 5 characters)", t.errors.on("title")
 
     t.title = ""
     assert t.valid?
@@ -775,7 +775,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "thisisnotvalid", "content" => "whatever")
     assert !t.save
     assert t.errors.on(:title)
-    assert_equal "my string is too long: 10", t.errors[:title]
+    assert_equal "my string is too long: 10", t.errors.on(:title)
 
     t.title = "butthisis"
     assert t.save
@@ -800,7 +800,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t.title = "not"
     assert !t.save
     assert t.errors.on(:title)
-    assert_equal "my string is too short: 5", t.errors[:title]
+    assert_equal "my string is too short: 5", t.errors.on(:title)
 
     t.title = "valid"
     t.content = "andthisistoolong"
@@ -820,7 +820,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t.title = "notvalid"
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "is the wrong length (should be 5 characters)", t.errors["title"]
+    assert_equal "is the wrong length (should be 5 characters)", t.errors.on("title")
 
     t.title = ""
     assert !t.valid?
@@ -858,7 +858,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create(:title => 'too short')
     assert !t.valid?
 
-    assert_equal 'tu est trops petit hombre 10', t.errors['title']
+    assert_equal 'tu est trops petit hombre 10', t.errors.on('title')
   end
 
   def test_validates_size_of_association
@@ -900,7 +900,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "boo 5", t.errors["title"]
+    assert_equal "boo 5", t.errors.on("title")
   end
 
   def test_validates_length_of_custom_errors_for_minimum_with_too_short
@@ -908,7 +908,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_validates_length_of_custom_errors_for_maximum_with_message
@@ -916,7 +916,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "boo 5", t.errors["title"]
+    assert_equal "boo 5", t.errors.on("title")
   end
 
   def test_validates_length_of_custom_errors_for_maximum_with_too_long
@@ -924,7 +924,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_validates_length_of_custom_errors_for_is_with_message
@@ -932,7 +932,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "boo 5", t.errors["title"]
+    assert_equal "boo 5", t.errors.on("title")
   end
 
   def test_validates_length_of_custom_errors_for_is_with_wrong_length
@@ -940,7 +940,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_validates_length_of_using_minimum_utf8
@@ -953,7 +953,7 @@ class ValidationsTest < ActiveRecord::TestCase
       t.title = "一二三四"
       assert !t.valid?
       assert t.errors.on(:title)
-      assert_equal "is too short (minimum is 5 characters)", t.errors["title"]
+      assert_equal "is too short (minimum is 5 characters)", t.errors.on("title")
     end
   end
 
@@ -967,7 +967,7 @@ class ValidationsTest < ActiveRecord::TestCase
       t.title = "一二34五六"
       assert !t.valid?
       assert t.errors.on(:title)
-      assert_equal "is too long (maximum is 5 characters)", t.errors["title"]
+      assert_equal "is too long (maximum is 5 characters)", t.errors.on("title")
     end
   end
 
@@ -1007,7 +1007,7 @@ class ValidationsTest < ActiveRecord::TestCase
       t = Topic.create("title" => "一二三四五六七八九十A", "content" => "whatever")
       assert !t.save
       assert t.errors.on(:title)
-      assert_equal "長すぎます: 10", t.errors[:title]
+      assert_equal "長すぎます: 10", t.errors.on(:title)
 
       t.title = "一二三四五六七八九"
       assert t.save
@@ -1034,7 +1034,7 @@ class ValidationsTest < ActiveRecord::TestCase
       t.title = "1二三4"
       assert !t.save
       assert t.errors.on(:title)
-      assert_equal "短すぎます: 5", t.errors[:title]
+      assert_equal "短すぎます: 5", t.errors.on(:title)
 
       t.title = "一二三四五六七八九十A"
       assert !t.save
@@ -1055,7 +1055,7 @@ class ValidationsTest < ActiveRecord::TestCase
       t.title = "一二345六"
       assert !t.valid?
       assert t.errors.on(:title)
-      assert_equal "is the wrong length (should be 5 characters)", t.errors["title"]
+      assert_equal "is the wrong length (should be 5 characters)", t.errors.on("title")
     end
   end
 
@@ -1100,7 +1100,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "Title", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "will never be valid", t.errors["title"]
+    assert_equal "will never be valid", t.errors.on("title")
   end
 
   def test_invalid_validator
@@ -1203,7 +1203,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_unless_validation_using_method_true
@@ -1228,7 +1228,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_if_validation_using_string_true
@@ -1237,7 +1237,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_unless_validation_using_string_true
@@ -1262,7 +1262,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_if_validation_using_block_true
@@ -1272,7 +1272,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_unless_validation_using_block_true
@@ -1300,7 +1300,7 @@ class ValidationsTest < ActiveRecord::TestCase
     t = Topic.create("title" => "uhohuhoh", "content" => "whatever")
     assert !t.valid?
     assert t.errors.on(:title)
-    assert_equal "hoo 5", t.errors["title"]
+    assert_equal "hoo 5", t.errors.on("title")
   end
 
   def test_validates_associated_missing
