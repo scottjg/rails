@@ -29,7 +29,7 @@ module ActiveModel
     cattr_accessor :default_error_messages
     
     # Delegate Hash methods that actually make sense for Errors
-    delegate :[]=, :clear, :delete, :delete_if, :empty?, :include?,
+    delegate :[]=, :clear, :delete, :delete_if, :empty?,
              :merge, :merge!, :reject, :reject!, :replace,  :select, :shift, :update,
              :to=>:errors_hash
     
@@ -40,7 +40,7 @@ module ActiveModel
 
     def [](attribute)
       # Note: Can't use Hash#default_proc for this because it would make AR:B unserializable.
-      @on[attribute.to_sym] ||= []
+      @on[attribute.to_s] ||= []
     end
     
     def size
@@ -49,7 +49,7 @@ module ActiveModel
     
     alias_method :length, :size
     alias_method :count, :size
-
+    
     def each
       @on.each_key do |attribute| 
         self[attribute].each { |error| yield attribute, error }
@@ -65,7 +65,7 @@ module ActiveModel
         if error.blank?
           errors_with_attributes
         else
-          if attribute == :base
+          if attribute == "base"
             errors_with_attributes << error
           else
             errors_with_attributes << (attribute.to_s.humanize + " " + error)
