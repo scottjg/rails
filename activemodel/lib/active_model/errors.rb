@@ -29,7 +29,7 @@ module ActiveModel
     cattr_accessor :default_error_messages
     
     # Delegate Hash methods that actually make sense for Errors
-    delegate :[]=, :clear, :delete, :delete_if, :empty?, :include?, :length, :size, 
+    delegate :[]=, :clear, :delete, :delete_if, :empty?, :include?,
              :merge, :merge!, :reject, :reject!, :replace,  :select, :shift, :update,
              :to=>:errors_hash
     
@@ -43,6 +43,11 @@ module ActiveModel
       @on[attribute.to_sym] ||= []
     end
     
+    def size
+      @on.values.sum(&:size)
+    end
+    
+    alias_method :length, :size
     alias_method :count, :size
 
     def each
