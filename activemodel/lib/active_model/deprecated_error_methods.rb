@@ -3,8 +3,12 @@ module ActiveModel
     def on(attribute)
       ActiveSupport::Deprecation.warn "Errors#on have been deprecated, use Errors#[] instead"
       errs = self[attribute]
-      if errs.size == 1
-        ActiveSupport::Deprecation.warn "Errors#on / Errors#[] returning anything but an array is deprecated, always expect with an array instead"
+      case errs.size
+      when 0
+        ActiveSupport::Deprecation.warn "Errors#on / Errors#[] returning nil is deprecated, always expect an array, and check errors[attr].empty? instead"
+        nil
+      when 1
+        ActiveSupport::Deprecation.warn "Errors#on / Errors#[] returning a single value is deprecated, always expect an array instead"
         errs[0]
       else
         errs
