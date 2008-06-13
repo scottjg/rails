@@ -86,7 +86,7 @@ module ActiveModel
 
     # Returns the Errors object that holds all information about attribute error messages.
     def errors
-      @errors ||= Errors.new
+      @errors ||= Errors.new(self)
     end
     
     # The validation process on save can be skipped by passing false. The regular Base#save method is
