@@ -37,7 +37,7 @@ module ActiveModel
         attr_accessor(*names)
 
         validates_each(attr_names,configuration) do |record, attr_name, value|
-          record.errors.add(attr_name, configuration[:message]) unless value == configuration[:accept]
+          record.errors.add(attr_name, configuration[:message] % value) unless value == configuration[:accept]
         end
       end
     end
