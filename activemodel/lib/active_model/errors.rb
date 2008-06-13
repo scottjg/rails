@@ -42,6 +42,8 @@ module ActiveModel
       # Note: Can't use Hash#default_proc for this because it would make AR:B unserializable.
       @on[attribute] ||= []
     end
+    
+    alias_method :count, :size
 
     def each
       @on.each_key do |attribute| 
