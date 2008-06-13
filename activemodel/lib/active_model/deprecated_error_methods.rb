@@ -30,11 +30,19 @@ module ActiveModel
       self[:base] << msg
     end
     
-    def add_on_blank(attributes, msg)
+    def add_on_blank(attributes, msg = ActiveModel::Errors::default_error_messages[:blank])
       ActiveSupport::Deprecation.warn "Errors#add_on_blank(attributes, msg) has been deprecated, use Errors#[attribute] << msg if object.blank? instead"
-      [attributes].flatten.each do |attr|
+      for attr in [attributes].flatten
         value = @base.respond_to?(attr.to_s) ? @base.send(attr.to_s) : @base[attr.to_s]
-        self[attr] << msg if value.blank?
+        add(attr, msg) if value.blank?
+      end
+    end
+    
+    def add_on_empty(attributes, msg = ActiveModel::Errors::default_error_messages[:empty])
+      for attr in [attributes].flatten
+        value = @base.respond_to?(attr.to_s) ? @base.send(attr.to_s) : @base[attr.to_s]
+        is_empty = value.respond_to?("empty?") ? value.empty? : false
+        add(attr, msg) unless !value.nil? && !is_empty
       end
     end
   
