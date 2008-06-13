@@ -36,11 +36,16 @@ unless defined? ActiveSupport
   end
 end
 
+unless defined? ActiveModel
+  $LOAD_PATH << File.join(File.dirname(__FILE__), '..', '..', 'activemodel', 'lib')
+end
+
 require 'active_record/base'
 require 'active_record/named_scope'
 require 'active_record/observer'
 require 'active_record/query_cache'
-require 'active_record/validations'
+require 'active_model/deprecated_error_methods'
+require 'active_model/validations'
 require 'active_record/callbacks'
 require 'active_record/reflection'
 require 'active_record/associations'
@@ -59,7 +64,7 @@ require 'active_record/dirty'
 
 ActiveRecord::Base.class_eval do
   extend ActiveRecord::QueryCache
-  include ActiveRecord::Validations
+  include ActiveModel::Validations  
   include ActiveRecord::Locking::Optimistic
   include ActiveRecord::Locking::Pessimistic
   include ActiveRecord::AttributeMethods
