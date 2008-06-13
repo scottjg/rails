@@ -115,24 +115,24 @@ module ActiveModel
 
       run_callbacks(:validate)
       
-      if responds_to?(:validate)
-        ActiveSupport::Deprecations.warn "Base#validate has been deprecated, please use Base.validate :method instead"
+      if respond_to?(:validate)
+        ActiveSupport::Deprecation.warn "Base#validate has been deprecated, please use Base.validate :method instead"
         validate
       end
 
       if new_record?
         run_callbacks(:validate_on_create)
 
-        if responds_to?(:validate_on_create)
-          ActiveSupport::Deprecations.warn(
+        if respond_to?(:validate_on_create)
+          ActiveSupport::Deprecation.warn(
             "Base#validate_on_create has been deprecated, please use Base.validate_on_create :method instead")
           validate_on_create
         end
       else
         run_callbacks(:validate_on_update)
 
-        if responds_to?(:validate_on_update)
-          ActiveSupport::Deprecations.warn(
+        if respond_to?(:validate_on_update)
+          ActiveSupport::Deprecation.warn(
             "Base#validate_on_update has been deprecated, please use Base.validate_on_update :method instead")
           validate_on_update
         end
