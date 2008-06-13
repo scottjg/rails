@@ -50,7 +50,7 @@ module ActiveModel
 
           if configuration[:only_integer]
             unless raw_value.to_s =~ /\A[+-]?\d+\Z/
-              record.errors.add(attr_name, configuration[:message] || ActiveRecord::Errors.default_error_messages[:not_a_number])
+              record.errors.add(attr_name, configuration[:message] || ActiveModel::Errors.default_error_messages[:not_a_number])
               next
             end
             raw_value = raw_value.to_i
@@ -58,7 +58,7 @@ module ActiveModel
            begin
               raw_value = Kernel.Float(raw_value.to_s)
             rescue ArgumentError, TypeError
-              record.errors.add(attr_name, configuration[:message] || ActiveRecord::Errors.default_error_messages[:not_a_number])
+              record.errors.add(attr_name, configuration[:message] || ActiveModel::Errors.default_error_messages[:not_a_number])
               next
             end
           end
@@ -66,9 +66,9 @@ module ActiveModel
           numericality_options.each do |option|
             case option
               when :odd, :even
-                record.errors.add(attr_name, configuration[:message] || ActiveRecord::Errors.default_error_messages[option]) unless raw_value.to_i.method(ALL_NUMERICALITY_CHECKS[option])[]
+                record.errors.add(attr_name, configuration[:message] || ActiveModel::Errors.default_error_messages[option]) unless raw_value.to_i.method(ALL_NUMERICALITY_CHECKS[option])[]
               else
-                message = configuration[:message] || ActiveRecord::Errors.default_error_messages[option]
+                message = configuration[:message] || ActiveModel::Errors.default_error_messages[option]
                 message = message % configuration[option] if configuration[option]
                 record.errors.add(attr_name, message) unless raw_value.method(ALL_NUMERICALITY_CHECKS[option])[configuration[option]]
             end

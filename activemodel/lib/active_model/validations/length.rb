@@ -37,9 +37,9 @@ module ActiveModel
       def validates_length_of(*attrs)
         # Merge given options with defaults.
         options = {
-          :too_long     => ActiveRecord::Errors.default_error_messages[:too_long],
-          :too_short    => ActiveRecord::Errors.default_error_messages[:too_short],
-          :wrong_length => ActiveRecord::Errors.default_error_messages[:wrong_length]
+          :too_long     => ActiveModel::Errors.default_error_messages[:too_long],
+          :too_short    => ActiveModel::Errors.default_error_messages[:too_short],
+          :wrong_length => ActiveModel::Errors.default_error_messages[:wrong_length]
         }.merge(DEFAULT_VALIDATION_OPTIONS)
         options.update(attrs.extract_options!.symbolize_keys)
 
