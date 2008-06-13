@@ -45,6 +45,7 @@ require 'active_record/named_scope'
 require 'active_record/observer'
 require 'active_record/query_cache'
 require 'active_model/deprecated_error_methods'
+require 'active_record/validations'
 require 'active_model/validations'
 require 'active_record/callbacks'
 require 'active_record/reflection'
@@ -65,6 +66,7 @@ require 'active_record/dirty'
 ActiveRecord::Base.class_eval do
   extend ActiveRecord::QueryCache
   include ActiveModel::Validations  
+  include ActiveRecord::Validations  
   include ActiveRecord::Locking::Optimistic
   include ActiveRecord::Locking::Pessimistic
   include ActiveRecord::AttributeMethods
