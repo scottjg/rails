@@ -1,8 +1,13 @@
+require File.join(File.dirname(__FILE__), "errors")
 module ActiveModel
   module Validations
     def self.included(base) # :nodoc:
       base.extend(ClassMethods)
       base.send!(:include, ActiveSupport::Callbacks)
+      base.class_eval do
+        alias_method_chain :save, :validation
+        alias_method_chain :save!, :validation
+      end
       base.define_callbacks :validate, :validate_on_create, :validate_on_update
     end
 
@@ -82,6 +87,26 @@ module ActiveModel
     # Returns the Errors object that holds all information about attribute error messages.
     def errors
       @errors ||= Errors.new
+    end
+    
+    # The validation process on save can be skipped by passing false. The regular Base#save method is
+    # replaced with this when the validations module is mixed in, which it is by default.
+    def save_with_validation(perform_validation = true)
+      if perform_validation && valid? || !perform_validation
+        save_without_validation
+      else
+        false
+      end
+    end
+
+    # Attempts to save the record just like Base#save but will raise a RecordInvalid exception instead of returning false
+    # if the record is not valid.
+    def save_with_validation!
+      if valid?
+        save_without_validation!
+      else
+        raise RecordInvalid.new(self)
+      end
     end
 
     # Runs all the specified validations and returns true if no errors were added otherwise false.
