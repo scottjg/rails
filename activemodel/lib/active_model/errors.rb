@@ -56,11 +56,11 @@ module ActiveModel
     end
 
     def to_a
-      inject([]) do |errors_with_attributes, (attribute, errors)|
+      inject([]) do |errors_with_attributes, (attribute, error)|
         if error.blank?
           errors_with_attributes
         else
-          if attr == :base
+          if attribute == :base
             errors_with_attributes << error
           else
             errors_with_attributes << (attribute.to_s.humanize + " " + error)
