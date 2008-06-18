@@ -95,7 +95,7 @@ module ActionView
 
       # Method to create the source code for a given template.
       def create_template_source(template, render_symbol)
-        body = compile(template.source)
+        body = compile(template)
 
         self.template_args[render_symbol] ||= {}
         locals_keys = self.template_args[render_symbol].keys | template.locals.keys
@@ -106,7 +106,7 @@ module ActionView
           locals_code << "#{key} = local_assigns[:#{key}]\n"
         end
 
-        "def #{render_symbol}(local_assigns)\n#{locals_code}#{body}\nend"
+        "def #{render_symbol}(local_assigns)\nold_output_buffer = output_buffer;#{locals_code}#{body}\nensure\nself.output_buffer = old_output_buffer\nend"
       end
 
       # Return true if the given template was compiled for a superset of the keys in local_assigns

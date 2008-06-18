@@ -244,9 +244,7 @@ module ActionController #:nodoc:
       def render_with_a_layout(options = nil, extra_options = {}, &block) #:nodoc:
         template_with_options = options.is_a?(Hash)
 
-        if apply_layout?(template_with_options, options) && (layout = pick_layout(template_with_options, options))
-          assert_existence_of_template_file(layout)
-
+        if (layout = pick_layout(template_with_options, options)) && apply_layout?(template_with_options, options)
           options = options.merge :layout => false if template_with_options
           logger.info("Rendering template within #{layout}") if logger
 
@@ -306,7 +304,7 @@ module ActionController #:nodoc:
       end
 
       def layout_directory?(layout_name)
-        @template.finder.find_template_extension_from_handler(File.join('layouts', layout_name))
+        @template.view_paths.find_template_file_for_path("#{File.join('layouts', layout_name)}.#{@template.template_format}.erb") ? true : false
       end
   end
 end

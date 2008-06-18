@@ -25,6 +25,11 @@ module ActiveSupport #:nodoc:
           def tomorrow
             ::Date.today.tomorrow
           end
+          
+          # Returns Time.zone.today when config.time_zone is set, otherwise just returns Date.today.
+          def current
+            ::Time.zone_default ? ::Time.zone.today : ::Date.today
+          end
         end
         
         # Converts Date to a Time (or DateTime if necessary) with the time portion set to the beginning of the day (0:00)
@@ -70,7 +75,7 @@ module ActiveSupport #:nodoc:
         end
         
         # Provides precise Date calculations for years, months, and days.  The +options+ parameter takes a hash with 
-        # any of these keys: :years, :months, :weeks, :days.
+        # any of these keys: <tt>:years</tt>, <tt>:months</tt>, <tt>:weeks</tt>, <tt>:days</tt>.
         def advance(options)
           d = self
           d = d >> options.delete(:years) * 12 if options[:years]
@@ -179,7 +184,7 @@ module ActiveSupport #:nodoc:
 
         # Returns a new Date/DateTime representing the end of the quarter (last day of march, june, september, december; DateTime objects will have time set to 23:59:59)
         def end_of_quarter
-          change(:month => [3, 6, 9, 12].detect { |m| m >= self.month }).end_of_month
+          beginning_of_month.change(:month => [3, 6, 9, 12].detect { |m| m >= self.month }).end_of_month
         end
         alias :at_end_of_quarter :end_of_quarter
 

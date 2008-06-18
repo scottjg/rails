@@ -131,6 +131,13 @@ class AssertResponseWithUnexpectedErrorController < ActionController::Base
   def index
     raise 'FAIL'
   end
+
+  def show
+    render :text => "Boom", :status => 500
+  end
+end
+
+class UserController < ActionController::Base
 end
 
 module Admin
@@ -170,7 +177,7 @@ class ActionPackAssertionsControllerTest < Test::Unit::TestCase
   # let's get this party started
   def setup
     ActionController::Routing::Routes.reload
-    ActionController::Routing.use_controllers!(%w(action_pack_assertions admin/inner_module content admin/user))
+    ActionController::Routing.use_controllers!(%w(action_pack_assertions admin/inner_module user content admin/user))
     @controller = ActionPackAssertionsController.new
     @request, @response = ActionController::TestRequest.new, ActionController::TestResponse.new
   end
@@ -264,7 +271,7 @@ class ActionPackAssertionsControllerTest < Test::Unit::TestCase
       assert_redirected_to admin_inner_module_path
     end
   end
-  
+
   def test_assert_redirected_to_top_level_named_route_from_nested_controller
     with_routing do |set|
       set.draw do |map|
@@ -273,8 +280,22 @@ class ActionPackAssertionsControllerTest < Test::Unit::TestCase
       end
       @controller = Admin::InnerModuleController.new
       process :redirect_to_top_level_named_route
-      # passes -> assert_redirected_to "http://test.host/action_pack_assertions/foo"
+      # assert_redirected_to "http://test.host/action_pack_assertions/foo" would pass because of exact match early return
       assert_redirected_to "/action_pack_assertions/foo"
+    end
+  end
+
+  def test_assert_redirected_to_top_level_named_route_with_same_controller_name_in_both_namespaces
+    with_routing do |set|
+      set.draw do |map|
+        # this controller exists in the admin namespace as well which is the only difference from previous test
+        map.top_level '/user/:id', :controller => 'user', :action => 'index'
+        map.connect   ':controller/:action/:id'
+      end
+      @controller = Admin::InnerModuleController.new
+      process :redirect_to_top_level_named_route
+      # assert_redirected_to top_level_url('foo') would pass because of exact match early return
+      assert_redirected_to top_level_path('foo')
     end
   end
 
@@ -482,6 +503,16 @@ class ActionPackAssertionsControllerTest < Test::Unit::TestCase
     flunk 'Expected non-success response'
   rescue Test::Unit::AssertionFailedError => e
     assert e.message.include?('FAIL')
+  end
+
+  def test_assert_response_failure_response_with_no_exception
+    @controller = AssertResponseWithUnexpectedErrorController.new
+    get :show
+    assert_response :success
+    flunk 'Expected non-success response'
+  rescue Test::Unit::AssertionFailedError
+  rescue
+    flunk "assert_response failed to handle failure response with missing, but optional, exception."
   end
 end
 

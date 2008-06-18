@@ -3,31 +3,14 @@ module ActiveModel
     def self.included(base) # :nodoc:
       base.extend(ClassMethods)
       base.send!(:include, ActiveSupport::Callbacks)
-
-      %w( validate validate_on_create validate_on_update ).each do |validation_method|
-        base.class_eval <<-"end_eval"
-          def self.#{validation_method}(*methods, &block)
-            methods = CallbackChain.build(:#{validation_method}, *methods, &block)
-            self.#{validation_method}_callback_chain.replace(#{validation_method}_callback_chain | methods)
-          end
-
-          def self.#{validation_method}_callback_chain
-            if chain = read_inheritable_attribute(:#{validation_method})
-              return chain
-            else
-              write_inheritable_attribute(:#{validation_method}, CallbackChain.new)
-              return #{validation_method}_callback_chain
-            end
-          end
-        end_eval
-      end
+      base.define_callbacks :validate, :validate_on_create, :validate_on_update
     end
 
     module ClassMethods
       DEFAULT_VALIDATION_OPTIONS = { :on => :save, :allow_nil => false, :allow_blank => false, :message => nil }.freeze
 
       # Adds a validation method or block to the class. This is useful when
-      # overriding the #validate instance method becomes too unwieldly and
+      # overriding the +validate+ instance method becomes too unwieldly and
       # you're looking for more descriptive declaration of your validations.
       #
       # This can be done with a symbol pointing to a method:
@@ -52,8 +35,8 @@ module ActiveModel
       #     end
       #   end
       #
-      # This usage applies to #validate_on_create and #validate_on_update as well.
-
+      # This usage applies to +validate_on_create+ and +validate_on_update as well+.
+      #
       # Validates each attribute against a block.
       #
       #   class Person < ActiveRecord::Base
@@ -63,14 +46,14 @@ module ActiveModel
       #   end
       #
       # Options:
-      # * <tt>on</tt> - Specifies when this validation is active (default is :save, other options :create, :update)
-      # * <tt>allow_nil</tt> - Skip validation if attribute is nil.
-      # * <tt>allow_blank</tt> - Skip validation if attribute is blank.
-      # * <tt>if</tt> - Specifies a method, proc or string to call to determine if the validation should
-      #   occur (e.g. :if => :allow_validation, or :if => Proc.new { |user| user.signup_step > 2 }).  The
+      # * <tt>:on</tt> - Specifies when this validation is active (default is <tt>:save</tt>, other options <tt>:create</tt>, <tt>:update</tt>)
+      # * <tt>:allow_nil</tt> - Skip validation if attribute is +nil+.
+      # * <tt>:allow_blank</tt> - Skip validation if attribute is blank.
+      # * <tt>:if</tt> - Specifies a method, proc or string to call to determine if the validation should
+      #   occur (e.g. <tt>:if => :allow_validation</tt>, or <tt>:if => Proc.new { |user| user.signup_step > 2 }</tt>).  The
       #   method, proc or string should return or evaluate to a true or false value.
-      # * <tt>unless</tt> - Specifies a method, proc or string to call to determine if the validation should
-      #   not occur (e.g. :unless => :skip_validation, or :unless => Proc.new { |user| user.signup_step <= 2 }).  The
+      # * <tt>:unless</tt> - Specifies a method, proc or string to call to determine if the validation should
+      #   not occur (e.g. <tt>:unless => :skip_validation</tt>, or <tt>:unless => Proc.new { |user| user.signup_step <= 2 }</tt>).  The
       #   method, proc or string should return or evaluate to a true or false value.
       def validates_each(*attrs)
         options = attrs.extract_options!.symbolize_keys

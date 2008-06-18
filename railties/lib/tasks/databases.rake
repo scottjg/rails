@@ -45,8 +45,8 @@ namespace :db do
       when 'postgresql'
         @encoding = config[:encoding] || ENV['CHARSET'] || 'utf8'
         begin
-          ActiveRecord::Base.establish_connection(config.merge('database' => nil))
-          ActiveRecord::Base.connection.create_database(config['database'], :encoding => @encoding)
+          ActiveRecord::Base.establish_connection(config.merge('database' => 'postgres', 'schema_search_path' => 'public'))
+          ActiveRecord::Base.connection.create_database(config['database'], config.merge('encoding' => @encoding))
           ActiveRecord::Base.establish_connection(config)
         rescue
           $stderr.puts $!, *($!.backtrace)
@@ -173,7 +173,7 @@ namespace :db do
         pending_migrations.each do |pending_migration|
           puts '  %4d %s' % [pending_migration.version, pending_migration.name]
         end
-        abort "Run `rake db:migrate` to update your database then try again."
+        abort %{Run "rake db:migrate" to update your database then try again.}
       end
     end
   end
@@ -264,13 +264,15 @@ namespace :db do
   end
 
   namespace :test do
-    desc "Recreate the test database from the current environment's database schema"
-    task :clone => %w(db:schema:dump db:test:purge) do
+    desc "Recreate the test database from the current schema.rb"
+    task :load => 'db:test:purge' do
       ActiveRecord::Base.establish_connection(ActiveRecord::Base.configurations['test'])
       ActiveRecord::Schema.verbose = false
       Rake::Task["db:schema:load"].invoke
     end
 
+    desc "Recreate the test database from the current environment's database schema"
+    task :clone => %w(db:schema:dump db:test:load)
 
     desc "Recreate the test databases from the development structure"
     task :clone_structure => [ "db:structure:dump", "db:test:purge" ] do
@@ -314,14 +316,9 @@ namespace :db do
         ActiveRecord::Base.establish_connection(:test)
         ActiveRecord::Base.connection.recreate_database(abcs["test"]["database"])
       when "postgresql"
-        ENV['PGHOST']     = abcs["test"]["host"] if abcs["test"]["host"]
-        ENV['PGPORT']     = abcs["test"]["port"].to_s if abcs["test"]["port"]
-        ENV['PGPASSWORD'] = abcs["test"]["password"].to_s if abcs["test"]["password"]
-        enc_option = "-E #{abcs["test"]["encoding"]}" if abcs["test"]["encoding"]
-
         ActiveRecord::Base.clear_active_connections!
-        `dropdb -U "#{abcs["test"]["username"]}" #{abcs["test"]["database"]}`
-        `createdb #{enc_option} -U "#{abcs["test"]["username"]}" #{abcs["test"]["database"]}`
+        drop_database(abcs['test'])
+        create_database(abcs['test'])
       when "sqlite","sqlite3"
         dbfile = abcs["test"]["database"] || abcs["test"]["dbfile"]
         File.delete(dbfile) if File.exist?(dbfile)
@@ -342,10 +339,10 @@ namespace :db do
       end
     end
 
-    desc 'Prepare the test database and load the schema'
-    task :prepare => %w(environment db:abort_if_pending_migrations) do
+    desc 'Check for pending migrations and load the test schema'
+    task :prepare => 'db:abort_if_pending_migrations' do
       if defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
-        Rake::Task[{ :sql  => "db:test:clone_structure", :ruby => "db:test:clone" }[ActiveRecord::Base.schema_format]].invoke
+        Rake::Task[{ :sql  => "db:test:clone_structure", :ruby => "db:test:load" }[ActiveRecord::Base.schema_format]].invoke
       end
     end
   end
@@ -373,7 +370,7 @@ def drop_database(config)
   when /^sqlite/
     FileUtils.rm(File.join(RAILS_ROOT, config['database']))
   when 'postgresql'
-    ActiveRecord::Base.establish_connection(config.merge('database' => nil))
+    ActiveRecord::Base.establish_connection(config.merge('database' => 'postgres', 'schema_search_path' => 'public'))
     ActiveRecord::Base.connection.drop_database config['database']
   end
 end

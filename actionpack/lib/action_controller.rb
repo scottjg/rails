@@ -1,5 +1,5 @@
 #--
-# Copyright (c) 2004-2007 David Heinemeier Hansson
+# Copyright (c) 2004-2008 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -53,6 +53,7 @@ require 'action_controller/streaming'
 require 'action_controller/session_management'
 require 'action_controller/http_authentication'
 require 'action_controller/components'
+require 'action_controller/rack_process'
 require 'action_controller/record_identifier'
 require 'action_controller/request_forgery_protection'
 require 'action_controller/headers'

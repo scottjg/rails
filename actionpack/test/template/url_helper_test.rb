@@ -2,10 +2,8 @@ require 'abstract_unit'
 
 RequestMock = Struct.new("Request", :request_uri, :protocol, :host_with_port, :env)
 
-class UrlHelperTest < Test::Unit::TestCase
-  include ActionView::Helpers::AssetTagHelper
-  include ActionView::Helpers::UrlHelper
-  include ActionView::Helpers::TagHelper
+class UrlHelperTest < ActionView::TestCase
+  tests ActionView::Helpers::UrlHelper
 
   def setup
     @controller = Class.new do
@@ -213,6 +211,14 @@ class UrlHelperTest < Test::Unit::TestCase
   def test_link_tag_using_post_javascript_and_popup
     assert_raises(ActionView::ActionViewError) { link_to("Hello", "http://www.example.com", :popup => true, :method => :post, :confirm => "Are you serious?") }
   end
+
+  def test_link_tag_using_block
+    self.output_buffer = ''
+
+    link_to("http://example.com") { concat("Example site") }
+
+    assert_equal '<a href="http://example.com">Example site</a>', output_buffer
+  end
   
   def test_link_to_unless
     assert_equal "Showing", link_to_unless(true, "Showing", :action => "show", :controller => "weblog")
@@ -293,7 +299,7 @@ class UrlHelperTest < Test::Unit::TestCase
   end
 end
 
-class UrlHelperWithControllerTest < Test::Unit::TestCase
+class UrlHelperWithControllerTest < ActionView::TestCase
   class UrlHelperController < ActionController::Base
     self.view_paths = [ "#{File.dirname(__FILE__)}/../fixtures/" ]
 
@@ -310,7 +316,7 @@ class UrlHelperWithControllerTest < Test::Unit::TestCase
     def rescue_action(e) raise e end
   end
 
-  include ActionView::Helpers::UrlHelper
+  tests ActionView::Helpers::UrlHelper
 
   def setup
     @request    = ActionController::TestRequest.new
@@ -348,7 +354,7 @@ class UrlHelperWithControllerTest < Test::Unit::TestCase
     end
 end
 
-class LinkToUnlessCurrentWithControllerTest < Test::Unit::TestCase
+class LinkToUnlessCurrentWithControllerTest < ActionView::TestCase
   class TasksController < ActionController::Base
     self.view_paths = ["#{File.dirname(__FILE__)}/../fixtures/"]
 
@@ -372,7 +378,7 @@ class LinkToUnlessCurrentWithControllerTest < Test::Unit::TestCase
       end
   end
 
-  include ActionView::Helpers::UrlHelper
+  tests ActionView::Helpers::UrlHelper
 
   def setup
     @request    = ActionController::TestRequest.new
@@ -440,7 +446,7 @@ class Session
   end
 end
 
-class PolymorphicControllerTest < Test::Unit::TestCase
+class PolymorphicControllerTest < ActionView::TestCase
   class WorkshopsController < ActionController::Base
     self.view_paths = ["#{File.dirname(__FILE__)}/../fixtures/"]
 
@@ -479,7 +485,7 @@ class PolymorphicControllerTest < Test::Unit::TestCase
     def rescue_action(e) raise e end
   end
 
-  include ActionView::Helpers::UrlHelper
+  tests ActionView::Helpers::UrlHelper
 
   def setup
     @request    = ActionController::TestRequest.new

@@ -1,6 +1,6 @@
 module ActiveRecord
   module Calculations #:nodoc:
-    CALCULATIONS_OPTIONS = [:conditions, :joins, :order, :select, :group, :having, :distinct, :limit, :offset, :include]
+    CALCULATIONS_OPTIONS = [:conditions, :joins, :order, :select, :group, :having, :distinct, :limit, :offset, :include, :from]
     def self.included(base)
       base.extend(ClassMethods)
     end
@@ -9,16 +9,16 @@ module ActiveRecord
       # Count operates using three different approaches.
       #
       # * Count all: By not passing any parameters to count, it will return a count of all the rows for the model.
-      # * Count using column : By passing a column name to count, it will return a count of all the rows for the model with supplied column present
+      # * Count using column: By passing a column name to count, it will return a count of all the rows for the model with supplied column present
       # * Count using options will find the row count matched by the options used.
       #
       # The third approach, count using options, accepts an option hash as the only parameter. The options are:
       #
       # * <tt>:conditions</tt>: An SQL fragment like "administrator = 1" or [ "user_name = ?", username ]. See conditions in the intro.
       # * <tt>:joins</tt>: Either an SQL fragment for additional joins like "LEFT JOIN comments ON comments.post_id = id" (rarely needed)
-      #   or named associations in the same form used for the :include option, which will perform an INNER JOIN on the associated table(s).
+      #   or named associations in the same form used for the <tt>:include</tt> option, which will perform an INNER JOIN on the associated table(s).
       #   If the value is a string, then the records will be returned read-only since they will have attributes that do not correspond to the table's columns.
-      #   Pass :readonly => false to override.
+      #   Pass <tt>:readonly => false</tt> to override.
       # * <tt>:include</tt>: Named associations that should be loaded alongside using LEFT OUTER JOINs. The symbols named refer
       #   to already defined associations. When using named associations, count returns the number of DISTINCT items for the model you're counting.
       #   See eager loading under Associations.
@@ -27,6 +27,8 @@ module ActiveRecord
       # * <tt>:select</tt>: By default, this is * as in SELECT * FROM, but can be changed if you, for example, want to do a join but not
       #   include the joined columns.
       # * <tt>:distinct</tt>: Set this to true to make this a distinct calculation, such as SELECT COUNT(DISTINCT posts.id) ...
+      # * <tt>:from</tt> - By default, this is the table name of the class, but can be changed to an alternate table name (or even the name
+      #   of a database view).
       #
       # Examples for counting all:
       #   Person.count         # returns the total count of all people
@@ -41,45 +43,45 @@ module ActiveRecord
       #   Person.count('id', :conditions => "age > 26") # Performs a COUNT(id)
       #   Person.count(:all, :conditions => "age > 26") # Performs a COUNT(*) (:all is an alias for '*')
       #
-      # Note: Person.count(:all) will not work because it will use :all as the condition.  Use Person.count instead.
+      # Note: <tt>Person.count(:all)</tt> will not work because it will use <tt>:all</tt> as the condition.  Use Person.count instead.
       def count(*args)
         calculate(:count, *construct_count_options_from_args(*args))
       end
 
-      # Calculates the average value on a given column.  The value is returned as a float.  See #calculate for examples with options.
+      # Calculates the average value on a given column.  The value is returned as a float.  See +calculate+ for examples with options.
       #
       #   Person.average('age')
       def average(column_name, options = {})
         calculate(:avg, column_name, options)
       end
 
-      # Calculates the minimum value on a given column.  The value is returned with the same data type of the column.  See #calculate for examples with options.
+      # Calculates the minimum value on a given column.  The value is returned with the same data type of the column.  See +calculate+ for examples with options.
       #
       #   Person.minimum('age')
       def minimum(column_name, options = {})
         calculate(:min, column_name, options)
       end
 
-      # Calculates the maximum value on a given column.  The value is returned with the same data type of the column.  See #calculate for examples with options.
+      # Calculates the maximum value on a given column.  The value is returned with the same data type of the column.  See +calculate+ for examples with options.
       #
       #   Person.maximum('age')
       def maximum(column_name, options = {})
         calculate(:max, column_name, options)
       end
 
-      # Calculates the sum of values on a given column.  The value is returned with the same data type of the column.  See #calculate for examples with options.
+      # Calculates the sum of values on a given column.  The value is returned with the same data type of the column.  See +calculate+ for examples with options.
       #
       #   Person.sum('age')
       def sum(column_name, options = {})
-        calculate(:sum, column_name, options) || 0
+        calculate(:sum, column_name, options)
       end
 
       # This calculates aggregate values in the given column.  Methods for count, sum, average, minimum, and maximum have been added as shortcuts.
-      # Options such as :conditions, :order, :group, :having, and :joins can be passed to customize the query.
+      # Options such as <tt>:conditions</tt>, <tt>:order</tt>, <tt>:group</tt>, <tt>:having</tt>, and <tt>:joins</tt> can be passed to customize the query.
       #
       # There are two basic forms of output:
       #   * Single aggregate value: The single value is type cast to Fixnum for COUNT, Float for AVG, and the given column's type for everything else.
-      #   * Grouped values: This returns an ordered hash of the values and groups them by the :group option.  It takes either a column name, or the name
+      #   * Grouped values: This returns an ordered hash of the values and groups them by the <tt>:group</tt> option.  It takes either a column name, or the name
       #     of a belongs_to association.
       #
       #       values = Person.maximum(:age, :group => 'last_name')
@@ -178,8 +180,12 @@ module ActiveRecord
           sql = "SELECT COUNT(*) AS #{aggregate_alias}" if use_workaround
 
           sql << ", #{options[:group_field]} AS #{options[:group_alias]}" if options[:group]
-          sql << " FROM (SELECT DISTINCT #{column_name}" if use_workaround
-          sql << " FROM #{connection.quote_table_name(table_name)} "
+          if options[:from]
+            sql << " FROM #{options[:from]} "
+          else
+            sql << " FROM (SELECT #{distinct}#{column_name}" if use_workaround
+            sql << " FROM #{connection.quote_table_name(table_name)} "
+          end
           if merged_includes.any?
             join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(self, merged_includes, options[:joins])
             sql << join_dependency.join_associations.collect{|join| join.association_join }.join
@@ -245,12 +251,14 @@ module ActiveRecord
           options.assert_valid_keys(CALCULATIONS_OPTIONS)
         end
 
-        # Converts a given key to the value that the database adapter returns as
-        # a usable column name.
-        #   users.id #=> users_id
-        #   sum(id) #=> sum_id
-        #   count(distinct users.id) #=> count_distinct_users_id
-        #   count(*) #=> count_all
+        # Converts the given keys to the value that the database adapter returns as
+        # a usable column name:
+        #
+        #   column_alias_for("users.id")                 # => "users_id"
+        #   column_alias_for("sum(id)")                  # => "sum_id"
+        #   column_alias_for("count(distinct users.id)") # => "count_distinct_users_id"
+        #   column_alias_for("count(*)")                 # => "count_all"
+        #   column_alias_for("count", "id")              # => "count_id"
         def column_alias_for(*keys)
           connection.table_alias_for(keys.join(' ').downcase.gsub(/\*/, 'all').gsub(/\W+/, ' ').strip.gsub(/ +/, '_'))
         end
@@ -264,6 +272,7 @@ module ActiveRecord
           operation = operation.to_s.downcase
           case operation
             when 'count' then value.to_i
+            when 'sum'   then value =~ /\./ ? value.to_f : value.to_i
             when 'avg'   then value && value.to_f
             else column ? column.type_cast(value) : value
           end

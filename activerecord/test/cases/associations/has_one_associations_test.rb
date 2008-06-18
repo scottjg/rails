@@ -24,6 +24,11 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     assert_queries(0) { firms.each(&:account) }
   end
 
+  def test_with_select
+    assert_equal Firm.find(1).account_with_select.attributes.size, 2
+    assert_equal Firm.find(1, :include => :account_with_select).account_with_select.attributes.size, 2
+  end
+
   def test_can_marshal_has_one_association_with_nil_target
     firm = Firm.new
     assert_nothing_raised do
@@ -268,6 +273,18 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     assert !firm.valid?
     assert !firm.save
     assert_equal "is invalid", firm.errors.on("account")
+  end
+
+
+  def test_save_succeeds_for_invalid_has_one_with_validate_false
+    firm = Firm.find(:first)
+    assert firm.valid?
+
+    firm.unvalidated_account = Account.new
+
+    assert !firm.unvalidated_account.valid?
+    assert firm.valid?
+    assert firm.save
   end
 
   def test_assignment_before_either_saved

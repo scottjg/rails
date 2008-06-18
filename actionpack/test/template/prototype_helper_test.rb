@@ -24,24 +24,9 @@ end
 class Author::Nested < Author; end
 
 
-module BaseTest
-  def self.included(base)
-    base.send :attr_accessor, :template_format
-  end
+class PrototypeHelperBaseTest < ActionView::TestCase
+  attr_accessor :template_format
 
-  include ActionView::Helpers::JavaScriptHelper
-  include ActionView::Helpers::PrototypeHelper
-  include ActionView::Helpers::ScriptaculousHelper
-  
-  include ActionView::Helpers::UrlHelper
-  include ActionView::Helpers::TagHelper
-  include ActionView::Helpers::TextHelper
-  include ActionView::Helpers::FormTagHelper
-  include ActionView::Helpers::FormHelper
-  include ActionView::Helpers::CaptureHelper
-  include ActionView::Helpers::RecordIdentificationHelper
-  include ActionController::PolymorphicRoutes
-  
   def setup
     @template = nil
     @controller = Class.new do
@@ -59,25 +44,22 @@ module BaseTest
     end.new
   end
 
-protected
-  
-  def request_forgery_protection_token
-    nil
-  end
-  
-  def protect_against_forgery?
-    false
-  end
-  
-  def create_generator
-    block = Proc.new { |*args| yield *args if block_given? } 
-    JavaScriptGenerator.new self, &block
-  end
+  protected
+    def request_forgery_protection_token
+      nil
+    end
+
+    def protect_against_forgery?
+      false
+    end
+
+    def create_generator
+      block = Proc.new { |*args| yield *args if block_given? } 
+      JavaScriptGenerator.new self, &block
+    end
 end
 
-class PrototypeHelperTest < Test::Unit::TestCase
-  include BaseTest
-  
+class PrototypeHelperTest < PrototypeHelperBaseTest
   def setup
     @record = @author = Author.new
     @article = Article.new
@@ -102,6 +84,11 @@ class PrototypeHelperTest < Test::Unit::TestCase
       link_to_remote("Remote outauthor", { :url => { :action => "whatnot"  }, :html => { :class => "fine" } })
   end
   
+  def test_link_to_remote_url_quote_escaping
+    assert_dom_equal %(<a href="#" onclick="new Ajax.Request('http://www.example.com/whatnot\\\'s', {asynchronous:true, evalScripts:true}); return false;">Remote</a>),
+      link_to_remote("Remote", { :url => { :action => "whatnot's" } })
+  end
+
   def test_periodically_call_remote
     assert_dom_equal %(<script type="text/javascript">\n//<![CDATA[\nnew PeriodicalExecuter(function() {new Ajax.Updater('schremser_bier', 'http://www.example.com/mehr_bier', {asynchronous:true, evalScripts:true})}, 10)\n//]]>\n</script>),
       periodically_call_remote(:update => "schremser_bier", :url => { :action => "mehr_bier" })
@@ -131,52 +118,46 @@ class PrototypeHelperTest < Test::Unit::TestCase
   end
 
   def test_form_remote_tag_with_block
-    _erbout = ''
-    form_remote_tag(:update => "glass_of_beer", :url => { :action => :fast  }) { _erbout.concat "Hello world!" }
-    assert_dom_equal %(<form action=\"http://www.example.com/fast\" method=\"post\" onsubmit=\"new Ajax.Updater('glass_of_beer', 'http://www.example.com/fast', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;\">Hello world!</form>), _erbout
+    form_remote_tag(:update => "glass_of_beer", :url => { :action => :fast  }) { concat "Hello world!" }
+    assert_dom_equal %(<form action=\"http://www.example.com/fast\" method=\"post\" onsubmit=\"new Ajax.Updater('glass_of_beer', 'http://www.example.com/fast', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;\">Hello world!</form>), output_buffer
   end
 
   def test_remote_form_for_with_record_identification_with_new_record
-    _erbout = ''
     remote_form_for(@record, {:html => { :id => 'create-author' }}) {}
     
     expected = %(<form action='#{authors_path}' onsubmit="new Ajax.Request('#{authors_path}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_author' id='create-author' method='post'></form>)
-    assert_dom_equal expected, _erbout
+    assert_dom_equal expected, output_buffer
   end
 
   def test_remote_form_for_with_record_identification_without_html_options
-    _erbout = ''
     remote_form_for(@record) {}
     
     expected = %(<form action='#{authors_path}' onsubmit="new Ajax.Request('#{authors_path}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_author' method='post' id='new_author'></form>)
-    assert_dom_equal expected, _erbout
+    assert_dom_equal expected, output_buffer
   end
 
   def test_remote_form_for_with_record_identification_with_existing_record
     @record.save
-    _erbout = ''
     remote_form_for(@record) {}
     
     expected = %(<form action='#{author_path(@record)}' id='edit_author_1' method='post' onsubmit="new Ajax.Request('#{author_path(@record)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_author'><div style='margin:0;padding:0'><input name='_method' type='hidden' value='put' /></div></form>)
-    assert_dom_equal expected, _erbout
+    assert_dom_equal expected, output_buffer
   end
 
   def test_remote_form_for_with_new_object_in_list
-    _erbout = ''
     remote_form_for([@author, @article]) {}
     
     expected = %(<form action='#{author_articles_path(@author)}' onsubmit="new Ajax.Request('#{author_articles_path(@author)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_article' method='post' id='new_article'></form>)
-    assert_dom_equal expected, _erbout
+    assert_dom_equal expected, output_buffer
   end
   
   def test_remote_form_for_with_existing_object_in_list
     @author.save
     @article.save
-    _erbout = ''
     remote_form_for([@author, @article]) {}
     
     expected = %(<form action='#{author_article_path(@author, @article)}' id='edit_article_1' method='post' onsubmit="new Ajax.Request('#{author_article_path(@author, @article)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_article'><div style='margin:0;padding:0'><input name='_method' type='hidden' value='put' /></div></form>)
-    assert_dom_equal expected, _erbout
+    assert_dom_equal expected, output_buffer
   end
 
   def test_on_callbacks
@@ -230,9 +211,9 @@ class PrototypeHelperTest < Test::Unit::TestCase
   end
   
   def test_observe_field_using_with_option
-    expected = %(<script type=\"text/javascript\">\n//<![CDATA[\nnew Form.Element.Observer('glass', 300, function(element, value) {new Ajax.Request('http://www.example.com/check_value', {asynchronous:true, evalScripts:true, parameters:'id=' + value})})\n//]]>\n</script>)
+    expected = %(<script type=\"text/javascript\">\n//<![CDATA[\nnew Form.Element.Observer('glass', 300, function(element, value) {new Ajax.Request('http://www.example.com/check_value', {asynchronous:true, evalScripts:true, parameters:'id=' + encodeURIComponent(value)})})\n//]]>\n</script>)
     assert_dom_equal expected, observe_field("glass", :frequency => 5.minutes, :url => { :action => "check_value" }, :with => 'id')
-    assert_dom_equal expected, observe_field("glass", :frequency => 5.minutes, :url => { :action => "check_value" }, :with => "'id=' + value")
+    assert_dom_equal expected, observe_field("glass", :frequency => 5.minutes, :url => { :action => "check_value" }, :with => "'id=' + encodeURIComponent(value)")
   end
   
   def test_observe_field_using_json_in_with_option
@@ -294,9 +275,7 @@ class PrototypeHelperTest < Test::Unit::TestCase
     end
 end
 
-class JavaScriptGeneratorTest < Test::Unit::TestCase
-  include BaseTest
-  
+class JavaScriptGeneratorTest < PrototypeHelperBaseTest
   def setup
     super
     @generator = create_generator
@@ -362,6 +341,11 @@ class JavaScriptGeneratorTest < Test::Unit::TestCase
       @generator.redirect_to("http://www.example.com/welcome?a=b&c=d")
   end
   
+  def test_reload
+    assert_equal 'window.location.reload();',
+      @generator.reload
+  end
+
   def test_delay
     @generator.delay(20) do
       @generator.hide('foo')

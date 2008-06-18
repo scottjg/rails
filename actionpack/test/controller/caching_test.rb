@@ -6,9 +6,11 @@ CACHE_DIR = 'test_cache'
 FILE_STORE_PATH = File.join(File.dirname(__FILE__), '/../temp/', CACHE_DIR)
 ActionController::Base.page_cache_directory = FILE_STORE_PATH
 ActionController::Base.cache_store = :file_store, FILE_STORE_PATH
+ActionController::Base.view_paths = [ File.dirname(__FILE__) + '/../fixtures/' ]
 
 class PageCachingTestController < ActionController::Base
-  caches_page :ok, :no_content, :found, :not_found
+  caches_page :ok, :no_content, :if => Proc.new { |c| !c.request.format.json? }
+  caches_page :found, :not_found
 
   def ok
     head :ok
@@ -128,6 +130,12 @@ class PageCachingTest < Test::Unit::TestCase
     end
   end
 
+  def test_page_caching_conditional_options
+    @request.env['HTTP_ACCEPT'] = 'application/json'
+    get :ok
+    assert_page_not_cached :ok
+  end
+
   private
     def assert_page_cached(action, message = "#{action} should have been cached")
       assert page_cached?(action), message
@@ -144,12 +152,16 @@ end
 
 
 class ActionCachingTestController < ActionController::Base
-  caches_action :index, :redirected, :forbidden
+  caches_action :index, :redirected, :forbidden, :if => Proc.new { |c| !c.request.format.json? }
   caches_action :show, :cache_path => 'http://test.host/custom/show'
   caches_action :edit, :cache_path => Proc.new { |c| c.params[:id] ? "http://test.host/#{c.params[:id]};edit" : "http://test.host/edit" }
+  caches_action :with_layout
+  caches_action :layout_false, :layout => false
+
+  layout 'talk_from_action.erb'
 
   def index
-    @cache_this = Time.now.to_f.to_s
+    @cache_this = MockTime.now.to_f.to_s
     render :text => @cache_this
   end
 
@@ -162,14 +174,31 @@ class ActionCachingTestController < ActionController::Base
     headers["Status"] = "403 Forbidden"
   end
 
+  def with_layout
+    @cache_this = MockTime.now.to_f.to_s
+    render :text => @cache_this, :layout => true
+  end
+
   alias_method :show, :index
   alias_method :edit, :index
+  alias_method :destroy, :index
+  alias_method :layout_false, :with_layout
 
   def expire
     expire_action :controller => 'action_caching_test', :action => 'index'
     render :nothing => true
   end
+  def expire_xml
+    expire_action :controller => 'action_caching_test', :action => 'index', :format => 'xml'
+    render :nothing => true
+  end
+end
 
+class MockTime < Time
+  # Let Time spicy to assure that Time.now != Time.now
+  def to_f
+    super+rand
+  end
 end
 
 class ActionCachingMockController
@@ -188,6 +217,7 @@ class ActionCachingMockController
     mocked_path = @mock_path
     Object.new.instance_eval(<<-EVAL)
       def path; '#{@mock_path}' end
+      def format; 'all' end
       self
     EVAL
   end
@@ -209,18 +239,61 @@ class ActionCacheTest < Test::Unit::TestCase
     get :index
     cached_time = content_to_cache
     assert_equal cached_time, @response.body
-    assert_cache_exists 'hostname.com/action_caching_test'
+    assert fragment_exist?('hostname.com/action_caching_test')
     reset!
 
     get :index
     assert_equal cached_time, @response.body
   end
 
+  def test_simple_action_not_cached
+    get :destroy
+    cached_time = content_to_cache
+    assert_equal cached_time, @response.body
+    assert !fragment_exist?('hostname.com/action_caching_test/destroy')
+    reset!
+
+    get :destroy
+    assert_not_equal cached_time, @response.body
+  end
+
+  def test_action_cache_with_layout
+    get :with_layout
+    cached_time = content_to_cache
+    assert_not_equal cached_time, @response.body
+    assert fragment_exist?('hostname.com/action_caching_test/with_layout')
+    reset!
+
+    get :with_layout
+    assert_not_equal cached_time, @response.body
+
+    assert_equal @response.body, read_fragment('hostname.com/action_caching_test/with_layout')
+  end
+
+  def test_action_cache_with_layout_and_layout_cache_false
+    get :layout_false
+    cached_time = content_to_cache
+    assert_not_equal cached_time, @response.body
+    assert fragment_exist?('hostname.com/action_caching_test/layout_false')
+    reset!
+
+    get :layout_false
+    assert_not_equal cached_time, @response.body
+
+    assert_equal cached_time, read_fragment('hostname.com/action_caching_test/layout_false')
+  end
+
+  def test_action_cache_conditional_options
+    @request.env['HTTP_ACCEPT'] = 'application/json'
+    get :index
+    assert !fragment_exist?('hostname.com/action_caching_test')
+  end
+
   def test_action_cache_with_custom_cache_path
     get :show
     cached_time = content_to_cache
     assert_equal cached_time, @response.body
-    assert_cache_exists 'test.host/custom/show'
+    assert fragment_exist?('test.host/custom/show')
     reset!
 
     get :show
@@ -229,11 +302,11 @@ class ActionCacheTest < Test::Unit::TestCase
 
   def test_action_cache_with_custom_cache_path_in_block
     get :edit
-    assert_cache_exists 'test.host/edit'
+    assert fragment_exist?('test.host/edit')
     reset!
 
     get :edit, :id => 1
-    assert_cache_exists 'test.host/1;edit'
+    assert fragment_exist?('test.host/1;edit')
   end
 
   def test_cache_expiration
@@ -256,6 +329,20 @@ class ActionCacheTest < Test::Unit::TestCase
     get :index
     assert_response :success
     assert_equal new_cached_time, @response.body
+  end
+
+  def test_cache_expiration_isnt_affected_by_request_format
+    get :index
+    cached_time = content_to_cache
+    reset!
+
+    @request.set_REQUEST_URI "/action_caching_test/expire.xml"
+    get :expire, :format => :xml
+    reset!
+
+    get :index
+    new_cached_time = content_to_cache
+    assert_not_equal cached_time, @response.body
   end
 
   def test_cache_is_scoped_by_subdomain
@@ -302,11 +389,35 @@ class ActionCacheTest < Test::Unit::TestCase
   end
 
   def test_xml_version_of_resource_is_treated_as_different_cache
-    @mock_controller.mock_url_for = 'http://example.org/posts/'
-    @mock_controller.mock_path    = '/posts/index.xml'
-    path_object = @path_class.new(@mock_controller, {})
-    assert_equal 'xml', path_object.extension
-    assert_equal 'example.org/posts/index.xml', path_object.path
+    with_routing do |set|
+      ActionController::Routing::Routes.draw do |map|
+        map.connect ':controller/:action.:format'
+        map.connect ':controller/:action'
+      end
+
+      get :index, :format => 'xml'
+      cached_time = content_to_cache
+      assert_equal cached_time, @response.body
+      assert fragment_exist?('hostname.com/action_caching_test/index.xml')
+      reset!
+
+      get :index, :format => 'xml'
+      assert_equal cached_time, @response.body
+      assert_equal 'application/xml', @response.content_type
+      reset!
+
+      @request.env['HTTP_ACCEPT'] = "application/xml"
+      get :index
+      assert_equal cached_time, @response.body
+      assert_equal 'application/xml', @response.content_type
+      reset!
+
+      get :expire_xml
+      reset!
+
+      get :index, :format => 'xml'
+      assert_not_equal cached_time, @response.body
+    end
   end
 
   def test_correct_content_type_is_returned_for_cache_hit
@@ -342,9 +453,12 @@ class ActionCacheTest < Test::Unit::TestCase
       @request.host = 'hostname.com'
     end
 
-    def assert_cache_exists(path)
-      full_path = File.join(FILE_STORE_PATH, "views", path + '.cache')
-      assert File.exist?(full_path), "#{full_path.inspect} does not exist."
+    def fragment_exist?(path)
+      @controller.fragment_exist?(path)
+    end
+
+    def read_fragment(path)
+      @controller.read_fragment(path)
     end
 end
 
@@ -365,6 +479,8 @@ class FragmentCachingTest < Test::Unit::TestCase
     @controller.request = @request
     @controller.response = @response
     @controller.send(:initialize_current_url)
+    @controller.send(:initialize_template_class, @response)
+    @controller.send(:assign_shortcuts, @request, @response)
   end
 
   def test_fragment_cache_key
@@ -382,6 +498,19 @@ class FragmentCachingTest < Test::Unit::TestCase
     ActionController::Base.perform_caching = false
     @store.write('views/name', 'value')
     assert_nil @controller.read_fragment('name')
+  end
+
+  def test_fragment_exist__with_caching_enabled
+    @store.write('views/name', 'value')
+    assert @controller.fragment_exist?('name')
+    assert !@controller.fragment_exist?('other_name')
+  end
+
+  def test_fragment_exist__with_caching_disabled
+    ActionController::Base.perform_caching = false
+    @store.write('views/name', 'value')
+    assert !@controller.fragment_exist?('name')
+    assert !@controller.fragment_exist?('other_name')
   end
 
   def test_write_fragment__with_caching_enabled
@@ -428,7 +557,6 @@ class FragmentCachingTest < Test::Unit::TestCase
     assert_equal 'generated till now -> ', buffer
   end
 
-
   def test_fragment_for
     @store.write('views/expensive', 'fragment content')
     fragment_computed = false
@@ -442,7 +570,7 @@ class FragmentCachingTest < Test::Unit::TestCase
 
   def test_cache_erb_fragment
     @store.write('views/expensive', 'fragment content')
-    _erbout = 'generated till now -> '
+    @controller.response.template.output_buffer = 'generated till now -> '
 
     assert_equal( 'generated till now -> fragment content',
                   ActionView::TemplateHandlers::ERB.new(@controller).cache_fragment(Proc.new{ }, 'expensive'))
@@ -509,7 +637,7 @@ class FunctionalFragmentCachingTest < Test::Unit::TestCase
   def setup
     ActionController::Base.perform_caching = true
     @store = ActiveSupport::Cache::MemoryStore.new
-    ActionController::Base.cache_store = @store    
+    ActionController::Base.cache_store = @store
     @controller = FunctionalCachingController.new
     @request = ActionController::TestRequest.new
     @response = ActionController::TestResponse.new
@@ -522,17 +650,17 @@ Hello
 This bit's fragment cached
 CACHED
     assert_equal expected_body, @response.body
-    
+
     assert_equal "This bit's fragment cached", @store.read('views/test.host/functional_caching/fragment_cached')
   end
-  
+
   def test_fragment_caching_in_partials
     get :html_fragment_cached_with_partial
     assert_response :success
     assert_match /Fragment caching in a partial/, @response.body
     assert_match "Fragment caching in a partial", @store.read('views/test.host/functional_caching/html_fragment_cached_with_partial')
   end
-  
+
   def test_fragment_caching_in_rjs_partials
     xhr :get, :js_fragment_cached_with_partial
     assert_response :success
@@ -540,8 +668,3 @@ CACHED
     assert_match "Fragment caching in a partial", @store.read('views/test.host/functional_caching/js_fragment_cached_with_partial')
   end
 end
-
-
-
-
-

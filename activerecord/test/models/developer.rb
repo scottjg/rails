@@ -49,10 +49,15 @@ class Developer < ActiveRecord::Base
   before_create do |developer|
     developer.audit_logs.build :message => "Computer created"
   end
+
+  def log=(message)
+    audit_logs.build :message => message
+  end
 end
 
 class AuditLog < ActiveRecord::Base
-  belongs_to :developer
+  belongs_to :developer, :validate => true
+  belongs_to :unvalidated_developer, :class_name => 'Developer'
 end
 
 DeveloperSalary = Struct.new(:amount)
