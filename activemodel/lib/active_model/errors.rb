@@ -1,3 +1,4 @@
+require File.join(File.dirname(__FILE__), "deprecated_error_methods")
 module ActiveModel
   class Errors
     include DeprecatedErrorMethods
