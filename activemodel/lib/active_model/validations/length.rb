@@ -40,7 +40,7 @@ module ActiveModel
           :too_long     => ActiveModel::Errors.default_error_messages[:too_long],
           :too_short    => ActiveModel::Errors.default_error_messages[:too_short],
           :wrong_length => ActiveModel::Errors.default_error_messages[:wrong_length]
-        }.merge(self.default_validation_options)
+        }.merge(default_validation_options)
         options.update(attrs.extract_options!.symbolize_keys)
 
         # Ensure that one and only one range option is specified.
@@ -68,9 +68,9 @@ module ActiveModel
             validates_each(attrs, options) do |record, attr, value|
               value = value.split(//) if value.kind_of?(String)
               if value.nil? or value.size < option_value.begin
-                record.errors.add(attr, too_short)
+                record.errors[attr] << too_short
               elsif value.size > option_value.end
-                record.errors.add(attr, too_long)
+                record.errors[attr] << too_long
               end
             end
           when :is, :minimum, :maximum
@@ -84,7 +84,7 @@ module ActiveModel
 
             validates_each(attrs, options) do |record, attr, value|
               value = value.split(//) if value.kind_of?(String)
-              record.errors.add(attr, message) unless !value.nil? and value.size.method(validity_checks[option])[option_value]
+              record.errors[attr] << message unless !value.nil? and value.size.method(validity_checks[option])[option_value]
             end
         end
       end
