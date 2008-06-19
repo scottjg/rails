@@ -372,7 +372,7 @@ module ActiveRecord #:nodoc:
     def self.reset_subclasses #:nodoc:
       nonreloadables = []
       subclasses.each do |klass|
-        unless Dependencies.autoloaded? klass
+        unless ActiveSupport::Dependencies.autoloaded? klass
           nonreloadables << klass
           next
         end
@@ -1297,6 +1297,20 @@ module ActiveRecord #:nodoc:
         store_full_sti_class ? name : name.demodulize
       end
 
+      # Merges conditions so that the result is a valid +condition+
+      def merge_conditions(*conditions)
+        segments = []
+
+        conditions.each do |condition|
+          unless condition.blank?
+            sql = sanitize_sql(condition)
+            segments << sql unless sql.blank?
+          end
+        end
+
+        "(#{segments.join(') AND (')})" unless segments.empty?
+      end
+
       private
         def find_initial(options)
           options.update(:limit => 1)
@@ -1482,20 +1496,6 @@ module ActiveRecord #:nodoc:
         # Merges includes so that the result is a valid +include+
         def merge_includes(first, second)
          (safe_to_array(first) + safe_to_array(second)).uniq
-        end
-
-        # Merges conditions so that the result is a valid +condition+
-        def merge_conditions(*conditions)
-          segments = []
-
-          conditions.each do |condition|
-            unless condition.blank?
-              sql = sanitize_sql(condition)
-              segments << sql unless sql.blank?
-            end
-          end
-
-          "(#{segments.join(') AND (')})" unless segments.empty?
         end
 
         # Object#to_a is deprecated, though it does have the desired behavior
@@ -1903,10 +1903,12 @@ module ActiveRecord #:nodoc:
         # MyApp::Business::Account would appear as MyApp::Business::AccountSubclass.
         def compute_type(type_name)
           modularized_name = type_name_with_module(type_name)
-          begin
-            class_eval(modularized_name, __FILE__, __LINE__)
-          rescue NameError
-            class_eval(type_name, __FILE__, __LINE__)
+          silence_warnings do
+            begin
+              class_eval(modularized_name, __FILE__, __LINE__)
+            rescue NameError
+              class_eval(type_name, __FILE__, __LINE__)
+            end
           end
         end
 
@@ -2064,13 +2066,18 @@ module ActiveRecord #:nodoc:
         end
 
         def expand_range_bind_variables(bind_vars) #:nodoc:
-          bind_vars.sum do |var|
+          expanded = []
+
+          bind_vars.each do |var|
             if var.is_a?(Range)
-              [var.first, var.last]
+              expanded << var.first
+              expanded << var.last
             else
-              [var]
+              expanded << var
             end
           end
+
+          expanded
         end
 
         def quote_bound_value(value) #:nodoc:
@@ -2247,12 +2254,12 @@ module ActiveRecord #:nodoc:
         end
       end
 
-      # Updates a single attribute and saves the record. This is especially useful for boolean flags on existing records.
-      # Note: This method is overwritten by the Validation module that'll make sure that updates made with this method
-      # aren't subjected to validation checks. Hence, attributes can be updated even if the full object isn't valid.
+      # Updates a single attribute and saves the record without going through the normal validation procedure.
+      # This is especially useful for boolean flags on existing records. The regular +update_attribute+ method
+      # in Base is replaced with this when the validations module is mixed in, which it is by default.
       def update_attribute(name, value)
         send(name.to_s + '=', value)
-        save
+        save(false)
       end
 
       # Updates all the attributes from the passed-in Hash and saves the record. If the object is invalid, the saving will

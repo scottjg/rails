@@ -134,14 +134,14 @@ module ActionController
       run_callbacks :prepare_dispatch
 
       Routing::Routes.reload
-      ActionView::TemplateFinder.reload! unless ActionView::Base.cache_template_loading
+      ActionController::Base.view_paths.reload!
     end
 
     # Cleanup the application by clearing out loaded classes so they can
     # be reloaded on the next request without restarting the server.
     def cleanup_application
       ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
-      Dependencies.clear
+      ActiveSupport::Dependencies.clear
       ActiveRecord::Base.clear_reloadable_connections! if defined?(ActiveRecord)
     end
 
