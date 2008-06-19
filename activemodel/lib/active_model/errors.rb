@@ -58,7 +58,7 @@ module ActiveModel
     end
 
     def size
-      values.flatten.size
+      @on.values.flatten.size
     end
 
     def to_a
