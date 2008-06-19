@@ -4,11 +4,13 @@ module ActiveModel
     def self.included(base) # :nodoc:
       base.extend(ClassMethods)
       base.send!(:include, ActiveSupport::Callbacks)
-      base.define_callbacks :validate, :validate_on_create, :validate_on_update
+      base.define_callbacks :validate
+      base.cattr_accessor :default_validation_options
+      base.default_validation_options = { :on => :validate, :allow_nil => false, :allow_blank => false, :message => nil }
     end
 
+    
     module ClassMethods
-      DEFAULT_VALIDATION_OPTIONS = { :on => :save, :allow_nil => false, :allow_blank => false, :message => nil }.freeze
 
       # Adds a validation method or block to the class. This is useful when
       # overriding the +validate+ instance method becomes too unwieldly and
@@ -61,7 +63,7 @@ module ActiveModel
         attrs   = attrs.flatten
 
         # Declare the validation.
-        send(validation_method(options[:on] || :save), options) do |record|
+        send(validation_method(options[:on] || self.default_validation_options[:on]), options) do |record|
           attrs.each do |attr|
             value = record.send(attr)
             next if (value.nil? && options[:allow_nil]) || (value.blank? && options[:allow_blank])
@@ -71,12 +73,9 @@ module ActiveModel
       end
 
       private
+        # Translate an :on=> option value into a validation callback to run.
         def validation_method(on)
-          case on
-            when :save   then :validate
-            when :create then :validate_on_create
-            when :update then :validate_on_update
-          end
+          on.to_sym
         end
     end
 
@@ -94,24 +93,6 @@ module ActiveModel
       if respond_to?(:validate)
         ActiveSupport::Deprecation.warn "Base#validate has been deprecated, please use Base.validate :method instead"
         validate
-      end
-
-      if new_record?
-        run_callbacks(:validate_on_create)
-
-        if respond_to?(:validate_on_create)
-          ActiveSupport::Deprecation.warn(
-            "Base#validate_on_create has been deprecated, please use Base.validate_on_create :method instead")
-          validate_on_create
-        end
-      else
-        run_callbacks(:validate_on_update)
-
-        if respond_to?(:validate_on_update)
-          ActiveSupport::Deprecation.warn(
-            "Base#validate_on_update has been deprecated, please use Base.validate_on_update :method instead")
-          validate_on_update
-        end
       end
 
       errors.empty?

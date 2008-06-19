@@ -40,7 +40,7 @@ module ActiveModel
           :too_long     => ActiveModel::Errors.default_error_messages[:too_long],
           :too_short    => ActiveModel::Errors.default_error_messages[:too_short],
           :wrong_length => ActiveModel::Errors.default_error_messages[:wrong_length]
-        }.merge(DEFAULT_VALIDATION_OPTIONS)
+        }.merge(self.default_validation_options)
         options.update(attrs.extract_options!.symbolize_keys)
 
         # Ensure that one and only one range option is specified.
