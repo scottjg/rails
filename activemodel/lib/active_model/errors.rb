@@ -30,7 +30,7 @@ module ActiveModel
     cattr_accessor :default_error_messages
     
     # Delegate Hash methods that actually make sense for Errors
-    delegate :[]=, :clear, :delete, :delete_if, :empty?,
+    delegate :[]=, :clear, :delete, :delete_if, :empty?, :many?,
              :merge, :merge!, :reject, :reject!, :replace,  :select, :shift, :update,
              :to=>:errors_hash
     
