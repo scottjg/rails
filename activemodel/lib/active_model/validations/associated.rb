@@ -33,11 +33,11 @@ module ActiveModel
       #   not occur (e.g. <tt>:unless => :skip_validation</tt>, or <tt>:unless => Proc.new { |user| user.signup_step <= 2 }</tt>).  The
       #   method, proc or string should return or evaluate to a true or false value.
       def validates_associated(*attr_names)
-        configuration = { :message => ActiveModel::Errors.default_error_messages[:invalid], :on => :save }
+        configuration = { :message => ActiveModel::Errors.default_error_messages[:invalid], :on => default_validation_options[:on] }
         configuration.update(attr_names.extract_options!)
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
-          record.errors.add(attr_name, configuration[:message]) unless
+          record.errors[attr_name] << (configuration[:message]) unless
             (value.is_a?(Array) ? value : [value]).inject(true) { |v, r| (r.nil? || r.valid?) && v }
         end
       end
