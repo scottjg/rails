@@ -404,12 +404,17 @@ module ActionController #:nodoc:
     alias xhr :xml_http_request
 
     def follow_redirect
-      redirected_controller = @response.redirected_to[:controller]
+      if (@response.redirected_to.is_a? String)
+        action_hash = ActionController::Routing::Routes.recognize_path(@response.redirected_to.gsub(/^\w+:\/\/.*?\//,"/"))
+      else
+        action_hash = @response.redirected_to
+      end
+      redirected_controller = action_hash[:controller]
+
       if redirected_controller && redirected_controller != @controller.controller_name
         raise "Can't follow redirects outside of current controller (from #{@controller.controller_name} to #{redirected_controller})"
       end
-
-      get(@response.redirected_to.delete(:action), @response.redirected_to.stringify_keys)
+      get(action_hash.delete(:action), action_hash.stringify_keys)
     end
 
     def assigns(key = nil) 
