@@ -1479,7 +1479,7 @@ module ActiveRecord #:nodoc:
 
         def construct_finder_sql(options)
           scope = scope(:find)
-          sql  = "SELECT #{options[:select] || (scope && scope[:select]) || (options[:joins] && quoted_table_name + '.*') || '*'} "
+          sql  = "SELECT #{options[:select] || (scope && scope[:select]) || ((options[:joins] || (scope && scope[:joins])) && quoted_table_name + '.*') || '*'} "
           sql << "FROM #{(scope && scope[:from]) || options[:from] || quoted_table_name} "
 
           add_joins!(sql, options, scope)
@@ -2055,9 +2055,10 @@ module ActiveRecord #:nodoc:
         end
 
         def replace_named_bind_variables(statement, bind_vars) #:nodoc:
-          statement.gsub(/:([a-zA-Z]\w*)/) do
-            match = $1.to_sym
-            if bind_vars.include?(match)
+          statement.gsub(/(:?):([a-zA-Z]\w*)/) do
+            if $1 == ':' # skip postgresql casts
+              $& # return the whole match
+            elsif bind_vars.include?(match = $2.to_sym)
               quote_bound_value(bind_vars[match])
             else
               raise PreparedStatementInvalid, "missing value for :#{match} in #{statement}"

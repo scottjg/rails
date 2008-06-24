@@ -47,6 +47,12 @@ module ActiveRecord
       end
 
       private
+        def extract_limit(sql_type)
+          return 8 if sql_type =~ /^bigint/i
+          return 2 if sql_type =~ /^smallint/i
+          super
+        end
+
         # Extracts the scale from PostgreSQL-specific data types.
         def extract_scale(sql_type)
           # Money type has a fixed scale of 2.
@@ -324,12 +330,7 @@ module ActiveRecord
       end
 
       def supports_insert_with_returning?
-        unless defined? @supports_insert_with_returning
-          @supports_insert_with_returning =
-            @connection.respond_to?(:server_version) &&
-            @connection.server_version >= 80200
-        end
-        @supports_insert_with_returning
+        postgresql_version >= 80200
       end
 
       # Returns the configured supported identifier length supported by PostgreSQL,
@@ -553,7 +554,15 @@ module ActiveRecord
       # Example:
       #   drop_database 'matt_development'
       def drop_database(name) #:nodoc:
-        execute "DROP DATABASE IF EXISTS #{quote_table_name(name)}"
+        if postgresql_version >= 80200
+          execute "DROP DATABASE IF EXISTS #{quote_table_name(name)}"
+        else
+          begin
+            execute "DROP DATABASE #{quote_table_name(name)}"
+          rescue ActiveRecord::StatementInvalid
+            @logger.warn "#{name} database doesn't exist." if @logger
+          end
+        end
       end
 
 
@@ -782,12 +791,10 @@ module ActiveRecord
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
         return super unless type.to_s == 'integer'
 
-        if limit.nil? || limit == 4
-          'integer'
-        elsif limit < 4
-          'smallint'
-        else
-          'bigint'
+        case limit
+          when 1..2;      'smallint'
+          when 3..4, nil; 'integer'
+          when 5..8;      'bigint'
         end
       end
       
