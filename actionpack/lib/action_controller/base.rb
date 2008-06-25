@@ -859,8 +859,7 @@ module ActionController #:nodoc:
 
           elsif inline = options[:inline]
             add_variables_to_assigns
-            tmpl = ActionView::InlineTemplate.new(@template, options[:inline], options[:locals], options[:type])
-            render_for_text(@template.render_template(tmpl), options[:status])
+            render_for_text(@template.render(options), options[:status])
 
           elsif action_name = options[:action]
             template = default_template_name(action_name.to_s)
@@ -1095,7 +1094,7 @@ module ActionController #:nodoc:
       def render_for_file(template_path, status = nil, use_full_path = false, locals = {}) #:nodoc:
         add_variables_to_assigns
         logger.info("Rendering #{template_path}" + (status ? " (#{status})" : '')) if logger
-        render_for_text(@template.render_file(template_path, use_full_path, locals), status)
+        render_for_text(@template.render(:file => template_path, :use_full_path => use_full_path, :locals => locals), status)
       end
 
       def render_for_text(text = nil, status = nil, append_response = false) #:nodoc:
