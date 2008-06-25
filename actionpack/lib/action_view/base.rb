@@ -228,26 +228,6 @@ module ActionView #:nodoc:
       @view_paths = ViewLoadPaths.new(Array(paths))
     end
 
-    # Renders the template present at <tt>template_path</tt>. If <tt>use_full_path</tt> is set to true,
-    # it's relative to the view_paths array, otherwise it's absolute. The hash in <tt>local_assigns</tt>
-    # is made available as local variables.
-    def render_file(template_path, use_full_path = true, local_assigns = {}) #:nodoc:
-      if defined?(ActionMailer) && defined?(ActionMailer::Base) && controller.is_a?(ActionMailer::Base) && !template_path.include?("/")
-        raise ActionViewError, <<-END_ERROR
-Due to changes in ActionMailer, you need to provide the mailer_name along with the template name.
-
-  render "user_mailer/signup"
-  render :file => "user_mailer/signup"
-
-If you are rendering a subtemplate, you must now use controller-like partial syntax:
-
-  render :partial => 'signup' # no mailer_name necessary
-        END_ERROR
-      end
-
-      Template.new(self, template_path, use_full_path, local_assigns).render_template
-    end
-
     # Renders the template present at <tt>template_path</tt> (relative to the view_paths array).
     # The hash in <tt>local_assigns</tt> is made available as local variables.
     def render(options = {}, local_assigns = {}, &block) #:nodoc:
@@ -276,14 +256,9 @@ If you are rendering a subtemplate, you must now use controller-like partial syn
         elsif options[:partial]
           render_partial(options[:partial], ActionView::Base::ObjectWrapper.new(options[:object]), options[:locals])
         elsif options[:inline]
-          template = InlineTemplate.new(self, options[:inline], options[:locals], options[:type])
-          render_template(template)
+          render_inline(options[:inline], options[:locals], options[:type])
         end
       end
-    end
-
-    def render_template(template) #:nodoc:
-      template.render_template
     end
 
     # Returns true is the file may be rendered implicitly.
@@ -323,6 +298,30 @@ If you are rendering a subtemplate, you must now use controller-like partial syn
     end
 
     private
+      # Renders the template present at <tt>template_path</tt>. If <tt>use_full_path</tt> is set to true,
+      # it's relative to the view_paths array, otherwise it's absolute. The hash in <tt>local_assigns</tt>
+      # is made available as local variables.
+      def render_file(template_path, use_full_path = true, local_assigns = {}) #:nodoc:
+        if defined?(ActionMailer) && defined?(ActionMailer::Base) && controller.is_a?(ActionMailer::Base) && !template_path.include?("/")
+          raise ActionViewError, <<-END_ERROR
+  Due to changes in ActionMailer, you need to provide the mailer_name along with the template name.
+
+    render "user_mailer/signup"
+    render :file => "user_mailer/signup"
+
+  If you are rendering a subtemplate, you must now use controller-like partial syntax:
+
+    render :partial => 'signup' # no mailer_name necessary
+          END_ERROR
+        end
+
+        Template.new(self, template_path, use_full_path, local_assigns).render_template
+      end
+
+      def render_inline(text, local_assigns = {}, type = nil)
+        InlineTemplate.new(self, text, local_assigns, type).render_template
+      end
+
       def wrap_content_for_layout(content)
         original_content_for_layout, @content_for_layout = @content_for_layout, content
         yield
