@@ -2,6 +2,12 @@ module ActiveModel
   module Validatable
     module Validations
       class ValidatesPresenceOf < Base
+        def valid?(instance)
+          get_value(instance).blank?
+        end
+        def message
+          "Must be present!"
+        end
       end
     end
   end

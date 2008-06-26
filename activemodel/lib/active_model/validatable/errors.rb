@@ -101,6 +101,14 @@ module ActiveModel
 
     end
     
+    def clear
+      if attribute_proxy?
+        @errors_for_attribute.values.each(&:clear)
+      else
+        @errors_array.clear
+      end
+    end
+    
     def attribute_proxy? #:nodoc:
       @attribute.nil?
     end
@@ -143,6 +151,10 @@ module ActiveModel
         retry
       end
       
+    end
+    
+    def to_a
+      errors_array_for_reading
     end
     
     private

@@ -6,7 +6,10 @@ end
 
 class TestErrors < ActiveSupport::TestCase
   def setup
-    @errors = Computer.new.errors
+    @computer = Computer.new
+    @server = Computer.new
+    @computer.server = @server
+    @errors = @computer.errors
   end
   
   test "errors are empty to begin with" do
@@ -75,6 +78,28 @@ class TestErrors < ActiveSupport::TestCase
     assert_equal "four",  @errors[5]
     assert_equal "four",  @errors.on(:cpu)[0]
     assert_nil @errors.on(:cpu).find{|e| e =="hmm"}
+  end
+  
+  test "error clearing" do
+    @errors.add "foo"
+    @errors.on(:cpu).add "moo"
+    @errors.clear
+    assert_equal 0, @errors.size
+    assert_equal 0, @errors.on(:cpu).size
+  end
+  
+  test "error clearing with associates" do
+    @computer.errors.on(:cpu).add "foo"
+    @computer.errors.on(:server).add "moo"
+    @server.errors.add "hi"
+    @computer.errors.clear
+    assert_equal 1, @computer.errors.size
+    assert_equal 1, @computer.errors.on(:server).size
+    assert_equal 1, @server.errors.size
+    @server.errors.clear
+    assert_equal 0, @computer.errors.size
+    assert_equal 0, @computer.errors.on(:server).size
+    assert_equal 0, @server.errors.size
   end
   
 end

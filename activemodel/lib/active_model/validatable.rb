@@ -83,6 +83,10 @@ module ActiveModel
 
       run_callbacks(:validate)
       
+      self.class.validations.values.flatten.each do |validation|
+        validation.validate(self)
+      end
+      
       if respond_to?(:validate)
         ActiveSupport::Deprecation.warn "Base#validate has been deprecated, please use Base.validate :method instead"
         validate
