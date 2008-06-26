@@ -18,7 +18,7 @@ module ActiveModel
         end
         
         def message
-          "Invalid!"
+          options[:message]
         end
           
         class << self

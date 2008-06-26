@@ -1,186 +1,109 @@
-require File.join(File.dirname(__FILE__), "deprecated_error_methods")
-=begin
-
-post.errors
-  base = post
-  attribute = nil
-  errs = :sux, :short, :stupid
-  errs >> errors.on(:base).errs
-post.errors.on(:title)
-  base = post
-  attribute = :title
-  errs = :short
-  errs >> errs
-post.errors.on(:base)
-  base = post
-  attribute = :base
-  errs = :short, :stupid
-  errs >> errs
-
-post.errors.on(:author)
-  base = post
-  attribute = :author
-  errs = :postcount_max, :noname, :tooyoung
-  errs >> errs
-post.author.errors
-  base = author
-  attribute = nil
-  errs = :noname, :tooyoung
-  errs >> errors.on(:base).errs
-post.author.errors.on(:name)
-  base = author
-  attribute = :name
-  errs = :noname
-  errs >> errs
-post.errors.on(:author).on(:name)
-  base = author
-  attribute = :name
-  erros = :noname
-  errs >> errs
-  
-post.errors.on(:tags)
-  base = post
-  attribute = :tags
-  errs = :toomany, :invalid, :invalid
-post.tags[0].errors
-  base = tag
-  attribute = nil
-  errs = :invalid
-post.errors.on(:tags).on(:name)
-  base = [tags]
-  attribute = :name
-  errs = :invalid, :invalid
-  errs >> add to all?
-
-=end
+validatable = File.dirname(__FILE__)
+require "#{validatable}/error_message_template"
 module ActiveModel
-  # Errors is an Array-like structure of sorts which includes all "child" error arrays within it.
-  #
-  # <example>
-  # 
-  # At least this is the case for reading methods. Mutation methods however, are dispatched to just 
-  # one place, hopefully in an intuitive manner...
-  class Errors
-    
-    @@default_error_messages = {
-      :inclusion                => "is not included in the list",
-      :exclusion                => "is reserved",
-      :invalid                  => "is invalid",
-      :confirmation             => "doesn't match confirmation",
-      :accepted                 => "must be accepted",
-      :empty                    => "can't be empty",
-      :blank                    => "can't be blank",
-      :too_long                 => "is too long (maximum is %d characters)",
-      :too_short                => "is too short (minimum is %d characters)",
-      :wrong_length             => "is the wrong length (should be %d characters)",
-      :taken                    => "has already been taken",
-      :not_a_number             => "is not a number",
-      :greater_than             => "must be greater than %d",
-      :greater_than_or_equal_to => "must be greater than or equal to %d",
-      :equal_to                 => "must be equal to %d",
-      :less_than                => "must be less than %d",
-      :less_than_or_equal_to    => "must be less than or equal to %d",
-      :odd                      => "must be odd",
-      :even                     => "must be even"
-    }
-  
-    # Holds a hash with all the default error messages that can be replaced by your own copy or localizations.
-    cattr_accessor :default_error_messages
-    
-    
-    def initialize(base, attribute = nil)
-      @base = base
-      @attribute = attribute
-      if attribute_proxy?
-        # Only store references to Errors for each attribute (including :base)
-        @errors_for_attribute = {}
-      else
-        # Store the actual error messages
-        @errors_array = []
-      end
+  module Validatable
+    # Errors is an Array-like structure of sorts which includes all "child" error arrays within it.
+    #
+    # <example>
+    # 
+    # At least this is the case for reading methods. Mutation methods however, are dispatched to just 
+    # one place, hopefully in an intuitive manner...
+    class Errors
+      def initialize(base, attribute = nil)
+        @base = base
+        @attribute = attribute
+        if attribute_proxy?
+          # Only store references to Errors for each attribute (including :base)
+          @errors_for_attribute = {}
+        else
+          # Store the actual error messages
+          @errors_array = []
+        end
 
-    end
-    
-    def clear
-      if attribute_proxy?
-        @errors_for_attribute.values.each(&:clear)
-      else
-        @errors_array.clear
       end
-    end
     
-    def attribute_proxy? #:nodoc:
-      @attribute.nil?
-    end
-    
-    def association_proxy? #:nodoc:
-      return false if attribute_proxy? or !@base.respond_to?(@attribute)
-      @base.send(@attribute).respond_to?(:errors)
-    end
-    
-    def associate_errors #:nodoc:
-      @base.send(@attribute).errors
-    end
-    
-    def add(message)
-      self << message
-    end
-    
-    # Think of this is a filter
-    def on(attribute)
-      if association_proxy?
-        associate_errors.on(attribute) 
-      else
-        @errors_for_attribute[attribute] ||= Errors.new(@base, attribute)
+      def clear
+        if attribute_proxy?
+          @errors_for_attribute.values.each(&:clear)
+        else
+          @errors_array.clear
+        end
       end
-    end
     
-    def on_base
-      on(:base)
-    end
+      def attribute_proxy? #:nodoc:
+        @attribute.nil?
+      end
     
-    def method_missing(method_name, *args, &block)
-      array_we_pretend_to_be = errors_array_for_reading.freeze
-      retried = false
-      begin
-        array_we_pretend_to_be.send(method_name, *args, &block)
-      rescue TypeError => e
-        raise e if retried
-        array_we_pretend_to_be = errors_array_for_modifying
-        retried = true
-        retry
+      def association_proxy? #:nodoc:
+        return false if attribute_proxy? or !@base.respond_to?(@attribute)
+        @base.send(@attribute).respond_to?(:errors)
+      end
+    
+      def associate_errors #:nodoc:
+        @base.send(@attribute).errors
       end
       
-    end
-    
-    def to_a
-      errors_array_for_reading
-    end
-    
-    private
-    
-    # This is the array we pretend to be when being read from
-    def errors_array_for_reading
-      errors_array = []
-      errors_array += @errors_array if @errors_array
-      if attribute_proxy?
-        errs = @errors_for_attribute.dup
-        # :base goes first
-        errors_array += errs.delete(:base).send(:errors_array_for_reading) if errs[:base]
-        errors_array += errs.values.collect{|e|e.send :errors_array_for_reading}.flatten
+      # Adds the +message+ string as an ErrorMessageTemplate
+      def add(message, *template_delegates)
+        self << ErrorMessageTemplate.new(@base, @attribute, message, *template_delegates)
       end
-      errors_array += associate_errors.send(:errors_array_for_reading) if association_proxy?
-      errors_array
-    end
     
-    # This is the array we pretend to be when being modified
-    def errors_array_for_modifying
-      if attribute_proxy?
-        on(:base).send(:errors_array_for_modifying)
-      else
-        @errors_array 
+      # Think of this is a filter
+      def on(attribute)
+        if association_proxy?
+          associate_errors.on(attribute) 
+        else
+          @errors_for_attribute[attribute] ||= Errors.new(@base, attribute)
+        end
       end
-    end
     
+      def on_base
+        on(:base)
+      end
+    
+      def method_missing(method_name, *args, &block)
+        array_we_pretend_to_be = errors_array_for_reading.freeze
+        retried = false
+        begin
+          array_we_pretend_to_be.send(method_name, *args, &block)
+        rescue TypeError => e
+          raise e if retried
+          array_we_pretend_to_be = errors_array_for_modifying
+          retried = true
+          retry
+        end
+      
+      end
+    
+      def to_a
+        errors_array_for_reading
+      end
+    
+      private
+    
+      # This is the array we pretend to be when being read from
+      def errors_array_for_reading
+        errors_array = []
+        errors_array += @errors_array if @errors_array
+        if attribute_proxy?
+          errs = @errors_for_attribute.dup
+          # :base goes first
+          errors_array += errs.delete(:base).send(:errors_array_for_reading) if errs[:base]
+          errors_array += errs.values.collect{|e|e.send :errors_array_for_reading}.flatten
+        end
+        errors_array += associate_errors.send(:errors_array_for_reading) if association_proxy?
+        errors_array
+      end
+    
+      # This is the array we pretend to be when being modified
+      def errors_array_for_modifying
+        if attribute_proxy?
+          on(:base).send(:errors_array_for_modifying)
+        else
+          @errors_array 
+        end
+      end
+    
+    end
   end
 end

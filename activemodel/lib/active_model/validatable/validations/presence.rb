@@ -6,7 +6,7 @@ module ActiveModel
           get_value(instance).blank?
         end
         def message
-          "Must be present!"
+          super || "{attribute_name} can't be empty."
         end
       end
     end
