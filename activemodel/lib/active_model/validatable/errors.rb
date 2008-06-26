@@ -54,6 +54,12 @@ post.errors.on(:tags).on(:name)
 
 =end
 module ActiveModel
+  # Errors is an Array-like structure of sorts which includes all "child" error arrays within it.
+  #
+  # <example>
+  # 
+  # At least this is the case for reading methods. Mutation methods however, are dispatched to just 
+  # one place, hopefully in an intuitive manner...
   class Errors
     
     @@default_error_messages = {
@@ -144,8 +150,13 @@ module ActiveModel
     # This is the array we pretend to be when being read from
     def errors_array_for_reading
       errors_array = []
-      errors_array += @errors_for_attribute.values.collect{|e|e.send :errors_array_for_reading}.flatten if attribute_proxy?
       errors_array += @errors_array if @errors_array
+      if attribute_proxy?
+        errs = @errors_for_attribute.dup
+        # :base goes first
+        errors_array += errs.delete(:base).send(:errors_array_for_reading) if errs[:base]
+        errors_array += errs.values.collect{|e|e.send :errors_array_for_reading}.flatten
+      end
       errors_array += associate_errors.send(:errors_array_for_reading) if association_proxy?
       errors_array
     end

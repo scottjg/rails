@@ -6,7 +6,7 @@ end
 
 class TestErrors < ActiveSupport::TestCase
   def setup
-    @errors = Computer.new
+    @errors = Computer.new.errors
   end
   
   test "errors are empty to begin with" do
@@ -51,4 +51,30 @@ class TestErrors < ActiveSupport::TestCase
     assert_equal 2, @errors.on(:hard_drive).size
     assert_equal 1, @errors.on(:monitor).size
   end
+  
+  test "index accesors" do
+    @errors.add "zero"
+    @errors.add "one"
+    @errors.add "two"
+    @errors.add "three"
+    @errors.on(:cpu).add "four"
+    @errors.on(:cpu).add "five"
+    assert_equal "zero",   @errors[0]
+    assert_equal "three",  @errors[3]
+    assert_equal "four",  @errors[4]
+    assert_equal "four",  @errors.on(:cpu)[0]
+    
+    @errors[0] = "zzz"
+    assert_equal "zzz",   @errors[0]
+    
+    # @errors[4] is part of errors.on(:cpu), so what actually happens
+    # is the 'mixed in' errors get pushed forward to make room for the new error.
+    # Not something you should actually do...
+    @errors[4] = "hmm"
+    assert_equal "hmm",  @errors[4]
+    assert_equal "four",  @errors[5]
+    assert_equal "four",  @errors.on(:cpu)[0]
+    assert_nil @errors.on(:cpu).find{|e| e =="hmm"}
+  end
+  
 end
