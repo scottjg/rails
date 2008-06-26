@@ -8,10 +8,10 @@ String.send :include, ActiveSupport::CoreExtensions::String::Inflections
 require 'active_model/base'
 require 'active_model/observing'
 require 'active_model/callbacks'
-require 'active_model/validations'
+require 'active_model/validatable'
 
 ActiveModel::Base.class_eval do
   include ActiveModel::Observing
   include ActiveModel::Callbacks
-  include ActiveModel::Validations
+  include ActiveModel::Validatable
 end
