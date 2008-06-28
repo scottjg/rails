@@ -10,8 +10,6 @@ module ActiveRecord
       # preload_options is passed only one level deep: don't pass to the child associations when associations is a Hash
       protected
       def preload_associations(records, associations, preload_options={})
-        logger.debug("!!!!!!!!!!!!!!!!!!!! ACC preload_associations in class #{self.name}")
-        logger.debug("associations: #{associations.inspect}")
         records = [records].flatten.compact.uniq
         return if records.empty?
         case associations
@@ -63,7 +61,6 @@ module ActiveRecord
       end
 
       def set_association_collection_records(id_to_record_map, reflection_name, associated_records, key)
-        logger.debug("!!!!!!!!!!!!!!!!!!!! ACC set_association_collection_records #{reflection_name} #{key}")
         associated_records.each do |associated_record|
           mapped_records = id_to_record_map[associated_record[key].to_s]
           add_preloaded_records_to_collection(mapped_records, reflection_name, associated_record)
@@ -187,7 +184,6 @@ module ActiveRecord
           end
           through_records.flatten!
         else
-          logger.debug("!!!!!!!!!!!!!!!!!!!! ACC preload_associations using #{records.first.class.name}")
           records.first.class.preload_associations(records, through_association)
           through_records = records.map {|record| record.send(through_association)}.flatten
         end
@@ -246,14 +242,11 @@ module ActiveRecord
       end
 
       def find_associated_records(ids, reflection, preload_options)
-        logger.debug("!!!!!!!!!!!!!!!!!!!! ACC find_associated_records #{reflection.inspect}\n#{preload_options.inspect}")
         options = reflection.options
         table_name = reflection.klass.quoted_table_name
 
         if interface = reflection.options[:as]
-          # interface_class = reflection.active_record
           conditions = "#{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_id"} IN (?) and #{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_type"} = '#{self.base_class.name.demodulize}'"
-          # conditions = "#{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_id"} IN (?) and #{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_type"} = '#{interface_class.name.demodulize}'"
         else
           foreign_key = reflection.primary_key_name
           conditions = "#{reflection.klass.quoted_table_name}.#{foreign_key} IN (?)"
