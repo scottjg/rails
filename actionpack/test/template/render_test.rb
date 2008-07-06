@@ -12,7 +12,7 @@ class ViewRenderTest < Test::Unit::TestCase
   end
 
   def test_render_file_not_using_full_path
-    assert_equal "Hello world!", @view.render(:file => "test/hello_world.erb", :use_full_path => true)
+    assert_equal "Hello world!", @view.render(:file => "test/hello_world.erb")
   end
 
   def test_render_file_without_specific_extension
@@ -21,7 +21,7 @@ class ViewRenderTest < Test::Unit::TestCase
 
   def test_render_file_with_full_path
     template_path = File.join(File.dirname(__FILE__), '../fixtures/test/hello_world.erb')
-    assert_equal "Hello world!", @view.render(:file => template_path, :use_full_path => false)
+    assert_equal "Hello world!", @view.render(:file => template_path)
   end
 
   def test_render_file_with_instance_variables
@@ -53,6 +53,16 @@ class ViewRenderTest < Test::Unit::TestCase
 
   def test_render_partial_collection
     assert_equal "Hello: davidHello: mary", @view.render(:partial => "test/customer", :collection => [ Customer.new("david"), Customer.new("mary") ])
+  end
+  
+  def test_render_partial_collection_as
+    assert_equal "david david davidmary mary mary", 
+      @view.render(:partial => "test/customer_with_var", :collection => [ Customer.new("david"), Customer.new("mary") ], :as => :customer)
+  end
+  
+  def test_render_partial_collection_without_as
+    assert_equal "local_inspector,local_inspector_counter,object", 
+      @view.render(:partial => "test/local_inspector", :collection => [ Customer.new("mary") ])
   end
 
   # TODO: The reason for this test is unclear, improve documentation
