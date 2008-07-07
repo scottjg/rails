@@ -340,6 +340,16 @@ module ActionController #:nodoc:
     cattr_accessor :optimise_named_routes
     self.optimise_named_routes = true
 
+    # Indicates whether the response format should be determined by examining the Accept HTTP header,
+    # or by using the simpler params + ajax rules.
+    #
+    # If this is set to +true+ then +respond_to+ and +Request#format+ will take the Accept header into
+    # account.  If it is set to false (the default) then the request format will be determined solely
+    # by examining params[:format].  If params format is missing, the format will be either HTML or
+    # Javascript depending on whether the request is an AJAX request.
+    cattr_accessor :use_accept_header
+    self.use_accept_header = false
+
     # Controls whether request forgergy protection is turned on or not. Turned off by default only in test mode.
     class_inheritable_accessor :allow_forgery_protection
     self.allow_forgery_protection = true
@@ -702,6 +712,9 @@ module ActionController #:nodoc:
       #   # builds the complete response.
       #   render :partial => "person", :collection => @winners
       #
+      #   # Renders a collection of partials but with a custom local variable name
+      #   render :partial => "admin_person", :collection => @winners, :as => :person
+      #
       #   # Renders the same collection of partials, but also renders the
       #   # person_divider partial between each person partial.
       #   render :partial => "person", :collection => @winners, :spacer_template => "person_divider"
@@ -732,6 +745,9 @@ module ActionController #:nodoc:
       #
       #   # Renders the template located in [TEMPLATE_ROOT]/weblog/show.r(html|xml) (in Rails, app/views/weblog/show.erb)
       #   render :template => "weblog/show"
+      #
+      #   # Renders the template with a local variable
+      #   render :template => "weblog/show", :locals => {:customer => Customer.new}
       #
       # === Rendering a file
       #
@@ -852,10 +868,10 @@ module ActionController #:nodoc:
 
         else
           if file = options[:file]
-            render_for_file(file, options[:status], options[:use_full_path], options[:locals] || {})
+            render_for_file(file, options[:status], nil, options[:locals] || {})
 
           elsif template = options[:template]
-            render_for_file(template, options[:status], true)
+            render_for_file(template, options[:status], true, options[:locals] || {})
 
           elsif inline = options[:inline]
             add_variables_to_assigns
@@ -864,9 +880,9 @@ module ActionController #:nodoc:
           elsif action_name = options[:action]
             template = default_template_name(action_name.to_s)
             if options[:layout] && !template_exempt_from_layout?(template)
-              render_with_a_layout(:file => template, :status => options[:status], :use_full_path => true, :layout => true)
+              render_with_a_layout(:file => template, :status => options[:status], :layout => true)
             else
-              render_with_no_layout(:file => template, :status => options[:status], :use_full_path => true)
+              render_with_no_layout(:file => template, :status => options[:status])
             end
 
           elsif xml = options[:xml]
@@ -886,12 +902,12 @@ module ActionController #:nodoc:
             if collection = options[:collection]
               render_for_text(
                 @template.send!(:render_partial_collection, partial, collection,
-                options[:spacer_template], options[:locals]), options[:status]
+                options[:spacer_template], options[:locals], options[:as]), options[:status]
               )
             else
               render_for_text(
                 @template.send!(:render_partial, partial,
-                ActionView::Base::ObjectWrapper.new(options[:object]), options[:locals]), options[:status]
+                options[:object], options[:locals]), options[:status]
               )
             end
 
@@ -1036,27 +1052,29 @@ module ActionController #:nodoc:
           status = 302
         end
 
+        response.redirected_to= options
+        logger.info("Redirected to #{options}") if logger && logger.info?
+
         case options
           when %r{^\w+://.*}
-            raise DoubleRenderError if performed?
-            logger.info("Redirected to #{options}") if logger && logger.info?
-            response.redirect(options, interpret_status(status))
-            response.redirected_to = options
-            @performed_redirect = true
-
+            redirect_to_full_url(options, status)
           when String
-            redirect_to(request.protocol + request.host_with_port + options, :status=>status)
-
+            redirect_to_full_url(request.protocol + request.host_with_port + options, status)
           when :back
-            request.env["HTTP_REFERER"] ? redirect_to(request.env["HTTP_REFERER"], :status=>status) : raise(RedirectBackError)
-
-          when Hash
-            redirect_to(url_for(options), :status=>status)
-            response.redirected_to = options
-
+            if referer = request.headers["Referer"]
+              redirect_to(referer, :status=>status)
+            else
+              raise RedirectBackError
+            end
           else
-            redirect_to(url_for(options), :status=>status)
+            redirect_to_full_url(url_for(options), status)
         end
+      end
+
+      def redirect_to_full_url(url, status)
+        raise DoubleRenderError if performed?
+        response.redirect(url, interpret_status(status))
+        @performed_redirect = true
       end
 
       # Sets a HTTP 1.1 Cache-Control header. Defaults to issuing a "private" instruction, so that
@@ -1091,10 +1109,10 @@ module ActionController #:nodoc:
 
 
     private
-      def render_for_file(template_path, status = nil, use_full_path = false, locals = {}) #:nodoc:
+      def render_for_file(template_path, status = nil, use_full_path = nil, locals = {}) #:nodoc:
         add_variables_to_assigns
         logger.info("Rendering #{template_path}" + (status ? " (#{status})" : '')) if logger
-        render_for_text(@template.render(:file => template_path, :use_full_path => use_full_path, :locals => locals), status)
+        render_for_text(@template.render(:file => template_path, :locals => locals), status)
       end
 
       def render_for_text(text = nil, status = nil, append_response = false) #:nodoc:
@@ -1229,8 +1247,9 @@ module ActionController #:nodoc:
       end
 
       def template_exempt_from_layout?(template_name = default_template_name)
-        template_name = @template.send(:template_file_from_name, template_name) if @template
-        @@exempt_from_layout.any? { |ext| template_name.to_s =~ ext }
+        extension = @template && @template.pick_template_extension(template_name)
+        name_with_extension = !template_name.include?('.') && extension ? "#{template_name}.#{extension}" : template_name
+        @@exempt_from_layout.any? { |ext| name_with_extension =~ ext }
       end
 
       def default_template_name(action_name = self.action_name)

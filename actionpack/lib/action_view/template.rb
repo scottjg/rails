@@ -1,21 +1,26 @@
 module ActionView #:nodoc:
   class Template #:nodoc:
     extend TemplateHandlers
+    include Renderable
 
-    attr_accessor :locals
-    attr_reader :handler, :path, :extension, :filename, :method
+    attr_reader :path, :extension
 
-    def initialize(view, path, use_full_path, locals = {})
+    def initialize(view, path, use_full_path = nil, locals = {})
+      unless use_full_path == nil
+        ActiveSupport::Deprecation.warn("use_full_path option has been deprecated and has no affect.", caller)
+      end
+
       @view = view
       @paths = view.view_paths
 
       @original_path = path
-      @path = TemplateFile.from_path(path, !use_full_path)
+      @path = TemplateFile.from_path(path)
       @view.first_render ||= @path.to_s
-      @source = nil # Don't read the source until we know that it is required
-      set_extension_and_file_name(use_full_path)
 
-      @locals = locals || {}
+      set_extension_and_file_name
+
+      @method_segment = compiled_method_name_file_path_segment
+      @locals = (locals && locals.dup) || {}
       @handler = self.class.handler_class_for_extension(@extension).new(@view)
     end
 
@@ -31,64 +36,47 @@ module ActionView #:nodoc:
       end
     end
 
-    def render
-      prepare!
-      @handler.render(self)
-    end
-
-    def path_without_extension
-      @path.path_without_extension
-    end
-
     def source
-      @source ||= File.read(self.filename)
-    end
-
-    def method_key
-      @filename
+      @source ||= File.read(@filename)
     end
 
     def base_path_for_exception
       (@paths.find_load_path_for_path(@path) || @paths.first).to_s
     end
 
-    def prepare!
-      @view.send :evaluate_assigns
-      @view.current_render_extension = @extension
-
-      if @handler.compilable?
-        @handler.compile_template(self) # compile the given template, if necessary
-        @method = @view.method_names[method_key] # Set the method name for this template and run it
-      end
-    end
-
     private
-      def set_extension_and_file_name(use_full_path)
+      def set_extension_and_file_name
         @extension = @path.extension
 
-        if use_full_path
-          unless @extension
-            @path = @view.send(:template_file_from_name, @path)
-            raise_missing_template_exception unless @path
-            @extension = @path.extension
-          end
-
-          if @path = @paths.find_template_file_for_path(path)
-            @filename = @path.full_path
-            @extension = @path.extension
-          end
-        else
-          @filename = @path.full_path
+        unless @extension
+          @path = @view.send(:template_file_from_name, @path)
+          raise_missing_template_exception unless @path
+          @extension = @path.extension
         end
 
-        raise_missing_template_exception if @filename.blank?
+        if p = @paths.find_template_file_for_path(path)
+          @path = p
+          @filename = @path.full_path
+          @extension = @path.extension
+          raise_missing_template_exception if @filename.blank?
+        else
+          @filename = @original_path
+          raise_missing_template_exception unless File.exist?(@filename)
+        end
       end
 
       def raise_missing_template_exception
         full_template_path = @original_path.include?('.') ? @original_path : "#{@original_path}.#{@view.template_format}.erb"
         display_paths = @paths.join(':')
         template_type = (@original_path =~ /layouts/i) ? 'layout' : 'template'
-        raise(MissingTemplate, "Missing #{template_type} #{full_template_path} in view path #{display_paths}")
+        raise MissingTemplate, "Missing #{template_type} #{full_template_path} in view path #{display_paths}"
+      end
+
+      def compiled_method_name_file_path_segment
+        s = File.expand_path(@filename)
+        s.sub!(/^#{Regexp.escape(File.expand_path(RAILS_ROOT))}/, '') if defined?(RAILS_ROOT)
+        s.gsub!(/([^a-zA-Z0-9_])/) { $1.ord }
+        s
       end
   end
 end

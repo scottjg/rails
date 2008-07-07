@@ -129,6 +129,10 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal "Microsoft", Firm.find(:first).clients_like_ms_with_hash_conditions.first.name
   end
 
+  def test_finding_using_primary_key
+    assert_equal "Summit", Firm.find(:first).clients_using_primary_key.first.name
+  end
+
   def test_finding_using_sql
     firm = Firm.find(:first)
     first_client = firm.clients_using_sql.first
@@ -382,6 +386,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_queries(2) { assert company.save }
     assert !new_client.new_record?
     assert_equal 2, company.clients_of_firm(true).size
+  end
+
+  def test_collection_size_after_building
+    company = companies(:first_firm)  # company already has one client
+    company.clients_of_firm.build("name" => "Another Client")
+    company.clients_of_firm.build("name" => "Yet Another Client")
+    assert_equal 3, company.clients_of_firm.size
   end
 
   def test_build_many
