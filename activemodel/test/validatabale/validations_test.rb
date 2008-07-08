@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), "helper")
+require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
 class Article < TestClassBase
   attr_accessor :tags, :title
@@ -14,7 +14,7 @@ end
 
 
 
-class TestValidations < ActiveSupport::TestCase
+class TestValidations < ActiveModel::TestCase
   def setup
     @article = Article.new(:title=>"New validations rock!", :tags=>%w(announcement important))
   end

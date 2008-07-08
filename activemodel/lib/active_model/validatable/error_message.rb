@@ -27,7 +27,7 @@ module ActiveModel
         [validation,self, value, object].each do |delegator|
           return delegator.send(key_name) if delegator.respond_to?(key_name)
         end
-        raise "Could not find susbtitution value for {#{key_name}} in #{message_template.inspect}"
+        "{#{key_name}}"
       end
     end
   end

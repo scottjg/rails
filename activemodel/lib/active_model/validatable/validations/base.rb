@@ -135,7 +135,12 @@ module ActiveModel
           self.class.option_validations.each do |key, validation|
             next unless options.has_key?(key)
             value = options[key]
-            raise InvalidOptionValue, "'#{self.class.validation_macro_name} :#{key} => <#{value.class}>' <#{value.class}>.#{validation} does not respond" unless value.respond_to?(validation)
+            case validation
+            when Symbol
+              raise InvalidOptionValue, "'#{self.class.validation_macro_name} :#{key} => <#{value.class}>' requires <#{value.class}> to respond to #{validation}" unless value.respond_to?(validation)
+            when Class
+              raise InvalidOptionValue, "'#{self.class.validation_macro_name} :#{key} => <#{value.class}>' expects <#{value.class}> to be a kind of #{validation}" unless value.kind_of?(validation)
+            end
           end
         end
         

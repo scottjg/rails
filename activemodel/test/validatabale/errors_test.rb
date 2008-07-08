@@ -1,10 +1,10 @@
-require File.join(File.dirname(__FILE__), "helper")
+require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
 class Computer < TestClassBase
   attr_accessor :monitor, :cpu, :hard_drive, :server
 end
 
-class TestErrors < ActiveSupport::TestCase
+class TestErrors < ActiveModel::TestCase
   def setup
     @computer = Computer.new
     @server = Computer.new

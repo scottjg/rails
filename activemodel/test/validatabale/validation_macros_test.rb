@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), "helper")
+require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
 class Company < TestClassBase
   attr_accessor :name, :business_number, :features, :industry, :terms, :password, :password_confirmation, :agreement, :founding_year, :description
@@ -38,7 +38,7 @@ end
 
 
 
-class TestValidationMacros < ActiveSupport::TestCase
+class TestValidationMacros < ActiveModel::TestCase
   def setup
     @company = Company.new( 
       :name=>"American Robots",
@@ -149,7 +149,7 @@ class TestValidationMacros < ActiveSupport::TestCase
     assert @company.valid?
     @company.description = "This is not"
     assert !@company.valid?
-    assert_equal 1, @company.error.on(:description).size
+    assert_equal 1, @company.errors.on(:description).size
   end
   
 end

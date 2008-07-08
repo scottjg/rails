@@ -1,5 +1,4 @@
-require File.join(File.dirname(__FILE__), "helper")
-require 'active_model/validatable'
+require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
 class Post < TestClassBase
   attr_accessor :tags, :title, :author
@@ -13,7 +12,7 @@ end
 
 
 
-class TestErrorsOnAssociations < ActiveSupport::TestCase
+class TestErrorsOnAssociations < ActiveModel::TestCase
   def setup
     @author = Author.new(:name=>"Joe")
     @post = Post.new(:title=>"New validations rock!", :author=>@author)

@@ -14,7 +14,7 @@ class StateTransitionTest < ActiveModel::TestCase
     test 'should pass equality check if from and to are the same' do
       opts = {:from => 'foo', :to => 'bar', :guard => 'g'}
       st = ActiveModel::StateMachine::StateTransition.new(opts)
-
+      raise
       obj = stub
       obj.stubs(:from).returns(opts[:from])
       obj.stubs(:to).returns(opts[:to])

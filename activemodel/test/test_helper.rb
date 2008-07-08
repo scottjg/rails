@@ -39,12 +39,3 @@ module ActiveModel
     include ActiveSupport::Testing::Default
   end
 end
-
-class TestClassBase
-  include ActiveModel::Validatable
-  def initialize(attribs={})
-    attribs.each do |attr, value|
-      self.send("#{attr}=",value)
-    end
-  end
-end
