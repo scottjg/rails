@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), "helper")
+require File.join(File.dirname(__FILE__), "..", "test_helper")
 
 class User < TestClassBase
   attr_accessor :name, :zip, :age, :title
@@ -8,7 +8,7 @@ class User < TestClassBase
   validates_length_of :title, :min=>10, :too_short=>"{attribute_name} is too short! Make it longer then {min} {units}!"
 end
 
-class TestErrorMessages < ActiveSupport::TestCase
+class TestErrorMessages < ActiveModel::TestCase
   def setup
     @user = User.new(:age=>40, :title=>"bah")
     @user.valid?
