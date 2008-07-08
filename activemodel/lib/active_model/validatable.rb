@@ -4,60 +4,20 @@ require "#{validatable}/errors"
 require "#{validatable}/validations"
 
 =begin
-  Design notes (not for public consumption):
+RUY-NOTE: Welcome to my public Work-In-Progress on AcitveModel::Validatable, which will hopefully repalce
+ActiveRecord::Validations one day soon.
+
+The most obvious changes it the rename to Validatable (mostly because i wanted to save Validations for the modules containing
+the validation clases itself)
+
+Major changes:
+  - Errors 
+    - fairly different .errors API - see errors.rb
+    - error messages themselves encapsulated in ErrorMessage class - see error_message.rb
+  - Validations are now classes - see validations/base.rb
   
-  What we currently can't do with validations:
-    - Come up with well worded error messages which include data only known at validation time, such as
-      the name of the field we're validating, the validated value, and validation config options (like max-length.)
-      - e.g. "{attribute_name} must be between {min_length} and {max_length} long."
-      - e.g. "{attribute_name} '{value}' is already taken by {other_user}"
-      - a MUST for internationalizable but generic error messages!
-    - Serialize error messages in such a way that they can be applied to an existing form using AJAX.
-      - This would allow, among other things, generic validation-error handling
-        - e.g. use angry save (save!) and then have an app wide filter to trap and render errors for ajax
-      - This would also make more interesting AJAX validations (like continuous validations) much more feasible
-    - Serialize validations themselves so we can, for instance, auto-generate client-side validation in certain cases.
-    - Deal with errors for child classes
-      - In form_for
-      - Elsewhere
-  
-  Validation
-    @base
-    @attribute
-    - message
-    (?) name 
-  
-  ErrorMessage
-    - template
-    - message (value, maybe others?)
-    - base
-    - attribute
-  
-  ErrorMessageTemplate
-    @template_string
-    - evaluate(*data_sources)
-    - variables
-  
-  Errors
-    - NO DAMN IT Array like!
-    - Use [] like normal people, for indexing
-      - It's not a hash!
-    - errors.on(:foo) - it's a filter!
-      - limit to all ErrorMessages for which @attribute==:foo
-      - also include @base.foo.errors if it exists
-    - errors[:foo] << Error
-      - only adds it to self
-    
-  @post.errors.on(:title)
-    .each
-    [i]
-    .to_a / .to_json etc
-  
-  @post.errors.on(:title).add("Your mother")
-  @post.errors.on(:author) # => 
-  @post.errors #=> @attribute == :base, but also has some special meaning for enumeration
-  
-  
+Also note that this module does not COMPLETELY supplant ActiveRecord::Validations - AR-specific stuff like the :on=>:save|:update|:create
+option, as well as validates_uniqueness_of are taken care of by AR:V, albeit by extending AM:V
     
   
 =end

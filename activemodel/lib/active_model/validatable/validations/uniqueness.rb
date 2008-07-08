@@ -1,3 +1,4 @@
+# RUY-NOTE: NOT YET IMPLEMENTED - AND should probably be part of ActiveRecord::Validations instead
 # module ActiveModel
 #   module Validations
 #     module ClassMethods

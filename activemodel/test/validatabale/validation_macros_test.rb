@@ -1,5 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
+# RUY-NOTE: OBSOLETE - Slowly being replaced with the much smaller tests in validations/*_test.rb
+
 class Company < TestClassBase
   attr_accessor :name, :business_number, :features, :industry, :terms, :password, :password_confirmation, :agreement, :founding_year, :description
   validates_presence_of :name, :business_number

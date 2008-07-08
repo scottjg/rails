@@ -1,3 +1,4 @@
+# RUY-NOTE: NOT YET IMPLEMENTED
 # module ActiveModel
 #   module Validations
 #     module ClassMethods

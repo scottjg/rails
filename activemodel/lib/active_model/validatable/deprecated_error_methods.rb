@@ -1,3 +1,4 @@
+# RUY-NOTE: This file is not actually used yet.
 module ActiveModel
   module DeprecatedErrorMethods
     def on(attribute)

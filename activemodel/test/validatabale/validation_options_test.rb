@@ -1,5 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
+# RUY-NOTE: OBSOLETE - Slowly being replaced with the much smaller tests in validations/*_test.rb
+
 class Car < TestClassBase
   attr_accessor :engine, :year, :make
 end

@@ -1,3 +1,4 @@
+# RUY-NOTE: NOT YET IMPLEMENTED
 module ActiveModel
   module Validatable
     module Validations

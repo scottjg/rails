@@ -1,5 +1,7 @@
 module ActiveModel
   module Validatable
+    # This is the simplest possible validation... give it a block which returns true or false (pass or fail).
+    # You will usually want to provide the :message option
     module Validations
       class ValidatesCondition < Base
         options :block

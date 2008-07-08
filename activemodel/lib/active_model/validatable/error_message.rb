@@ -1,3 +1,22 @@
+=begin
+RUY-NOTE: There are two reasons for making this a class:
+
+  1.  Generating well worded error messages which include data only known at validation time, such as
+      the name of the field we're validating, the validated value, and validation config options (like max-length.)
+      - e.g. "{attribute_name} must be between {min} and {max} long."
+      - e.g. "{attribute_name} '{value}' is already taken by {other_user}"
+      - a MUST for internationalizable default messages (think word order problems)
+      Having this behavior be isolated in a class gives us a lot more power and control over the error message template.
+      
+   2. Allow the errors messages to be more self contained, which also makes them more 'portable'.
+      This means we don't need to have an error's +Errors+ object to know what attribute it applies to.
+      We can also do neat tricks ilke send back the error template as JSON with {attribute_name} left unrepalced
+      so that it can be populated from the *actual* HTML LABEL element via JS (and it ALSO gives us a clue as to where
+      to which INPUT the error belongs to). We are already doing this in our production app and it's VERY handy!
+
+The actual implementation below could do with some improving however.
+
+=end
 module ActiveModel
   module Validatable
     class ErrorMessage < String

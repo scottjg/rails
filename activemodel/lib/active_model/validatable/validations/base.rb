@@ -1,3 +1,32 @@
+=begin
+RUY-NOTE:
+Validations-as-classes was inspired (loosley) by the Validatable gem. 
+
+A validation class can turn itself into a macro (using Base.define_validation_macro(other_class)) based on it's name.
+
+The macro will instantiate the class and add it to other_class.validations hash, which stores validations by attribute name.
+(So yes, validates_presence_of :name, :password will generate TWO ValidatesPresenceOf instances, one in base.validations[:name] 
+and one in base.validations[:password])
+
+This alone has advantages: we can finally attempt to serialize validations for public consumption elsewhere. Auto-generated
+JavaScript validation is one obvious possibility, converting some validations to RDBMS constraints is a more exotic one.
+
+The Validations::Base contains several facilities for declaring valid options, making some required, validating their type etc.
+
+For the most part, sublasses need only declare their options using the above helpers, and implement a valid? instance method. 
+acceptance.rb contains a nice illustration of this. lentgh.rb contains something more complicated.
+
+The Base class also takes care of common options, such as :allow_nil, :allow_blank, :if and so forth (and also provides a convenient
+'hook' point for adding new 'global' options, such as :on for ActiveRecord).
+
+TODO:
+:if/:unless are not actually supported yet - I would like to implement them using a callback (:should_run) - which could be used
+to implement not only :if/:unless but also :allow_nil/:allow_blank and Validatable's (the gem) :group option.
+
+Unforunately there is no way to pass additional arguments to callbacks (like the object instance... kinda important) using AciveSupport::Callbacks, 
+so I will probably have to either add that to AS:C or start hammering out ActiveModel::Callbacks. 
+
+=end
 module ActiveModel
   module Validatable
     class InvalidOption < Exception; end
@@ -123,6 +152,7 @@ module ActiveModel
         
         private
         
+        # Verifies the options passed to the validation macro
         def validate_options
           options.keys.each do |option|
             raise InvalidOption, "#{option.inspect} is not a valid option for #{self.class.validation_macro_name}" unless self.class.valid_options.include?(option)

@@ -1,5 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'validation_test_helper'))
 
+# RUY-NOTE TODO: check valid macro options
+
 class TestValidatesConfirmationOf < ActiveModel::ValidationTestCase
   validation_test_class :Person, :password, :password_confirmation
   

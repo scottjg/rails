@@ -1,5 +1,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'validation_test_helper'))
 
+# RUY-NOTE: Needs to be cleaned up and merged with errors_test
+
 class Post < TestClassBase
   attr_accessor :tags, :title, :author
 end
