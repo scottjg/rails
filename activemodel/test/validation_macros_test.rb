@@ -138,6 +138,11 @@ class TestValidationMacros < ActiveSupport::TestCase
     @company.name = "z"*42
     assert !@company.valid?
     assert_equal 4, @company.errors.on(:name).size
+    @company.name = "Bfooooort"
+    assert @company.valid?
+    @company.business_number = "23232"
+    assert !@company.valid?
+    assert_equal 1, @company.errors.on(:business_number).size
   end
   
 end
