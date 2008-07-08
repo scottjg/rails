@@ -115,10 +115,6 @@ module ActiveModel
           instance.send(self.attribute)
         end
         
-        def message
-          options[:message]
-        end
-        
         def block_arity
           options[:block].arity
         end
