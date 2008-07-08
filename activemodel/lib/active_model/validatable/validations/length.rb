@@ -39,6 +39,8 @@ module ActiveModel
         end
         
         def valid?(value)
+          require 'pp'
+          pp self if value.nil?
           if range
             range.include?(value.length)
           elsif max

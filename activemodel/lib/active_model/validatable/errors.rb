@@ -79,6 +79,10 @@ module ActiveModel
       def to_a
         errors_array_for_reading
       end
+      
+      def to_s
+        "#<#{self.class.name} on #{@base.class.name}##{@attribute}: #{to_a.inspect} >"
+      end
     
       private
     

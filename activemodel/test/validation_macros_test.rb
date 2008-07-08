@@ -24,11 +24,12 @@ class Company < TestClassBase
   
   validates_inclusion_of :founding_year, :in=>(1950..2008)
   
-  validates_length_of :name, :min=>3
-  validates_length_of :name, :max=>20
-  validates_length_of :name, :in=>3..20
-  validates_length_of :name, :within=>3..20
-  validates_length_of :business_number, :is=>10
+  validates_length_of :name, :min=>3, :allow_nil => true
+  validates_length_of :name, :max=>40, :allow_nil => true
+  validates_length_of :name, :in=>3..40, :allow_nil => true
+  validates_length_of :name, :within=>3..40, :allow_nil => true
+  validates_length_of :name, :min=>3, :max=>40, :allow_nil => true
+  validates_length_of :business_number, :is=>10, :allow_nil => true
   
 end
 
@@ -134,6 +135,9 @@ class TestValidationMacros < ActiveSupport::TestCase
     assert_equal 4, @company.errors.on(:name).size
     @company.name = "woooooo"
     assert @company.valid?
+    @company.name = "z"*42
+    assert !@company.valid?
+    assert_equal 4, @company.errors.on(:name).size
   end
   
 end

@@ -96,7 +96,7 @@ module ActiveModel
         class_inheritable_hash :option_validations
         self.option_validations = {}
         
-        options :message=>"{attribute_name} is invalid."
+        options :message=>"{attribute_name} is invalid.", :allow_nil => false, :allow_blank=>false
         
         def initialize(klass, attribute,options={})
           @klass = klass
@@ -107,6 +107,8 @@ module ActiveModel
         
         def validate(instance)
           value = get_value(instance)
+          return if allow_nil && value.nil?
+          return if allow_blank && value.blank?
           arity = method(:valid?).arity
           instance.errors.on(attribute).add(message,self) unless valid?(*[value,instance][0...arity])
         end
