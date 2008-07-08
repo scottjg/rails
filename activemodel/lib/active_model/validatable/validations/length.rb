@@ -6,7 +6,8 @@ module ActiveModel
                 :message => "{attribute_name} '{value}' must be between {min} and {max} {units} long.",
                 :too_long => "{attribute_name} '{value}' must be shorter then {max} {units}.",
                 :too_short => "{attribute_name} '{value}' must be longer then {min} {units}.",
-                :wrong_length => "{attribute_name} '{value}' must be exactly {is} {units} long."
+                :wrong_length => "{attribute_name} '{value}' must be exactly {is} {units} long.",
+                :tokenizer => lambda {|v| v.split(//)}
                 
         validate_option :in=>:include?
         
@@ -43,6 +44,7 @@ module ActiveModel
         end
         
         def valid?(value)
+          value = tokenizer.call(value)
           if range
             range.include?(value.length)
           elsif max

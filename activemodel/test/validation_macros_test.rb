@@ -1,7 +1,7 @@
 require File.join(File.dirname(__FILE__), "helper")
 
 class Company < TestClassBase
-  attr_accessor :name, :business_number, :features, :industry, :terms, :password, :password_confirmation, :agreement, :founding_year
+  attr_accessor :name, :business_number, :features, :industry, :terms, :password, :password_confirmation, :agreement, :founding_year, :description
   validates_presence_of :name, :business_number
   validates_condition :features, :message => "{oppressive_features} don't work well for {attribute_name} companies." do |value|
     !(industry == :software && oppressive_features.any? )
@@ -30,6 +30,8 @@ class Company < TestClassBase
   validates_length_of :name, :within=>3..40, :allow_nil => true
   validates_length_of :name, :min=>3, :max=>40, :allow_nil => true
   validates_length_of :business_number, :is=>10, :allow_nil => true
+  
+  validates_length_of :description, :min=>5, :unit=>"words", :tokenizer=>lambda {|str| str.scan(/\w+/)},:allow_nil=>true
   
 end
 
@@ -143,6 +145,11 @@ class TestValidationMacros < ActiveSupport::TestCase
     @company.business_number = "23232"
     assert !@company.valid?
     assert_equal 1, @company.errors.on(:business_number).size
+    @company.business_number = "1"*10
+    assert @company.valid?
+    @company.description = "This is not"
+    assert !@company.valid?
+    assert_equal 1, @company.error.on(:description).size
   end
   
 end
