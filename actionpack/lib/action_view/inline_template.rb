@@ -1,5 +1,7 @@
 module ActionView #:nodoc:
-  class InlineTemplate < Template #:nodoc:
+  class InlineTemplate #:nodoc:
+    include Renderable
+
     def initialize(view, source, locals = {}, type = nil)
       @view = view
 
@@ -7,11 +9,8 @@ module ActionView #:nodoc:
       @extension = type
       @locals = locals || {}
 
-      @handler = self.class.handler_class_for_extension(@extension).new(@view)
-    end
-
-    def method_key
-      @source
+      @method_segment = "inline_#{@source.hash.abs}"
+      @handler = Template.handler_class_for_extension(@extension).new(@view)
     end
   end
 end

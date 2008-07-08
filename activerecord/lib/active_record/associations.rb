@@ -663,6 +663,7 @@ module ActiveRecord
       # * <tt>:foreign_key</tt> - Specify the foreign key used for the association. By default this is guessed to be the name
       #   of this class in lower-case and "_id" suffixed. So a Person class that makes a +has_many+ association will use "person_id"
       #   as the default <tt>:foreign_key</tt>.
+      # * <tt>:primary_key</tt> - Specify the method that returns the primary key used for the association. By default this is +id+.
       # * <tt>:dependent</tt> - If set to <tt>:destroy</tt> all the associated objects are destroyed
       #   alongside this object by calling their +destroy+ method.  If set to <tt>:delete_all</tt> all associated
       #   objects are deleted *without* calling their +destroy+ method.  If set to <tt>:nullify</tt> all associated
@@ -678,7 +679,7 @@ module ActiveRecord
       # * <tt>:limit</tt> - An integer determining the limit on the number of rows that should be returned.
       # * <tt>:offset</tt> - An integer determining the offset from where the rows should be fetched. So at 5, it would skip the first 4 rows.
       # * <tt>:select</tt> - By default, this is <tt>*</tt> as in <tt>SELECT * FROM</tt>, but can be changed if you, for example, want to do a join
-      #   but not include the joined columns. Do not forget to include the primary and foreign keys, otherwise it will rise an error.
+      #   but not include the joined columns. Do not forget to include the primary and foreign keys, otherwise it will raise an error.
       # * <tt>:as</tt> - Specifies a polymorphic interface (See <tt>belongs_to</tt>).
       # * <tt>:through</tt> - Specifies a Join Model through which to perform the query.  Options for <tt>:class_name</tt> and <tt>:foreign_key</tt>
       #   are ignored, as the association uses the source reflection. You can only use a <tt>:through</tt> query through a <tt>belongs_to</tt>
@@ -711,7 +712,8 @@ module ActiveRecord
 
         configure_dependency_for_has_many(reflection)
 
-        add_multiple_associated_save_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_validation_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_save_callbacks(reflection.name)
         add_association_callbacks(reflection.name, reflection.options)
 
         if options[:through]
@@ -757,6 +759,7 @@ module ActiveRecord
       # * <tt>:foreign_key</tt> - Specify the foreign key used for the association. By default this is guessed to be the name
       #   of this class in lower-case and "_id" suffixed. So a Person class that makes a +has_one+ association will use "person_id"
       #   as the default <tt>:foreign_key</tt>.
+      # * <tt>:primary_key</tt> - Specify the method that returns the primary key used for the association. By default this is +id+.
       # * <tt>:include</tt> - Specify second-order associations that should be eager loaded when this object is loaded.
       # * <tt>:as</tt> - Specifies a polymorphic interface (See <tt>belongs_to</tt>).
       # * <tt>:select</tt> - By default, this is <tt>*</tt> as in <tt>SELECT * FROM</tt>, but can be changed if, for example, you want to do a join
@@ -801,7 +804,7 @@ module ActiveRecord
           end
           after_save method_name
 
-          add_single_associated_save_callbacks(reflection.name) if options[:validate] == true
+          add_single_associated_validation_callbacks(reflection.name) if options[:validate] == true
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
           association_constructor_method(:create, reflection, HasOneAssociation)
@@ -940,7 +943,7 @@ module ActiveRecord
           )
         end
 
-        add_single_associated_save_callbacks(reflection.name) if options[:validate] == true
+        add_single_associated_validation_callbacks(reflection.name) if options[:validate] == true
 
         configure_dependency_for_belongs_to(reflection)
       end
@@ -1043,7 +1046,8 @@ module ActiveRecord
       def has_and_belongs_to_many(association_id, options = {}, &extension)
         reflection = create_has_and_belongs_to_many_reflection(association_id, options, &extension)
 
-        add_multiple_associated_save_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_validation_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_save_callbacks(reflection.name)
         collection_accessor_methods(reflection, HasAndBelongsToManyAssociation)
 
         # Don't use a before_destroy callback since users' before_destroy
@@ -1163,7 +1167,7 @@ module ActiveRecord
           end
         end
         
-        def add_single_associated_save_callbacks(association_name)
+        def add_single_associated_validation_callbacks(association_name)
           method_name = "validate_associated_records_for_#{association_name}".to_sym
           define_method(method_name) do
             association = instance_variable_get("@#{association_name}")
@@ -1175,7 +1179,7 @@ module ActiveRecord
           validate method_name
         end
         
-        def add_multiple_associated_save_callbacks(association_name)
+        def add_multiple_associated_validation_callbacks(association_name)
           method_name = "validate_associated_records_for_#{association_name}".to_sym
           ivar = "@#{association_name}"
 
@@ -1196,6 +1200,10 @@ module ActiveRecord
           end
 
           validate method_name
+        end
+
+        def add_multiple_associated_save_callbacks(association_name)
+          ivar = "@#{association_name}"
 
           method_name = "before_save_associated_records_for_#{association_name}".to_sym
           define_method(method_name) do
@@ -1217,7 +1225,6 @@ module ActiveRecord
             else
               []
             end
-
             records_to_save.each { |record| association.send(:insert_record, record) } unless records_to_save.blank?
 
             # reconstruct the SQL queries now that we know the owner's id
@@ -1342,7 +1349,7 @@ module ActiveRecord
 
         def create_has_many_reflection(association_id, options, &extension)
           options.assert_valid_keys(
-            :class_name, :table_name, :foreign_key,
+            :class_name, :table_name, :foreign_key, :primary_key,
             :dependent,
             :select, :conditions, :include, :order, :group, :limit, :offset,
             :as, :through, :source, :source_type,
@@ -1360,7 +1367,7 @@ module ActiveRecord
 
         def create_has_one_reflection(association_id, options)
           options.assert_valid_keys(
-            :class_name, :foreign_key, :remote, :select, :conditions, :order, :include, :dependent, :counter_cache, :extend, :as, :readonly, :validate
+            :class_name, :foreign_key, :remote, :select, :conditions, :order, :include, :dependent, :counter_cache, :extend, :as, :readonly, :validate, :primary_key
           )
 
           create_reflection(:has_one, association_id, options, self)
@@ -1514,7 +1521,7 @@ module ActiveRecord
         end
 
         def order_tables(options)
-          order = options[:order]
+          order = [options[:order], scope(:find, :order) ].join(", ")
           return [] unless order && order.is_a?(String)
           order.scan(/([\.\w]+).?\./).flatten
         end

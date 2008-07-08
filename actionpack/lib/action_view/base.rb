@@ -161,12 +161,11 @@ module ActionView #:nodoc:
 
     attr_accessor :output_buffer
 
-    # Specify trim mode for the ERB compiler. Defaults to '-'.
-    # See ERb documentation for suitable values.
-    @@erb_trim_mode = '-'
-    cattr_accessor :erb_trim_mode
+    class << self
+      delegate :erb_trim_mode=, :to => 'ActionView::TemplateHandlers::ERB'
+    end
 
-    # Specify whether file modification times should be checked to see if a template needs recompilation
+    # Specify whether templates should be cached. Otherwise the file we be read everytime it is accessed.
     @@cache_template_loading = false
     cattr_accessor :cache_template_loading
 
@@ -190,18 +189,9 @@ module ActionView #:nodoc:
     end
     include CompiledTemplates
 
-    # Maps inline templates to their method names
-    cattr_accessor :method_names
-    @@method_names = {}
-    # Map method names to the names passed in local assigns so far
-    @@template_args = {}
-
     # Cache public asset paths
     cattr_reader :computed_public_paths
     @@computed_public_paths = {}
-
-    class ObjectWrapper < Struct.new(:value) #:nodoc:
-    end
 
     def self.helper_modules #:nodoc:
       helpers = []
@@ -229,36 +219,15 @@ module ActionView #:nodoc:
       @view_paths = ViewLoadPaths.new(Array(paths))
     end
 
-    # Renders the template present at <tt>template_path</tt>. If <tt>use_full_path</tt> is set to true,
-    # it's relative to the view_paths array, otherwise it's absolute. The hash in <tt>local_assigns</tt>
-    # is made available as local variables.
-    def render_file(template_path, use_full_path = true, local_assigns = {}) #:nodoc:
-      if defined?(ActionMailer) && defined?(ActionMailer::Base) && controller.is_a?(ActionMailer::Base) && !template_path.include?("/")
-        raise ActionViewError, <<-END_ERROR
-Due to changes in ActionMailer, you need to provide the mailer_name along with the template name.
-
-  render "user_mailer/signup"
-  render :file => "user_mailer/signup"
-
-If you are rendering a subtemplate, you must now use controller-like partial syntax:
-
-  render :partial => 'signup' # no mailer_name necessary
-        END_ERROR
-      end
-
-      Template.new(self, template_path, use_full_path, local_assigns).render_template
-    end
-
     # Renders the template present at <tt>template_path</tt> (relative to the view_paths array).
     # The hash in <tt>local_assigns</tt> is made available as local variables.
     def render(options = {}, local_assigns = {}, &block) #:nodoc:
       if options.is_a?(String)
-        render_file(options, true, local_assigns)
+        render_file(options, nil, local_assigns)
       elsif options == :update
         update_page(&block)
       elsif options.is_a?(Hash)
-        use_full_path = options[:use_full_path]
-        options = options.reverse_merge(:locals => {}, :use_full_path => true)
+        options = options.reverse_merge(:locals => {})
 
         if partial_layout = options.delete(:layout)
           if block_given?
@@ -271,20 +240,15 @@ If you are rendering a subtemplate, you must now use controller-like partial syn
             end
           end
         elsif options[:file]
-          render_file(options[:file], use_full_path || false, options[:locals])
+          render_file(options[:file], nil, options[:locals])
         elsif options[:partial] && options[:collection]
-          render_partial_collection(options[:partial], options[:collection], options[:spacer_template], options[:locals])
+          render_partial_collection(options[:partial], options[:collection], options[:spacer_template], options[:locals], options[:as])
         elsif options[:partial]
-          render_partial(options[:partial], ActionView::Base::ObjectWrapper.new(options[:object]), options[:locals])
+          render_partial(options[:partial], options[:object], options[:locals])
         elsif options[:inline]
-          template = InlineTemplate.new(self, options[:inline], options[:locals], options[:type])
-          render_template(template)
+          render_inline(options[:inline], options[:locals], options[:type])
         end
       end
-    end
-
-    def render_template(template) #:nodoc:
-      template.render_template
     end
 
     # Returns true is the file may be rendered implicitly.
@@ -292,28 +256,14 @@ If you are rendering a subtemplate, you must now use controller-like partial syn
       template_path.split('/').last[0,1] != '_'
     end
 
-    # Returns a symbolized version of the <tt>:format</tt> parameter of the request,
-    # or <tt>:html</tt> by default.
-    #
-    # EXCEPTION: If the <tt>:format</tt> parameter is not set, the Accept header will be examined for
-    # whether it contains the JavaScript mime type as its first priority. If that's the case,
-    # it will be used. This ensures that Ajax applications can use the same URL to support both
-    # JavaScript and non-JavaScript users.
+    # The format to be used when choosing between multiple templates with
+    # the same name but differing formats.  See +Request#template_format+
+    # for more details.
     def template_format
       return @template_format if @template_format
 
       if controller && controller.respond_to?(:request)
-        parameter_format = controller.request.parameters[:format]
-        accept_format    = controller.request.accepts.first
-
-        case
-        when parameter_format.blank? && accept_format != :js
-          @template_format = :html
-        when parameter_format.blank? && accept_format == :js
-          @template_format = :js
-        else
-          @template_format = parameter_format.to_sym
-        end
+        @template_format = controller.request.template_format
       else
         @template_format = :html
       end
@@ -323,7 +273,45 @@ If you are rendering a subtemplate, you must now use controller-like partial syn
       view_paths.template_exists?(template_file_from_name(template_path))
     end
 
+    # Gets the extension for an existing template with the given template_path.
+    # Returns the format with the extension if that template exists.
+    #
+    #   pick_template_extension('users/show')
+    #   # => 'html.erb'
+    #
+    #   pick_template_extension('users/legacy')
+    #   # => "rhtml"
+    #
+    def pick_template_extension(template_path)
+      if template = template_file_from_name(template_path)
+        template.extension
+      end
+    end
+
     private
+      # Renders the template present at <tt>template_path</tt>. The hash in <tt>local_assigns</tt>
+      # is made available as local variables.
+      def render_file(template_path, use_full_path = nil, local_assigns = {}) #:nodoc:
+        if defined?(ActionMailer) && defined?(ActionMailer::Base) && controller.is_a?(ActionMailer::Base) && !template_path.include?("/")
+          raise ActionViewError, <<-END_ERROR
+  Due to changes in ActionMailer, you need to provide the mailer_name along with the template name.
+
+    render "user_mailer/signup"
+    render :file => "user_mailer/signup"
+
+  If you are rendering a subtemplate, you must now use controller-like partial syntax:
+
+    render :partial => 'signup' # no mailer_name necessary
+          END_ERROR
+        end
+
+        Template.new(self, template_path, use_full_path, local_assigns).render_template
+      end
+
+      def render_inline(text, local_assigns = {}, type = nil)
+        InlineTemplate.new(self, text, local_assigns, type).render
+      end
+
       def wrap_content_for_layout(content)
         original_content_for_layout, @content_for_layout = @content_for_layout, content
         yield
@@ -352,19 +340,10 @@ If you are rendering a subtemplate, you must now use controller-like partial syn
 
       def template_file_from_name(template_name)
         template_name = TemplateFile.from_path(template_name)
-        pick_template_extension(template_name) unless template_name.extension
+        pick_template(template_name) unless template_name.extension
       end
 
-      # Gets the extension for an existing template with the given template_path.
-      # Returns the format with the extension if that template exists.
-      #
-      #   pick_template_extension('users/show')
-      #   # => 'html.erb'
-      #
-      #   pick_template_extension('users/legacy')
-      #   # => "rhtml"
-      #
-      def pick_template_extension(file)
+      def pick_template(file)
         if f = self.view_paths.find_template_file_for_path(file.dup_with_extension(template_format)) || file_from_first_render(file)
           f
         elsif template_format == :js && f = self.view_paths.find_template_file_for_path(file.dup_with_extension(:html))
