@@ -34,13 +34,15 @@ module ActiveModel
         end
         
         def validate_options
-          raise MissingRequiredOption, "#{self.class.validation_macro_name} requires either :in, :within, :is, or :min and/or :max as options." unless range || max || min || is
-          super
+          case (options.keys & [:min, :max, :in, :within, :is]).collect(&:to_s).sort
+          when %w(max min),%w(min), %w(max),%w(in),%w(within),%w(is)
+            super
+          else
+           raise MissingRequiredOption, "#{self.class.validation_macro_name} requires either :in, :within, :is, or :min and/or :max as options."
+          end
         end
         
         def valid?(value)
-          require 'pp'
-          pp self if value.nil?
           if range
             range.include?(value.length)
           elsif max
