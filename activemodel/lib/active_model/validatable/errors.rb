@@ -1,5 +1,5 @@
 validatable = File.dirname(__FILE__)
-require "#{validatable}/error_message_template"
+require "#{validatable}/error_message"
 module ActiveModel
   module Validatable
     # Errors is an Array-like structure of sorts which includes all "child" error arrays within it.
@@ -43,9 +43,10 @@ module ActiveModel
         @base.send(@attribute).errors
       end
       
-      # Adds the +message+ string as an ErrorMessageTemplate
-      def add(message, *template_delegates)
-        self << ErrorMessageTemplate.new(@base, @attribute, message, *template_delegates)
+      # Adds the +message+ string as an ErrorMessage for the current object/attribute. 
+      # Optionally accepts a validation object for substitutions.
+      def add(message, validation=nil)
+        self << ErrorMessage.new(@base, @attribute, message, validation)
       end
     
       # Think of this is a filter

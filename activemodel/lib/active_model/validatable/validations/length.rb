@@ -3,7 +3,7 @@ module ActiveModel
     module Validations
       class ValidatesLengthOf < Base
         options :min, :max, :in, :within, :is, :message => "{attribute_name} '{value}' must be one of {in}."
-        validate :in=>:include?
+        validate_option :in=>:include?
         
         def range
           if options[:min] && options[:max]

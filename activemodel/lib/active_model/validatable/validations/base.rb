@@ -24,14 +24,35 @@ module ActiveModel
             end_eval
           end
           
+          # Define valid options for the validation, optionally specifying default values. 
+          # Options will be exposed as instance methods to the validation.
+          # 
+          # Example:
+          #
+          #   class ValidatesInclusionOf < Base
+          #     options :in, :message => "{attribute_name} '{value}' must be one of {in}."
+          #   end
+          #   v = ValidatesInclusionOf.new
+          #   v.message # => "{attribute_name} '{value}' must be one of {in}."
+          #   v.in      # => nil
           def options(*options)
             defaults = options.extract_options!
-            self.valid_options += options + defaults.keys
+            (options + defaults.keys).each do |option|
+              register_option(option)
+            end
             defaults.each do |option, default_value|
               self.default_options[option] = default_value
             end
           end
           
+          # Define which options are required, optionally specifying a cusotm error message.
+          #
+          # Example:
+          #
+          #   class ValidatesEach < Base
+          #     options :block
+          #     required :block => "#{validation_macro_name} requires a block."
+          #   end
           def required(*options)
             options_with_messages = options.extract_options!
             options.each do |option|
@@ -40,8 +61,26 @@ module ActiveModel
             self.required_options.merge!(options_with_messages)
           end
           
-          def validate(validations={})
+          # Define a 'validation on the validation' which checks each validation option against if 
+          # it is a subclass of a given class, or if it responds to the given symbol.
+          # 
+          # Example:
+          # 
+          #   class ValidatesInclusionOf < Base
+          #     options :in, :message
+          #     validate_option :in=>:include?, :message=>String 
+          #   end
+          def validate_option(validations={})
             self.option_validations = validations
+          end
+          
+          private
+          
+          def register_option(option)
+            self.valid_options << option
+            self.send :define_method, option do 
+              options[option]
+            end
           end
         end
         
@@ -69,7 +108,7 @@ module ActiveModel
         def validate(instance)
           value = get_value(instance)
           arity = method(:valid?).arity
-          instance.errors.on(attribute).add(message) unless valid?(*[value,instance][0...arity])
+          instance.errors.on(attribute).add(message,self) unless valid?(*[value,instance][0...arity])
         end
         
         def get_value(instance)

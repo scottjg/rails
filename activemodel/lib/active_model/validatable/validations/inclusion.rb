@@ -4,10 +4,10 @@ module ActiveModel
       class ValidatesInclusionOf < Base
         options :in, :message => "{attribute_name} '{value}' must be one of {in}."
         required :in
-        validate :in=>:include?
+        validate_option :in=>:include?
         
         def valid?(value)
-          options[:in].include?(value)
+          self.in.include?(value)
         end
       end
     end
