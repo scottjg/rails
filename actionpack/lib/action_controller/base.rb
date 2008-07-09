@@ -343,12 +343,12 @@ module ActionController #:nodoc:
     # Indicates whether the response format should be determined by examining the Accept HTTP header,
     # or by using the simpler params + ajax rules.
     #
-    # If this is set to +true+ then +respond_to+ and +Request#format+ will take the Accept header into
-    # account.  If it is set to false (the default) then the request format will be determined solely
+    # If this is set to +true+ (the default) then +respond_to+ and +Request#format+ will take the Accept
+    # header into account.  If it is set to false then the request format will be determined solely
     # by examining params[:format].  If params format is missing, the format will be either HTML or
     # Javascript depending on whether the request is an AJAX request.
     cattr_accessor :use_accept_header
-    self.use_accept_header = false
+    self.use_accept_header = true
 
     # Controls whether request forgergy protection is turned on or not. Turned off by default only in test mode.
     class_inheritable_accessor :allow_forgery_protection
@@ -412,7 +412,7 @@ module ActionController #:nodoc:
       # More methods can be hidden using <tt>hide_actions</tt>.
       def hidden_actions
         unless read_inheritable_attribute(:hidden_actions)
-          write_inheritable_attribute(:hidden_actions, ActionController::Base.public_instance_methods.map(&:to_s))
+          write_inheritable_attribute(:hidden_actions, ActionController::Base.public_instance_methods.map { |m| m.to_s })
         end
 
         read_inheritable_attribute(:hidden_actions)
@@ -420,12 +420,12 @@ module ActionController #:nodoc:
 
       # Hide each of the given methods from being callable as actions.
       def hide_action(*names)
-        write_inheritable_attribute(:hidden_actions, hidden_actions | names.map(&:to_s))
+        write_inheritable_attribute(:hidden_actions, hidden_actions | names.map { |name| name.to_s })
       end
 
-      ## View load paths determine the bases from which template references can be made. So a call to
-      ## render("test/template") will be looked up in the view load paths array and the closest match will be
-      ## returned.
+      # View load paths determine the bases from which template references can be made. So a call to
+      # render("test/template") will be looked up in the view load paths array and the closest match will be
+      # returned.
       def view_paths
         @view_paths || superclass.view_paths
       end
@@ -1201,7 +1201,7 @@ module ActionController #:nodoc:
       end
 
       def self.action_methods
-        @action_methods ||= Set.new(public_instance_methods.map(&:to_s)) - hidden_actions
+        @action_methods ||= Set.new(public_instance_methods.map { |m| m.to_s }) - hidden_actions
       end
 
       def add_variables_to_assigns
