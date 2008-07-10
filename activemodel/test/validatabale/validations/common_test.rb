@@ -77,6 +77,37 @@ class TestCommonValidationBehavior < ActiveModel::ValidationTestCase
     assert_errors ["Name is invalid."], thing
   end
   
+  test "if condition with false proc" do
+    Thing.common_validation(:name, :with=>[], :if=>proc{false})
+    thing.name = ""
+    assert_valid thing
+  end
+  
+  test "if condition with true proc" do
+    Thing.common_validation(:name, :with=>[], :if=>proc{true})
+    thing.name = ""
+    assert_errors ["Name is invalid."], thing
+  end
+  
+  test "unless condition with false proc" do
+    Thing.common_validation(:name, :with=>[], :unless=>proc{false})
+    thing.name = ""
+    assert_errors ["Name is invalid."], thing
+  end
+  
+  test "unless condition with true proc" do
+    Thing.common_validation(:name, :with=>[], :unless=>proc{true})
+    thing.name = ""
+    assert_valid thing
+  end
+  
+  test "if condition with symbol" do
+    Thing.send(:define_method, :always_false){ false }
+    Thing.common_validation(:name, :with=>[], :if=>:always_false)
+    thing.name = ""
+    assert_valid thing
+  end
+  
   test "default failure message" do
     Thing.common_validation :name, :with=>[]
     assert_errors ["Name is invalid."], thing

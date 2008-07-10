@@ -19,12 +19,8 @@ acceptance.rb contains a nice illustration of this. lentgh.rb contains something
 The Base class also takes care of common options, such as :allow_nil, :allow_blank, :if and so forth (and also provides a convenient
 'hook' point for adding new 'global' options, such as :on for ActiveRecord).
 
-TODO:
-:if/:unless are not actually supported yet - I would like to implement them using a callback (:should_run) - which could be used
-to implement not only :if/:unless but also :allow_nil/:allow_blank and Validatable's (the gem) :group option.
-
-Unforunately there is no way to pass additional arguments to callbacks (like the object instance... kinda important) using AciveSupport::Callbacks, 
-so I will probably have to either add that to AS:C or start hammering out ActiveModel::Callbacks. 
+Finally, a callback named :run_condition can be used to provide conditional validation. :allow_nil, :allow_blank, :if and :unless are
+implemented using it. Any callback returning false will abort validation.
 
 =end
 module ActiveModel
@@ -113,6 +109,9 @@ module ActiveModel
           end
         end
         
+        include ActiveSupport::Callbacks
+        define_callbacks :run_condition
+        
         attr_reader :attribute, :klass, :options
         class_inheritable_hash :default_options
         self.default_options = {}
@@ -125,21 +124,40 @@ module ActiveModel
         class_inheritable_hash :option_validations
         self.option_validations = {}
         
-        options :message=>"{attribute_name} is invalid.", :allow_nil => false, :allow_blank=>false
+        options :if, :unless, :message=>"{attribute_name} is invalid.", :allow_nil => false, :allow_blank=>false
         
         def initialize(klass, attribute,options={})
           @klass = klass
           @attribute = attribute
           @options = self.class.default_options.merge(options)
           validate_options
+          @if_callback = Callback.new("validate_if", options[:if]) if options[:if]
+          @unless_callback = Callback.new("validate_unless", options[:unless]) if options[:unless]
         end
         
         def validate(instance)
           value = get_value(instance)
-          return if allow_nil && value.nil?
-          return if allow_blank && value.blank?
+          run_callbacks(:run_condition, :args=>[value, instance]) {|result, o| return if result==false} 
           arity = method(:valid?).arity
           instance.errors.on(attribute).add(message,self) unless valid?(*[value,instance][0...arity])
+        end
+        
+        run_condition :check_nil, :check_blank, :check_if, :check_unless
+        
+        def check_nil(value)
+          false if allow_nil && value.nil?
+        end
+        
+        def check_blank(value)
+          false if allow_blank && value.blank?
+        end
+        
+        def check_if(value, instance)
+          false if @if_callback && !@if_callback.call(instance, value)
+        end
+        
+        def check_unless(value, instance)
+          false if @unless_callback && @unless_callback.call(instance, value)
         end
         
         def get_value(instance)
