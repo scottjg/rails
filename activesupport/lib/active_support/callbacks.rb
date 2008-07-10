@@ -236,6 +236,14 @@ module ActiveSupport
 
     # Runs all the callbacks defined for the given options.
     #
+    # Expected options are:
+    #   * +:args+ - Pass the provided arguments array to each callback method or proc.
+    #     Arguments that exeed the arity of the callback method/proc will be silently
+    #     discarded rather then generate a warning. String callbacks cannot receieve
+    #     arguments. (default: +[]+ i.e. no arguments will be passed)
+    #   * +:enumerator* - Provide an alternative enumeration method to execute the
+    #     callback chain. E.g. +:reverse_each+ (default: +:each+)
+    #
     # If a block is given it will be called after each callback receiving as arguments:
     #
     #  * the result from the callback
