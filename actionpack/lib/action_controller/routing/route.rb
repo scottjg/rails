@@ -17,7 +17,7 @@ module ActionController
       end
 
       def segment_keys
-        segments.collect do |segment|
+        @segments.collect do |segment|
           segment.key if segment.respond_to? :key
         end.compact
       end
@@ -52,7 +52,7 @@ module ActionController
       # Build several lines of code that extract values from the options hash. If any
       # of the values are missing or rejected then a return will be executed.
       def generation_extraction
-        segments.collect do |segment|
+        @segments.collect do |segment|
           segment.extraction_code
         end.compact * "\n"
       end
@@ -60,7 +60,7 @@ module ActionController
       # Produce a condition expression that will check the requirements of this route
       # upon generation.
       def generation_requirements
-        requirement_conditions = requirements.collect do |key, req|
+        requirement_conditions = @requirements.collect do |key, req|
           if req.is_a? Regexp
             value_regexp = Regexp.new "\\A#{req.to_s}\\Z"
             "hash[:#{key}] && #{value_regexp.inspect} =~ options[:#{key}]"
@@ -72,7 +72,7 @@ module ActionController
       end
 
       def generation_structure
-        segments.last.string_structure segments[0..-2]
+        @segments.last.string_structure @segments[0..-2]
       end
 
       # Write and compile a +recognize+ method for this Route.
@@ -92,14 +92,14 @@ module ActionController
       # recognition, not generation.
       def recognition_conditions
         result = ["(match = #{Regexp.new(recognition_pattern).inspect}.match(path))"]
-        result << "conditions[:method] === env[:method]" if conditions[:method]
+        result << "@conditions[:method] === env[:method]" if @conditions[:method]
         result
       end
 
       # Build the regular expression pattern that will match this route.
       def recognition_pattern(wrap = true)
         pattern = ''
-        segments.reverse_each do |segment|
+        @segments.reverse_each do |segment|
           pattern = segment.build_pattern pattern
         end
         wrap ? ("\\A" + pattern + "\\Z") : pattern
@@ -108,7 +108,7 @@ module ActionController
       # Write the code to extract the parameters from a matched route.
       def recognition_extraction
         next_capture = 1
-        extraction = segments.collect do |segment|
+        extraction = @segments.collect do |segment|
           x = segment.match_extraction(next_capture)
           next_capture += Regexp.new(segment.regexp_chunk).number_of_captures
           x
@@ -176,7 +176,7 @@ module ActionController
       #
       def parameter_shell
         @parameter_shell ||= returning({}) do |shell|
-          requirements.each do |key, requirement|
+          @requirements.each do |key, requirement|
             shell[key] = requirement unless requirement.is_a? Regexp
           end
         end
@@ -187,8 +187,8 @@ module ActionController
       # placed upon them.
       def significant_keys
         @significant_keys ||= returning [] do |sk|
-          segments.each { |segment| sk << segment.key if segment.respond_to? :key }
-          sk.concat requirements.keys
+          @segments.each { |segment| sk << segment.key if segment.respond_to? :key }
+          sk.concat @requirements.keys
           sk.uniq!
         end
       end
@@ -197,11 +197,11 @@ module ActionController
       # have defaults, or which are specified by non-regexp requirements.
       def defaults
         @defaults ||= returning({}) do |hash|
-          segments.each do |segment|
+          @segments.each do |segment|
             next unless segment.respond_to? :default
             hash[segment.key] = segment.default unless segment.default.nil?
           end
-          requirements.each do |key,req|
+          @requirements.each do |key,req|
             next if Regexp === req || req.nil?
             hash[key] = req
           end
@@ -221,15 +221,15 @@ module ActionController
 
       def to_s
         @to_s ||= begin
-          segs = segments.inject("") { |str,s| str << s.to_s }
-          "%-6s %-40s %s" % [(conditions[:method] || :any).to_s.upcase, segs, requirements.inspect]
+          segs = @segments.inject("") { |str,s| str << s.to_s }
+          "%-6s %-40s %s" % [(@conditions[:method] || :any).to_s.upcase, segs, @requirements.inspect]
         end
       end
 
     protected
       def requirement_for(key)
-        return requirements[key] if requirements.key? key
-        segments.each do |segment|
+        return @requirements[key] if @requirements.key? key
+        @segments.each do |segment|
           return segment.regexp if segment.respond_to?(:key) && segment.key == key
         end
         nil
