@@ -64,6 +64,71 @@ class ConditionalPerson < Record
   end
 end
 
+class ArgumentativePerson < Record
+  before_save :check_no_args, :check_first_arg, :check_first_two_args, :check_all_args, :check_first_and_any_args, :check_any_args
+  
+  def check_no_args
+    history << [:no]
+  end
+
+  def check_first_arg(a)
+    history << [:first, a]
+  end
+  
+  def check_first_two_args(a,b)
+    history << [:first_two, a, b]
+  end
+  
+  def check_all_args(a,b,c,d)
+    history << [:all, a, b, c, d]
+  end
+
+  def check_first_and_any_args(a, *args)
+    history << [:first_and_any, a, *args]
+  end
+  
+  def check_any_args(*args)
+    history << [:any, *args]
+  end
+  
+  before_save "history << [:string_callback]"
+  
+  before_save { |record|          record.history << [:no] }
+  before_save { |record, a|       record.history << [:first, a] }
+  before_save { |record, a,b|     record.history << [:first_two, a, b] }
+  before_save { |record, a,b,c,d| record.history << [:all, a, b, c, d] }
+  before_save { |record, a,*args| record.history << [:first_and_any, a, *args] }
+  before_save { |record, *args|   record.history << [:any, *args] }
+  
+  class NoArgObserver
+    def before_save(record)
+      record.history << [:no]
+    end
+  end
+  
+  class TwoArgObserver
+    def before_save(record, a,b)
+      record.history << [:two, a,b]
+    end
+  end
+  
+  class FirstAndAnyObserver
+    def before_save(record, a, *args)
+      record.history << [:first_and_any, a,*args]
+    end
+  end
+  
+  before_save NoArgObserver.new
+  before_save TwoArgObserver.new
+  before_save FirstAndAnyObserver.new
+    
+
+  def save
+    run_callbacks(:before_save, :args=>[1,2,3,4])
+    run_callbacks(:after_save)
+  end
+end
+
 class CallbacksTest < Test::Unit::TestCase
   def test_save_person
     person = Person.new
@@ -144,5 +209,31 @@ class CallbackChainTest < Test::Unit::TestCase
     assert_equal [:bacon, :lettuce, :tomato], @chain.map(&:method)
     @chain.delete(:bacon)
     assert_equal [:lettuce, :tomato], @chain.map(&:method)
+  end
+end
+
+class CallbackWithArgumentsTest < Test::Unit::TestCase
+  def test_callbaks_with_arguments
+    person = ArgumentativePerson.new
+    assert_equal [], person.history
+    person.save
+    assert_equal [
+      [:no              ],
+      [:first,          1],
+      [:first_two,      1,2],
+      [:all,            1,2,3,4],
+      [:first_and_any,  1,2,3,4],
+      [:any,            1,2,3,4],
+      [:string_callback ],
+      [:no              ],
+      [:first,          1],
+      [:first_two,      1,2],
+      [:all,            1,2,3,4],
+      [:first_and_any,  1,2,3,4],
+      [:any,            1,2,3,4],
+      [:no              ],
+      [:two,            1,2],
+      [:first_and_any,  1,2,3,4],
+    ], person.history    
   end
 end

@@ -85,12 +85,12 @@ module ActiveSupport
 
       def run(object, options = {}, &terminator)
         enumerator = options[:enumerator] || :each
-
+        args = options[:args] || []
         unless block_given?
-          send(enumerator) { |callback| callback.call(object) }
+          send(enumerator) { |callback| callback.call(object, *args) }
         else
           send(enumerator) do |callback|
-            result = callback.call(object)
+            result = callback.call(object, *args)
             break result if terminator.call(result, object)
           end
         end
@@ -167,17 +167,20 @@ module ActiveSupport
 
       private
         def evaluate_method(method, *args, &block)
+          object = args.shift
           case method
             when Symbol
-              object = args.shift
+              args = adjust_for_arity(args, object.method(method).arity)
               object.send(method, *args, &block)
             when String
-              eval(method, args.first.instance_eval { binding })
+              eval(method, object.instance_eval { binding })
             when Proc, Method
-              method.call(*args, &block)
+              args = adjust_for_arity(args, method.arity-1)
+              method.call(object, *args, &block)
             else
               if method.respond_to?(kind)
-                method.send(kind, *args, &block)
+                args = adjust_for_arity(args, method.method(kind).arity-1)
+                method.send(kind, object, *args, &block)
               else
                 raise ArgumentError,
                   "Callbacks must be a symbol denoting the method to call, a string to be evaluated, " +
@@ -185,7 +188,14 @@ module ActiveSupport
               end
             end
         end
-
+        
+        def adjust_for_arity(args, arity)
+          if arity < 0
+            args
+          else
+            args[0...arity]
+          end
+        end
         def should_run_callback?(*args)
           if options[:if]
             evaluate_method(options[:if], *args)
@@ -225,6 +235,14 @@ module ActiveSupport
     end
 
     # Runs all the callbacks defined for the given options.
+    #
+    # Expected options are:
+    #   * +:args+ - Pass the provided arguments array to each callback method or proc.
+    #     Arguments that exeed the arity of the callback method/proc will be silently
+    #     discarded rather then generate a warning. String callbacks cannot receieve
+    #     arguments. (default: +[]+ i.e. no arguments will be passed)
+    #   * +:enumerator* - Provide an alternative enumeration method to execute the
+    #     callback chain. E.g. +:reverse_each+ (default: +:each+)
     #
     # If a block is given it will be called after each callback receiving as arguments:
     #
