@@ -4,16 +4,16 @@ module ActionController
       attr_accessor :separators, :optional_separators
 
       def initialize
-        self.separators = Routing::SEPARATORS
-        self.optional_separators = %w( / )
+        @separators = Routing::SEPARATORS
+        @optional_separators = %w( / )
       end
 
       def separator_pattern(inverted = false)
-        "[#{'^' if inverted}#{Regexp.escape(separators.join)}]"
+        "[#{'^' if inverted}#{Regexp.escape(@separators.join)}]"
       end
 
       def interval_regexp
-        Regexp.new "(.*?)(#{separators.source}|$)"
+        Regexp.new "(.*?)(#{@separators.source}|$)"
       end
 
       def multiline_regexp?(expression)
@@ -54,7 +54,7 @@ module ActionController
           when /\A(#{separator_pattern(:inverted)}+)/ then StaticSegment.new($1)
           when Regexp.new(separator_pattern) then
             returning segment = DividerSegment.new($&) do
-              segment.is_optional = (optional_separators.include? $&)
+              segment.is_optional = (@optional_separators.include? $&)
             end
         end
         [segment, $~.post_match]
