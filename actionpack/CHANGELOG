@@ -1,5 +1,9 @@
 *Edge*
 
+* Set config.action_view.warn_cache_misses = true to receive a warning if you perform an action that results in an expensive disk operation that could be cached [Josh Peek]
+
+* Refactor template preloading. New abstractions include Renderable mixins and a refactored Template class [Josh Peek]
+
 * Changed ActionView::TemplateHandler#render API method signature to render(template, local_assigns = {}) [Josh Peek]
 
 * Changed PrototypeHelper#submit_to_remote to PrototypeHelper#button_to_remote to stay consistent with link_to_remote (submit_to_remote still works as an alias) #8994 [clemens]
