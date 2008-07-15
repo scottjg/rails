@@ -7,15 +7,17 @@ module ActionView
       @@mutex = Mutex.new
     end
 
-    # NOTE: Exception to earlier notice. Ensure this is called before freeze
-    def handler
-      @handler ||= Template.handler_class_for_extension(extension)
-    end
+    include ActiveSupport::Memoizable
 
-    # NOTE: Exception to earlier notice. Ensure this is called before freeze
-    def compiled_source
-      @compiled_source ||= handler.new(nil).compile(self) if handler.compilable?
+    def handler
+      Template.handler_class_for_extension(extension)
     end
+    memoize :handler
+
+    def compiled_source
+      handler.new(nil).compile(self) if handler.compilable?
+    end
+    memoize :compiled_source
 
     def render(view, local_assigns = {})
       view._first_render ||= self
