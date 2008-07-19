@@ -40,7 +40,16 @@ $ sudo aptitude install postfix
   $ sudo gem install geminstaller
   $ sudo geminstaller --config /home/ci/.cruise/projects/rails/geminstaller.yml 
 
+* Install build-essential package (to build native gems)
+$ sudo aptitude install build-essential
+
 * Set up mysql
-$ sudo aptitude install mysql-server-5.0
+$ sudo aptitude install mysql-server-5.0 libmysqlclient-dev
 # no password for mysql root user
 # add mysql gem to geminstaller.yml
+# run 'sudo geminstaller' from dir containing geminstaller.yml
+
+* Create ActiveRecord test databases
+$ mysql -uroot -e 'grant all on *.* to rails@localhost;'
+$ mysql -urails -e 'create database activerecord_unittest;'
+$ mysql -urails -e 'create database activerecord_unittest2;'
