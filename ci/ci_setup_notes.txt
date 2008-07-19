@@ -38,5 +38,5 @@ $ sudo aptitude install postfix
   $ ln -s /home/ci/workspace/rails_thewoolleyman/ci/rails_build.rb /home/ci/.cruise/projects/rails/rails_build.rb
   $ ln -s /home/ci/workspace/rails_thewoolleyman/ci/geminstaller.yml /home/ci/.cruise/projects/rails/geminstaller.yml
   $ sudo gem install geminstaller
-  $ sudo geminstaller /home/ci/.cruise/projects/rails/geminstaller.yml 
+  $ sudo geminstaller --config /home/ci/.cruise/projects/rails/geminstaller.yml 
 
