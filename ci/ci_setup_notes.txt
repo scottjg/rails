@@ -54,5 +54,5 @@ $ mysql -uroot -e 'grant all on *.* to rails@localhost;'
 $ mysql -urails -e 'create database activerecord_unittest;'
 $ mysql -urails -e 'create database activerecord_unittest2;'
 
-* setup sqlite3
-$ sudo aptitude install sqlite3
+* setup sqlite
+$ sudo aptitude install sqlite sqlite3
