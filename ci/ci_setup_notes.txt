@@ -1,0 +1,31 @@
+# Notes on Rails Continuous Integration Server Setup Notes
+
+* Set up ci user:
+# log in as root
+$ adduser ci
+enter user info and password
+$ visudo
+# give ci user same sudo rights as root
+
+* Disable root login:
+# log in as ci
+$ sudo vi /etc/shadow
+# overwrite and disable encrypted root password to disable root login:
+root:*:14001:0:99999:7:::
+
+* Change Hostname:
+$ sudo vi /etc/hostname
+change to 'ci'
+$ sudo vi /etc/hosts
+replace old hostname with 'ci'
+# reboot to use new hostname (and test reboot)
+$ sudo shutdown -r now
+
+* Update aptitude
+$ sudo aptitude update
+
+* Make download dir
+$ mkdir ~/download
+
+* Use cinabox to perform rest of setup
+
