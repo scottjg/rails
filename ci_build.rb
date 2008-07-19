@@ -2,7 +2,6 @@
 require 'fileutils'
 
 include FileUtils
-cd "#{File.dirname(__FILE__)}/work"
 
 puts "[CruiseControl] Rails build"
 
