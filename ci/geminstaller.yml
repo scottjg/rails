@@ -1,4 +1,6 @@
 ---
 gems:
 - name: rake
-  version: '= 0.8.1'
+  version: '>= 0.8.1'
+- name: mysql
+  version: '>= 2.7.3'

@@ -40,3 +40,7 @@ $ sudo aptitude install postfix
   $ sudo gem install geminstaller
   $ sudo geminstaller --config /home/ci/.cruise/projects/rails/geminstaller.yml 
 
+* Set up mysql
+$ sudo aptitude install mysql-server-5.0
+# no password for mysql root user
+# add mysql gem to geminstaller.yml
