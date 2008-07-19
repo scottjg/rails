@@ -24,8 +24,19 @@ $ sudo shutdown -r now
 * Update aptitude
 $ sudo aptitude update
 
-* Make download dir
-$ mkdir ~/download
+* Install postfix
+$ sudo aptitude install postfix
+# pick 'Internet Site'
+# type hostname
 
-* Use cinabox to perform rest of setup
+* Use cinabox to perform rest of ruby/ccrb setup
+
+* (temp until ci files in thewoolleyman branch are checked into rails repo):
+  * Check out ci branch w/git to ~/workspace/rails_thewoolleyman: http://github.com/thewoolleyman/rails/tree/ci
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/site_config.rb to /home/ci/.cruise/site_config.rb
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/cruise_config.rb to /home/ci/.cruise/projects/rails/cruise_config.rb
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/rails_build.rb to /home/ci/.cruise/projects/rails/rails_build.rb
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/geminstaller.yml to /home/ci/.cruise/projects/rails/geminstaller.yml
+  $ sudo gem install geminstaller
+  $ sudo geminstaller /home/ci/.cruise/projects/rails/geminstaller.yml 
 
