@@ -29,7 +29,8 @@ $ sudo aptitude install postfix
 # pick 'Internet Site'
 # type hostname
 
-* Use cinabox to perform rest of ruby/ccrb setup
+* Use cinabox to perform rest of ruby/ccrb setup: 
+* http://github.com/thewoolleyman/cinabox/tree/master/README.txt
 
 * Install/setup nginx
 $ sudo aptitude install nginx
