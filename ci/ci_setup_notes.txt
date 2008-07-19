@@ -57,3 +57,6 @@ $ mysql -urails -e 'create database activerecord_unittest2;'
 * setup sqlite
 $ sudo aptitude install sqlite sqlite3 libsqlite-dev libsqlite3-dev
 $ add sqlite-ruby/sqlite3-ruby gems to geminstaller, run it
+
+* setup postgres
+$ sudo aptitude install postgresql postgresql-server-dev-8.3
