@@ -22,8 +22,6 @@ cd 'activerecord' do
   build_results[:activerecord_mysql] = system 'rake test_mysql'
 end
 
-# This section is commented out because Postgres started segfaulting on the Mac Mini.
-# Uncomment after moving the site
 cd 'activerecord' do
   puts
   puts "[CruiseControl] Building ActiveRecord with PostgreSQL"
@@ -31,19 +29,25 @@ cd 'activerecord' do
   build_results[:activerecord_postgresql8] = system 'rake test_postgresql'
 end
 
-# Commented out until I install SQLite 2 on the new build box
-#cd 'activerecord' do
-#  puts
-#  puts "[CruiseControl] Building ActiveRecord with SQLite 2"
-#  puts
-#  build_results[:activerecord_sqlite] = system 'rake test_sqlite'
-#end
+cd 'activerecord' do
+ puts
+ puts "[CruiseControl] Building ActiveRecord with SQLite 2"
+ puts
+ build_results[:activerecord_sqlite] = system 'rake test_sqlite'
+end
 
 cd 'activerecord' do
   puts
   puts "[CruiseControl] Building ActiveRecord with SQLite 3"
   puts
   build_results[:activerecord_sqlite3] = system 'rake test_sqlite3'
+end
+
+cd 'activemodel' do
+  puts
+  puts "[CruiseControl] Building ActiveModel"
+  puts
+  build_results[:activemodel] = system 'rake'
 end
 
 cd 'activeresource' do
@@ -67,15 +71,24 @@ cd 'actionmailer' do
   build_results[:actionmailer] = system 'rake'
 end
 
+cd 'railties' do
+  puts
+  puts "[CruiseControl] Building RailTies"
+  puts
+  build_results[:railties] = system 'rake'
+end
+
 
 puts
 puts "[CruiseControl] Build environment:"
+puts "[CruiseControl]   #{`cat /etc/issue`}"
 puts "[CruiseControl]   #{`uname -a`}"
 puts "[CruiseControl]   #{`ruby -v`}"
 puts "[CruiseControl]   #{`/usr/bin/mysql --version`}"
 puts "[CruiseControl]   #{`/usr/bin/postgres --version`}"
+puts "[CruiseControl]   SQLite3: #{`/usr/bin/sqlite2 -version`}"
 puts "[CruiseControl]   SQLite3: #{`/usr/bin/sqlite3 -version`}"
-puts "[CruiseControl]   Local gems: #{`gem list --local`}"
+puts "[CruiseControl]   Local gems: #{`gem list`}"
 puts
 
 failures = build_results.select { |key, value| value == false }
