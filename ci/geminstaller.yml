@@ -1,0 +1,4 @@
+---
+gems:
+- name: rake
+  version: '= 0.8.1'
