@@ -1,0 +1,3 @@
+* Install nginx, proxy ccrb to port 80
+* Install databases
+* Anything else to get build green
