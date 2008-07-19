@@ -33,10 +33,10 @@ $ sudo aptitude install postfix
 
 * (temp until ci files in thewoolleyman branch are checked into rails repo):
   * Check out ci branch w/git to ~/workspace/rails_thewoolleyman: http://github.com/thewoolleyman/rails/tree/ci
-  $ ln -s /home/ci/workspace/rails_thewoolleyman/site_config.rb /home/ci/.cruise/site_config.rb
-  $ ln -s /home/ci/workspace/rails_thewoolleyman/cruise_config.rb /home/ci/.cruise/projects/rails/cruise_config.rb
-  $ ln -s /home/ci/workspace/rails_thewoolleyman/rails_build.rb /home/ci/.cruise/projects/rails/rails_build.rb
-  $ ln -s /home/ci/workspace/rails_thewoolleyman/geminstaller.yml /home/ci/.cruise/projects/rails/geminstaller.yml
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/ci/site_config.rb /home/ci/.cruise/site_config.rb
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/ci/cruise_config.rb /home/ci/.cruise/projects/rails/cruise_config.rb
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/ci/rails_build.rb /home/ci/.cruise/projects/rails/rails_build.rb
+  $ ln -s /home/ci/workspace/rails_thewoolleyman/geminstaller.yml /home/ci/.cruise/projects/rails/ci/geminstaller.yml
   $ sudo gem install geminstaller
   $ sudo geminstaller /home/ci/.cruise/projects/rails/geminstaller.yml 
 
