@@ -45,7 +45,7 @@ $ sudo vi /etc/nginx/sites-available/default
 $ sudo /etc/init.d/nginx start
 
 * Add project to cruise (It will still fail until everything is set up)
-$ cd /home/ci/ccrb
+$ cd ~/ccrb
 $ ./cruise add rails -s git -r git://github.com/rails/rails.git  # or the URI of your branch
 
 * Set up cruise site config file:
@@ -85,7 +85,7 @@ $ sudo su - postgres -c 'createuser -s ci'
 
 * Install and run GemInstaller to get all dependency gems
 $ sudo gem install geminstaller
-$ cd /home/ci/.cruise/projects/rails/work
+$ cd ~/.cruise/projects/rails/work
 $ sudo geminstaller # turn up debugging with these options: --geminstaller-output=all --rubygems-output=all
 
 * Create ActiveRecord test databases for mysql
@@ -99,4 +99,4 @@ $ rake postgresql:build_databases
 
 * Reboot and make sure everything is working
 $ sudo shutdown -r now
-$ http://ci.rubyonrails.org
+$ http://ci.yourdomain.com
