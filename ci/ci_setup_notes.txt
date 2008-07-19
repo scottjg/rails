@@ -49,7 +49,10 @@ $ sudo aptitude install mysql-server-5.0 libmysqlclient-dev
 # add mysql gem to geminstaller.yml
 # run 'sudo geminstaller' from dir containing geminstaller.yml
 
-* Create ActiveRecord test databases
+* Create ActiveRecord test databases for mysql
 $ mysql -uroot -e 'grant all on *.* to rails@localhost;'
 $ mysql -urails -e 'create database activerecord_unittest;'
 $ mysql -urails -e 'create database activerecord_unittest2;'
+
+* setup sqlite3
+$ sudo aptitude install sqlite3
