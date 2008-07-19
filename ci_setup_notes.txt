@@ -64,7 +64,7 @@ BuildReaper.number_of_builds_to_keep = 100
 * Set up cruise project config file
 $ vi ~/.cruise/projects/rails/cruise_config.rb:
 Project.configure do |project|
- project.build_command = 'ruby rails_ci_build.rb'
+ project.build_command = 'ruby ci_build.rb'
  project.email_notifier.emails = ['recipient@yourdomain.com']
  project.email_notifier.from = 'sender@yourdomain.com'
 end
