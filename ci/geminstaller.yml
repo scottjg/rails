@@ -1,8 +1,12 @@
 ---
 gems:
-- name: rake
-  version: '>= 0.8.1'
-- name: mysql
-  version: '>= 2.7'
 - name: mocha
-  version: '>= 0.9.0'
+  version: >= 0.9.0
+- name: mysql
+  version: >= 2.7
+- name: rake
+  version: >= 0.8.1
+- name: sqlite
+  version: sqlite-ruby
+- name: sqlite3
+  version: sqlite3-ruby
