@@ -6,7 +6,7 @@ gems:
   version: >= 2.7
 - name: rake
   version: >= 0.8.1
-- name: sqlite
+- name: sqlite-ruby
   version: 2.2.3
-- name: sqlite3
+- name: sqlite3-ruby
   version: 1.2.2
