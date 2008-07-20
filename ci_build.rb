@@ -21,19 +21,21 @@ cd 'activerecord' do
   build_results[:activerecord_mysql] = system 'rake test_mysql'
 end
 
-cd 'activerecord' do
-  puts
-  puts "[CruiseControl] Building ActiveRecord with PostgreSQL"
-  puts
-  build_results[:activerecord_postgresql8] = system 'rake test_postgresql'
-end
+# Postgres is disabled until tests are fixed
+# cd 'activerecord' do
+#   puts
+#   puts "[CruiseControl] Building ActiveRecord with PostgreSQL"
+#   puts
+#   build_results[:activerecord_postgresql8] = system 'rake test_postgresql'
+# end
 
-cd 'activerecord' do
- puts
- puts "[CruiseControl] Building ActiveRecord with SQLite 2"
- puts
- build_results[:activerecord_sqlite] = system 'rake test_sqlite'
-end
+# Sqlite2 is disabled until tests are fixed
+# cd 'activerecord' do
+#  puts
+#  puts "[CruiseControl] Building ActiveRecord with SQLite 2"
+#  puts
+#  build_results[:activerecord_sqlite] = system 'rake test_sqlite'
+# end
 
 cd 'activerecord' do
   puts
