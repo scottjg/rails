@@ -168,6 +168,9 @@ module Rails
       # Observers are loaded after plugins in case Observers or observed models are modified by plugins.
       load_observers
 
+      # load application classes
+      load_application_classes
+
       # Flag initialized
       Rails.initialized = true
     end
@@ -327,6 +330,17 @@ Run `rake gems:install` to install the missing gems.
     def load_observers
       if gems_dependencies_loaded && configuration.frameworks.include?(:active_record)
         ActiveRecord::Base.instantiate_observers
+      end
+    end
+
+    # Eager load application classes
+    def load_application_classes
+      if configuration.cache_classes
+        configuration.eager_load_paths.each do |load_path|
+          Dir.glob("#{load_path}/*.rb").each do |file|
+            require_dependency file
+          end
+        end
       end
     end
 
@@ -567,6 +581,11 @@ Run `rake gems:install` to install the missing gems.
     # All elements of this array must also be in +load_paths+.
     attr_accessor :load_once_paths
 
+    # An array of paths from which Rails will eager load on boot if cache
+    # classes is enabled. All elements of this array must also be in
+    # +load_paths+.
+    attr_accessor :eager_load_paths
+
     # The log level to use for the default Rails logger. In production mode,
     # this defaults to <tt>:info</tt>. In development mode, it defaults to
     # <tt>:debug</tt>.
@@ -675,6 +694,7 @@ Run `rake gems:install` to install the missing gems.
       self.frameworks                   = default_frameworks
       self.load_paths                   = default_load_paths
       self.load_once_paths              = default_load_once_paths
+      self.eager_load_paths             = default_eager_load_paths
       self.log_path                     = default_log_path
       self.log_level                    = default_log_level
       self.view_path                    = default_view_path
@@ -813,6 +833,14 @@ Run `rake gems:install` to install the missing gems.
       # Doesn't matter since plugins aren't in load_paths yet.
       def default_load_once_paths
         []
+      end
+
+      def default_eager_load_paths
+        %w(
+          app/models
+          app/controllers
+          app/helpers
+        ).map { |dir| "#{root_path}/#{dir}" }.select { |dir| File.directory?(dir) }
       end
 
       def default_log_path
