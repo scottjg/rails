@@ -45,7 +45,9 @@ task :test do
       Rake::Task[task].invoke
       nil
     rescue => e
+      puts "#{e} #{e.backtrace}"
       task
+      raise e
     end
   end.compact
   abort "Errors running #{errors.to_sentence}!" if errors.any?
