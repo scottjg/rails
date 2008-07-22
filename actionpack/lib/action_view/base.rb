@@ -172,13 +172,15 @@ module ActionView #:nodoc:
     end
 
     def self.cache_template_loading=(*args)
-      ActiveSupport::Deprecation.warn("config.action_view.cache_template_loading option has been deprecated and has no affect. " <<
-                                       "Please remove it from your config files.", caller)
+      ActiveSupport::Deprecation.warn(
+        "config.action_view.cache_template_loading option has been deprecated" +
+        "and has no effect. Please remove it from your config files.", caller)
     end
 
     def self.cache_template_extensions=(*args)
-      ActiveSupport::Deprecation.warn("config.action_view.cache_template_extensions option has been deprecated and has no effect. " <<
-                                       "Please remove it from your config files.", caller)
+      ActiveSupport::Deprecation.warn(
+        "config.action_view.cache_template_extensions option has been" +
+        "deprecated and has no effect. Please remove it from your config files.", caller)
     end
 
     # Specify whether RJS responses should be wrapped in a try/catch block
@@ -379,8 +381,14 @@ module ActionView #:nodoc:
         @assigns.each { |key, value| instance_variable_set("@#{key}", value) }
       end
 
-      def execute(template, local_assigns = {})
-        send(template.method(local_assigns), local_assigns) do |*names|
+      def set_controller_content_type(content_type)
+        if controller.respond_to?(:response)
+          controller.response.content_type ||= content_type
+        end
+      end
+
+      def execute(method, local_assigns = {})
+        send(method, local_assigns) do |*names|
           instance_variable_get "@content_for_#{names.first || 'layout'}"
         end
       end
