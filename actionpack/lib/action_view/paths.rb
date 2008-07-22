@@ -58,13 +58,13 @@ module ActionView #:nodoc:
       end
 
       private
-        def templates_in_path
-          (Dir.glob("#{@path}/**/*/**") | Dir.glob("#{@path}/**")).each do |file|
-            unless File.directory?(file)
-              yield Template.new(file.split("#{self}/").last, self)
-            end
+      def templates_in_path
+        (Dir.glob("#{@path}/**/*/**") | Dir.glob("#{@path}/**")).each do |file|
+          unless File.directory?(file)
+            yield Template.new(file.split("#{self}/").last, self)
           end
         end
+      end
     end
 
     def initialize(*args)
@@ -88,6 +88,10 @@ module ActionView #:nodoc:
       delete_paths!(objs)
       super(*objs.map { |obj| self.class.type_cast(obj) })
     end
+    
+    def insert(index, obj)
+      super(index, self.class.type_cast(obj))
+    end
 
     def [](template_path)
       each do |path|
@@ -99,8 +103,8 @@ module ActionView #:nodoc:
     end
 
     private
-      def delete_paths!(paths)
-        paths.each { |p1| delete_if { |p2| p1.to_s == p2.to_s } }
-      end
+    def delete_paths!(paths)
+      paths.each { |p1| delete_if { |p2| p1.to_s == p2.to_s } }
+    end
   end
 end
