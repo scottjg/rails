@@ -33,6 +33,11 @@ require 'openssl'       # to generate the HMAC message digest
 #   integrity defaults to 'SHA1' but may be any digest provided by OpenSSL,
 #   such as 'MD5', 'RIPEMD160', 'SHA256', etc.
 #
+# * <tt>:stable_session_id</tt>: The Cookie Session Store doesn't maintain any server side 
+#   state by default.A unique session identifier is spawned per request, which may not be 
+#   desireable for some applications.Set :stable_session_id to true to maintain a stable     
+#   session identifier within the cookie.  
+#
 # To generate a secret key for an existing application, run
 # "rake secret" and set the key in config/environment.rb.
 #
@@ -50,6 +55,7 @@ class CGI::Session::CookieStore
 
   # Called from CGI::Session only.
   def initialize(session, options = {})
+    options.reverse_merge!( 'stable_session_id' => false )
     # The session_key option is required.
     if options['session_key'].blank?
       raise ArgumentError, 'A session_key is required to write a cookie containing the session data. Use config.action_controller.session = { :session_key => "_myapp_session", :secret => "some secret phrase" } in config/environment.rb'
@@ -59,7 +65,7 @@ class CGI::Session::CookieStore
     ensure_secret_secure(options['secret'])
 
     # Keep the session and its secret on hand so we can read and write cookies.
-    @session, @secret = session, options['secret']
+    @session, @secret, @stable_session_id = session, options['secret'], options['stable_session_id']
 
     # Message digest defaults to SHA1.
     @digest = options['digest'] || 'SHA1'
@@ -129,6 +135,7 @@ class CGI::Session::CookieStore
   private
     # Marshal a session hash into safe cookie data. Include an integrity hash.
     def marshal(session)
+      session = stable_session_id!( session )
       data = ActiveSupport::Base64.encode64(Marshal.dump(session)).chop
       "#{data}--#{generate_digest(data)}"
     end
@@ -144,8 +151,23 @@ class CGI::Session::CookieStore
           raise TamperedWithCookie
         end
 
-        Marshal.load(ActiveSupport::Base64.decode64(data))
+        returning( stable_session_id!( Marshal.load(ActiveSupport::Base64.decode64(data)) ) ) do |data|
+          @session.instance_variable_set(:@session_id, data[:session_id]) if @stable_session_id 
+        end
       end
+    end
+
+    def stable_session_id!( data  )
+      return data unless @stable_session_id
+      ( data ||= {} ).merge( inject_stable_session_id!( data ) )
+    end
+
+    def inject_stable_session_id!( data )
+      if data.respond_to?(:key?) && !data.key?( :session_id )
+        { :session_id => CGI::Session.generate_unique_id }
+      else
+        {}
+      end  
     end
 
     # Read the session data cookie.

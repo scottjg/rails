@@ -142,12 +142,13 @@ module Rails
       initialize_temporary_session_directory
       initialize_time_zone
       initialize_framework_settings
-      initialize_framework_views
 
       add_support_load_paths
 
       load_gems
       load_plugins
+
+      initialize_framework_views
 
       # pick up any gems that plugins depend on
       add_gem_load_paths
