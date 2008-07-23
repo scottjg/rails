@@ -178,6 +178,15 @@ class CookieStoreTest < Test::Unit::TestCase
     end
   end
 
+  def test_should_inject_a_radom_session_id_within_the_cookie
+    set_cookie! cookie_value(:typical)
+    new_session( 'stable_session_id' => true ) do |session|
+      assert_not_nil session['user_id']
+      assert_not_nil session[:session_id]      
+      assert_not_equal session.session_id, cookie_value(:typical)
+    end
+  end
+
   private
     def assert_no_cookies(session)
       assert_nil session.cgi.output_cookies, session.cgi.output_cookies.inspect
@@ -209,16 +218,17 @@ class CookieStoreTest < Test::Unit::TestCase
     end
 
     def new_session(options = {})
+      #options.reverse_merge!( 'stable_session_id' => true )
       with_cgi do |cgi|
         assert_nil cgi.output_hidden, "Output hidden params should be empty: #{cgi.output_hidden.inspect}"
         assert_nil cgi.output_cookies, "Output cookies should be empty: #{cgi.output_cookies.inspect}"
 
         @options = self.class.default_session_options.merge(options)
-        session = CGI::Session.new(cgi, @options)
 
+        session = CGI::Session.new(cgi, @options)
         assert_nil cgi.output_hidden, "Output hidden params should be empty: #{cgi.output_hidden.inspect}"
         assert_nil cgi.output_cookies, "Output cookies should be empty: #{cgi.output_cookies.inspect}"
-
+        
         yield session if block_given?
         session
       end
