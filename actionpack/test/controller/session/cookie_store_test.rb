@@ -178,7 +178,7 @@ class CookieStoreTest < Test::Unit::TestCase
     end
   end
 
-  def test_should_inject_a_radom_session_id_within_the_cookie
+  def test_should_be_able_to_inject_a_stable_session_identifier_if_required
     set_cookie! cookie_value(:typical)
     new_session( 'stable_session_id' => true ) do |session|
       assert_not_nil session['user_id']
