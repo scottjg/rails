@@ -13,6 +13,12 @@ CREATE TABLE 'replies' (
   'developer_id' integer
 );
 
+CREATE TABLE 'test_entries' (
+  'id' INTEGER PRIMARY KEY NOT NULL,
+  'name' text,
+  'data_length' integer
+);
+
 CREATE TABLE 'topics' (
   'id' INTEGER PRIMARY KEY NOT NULL, 
   'title' varchar(255), 
