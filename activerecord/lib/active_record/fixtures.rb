@@ -894,6 +894,8 @@ module Test #:nodoc:
 
               instances.size == 1 ? instances.first : instances
             end
+
+	    protected table_name
           end
         end
 
