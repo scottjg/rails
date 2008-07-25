@@ -207,6 +207,68 @@ EOM
     end
 
 
+    # Abstraction for getting and working with inline http authentication.
+    class InlineHttpAuth
+      # List of environment variables
+      # that contain InlineHttpAuth information.
+      # Order with higest precedense first.
+      AUTH_KEYS = ['HTTP_AUTHORIZATION',
+                   'X-HTTP_AUTHORIZATION',
+                   'REDIRECT_X_HTTP_AUTHORIZATION',
+                   'REDIRECT_REDIRECT_X_HTTP_AUTHORIZATION']
+      AUTH_SYNTAX = /^(\w+)\s+(.+)$/
+      AUTH_ALGORITHMS = ['Basic','Digest']
+      attr_reader :algorithm, :token, :username, :password
+      def initialize(algorithm,token)
+        puts("algorithm=#{algorithm},token=#{token}")
+        @algorithm = algorithm
+        @token = token
+        unless AUTH_ALGORITHMS.member?(@algorithm) then
+          raise "Unsupported inline HTTP method #{@algorithm}"
+        end 
+        case @algorithm
+        when 'Basic' then  
+          if Base64.decode64(@token) =~ /^(.*?):(.*)$/ then
+            @username = $1
+            @password = $2
+          end
+        end 
+      end
+      # Return a list with [username,password]
+      def credentials
+        if @username or @password then
+          [@username,@password]
+        end
+      end
+    end
+
+    # Extract inline http authentication information.
+    #
+    def inline_auth
+      # An auth variable is on the form
+      #   <Method> <Token>
+      # Where method is a supported inline HTTP method, 
+      # and the token is interpreted according to the method.
+      #
+      # Examples:
+      # Basic http authentication returns:
+      #   Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+      # Where the token is a base64 encoded username:password.
+      #
+      auth_data = InlineHttpAuth::AUTH_KEYS.inject(nil) do |found_auth,auth_key|
+        if found_auth then
+          found_auth
+        else
+          if self.env[auth_key] =~ InlineHttpAuth::AUTH_SYNTAX then
+            InlineHttpAuth.new($1,$2)
+          else
+            raise "Unsupported inline http auth: #{self.env[auth_key]}"
+          end
+        end
+      end
+      auth_data
+    end 
+
     # Returns the complete URL used for this request
     def url
       protocol + host_with_port + request_uri
