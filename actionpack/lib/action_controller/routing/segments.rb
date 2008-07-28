@@ -4,6 +4,7 @@ module ActionController
       RESERVED_PCHAR = ':@&=+$,;'
       UNSAFE_PCHAR = Regexp.new("[^#{URI::REGEXP::PATTERN::UNRESERVED}#{RESERVED_PCHAR}]", false, 'N').freeze
 
+      # TODO: Convert :is_optional accessor to read only
       attr_accessor :is_optional
       alias_method :optional?, :is_optional
 
@@ -63,25 +64,27 @@ module ActionController
     end
 
     class StaticSegment < Segment #:nodoc:
-      attr_accessor :value, :raw
+      attr_reader :value, :raw
       alias_method :raw?, :raw
 
-      def initialize(value = nil)
+      def initialize(value = nil, options = {})
         super()
         @value = value
+        @raw = options[:raw] if options.key?(:raw)
+        @is_optional = options[:optional] if options.key?(:optional)
       end
 
       def interpolation_chunk
-        @raw ? @value : super
+        raw? ? value : super
       end
 
       def regexp_chunk
-        chunk = Regexp.escape(@value)
+        chunk = Regexp.escape(value)
         optional? ? Regexp.optionalize(chunk) : chunk
       end
 
       def build_pattern(pattern)
-        escaped = Regexp.escape(@value)
+        escaped = Regexp.escape(value)
         if optional? && ! pattern.empty?
           "(?:#{Regexp.optionalize escaped}\\Z|#{escaped}#{Regexp.unoptionalize pattern})"
         elsif optional?
@@ -92,15 +95,13 @@ module ActionController
       end
 
       def to_s
-        @value
+        value
       end
     end
 
     class DividerSegment < StaticSegment #:nodoc:
-      def initialize(value = nil)
-        super(value)
-        @raw = true
-        @is_optional = true
+      def initialize(value = nil, options = {})
+        super(value, {:raw => true, :optional => true}.merge(options))
       end
 
       def optionality_implied?
@@ -109,40 +110,46 @@ module ActionController
     end
 
     class DynamicSegment < Segment #:nodoc:
-      attr_accessor :key, :default, :regexp
+      attr_reader :key
+
+      # TODO: Convert these accessors to read only
+      attr_accessor :default, :regexp
 
       def initialize(key = nil, options = {})
         super()
         @key = key
-        @default = options[:default] if options.key? :default
+        @default = options[:default] if options.key?(:default)
+        @regexp = options[:regexp] if options.key?(:regexp)
         @is_optional = true if options[:optional] || options.key?(:default)
       end
 
       def to_s
-        ":#{@key}"
+        ":#{key}"
       end
 
       # The local variable name that the value of this segment will be extracted to.
       def local_name
-        "#{@key}_value"
+        "#{key}_value"
       end
 
       def extract_value
-        "#{local_name} = hash[:#{@key}] && hash[:#{@key}].to_param #{"|| #{@default.inspect}" if @default}"
+        "#{local_name} = hash[:#{key}] && hash[:#{key}].to_param #{"|| #{default.inspect}" if default}"
       end
+
       def value_check
-        if @default # Then we know it won't be nil
-          "#{value_regexp.inspect} =~ #{local_name}" if @regexp
+        if default # Then we know it won't be nil
+          "#{value_regexp.inspect} =~ #{local_name}" if regexp
         elsif optional?
           # If we have a regexp check that the value is not given, or that it matches.
           # If we have no regexp, return nil since we do not require a condition.
-          "#{local_name}.nil? || #{value_regexp.inspect} =~ #{local_name}" if @regexp
+          "#{local_name}.nil? || #{value_regexp.inspect} =~ #{local_name}" if regexp
         else # Then it must be present, and if we have a regexp, it must match too.
-          "#{local_name} #{"&& #{value_regexp.inspect} =~ #{local_name}" if @regexp}"
+          "#{local_name} #{"&& #{value_regexp.inspect} =~ #{local_name}" if regexp}"
         end
       end
+
       def expiry_statement
-        "expired, hash = true, options if !expired && expire_on[:#{@key}]"
+        "expired, hash = true, options if !expired && expire_on[:#{key}]"
       end
 
       def extraction_code
@@ -161,7 +168,7 @@ module ActionController
           # If we should not appear in the url, just write the code for the prior
           # segments. This occurs if our value is the default value, or, if we are
           # optional, if we have nil as our value.
-          "if #{local_name} == #{@default.inspect}\n" +
+          "if #{local_name} == #{default.inspect}\n" +
             continue_string_structure(prior_segments) +
           "\nelse\n" + # Otherwise, write the code up to here
             "#{interpolation_statement(prior_segments)}\nend"
@@ -171,15 +178,15 @@ module ActionController
       end
 
       def value_regexp
-        Regexp.new "\\A#{@regexp.to_s}\\Z" if @regexp
+        Regexp.new "\\A#{regexp.to_s}\\Z" if regexp
       end
 
       def regexp_chunk
-        if @regexp 
+        if regexp
           if regexp_has_modifiers?
-            "(#{@regexp.to_s})"
+            "(#{regexp.to_s})"
           else
-            "(#{@regexp.source})"
+            "(#{regexp.source})"
           end
         else
           "([^#{Routing::SEPARATORS.join}]+)"
@@ -196,31 +203,30 @@ module ActionController
       def match_extraction(next_capture)
         # All non code-related keys (such as :id, :slug) are URI-unescaped as
         # path parameters.
-        default_value = @default ? @default.inspect : nil
+        default_value = default ? default.inspect : nil
         %[
           value = if (m = match[#{next_capture}])
             URI.unescape(m)
           else
             #{default_value}
           end
-          params[:#{@key}] = value if value
+          params[:#{key}] = value if value
         ]
       end
 
       def optionality_implied?
-        [:action, :id].include? @key
+        [:action, :id].include? key
       end
 
       def regexp_has_modifiers?
         regexp.options & (Regexp::IGNORECASE | Regexp::EXTENDED) != 0
       end
-
     end
 
     class ControllerSegment < DynamicSegment #:nodoc:
       def regexp_chunk
         possible_names = Routing.possible_controllers.collect { |name| Regexp.escape name }
-        "(?i-:(#{(@regexp || Regexp.union(*possible_names)).source}))"
+        "(?i-:(#{(regexp || Regexp.union(*possible_names)).source}))"
       end
 
       # Don't URI.escape the controller name since it may contain slashes.
@@ -231,31 +237,29 @@ module ActionController
       # Make sure controller names like Admin/Content are correctly normalized to
       # admin/content
       def extract_value
-        "#{local_name} = (hash[:#{@key}] #{"|| #{@default.inspect}" if @default}).downcase"
+        "#{local_name} = (hash[:#{key}] #{"|| #{default.inspect}" if default}).downcase"
       end
 
       def match_extraction(next_capture)
-        if @default
-          "params[:#{@key}] = match[#{next_capture}] ? match[#{next_capture}].downcase : '#{@default}'"
+        if default
+          "params[:#{key}] = match[#{next_capture}] ? match[#{next_capture}].downcase : '#{default}'"
         else
-          "params[:#{@key}] = match[#{next_capture}].downcase if match[#{next_capture}]"
+          "params[:#{key}] = match[#{next_capture}].downcase if match[#{next_capture}]"
         end
       end
     end
 
     class PathSegment < DynamicSegment #:nodoc:
-      
-      def initialize( *args )
-        super( *args )
-        @default = ''
-      end
-      
       def interpolation_chunk(value_code = "#{local_name}")
         "\#{#{value_code}}"
       end
 
       def extract_value
-        "#{local_name} = hash[:#{@key}] && Array(hash[:#{@key}]).collect { |path_component| URI.escape(path_component.to_param, ActionController::Routing::Segment::UNSAFE_PCHAR) }.to_param #{"|| #{@default.inspect}" if @default}"
+        "#{local_name} = hash[:#{key}] && Array(hash[:#{key}]).collect { |path_component| URI.escape(path_component.to_param, ActionController::Routing::Segment::UNSAFE_PCHAR) }.to_param #{"|| #{default.inspect}" if default}"
+      end
+
+      def default
+        ''
       end
 
       def default=(path)
@@ -263,11 +267,11 @@ module ActionController
       end
 
       def match_extraction(next_capture)
-        "params[:#{@key}] = PathSegment::Result.new_escaped((match[#{next_capture}]#{" || " + @default.inspect if @default}).split('/'))#{" if match[" + next_capture + "]" if !@default}"
+        "params[:#{key}] = PathSegment::Result.new_escaped((match[#{next_capture}]#{" || " + default.inspect if default}).split('/'))#{" if match[" + next_capture + "]" if !default}"
       end
 
       def regexp_chunk
-        @regexp || "(.*)"
+        regexp || "(.*)"
       end
 
       def optionality_implied?

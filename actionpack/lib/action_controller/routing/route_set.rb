@@ -1,6 +1,6 @@
 module ActionController
   module Routing
-    class RouteSet #:nodoc: 
+    class RouteSet #:nodoc:
       # Mapper instances are used to build routes. The object passed to the draw
       # block in config/routes.rb is a Mapper instance.
       #
@@ -79,12 +79,12 @@ module ActionController
         end
 
         def add(name, route)
-          @routes[name.to_sym] = route
+          routes[name.to_sym] = route
           define_named_route_methods(name, route)
         end
 
         def get(name)
-          @routes[name.to_sym]
+          routes[name.to_sym]
         end
 
         alias []=   add
@@ -92,20 +92,20 @@ module ActionController
         alias clear clear!
 
         def each
-          @routes.each { |name, route| yield name, route }
+          routes.each { |name, route| yield name, route }
           self
         end
 
         def names
-          @routes.keys
+          routes.keys
         end
 
         def length
-          @routes.length
+          routes.length
         end
 
         def reset!
-          old_routes = @routes.dup
+          old_routes = routes.dup
           clear!
           old_routes.each do |name, route|
             add(name, route)
@@ -144,7 +144,7 @@ module ActionController
               end
               protected :#{selector}
             end_eval
-            @helpers << selector
+            helpers << selector
           end
 
           def define_url_helper(route, name, kind, options)
@@ -185,15 +185,17 @@ module ActionController
               end
               protected :#{selector}
             end_eval
-            @helpers << selector
+            helpers << selector
           end
       end
 
       attr_accessor :routes, :named_routes, :configuration_file
 
       def initialize
-        @routes = []
-        @named_routes = NamedRouteCollection.new
+        self.routes = []
+        self.named_routes = NamedRouteCollection.new
+
+        write_recognize_optimized!
       end
 
       # Subclasses and plugins may override this method to specify a different
@@ -209,8 +211,8 @@ module ActionController
       end
 
       def clear!
-        @routes.clear
-        @named_routes.clear
+        routes.clear
+        named_routes.clear
         @combined_regexp = nil
         @routes_by_controller = nil
         # This will force routing/recognition_optimization.rb
@@ -220,26 +222,25 @@ module ActionController
 
       def install_helpers(destinations = [ActionController::Base, ActionView::Base], regenerate_code = false)
         Array(destinations).each { |d| d.module_eval { include Helpers } }
-        @named_routes.install(destinations, regenerate_code)
+        named_routes.install(destinations, regenerate_code)
       end
 
       def empty?
-        @routes.empty?
+        routes.empty?
       end
 
       def load!
         Routing.use_controllers! nil # Clear the controller cache so we may discover new ones
         clear!
         load_routes!
-        install_helpers
       end
 
       # reload! will always force a reload whereas load checks the timestamp first
       alias reload! load!
 
       def reload
-        if @routes_last_modified && @configuration_file
-          mtime = File.stat(@configuration_file).mtime
+        if @routes_last_modified && configuration_file
+          mtime = File.stat(configuration_file).mtime
           # if it hasn't been changed, then just return
           return if mtime == @routes_last_modified
           # if it has changed then record the new time and fall to the load! below
@@ -249,9 +250,9 @@ module ActionController
       end
 
       def load_routes!
-        if @configuration_file
-          load @configuration_file
-          @routes_last_modified = File.stat(@configuration_file).mtime
+        if configuration_file
+          load configuration_file
+          @routes_last_modified = File.stat(configuration_file).mtime
         else
           add_route ":controller/:action/:id"
         end
@@ -259,14 +260,14 @@ module ActionController
 
       def add_route(path, options = {})
         route = builder.build(path, options)
-        @routes << route
+        routes << route
         route
       end
 
       def add_named_route(name, path, options = {})
         # TODO - is options EVER used?
         name = options[:name_prefix] + name.to_s if options[:name_prefix]
-        @named_routes[name.to_sym] = add_route(path, options)
+        named_routes[name.to_sym] = add_route(path, options)
       end
 
       def options_as_params(options)
@@ -308,7 +309,7 @@ module ActionController
         named_route_name = options.delete(:use_route)
         generate_all = options.delete(:generate_all)
         if named_route_name
-          named_route = @named_routes[named_route_name]
+          named_route = named_routes[named_route_name]
           options = named_route.parameter_shell.merge(options)
         end
 
@@ -351,7 +352,7 @@ module ActionController
 
           if generate_all
             # Used by caching to expire all paths for a resource
-            return @routes.collect do |route|
+            return routes.collect do |route|
               route.send!(method, options, merged, expire_on)
             end.compact
           end
@@ -410,14 +411,14 @@ module ActionController
       end
 
       def routes_for_controller_and_action(controller, action)
-        selected = @routes.select do |route|
+        selected = routes.select do |route|
           route.matches_controller_and_action? controller, action
         end
-        (selected.length == @routes.length) ? @routes : selected
+        (selected.length == routes.length) ? routes : selected
       end
 
       def routes_for_controller_and_action_and_keys(controller, action, keys)
-        selected = @routes.select do |route|
+        selected = routes.select do |route|
           route.matches_controller_and_action? controller, action
         end
         selected.sort_by do |route|

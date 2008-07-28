@@ -283,6 +283,14 @@ module ActionController #:nodoc:
     @@debug_routes = true
     cattr_accessor :debug_routes
 
+    # Indicates whether to allow concurrent action processing. Your
+    # controller actions and any other code they call must also behave well
+    # when called from concurrent threads. Turned off by default.
+    @@allow_concurrency = false
+    cattr_accessor :allow_concurrency
+
+    @@guard = Monitor.new
+
     # Modern REST web services often need to submit complex data to the web application.
     # The <tt>@@param_parsers</tt> hash lets you register handlers which will process the HTTP body and add parameters to the
     # <tt>params</tt> hash. These handlers are invoked for POST and PUT requests.
@@ -353,6 +361,15 @@ module ActionController #:nodoc:
     # Controls whether request forgergy protection is turned on or not. Turned off by default only in test mode.
     class_inheritable_accessor :allow_forgery_protection
     self.allow_forgery_protection = true
+
+    # If you are deploying to a subdirectory, you will need to set
+    # <tt>config.action_controller.relative_url_root</tt>
+    # This defaults to ENV['RAILS_RELATIVE_URL_ROOT']
+    cattr_writer :relative_url_root
+
+    def self.relative_url_root
+      @@relative_url_root || ENV['RAILS_RELATIVE_URL_ROOT']
+    end
 
     # Holds the request object that's primarily used to get environment variables through access like
     # <tt>request.env["REQUEST_URI"]</tt>.
@@ -528,7 +545,12 @@ module ActionController #:nodoc:
         forget_variables_added_to_assigns
 
         log_processing
-        send(method, *arguments)
+
+        if @@allow_concurrency
+          send(method, *arguments)
+        else
+          @@guard.synchronize { send(method, *arguments) }
+        end
 
         assign_default_content_type_and_charset
         response.prepare! unless component_request?
