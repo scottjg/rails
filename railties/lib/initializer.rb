@@ -350,8 +350,9 @@ Run `rake gems:install` to install the missing gems.
     def load_application_classes
       if configuration.cache_classes
         configuration.eager_load_paths.each do |load_path|
-          Dir.glob("#{load_path}/*.rb").each do |file|
-            require_dependency file
+          matcher = /\A#{Regexp.escape(load_path)}(.*)\.rb\Z/
+          Dir.glob("#{load_path}/**/*.rb").each do |file|
+            require_dependency file.sub(matcher, '\1')
           end
         end
       end
@@ -524,6 +525,7 @@ Run `rake gems:install` to install the missing gems.
     end
 
     def prepare_dispatcher
+      return unless configuration.frameworks.include?(:action_controller)
       require 'dispatcher' unless defined?(::Dispatcher)
       Dispatcher.define_dispatcher_callbacks(configuration.cache_classes)
       Dispatcher.new(RAILS_DEFAULT_LOGGER).send :run_callbacks, :prepare_dispatch
@@ -767,6 +769,7 @@ Run `rake gems:install` to install the missing gems.
     # contents of the file are processed via ERB before being sent through
     # YAML::load.
     def database_configuration
+      require 'erb'
       YAML::load(ERB.new(IO.read(database_configuration_file)).result)
     end
 
@@ -902,7 +905,7 @@ Run `rake gems:install` to install the missing gems.
       end
 
       def default_cache_classes
-        false
+        true
       end
 
       def default_whiny_nils
