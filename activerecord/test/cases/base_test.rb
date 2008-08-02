@@ -1675,6 +1675,12 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_last
     assert_equal Developer.find(:first, :order => 'id desc'), Developer.last
+    assert_equal Developer.find(:all, :order => 'id desc', :limit => 2), Developer.last(2)
+  end
+
+  def test_first
+    assert_equal Developer.find(:first, :order => 'id asc'), Developer.first
+    assert_equal Developer.find(:all, :order => 'id asc', :limit => 2), Developer.first(2)
   end
 
   def test_all_with_conditions

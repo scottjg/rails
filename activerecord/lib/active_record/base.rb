@@ -574,14 +574,23 @@ module ActiveRecord #:nodoc:
       # A convenience wrapper for <tt>find(:first, *args)</tt>. You can pass in all the
       # same arguments to this method as you can to <tt>find(:first)</tt>.
       def first(*args)
-        find(:first, *args)
+        if args.first.kind_of?(Integer)
+          find(:all, (args[1] || {}).merge(:limit => args.first))
+        else
+          find(:first, *args)
+        end
       end
 
       # A convenience wrapper for <tt>find(:last, *args)</tt>. You can pass in all the
       # same arguments to this method as you can to <tt>find(:last)</tt>.
       def last(*args)
-        find(:last, *args)
+        if args.first.kind_of?(Integer)
+          find(:all, reverse_order_in_options(args[1] || {}).merge(:limit => args.first)).reverse!
+        else
+          find(:last, *args)
+        end
       end
+
 
       # This is an alias for find(:all).  You can pass in all the same arguments to this method as you can
       # to find(:all)
@@ -1350,6 +1359,10 @@ module ActiveRecord #:nodoc:
         end
 
         def find_last(options)
+          find_initial(reverse_order_in_options(options))
+        end
+
+        def reverse_order_in_options(options)
           order = options[:order]
 
           if order
@@ -1362,8 +1375,7 @@ module ActiveRecord #:nodoc:
             scoped_order = reverse_sql_order(scope(:find, :order))
             scoped_methods.select { |s| s[:find].update(:order => scoped_order) }
           end
-
-          find_initial(options.merge({ :order => order }))
+          options.merge({ :order => order }) 
         end
 
         def reverse_sql_order(order_query)
