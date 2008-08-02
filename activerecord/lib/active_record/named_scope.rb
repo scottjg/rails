@@ -131,7 +131,9 @@ module ActiveRecord
       end
 
       def last(*args)
-        if args.first.kind_of?(Integer) || (@found && !args.first.kind_of?(Hash))
+        if args.first.kind_of?(Integer) && !@found
+          find(:all, reverse_order_in_options({:order => proxy_options.delete(:order)}.merge(args[1] || {})).merge(:limit => args.first)).reverse!
+        elsif args.first.kind_of?(Integer) || (@found && !args.first.kind_of?(Hash))
           proxy_found.last(*args)
         else
           find(:last, *args)

@@ -157,11 +157,16 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal Topic.base.last(2), Topic.base.to_a.last(2)
   end
 
-  def test_first_with_integer_uses_query_with_limit_rather_than_loading_all
+  def test_first_and_last_with_integer_uses_query_with_limit_rather_than_loading_all
     assert_queries(2) do
       base = Topic.base
       base.first(2)
       base.first(3)
+    end
+    assert_queries(2) do
+      base = Topic.base
+      base.last(2)
+      base.last(3)
     end
   end
 
