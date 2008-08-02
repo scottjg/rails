@@ -157,6 +157,14 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal Topic.base.last(2), Topic.base.to_a.last(2)
   end
 
+  def test_first_with_integer_uses_query_with_limit_rather_than_loading_all
+    assert_queries(2) do
+      base = Topic.base
+      base.first(2)
+      base.first(3)
+    end
+  end
+
   def test_first_and_last_should_not_use_query_when_results_are_loaded
     topics = Topic.base
     topics.reload # force load

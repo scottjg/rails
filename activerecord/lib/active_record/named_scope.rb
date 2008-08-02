@@ -121,7 +121,9 @@ module ActiveRecord
       end
 
       def first(*args)
-        if args.first.kind_of?(Integer) || (@found && !args.first.kind_of?(Hash))
+        if args.first.kind_of?(Integer) && !@found
+          find(:all, (args[1] || {}).merge(:limit => args.first))
+        elsif args.first.kind_of?(Integer) || (@found && !args.first.kind_of?(Hash))
           proxy_found.first(*args)
         else
           find(:first, *args)
