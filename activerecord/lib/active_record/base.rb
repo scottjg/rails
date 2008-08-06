@@ -83,8 +83,33 @@ module ActiveRecord #:nodoc:
   class ReadOnlyRecord < ActiveRecordError
   end
 
-  # Used by Active Record transaction mechanism to distinguish rollback from other exceptional situations.
-  # You can use it to roll your transaction back explicitly in the block passed to +transaction+ method.
+  # ActiveRecord::Transactions::ClassMethods.transaction uses this exception
+  # to distinguish a deliberate rollback from other exceptional situations.
+  # Normally, raising an exception will cause the +transaction+ method to rollback
+  # the database transaction *and* pass on the exception. But if you raise an
+  # ActiveRecord::Rollback exception, then the database transaction will be rolled back,
+  # without passing on the exception.
+  #
+  # For example, you could do this in your controller to rollback a transaction:
+  #
+  #   class BooksController < ActionController::Base
+  #     def create
+  #       Book.transaction do
+  #         book = Book.new(params[:book])
+  #         book.save!
+  #         if today_is_friday?
+  #           # The system must fail on Friday so that our support department
+  #           # won't be out of job. We silently rollback this transaction
+  #           # without telling the user.
+  #           raise ActiveRecord::Rollback, "Call tech support!"
+  #         end
+  #       end
+  #       # ActiveRecord::Rollback is the only exception that won't be passed on
+  #       # by ActiveRecord::Base.transaction, so this line will still be reached
+  #       # even on Friday.
+  #       redirect_to root_url
+  #     end
+  #   end
   class Rollback < ActiveRecordError
   end
 
@@ -95,6 +120,10 @@ module ActiveRecord #:nodoc:
   # Raised when you've tried to access a column which wasn't loaded by your finder.
   # Typically this is because <tt>:select</tt> has been specified.
   class MissingAttributeError < NoMethodError
+  end
+
+  # Raised when unknown attributes are supplied via mass assignment.
+  class UnknownAttributeError < NoMethodError
   end
 
   # Raised when an error occurred while doing a mass assignment to an attribute through the
@@ -2375,7 +2404,11 @@ module ActiveRecord #:nodoc:
         attributes = remove_attributes_protected_from_mass_assignment(attributes) if guard_protected_attributes
 
         attributes.each do |k, v|
-          k.include?("(") ? multi_parameter_attributes << [ k, v ] : send(k + "=", v)
+          if k.include?("(")
+            multi_parameter_attributes << [ k, v ]
+          else
+            respond_to?(:"#{k}=") ? send(:"#{k}=", v) : raise(UnknownAttributeError, "unknown attribute: #{k}")
+          end
         end
 
         assign_multiparameter_attributes(multi_parameter_attributes)
