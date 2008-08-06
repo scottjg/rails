@@ -534,7 +534,7 @@ module ActiveRecord
         option_string = options.symbolize_keys.sum do |key, value|
           case key
           when :owner
-            " OWNER = '#{value}'"
+            " OWNER = #{value}"
           when :template
             " TEMPLATE = #{value}"
           when :encoding
