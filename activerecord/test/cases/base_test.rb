@@ -76,7 +76,7 @@ class TopicWithProtectedContentAndAccessibleAuthorName < ActiveRecord::Base
 end
 
 class BasicsTest < ActiveRecord::TestCase
-  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations
+  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories
 
   def test_table_exists
     assert !NonExistentTable.table_exists?
@@ -902,6 +902,14 @@ class BasicsTest < ActiveRecord::TestCase
 
     keyboard = Keyboard.new(:id => 9, :name => 'nice try')
     assert_nil keyboard.id
+  end
+
+  def test_mass_assigning_invalid_attribute
+    firm = Firm.new
+
+    assert_raises(ActiveRecord::UnknownAttributeError) do
+      firm.attributes = { "id" => 5, "type" => "Client", "i_dont_even_exist" => 20 }
+    end
   end
 
   def test_mass_assignment_protection_on_defaults

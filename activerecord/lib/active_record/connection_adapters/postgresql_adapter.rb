@@ -182,8 +182,8 @@ module ActiveRecord
         def self.extract_value_from_default(default)
           case default
             # Numeric types
-            when /\A-?\d+(\.\d*)?\z/
-              default
+            when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+              $1
             # Character types
             when /\A'(.*)'::(?:character varying|bpchar|text)\z/m
               $1
@@ -534,7 +534,7 @@ module ActiveRecord
         option_string = options.symbolize_keys.sum do |key, value|
           case key
           when :owner
-            " OWNER = '#{value}'"
+            " OWNER = #{value}"
           when :template
             " TEMPLATE = #{value}"
           when :encoding

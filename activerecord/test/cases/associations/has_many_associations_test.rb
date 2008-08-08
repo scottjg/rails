@@ -14,7 +14,7 @@ require 'models/reader'
 class HasManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :categories, :companies, :developers, :projects,
            :developers_projects, :topics, :authors, :comments, :author_addresses,
-           :people, :posts
+           :people, :posts, :readers
 
   def setup
     Client.destroyed_client_ids.clear
@@ -1007,7 +1007,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm.clients.create({ :name => 'Some Client' })
 
     stats = Namespaced::Firm.find(firm.id, {
-      :select => "#{Namespaced::Firm.table_name}.*, COUNT(#{Namespaced::Client.table_name}.id) AS num_clients",
+      :select => "#{Namespaced::Firm.table_name}.id, COUNT(#{Namespaced::Client.table_name}.id) AS num_clients",
       :joins  => :clients,
       :group  => "#{Namespaced::Firm.table_name}.id"
     })

@@ -27,11 +27,10 @@ module ActionView #:nodoc:
       attr_reader :path, :paths
       delegate :to_s, :to_str, :hash, :inspect, :to => :path
 
-      def initialize(path)
+      def initialize(path, load = true)
         raise ArgumentError, "path already is a Path class" if path.is_a?(Path)
-
         @path = path.freeze
-        reload!
+        reload! if load
       end
 
       def ==(path)
@@ -43,7 +42,17 @@ module ActionView #:nodoc:
       end
 
       def [](path)
+        raise "Unloaded view path! #{@path}" unless @loaded
         @paths[path]
+      end
+
+      def loaded?
+        @loaded ? true : false
+      end
+
+      def load
+        reload! unless loaded?
+        self
       end
 
       # Rebuild load path directory cache
@@ -59,6 +68,7 @@ module ActionView #:nodoc:
         end
 
         @paths.freeze
+        @loaded = true
       end
 
       private
@@ -69,6 +79,10 @@ module ActionView #:nodoc:
           end
         end
       end
+    end
+
+    def load
+      each { |path| path.load }
     end
 
     def reload!
