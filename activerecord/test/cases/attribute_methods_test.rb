@@ -114,6 +114,12 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal time_related_columns_on_topic.sort, Topic.cached_attributes.sort
   end
 
+  def test_date_columns_cast_values_to_date
+    date = Topic.new(:last_read => Time.now).last_read
+    assert_kind_of Date, date
+    assert_equal Date.today, date
+  end
+
   def test_accessing_cached_attributes_caches_the_converted_values_and_nothing_else
     t = topics(:first)
     cache = t.instance_variable_get "@attributes_cache"

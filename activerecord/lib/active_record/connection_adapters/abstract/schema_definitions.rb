@@ -37,6 +37,10 @@ module ActiveRecord
         [:float, :integer, :decimal].include? type
       end
 
+      def date?
+        :date == type
+      end
+
       # Returns the Ruby class that corresponds to the abstract data type.
       def klass
         case type

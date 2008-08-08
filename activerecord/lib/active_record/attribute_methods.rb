@@ -288,15 +288,18 @@ module ActiveRecord
   
 
     # Updates the attribute identified by <tt>attr_name</tt> with the specified +value+. Empty strings for fixnum and float
-    # columns are turned into nil.
+    # columns are turned into nil.  Time and DateTime values for Date columns are turned into dates
     def write_attribute(attr_name, value)
       attr_name = attr_name.to_s
       @attributes_cache.delete(attr_name)
       if (column = column_for_attribute(attr_name)) && column.number?
-        @attributes[attr_name] = convert_number_column_value(value)
+        converted_value = convert_number_column_value(value)
+      elsif !value.blank? && column && column.date?
+        converted_value = value.to_date
       else
-        @attributes[attr_name] = value
+        converted_value = value
       end
+      @attributes[attr_name] = converted_value
     end
 
 
