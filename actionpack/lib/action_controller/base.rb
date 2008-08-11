@@ -1248,14 +1248,25 @@ module ActionController #:nodoc:
         @@exempt_from_layout.any? { |ext| name_with_extension =~ ext }
       end
 
-      def default_template_name(action_name = self.action_name)
-        if action_name
+      def default_template_name(action_name = self.action_name, klass = self.class)
+        if action_name && klass == self.class 
           action_name = action_name.to_s
           if action_name.include?('/') && template_path_includes_controller?(action_name)
             action_name = strip_out_controller(action_name)
           end
         end
-        "#{self.class.controller_path}/#{action_name}"
+        
+        if !klass.superclass.method_defined?(:controller_path)
+          return "#{self.controller_path}/#{action_name}"
+        end
+        
+        template_name = "#{klass.controller_path}/#{action_name}"
+    
+        if template_exists?(template_name)
+          return template_name
+        else
+          return default_template_name(action_name, klass.superclass)
+        end
       end
 
       def strip_out_controller(path)
