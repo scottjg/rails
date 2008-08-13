@@ -33,11 +33,6 @@ require 'openssl'       # to generate the HMAC message digest
 #   integrity defaults to 'SHA1' but may be any digest provided by OpenSSL,
 #   such as 'MD5', 'RIPEMD160', 'SHA256', etc.
 #
-# * <tt>:stable_session_id</tt>: The Cookie Session Store doesn't maintain any server side 
-#   state by default.A unique session identifier is spawned per request, which may not be 
-#   desireable for some applications.Set :stable_session_id to true to maintain a stable     
-#   session identifier within the cookie.  
-#
 # To generate a secret key for an existing application, run
 # "rake secret" and set the key in config/environment.rb.
 #
@@ -135,8 +130,7 @@ class CGI::Session::CookieStore
   private
     # Marshal a session hash into safe cookie data. Include an integrity hash.
     def marshal(session)
-      session = stable_session_id!( session )
-      data = ActiveSupport::Base64.encode64(Marshal.dump(session)).chop
+      data = ActiveSupport::Base64.encode64s(Marshal.dump(session))
       "#{data}--#{generate_digest(data)}"
     end
 
