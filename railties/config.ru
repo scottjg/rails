@@ -11,7 +11,7 @@ require File.dirname(__FILE__) + '/config/environment'
 
 # Static server middleware
 # You can remove this extra check if you use an asset server
-use Rails::Rack::Static
+#use Rails::Rack::Static
 
 # Dispatch the request
 run ActionController::Dispatcher.new

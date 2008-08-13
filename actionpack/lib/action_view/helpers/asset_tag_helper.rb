@@ -621,7 +621,7 @@ module ActionView
 
           # Set mtime to the latest of the combined files to allow for
           # consistent ETag without a shared filesystem.
-          mt = asset_paths.map { |p| File.mtime(File.join(ASSETS_DIR, p)) }.max
+          mt = asset_paths.map { |p| File.mtime(File.join(ASSETS_DIR, p).split('?').first) }.max
           File.utime(mt, mt, joined_asset_path)
         end
 

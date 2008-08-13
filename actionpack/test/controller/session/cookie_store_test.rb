@@ -218,7 +218,6 @@ class CookieStoreTest < Test::Unit::TestCase
     end
 
     def new_session(options = {})
-      #options.reverse_merge!( 'stable_session_id' => true )
       with_cgi do |cgi|
         assert_nil cgi.output_hidden, "Output hidden params should be empty: #{cgi.output_hidden.inspect}"
         assert_nil cgi.output_cookies, "Output cookies should be empty: #{cgi.output_cookies.inspect}"
