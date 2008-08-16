@@ -69,7 +69,7 @@ module ActiveRecord
           when :timestamp then self.class.string_to_time(value)
           when :time      then self.class.string_to_dummy_time(value)
           when :date      then self.class.string_to_date(value)
-          when :binary    then self.class.binary_to_string(value)
+          #when :binary    then self.class.binary_to_string(value)
           when :boolean   then self.class.value_to_boolean(value)
           else value
         end
