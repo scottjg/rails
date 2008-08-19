@@ -923,7 +923,7 @@ module ActiveRecord
                       row[cell_index] = column.gsub(/[^-\d,]/, '').sub(/,/, '.')
                   end
                 elsif res.ftype(cell_index) == BYTEA_COLUMN_TYPE_OID
-                  row[cell_index] = PGconn.unescape_bytea(row[cell_index])
+                  row[cell_index] = unescape_bytea(row[cell_index])
                 end
 
                 hashed_row[fields[cell_index]] = column
@@ -962,6 +962,31 @@ module ActiveRecord
                AND a.attnum > 0 AND NOT a.attisdropped
              ORDER BY a.attnum
           end_sql
+        end
+
+        # Converts a bytea escaped string into the binary value it represents
+        def unescape_bytea(value)
+          if PGconn.respond_to?(:unescape_bytea)
+            PGconn.unescape_bytea(value)
+          else
+            result = ''
+            i, max = 0, value.size
+            while i < max
+              char = value[i]
+              if char == ?\\
+                if value[i+1] == ?\\
+                  char = ?\\
+                  i += 1
+                else
+                  char = value[i+1..i+3].oct
+                  i += 3
+                end
+              end
+              result << char
+              i += 1
+            end
+            result
+          end
         end
     end
   end
