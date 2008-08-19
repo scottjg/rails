@@ -89,51 +89,7 @@ module ActiveRecord
           end
           self.class.string_to_binary(value)
         end
-  
-        # Unescapes bytea output from a database to the binary string it represents.
-        def self.binary_to_string(value)
-          # In each case, check if the value actually is escaped PostgreSQL bytea output
-          # or an unescaped Active Record attribute that was just written.
-          if PGconn.respond_to?(:unescape_bytea)
-            self.class.module_eval do
-              define_method(:binary_to_string) do |value|
-                if value =~ /\\\d{3}/
-                  PGconn.unescape_bytea(value)
-                else
-                  value
-                end
-              end
-            end
-          else
-            self.class.module_eval do
-              define_method(:binary_to_string) do |value|
-                if value =~ /\\\d{3}/
-                  result = ''
-                  i, max = 0, value.size
-                  while i < max
-                    char = value[i]
-                    if char == ?\\
-                      if value[i+1] == ?\\
-                        char = ?\\
-                        i += 1
-                      else
-                        char = value[i+1..i+3].oct
-                        i += 3
-                      end
-                    end
-                    result << char
-                    i += 1
-                  end
-                  result
-                else
-                  value
-                end
-              end
-            end
-          end
-          self.class.binary_to_string(value)
-        end  
-  
+
         # Maps PostgreSQL-specific data types to logical Rails types.
         def simplified_type(field_type)
           case field_type
@@ -869,7 +825,7 @@ module ActiveRecord
       private
         # The internal PostgreSQL identifier of the money data type.
         MONEY_COLUMN_TYPE_OID = 790 #:nodoc:
-
+        BYTEA_COLUMN_TYPE_OID = 17 #:nodoc:
         # Connects to a PostgreSQL server and sets up the adapter depending on the
         # connected server's characteristics.
         def connect
@@ -966,6 +922,8 @@ module ActiveRecord
                     when /^-?\D+[\d\.]+,\d{2}$/  # (2)
                       row[cell_index] = column.gsub(/[^-\d,]/, '').sub(/,/, '.')
                   end
+                elsif res.ftype(cell_index) == BYTEA_COLUMN_TYPE_OID
+                  row[cell_index] = PGconn.unescape_bytea(row[cell_index])
                 end
 
                 hashed_row[fields[cell_index]] = column
