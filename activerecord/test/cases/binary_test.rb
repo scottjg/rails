@@ -18,6 +18,7 @@ unless current_adapter?(:SQLServerAdapter, :SybaseAdapter, :DB2Adapter, :Firebir
 
       FIXTURES.each do |filename|
         data = File.read(ASSETS_ROOT + "/#{filename}")
+	data = '\\101' + data
         data.force_encoding('ASCII-8BIT') if data.respond_to?(:force_encoding)
         data.freeze
 
