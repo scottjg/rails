@@ -299,6 +299,17 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 3, projects(:active_record, :reload).developers.size
   end
 
+  def test_uniq_option_prevents_duplicate_push
+    project = projects(:active_record)
+    project.developers << developers(:jamis)
+    project.developers << developers(:david)
+    assert_equal 3, project.developers.size
+
+    project.developers << developers(:david)
+    project.developers << developers(:jamis)
+    assert_equal 3, project.developers.size
+  end
+
   def test_deleting
     david = Developer.find(1)
     active_record = Project.find(1)
@@ -437,6 +448,13 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     active_record = projects(:active_record)
     active_record.developers_with_finder_sql.reload
     assert_equal developers(:david), active_record.developers_with_finder_sql.find(developers(:david).id), "Ruby find"
+  end
+
+  def test_find_in_association_with_custom_finder_sql_and_multiple_interpolations
+    # interpolate once:
+    assert_equal [developers(:david), developers(:poor_jamis), developers(:jamis)], projects(:active_record).developers_with_finder_sql, "first interpolation"
+    # interpolate again, for a different project id
+    assert_equal [developers(:david)], projects(:action_controller).developers_with_finder_sql, "second interpolation"
   end
 
   def test_find_in_association_with_custom_finder_sql_and_string_id
