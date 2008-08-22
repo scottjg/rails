@@ -612,7 +612,7 @@ module ActiveRecord #:nodoc:
       #   Post.find_by_sql ["SELECT title FROM posts WHERE author = ? AND created > ?", author_id, start_date]
       #   > [#<Post:0x36bff9c @attributes={"first_name"=>"The Cheap Man Buys Twice"}>, ...]
       def find_by_sql(sql)
-        connection.select_all(sanitize_sql(sql), "#{name} Load").map { |record| instantiate(record) }
+        connection.select_all(sanitize_sql(sql), "#{name} Load").collect! { |record| instantiate(record) }
       end
 
       # Checks whether a record exists in the database that matches conditions given.  These conditions
@@ -2572,14 +2572,11 @@ module ActiveRecord #:nodoc:
       end
 
       def convert_number_column_value(value)
-        if value == false
-          0
-        elsif value == true
-          1
-        elsif value.is_a?(String) && value.blank?
-          nil
-        else
-          value
+        case value
+          when FalseClass; 0
+          when TrueClass;  1
+          when '';         nil
+          else value
         end
       end
 
