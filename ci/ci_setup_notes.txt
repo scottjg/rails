@@ -2,7 +2,7 @@
 # This procedure was used to set up http://ci.rubyonrails.org on Ubuntu 8.04
 # It can be used as a guideline for setting up your own CI server against your local rails branches
 
-# TODO: update to reflect everything being moved under rails/ci in git
+# TODO: update to reflect geminstaller being run automatically via ci/ci_build.rb
 
 * Set up ci user:
 # log in as root
@@ -45,8 +45,8 @@ $ sudo /etc/init.d/nginx start
 $ cd ~/ccrb
 $ ./cruise add rails -s git -r git://github.com/rails/rails.git  # or the URI of your branch
 
-* Set up cruise site config file:
-$ cp ~/ccrb/config/site_config.rb_example ~/.cruise/site_config.rb
+* Copy and configure cruise site config file:
+$ cp ~/.cruise/projects/rails/work/ci/site_config.rb ~/.cruise/site_config.rb
 # Edit ~/.cruise/site_config.rb as desired, for example:
 ActionMailer::Base.smtp_settings = {
   :address =>        "localhost",
@@ -58,16 +58,15 @@ Configuration.serialize_builds = true
 Configuration.serialized_build_timeout = 1.hours
 BuildReaper.number_of_builds_to_keep = 100
   
-* Set up cruise project config file
+* Copy and configure cruise project config file
+$ cp ~/.cruise/projects/rails/work/ci/cruise_config.rb ~/.cruise/projects/rails
 $ vi ~/.cruise/projects/rails/cruise_config.rb:
+# Edit ~/.cruise/projects/rails/cruise_config.rb as desired, for example:
 Project.configure do |project|
- project.build_command = 'ruby ci_build.rb'
+ project.build_command = 'ruby ci/ci_build.rb'
  project.email_notifier.emails = ['recipient@yourdomain.com']
  project.email_notifier.from = 'sender@yourdomain.com'
 end
-
-* Install build-essential package (to build native gems)
-$ sudo aptitude install build-essential
 
 * Set up mysql
 $ sudo aptitude install mysql-server-5.0 libmysqlclient-dev
