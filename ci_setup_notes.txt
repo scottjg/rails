@@ -26,11 +26,6 @@ $ sudo shutdown -r now
 * Update aptitude
 $ sudo aptitude update
 
-* Install postfix
-$ sudo aptitude install postfix
-# pick 'Internet Site'
-# type hostname
-
 * Use cinabox to perform rest of ruby/ccrb setup: 
 * http://github.com/thewoolleyman/cinabox/tree/master/README.txt
 * Start ccrb via init script and check for default homepage at port 3333
