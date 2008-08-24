@@ -39,6 +39,17 @@ $ sudo aptitude update
 # $ sudo vi /etc/init.d/cruise
 # # edit the start_cruise line to source CRUISE_USER/.profile:
 #   start_cruise "cd #{CRUISE_HOME} && source /home/#{CRUISE_USER}/.profile && ./cruise start -d"
+# $ vi ~/.gemrc
+# # add these lines:
+# ---
+# gemhome: /home/ci/.gem/ruby/1.8
+# gempath: 
+# - /home/ci/.gem/ruby/1.8
+
+* If you did not configure no-root-gem installation via ~/.gemrc as shown above, then allow no-password sudo for gem installation:
+$ sudo visudo
+# add this line to bottom:
+ci      ALL=NOPASSWD: /usr/local/bin/geminstaller, /usr/local/bin/ruby, /usr/local/bin/gem
 
 * Start ccrb via init script and check for default homepage at port 3333
 

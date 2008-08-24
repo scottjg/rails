@@ -12,6 +12,10 @@ root_dir = File.expand_path(File.dirname(__FILE__) + "/..")
 # Will enable when RubyGems supports this properly (in a coming release)
 # build_results[:geminstaller] = system 'geminstaller --exceptions'
 
+# for now, use the no-passwd sudoers approach (documented in ci_setup_notes.txt)
+# A security hole, but there is nothing valuable on rails CI box anyway.
+build_results[:geminstaller] = system 'sudo geminstaller --exceptions'
+
 cd "#{root_dir}/activesupport" do
   puts
   puts "[CruiseControl] Building ActiveSupport"
