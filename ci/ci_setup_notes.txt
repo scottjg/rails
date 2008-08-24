@@ -2,6 +2,8 @@
 # This procedure was used to set up http://ci.rubyonrails.org on Ubuntu 8.04
 # It can be used as a guideline for setting up your own CI server against your local rails branches
 
+# TODO: update to reflect everything being moved under rails/ci in git
+
 * Set up ci user:
 # log in as root
 $ adduser ci
