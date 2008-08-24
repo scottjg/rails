@@ -8,6 +8,9 @@ puts "[CruiseControl] Rails build"
 build_results = {}
 root_dir = File.expand_path(File.dirname(__FILE__) + "/..")
 
+# Requires gem home to be writeable and/or overridden to be ~/.gem
+# build_results[:geminstaller] = system 'geminstaller --exceptions --config=ci/geminstaller.yml'
+
 cd "#{root_dir}/activesupport" do
   puts
   puts "[CruiseControl] Building ActiveSupport"
