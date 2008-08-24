@@ -1,5 +1,7 @@
 ---
 gems:
+- name: geminstaller
+  version: >= 0.4.3
 - name: mocha
   version: >= 0.9.0
 - name: mysql
