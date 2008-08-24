@@ -1,9 +1,9 @@
 module ActionView #:nodoc:
-  class PathSet < ActiveSupport::TypedArray #:nodoc:
+  class PathSet < Array #:nodoc:
     def self.type_cast(obj)
       if obj.is_a?(String)
         if Base.warn_cache_misses && defined?(Rails) && Rails.initialized?
-          Rails.logger.debug "[PERFORMANCE] Processing view path during a " +
+          Base.logger.debug "[PERFORMANCE] Processing view path during a " +
             "request. This an expense disk operation that should be done at " +
             "boot. You can manually process this view path with " +
             "ActionView::Base.process_view_paths(#{obj.inspect}) and set it " +
@@ -13,6 +13,30 @@ module ActionView #:nodoc:
       else
         obj
       end
+    end
+
+    def initialize(*args)
+      super(*args).map! { |obj| self.class.type_cast(obj) }
+    end
+
+    def <<(obj)
+      super(self.class.type_cast(obj))
+    end
+
+    def concat(array)
+      super(array.map! { |obj| self.class.type_cast(obj) })
+    end
+
+    def insert(index, obj)
+      super(index, self.class.type_cast(obj))
+    end
+
+    def push(*objs)
+      super(*objs.map { |obj| self.class.type_cast(obj) })
+    end
+
+    def unshift(*objs)
+      super(*objs.map { |obj| self.class.type_cast(obj) })
     end
 
     class Path #:nodoc:
@@ -27,11 +51,10 @@ module ActionView #:nodoc:
       attr_reader :path, :paths
       delegate :to_s, :to_str, :hash, :inspect, :to => :path
 
-      def initialize(path)
+      def initialize(path, load = true)
         raise ArgumentError, "path already is a Path class" if path.is_a?(Path)
-
         @path = path.freeze
-        reload!
+        reload! if load
       end
 
       def ==(path)
@@ -43,7 +66,17 @@ module ActionView #:nodoc:
       end
 
       def [](path)
+        raise "Unloaded view path! #{@path}" unless @loaded
         @paths[path]
+      end
+
+      def loaded?
+        @loaded ? true : false
+      end
+
+      def load
+        reload! unless loaded?
+        self
       end
 
       # Rebuild load path directory cache
@@ -59,6 +92,7 @@ module ActionView #:nodoc:
         end
 
         @paths.freeze
+        @loaded = true
       end
 
       private
@@ -69,6 +103,10 @@ module ActionView #:nodoc:
             end
           end
         end
+    end
+
+    def load
+      each { |path| path.load }
     end
 
     def reload!

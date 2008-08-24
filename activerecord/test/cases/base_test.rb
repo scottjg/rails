@@ -76,7 +76,7 @@ class TopicWithProtectedContentAndAccessibleAuthorName < ActiveRecord::Base
 end
 
 class BasicsTest < ActiveRecord::TestCase
-  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations
+  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories
 
   def test_table_exists
     assert !NonExistentTable.table_exists?
@@ -138,7 +138,7 @@ class BasicsTest < ActiveRecord::TestCase
   if current_adapter?(:MysqlAdapter)
     def test_read_attributes_before_type_cast_on_boolean
       bool = Booleantest.create({ "value" => false })
-      assert_equal 0, bool.attributes_before_type_cast["value"]
+      assert_equal "0", bool.reload.attributes_before_type_cast["value"]
     end
   end
 
@@ -904,6 +904,14 @@ class BasicsTest < ActiveRecord::TestCase
     assert_nil keyboard.id
   end
 
+  def test_mass_assigning_invalid_attribute
+    firm = Firm.new
+
+    assert_raises(ActiveRecord::UnknownAttributeError) do
+      firm.attributes = { "id" => 5, "type" => "Client", "i_dont_even_exist" => 20 }
+    end
+  end
+
   def test_mass_assignment_protection_on_defaults
     firm = Firm.new
     firm.attributes = { "id" => 5, "type" => "Client" }
@@ -1106,11 +1114,15 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean
+    b_nil = Booleantest.create({ "value" => nil })
+    nil_id = b_nil.id
     b_false = Booleantest.create({ "value" => false })
     false_id = b_false.id
     b_true = Booleantest.create({ "value" => true })
     true_id = b_true.id
 
+    b_nil = Booleantest.find(nil_id)
+    assert_nil b_nil.value
     b_false = Booleantest.find(false_id)
     assert !b_false.value?
     b_true = Booleantest.find(true_id)
@@ -1118,11 +1130,15 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean_cast_from_string
+    b_blank = Booleantest.create({ "value" => "" })
+    blank_id = b_blank.id
     b_false = Booleantest.create({ "value" => "0" })
     false_id = b_false.id
     b_true = Booleantest.create({ "value" => "1" })
     true_id = b_true.id
 
+    b_blank = Booleantest.find(blank_id)
+    assert_nil b_blank.value
     b_false = Booleantest.find(false_id)
     assert !b_false.value?
     b_true = Booleantest.find(true_id)
@@ -1350,6 +1366,12 @@ class BasicsTest < ActiveRecord::TestCase
     myobj = MyObject.new('value1', 'value2')
     topic = Topic.create("content" => myobj)
     Topic.serialize("content", MyObject)
+    assert_equal(myobj, topic.content)
+  end
+
+  def test_serialized_time_attribute
+    myobj = Time.local(2008,1,1,1,0)
+    topic = Topic.create("content" => myobj).reload
     assert_equal(myobj, topic.content)
   end
 

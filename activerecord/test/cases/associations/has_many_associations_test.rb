@@ -14,7 +14,7 @@ require 'models/reader'
 class HasManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :categories, :companies, :developers, :projects,
            :developers_projects, :topics, :authors, :comments, :author_addresses,
-           :people, :posts
+           :people, :posts, :readers
 
   def setup
     Client.destroyed_client_ids.clear
@@ -393,6 +393,18 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     company.clients_of_firm.build("name" => "Another Client")
     company.clients_of_firm.build("name" => "Yet Another Client")
     assert_equal 3, company.clients_of_firm.size
+  end
+
+  def test_collection_size_twice_for_regressions
+    post = posts(:thinking)
+    assert_equal 0, post.readers.size
+    # This test needs a post that has no readers, we assert it to ensure it holds,
+    # but need to reload the post because the very call to #size hides the bug.
+    post.reload
+    post.readers.build
+    size1 = post.readers.size
+    size2 = post.readers.size
+    assert_equal size1, size2
   end
 
   def test_build_many
@@ -1007,7 +1019,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm.clients.create({ :name => 'Some Client' })
 
     stats = Namespaced::Firm.find(firm.id, {
-      :select => "#{Namespaced::Firm.table_name}.*, COUNT(#{Namespaced::Client.table_name}.id) AS num_clients",
+      :select => "#{Namespaced::Firm.table_name}.id, COUNT(#{Namespaced::Client.table_name}.id) AS num_clients",
       :joins  => :clients,
       :group  => "#{Namespaced::Firm.table_name}.id"
     })

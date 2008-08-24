@@ -83,8 +83,33 @@ module ActiveRecord #:nodoc:
   class ReadOnlyRecord < ActiveRecordError
   end
 
-  # Used by Active Record transaction mechanism to distinguish rollback from other exceptional situations.
-  # You can use it to roll your transaction back explicitly in the block passed to +transaction+ method.
+  # ActiveRecord::Transactions::ClassMethods.transaction uses this exception
+  # to distinguish a deliberate rollback from other exceptional situations.
+  # Normally, raising an exception will cause the +transaction+ method to rollback
+  # the database transaction *and* pass on the exception. But if you raise an
+  # ActiveRecord::Rollback exception, then the database transaction will be rolled back,
+  # without passing on the exception.
+  #
+  # For example, you could do this in your controller to rollback a transaction:
+  #
+  #   class BooksController < ActionController::Base
+  #     def create
+  #       Book.transaction do
+  #         book = Book.new(params[:book])
+  #         book.save!
+  #         if today_is_friday?
+  #           # The system must fail on Friday so that our support department
+  #           # won't be out of job. We silently rollback this transaction
+  #           # without telling the user.
+  #           raise ActiveRecord::Rollback, "Call tech support!"
+  #         end
+  #       end
+  #       # ActiveRecord::Rollback is the only exception that won't be passed on
+  #       # by ActiveRecord::Base.transaction, so this line will still be reached
+  #       # even on Friday.
+  #       redirect_to root_url
+  #     end
+  #   end
   class Rollback < ActiveRecordError
   end
 
@@ -95,6 +120,10 @@ module ActiveRecord #:nodoc:
   # Raised when you've tried to access a column which wasn't loaded by your finder.
   # Typically this is because <tt>:select</tt> has been specified.
   class MissingAttributeError < NoMethodError
+  end
+
+  # Raised when unknown attributes are supplied via mass assignment.
+  class UnknownAttributeError < NoMethodError
   end
 
   # Raised when an error occurred while doing a mass assignment to an attribute through the
@@ -1191,11 +1220,46 @@ module ActiveRecord #:nodoc:
         subclasses.each { |klass| klass.reset_inheritable_attributes; klass.reset_column_information }
       end
 
+      def self_and_descendents_from_active_record#nodoc:
+        klass = self
+        classes = [klass]
+        while klass != klass.base_class  
+          classes << klass = klass.superclass
+        end
+        classes
+      rescue
+        # OPTIMIZE this rescue is to fix this test: ./test/cases/reflection_test.rb:56:in `test_human_name_for_column'
+        # Appearantly the method base_class causes some trouble.
+        # It now works for sure.
+        [self]
+      end
+
       # Transforms attribute key names into a more humane format, such as "First name" instead of "first_name". Example:
       #   Person.human_attribute_name("first_name") # => "First name"
-      # Deprecated in favor of just calling "first_name".humanize
-      def human_attribute_name(attribute_key_name) #:nodoc:
-        attribute_key_name.humanize
+      # This used to be depricated in favor of humanize, but is now preferred, because it automatically uses the I18n
+      # module now.
+      # Specify +options+ with additional translating options.
+      def human_attribute_name(attribute_key_name, options = {})
+        defaults = self_and_descendents_from_active_record.map do |klass|
+          :"#{klass.name.underscore}.#{attribute_key_name}"
+        end
+        defaults << options[:default] if options[:default]
+        defaults.flatten!
+        defaults << attribute_key_name.humanize
+        options[:count] ||= 1
+        I18n.translate(defaults.shift, options.merge(:default => defaults, :scope => [:activerecord, :attributes]))
+      end
+
+      # Transform the modelname into a more humane format, using I18n.
+      # Defaults to the basic humanize method.
+      # Default scope of the translation is activerecord.models
+      # Specify +options+ with additional translating options.
+      def human_name(options = {})
+        defaults = self_and_descendents_from_active_record.map do |klass|
+          :"#{klass.name.underscore}"
+        end 
+        defaults << self.name.humanize
+        I18n.translate(defaults.shift, {:scope => [:activerecord, :models], :count => 1, :default => defaults}.merge(options))
       end
 
       # True if this isn't a concrete subclass needing a STI type condition.
@@ -1580,10 +1644,11 @@ module ActiveRecord #:nodoc:
           sql << "WHERE #{merged_conditions} " unless merged_conditions.blank?
         end
 
-        def type_condition
+        def type_condition(table_alias=nil)
+          quoted_table_alias = self.connection.quote_table_name(table_alias || table_name)
           quoted_inheritance_column = connection.quote_column_name(inheritance_column)
-          type_condition = subclasses.inject("#{quoted_table_name}.#{quoted_inheritance_column} = '#{sti_name}' ") do |condition, subclass|
-            condition << "OR #{quoted_table_name}.#{quoted_inheritance_column} = '#{subclass.sti_name}' "
+          type_condition = subclasses.inject("#{quoted_table_alias}.#{quoted_inheritance_column} = '#{sti_name}' ") do |condition, subclass|
+            condition << "OR #{quoted_table_alias}.#{quoted_inheritance_column} = '#{subclass.sti_name}' "
           end
 
           " (#{type_condition}) "
@@ -1720,7 +1785,7 @@ module ActiveRecord #:nodoc:
         def attribute_condition(argument)
           case argument
             when nil   then "IS ?"
-            when Array, ActiveRecord::Associations::AssociationCollection then "IN (?)"
+            when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope then "IN (?)"
             when Range then "BETWEEN ? AND ?"
             else            "= ?"
           end
@@ -2375,7 +2440,11 @@ module ActiveRecord #:nodoc:
         attributes = remove_attributes_protected_from_mass_assignment(attributes) if guard_protected_attributes
 
         attributes.each do |k, v|
-          k.include?("(") ? multi_parameter_attributes << [ k, v ] : send(k + "=", v)
+          if k.include?("(")
+            multi_parameter_attributes << [ k, v ]
+          else
+            respond_to?(:"#{k}=") ? send(:"#{k}=", v) : raise(UnknownAttributeError, "unknown attribute: #{k}")
+          end
         end
 
         assign_multiparameter_attributes(multi_parameter_attributes)
@@ -2538,11 +2607,14 @@ module ActiveRecord #:nodoc:
       end
 
       def convert_number_column_value(value)
-        case value
-          when FalseClass; 0
-          when TrueClass;  1
-          when '';         nil
-          else value
+        if value == false
+          0
+        elsif value == true
+          1
+        elsif value.is_a?(String) && value.blank?
+          nil
+        else
+          value
         end
       end
 
@@ -2561,7 +2633,7 @@ module ActiveRecord #:nodoc:
         removed_attributes = attributes.keys - safe_attributes.keys
 
         if removed_attributes.any?
-          logger.debug "WARNING: Can't mass-assign these protected attributes: #{removed_attributes.join(', ')}"
+          log_protected_attribute_removal(removed_attributes)
         end
 
         safe_attributes
@@ -2574,6 +2646,10 @@ module ActiveRecord #:nodoc:
         else
           attributes
         end
+      end
+
+      def log_protected_attribute_removal(*attributes)
+        logger.debug "WARNING: Can't mass-assign these protected attributes: #{attributes.join(', ')}"
       end
 
       # The primary key and inheritance column can never be set by mass-assignment for security reasons.
@@ -2589,8 +2665,15 @@ module ActiveRecord #:nodoc:
         quoted = {}
         connection = self.class.connection
         attribute_names.each do |name|
-          if column = column_for_attribute(name)
-            quoted[name] = connection.quote(read_attribute(name), column) unless !include_primary_key && column.primary
+          if (column = column_for_attribute(name)) && (include_primary_key || !column.primary)
+            value = read_attribute(name)
+
+            # We need explicit to_yaml because quote() does not properly convert Time/Date fields to YAML.
+            if value && self.class.serialized_attributes.has_key?(name) && (value.acts_like?(:date) || value.acts_like?(:time))
+              value = value.to_yaml
+            end
+
+            quoted[name] = connection.quote(value, column)
           end
         end
         include_readonly_attributes ? quoted : remove_readonly_attributes(quoted)
