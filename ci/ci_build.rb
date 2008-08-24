@@ -8,7 +8,8 @@ puts "[CruiseControl] Rails build"
 build_results = {}
 root_dir = File.expand_path(File.dirname(__FILE__) + "/..")
 
-# Requires gem home to be writeable and/or overridden to be ~/.gem
+# Requires gem home and path to be writeable and/or overridden to be ~/.gem,
+# Will enable when RubyGems supports this properly (in a coming release)
 # build_results[:geminstaller] = system 'geminstaller --exceptions'
 
 cd "#{root_dir}/activesupport" do

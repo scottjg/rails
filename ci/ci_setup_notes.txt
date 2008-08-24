@@ -25,14 +25,24 @@ replace old hostname with 'ci'
 # reboot to use new hostname (and test reboot)
 $ sudo shutdown -r now
 
-* Update aptitude
+* Update aptitude:
 $ sudo aptitude update
 
 * Use cinabox to perform rest of ruby/ccrb setup: 
 * http://github.com/thewoolleyman/cinabox/tree/master/README.txt
+
+# This is not yet properly supported by RubyGems...
+# * Configure RubyGems to not require root access for gem installation
+# $ vi ~/.profile
+# # add this line at bottom:
+# PATH="$HOME/.gem/ruby/1.8/bin:$PATH"
+# $ sudo vi /etc/init.d/cruise
+# # edit the start_cruise line to source CRUISE_USER/.profile:
+#   start_cruise "cd #{CRUISE_HOME} && source /home/#{CRUISE_USER}/.profile && ./cruise start -d"
+
 * Start ccrb via init script and check for default homepage at port 3333
 
-* Install/setup nginx
+* Install/setup nginx:
 $ sudo aptitude install nginx
 $ sudo vi /etc/nginx/sites-available/default
 # comment two lines and add one to proxy to ccrb:
@@ -41,7 +51,7 @@ $ sudo vi /etc/nginx/sites-available/default
                 proxy_pass      http://127.0.0.1:3333;
 $ sudo /etc/init.d/nginx start
 
-* Add project to cruise (It will still fail until everything is set up)
+* Add project to cruise (It will still fail until everything is set up):
 $ cd ~/ccrb
 $ ./cruise add rails -s git -r git://github.com/rails/rails.git  # or the URI of your branch
 
