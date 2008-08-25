@@ -104,7 +104,7 @@ $ sudo su - postgres -c 'createuser -s ci'
 * Install and run GemInstaller to get all dependency gems
 $ sudo gem install geminstaller
 $ cd ~/.cruise/projects/rails/work
-$ sudo geminstaller # turn up debugging with these options: --geminstaller-output=all --rubygems-output=all
+$ sudo geminstaller --config=ci/geminstaller.yml # turn up debugging with these options: --geminstaller-output=all --rubygems-output=all
 
 * Create ActiveRecord test databases for mysql
 $ mysql -uroot -e 'grant all on *.* to rails@localhost;'
