@@ -12,6 +12,13 @@ module I18n
         def populate(&block)
           yield
         end
+      
+        # Accepts a list of paths to translation files. Loads translations from 
+        # plain Ruby (*.rb) or YAML files (*.yml). See #load_rb and #load_yml
+        # for details.
+        def load_translations(*filenames)
+          filenames.each {|filename| load_file filename }
+        end
         
         # Stores translations for the given locale in memory. 
         # This uses a deep merge for the translations hash, so existing
@@ -31,8 +38,8 @@ module I18n
           values = options.reject{|name, value| reserved.include? name }
 
           entry = lookup(locale, key, scope) || default(locale, default, options) || raise(I18n::MissingTranslationData.new(locale, key, options))
-          entry = pluralize entry, count
-          entry = interpolate entry, values
+          entry = pluralize locale, entry, count
+          entry = interpolate locale, entry, values
           entry
         end
         
@@ -82,7 +89,7 @@ module I18n
               when Symbol then translate locale, default, options
               when Array  then default.each do |obj| 
                 result = default(locale, obj, options.dup) and return result
-              end
+              end and nil
             end
           rescue MissingTranslationData
             nil
@@ -92,10 +99,13 @@ module I18n
           # rules. It will pick the first translation if count is not equal to 1
           # and the second translation if it is equal to 1. Other backends can
           # implement more flexible or complex pluralization rules.
-          def pluralize(entry, count)
-            return entry unless entry.is_a?(Array) and count
-            raise InvalidPluralizationData.new(entry, count) unless entry.size == 2
-            entry[count == 1 ? 0 : 1]
+          def pluralize(locale, entry, count)
+            return entry unless entry.is_a?(Hash) and count
+            # raise InvalidPluralizationData.new(entry, count) unless entry.is_a?(Hash)
+            key = :zero if count == 0 && entry.has_key?(:zero)
+            key ||= count == 1 ? :one : :many
+            raise InvalidPluralizationData.new(entry, count) unless entry.has_key?(key)
+            entry[key]
           end
     
           # Interpolates values into a given string.
@@ -106,26 +116,57 @@ module I18n
           # Note that you have to double escape the <tt>\\</tt> when you want to escape
           # the <tt>{{...}}</tt> key in a string (once for the string and once for the
           # interpolation).
-          def interpolate(string, values = {})
+          def interpolate(locale, string, values = {})
             return string if !string.is_a?(String)
 
-            map = {'%d' => '{{count}}', '%s' => '{{value}}'} # TODO deprecate this?
-            string.gsub!(/#{map.keys.join('|')}/){|key| map[key]} 
-          
-            s = StringScanner.new string.dup
+            string = string.gsub(/%d/, '{{count}}').gsub(/%s/, '{{value}}')
+            if string.respond_to?(:force_encoding)
+              original_encoding = string.encoding
+              string.force_encoding(Encoding::BINARY)
+            end
+
+            s = StringScanner.new(string)
             while s.skip_until(/\{\{/)
-              s.string[s.pos - 3, 1] = '' and next if s.pre_match[-1, 1] == '\\'            
+              s.string[s.pos - 3, 1] = '' and next if s.pre_match[-1, 1] == '\\'
               start_pos = s.pos - 2
               key = s.scan_until(/\}\}/)[0..-3]
-              end_pos = s.pos - 1            
+              end_pos = s.pos - 1
 
               raise ReservedInterpolationKey.new(key, string) if %w(scope default).include?(key)
               raise MissingInterpolationArgument.new(key, string) unless values.has_key? key.to_sym
 
               s.string[start_pos..end_pos] = values[key.to_sym].to_s
               s.unscan
-            end      
-            s.string
+            end
+
+            result = s.string
+            result.force_encoding(original_encoding) if original_encoding
+            result
+          end
+
+          # Loads a single translations file by delegating to #load_rb or 
+          # #load_yml depending on the file extension and directly merges the
+          # data to the existing translations. Raises I18n::UnknownFileType
+          # for all other file extensions.
+          def load_file(filename)
+            type = File.extname(filename).tr('.', '').downcase
+            raise UnknownFileType.new(type, filename) unless respond_to? :"load_#{type}"
+            data = send :"load_#{type}", filename # TODO raise a meaningful exception if this does not yield a Hash
+            data.each do |locale, d|
+              merge_translations locale, d
+            end
+          end
+          
+          # Loads a plain Ruby translations file. eval'ing the file must yield
+          # a Hash containing translation data with locales as toplevel keys.
+          def load_rb(filename)
+            eval IO.read(filename), binding, filename
+          end
+          
+          # Loads a YAML translations file. The data must have locales as 
+          # toplevel keys.
+          def load_yml(filename)
+            YAML::load IO.read(filename)
           end
           
           # Deep merges the given translations hash with the existing translations
