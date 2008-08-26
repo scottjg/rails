@@ -71,4 +71,14 @@ class HasOneThroughAssociationsTest < ActiveRecord::TestCase
     assert_not_nil assert_no_queries {clubs[0].sponsored_member}
   end
 
+  def test_uninitialized_has_one_through_should_return_nil_for_unsaved_record
+    assert_nil Member.new.club
+  end
+
+  def test_assigning_association_correctly_assigns_target
+    new_member = Member.create(:name => "Chris")
+    new_member.club = new_club = Club.create(:name => "LRUG")
+    assert_equal new_club, new_member.club.target
+  end
+
 end
