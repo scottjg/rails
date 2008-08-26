@@ -158,6 +158,7 @@ module ActionView #:nodoc:
   # See the ActionView::Helpers::PrototypeHelper::GeneratorMethods documentation for more details.
   class Base
     include ERB::Util
+    extend ActiveSupport::Memoizable
 
     attr_accessor :base_path, :assigns, :template_extension
     attr_accessor :controller
@@ -202,19 +203,6 @@ module ActionView #:nodoc:
       # holds compiled template code
     end
     include CompiledTemplates
-
-    def self.helper_modules #:nodoc:
-      helpers = []
-      Dir.entries(File.expand_path("#{File.dirname(__FILE__)}/helpers")).sort.each do |file|
-        next unless file =~ /^([a-z][a-z_]*_helper).rb$/
-        require "action_view/helpers/#{$1}"
-        helper_module_name = $1.camelize
-        if Helpers.const_defined?(helper_module_name)
-          helpers << Helpers.const_get(helper_module_name)
-        end
-      end
-      return helpers
-    end
 
     def self.process_view_paths(value)
       ActionView::PathSet.new(Array(value))
@@ -337,11 +325,14 @@ module ActionView #:nodoc:
         template
       end
     end
-
-    extend ActiveSupport::Memoizable
     memoize :pick_template
 
     private
+      def extended_by_without_helpers #:nodoc:
+        extended_by.reject { |mod| mod.name =~ /^ActionView::Helpers/ }
+      end
+      memoize :extended_by_without_helpers
+
       # Evaluate the local assigns and pushes them to the view.
       def evaluate_assigns
         unless @assigns_added
