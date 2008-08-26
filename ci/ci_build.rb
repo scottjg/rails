@@ -14,7 +14,7 @@ root_dir = File.expand_path(File.dirname(__FILE__) + "/..")
 
 # for now, use the no-passwd sudoers approach (documented in ci_setup_notes.txt)
 # A security hole, but there is nothing valuable on rails CI box anyway.
-build_results[:geminstaller] = system 'sudo geminstaller --config=#{root_dir}/ci/geminstaller.yml --exceptions'
+build_results[:geminstaller] = system "sudo geminstaller --config=#{root_dir}/ci/geminstaller.yml --exceptions"
 
 cd "#{root_dir}/activesupport" do
   puts
@@ -30,13 +30,12 @@ cd "#{root_dir}/activerecord" do
   build_results[:activerecord_mysql] = system 'rake test_mysql'
 end
 
-# Postgres is disabled until tests are fixed
-# cd "#{root_dir}/activerecord" do
-#   puts
-#   puts "[CruiseControl] Building ActiveRecord with PostgreSQL"
-#   puts
-#   build_results[:activerecord_postgresql8] = system 'rake test_postgresql'
-# end
+cd "#{root_dir}/activerecord" do
+  puts
+  puts "[CruiseControl] Building ActiveRecord with PostgreSQL"
+  puts
+  build_results[:activerecord_postgresql8] = system 'rake test_postgresql'
+end
 
 # Sqlite2 is disabled until tests are fixed
 # cd "#{root_dir}/activerecord" do
