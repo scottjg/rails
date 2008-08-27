@@ -247,7 +247,10 @@ class SanitizerTest < Test::Unit::TestCase
   def test_should_not_remove_unknown_tags
      assert_sanitized %{begin <foo>foobar</bar> end}, 'begin &lt;foo>foobar&lt;/bar> end'
   end
- 
+  
+  def test_should_not_mangle_urls_with_ampersand
+     assert_sanitized %{<a href=\"http://www.domain.com?var1=1&amp;var2=2\">my link</a>}
+  end
 
 protected
   def assert_sanitized(input, expected = nil)
