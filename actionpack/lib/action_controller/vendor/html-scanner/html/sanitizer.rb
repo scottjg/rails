@@ -69,7 +69,7 @@ module HTML
 
     # Specifies a Set of 'bad' tags that the #sanitize helper will remove completely, as opposed
     # to just escaping harmless tags like &lt;font&gt;
-    self.bad_tags               = Set.new(%w(script))
+    self.bad_tags               = Set.new(%w(script form input plaintext))
     
     # Specifies the default Set of tags that the #sanitize helper will allow unscathed.
     self.allowed_tags           = Set.new(%w(strong em b i p code pre tt samp kbd var sub 
@@ -146,9 +146,9 @@ module HTML
           
           process_attributes_for node, options
 
-          options[:tags].include?(node.name) ? node : nil
+          options[:tags].include?(node.name) ? node : bad_tags.include?(node.name) ? nil : node.to_s.gsub(/</, "&lt;")
         else
-          bad_tags.include?(options[:parent].first) ? nil : node.to_s.gsub(/</, "&lt;")
+          bad_tags.include?(options[:parent].first) ? nil : node.to_s
       end
     end
     

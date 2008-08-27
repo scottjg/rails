@@ -65,7 +65,7 @@ class SanitizerTest < Test::Unit::TestCase
 
   HTML::WhiteListSanitizer.allowed_tags.each do |tag_name|
     define_method "test_should_allow_#{tag_name}_tag" do
-      assert_sanitized "start <#{tag_name} title=\"1\" onclick=\"foo\">foo <bad>bar</bad> baz</#{tag_name}> end", %(start <#{tag_name} title="1">foo bar baz</#{tag_name}> end)
+      assert_sanitized "start <#{tag_name} title=\"1\" onclick=\"foo\">foo <bad>bar</bad> baz</#{tag_name}> end", %(start <#{tag_name} title="1">foo &lt;bad>bar&lt;/bad> baz</#{tag_name}> end)
     end
   end
 
@@ -102,7 +102,7 @@ class SanitizerTest < Test::Unit::TestCase
   def test_should_allow_only_custom_tags
     text = "<u>foo</u> with <i>bar</i>"
     sanitizer = HTML::WhiteListSanitizer.new
-    assert_equal("<u>foo</u> with bar", sanitizer.sanitize(text, :tags => %w(u)))
+    assert_equal("<u>foo</u> with &lt;i>bar&lt;/i>", sanitizer.sanitize(text, :tags => %w(u)))
   end
 
   def test_should_allow_custom_tags_with_attributes
@@ -167,7 +167,7 @@ class SanitizerTest < Test::Unit::TestCase
   end
   
   def test_should_sanitize_tag_broken_up_by_null
-    assert_sanitized %(<SCR\0IPT>alert(\"XSS\")</SCR\0IPT>), "alert(\"XSS\")"
+    assert_sanitized %(<SCR\0IPT>alert(\"XSS\")</SCR\0IPT>), "&lt;scr>alert(\"XSS\")&lt;/scr>"
   end
   
   def test_should_sanitize_invalid_script_tag
@@ -175,8 +175,8 @@ class SanitizerTest < Test::Unit::TestCase
   end
   
   def test_should_sanitize_script_tag_with_multiple_open_brackets
-    assert_sanitized %(<<SCRIPT>alert("XSS");//<</SCRIPT>), "&lt;"
-    assert_sanitized %(<iframe src=http://ha.ckers.org/scriptlet.html\n<a), %(&lt;a)
+    assert_sanitized %(<<SCRIPT>alert("XSS");//<</SCRIPT>), "<"
+    assert_sanitized %(<<iframe src=http://ha.ckers.org/scriptlet.html\n<a), %(<&lt;iframe src=\"http:\" /><a)
   end
   
   def test_should_sanitize_unclosed_script
@@ -243,6 +243,11 @@ class SanitizerTest < Test::Unit::TestCase
   def test_should_sanitize_img_vbscript
      assert_sanitized %(<img src='vbscript:msgbox("XSS")' />), '<img />'
   end
+  
+  def test_should_not_remove_unknown_tags
+     assert_sanitized %{begin <foo>foobar</bar> end}, 'begin &lt;foo>foobar&lt;/bar> end'
+  end
+ 
 
 protected
   def assert_sanitized(input, expected = nil)
