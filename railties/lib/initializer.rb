@@ -785,7 +785,6 @@ Run `rake gems:install` to install the missing gems.
     def threadsafe!
       self.cache_classes = true
       self.dependency_loading = false
-      self.active_record.allow_concurrency = true
       self.action_controller.allow_concurrency = true
       self
     end
