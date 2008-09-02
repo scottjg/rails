@@ -200,6 +200,7 @@ module ActionController #:nodoc:
       def perform_action_with_rescue #:nodoc:
         perform_action_without_rescue
       rescue Exception => exception
+        raise(exception)
         rescue_action_with_handler(exception) || rescue_action(exception)
       end
 
