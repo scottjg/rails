@@ -1,5 +1,6 @@
 require 'rbconfig'
 require 'commands/servers/base'
+require 'open-uri'  # for PortFinder
 
 unless defined?(Mongrel)
   puts "PROBLEM: Mongrel is not available on your system (or not in your path)"
@@ -15,6 +16,26 @@ OPTIONS = {
   :detach      => false,
   :debugger    => false
 }
+
+class PortFinder
+  def self.check(ip, port, verbose = false)
+    begin
+      data = nil
+      puts "Checking port #{port} on #{ip}" if verbose
+      open( "http://#{ip}:#{port}") {|f| data = f.read }
+      puts "Port #{port} is taken... trying #{port+1}" if verbose
+      port += 1
+      port = PortFinder.check(ip, port, verbose)
+      return port  
+    rescue => err
+      # failure to connect means the port is available, which is what we want!
+      puts "###################\n# Using port #{port} #\n###################}" if verbose
+      return port
+    end
+  end  
+end
+
+OPTIONS[:port] = PortFinder.check(OPTIONS[:ip], OPTIONS[:port], true)
 
 ARGV.clone.options do |opts|
   opts.on("-p", "--port=port", Integer, "Runs Rails on the specified port.", "Default: 3000") { |v| OPTIONS[:port] = v }
