@@ -1436,6 +1436,21 @@ class ValidatesNumericalityTest < ActiveRecord::TestCase
     valid!(FLOATS + INTEGERS + BIGDECIMAL + INFINITY)
   end
 
+  # large numbers parse as infinity and should not validate as numbers
+  def test_infinity
+    Topic.validates_numericality_of :approved
+
+    largepos = "1e400"
+    largeneg = "-1e400"
+
+    with_each_topic_approved_value([largepos, largeneg]) do |topic,value|
+      silence_warnings do # silence warnings about parsing huge floats
+        assert !topic.valid?, "#{value.inspect} not rejected as a number"
+      end
+      assert topic.errors.on(:approved)
+    end
+  end
+
   def test_validates_numericality_of_with_nil_allowed
     Topic.validates_numericality_of :approved, :allow_nil => true
 

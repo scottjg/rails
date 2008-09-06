@@ -898,9 +898,14 @@ module ActiveRecord
             end
             raw_value = raw_value.to_i
           else
+            ok = false
             begin
+              orig_value = raw_value
               raw_value = Kernel.Float(raw_value)
+              ok = orig_value.kind_of?(Float) || raw_value.finite?
             rescue ArgumentError, TypeError
+            end
+            unless ok
               record.errors.add(attr_name, :not_a_number, :value => raw_value, :default => configuration[:message])
               next
             end
