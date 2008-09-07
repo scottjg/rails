@@ -463,7 +463,8 @@ module ActionMailer #:nodoc:
         # have not already been specified manually.
         if @parts.empty?
           Dir.glob("#{template_path}/#{@template}.*").each do |path|
-            template = template_root["#{mailer_name}/#{File.basename(path)}"]
+            #template = template_root["#{mailer_name}/#{File.basename(path)}"]
+            template = ActionView::PathSet::Path.new(File.dirname(File.dirname(path)),true)["#{mailer_name}/#{File.basename(path)}"]
 
             # Skip unless template has a multipart format
             next unless template.multipart?
