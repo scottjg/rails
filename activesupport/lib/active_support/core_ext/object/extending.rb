@@ -1,4 +1,6 @@
 class Object
+  alias send! send
+  
   def remove_subclasses_of(*superclasses) #:nodoc:
     Class.remove_class(*subclasses_of(*superclasses))
   end
