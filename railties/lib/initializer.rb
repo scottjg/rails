@@ -49,6 +49,7 @@ module Rails
     end
 
     def env
+      require 'active_support/string_inquirer'
       ActiveSupport::StringInquirer.new(RAILS_ENV)
     end
 
@@ -356,7 +357,7 @@ Run `rake gems:install` to install the missing gems.
       if configuration.cache_classes
         configuration.eager_load_paths.each do |load_path|
           matcher = /\A#{Regexp.escape(load_path)}(.*)\.rb\Z/
-          Dir.glob("#{load_path}/**/*.rb").each do |file|
+          Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
             require_dependency file.sub(matcher, '\1')
           end
         end
@@ -487,7 +488,7 @@ Run `rake gems:install` to install the missing gems.
     # If assigned value cannot be matched to a TimeZone, an exception will be raised.
     def initialize_time_zone
       if configuration.time_zone
-        zone_default = Time.send!(:get_zone, configuration.time_zone)
+        zone_default = Time.__send__(:get_zone, configuration.time_zone)
         unless zone_default
           raise %{Value assigned to config.time_zone not recognized. Run "rake -D time" for a list of tasks for finding appropriate time zone names.}
         end
@@ -783,7 +784,6 @@ Run `rake gems:install` to install the missing gems.
     def threadsafe!
       self.cache_classes = true
       self.dependency_loading = false
-      self.active_record.allow_concurrency = true
       self.action_controller.allow_concurrency = true
       self
     end
