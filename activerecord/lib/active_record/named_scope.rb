@@ -120,10 +120,6 @@ module ActiveRecord
         load_found; self
       end
 
-<<<<<<< HEAD:activerecord/lib/active_record/named_scope.rb
-      def scope_options
-        @proxy_options
-=======
       def first(*args)
         if args.first.kind_of?(Integer) || (@found && !args.first.kind_of?(Hash))
           proxy_found.first(*args)
@@ -158,7 +154,6 @@ module ActiveRecord
         else
           !empty?
         end
->>>>>>> e826c992014b24475203bf1a88b3f7a2356f7ff5:activerecord/lib/active_record/named_scope.rb
       end
 
       protected
