@@ -62,7 +62,7 @@ class HashExtTest < Test::Unit::TestCase
     @symbols = @symbols.with_indifferent_access
     @mixed   = @mixed.with_indifferent_access
 
-    assert_equal 'a', @strings.send!(:convert_key, :a)
+    assert_equal 'a', @strings.__send__(:convert_key, :a)
 
     assert_equal 1, @strings.fetch('a')
     assert_equal 1, @strings.fetch(:a.to_s)
@@ -75,9 +75,9 @@ class HashExtTest < Test::Unit::TestCase
 
     hashes.each do |name, hash|
       method_map.sort_by { |m| m.to_s }.each do |meth, expected|
-        assert_equal(expected, hash.send!(meth, 'a'),
+        assert_equal(expected, hash.__send__(meth, 'a'),
                      "Calling #{name}.#{meth} 'a'")
-        assert_equal(expected, hash.send!(meth, :a),
+        assert_equal(expected, hash.__send__(meth, :a),
                      "Calling #{name}.#{meth} :a")
       end
     end
@@ -245,6 +245,16 @@ class HashExtTest < Test::Unit::TestCase
     assert(!indiff.keys.any? {|k| k.kind_of? String}, "A key was converted to a string!")
   end
 
+  def test_deep_merge
+    hash_1 = { :a => "a", :b => "b", :c => { :c1 => "c1", :c2 => "c2", :c3 => { :d1 => "d1" } } }
+    hash_2 = { :a => 1, :c => { :c1 => 2, :c3 => { :d2 => "d2" } } }
+    expected = { :a => 1, :b => "b", :c => { :c1 => 2, :c2 => "c2", :c3 => { :d1 => "d1", :d2 => "d2" } } }
+    assert_equal expected, hash_1.deep_merge(hash_2)
+
+    hash_1.deep_merge!(hash_2)
+    assert_equal expected, hash_1
+  end
+
   def test_reverse_merge
     defaults = { :a => "x", :b => "y", :c => 10 }.freeze
     options  = { :a => 1, :b => 2 }
@@ -280,6 +290,27 @@ class HashExtTest < Test::Unit::TestCase
     # Should replace the hash with only the given keys.
     assert_equal expected, original.slice!(:a, :b)
     assert_equal expected, original
+  end
+
+  def test_slice_with_an_array_key
+    original = { :a => 'x', :b => 'y', :c => 10, [:a, :b] => "an array key" }
+    expected = { [:a, :b] => "an array key", :c => 10 }
+
+    # Should return a new hash with only the given keys when given an array key.
+    assert_equal expected, original.slice([:a, :b], :c)
+    assert_not_equal expected, original
+
+    # Should replace the hash with only the given keys when given an array key.
+    assert_equal expected, original.slice!([:a, :b], :c)
+    assert_equal expected, original
+  end
+
+  def test_slice_with_splatted_keys
+    original = { :a => 'x', :b => 'y', :c => 10, [:a, :b] => "an array key" }
+    expected = { :a => 'x', :b => "y" }
+
+    # Should grab each of the splatted keys.
+    assert_equal expected, original.slice(*[:a, :b])
   end
 
   def test_indifferent_slice
@@ -702,7 +733,7 @@ class HashToXmlTest < Test::Unit::TestCase
   
   def test_empty_string_works_for_typecast_xml_value    
     assert_nothing_raised do
-      Hash.send!(:typecast_xml_value, "")
+      Hash.__send__(:typecast_xml_value, "")
     end
   end
   
@@ -732,6 +763,44 @@ class HashToXmlTest < Test::Unit::TestCase
     }.stringify_keys
 
     assert_equal hash, Hash.from_xml(hash.to_xml(@xml_options))['person']
+  end
+  
+  def test_datetime_xml_type_with_utc_time
+    alert_xml = <<-XML
+      <alert>
+        <alert_at type="datetime">2008-02-10T15:30:45Z</alert_at>
+      </alert>
+    XML
+    alert_at = Hash.from_xml(alert_xml)['alert']['alert_at']
+    assert alert_at.utc?
+    assert_equal Time.utc(2008, 2, 10, 15, 30, 45), alert_at
+  end
+  
+  def test_datetime_xml_type_with_non_utc_time
+    alert_xml = <<-XML
+      <alert>
+        <alert_at type="datetime">2008-02-10T10:30:45-05:00</alert_at>
+      </alert>
+    XML
+    alert_at = Hash.from_xml(alert_xml)['alert']['alert_at']
+    assert alert_at.utc?
+    assert_equal Time.utc(2008, 2, 10, 15, 30, 45), alert_at
+  end
+  
+  def test_datetime_xml_type_with_far_future_date
+    alert_xml = <<-XML
+      <alert>
+        <alert_at type="datetime">2050-02-10T15:30:45Z</alert_at>
+      </alert>
+    XML
+    alert_at = Hash.from_xml(alert_xml)['alert']['alert_at']
+    assert alert_at.utc?
+    assert_equal 2050,  alert_at.year
+    assert_equal 2,     alert_at.month
+    assert_equal 10,    alert_at.day
+    assert_equal 15,    alert_at.hour
+    assert_equal 30,    alert_at.min
+    assert_equal 45,    alert_at.sec
   end
 end
 
@@ -768,6 +837,27 @@ class QueryTest < Test::Unit::TestCase
   def test_array_values_are_not_sorted
     assert_query_equal 'person%5Bid%5D%5B%5D=20&person%5Bid%5D%5B%5D=10',
       :person => {:id => [20, 10]}
+  end
+
+  def test_expansion_count_is_limited
+    assert_raises RuntimeError do
+      attack_xml = <<-EOT
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE member [
+        <!ENTITY a "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">
+        <!ENTITY b "&c;&c;&c;&c;&c;&c;&c;&c;&c;&c;">
+        <!ENTITY c "&d;&d;&d;&d;&d;&d;&d;&d;&d;&d;">
+        <!ENTITY d "&e;&e;&e;&e;&e;&e;&e;&e;&e;&e;">
+        <!ENTITY e "&f;&f;&f;&f;&f;&f;&f;&f;&f;&f;">
+        <!ENTITY f "&g;&g;&g;&g;&g;&g;&g;&g;&g;&g;">
+        <!ENTITY g "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      ]>
+      <member>
+      &a;
+      </member>
+      EOT
+      Hash.from_xml(attack_xml)
+    end
   end
 
   private

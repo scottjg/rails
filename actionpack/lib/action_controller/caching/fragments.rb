@@ -2,7 +2,7 @@ module ActionController #:nodoc:
   module Caching
     # Fragment caching is used for caching various blocks within templates without caching the entire action as a whole. This is useful when
     # certain elements of an action change frequently or depend on complicated state while other parts rarely change or can be shared amongst multiple
-    # parties. The caching is doing using the cache helper available in the Action View. A template with caching might look something like:
+    # parties. The caching is done using the cache helper available in the Action View. A template with caching might look something like:
     #
     #   <b>Hello <%= @name %></b>
     #   <% cache do %>
@@ -60,17 +60,17 @@ module ActionController #:nodoc:
         ActiveSupport::Cache.expand_cache_key(key.is_a?(Hash) ? url_for(key).split("://").last : key, :views)
       end
 
-      def fragment_for(block, name = {}, options = nil) #:nodoc:
-        unless perform_caching then block.call; return end
-
-        buffer = yield
-
-        if cache = read_fragment(name, options)
-          buffer.concat(cache)
+      def fragment_for(buffer, name = {}, options = nil, &block) #:nodoc:
+        if perform_caching
+          if cache = read_fragment(name, options)
+            buffer.concat(cache)
+          else
+            pos = buffer.length
+            block.call
+            write_fragment(name, buffer[pos..-1], options)
+          end
         else
-          pos = buffer.length
           block.call
-          write_fragment(name, buffer[pos..-1], options)
         end
       end
 
@@ -95,6 +95,17 @@ module ActionController #:nodoc:
 
         self.class.benchmark "Cached fragment hit: #{key}" do
           cache_store.read(key, options)
+        end
+      end
+
+      # Check if a cached fragment from the location signified by <tt>key</tt> exists (see <tt>expire_fragment</tt> for acceptable formats)
+      def fragment_exist?(key, options = nil)
+        return unless cache_configured?
+
+        key = fragment_cache_key(key)
+
+        self.class.benchmark "Cached fragment exists?: #{key}" do
+          cache_store.exist?(key, options)
         end
       end
 

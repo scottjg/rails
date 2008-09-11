@@ -159,10 +159,15 @@ class ReflectionTest < ActiveRecord::TestCase
   end
 
   def test_reflection_of_all_associations
-    assert_equal 19, Firm.reflect_on_all_associations.size
-    assert_equal 16, Firm.reflect_on_all_associations(:has_many).size
-    assert_equal 3, Firm.reflect_on_all_associations(:has_one).size
+    # FIXME these assertions bust a lot
+    assert_equal 24, Firm.reflect_on_all_associations.size
+    assert_equal 18, Firm.reflect_on_all_associations(:has_many).size
+    assert_equal 6, Firm.reflect_on_all_associations(:has_one).size
     assert_equal 0, Firm.reflect_on_all_associations(:belongs_to).size
+  end
+
+  def test_reflection_should_not_raise_error_when_compared_to_other_object
+    assert_nothing_raised { Firm.reflections[:clients] == Object.new }
   end
 
   private

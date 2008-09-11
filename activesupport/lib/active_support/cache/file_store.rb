@@ -9,15 +9,15 @@ module ActiveSupport
 
       def read(name, options = nil)
         super
-        File.open(real_file_path(name), 'rb') { |f| f.read } rescue nil
+        File.open(real_file_path(name), 'rb') { |f| Marshal.load(f) } rescue nil
       end
 
       def write(name, value, options = nil)
         super
         ensure_cache_path(File.dirname(real_file_path(name)))
-        File.open(real_file_path(name), "wb+") { |f| f.write(value) }
+        File.atomic_write(real_file_path(name), cache_path) { |f| Marshal.dump(value, f) }
       rescue => e
-        RAILS_DEFAULT_LOGGER.error "Couldn't create cache directory: #{name} (#{e.message})" if RAILS_DEFAULT_LOGGER
+        logger.error "Couldn't create cache directory: #{name} (#{e.message})" if logger
       end
 
       def delete(name, options = nil)
@@ -40,13 +40,18 @@ module ActiveSupport
         end
       end
 
+      def exist?(name, options = nil)
+        super
+        File.exist?(real_file_path(name))
+      end
+
       private
         def real_file_path(name)
           '%s/%s.cache' % [@cache_path, name.gsub('?', '.').gsub(':', '.')]
         end
 
         def ensure_cache_path(path)
-          FileUtils.makedirs(path) unless File.exists?(path)
+          FileUtils.makedirs(path) unless File.exist?(path)
         end
 
         def search_dir(dir, &callback)
@@ -60,6 +65,6 @@ module ActiveSupport
             end
           end
         end
-      end
+    end
   end
 end
