@@ -360,7 +360,8 @@ Run `rake gems:install` to install the missing gems.
         configuration.eager_load_paths.each do |load_path|
           matcher = /\A#{Regexp.escape(load_path)}(.*)\.rb\Z/
           Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
-            require_dependency "#{load_path}#{file.sub(matcher, '\1')}"
+            require_dependency file.sub(matcher, '\1')
+            #require_dependency "#{load_path}#{file.sub(matcher, '\1')}"
           end
         end
       end

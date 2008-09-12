@@ -51,6 +51,10 @@ module ActiveSupport #:nodoc:
     mattr_accessor :constant_watch_stack
     self.constant_watch_stack = []
 
+    # An internal directory contents cache to reduce stat calls
+    mattr_accessor :directory_cache
+    self.directory_cache = {}
+
     # Module includes this module
     module ModuleConstMissing #:nodoc:
       def self.included(base) #:nodoc:
@@ -319,9 +323,17 @@ module ActiveSupport #:nodoc:
       path_suffix = path_suffix + '.rb' unless path_suffix.ends_with? '.rb'
       load_paths.each do |root|
         path = File.join(root, path_suffix)
-        return path if File.file? path
-      end
+        return path if files_in( root ).include?( path )  
+      end  
       nil # Gee, I sure wish we had first_match ;-)
+    end
+
+    def files_in( directory )
+      if directory_cache[directory]
+        directory_cache[directory]
+      else
+        directory_cache[directory] = Dir.glob("#{directory}/**/*.rb")
+      end    
     end
 
     # Does the provided path_suffix correspond to an autoloadable module?
