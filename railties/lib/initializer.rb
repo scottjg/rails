@@ -169,6 +169,7 @@ module Rails
       prepare_dispatcher
 
       # Routing must be initialized after plugins to allow the former to extend the routes
+      #initialize_routing
       initialize_routing
 
       # Observers are loaded after plugins in case Observers or observed models are modified by plugins.
@@ -359,7 +360,7 @@ Run `rake gems:install` to install the missing gems.
         configuration.eager_load_paths.each do |load_path|
           matcher = /\A#{Regexp.escape(load_path)}(.*)\.rb\Z/
           Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
-            require_dependency file.sub(matcher, '\1')
+            require_dependency "#{load_path}#{file.sub(matcher, '\1')}"
           end
         end
       end
