@@ -1375,6 +1375,36 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
         x.send(:foo_with_requirement_url, "I am Against the requirements")
       end
     end
+
+    def test_routes_changed_correctly_after_clear
+      ActionController::Base.optimise_named_routes = true
+      rs = ::ActionController::Routing::RouteSet.new
+      rs.draw do |r|
+        r.connect 'ca', :controller => 'ca', :action => "aa"
+        r.connect 'cb', :controller => 'cb', :action => "ab"
+        r.connect 'cc', :controller => 'cc', :action => "ac"
+        r.connect ':controller/:action/:id'
+        r.connect ':controller/:action/:id.:format'
+      end
+
+      hash = rs.recognize_path "/cc"
+
+      assert_not_nil hash
+      assert_equal %w(cc ac), [hash[:controller], hash[:action]]
+
+      rs.draw do |r|
+        r.connect 'cb', :controller => 'cb', :action => "ab"
+        r.connect 'cc', :controller => 'cc', :action => "ac"
+        r.connect ':controller/:action/:id'
+        r.connect ':controller/:action/:id.:format'
+      end
+
+      hash = rs.recognize_path "/cc"
+
+      assert_not_nil hash
+      assert_equal %w(cc ac), [hash[:controller], hash[:action]]
+
+    end
   end
 
   class RouteTest < Test::Unit::TestCase
@@ -1692,6 +1722,12 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
       controller = setup_named_route_test
       assert_equal "http://named.route.test/people/go/7/hello/joe/5?baz=bar",
         controller.send(:multi_url, 7, "hello", 5, :baz => "bar")
+    end
+
+    def test_named_route_url_method_with_ordered_parameters_and_empty_hash
+      controller = setup_named_route_test
+      assert_equal "http://named.route.test/people/go/7/hello/joe/5",
+        controller.send(:multi_url, 7, "hello", 5, {})
     end
 
     def test_named_route_url_method_with_no_positional_arguments
