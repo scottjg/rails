@@ -33,7 +33,11 @@ module Rails
     end
 
     def logger
-      RAILS_DEFAULT_LOGGER
+      if defined?(RAILS_DEFAULT_LOGGER)
+        RAILS_DEFAULT_LOGGER
+      else
+        nil
+      end
     end
 
     def root
@@ -45,6 +49,7 @@ module Rails
     end
 
     def env
+      require 'active_support/string_inquirer'
       ActiveSupport::StringInquirer.new(RAILS_ENV)
     end
 
@@ -340,9 +345,11 @@ Run `rake gems:install` to install the missing gems.
     end
 
     def load_view_paths
-      ActionView::PathSet::Path.eager_load_templates! if configuration.cache_classes
-      ActionMailer::Base.template_root.load if configuration.frameworks.include?(:action_mailer)
-      ActionController::Base.view_paths.load if configuration.frameworks.include?(:action_controller)
+      if configuration.frameworks.include?(:action_view)
+        ActionView::PathSet::Path.eager_load_templates! if configuration.cache_classes
+        ActionController::Base.view_paths.load if configuration.frameworks.include?(:action_controller)
+        ActionMailer::Base.template_root.load if configuration.frameworks.include?(:action_mailer)
+      end
     end
 
     # Eager load application classes
@@ -350,7 +357,7 @@ Run `rake gems:install` to install the missing gems.
       if configuration.cache_classes
         configuration.eager_load_paths.each do |load_path|
           matcher = /\A#{Regexp.escape(load_path)}(.*)\.rb\Z/
-          Dir.glob("#{load_path}/**/*.rb").each do |file|
+          Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
             require_dependency file.sub(matcher, '\1')
           end
         end
@@ -401,7 +408,7 @@ Run `rake gems:install` to install the missing gems.
     # +STDERR+, with a log level of +WARN+.
     def initialize_logger
       # if the environment has explicitly defined a logger, use it
-      return if defined?(RAILS_DEFAULT_LOGGER)
+      return if Rails.logger
 
       unless logger = configuration.logger
         begin
@@ -429,10 +436,11 @@ Run `rake gems:install` to install the missing gems.
     # RAILS_DEFAULT_LOGGER.
     def initialize_framework_logging
       for framework in ([ :active_record, :action_controller, :action_mailer ] & configuration.frameworks)
-        framework.to_s.camelize.constantize.const_get("Base").logger ||= RAILS_DEFAULT_LOGGER
+        framework.to_s.camelize.constantize.const_get("Base").logger ||= Rails.logger
       end
 
-      RAILS_CACHE.logger ||= RAILS_DEFAULT_LOGGER
+      ActiveSupport::Dependencies.logger ||= Rails.logger
+      Rails.cache.logger ||= Rails.logger
     end
 
     # Sets +ActionController::Base#view_paths+ and +ActionMailer::Base#template_root+
@@ -440,9 +448,11 @@ Run `rake gems:install` to install the missing gems.
     # paths have already been set, it is not changed, otherwise it is
     # set to use Configuration#view_path.
     def initialize_framework_views
-      view_path = ActionView::PathSet::Path.new(configuration.view_path, false)
-      ActionMailer::Base.template_root ||= view_path if configuration.frameworks.include?(:action_mailer)
-      ActionController::Base.view_paths = view_path if configuration.frameworks.include?(:action_controller) && ActionController::Base.view_paths.empty?
+      if configuration.frameworks.include?(:action_view)
+        view_path = ActionView::PathSet::Path.new(configuration.view_path, false)
+        ActionMailer::Base.template_root ||= view_path if configuration.frameworks.include?(:action_mailer)
+        ActionController::Base.view_paths = view_path if configuration.frameworks.include?(:action_controller) && ActionController::Base.view_paths.empty?
+      end
     end
 
     # If Action Controller is not one of the loaded frameworks (Configuration#frameworks)
@@ -478,7 +488,7 @@ Run `rake gems:install` to install the missing gems.
     # If assigned value cannot be matched to a TimeZone, an exception will be raised.
     def initialize_time_zone
       if configuration.time_zone
-        zone_default = Time.send!(:get_zone, configuration.time_zone)
+        zone_default = Time.__send__(:get_zone, configuration.time_zone)
         unless zone_default
           raise %{Value assigned to config.time_zone not recognized. Run "rake -D time" for a list of tasks for finding appropriate time zone names.}
         end
@@ -527,7 +537,7 @@ Run `rake gems:install` to install the missing gems.
       return unless configuration.frameworks.include?(:action_controller)
       require 'dispatcher' unless defined?(::Dispatcher)
       Dispatcher.define_dispatcher_callbacks(configuration.cache_classes)
-      Dispatcher.new(RAILS_DEFAULT_LOGGER).send :run_callbacks, :prepare_dispatch
+      Dispatcher.new(Rails.logger).send :run_callbacks, :prepare_dispatch
     end
 
     def disable_dependency_loading
@@ -688,13 +698,17 @@ Run `rake gems:install` to install the missing gems.
     # You can add gems with the #gem method.
     attr_accessor :gems
 
-    # Adds a single Gem dependency to the rails application.
+    # Adds a single Gem dependency to the rails application. By default, it will require
+    # the library with the same name as the gem. Use :lib to specify a different name.
     #
     #   # gem 'aws-s3', '>= 0.4.0'
     #   # require 'aws/s3'
     #   config.gem 'aws-s3', :lib => 'aws/s3', :version => '>= 0.4.0', \
     #     :source => "http://code.whytheluckystiff.net"
     #
+    # To require a library be installed, but not attempt to load it, pass :lib => false
+    #
+    #   config.gem 'qrp', :version => '0.4.1', :lib => false
     def gem(name, options = {})
       @gems << Rails::GemDependency.new(name, options)
     end
@@ -762,6 +776,16 @@ Run `rake gems:install` to install the missing gems.
 
       Object.const_set(:RELATIVE_RAILS_ROOT, ::RAILS_ROOT.dup) unless defined?(::RELATIVE_RAILS_ROOT)
       ::RAILS_ROOT.replace @root_path
+    end
+
+    # Enable threaded mode. Allows concurrent requests to controller actions and
+    # multiple database connections. Also disables automatic dependency loading
+    # after boot
+    def threadsafe!
+      self.cache_classes = true
+      self.dependency_loading = false
+      self.action_controller.allow_concurrency = true
+      self
     end
 
     # Loads and returns the contents of the #database_configuration_file. The

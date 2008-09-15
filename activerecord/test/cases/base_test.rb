@@ -76,7 +76,7 @@ class TopicWithProtectedContentAndAccessibleAuthorName < ActiveRecord::Base
 end
 
 class BasicsTest < ActiveRecord::TestCase
-  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations
+  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts
 
   def test_table_exists
     assert !NonExistentTable.table_exists?
@@ -138,7 +138,7 @@ class BasicsTest < ActiveRecord::TestCase
   if current_adapter?(:MysqlAdapter)
     def test_read_attributes_before_type_cast_on_boolean
       bool = Booleantest.create({ "value" => false })
-      assert_equal 0, bool.attributes_before_type_cast["value"]
+      assert_equal "0", bool.reload.attributes_before_type_cast["value"]
     end
   end
 
@@ -616,7 +616,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_update_counter
-    category = Category.first
+    category = categories(:general)
     assert_nil category.categorizations_count
     assert_equal 2, category.categorizations.count
 
@@ -664,10 +664,21 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_update_all_ignores_order_limit_from_association
-    author = Author.find(1)
+  def test_update_all_ignores_order_without_limit_from_association
+    author = authors(:david)
     assert_nothing_raised do
-      assert_equal author.posts_with_comments_and_categories.length, author.posts_with_comments_and_categories.update_all("body = 'bulk update!'")
+      assert_equal author.posts_with_comments_and_categories.length, author.posts_with_comments_and_categories.update_all([ "body = ?", "bulk update!" ])
+    end
+  end
+
+  def test_update_all_with_order_and_limit_updates_subset_only
+    author = authors(:david)
+    assert_nothing_raised do
+      assert_equal 1, author.posts_sorted_by_id_limited.size
+      assert_equal 2, author.posts_sorted_by_id_limited.find(:all, :limit => 2).size
+      assert_equal 1, author.posts_sorted_by_id_limited.update_all([ "body = ?", "bulk update!" ])
+      assert_equal "bulk update!", posts(:welcome).body
+      assert_not_equal "bulk update!", posts(:thinking).body
     end
   end
 
@@ -880,7 +891,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_mass_assignment_protection_against_class_attribute_writers
     [:logger, :configurations, :primary_key_prefix_type, :table_name_prefix, :table_name_suffix, :pluralize_table_names, :colorize_logging,
-      :default_timezone, :allow_concurrency, :schema_format, :verification_timeout, :lock_optimistically, :record_timestamps].each do |method|
+      :default_timezone, :schema_format, :lock_optimistically, :record_timestamps].each do |method|
       assert  Task.respond_to?(method)
       assert  Task.respond_to?("#{method}=")
       assert  Task.new.respond_to?(method)
@@ -1073,6 +1084,24 @@ class BasicsTest < ActiveRecord::TestCase
     Time.zone = nil
     Topic.skip_time_zone_conversion_for_attributes = []
   end
+  
+  def test_multiparameter_attributes_on_time_only_column_with_time_zone_aware_attributes_does_not_do_time_zone_conversion
+    ActiveRecord::Base.time_zone_aware_attributes = true
+    ActiveRecord::Base.default_timezone = :utc
+    Time.zone = ActiveSupport::TimeZone[-28800]
+    attributes = {
+      "bonus_time(1i)" => "2000", "bonus_time(2i)" => "1", "bonus_time(3i)" => "1",
+      "bonus_time(4i)" => "16", "bonus_time(5i)" => "24"
+    }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    assert_equal Time.utc(2000, 1, 1, 16, 24, 0), topic.bonus_time
+    assert topic.bonus_time.utc?
+  ensure
+    ActiveRecord::Base.time_zone_aware_attributes = false
+    ActiveRecord::Base.default_timezone = :local
+    Time.zone = nil
+  end
 
   def test_multiparameter_attributes_on_time_with_empty_seconds
     attributes = {
@@ -1114,11 +1143,15 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean
+    b_nil = Booleantest.create({ "value" => nil })
+    nil_id = b_nil.id
     b_false = Booleantest.create({ "value" => false })
     false_id = b_false.id
     b_true = Booleantest.create({ "value" => true })
     true_id = b_true.id
 
+    b_nil = Booleantest.find(nil_id)
+    assert_nil b_nil.value
     b_false = Booleantest.find(false_id)
     assert !b_false.value?
     b_true = Booleantest.find(true_id)
@@ -1126,11 +1159,15 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean_cast_from_string
+    b_blank = Booleantest.create({ "value" => "" })
+    blank_id = b_blank.id
     b_false = Booleantest.create({ "value" => "0" })
     false_id = b_false.id
     b_true = Booleantest.create({ "value" => "1" })
     true_id = b_true.id
 
+    b_blank = Booleantest.find(blank_id)
+    assert_nil b_blank.value
     b_false = Booleantest.find(false_id)
     assert !b_false.value?
     b_true = Booleantest.find(true_id)
@@ -1358,6 +1395,12 @@ class BasicsTest < ActiveRecord::TestCase
     myobj = MyObject.new('value1', 'value2')
     topic = Topic.create("content" => myobj)
     Topic.serialize("content", MyObject)
+    assert_equal(myobj, topic.content)
+  end
+
+  def test_serialized_time_attribute
+    myobj = Time.local(2008,1,1,1,0)
+    topic = Topic.create("content" => myobj).reload
     assert_equal(myobj, topic.content)
   end
 

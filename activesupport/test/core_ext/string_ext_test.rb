@@ -32,6 +32,10 @@ class StringInflectionsTest < Test::Unit::TestCase
     end
   end
 
+  def test_camelize_lower
+    assert_equal('capital', 'Capital'.camelize(:lower))
+  end
+
   def test_underscore
     CamelToUnderscore.each do |camel, underscore|
       assert_equal(underscore, camel.underscore)
@@ -195,5 +199,11 @@ class StringInflectionsTest < Test::Unit::TestCase
     ensure
       $KCODE = old_kcode
     end
+  end
+end
+
+class StringBehaviourTest < Test::Unit::TestCase
+  def test_acts_like_string
+    assert 'Bambi'.acts_like_string?
   end
 end
