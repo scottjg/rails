@@ -566,7 +566,15 @@ module ActiveRecord #:nodoc:
       end
 
       # A convenience wrapper for <tt>find(:first, *args)</tt>. You can pass in all the
-      # same arguments to this method as you can to <tt>find(:first)</tt>.
+      # same arguments to this method as you can to <tt>find(:first)</tt>  If the first
+      # argument is an integer an array of the first n records will be returned.
+      #
+      # ==== Examples
+      #
+      # Person.first                                                  # Equivalent to Person.find(:first)
+      # Person.first(:conditions => [ "user_name = ?", user_name])
+      # Person.first(5)                                               # Equivalent to Person.find(:all, :limit => 5)
+      # Person.first(5, :conditions => [ "user_name = ?", user_name])
       def first(*args)
         if args.first.kind_of?(Integer)
           find(:all, (args[1] || {}).merge(:limit => args.first))
@@ -575,8 +583,16 @@ module ActiveRecord #:nodoc:
         end
       end
 
-      # A convenience wrapper for <tt>find(:last, *args)</tt>. You can pass in all the
-      # same arguments to this method as you can to <tt>find(:last)</tt>.
+      # A convenience wrapper for <tt>find(:first, *args)</tt>. You can pass in all the
+      # same arguments to this method as you can to <tt>find(:first)</tt>  If the first
+      # argument is an integer an array of the last n records will be returned.
+      #
+      # ==== Examples
+      #
+      # Person.last                                                  # Equivalent to Person.find(:last)
+      # Person.last(:conditions => [ "user_name = ?", user_name])
+      # Person.last(5)                                               # Equivalent to Person.find(:all, :limit => 5, :order => 'ID desc').reverse!
+      # Person.last(5, :conditions => [ "user_name = ?", user_name])
       def last(*args)
         if args.first.kind_of?(Integer)
           find(:all, reverse_order_in_options(args[1] || {}).merge(:limit => args.first)).reverse!
@@ -584,7 +600,6 @@ module ActiveRecord #:nodoc:
           find(:last, *args)
         end
       end
-
 
       # This is an alias for find(:all).  You can pass in all the same arguments to this method as you can
       # to find(:all)
