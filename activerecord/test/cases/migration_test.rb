@@ -442,10 +442,7 @@ if ActiveRecord::Base.connection.supports_migrations?
 
         ActiveRecord::Migration.add_column :people, :intelligence_quotient, :tinyint
         Person.reset_column_information
-        Person.create :intelligence_quotient => 300
-        jonnyg = Person.find(:first)
-        assert_equal 127, jonnyg.intelligence_quotient
-        jonnyg.destroy
+        assert_match /tinyint/, Person.columns_hash['intelligence_quotient'].sql_type
       ensure
         ActiveRecord::Migration.remove_column :people, :intelligence_quotient rescue nil
       end
@@ -1136,7 +1133,11 @@ if ActiveRecord::Base.connection.supports_migrations?
       columns = Person.connection.columns(:binary_testings)
       data_column = columns.detect { |c| c.name == "data" }
 
-      assert_nil data_column.default
+      if current_adapter?(:MysqlAdapter)
+        assert_equal '', data_column.default
+      else
+        assert_nil data_column.default
+      end
 
       Person.connection.drop_table :binary_testings rescue nil
     end
