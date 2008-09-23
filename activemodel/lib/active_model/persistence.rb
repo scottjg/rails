@@ -12,19 +12,24 @@ module ActiveModel
     end
     
     def create(*args, &block)
-      persistence_driver.create(*args, &block)
+      persistence_driver.create(self, *args, &block)
     end
     
     def update(*args, &block)
-      persistence_driver.update(*args, &block)
+      persistence_driver.update(self, *args, &block)
     end
     
     def destroy(*args, &block)
-      persistence_driver.update(*args, &block)      
+      persistence_driver.destroy(self, *args, &block)      
+    end
+    
+    def new_record?
+      persistence_driver.new_record?(self)
     end
     
     def create_or_update(*args, &block)
-      persistence_driver.update(*args, &block)      
+      result = new_record? ? create : update
+      result != false
     end
   end
 end

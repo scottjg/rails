@@ -39,6 +39,25 @@ class AllThreeWays < ModelForTesting
   end
 end
 
+class VariousHookedEvents < ModelForTesting
+  before_save :saved
+  before_destroy :destroyed
+  [:saved, :destroyed].each do |name|
+    define_method(name) do
+      log_call(name)
+    end
+  end
+end
+
+class ThreeSaves < ModelForTesting
+  before_save :first
+  before_save :second
+  before_save :third
+  def method_missing(method_name, *args)
+    log_call(method_name)
+  end
+end
+
 class CallbacksTest < ActiveModel::TestCase
 
   test "Calls before save defined as method" do
@@ -55,14 +74,7 @@ class CallbacksTest < ActiveModel::TestCase
   
 
   test "Callbacks are added in the order they're specified" do
-    model = model_of(Class.new(ModelForTesting) do
-      before_save :first
-      before_save :second
-      before_save :third
-      def method_missing(method_name, *args)
-        log_call(method_name)
-      end
-    end)
+    model = model_of(ThreeSaves)
     model.save
     assert_equal [:first, :second, :third], model.logged_calls
   end
@@ -73,8 +85,15 @@ class CallbacksTest < ActiveModel::TestCase
     assert ([:as_method, :as_proc, :named_callback] - model.logged_calls).blank?, "Should have defined callbacks all 3 possible ways."
   end
   
+  
+  test "Can mix callbacks of different types" do
+    model = model_of(VariousHookedEvents, [:new_record?, :update, :destroy])
+    model.save
+    model.destroy
+  end
+  
   private
-  def model_of(klass, messages_to_expect = [:update])
+  def model_of(klass, messages_to_expect = [:new_record?, :update])
     returning (model = klass.new) do
       model.persistence_driver = persistence_driver = stub
       messages_to_expect.each{|message| persistence_driver.expects(message)}
