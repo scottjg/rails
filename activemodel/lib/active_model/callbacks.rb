@@ -133,7 +133,7 @@ module ActiveModel
         def callback(method)
           result = run_callbacks(method) { |result, object| false == result }
 
-          if result != false && respond_to_without_attributes?(method)
+          if result != false && respond_to?(method)
             result = send(method)
           end
 
