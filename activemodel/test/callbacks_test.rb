@@ -59,37 +59,38 @@ class ThreeSaves < ModelForTesting
 end
 
 class CallbacksTest < ActiveModel::TestCase
+  uses_mocha "Callback tests" do
+    test "Calls before save defined as method" do
+      model = model_of(WithNamedCallback)
+      model.save
+      assert_equal [:before_save], model.logged_calls
+    end
+  
+    test "Calls before save callback methods" do
+      model = model_of(WithHardcodedCallback)
+      model.save
+      assert_equal [:before_save_in_method], model.logged_calls
+    end
+  
 
-  test "Calls before save defined as method" do
-    model = model_of(WithNamedCallback)
-    model.save
-    assert_equal [:before_save], model.logged_calls
-  end
+    test "Callbacks are added in the order they're specified" do
+      model = model_of(ThreeSaves)
+      model.save
+      assert_equal [:first, :second, :third], model.logged_calls
+    end
   
-  test "Calls before save callback methods" do
-    model = model_of(WithHardcodedCallback)
-    model.save
-    assert_equal [:before_save_in_method], model.logged_calls
-  end
-  
-
-  test "Callbacks are added in the order they're specified" do
-    model = model_of(ThreeSaves)
-    model.save
-    assert_equal [:first, :second, :third], model.logged_calls
-  end
-  
-  test "Callbacks can be specified as methods, procs, or named callbacks" do
-    model = model_of(AllThreeWays)
-    model.save
-    assert ([:as_method, :as_proc, :named_callback] - model.logged_calls).blank?, "Should have defined callbacks all 3 possible ways."
-  end
+    test "Callbacks can be specified as methods, procs, or named callbacks" do
+      model = model_of(AllThreeWays)
+      model.save
+      assert ([:as_method, :as_proc, :named_callback] - model.logged_calls).blank?, "Should have defined callbacks all 3 possible ways."
+    end
   
   
-  test "Can mix callbacks of different types" do
-    model = model_of(VariousHookedEvents, [:new_record?, :update, :destroy])
-    model.save
-    model.destroy
+    test "Can mix callbacks of different types" do
+      model = model_of(VariousHookedEvents, [:new_record?, :update, :destroy])
+      model.save
+      model.destroy
+    end
   end
   
   private
