@@ -205,6 +205,10 @@ module ActiveModel
         @source_reflection ||= source_reflection_names.collect { |name| through_reflection.klass.reflect_on_association(name) }.compact.first
       end
 
+      def primary_key_name
+        @primary_key_name ||= options[:foreign_key] || derive_primary_key_name
+      end
+      
       def check_validity!
         if options[:through]
           if through_reflection.nil?
@@ -229,6 +233,14 @@ module ActiveModel
         end
       end
 
+      def counter_cache_column
+        if options[:counter_cache] == true
+          "#{active_record.name.underscore.pluralize}_count"
+        elsif options[:counter_cache]
+          options[:counter_cache]
+        end
+      end
+      
       private
         def derive_class_name
           # get the class_name of the belongs_to association of the through reflection
@@ -240,7 +252,17 @@ module ActiveModel
             class_name
           end
         end
-
+        
+        def derive_primary_key_name
+          if macro == :belongs_to
+            "#{name}_id"
+          elsif options[:as]
+            "#{options[:as]}_id"
+          else
+            active_model.name.foreign_key
+          end
+        end
+ 
     end
   end
 end

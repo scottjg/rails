@@ -41,6 +41,18 @@ module ActiveModel
         {}
       end
       
+    
+      def build(attributes = {}, &block)
+        if attributes.is_a?(Array)
+          attributes.collect { |attr| build(attr, &block) }
+        else
+          build_record(attributes) do |record|
+            block.call(record) if block_given?
+            set_belongs_to_association_for(record)
+          end
+        end
+      end
+      
     def method_missing(method, *args)
       if @target.respond_to?(method) || (!@reflection.klass.respond_to?(method) && Class.respond_to?(method))
         if block_given?
