@@ -35,9 +35,14 @@ module ActiveModel
 
         @reflection.options[:uniq] ? uniq(records) : records
       end
-    end
-    
+      # overloaded in derived Association classes to provide useful scoping depending on association type.
+      def construct_scope
+        #FIXME overload on subclasses.
+        {}
+      end
+      
     def method_missing(method, *args)
+p method      
       if @target.respond_to?(method) || (!@reflection.klass.respond_to?(method) && Class.respond_to?(method))
         if block_given?
           super { |*block_args| yield(*block_args) }
@@ -56,6 +61,6 @@ module ActiveModel
         end
       end
     end
-    
+   end 
   end
 end
