@@ -110,7 +110,11 @@ module ActiveModel
         end
       end
 
-
+      # Defines the column name for use with single table inheritance
+      # -- can be set in subclasses like so: self.inheritance_column = "type_id"
+      def inheritance_column
+        @inheritance_column ||= "type".freeze
+      end
 
       # Returns whether this class is a base AM class.  If A is a base class and
       # B descends from A, then B.base_class will return B.
