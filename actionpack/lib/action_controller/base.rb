@@ -284,14 +284,6 @@ module ActionController #:nodoc:
     @@debug_routes = true
     cattr_accessor :debug_routes
 
-    # Indicates whether to allow concurrent action processing. Your
-    # controller actions and any other code they call must also behave well
-    # when called from concurrent threads. Turned off by default.
-    @@allow_concurrency = false
-    cattr_accessor :allow_concurrency
-
-    @@guard = Monitor.new
-
     # Modern REST web services often need to submit complex data to the web application.
     # The <tt>@@param_parsers</tt> hash lets you register handlers which will process the HTTP body and add parameters to the
     # <tt>params</tt> hash. These handlers are invoked for POST and PUT requests.
@@ -532,12 +524,7 @@ module ActionController #:nodoc:
         assign_names
 
         log_processing
-
-        if @@allow_concurrency
-          send(method, *arguments)
-        else
-          @@guard.synchronize { send(method, *arguments) }
-        end
+        send(method, *arguments)
 
         send_response
       ensure
