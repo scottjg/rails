@@ -5,6 +5,24 @@ module ActiveModel
   
   class RecordNotFound < ActiveModelError
   end
+  
+  # These are the methods which must be implemented by concrete extensions to ActiveModel
+  module ExternalInterface
+    def self.included(base)
+      base.extend ClassMethods
+    end
+    module ClassMethods
+      def find(*args)
+        warn "Must implement find in extensions"
+        []        
+      end
+      
+      def columns
+        warn "Must implement columns in extensions"
+        []
+      end
+    end
+  end
 
   class Base
     include Observing
@@ -15,6 +33,9 @@ module ActiveModel
     include Callbacks
     include NamedScope
     include AttributeMethods
+    include ExternalInterface
+    include SchemaDefinitions
+    
     # Determine whether to store the full constant name including namespace when using STI
     superclass_delegating_accessor :store_full_sti_class
     self.store_full_sti_class = false
@@ -100,7 +121,7 @@ module ActiveModel
 
     class << self
       def primary_key
-        persistence_driver.primary_key
+        raise NotImplementedError
       end
 
       # Test whether the given method and optional key are scoped.
@@ -136,9 +157,8 @@ module ActiveModel
          @columns_hash ||= columns.inject({}) { |hash, column| hash[column.name] = column; hash }
        end
 
-      def columns
-        persistence_driver.columns(self)
-      end      
+   
+      
       # Returns the class type of the record using the current module as a prefix. So descendents of
       # MyApp::Business::Account would appear as MyApp::Business::AccountSubclass.
       def compute_type(type_name)
@@ -263,7 +283,14 @@ module ActiveModel
       def current_scoped_methods #:nodoc:
         scoped_methods.last
       end
+      
+      # Returns a hash of all the attributes that have been specified for serialization as keys and their class restriction as values.
+      def serialized_attributes
+        read_inheritable_attribute(:attr_serialized) or write_inheritable_attribute(:attr_serialized, {})
+      end
 
+
+      #
       
       
     end 

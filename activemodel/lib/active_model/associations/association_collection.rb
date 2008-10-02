@@ -19,7 +19,8 @@ module ActiveModel
       # end
       
       def find(*args, &block)
-        @owner.persistence_driver.find(*args, &block)
+        # FIXME: this is a braindead implementation
+        @reflection.klass.find(*args)
       end
       
       def find_target

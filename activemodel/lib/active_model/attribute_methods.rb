@@ -11,7 +11,6 @@ module ActiveModel
       base.cattr_accessor :time_zone_aware_attributes, :instance_writer => false
       base.time_zone_aware_attributes = false
       base.class_inheritable_accessor :skip_time_zone_conversion_for_attributes, :instance_writer => false
-      base.class_inheritable_accessor :persistence_driver
       base.skip_time_zone_conversion_for_attributes = []
     end
 
@@ -31,7 +30,7 @@ module ActiveModel
       #
       # For example:
       #
-      #   class Person < ActiveRecord::Base
+      #   class Person < ActiveModel::Base
       #     attribute_method_suffix '_changed?'
       #
       #     private
@@ -95,14 +94,14 @@ module ActiveModel
       end
 
       # Checks whether the method is defined in the model or any of its subclasses
-      # that also derive from Active Record. Raises DangerousAttributeError if the
-      # method is defined by Active Record though.
+      # that also derive from Active Model. Raises DangerousAttributeError if the
+      # method is defined by Active Model though.
       def instance_method_already_implemented?(method_name)
         method_name = method_name.to_s
         return true if method_name =~ /^id(=$|\?$|$)/
-        @_defined_class_methods         ||= ancestors.first(ancestors.index(ActiveRecord::Base)).sum([]) { |m| m.public_instance_methods(false) | m.private_instance_methods(false) | m.protected_instance_methods(false) }.map(&:to_s).to_set
-        @@_defined_activerecord_methods ||= (ActiveRecord::Base.public_instance_methods(false) | ActiveRecord::Base.private_instance_methods(false) | ActiveRecord::Base.protected_instance_methods(false)).map(&:to_s).to_set
-        raise DangerousAttributeError, "#{method_name} is defined by ActiveRecord" if @@_defined_activerecord_methods.include?(method_name)
+        @_defined_class_methods         ||= ancestors.first(ancestors.index(ActiveModel::Base)).sum([]) { |m| m.public_instance_methods(false) | m.private_instance_methods(false) | m.protected_instance_methods(false) }.map(&:to_s).to_set
+        @@_defined_activemodel_methods ||= (ActiveModel::Base.public_instance_methods(false) | ActiveModel::Base.private_instance_methods(false) | ActiveModel::Base.protected_instance_methods(false)).map(&:to_s).to_set
+        raise DangerousAttributeError, "#{method_name} is defined by ActiveModel" if @@_defined_activemodel_methods.include?(method_name)
         @_defined_class_methods.include?(method_name)
       end
       
@@ -225,7 +224,7 @@ module ActiveModel
     # Allows access to the object attributes, which are held in the <tt>@attributes</tt> hash, as though they
     # were first-class methods. So a Person class with a name attribute can use Person#name and
     # Person#name= and never directly use the attributes hash -- except for multiple assigns with
-    # ActiveRecord#attributes=. A Milestone class can also ask Milestone#completed? to test that
+    # ActiveModel#attributes=. A Milestone class can also ask Milestone#completed? to test that
     # the completed attribute is not +nil+ or 0.
     #
     # It's also possible to instantiate related objects, so a Client class belonging to the clients
@@ -359,7 +358,7 @@ module ActiveModel
     private
     
       def missing_attribute(attr_name, stack)
-        raise ActiveRecord::MissingAttributeError, "missing attribute: #{attr_name}", stack
+        raise ActiveModel::MissingAttributeError, "missing attribute: #{attr_name}", stack
       end
       
       # Handle *? for method_missing.

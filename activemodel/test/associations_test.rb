@@ -11,7 +11,6 @@ class AssociationsTest < ActiveModel::TestCase
     end
   end
   
-  ActiveModel::Base.persistence_driver = StubPersistenceDriver.new
   
   class Something < ActiveModel::Base
     def self.tada

@@ -1,4 +1,5 @@
 module ActiveModel
+  #FIXME: These will probably raise NotImplemented
   ##
   # This module implements no-op versions of the methods an extending framework
   # needs in order to implement persistence.
@@ -12,24 +13,24 @@ module ActiveModel
     end
     
     def create(*args, &block)
-      persistence_driver.create(self, *args, &block)
+      #persistence_driver.create(self, *args, &block)
     end
     
     def update(*args, &block)
-      persistence_driver.update(self, *args, &block)
+      #persistence_driver.update(self, *args, &block)
     end
     
     def destroy(*args, &block)
-      persistence_driver.destroy(self, *args, &block)      
+      #persistence_driver.destroy(self, *args, &block)      
     end
     
     def new_record?
-      persistence_driver.new_record?(self)
+      #persistence_driver.new_record?(self)
     end
     
     def create_or_update(*args, &block)
-      result = new_record? ? create : update
-      result != false
+#      result = new_record? ? create : update
+#      result != false
     end
   end
 end
