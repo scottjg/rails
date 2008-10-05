@@ -1,6 +1,5 @@
 module ActiveModel
   class Errors < Hash
-    include DeprecatedErrorMethods
     
     @@default_error_messages = {
       :inclusion                => "is not included in the list",

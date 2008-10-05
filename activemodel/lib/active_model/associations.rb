@@ -6,6 +6,8 @@ require 'active_model/associations/has_many_association'
 require 'active_model/associations/has_many_through_association'
 
 require 'active_model/associations/belongs_to_association'
+require 'active_model/associations/belongs_to_polymorphic_association'
+
 require 'active_model/associations/has_one_through_association'
 
 

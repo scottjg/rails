@@ -63,10 +63,10 @@ module ActiveModel
         def find_target
           #FIXME: This is SQL-specific (kinda)
           @reflection.klass.find(:all,
-            :select     => construct_select,
-            :conditions => construct_conditions,
-            :from       => construct_from,
-            :joins      => construct_joins,
+#            :select     => construct_select,
+#            :conditions => construct_conditions,
+#            :from       => construct_from,
+#            :joins      => construct_joins,
             :order      => @reflection.options[:order],
             :limit      => @reflection.options[:limit],
             :group      => @reflection.options[:group],
