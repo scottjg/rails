@@ -20,6 +20,9 @@ module ActiveModel
       
       def find(*args, &block)
         # FIXME: this is a braindead implementation
+        options = args.extract_options!
+        options.merge! construct_scope[:find]
+        args << options
         @reflection.klass.find(*args)
       end
       
@@ -53,7 +56,6 @@ module ActiveModel
           end
         end
       end
-      
     def method_missing(method, *args)
       if @target.respond_to?(method) || (!@reflection.klass.respond_to?(method) && Class.respond_to?(method))
         if block_given?
