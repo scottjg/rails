@@ -214,6 +214,7 @@ module Rails
           Gem.loaded_specs[stub] = Gem::Specification.new do |s|
             s.name = stub
             s.version = Rails::VERSION::STRING
+            s.loaded_from = ""
           end
         end
       end
@@ -881,7 +882,6 @@ Run `rake gems:install` to install the missing gems.
           components
           config
           lib
-          vendor
         ).map { |dir| "#{root_path}/#{dir}" }.select { |dir| File.directory?(dir) }
 
         paths.concat builtin_directories
