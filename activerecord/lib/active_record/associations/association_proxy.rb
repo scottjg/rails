@@ -51,6 +51,12 @@ module ActiveRecord
       delegate :to_param, :to => :proxy_target
       instance_methods.each { |m| undef_method m unless m =~ /(^__|^nil\?$|^send$|proxy_|^object_id$)/ }
 
+      # Checks if current state of given proxy is compatible with current state of owner.
+      # Used to catch foreign key changes on owner for belongs_to associations.
+      def proxy_compatible_with_owner_state?
+        true
+      end
+
       def initialize(owner, reflection)
         @owner, @reflection = owner, reflection
         Array(reflection.options[:extend]).each { |ext| proxy_extend(ext) }
@@ -233,7 +239,7 @@ module ActiveRecord
             @target = find_target
           end
 
-          @loaded = true
+          loaded
           @target
         rescue ActiveRecord::RecordNotFound
           reset

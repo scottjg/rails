@@ -47,6 +47,71 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal apple.id, citibank.firm_id
   end
 
+  def test_foreign_key_assignment
+    # Test using an existing record
+    signals37 = accounts(:signals37)
+    assert_equal companies(:first_firm), signals37.firm
+    signals37.firm_id = companies(:another_firm).id
+    assert_equal companies(:another_firm), signals37.firm
+
+    # Test using a new record
+    account = Account.new
+    account.firm_id = companies(:another_firm).id
+    assert_equal companies(:another_firm), account.firm
+  end
+
+  def test_foreign_key_assignment_via_write_attribute
+    # Test using an existing record
+    signals37 = accounts(:signals37)
+    assert_equal companies(:first_firm), signals37.firm
+    signals37.write_attribute(:firm_id, companies(:another_firm).id)
+    assert_equal companies(:another_firm), signals37.firm
+
+    # Test using a new record
+    account = Account.new
+    account.write_attribute(:firm_id, companies(:another_firm).id)
+    assert_equal companies(:another_firm), account.firm
+  end
+
+  def check_using_assoc_proxy_after_clearing_foreign_key(assoc)
+    welcome = posts(:welcome)
+    author = welcome.send(assoc)
+    real_author = author.proxy_target
+    welcome.author_id = nil
+    assert_equal real_author.id, author.id
+    assert_equal real_author, author
+  end
+
+  def test_using_assoc_proxy_after_clearing_foreign_key_1
+    check_using_assoc_proxy_after_clearing_foreign_key(:author)
+  end
+
+  def test_using_assoc_proxy_after_clearing_foreign_key_2
+    check_using_assoc_proxy_after_clearing_foreign_key(:author_with_posts)
+  end
+
+  def test_assoc_assignment_when_foreign_key_name_equals_assoc_name
+    comp = computers(:workstation)
+    assert_equal developers(:david), comp.developer
+    alk = comp.developer = Developer.new(:name => 'alk', :salary => 50000)
+    comp.save!
+    comp = Computer.find(comp)
+    assert_equal alk, comp.developer
+  end
+
+  def test_foreign_key_assignment_for_multiple_associations
+    welcome = posts(:welcome)
+    david = authors(:david)
+    mary = authors(:mary)
+    assert_equal david, welcome.author
+    assert_equal david, welcome.author_with_posts
+
+    welcome.author_id = mary.id
+
+    assert_equal mary, welcome.author
+    assert_equal mary, welcome.author_with_posts
+  end
+
   def test_no_unexpected_aliasing
     first_firm = companies(:first_firm)
     another_firm = companies(:another_firm)

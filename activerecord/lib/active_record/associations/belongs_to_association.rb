@@ -1,6 +1,13 @@
 module ActiveRecord
   module Associations
     class BelongsToAssociation < AssociationProxy #:nodoc:
+
+      # Checks if current state of given proxy is compatible with current state of owner.
+      # This implementation checks for foreign key change on owner.
+      def proxy_compatible_with_owner_state?
+        !@loaded || @recorded_target_id == @owner[@reflection.primary_key_name]
+      end
+
       def create(attributes = {})
         replace(@reflection.create_association(attributes))
       end
@@ -27,12 +34,17 @@ module ActiveRecord
           end
 
           @target = (AssociationProxy === record ? record.target : record)
-          @owner[@reflection.primary_key_name] = record.id unless record.new_record?
+          @owner[@reflection.primary_key_name] = record.id
           @updated = true
         end
 
         loaded
         record
+      end
+
+      def loaded
+        super
+        @recorded_target_id = @target && @target.id
       end
       
       def updated?

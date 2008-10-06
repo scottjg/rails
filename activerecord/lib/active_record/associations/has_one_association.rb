@@ -1,6 +1,8 @@
 module ActiveRecord
   module Associations
     class HasOneAssociation < BelongsToAssociation #:nodoc:
+      def proxy_compatible_with_owner_state?; true; end
+
       def initialize(owner, reflection)
         super
         construct_sql

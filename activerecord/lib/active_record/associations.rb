@@ -1018,6 +1018,11 @@ module ActiveRecord
             association = instance_variable_get(ivar) if instance_variable_defined?(ivar)
 
             if !association.nil?
+              unless association.proxy_compatible_with_owner_state?
+                # if association's state is stale, don't do anything
+                next
+              end
+
               if association.new_record?
                 association.save(true)
               end
@@ -1252,6 +1257,13 @@ module ActiveRecord
                 return nil
               end
               instance_variable_set(ivar, association)
+            elsif !association.proxy_compatible_with_owner_state?
+              # if association asks for reload, do that
+              return self.send(reflection.name, true)
+            end
+
+            if !association.loaded?
+              association.reload
             end
 
             association.target.nil? ? nil : association
