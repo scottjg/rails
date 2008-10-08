@@ -11,6 +11,11 @@ class AssociationsTest < ActiveModel::TestCase
     end
   end
   
+  class ActiveModel::Base
+    def self.primary_key
+      "id"
+    end
+  end
   
   class Something < ActiveModel::Base
     def self.tada
@@ -22,6 +27,7 @@ class AssociationsTest < ActiveModel::TestCase
   end 
   
   class Example < ActiveModel::Base
+
     has_many :somethings
     belongs_to :thing
   end

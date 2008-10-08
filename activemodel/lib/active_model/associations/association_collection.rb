@@ -56,6 +56,7 @@ module ActiveModel
           end
         end
       end
+      
     def method_missing(method, *args)
       if @target.respond_to?(method) || (!@reflection.klass.respond_to?(method) && Class.respond_to?(method))
         if block_given?
