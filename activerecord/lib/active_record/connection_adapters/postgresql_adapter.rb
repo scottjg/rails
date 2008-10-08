@@ -23,8 +23,8 @@ module ActiveRecord
       config = config.symbolize_keys
       host     = config[:host]
       port     = config[:port] || 5432
-      username = config[:username].to_s
-      password = config[:password].to_s
+      username = config[:username].to_s if config[:username]
+      password = config[:password].to_s if config[:password]
 
       if config.has_key?(:database)
         database = config[:database]
@@ -49,7 +49,6 @@ module ActiveRecord
       private
         def extract_limit(sql_type)
           case sql_type
-          when /^integer/i;   4
           when /^bigint/i;    8
           when /^smallint/i;  2
           else super
@@ -183,8 +182,8 @@ module ActiveRecord
         def self.extract_value_from_default(default)
           case default
             # Numeric types
-            when /\A-?\d+(\.\d*)?\z/
-              default
+            when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+              $1
             # Character types
             when /\A'(.*)'::(?:character varying|bpchar|text)\z/m
               $1
@@ -336,6 +335,10 @@ module ActiveRecord
         postgresql_version >= 80200
       end
 
+      def supports_ddl_transactions?
+        true
+      end
+
       # Returns the configured supported identifier length supported by PostgreSQL,
       # or report the default of 63 on PostgreSQL 7.x.
       def table_alias_length
@@ -377,7 +380,7 @@ module ActiveRecord
           # There are some incorrectly compiled postgres drivers out there
           # that don't define PGconn.escape.
           self.class.instance_eval do
-            undef_method(:quote_string)
+            remove_method(:quote_string)
           end
         end
         quote_string(s)
@@ -515,6 +518,45 @@ module ActiveRecord
         execute "ROLLBACK"
       end
 
+      # ruby-pg defines Ruby constants for transaction status,
+      # ruby-postgres does not.
+      PQTRANS_IDLE = defined?(PGconn::PQTRANS_IDLE) ? PGconn::PQTRANS_IDLE : 0
+
+      # Check whether a transaction is active.
+      def transaction_active?
+        @connection.transaction_status != PQTRANS_IDLE
+      end
+
+      # Wrap a block in a transaction.  Returns result of block.
+      def transaction(start_db_transaction = true)
+        transaction_open = false
+        begin
+          if block_given?
+            if start_db_transaction
+              begin_db_transaction
+              transaction_open = true
+            end
+            yield
+          end
+        rescue Exception => database_transaction_rollback
+          if transaction_open && transaction_active?
+            transaction_open = false
+            rollback_db_transaction
+          end
+          raise unless database_transaction_rollback.is_a? ActiveRecord::Rollback
+        end
+      ensure
+        if transaction_open && transaction_active?
+          begin
+            commit_db_transaction
+          rescue Exception => database_transaction_rollback
+            rollback_db_transaction
+            raise
+          end
+        end
+      end
+
+
       # SCHEMA STATEMENTS ========================================
 
       def recreate_database(name) #:nodoc:
@@ -535,13 +577,13 @@ module ActiveRecord
         option_string = options.symbolize_keys.sum do |key, value|
           case key
           when :owner
-            " OWNER = '#{value}'"
+            " OWNER = \"#{value}\""
           when :template
-            " TEMPLATE = #{value}"
+            " TEMPLATE = \"#{value}\""
           when :encoding
             " ENCODING = '#{value}'"
           when :tablespace
-            " TABLESPACE = #{value}"
+            " TABLESPACE = \"#{value}\""
           when :connection_limit
             " CONNECTION LIMIT = #{value}"
           else
@@ -621,6 +663,19 @@ module ActiveRecord
         column_definitions(table_name).collect do |name, type, default, notnull|
           PostgreSQLColumn.new(name, default, type, notnull == 'f')
         end
+      end
+
+      # Returns the current database name.
+      def current_database
+        query('select current_database()')[0][0]
+      end
+
+      # Returns the current database encoding format.
+      def encoding
+        query(<<-end_sql)[0][0]
+          SELECT pg_encoding_to_char(pg_database.encoding) FROM pg_database
+          WHERE pg_database.datname LIKE '#{current_database}'
+        end_sql
       end
 
       # Sets the schema search path to a string of comma-separated schema names.
@@ -749,7 +804,8 @@ module ActiveRecord
 
         begin
           execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        rescue ActiveRecord::StatementInvalid
+        rescue ActiveRecord::StatementInvalid => e
+          raise e if postgresql_version > 80000
           # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
           begin
             begin_db_transaction
@@ -855,7 +911,7 @@ module ActiveRecord
         end
 
       private
-        # The internal PostgreSQL identifer of the money data type.
+        # The internal PostgreSQL identifier of the money data type.
         MONEY_COLUMN_TYPE_OID = 790 #:nodoc:
 
         # Connects to a PostgreSQL server and sets up the adapter depending on the

@@ -190,6 +190,12 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal expected, actual
   end
 
+  def test_label_tag_with_symbol
+    actual = label_tag :title
+    expected = %(<label for="title">Title</label>)
+    assert_dom_equal expected, actual
+  end
+
   def test_label_tag_with_text
     actual = label_tag "title", "My Title"
     expected = %(<label for="title">My Title</label>)
@@ -205,7 +211,8 @@ class FormTagHelperTest < ActionView::TestCase
   def test_boolean_optios
     assert_dom_equal %(<input checked="checked" disabled="disabled" id="admin" name="admin" readonly="readonly" type="checkbox" value="1" />), check_box_tag("admin", 1, true, 'disabled' => true, :readonly => "yes")
     assert_dom_equal %(<input checked="checked" id="admin" name="admin" type="checkbox" value="1" />), check_box_tag("admin", 1, true, :disabled => false, :readonly => nil)
-    assert_dom_equal %(<select id="people" multiple="multiple" name="people"><option>david</option></select>), select_tag("people", "<option>david</option>", :multiple => true)
+    assert_dom_equal %(<select id="people" multiple="multiple" name="people[]"><option>david</option></select>), select_tag("people", "<option>david</option>", :multiple => true)
+    assert_dom_equal %(<select id="people[]" multiple="multiple" name="people[]"><option>david</option></select>), select_tag("people[]", "<option>david</option>", :multiple => true)
     assert_dom_equal %(<select id="people" name="people"><option>david</option></select>), select_tag("people", "<option>david</option>", :multiple => nil)
   end
 
@@ -217,14 +224,14 @@ class FormTagHelperTest < ActionView::TestCase
 
   def test_submit_tag
     assert_dom_equal(
-      %(<input name='commit' type='submit' value='Save' onclick="this.setAttribute('originalValue', this.value);this.disabled=true;this.value='Saving...';alert('hello!');result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue'); this.disabled = false };return result;" />),
+      %(<input name='commit' type='submit' value='Save' onclick="if (window.hiddenCommit) { window.hiddenCommit.setAttribute('value', this.value); }else { hiddenCommit = this.cloneNode(false);hiddenCommit.setAttribute('type', 'hidden');this.form.appendChild(hiddenCommit); }this.setAttribute('originalValue', this.value);this.disabled = true;this.value='Saving...';alert('hello!');result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue');this.disabled = false; }return result;" />),
       submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
     )
   end
 
   def test_submit_tag_with_no_onclick_options
     assert_dom_equal(
-      %(<input name='commit' type='submit' value='Save' onclick="this.setAttribute('originalValue', this.value);this.disabled=true;this.value='Saving...';result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue'); this.disabled = false };return result;" />),
+      %(<input name='commit' type='submit' value='Save' onclick="if (window.hiddenCommit) { window.hiddenCommit.setAttribute('value', this.value); }else { hiddenCommit = this.cloneNode(false);hiddenCommit.setAttribute('type', 'hidden');this.form.appendChild(hiddenCommit); }this.setAttribute('originalValue', this.value);this.disabled = true;this.value='Saving...';result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue');this.disabled = false; }return result;" />),
       submit_tag("Save", :disable_with => "Saving...")
     )
   end
@@ -233,6 +240,13 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal(
       %(<input name='commit' type='submit' value='Save' onclick="return confirm('Are you sure?');"/>),
       submit_tag("Save", :confirm => "Are you sure?")
+    )
+  end
+  
+  def test_image_submit_tag_with_confirmation
+    assert_dom_equal(
+      %(<input type="image" src="/images/save.gif" onclick="return confirm('Are you sure?');"/>),
+      image_submit_tag("save.gif", :confirm => "Are you sure?")
     )
   end
 
@@ -257,6 +271,12 @@ class FormTagHelperTest < ActionView::TestCase
     field_set_tag('') { concat "Hello world!" }
 
     expected = %(<fieldset>Hello world!</fieldset>)
+    assert_dom_equal expected, output_buffer
+
+    self.output_buffer = ''
+    field_set_tag('', :class => 'format') { concat "Hello world!" }
+
+    expected = %(<fieldset class="format">Hello world!</fieldset>)
     assert_dom_equal expected, output_buffer
   end
 

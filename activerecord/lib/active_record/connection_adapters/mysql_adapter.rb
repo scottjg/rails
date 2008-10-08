@@ -69,7 +69,7 @@ module ActiveRecord
       MysqlCompat.define_all_hashes_method!
 
       mysql = Mysql.init
-      mysql.ssl_set(config[:sslkey], config[:sslcert], config[:sslca], config[:sslcapath], config[:sslcipher]) if config[:sslkey]
+      mysql.ssl_set(config[:sslkey], config[:sslcert], config[:sslca], config[:sslcapath], config[:sslcipher]) if config[:sslca] || config[:sslkey]
 
       ConnectionAdapters::MysqlAdapter.new(mysql, logger, [host, username, password, database, port, socket], config)
     end
@@ -80,7 +80,7 @@ module ActiveRecord
       def extract_default(default)
         if type == :binary || type == :text
           if default.blank?
-            nil
+            return null ? nil : ''
           else
             raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
           end
@@ -89,6 +89,11 @@ module ActiveRecord
         else
           super
         end
+      end
+
+      def has_default?
+        return false if type == :binary || type == :text #mysql forbids defaults on blob and text columns
+        super
       end
 
       private
@@ -145,6 +150,7 @@ module ActiveRecord
     # * <tt>:password</tt> - Defaults to nothing.
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
     # * <tt>:encoding</tt> - (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection.
+    # * <tt>:sslca</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslkey</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslcert</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslcapath</tt> - Necessary to use MySQL with an SSL connection.
@@ -212,7 +218,7 @@ module ActiveRecord
           s = column.class.string_to_binary(value).unpack("H*")[0]
           "x'#{s}'"
         elsif value.kind_of?(BigDecimal)
-          "'#{value.to_s("F")}'"
+          value.to_s("F")
         else
           super
         end
@@ -279,6 +285,14 @@ module ActiveRecord
         @connection.close rescue nil
       end
 
+      def reset!
+        if @connection.respond_to?(:change_user)
+          # See http://bugs.mysql.com/bug.php?id=33540 -- the workaround way to
+          # reset the connection is to change the user to the same user.
+          @connection.change_user(@config[:username], @config[:password], @config[:database])
+          configure_connection
+        end
+      end
 
       # DATABASE STATEMENTS ======================================
 
@@ -357,9 +371,9 @@ module ActiveRecord
         end
       end
 
-      def recreate_database(name) #:nodoc:
+      def recreate_database(name, options = {}) #:nodoc:
         drop_database(name)
-        create_database(name)
+        create_database(name, options)
       end
 
       # Create a new MySQL database with optional <tt>:charset</tt> and <tt>:collation</tt>.
@@ -436,18 +450,29 @@ module ActiveRecord
       end
 
       def change_column_default(table_name, column_name, default) #:nodoc:
-        current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+        column = column_for(table_name, column_name)
+        change_column table_name, column_name, column.sql_type, :default => default
+      end
 
-        execute("ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{current_type} DEFAULT #{quote(default)}")
+      def change_column_null(table_name, column_name, null, default = nil)
+        column = column_for(table_name, column_name)
+
+        unless null || default.nil?
+          execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+        end
+
+        change_column table_name, column_name, column.sql_type, :null => null
       end
 
       def change_column(table_name, column_name, type, options = {}) #:nodoc:
+        column = column_for(table_name, column_name)
+
         unless options_include_default?(options)
-          if column = columns(table_name).find { |c| c.name == column_name.to_s }
-            options[:default] = column.default
-          else
-            raise "No such column: #{table_name}.#{column_name}"
-          end
+          options[:default] = column.default
+        end
+
+        unless options.has_key?(:null)
+          options[:null] = column.null
         end
 
         change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
@@ -459,6 +484,7 @@ module ActiveRecord
         options = {}
         if column = columns(table_name).find { |c| c.name == column_name.to_s }
           options[:default] = column.default
+          options[:null] = column.null
         else
           raise ActiveRecordError, "No such column: #{table_name}.#{column_name}"
         end
@@ -498,6 +524,14 @@ module ActiveRecord
         keys.length == 1 ? [keys.first, nil] : nil
       end
 
+      def case_sensitive_equality_operator
+        "= BINARY"
+      end
+
+      def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
+        where_sql
+      end
+
       private
         def connect
           @connection.reconnect = true if @connection.respond_to?(:reconnect=)
@@ -507,10 +541,16 @@ module ActiveRecord
             @connection.options(Mysql::SET_CHARSET_NAME, encoding) rescue nil
           end
 
-          @connection.ssl_set(@config[:sslkey], @config[:sslcert], @config[:sslca], @config[:sslcapath], @config[:sslcipher]) if @config[:sslkey]
+          if @config[:sslca] || @config[:sslkey]
+            @connection.ssl_set(@config[:sslkey], @config[:sslcert], @config[:sslca], @config[:sslcapath], @config[:sslcipher])
+          end
 
           @connection.real_connect(*@connection_options)
+          configure_connection
+        end
 
+        def configure_connection
+          encoding = @config[:encoding]
           execute("SET NAMES '#{encoding}'") if encoding
 
           # By default, MySQL 'where id is null' selects the last inserted id.
@@ -532,6 +572,13 @@ module ActiveRecord
 
         def version
           @version ||= @connection.server_info.scan(/^(\d+)\.(\d+)\.(\d+)/).flatten.map { |v| v.to_i }
+        end
+
+        def column_for(table_name, column_name)
+          unless column = columns(table_name).find { |c| c.name == column_name.to_s }
+            raise "No such column: #{table_name}.#{column_name}"
+          end
+          column
         end
     end
   end
