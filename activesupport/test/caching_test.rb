@@ -71,69 +71,103 @@ uses_mocha 'high-level cache store tests' do
   end
 end
 
-class ThreadSafetyCacheStoreTest < Test::Unit::TestCase
-  def setup
-    @cache = ActiveSupport::Cache.lookup_store(:memory_store).threadsafe!
+# Tests the base functionality that should be identical across all cache stores.
+module CacheStoreBehavior
+  def test_should_read_and_write_strings
     @cache.write('foo', 'bar')
-
-    # No way to have mocha proxy to the original method
-    @mutex = @cache.instance_variable_get(:@mutex)
-    @mutex.instance_eval %(
-      def calls; @calls; end
-      def synchronize
-        @calls ||= 0
-        @calls += 1
-        yield
-      end
-    )
-  end
-
-  def test_read_is_synchronized
     assert_equal 'bar', @cache.read('foo')
-    assert_equal 1, @mutex.calls
   end
 
-  def test_write_is_synchronized
-    @cache.write('foo', 'baz')
-    assert_equal 'baz', @cache.read('foo')
-    assert_equal 2, @mutex.calls
+  def test_should_read_and_write_hash
+    @cache.write('foo', {:a => "b"})
+    assert_equal({:a => "b"}, @cache.read('foo'))
   end
 
-  def test_delete_is_synchronized
-    assert_equal 'bar', @cache.read('foo')
-    @cache.delete('foo')
+  def test_should_read_and_write_nil
+    @cache.write('foo', nil)
     assert_equal nil, @cache.read('foo')
-    assert_equal 3, @mutex.calls
   end
 
-  def test_delete_matched_is_synchronized
-    assert_equal 'bar', @cache.read('foo')
-    @cache.delete_matched(/foo/)
-    assert_equal nil, @cache.read('foo')
-    assert_equal 3, @mutex.calls
-  end
-
-  def test_fetch_is_synchronized
+  def test_fetch_without_cache_miss
+    @cache.write('foo', 'bar')
     assert_equal 'bar', @cache.fetch('foo') { 'baz' }
-    assert_equal 'fu', @cache.fetch('bar') { 'fu' }
-    assert_equal 3, @mutex.calls
   end
 
-  def test_exist_is_synchronized
-    assert @cache.exist?('foo')
-    assert !@cache.exist?('bar')
-    assert_equal 2, @mutex.calls
+  def test_fetch_with_cache_miss
+    assert_equal 'baz', @cache.fetch('foo') { 'baz' }
   end
 
-  def test_increment_is_synchronized
-    @cache.write('foo_count', 1)
-    assert_equal 2, @cache.increment('foo_count')
-    assert_equal 4, @mutex.calls
+  def test_fetch_with_forced_cache_miss
+    @cache.fetch('foo', :force => true) { 'bar' }
   end
 
-  def test_decrement_is_synchronized
-    @cache.write('foo_count', 1)
-    assert_equal 0, @cache.decrement('foo_count')
-    assert_equal 4, @mutex.calls
+  def test_increment
+    @cache.write('foo', 1, :raw => true)
+    assert_equal 1, @cache.read('foo', :raw => true).to_i
+    assert_equal 2, @cache.increment('foo')
+    assert_equal 2, @cache.read('foo', :raw => true).to_i
+    assert_equal 3, @cache.increment('foo')
+    assert_equal 3, @cache.read('foo', :raw => true).to_i
+  end
+
+  def test_decrement
+    @cache.write('foo', 3, :raw => true)
+    assert_equal 3, @cache.read('foo', :raw => true).to_i
+    assert_equal 2, @cache.decrement('foo')
+    assert_equal 2, @cache.read('foo', :raw => true).to_i
+    assert_equal 1, @cache.decrement('foo')
+    assert_equal 1, @cache.read('foo', :raw => true).to_i
+  end
+end
+
+class FileStoreTest < Test::Unit::TestCase
+  def setup
+    @cache = ActiveSupport::Cache.lookup_store(:file_store, Dir.pwd)
+  end
+
+  def teardown
+    File.delete("foo.cache")
+  end
+
+  include CacheStoreBehavior
+end
+
+class MemoryStoreTest < Test::Unit::TestCase
+  def setup
+    @cache = ActiveSupport::Cache.lookup_store(:memory_store)
+  end
+
+  include CacheStoreBehavior
+
+  def test_store_objects_should_be_immutable
+    @cache.write('foo', 'bar')
+    assert_raise(ActiveSupport::FrozenObjectError) { @cache.read('foo').gsub!(/.*/, 'baz') }
+    assert_equal 'bar', @cache.read('foo')
+  end
+end
+
+uses_memcached 'memcached backed store' do
+  class MemCacheStoreTest < Test::Unit::TestCase
+    def setup
+      @cache = ActiveSupport::Cache.lookup_store(:mem_cache_store)
+      @cache.clear
+    end
+
+    include CacheStoreBehavior
+
+    def test_store_objects_should_be_immutable
+      @cache.write('foo', 'bar')
+      @cache.read('foo').gsub!(/.*/, 'baz')
+      assert_equal 'bar', @cache.read('foo')
+    end
+  end
+
+  class CompressedMemCacheStore < Test::Unit::TestCase
+    def setup
+      @cache = ActiveSupport::Cache.lookup_store(:compressed_mem_cache_store)
+      @cache.clear
+    end
+
+    include CacheStoreBehavior
   end
 end

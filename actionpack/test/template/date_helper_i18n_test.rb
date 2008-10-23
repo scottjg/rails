@@ -3,22 +3,22 @@ require 'abstract_unit'
 class DateHelperDistanceOfTimeInWordsI18nTests < Test::Unit::TestCase
   include ActionView::Helpers::DateHelper
   attr_reader :request
-  
+
   def setup
     @from = Time.mktime(2004, 6, 6, 21, 45, 0)
   end
-  
+
   uses_mocha 'date_helper_distance_of_time_in_words_i18n_test' do
     # distance_of_time_in_words
 
     def test_distance_of_time_in_words_calls_i18n
       { # with include_seconds
-        [2.seconds,  true]  => [:'less_than_x_seconds', 5],   
-        [9.seconds,  true]  => [:'less_than_x_seconds', 10],  
-        [19.seconds, true]  => [:'less_than_x_seconds', 20],  
-        [30.seconds, true]  => [:'half_a_minute',       nil], 
-        [59.seconds, true]  => [:'less_than_x_minutes', 1], 
-        [60.seconds, true]  => [:'x_minutes',           1], 
+        [2.seconds,  true]  => [:'less_than_x_seconds', 5],
+        [9.seconds,  true]  => [:'less_than_x_seconds', 10],
+        [19.seconds, true]  => [:'less_than_x_seconds', 20],
+        [30.seconds, true]  => [:'half_a_minute',       nil],
+        [59.seconds, true]  => [:'less_than_x_minutes', 1],
+        [60.seconds, true]  => [:'x_minutes',           1],
 
         # without include_seconds
         [29.seconds, false] => [:'less_than_x_minutes', 1],
@@ -38,7 +38,7 @@ class DateHelperDistanceOfTimeInWordsI18nTests < Test::Unit::TestCase
 
     def assert_distance_of_time_in_words_translates_key(passed, expected)
       diff, include_seconds = *passed
-      key, count = *expected    
+      key, count = *expected
       to = @from + diff
 
       options = {:locale => 'en-US', :scope => :'datetime.distance_in_words'}
@@ -47,13 +47,35 @@ class DateHelperDistanceOfTimeInWordsI18nTests < Test::Unit::TestCase
       I18n.expects(:t).with(key, options)
       distance_of_time_in_words(@from, to, include_seconds, :locale => 'en-US')
     end
+
+    def test_distance_of_time_pluralizations
+      { [:'less_than_x_seconds', 1]   => 'less than 1 second',
+        [:'less_than_x_seconds', 2]   => 'less than 2 seconds',
+        [:'less_than_x_minutes', 1]   => 'less than a minute',
+        [:'less_than_x_minutes', 2]   => 'less than 2 minutes',
+        [:'x_minutes',           1]   => '1 minute',
+        [:'x_minutes',           2]   => '2 minutes',
+        [:'about_x_hours',       1]   => 'about 1 hour',
+        [:'about_x_hours',       2]   => 'about 2 hours',
+        [:'x_days',              1]   => '1 day',
+        [:'x_days',              2]   => '2 days',
+        [:'about_x_years',       1]   => 'about 1 year',
+        [:'about_x_years',       2]   => 'about 2 years',
+        [:'over_x_years',        1]   => 'over 1 year',
+        [:'over_x_years',        2]   => 'over 2 years' 
+
+        }.each do |args, expected|
+        key, count = *args
+        assert_equal expected, I18n.t(key, :count => count, :scope => 'datetime.distance_in_words')
+      end
+    end
   end
 end
-  
+
 class DateHelperSelectTagsI18nTests < Test::Unit::TestCase
   include ActionView::Helpers::DateHelper
   attr_reader :request
-  
+
   uses_mocha 'date_helper_select_tags_i18n_tests' do
     def setup
       I18n.stubs(:translate).with(:'date.month_names', :locale => 'en-US').returns Date::MONTHNAMES

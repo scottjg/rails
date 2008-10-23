@@ -1,3 +1,5 @@
+require 'action_controller/mime_type'
+
 module ActionView #:nodoc:
   class Template
     extend TemplateHandlers
@@ -22,6 +24,14 @@ module ActionView #:nodoc:
     end
     memoize :format_and_extension
 
+    def multipart?
+      format && format.include?('.')
+    end
+
+    def content_type
+      format.gsub('.', '/')
+    end
+
     def mime_type
       Mime::Type.lookup_by_extension(format) if format
     end
@@ -42,15 +52,20 @@ module ActionView #:nodoc:
     end
     memoize :path_without_format_and_extension
 
+    def relative_path
+      path = File.expand_path(filename)
+      path.sub!(/^#{Regexp.escape(File.expand_path(RAILS_ROOT))}\//, '') if defined?(RAILS_ROOT)
+      path
+    end
+    memoize :relative_path
+
     def source
       File.read(filename)
     end
     memoize :source
 
     def method_segment
-      segment = File.expand_path(filename)
-      segment.sub!(/^#{Regexp.escape(File.expand_path(RAILS_ROOT))}/, '') if defined?(RAILS_ROOT)
-      segment.gsub!(/([^a-zA-Z0-9_])/) { $1.ord }
+      relative_path.to_s.gsub(/([^a-zA-Z0-9_])/) { $1.ord }
     end
     memoize :method_segment
 
@@ -59,7 +74,7 @@ module ActionView #:nodoc:
     rescue Exception => e
       raise e unless filename
       if TemplateError === e
-        e.sub_template_of(filename)
+        e.sub_template_of(self)
         raise e
       else
         raise TemplateError.new(self, view.assigns, e)
@@ -84,7 +99,7 @@ module ActionView #:nodoc:
       #   [base_path, name, format, extension]
       def split(file)
         if m = file.match(/^(.*\/)?([^\.]+)\.?(\w+)?\.?(\w+)?\.?(\w+)?$/)
-          if m[5] # Mulipart formats
+          if m[5] # Multipart formats
             [m[1], m[2], "#{m[3]}.#{m[4]}", m[5]]
           elsif m[4] # Single format
             [m[1], m[2], m[3], m[4]]
