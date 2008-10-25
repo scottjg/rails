@@ -7,8 +7,8 @@ module I18n
   module Backend
     class Simple
       DEPRECATED_INTERPOLATORS = { '%d' => '{{count}}', '%s' => '{{value}}' }
-      
-      protected      
+
+      protected
         def interpolate_with_deprecated_syntax(locale, string, values = {})
           return string unless string.is_a?(String)
 

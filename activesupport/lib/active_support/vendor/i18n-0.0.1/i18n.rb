@@ -62,7 +62,7 @@ module I18n
       @@load_path ||= []
     end
 
-    # Sets the load path instance. Custom implementations are expected to 
+    # Sets the load path instance. Custom implementations are expected to
     # behave like a Ruby Array.
     def load_path=(load_path)
       @@load_path = load_path
