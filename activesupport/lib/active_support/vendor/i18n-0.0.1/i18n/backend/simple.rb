@@ -6,7 +6,7 @@ module I18n
       INTERPOLATION_RESERVED_KEYS = %w(scope default)
       MATCH = /(\\\\)?\{\{([^\}]+)\}\}/
 
-      # Accepts a list of paths to translation files. Loads translations from
+      # Accepts a list of paths to translation files. Loads translations from 
       # plain Ruby (*.rb) or YAML files (*.yml). See #load_rb and #load_yml
       # for details.
       def load_translations(*filenames)
