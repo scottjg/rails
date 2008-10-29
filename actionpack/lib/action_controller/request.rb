@@ -247,6 +247,7 @@ EOM
     end
     memoize :server_software
 
+    # Helper class to provide an 
     # Abstraction for getting and working with inline http authentication.
     class InlineHttpAuth
       # List of environment variables
@@ -260,11 +261,10 @@ EOM
       AUTH_ALGORITHMS = ['Basic','Digest']
       attr_reader :algorithm, :token, :username, :password
       def initialize(algorithm,token)
-        puts("algorithm=#{algorithm},token=#{token}")
         @algorithm = algorithm
         @token = token
         unless AUTH_ALGORITHMS.member?(@algorithm) then
-          raise "Unsupported inline HTTP method #{@algorithm}"
+          raise "Unsupported inline HTTP method #{@algorithm} with token #{@token}"
         end 
         case @algorithm
         when 'Basic' then  
@@ -275,6 +275,7 @@ EOM
         end 
       end
       # Return a list with [username,password]
+      # if they are available.
       def credentials
         if @username or @password then
           [@username,@password]
@@ -282,8 +283,22 @@ EOM
       end
     end
 
-    # Extract inline http authentication information.
+    # Extract inline http authentication information. 
     #
+    # Usage example
+    # #### app/controllers/application.rb
+    #   def authenticate
+    #     unless session[:username] then
+    #       if request.inline_auth then
+    #         # Optionally recognize http inline basic authentication
+    #         if user = User.authenticate(*request.inline_auth.credentials) then
+    #           session[:username] = user.username
+    #         else
+    #           flash[:warning] = "Bad credentials for inline HTTP authentication."
+    #         end
+    #       end
+    #     end
+    #   end
     def inline_auth
       # An auth variable is on the form
       #   <Method> <Token>
@@ -295,10 +310,13 @@ EOM
       #   Basic dXNlcm5hbWU6cGFzc3dvcmQ=
       # Where the token is a base64 encoded username:password.
       #
+      # Find the auth_data in one of the http headers listed in AUTH_KEYS.
       auth_data = InlineHttpAuth::AUTH_KEYS.inject(nil) do |found_auth,auth_key|
         if found_auth then
           found_auth
         else
+          # Create and return a new InlineHttpAuth object, if 
+          # the header has a proper syntax.
           if self.env[auth_key] =~ InlineHttpAuth::AUTH_SYNTAX then
             InlineHttpAuth.new($1,$2)
           else
@@ -306,6 +324,7 @@ EOM
           end
         end
       end
+      # Return the found InlineHttpAuth object.
       auth_data
     end 
 
