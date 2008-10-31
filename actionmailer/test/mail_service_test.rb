@@ -1031,4 +1031,8 @@ class RespondToTest < Test::Unit::TestCase
   def test_should_not_respond_to_deliver_with_template_suffix_if_it_begins_with_a_digit
     assert !RespondToMailer.respond_to?(:deliver_1_template)
   end
+
+  def test_should_not_respond_to_method_where_deliver_is_not_a_suffix
+    assert !RespondToMailer.respond_to?(:foo_deliver_template)
+  end
 end
