@@ -278,12 +278,6 @@ module ActionController #:nodoc:
     @@consider_all_requests_local = true
     cattr_accessor :consider_all_requests_local
 
-    # Enable or disable the collection of failure information for RoutingErrors.
-    # This information can be extremely useful when tweaking custom routes, but is
-    # pointless once routes have been tested and verified.
-    @@debug_routes = true
-    cattr_accessor :debug_routes
-
     # Indicates whether to allow concurrent action processing. Your
     # controller actions and any other code they call must also behave well
     # when called from concurrent threads. Turned off by default.
@@ -364,11 +358,8 @@ module ActionController #:nodoc:
     # If you are deploying to a subdirectory, you will need to set
     # <tt>config.action_controller.relative_url_root</tt>
     # This defaults to ENV['RAILS_RELATIVE_URL_ROOT']
-    cattr_writer :relative_url_root
-
-    def self.relative_url_root
-      @@relative_url_root || ENV['RAILS_RELATIVE_URL_ROOT']
-    end
+    cattr_accessor :relative_url_root
+    self.relative_url_root = ENV['RAILS_RELATIVE_URL_ROOT']
 
     # Holds the request object that's primarily used to get environment variables through access like
     # <tt>request.env["REQUEST_URI"]</tt>.
@@ -1225,14 +1216,32 @@ module ActionController #:nodoc:
 
       def log_processing
         if logger && logger.info?
-          logger.info "\n\nProcessing #{self.class.name}\##{action_name} (for #{request_origin}) [#{request.method.to_s.upcase}]"
-
-          if @_session && @_session.respond_to?(:session_id) && !@_session.dbman.is_a?(CGI::Session::CookieStore)
-            logger.info "  Session ID: #{@_session.session_id}"
-          end
-
-          logger.info "  Parameters: #{respond_to?(:filter_parameters) ? filter_parameters(params).inspect : params.inspect}"
+          log_processing_for_request_id
+          log_processing_for_session_id
+          log_processing_for_parameters
         end
+      end
+      
+      def log_processing_for_request_id
+        request_id = "\n\nProcessing #{self.class.name}\##{action_name} "
+        request_id << "to #{params[:format]} " if params[:format]
+        request_id << "(for #{request_origin}) [#{request.method.to_s.upcase}]"
+
+        logger.info(request_id)
+      end
+
+      def log_processing_for_session_id
+        if @_session && @_session.respond_to?(:session_id) && @_session.respond_to?(:dbman) &&
+            !@_session.dbman.is_a?(CGI::Session::CookieStore)
+          logger.info "  Session ID: #{@_session.session_id}"
+        end
+      end
+
+      def log_processing_for_parameters
+        parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
+        parameters = parameters.except!(:controller, :action, :format)
+        
+        logger.info "  Parameters: #{parameters.inspect}"
       end
 
       def default_render #:nodoc:
