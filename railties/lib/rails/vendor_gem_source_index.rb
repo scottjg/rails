@@ -102,7 +102,7 @@ module Rails
 
     def version_for_dir(d)
       matches = /-([^-]+)$/.match(d)
-      Gem::Version.new(matches[1]) if matches
+      Gem::Version.new(matches[1]) if matches rescue nil
     end
 
     def load_specification(gem_dir)
