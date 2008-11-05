@@ -324,7 +324,8 @@ module ActiveRecord
       # Returns true if a connection that's accessible to this class has
       # already been opened.
       def connected?(klass)
-        retrieve_connection_pool(klass).connected?
+        return false unless conn = retrieve_connection_pool(klass)
+        conn.connected?
       end
 
       # Remove the connection for this class. This will close the active
