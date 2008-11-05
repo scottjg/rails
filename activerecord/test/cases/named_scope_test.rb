@@ -95,6 +95,18 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal approved & replied, Topic.approved.replied
   end
 
+  def test_scopes_are_mergeable
+    approved_scope = Topic.approved
+    replied_scope = Topic.replied
+
+    assert_equal (approved = Topic.find(:all, :conditions => {:approved => true})), approved_scope
+    assert_equal (replied = Topic.find(:all, :conditions => 'replies_count > 0')), replied_scope
+    assert !(approved == replied)
+    assert !(approved & replied).empty?
+
+    assert_equal approved & replied, approved_scope.merge(replied_scope)
+  end
+
   def test_procedural_scopes
     topics_written_before_the_third = Topic.find(:all, :conditions => ['written_on < ?', topics(:third).written_on])
     topics_written_before_the_second = Topic.find(:all, :conditions => ['written_on < ?', topics(:second).written_on])
