@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 puts `sudo gem uninstall {rails,action{mailer,pack},active{record,resource,support}} -a -I -x`
 puts "\n"*5
 puts `sleep 2`
