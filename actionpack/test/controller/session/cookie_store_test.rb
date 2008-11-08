@@ -222,15 +222,6 @@ class CookieStoreTest < Test::Unit::TestCase
     end
   end
 
-  def test_should_be_able_to_inject_a_stable_session_identifier_if_required
-    set_cookie! cookie_value(:typical)
-    new_session( 'stable_session_id' => true ) do |session|
-      assert_not_nil session['user_id']
-      assert_not_nil session[:session_id]      
-      assert_not_equal session.session_id, cookie_value(:typical)
-    end
-  end
-
   private
     def assert_no_cookies(session)
       assert_nil session.cgi.output_cookies, session.cgi.output_cookies.inspect
@@ -274,11 +265,12 @@ class CookieStoreTest < Test::Unit::TestCase
         assert_nil cgi.output_cookies, "Output cookies should be empty: #{cgi.output_cookies.inspect}"
 
         @options = self.class.default_session_options.merge(options)
-
         session = CGI::Session.new(cgi, @options)
+        ObjectSpace.undefine_finalizer(session)
+
         assert_nil cgi.output_hidden, "Output hidden params should be empty: #{cgi.output_hidden.inspect}"
         assert_nil cgi.output_cookies, "Output cookies should be empty: #{cgi.output_cookies.inspect}"
-        
+
         yield session if block_given?
         session
       end
