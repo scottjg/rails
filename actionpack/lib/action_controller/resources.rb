@@ -606,12 +606,12 @@ module ActionController
 
       def map_unnamed_routes(map, path_without_format, options)
         map.connect(path_without_format, options)
-        map.connect("#{path_without_format}.:format", options) if options[:format] == true
+        map.connect("#{path_without_format}.:format", options) if options[:format]
       end
 
       def map_named_routes(map, name, path_without_format, options)
         map.named_route(name, path_without_format, options)
-        map.named_route("formatted_#{name}", "#{path_without_format}.:format", options) if options[:format] == true
+        map.named_route("formatted_#{name}", "#{path_without_format}.:format", options) if options[:format]
       end
 
       def add_conditions_for(conditions, method)
