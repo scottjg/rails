@@ -170,10 +170,6 @@ module Rails
       # Prepare dispatcher callbacks and run 'prepare' callbacks
       prepare_dispatcher
 
-      # Routing must be initialized after plugins to allow the former to extend the routes
-      #initialize_routing
-      initialize_routing
-
       # Observers are loaded after plugins in case Observers or observed models are modified by plugins.
       load_observers
 
@@ -182,6 +178,9 @@ module Rails
 
       # Load application classes
       load_application_classes
+
+      # Routing must be initialized after plugins to allow the former to extend the routes
+      initialize_routing
 
       # Disable dependency loading during request cycle
       disable_dependency_loading
