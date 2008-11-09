@@ -54,6 +54,7 @@ module ActionController
         @path_segment = options.delete(:as) || @plural
 
         @options = options
+        @options.reverse_merge!( :format => true ) if formatted_routes?
 
         arrange_actions
         add_default_actions
@@ -113,7 +114,16 @@ module ActionController
         @singular.to_s == @plural.to_s
       end
 
+      def formatted?
+        @options[:format] == true
+      end
+
       protected
+      
+        def formatted_routes?
+          ActionController::Base.formatted_routes == true
+        end
+      
         def arrange_actions
           @collection_methods = arrange_actions_by_methods(options.delete(:collection))
           @member_methods     = arrange_actions_by_methods(options.delete(:member))
@@ -478,7 +488,7 @@ module ActionController
           map_associations(resource, options)
 
           if block_given?
-            with_options(:path_prefix => resource.nesting_path_prefix, :name_prefix => resource.nesting_name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], &block)
+            with_options(:path_prefix => resource.nesting_path_prefix, :name_prefix => resource.nesting_name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], :format => resource.options[:format], &block)
           end
         end
       end
@@ -495,7 +505,7 @@ module ActionController
           map_associations(resource, options)
 
           if block_given?
-            with_options(:path_prefix => resource.nesting_path_prefix, :name_prefix => resource.nesting_name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], &block)
+            with_options(:path_prefix => resource.nesting_path_prefix, :name_prefix => resource.nesting_name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], :format => resource.options[:format], &block)
           end
         end
       end
@@ -507,7 +517,7 @@ module ActionController
         name_prefix = "#{options.delete(:name_prefix)}#{resource.nesting_name_prefix}"
 
         Array(options[:has_one]).each do |association|
-          resource(association, :path_prefix => path_prefix, :name_prefix => name_prefix, :namespace => options[:namespace], :shallow => options[:shallow])
+          resource(association, :path_prefix => path_prefix, :name_prefix => name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], :format => resource.options[:format])
         end
       end
 
@@ -522,7 +532,7 @@ module ActionController
             map_has_many_associations(resource, association, options)
           end
         when Symbol, String
-          resources(associations, :path_prefix => resource.nesting_path_prefix, :name_prefix => resource.nesting_name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], :has_many => options[:has_many])
+          resources(associations, :path_prefix => resource.nesting_path_prefix, :name_prefix => resource.nesting_name_prefix, :namespace => options[:namespace], :shallow => options[:shallow], :has_many => options[:has_many], :format => resource.options[:format])
         else
         end
       end
@@ -596,12 +606,12 @@ module ActionController
 
       def map_unnamed_routes(map, path_without_format, options)
         map.connect(path_without_format, options)
-        map.connect("#{path_without_format}.:format", options)
+        map.connect("#{path_without_format}.:format", options) if options[:format] == true
       end
 
       def map_named_routes(map, name, path_without_format, options)
         map.named_route(name, path_without_format, options)
-        map.named_route("formatted_#{name}", "#{path_without_format}.:format", options)
+        map.named_route("formatted_#{name}", "#{path_without_format}.:format", options) if options[:format] == true
       end
 
       def add_conditions_for(conditions, method)
@@ -611,7 +621,7 @@ module ActionController
       end
 
       def action_options_for(action, resource, method = nil)
-        default_options = { :action => action.to_s }
+        default_options = { :action => action.to_s, :format => resource.options[:format] }
         require_id = !resource.kind_of?(SingletonResource)
 
         case default_options[:action]

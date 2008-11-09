@@ -259,6 +259,7 @@ module ActionController
       end
 
       def add_route(path, options = {})
+        options.delete(:format)
         route = builder.build(path, options)
         routes << route
         route
