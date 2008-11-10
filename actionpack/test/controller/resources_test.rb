@@ -2,13 +2,41 @@ require 'abstract_unit'
 require 'testing_sandbox'
 
 class ResourcesController < ActionController::Base
+  
+  class << self
+    
+    def resource_action( *actions )
+      actions.each do |action|
+        resource_action!( action )
+      end
+    end
+    
+    private
+      
+      def resource_action!( action )
+        define_method( action ) do
+          render :nothing => true
+        end
+      end
+    
+  end
+  
   def index() render :nothing => true end
   alias_method :show, :index
   def rescue_action(e) raise e end
 end
 
-class ThreadsController  < ResourcesController; end
-class MessagesController < ResourcesController; end
+class ThreadsController  < ResourcesController
+
+  resource_action :update
+  
+end
+
+class MessagesController < ResourcesController 
+
+  resource_action :destroy
+
+end
 class CommentsController < ResourcesController; end
 class AuthorsController < ResourcesController; end
 class LogosController < ResourcesController; end
@@ -69,6 +97,16 @@ class ResourcesTest < Test::Unit::TestCase
     end
   end
 
+  def test_controller_klass
+    assert_equal ::Backoffice::ProductsController, ActionController::Resources::Resource.new( :products, { :namespace => 'backoffice' } ).controller_klass
+    assert_equal ::ThreadsController, ActionController::Resources::Resource.new( :threads, {} ).controller_klass
+    assert_equal ::PostsController, ActionController::Resources::Resource.new(:messages, :controller => 'posts').controller_klass
+  end
+
+  def test_defined_actions
+    assert_equal ["rescue_action", "destroy", "index", "show"].to_set, ActionController::Resources::Resource.new(:messages, {} ).defined_actions
+  end
+
   def test_should_resource_controller_name_equal_controller_option
     resource = ActionController::Resources::Resource.new(:messages, :controller => 'posts')
     assert_equal 'posts', resource.controller
@@ -97,6 +135,16 @@ class ResourcesTest < Test::Unit::TestCase
     with_restful_routing :messages, :comments do
       assert_simply_restful_for :messages
       assert_simply_restful_for :comments
+    end
+  end
+
+  def test_with_route_pruning
+  ActionController::Routing::RouteSet::Mapper.any_instance.stubs(:prune_routes?).returns(  true )
+    with_restful_routing :messages do
+      assert_recognizes({:controller => 'messages', :action => 'show', :id => '1'}, :path => 'messages/1', :method => :get)
+      assert_recognizes({:controller => 'messages', :action => 'destroy', :id => '1'}, :path => 'messages/1', :method => :delete)      
+      assert_no_recognition({:controller => 'messages', :action => 'edit', :id => '1'}, :path => 'messages/1/edit', :method => :get)      
+      assert_no_recognition({:controller => 'messages', :action => 'update', :id => '1'}, :path => 'messages/1', :method => :put)  
     end
   end
 
@@ -1036,13 +1084,13 @@ class ResourcesTest < Test::Unit::TestCase
     end
 
     def assert_no_recognition( *args )  
-      assert_raises( ActionController::RoutingError ) do
+      assert_raises( ActionController::RoutingError, ActionController::MethodNotAllowed ) do
         assert_recognizes( *args )
       end
     end
 
     def assert_no_routing( *args )
-      assert_raises( ActionController::RoutingError ) do
+      assert_raises( ActionController::RoutingError, ActionController::MethodNotAllowed ) do
         assert_routing( *args )
       end
     end

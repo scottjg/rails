@@ -64,6 +64,14 @@ module ActionController
       def controller
         @controller ||= "#{options[:namespace]}#{(options[:controller] || plural).to_s}"
       end
+      
+      def controller_klass
+        @controller_klass ||= [ options[:namespace], "#{options[:controller] || plural}_controller" ].join('/').classify.constantize
+      end
+      
+      def defined_actions
+        @defined_actions ||= controller_klass().action_methods
+      end
 
       def requirements(with_id = false)
         @requirements   ||= @options[:requirements] || {}
@@ -605,13 +613,17 @@ module ActionController
       end
 
       def map_unnamed_routes(map, path_without_format, options)
-        map.connect(path_without_format, options)
-        map.connect("#{path_without_format}.:format", options) if options[:format]
+        unless options.empty?
+          map.connect(path_without_format, options)
+          map.connect("#{path_without_format}.:format", options) if options[:format]
+        end
       end
 
       def map_named_routes(map, name, path_without_format, options)
-        map.named_route(name, path_without_format, options)
-        map.named_route("formatted_#{name}", "#{path_without_format}.:format", options) if options[:format]
+        unless options.empty?
+          map.named_route(name, path_without_format, options)
+          map.named_route("formatted_#{name}", "#{path_without_format}.:format", options) if options[:format]
+        end
       end
 
       def add_conditions_for(conditions, method)
@@ -621,6 +633,9 @@ module ActionController
       end
 
       def action_options_for(action, resource, method = nil)
+        if prune_routes?
+          return {} unless resource.defined_actions.include?( action )
+        end
         default_options = { :action => action.to_s, :format => resource.options[:format] }
         require_id = !resource.kind_of?(SingletonResource)
 
@@ -633,6 +648,11 @@ module ActionController
           else                  default_options.merge(add_conditions_for(resource.conditions, method)).merge(resource.requirements)
         end
       end
+      
+      def prune_routes?
+        Object.const_defined?('Rails') && Rails.configuration.cache_classes
+      end
+      
   end
 end
 

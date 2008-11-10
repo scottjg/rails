@@ -391,6 +391,7 @@ module ActionController #:nodoc:
     attr_accessor :action_name
 
     class << self
+
       # Factory for the standard create, process loop where the controller is discarded after processing.
       def process(request, response) #:nodoc:
         new.process(request, response)
