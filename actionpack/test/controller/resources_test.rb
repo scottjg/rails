@@ -1,4 +1,5 @@
 require 'abstract_unit'
+require 'testing_sandbox'
 
 class ResourcesController < ActionController::Base
   def index() render :nothing => true end
@@ -28,6 +29,7 @@ module Backoffice
 end
 
 class ResourcesTest < Test::Unit::TestCase
+  include ::TestingSandbox
   # The assertions in these tests are incompatible with the hash method
   # optimisation.  This could indicate user level problems
   def setup
