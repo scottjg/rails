@@ -13,15 +13,15 @@ module TestingSandbox
     end
   end
   
-  def with_formatted_routes( &block )
-    with_routes( true, &block )
+  def with_formatted_routes_enabled( &block )
+    with_formatted_routes( true, &block )
   end
   
-  def without_formatted_routes( &block )
-    with_routes( false, &block )
+  def with_formatted_routes_disabled( &block )
+    with_formatted_routes( false, &block )
   end
   
-  def with_routes( formatted, &block )
+  def with_formatted_routes( formatted, &block )
     old_formatted_routes = ActionController::Base.formatted_routes
     begin
       ActionController::Base.formatted_routes = formatted
