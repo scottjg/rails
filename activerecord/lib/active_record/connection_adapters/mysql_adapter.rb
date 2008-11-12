@@ -188,6 +188,7 @@ module ActiveRecord
         :time        => { :name => "time" },
         :date        => { :name => "date" },
         :binary      => { :name => "blob" },
+        :polygon     => { :name => "polygon" },
         :boolean     => { :name => "tinyint", :limit => 1 }
       }
 

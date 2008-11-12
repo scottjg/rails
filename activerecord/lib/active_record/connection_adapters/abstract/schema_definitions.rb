@@ -249,6 +249,8 @@ module ActiveRecord
               :string
             when /boolean/i
               :boolean
+            when /polygon/i
+              :polygon
           end
         end
     end
@@ -472,7 +474,7 @@ module ActiveRecord
         self
       end
 
-      %w( string text integer float decimal datetime timestamp time date binary boolean ).each do |column_type|
+      %w( string text integer float decimal datetime timestamp time date binary boolean polygon ).each do |column_type|
         class_eval <<-EOV
           def #{column_type}(*args)
             options = args.extract_options!
