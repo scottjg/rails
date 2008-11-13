@@ -183,6 +183,8 @@ module ActionController
 
                 url_for(#{hash_access_method}(opts))
               end
+              #Add an alias to the formatted_* URL, which is no longer created a separate route.
+              alias_method :formatted_#{selector}, :#{selector}              
               protected :#{selector}
             end_eval
             helpers << selector
@@ -358,7 +360,7 @@ module ActionController
           end
 
           # don't use the recalled keys when determining which routes to check
-          routes = routes_by_controller[controller][action][options.keys.sort_by { |x| x.object_id }]
+          routes = routes_by_controller[controller][action][options.reject {|k,v| !v}.keys.sort_by { |x| x.object_id }]
 
           routes.each do |route|
             results = route.__send__(method, options, merged, expire_on)

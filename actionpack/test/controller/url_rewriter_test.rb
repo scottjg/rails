@@ -216,6 +216,25 @@ class UrlWriterTests < Test::Unit::TestCase
     ActionController::Routing::Routes.load!
   end
 
+  def test_named_routes_with_nil_keys
+    add_host!
+    ActionController::Routing::Routes.draw do |map|
+      map.main '', :controller => 'posts'
+      map.resources :posts
+      map.connect ':controller/:action/:id'
+    end
+    # We need to create a new class in order to install the new named route.
+    kls = Class.new { include ActionController::UrlWriter }
+    controller = kls.new
+    params = {:action => :index, :controller => :posts, :format => :xml}
+    assert_equal("http://www.basecamphq.com/posts.xml", controller.send(:url_for, params))    
+    params[:format] = nil
+    assert_equal("http://www.basecamphq.com/", controller.send(:url_for, params))    
+  ensure
+    ActionController::Routing::Routes.load!
+  end
+
+
   def test_relative_url_root_is_respected_for_named_routes
     orig_relative_url_root = ActionController::Base.relative_url_root
     ActionController::Base.relative_url_root = '/subdir'
