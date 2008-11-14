@@ -37,7 +37,11 @@ module ActiveSupport
         store_class = ActiveSupport::Cache.const_get(store_class_name)
         store_class.new(*parameters)
       when nil
-        ActiveSupport::Cache::MemoryStore.new
+        begin
+          ActiveSupport::Cache::HerokuMemCacheStore.new
+        rescue
+          ActiveSupport::Cache::MemoryStore.new
+        end
       else
         store
       end
@@ -220,4 +224,5 @@ require 'active_support/cache/file_store'
 require 'active_support/cache/memory_store'
 require 'active_support/cache/drb_store'
 require 'active_support/cache/mem_cache_store'
+require 'active_support/cache/heroku_mem_cache_store'
 require 'active_support/cache/compressed_mem_cache_store'
