@@ -64,7 +64,7 @@ module ActionView
       #   <% content_tag :div, :class => "strong" do -%>
       #     Hello world!
       #   <% end -%>
-      #    # => <div class="strong"><p>Hello world!</p></div>
+      #    # => <div class="strong">Hello world!</div>
       def content_tag(name, content_or_options_with_block = nil, options = nil, escape = true, &block)
         if block_given?
           options = content_or_options_with_block if content_or_options_with_block.is_a?(Hash)
@@ -110,12 +110,18 @@ module ActionView
       private
         BLOCK_CALLED_FROM_ERB = 'defined? __in_erb_template'
 
-        # Check whether we're called from an erb template.
-        # We'd return a string in any other case, but erb <%= ... %>
-        # can't take an <% end %> later on, so we have to use <% ... %>
-        # and implicitly concat.
-        def block_called_from_erb?(block)
-          block && eval(BLOCK_CALLED_FROM_ERB, block)
+        if RUBY_VERSION < '1.9.0'
+          # Check whether we're called from an erb template.
+          # We'd return a string in any other case, but erb <%= ... %>
+          # can't take an <% end %> later on, so we have to use <% ... %>
+          # and implicitly concat.
+          def block_called_from_erb?(block)
+            block && eval(BLOCK_CALLED_FROM_ERB, block)
+          end
+        else
+          def block_called_from_erb?(block)
+            block && eval(BLOCK_CALLED_FROM_ERB, block.binding)
+          end
         end
 
         def content_tag_string(name, content, options, escape = true)
@@ -127,10 +133,12 @@ module ActionView
           unless options.blank?
             attrs = []
             if escape
-              options.each do |key, value|
-                next unless value
-                value = BOOLEAN_ATTRIBUTES.include?(key) ? key : escape_once(value)
-                attrs << %(#{key}="#{value}")
+              options.each_pair do |key, value|
+                if BOOLEAN_ATTRIBUTES.include?(key)
+                  attrs << %(#{key}="#{key}") if value
+                else
+                  attrs << %(#{key}="#{escape_once(value)}") if !value.nil?
+                end
               end
             else
               attrs = options.map { |key, value| %(#{key}="#{value}") }
