@@ -245,19 +245,10 @@ module ActionView
         cache   = options.delete("cache")
         recursive = options.delete("recursive")
 
-        if ActionController::Base.perform_caching && cache
-          joined_javascript_name = (cache == true ? "all" : cache) + ".js"
-          joined_javascript_path = File.join(JAVASCRIPTS_DIR, joined_javascript_name)
-
-          unless File.exists?(joined_javascript_path)
-            JavaScriptSources.create(self, @controller, sources, recursive).write_asset_file_contents(joined_javascript_path)
-          end
-          javascript_src_tag(joined_javascript_name, options)
-        else
-          JavaScriptSources.create(self, @controller, sources, recursive).expand_sources.collect { |source|
-            javascript_src_tag(source, options)
-          }.join("\n")
-        end
+        # caching is removed here because we handle this externally using http headers
+        JavaScriptSources.create(self, @controller, sources, recursive).expand_sources.collect { |source|
+          javascript_src_tag(source, options)
+        }.join("\n")
       end
 
       # Register one or more javascript files to be included when <tt>symbol</tt>
@@ -385,19 +376,10 @@ module ActionView
         cache   = options.delete("cache")
         recursive = options.delete("recursive")
 
-        if ActionController::Base.perform_caching && cache
-          joined_stylesheet_name = (cache == true ? "all" : cache) + ".css"
-          joined_stylesheet_path = File.join(STYLESHEETS_DIR, joined_stylesheet_name)
-
-          unless File.exists?(joined_stylesheet_path)
-            StylesheetSources.create(self, @controller, sources, recursive).write_asset_file_contents(joined_stylesheet_path)
-          end
-          stylesheet_tag(joined_stylesheet_name, options)
-        else
-          StylesheetSources.create(self, @controller, sources, recursive).expand_sources.collect { |source|
-            stylesheet_tag(source, options)
-          }.join("\n")
-        end
+        # caching is removed here because we handle this externally using http headers  
+        StylesheetSources.create(self, @controller, sources, recursive).expand_sources.collect { |source|
+          stylesheet_tag(source, options)
+        }.join("\n")
       end
 
       # Computes the path to an image asset in the public images directory.
