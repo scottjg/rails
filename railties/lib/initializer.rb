@@ -811,12 +811,35 @@ Run `rake gems:install` to install the missing gems.
       self
     end
 
+    # Take the database config from the environment, if it exists, otherwise
+    # fall back to config yaml.
+    def database_configuration
+      if ENV['DATABASE_URL']
+        database_configuration_from_url(ENV['DATABASE_URL'])
+      else
+        database_configuration_from_yaml
+      end
+    end
+
     # Loads and returns the contents of the #database_configuration_file. The
     # contents of the file are processed via ERB before being sent through
     # YAML::load.
-    def database_configuration
+    def database_configuration_from_yaml
       require 'erb'
       YAML::load(ERB.new(IO.read(database_configuration_file)).result)
+    end
+
+    def database_configuration_from_url(url)
+      uri = URI.parse(url)
+      config = {
+        'adapter' => (uri.scheme == 'postgres') ? 'postgresql' : uri.scheme,
+        'database' => uri.path.blank? ? uri.host : uri.path.split('/')[1],
+        'username' => uri.user,
+        'password' => uri.password,
+        'host' => uri.host,
+      }
+
+      { 'development' => config, 'production' => config }
     end
 
     # The path to the current environment's file (<tt>development.rb</tt>, etc.). By
