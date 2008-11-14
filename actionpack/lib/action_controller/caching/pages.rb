@@ -64,21 +64,14 @@ module ActionController #:nodoc:
         #   expire_page "/lists/show"
         def expire_page(path)
           return unless perform_caching
-
-          benchmark "Expired page: #{page_cache_file(path)}" do
-            File.delete(page_cache_path(path)) if File.exist?(page_cache_path(path))
-          end
+          # NOOP. This won't work with multiple slugs in the cloud
         end
 
         # Manually cache the +content+ in the key determined by +path+. Example:
         #   cache_page "I'm the cached content", "/lists/show"
         def cache_page(content, path)
           return unless perform_caching
-
-          benchmark "Cached page: #{page_cache_file(path)}" do
-            FileUtils.makedirs(File.dirname(page_cache_path(path)))
-            File.open(page_cache_path(path), "wb+") { |f| f.write(content) }
-          end
+          # NOOP. This won't work with multiple slugs in the cloud
         end
 
         # Caches the +actions+ using the page-caching approach that'll store the cache in a path within the page_cache_directory that
@@ -94,7 +87,10 @@ module ActionController #:nodoc:
         def caches_page(*actions)
           return unless perform_caching
           options = actions.extract_options!
-          after_filter({:only => actions}.merge(options)) { |c| c.cache_page }
+          after_filter({:only => actions}.merge(options)) do |c|
+            c.response.headers['Cache-Control'] = 'public; max-age=360' # there's no one size fits all so 5 min is a good compromise
+            c.response.headers.delete('cookie') # caching the page means no cookies.
+          end
         end
 
         private
