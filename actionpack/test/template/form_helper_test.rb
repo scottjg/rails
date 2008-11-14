@@ -93,6 +93,9 @@ class FormHelperTest < ActionView::TestCase
       '<input id="post_title" name="post[title]" size="30" type="text" value="Hello World" />', text_field("post", "title")
     )
     assert_dom_equal(
+      '<input id="post_title" name="post[title]" size="30" type="text" value="HELLO WORLD" />', text_field("post", "title", :cast => lambda {|v| v.upcase })
+    )
+    assert_dom_equal(
       '<input id="post_title" name="post[title]" size="30" type="password" value="Hello World" />', password_field("post", "title")
     )
     assert_dom_equal(

@@ -344,6 +344,9 @@ module ActionView
       #   text_field(:post, :title, :class => "create_input")
       #   # => <input type="text" id="post_title" name="post[title]" value="#{@post.title}" class="create_input" />
       #
+      #   text_field(:shopping_cart, :price, :cast => lambda {|v| number_to_currency v})
+      #   # => <input type="text" id="shopping_cart_price" name="shopping_cart[price]" value="#{number_to_currency(@shopping_cart.price)}" />
+      #
       #   text_field(:session, :user, :onchange => "if $('session[user]').value == 'admin' { alert('Your login can not be admin!'); }")
       #   # => <input type="text" id="session_user" name="session[user]" value="#{@session.user}" onchange = "if $('session[user]').value == 'admin' { alert('Your login can not be admin!'); }"/>
       #
@@ -556,8 +559,9 @@ module ActionView
         if field_type == "hidden"
           options.delete("size")
         end
+        caster = options.delete("cast") || lambda {|o| o}
         options["type"] = field_type
-        options["value"] ||= value_before_type_cast(object) unless field_type == "file"
+        options["value"] ||= caster.call(value_before_type_cast(object)) unless field_type == "file"
         options["value"] &&= html_escape(options["value"])
         add_default_name_and_id(options)
         tag("input", options)
