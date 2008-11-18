@@ -1,10 +1,11 @@
-*2.2.1 [RC2 or 2.2 final]*
+*2.3.0/3.0*
 
-* TimeZone: fix offset for Sri Jayawardenepura. Anchor tests for zone offsets to more current date [Geoff Buesing]
+* Added lambda merging to OptionMerger (especially useful with named_scope and with_options) #726 [Paweł Kondzior]
 
-* TimeZone: Caracas GMT offset changed to -4:30 [#1361 state:resolved] [Phil Ross]
 
-* Added render :js for people who want to render inline JavaScript replies without using RJS [DHH]
+*2.2.1 [RC2] (November 14th, 2008)*
+
+* Increment the version of our altered memcache-client to prevent confusion caused when the 1.5.0 gem is installed.
 
 * Fixed the option merging in Array#to_xml #1126 [Rudolf Gavlas]
 

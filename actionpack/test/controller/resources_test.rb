@@ -29,7 +29,7 @@ module Backoffice
   end
 end
 
-class ResourcesTest < Test::Unit::TestCase
+class ResourcesTest < ActionController::TestCase
   # The assertions in these tests are incompatible with the hash method
   # optimisation.  This could indicate user level problems
   def setup
@@ -968,6 +968,32 @@ class ResourcesTest < Test::Unit::TestCase
 
       assert_recognizes({ :controller => 'images', :action => 'thumbnail', :product_id => '1', :id => '2' },                    :path => 'products/1/images/2/thumbnail', :method => :get)
       assert_recognizes({ :controller => 'images', :action => 'thumbnail', :product_id => '1', :id => '2', :format => 'jpg' },  :path => 'products/1/images/2/thumbnail.jpg', :method => :get)
+    end
+  end
+
+  def test_nested_resource_ignores_only_option
+    with_routing do |set|
+      set.draw do |map|
+        map.resources :products, :only => :show do |product|
+          product.resources :images, :except => :destroy
+        end
+      end
+
+      assert_resource_allowed_routes('images', { :product_id => '1' },                    { :id => '2' }, [:index, :new, :create, :show, :edit, :update], :destroy, 'products/1/images')
+      assert_resource_allowed_routes('images', { :product_id => '1', :format => 'xml' },  { :id => '2' }, [:index, :new, :create, :show, :edit, :update], :destroy, 'products/1/images')
+    end
+  end
+
+  def test_nested_resource_ignores_except_option
+    with_routing do |set|
+      set.draw do |map|
+        map.resources :products, :except => :show do |product|
+          product.resources :images, :only => :destroy
+        end
+      end
+
+      assert_resource_allowed_routes('images', { :product_id => '1' },                    { :id => '2' }, :destroy, [:index, :new, :create, :show, :edit, :update], 'products/1/images')
+      assert_resource_allowed_routes('images', { :product_id => '1', :format => 'xml' },  { :id => '2' }, :destroy, [:index, :new, :create, :show, :edit, :update], 'products/1/images')
     end
   end
 

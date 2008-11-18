@@ -22,8 +22,7 @@ end
 class Response::Nested < Response; end
 
 uses_mocha 'polymorphic URL helpers' do
-  class PolymorphicRoutesTest < Test::Unit::TestCase
-
+  class PolymorphicRoutesTest < ActiveSupport::TestCase
     include ActionController::PolymorphicRoutes
 
     def setup
@@ -167,6 +166,17 @@ uses_mocha 'polymorphic URL helpers' do
       @tag.save
       expects(:formatted_article_response_tag_url).with(@article, @tag, :pdf)
       polymorphic_url([@article, :response, @tag], :format => :pdf)
+    end
+
+    def test_nesting_with_array_containing_nil
+      expects(:article_response_url).with(@article)
+      polymorphic_url([@article, nil, :response])
+    end
+
+    def test_with_array_containing_single_object
+      @article.save
+      expects(:article_url).with(@article)
+      polymorphic_url([nil, @article])
     end
 
     # TODO: Needs to be updated to correctly know about whether the object is in a hash or not

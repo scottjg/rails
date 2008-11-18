@@ -184,7 +184,7 @@ task :copy_html_files do
 end
 
 task :copy_application do
-  cp "helpers/application.rb", "#{PKG_DESTINATION}/app/controllers/application.rb"
+  cp "helpers/application_controller.rb", "#{PKG_DESTINATION}/app/controllers/application_controller.rb"
   cp "helpers/application_helper.rb", "#{PKG_DESTINATION}/app/helpers/application_helper.rb"
 end
 
@@ -358,11 +358,11 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3')
-  s.add_dependency('activesupport',    '= 2.2.0' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.2.0' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.2.0' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.2.0' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.2.0' + PKG_BUILD)
+  s.add_dependency('activesupport',    '= 2.2.1' + PKG_BUILD)
+  s.add_dependency('activerecord',     '= 2.2.1' + PKG_BUILD)
+  s.add_dependency('actionpack',       '= 2.2.1' + PKG_BUILD)
+  s.add_dependency('actionmailer',     '= 2.2.1' + PKG_BUILD)
+  s.add_dependency('activeresource',   '= 2.2.1' + PKG_BUILD)
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false

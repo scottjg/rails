@@ -1,24 +1,40 @@
-require 'test/unit/testcase'
-require 'active_support/testing/default'
-require 'active_support/testing/core_ext/test'
-
+require 'active_support/testing/setup_and_teardown'
+require 'active_support/testing/assertions'
+require 'active_support/testing/declarative'
 
 module ActiveSupport
-  class TestCase < Test::Unit::TestCase
-    # test "verify something" do
-    #   ...
-    # end
-    def self.test(name, &block)
-      test_name = "test_#{name.gsub(/\s+/,'_')}".to_sym
-      defined = instance_method(test_name) rescue false
-      raise "#{test_name} is already defined in #{self}" if defined
-      if block_given?
-        define_method(test_name, &block)
-      else
-        define_method(test_name) do
-          flunk "No implementation provided for #{name}"
-        end
-      end
+  # Prefer MiniTest with Test::Unit compatibility.
+  begin
+    require 'minitest/unit'
+
+    # Hack around the test/unit autorun.
+    autorun_enabled = MiniTest::Unit.send(:class_variable_get, '@@installed_at_exit')
+    if MiniTest::Unit.respond_to?(:disable_autorun)
+      MiniTest::Unit.disable_autorun
+    else
+      MiniTest::Unit.send(:class_variable_set, '@@installed_at_exit', false)
     end
+    require 'test/unit'
+    MiniTest::Unit.send(:class_variable_set, '@@installed_at_exit', autorun_enabled)
+
+    class TestCase < ::Test::Unit::TestCase
+      Assertion = MiniTest::Assertion
+    end
+
+  # Test::Unit compatibility.
+  rescue LoadError
+    require 'test/unit/testcase'
+    require 'active_support/testing/default'
+
+    class TestCase < ::Test::Unit::TestCase
+      Assertion = Test::Unit::AssertionFailedError
+      include ActiveSupport::Testing::Default
+    end
+  end
+
+  class TestCase
+    include ActiveSupport::Testing::SetupAndTeardown
+    include ActiveSupport::Testing::Assertions
+    extend ActiveSupport::Testing::Declarative
   end
 end

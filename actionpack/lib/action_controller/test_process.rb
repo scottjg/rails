@@ -1,4 +1,3 @@
-require 'action_controller/assertions'
 require 'action_controller/test_case'
 
 module ActionController #:nodoc:
@@ -464,9 +463,9 @@ module ActionController #:nodoc:
       html_document.find_all(conditions)
     end
 
-    def method_missing(selector, *args)
-      if ActionController::Routing::Routes.named_routes.helpers.include?(selector)
-        @controller.send(selector, *args)
+    def method_missing(selector, *args, &block)
+      if @controller && ActionController::Routing::Routes.named_routes.helpers.include?(selector)
+        @controller.send(selector, *args, &block)
       else
         super
       end
