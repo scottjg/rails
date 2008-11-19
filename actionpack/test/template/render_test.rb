@@ -8,9 +8,7 @@ class ViewRenderTest < Test::Unit::TestCase
   end
 
   def test_render_file
-    assert_deprecated do
-      assert_equal "Hello world!", @view.render("test/hello_world.erb")
-    end
+    assert_equal "Hello world!", @view.render(:file => "test/hello_world.erb")
   end
 
   def test_render_file_not_using_full_path
@@ -18,15 +16,11 @@ class ViewRenderTest < Test::Unit::TestCase
   end
 
   def test_render_file_without_specific_extension
-    assert_deprecated do
-      assert_equal "Hello world!", @view.render("test/hello_world")
-    end
+    assert_equal "Hello world!", @view.render(:file => "test/hello_world")
   end
 
   def test_render_file_at_top_level
-    assert_deprecated do
-      assert_equal 'Elastica', @view.render('/shared')
-    end
+    assert_equal 'Elastica', @view.render(:file => '/shared')
   end
 
   def test_render_file_with_full_path
@@ -35,34 +29,30 @@ class ViewRenderTest < Test::Unit::TestCase
   end
 
   def test_render_file_with_instance_variables
-    assert_deprecated do
-      assert_equal "The secret is in the sauce\n", @view.render("test/render_file_with_ivar.erb")
-    end
+    assert_equal "The secret is in the sauce\n", @view.render(:file => "test/render_file_with_ivar.erb")
   end
 
   def test_render_file_with_locals
     locals = { :secret => 'in the sauce' }
-    assert_deprecated do
-      assert_equal "The secret is in the sauce\n", @view.render("test/render_file_with_locals.erb", locals)
-    end
+    assert_equal "The secret is in the sauce\n", @view.render(:file => "test/render_file_with_locals.erb", :locals => locals)
   end
 
   def test_render_file_not_using_full_path_with_dot_in_path
-    assert_deprecated do
-      assert_equal "The secret is in the sauce\n", @view.render("test/dot.directory/render_file_with_ivar")
-    end
+    assert_equal "The secret is in the sauce\n", @view.render(:file => "test/dot.directory/render_file_with_ivar")
   end
 
   def test_render_has_access_current_template
-    assert_deprecated do
-      assert_equal "test/template.erb", @view.render("test/template.erb")
-    end
+    assert_equal "test/template.erb", @view.render(:file => "test/template.erb")
   end
 
   def test_render_update
     # TODO: You should not have to stub out template because template is self!
     @view.instance_variable_set(:@template, @view)
     assert_equal 'alert("Hello, World!");', @view.render(:update) { |page| page.alert('Hello, World!') }
+  end
+
+  def test_render_partial_from_default
+    assert_equal "only partial", @view.render("test/partial_only")
   end
 
   def test_render_partial
@@ -85,6 +75,10 @@ class ViewRenderTest < Test::Unit::TestCase
 
   def test_render_partial_with_locals
     assert_equal "5", @view.render(:partial => "test/counter", :locals => { :counter_counter => 5 })
+  end
+
+  def test_render_partial_with_locals_from_default
+    assert_equal "only partial", @view.render("test/partial_only", :counter_counter => 5)
   end
 
   def test_render_partial_with_errors
