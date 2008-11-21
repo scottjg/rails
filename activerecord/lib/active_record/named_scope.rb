@@ -69,6 +69,12 @@ module ActiveRecord
       #     end
       #   end
       #
+      # If you're creating a named \scope that will only return one object then you can set the option <tt>:first => true</tt>.  This means the named \scope will return the actual object rather than the proxy association.  (This is equivalent to chaining the named \scope to <tt>first</tt>.) 
+      #
+      #   class Book
+      #     named_scope :last_read, :first => true, :order => "last_read DESC", :limit => 1
+      #   end
+      #
       #
       # For testing complex named \scopes, you can examine the scoping options using the
       # <tt>proxy_options</tt> method on the proxy itself.
@@ -82,6 +88,8 @@ module ActiveRecord
       #   expected_options = { :conditions => { :colored => 'red' } }
       #   assert_equal expected_options, Shirt.colored('red').proxy_options
       def named_scope(name, options = {}, &block)
+        select_first = options.delete(:first) if options.is_a? Hash
+
         name = name.to_sym
         scopes[name] = lambda do |parent_scope, *args|
           Scope.new(parent_scope, case options
@@ -93,12 +101,16 @@ module ActiveRecord
         end
         (class << self; self end).instance_eval do
           define_method name do |*args|
-            scopes[name].call(self, *args)
+            if select_first
+              scopes[name].call(self, *args).first
+            else
+              scopes[name].call(self, *args)
+            end
           end
         end
       end
     end
-    
+          
     class Scope
       attr_reader :proxy_scope, :proxy_options
       NON_DELEGATE_METHODS = %w(nil? send object_id class extend find size count sum average maximum minimum paginate first last empty? any? respond_to?).to_set
