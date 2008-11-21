@@ -277,4 +277,10 @@ class NamedScopeTest < ActiveRecord::TestCase
     post = Post.find(1)
     assert_equal post.comments.size, Post.scoped(:joins => join).scoped(:joins => join, :conditions => "posts.id = #{post.id}").size
   end
+  
+  def test_first_argument_should_return_object_not_array
+    last_read_topic = Topic.first :order => "last_read DESC"
+    assert_equal last_read_topic, Topic.last_read
+  end
+  
 end

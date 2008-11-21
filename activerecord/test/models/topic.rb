@@ -31,6 +31,7 @@ class Topic < ActiveRecord::Base
   end
   named_scope :named_extension, :extend => NamedExtension
   named_scope :multiple_extensions, :extend => [MultipleExtensionTwo, MultipleExtensionOne]
+  singular_named_scope :last_read, :order => "last_read DESC", :limit => 1  
 
   has_many :replies, :dependent => :destroy, :foreign_key => "parent_id"
   serialize :content

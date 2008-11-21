@@ -97,7 +97,22 @@ module ActiveRecord
           end
         end
       end
+
+      # Adds a named_scope that returns the single object rather than the association object.
+      def singular_named_scope(name, options = {}, &block)
+        named_scope(name, options, &block)
+        
+        (class << self; self end).instance_eval do 
+          define_method "#{name}_with_first" do
+            instance_eval("#{name}_without_first").first
+          end
+          alias_method_chain name, :first
+        end
+      end
+      
     end
+
+    
     
     class Scope
       attr_reader :proxy_scope, :proxy_options
