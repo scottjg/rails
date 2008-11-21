@@ -98,7 +98,13 @@ module ActiveRecord
         end
       end
 
-      # Adds a named_scope that returns the single object rather than the association object.
+      #  Use this method to create a named \scope that will only return one object rather than a proxy association.
+      #  Singular named \scopes are the same as chaining <tt>.first</tt> to a named \scope.
+      #
+      #   class Book
+      #     singular_named_scope :last_read, :order => "last_read DESC", :limit => 1
+      #   end
+      #
       def singular_named_scope(name, options = {}, &block)
         named_scope(name, options, &block)
         
