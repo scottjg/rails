@@ -761,6 +761,8 @@ module Commands
         o.define_head "Install one or more plugins."
         o.separator   ""
         o.separator   "Options:"
+        o.on(         "-m", "--method=METHOD", String,
+                      "Use an alternative install method.") { |method| @secondary_method = method.to_sym }
         o.on(         "-x", "--externals", 
                       "Use svn:externals to grab the plugin.", 
                       "Enables plugin updates and plugin versioning.") { |v| @method = :externals }
@@ -807,6 +809,7 @@ module Commands
       environment = @base_command.environment
       install_method = determine_install_method
       puts "Plugins will be installed using #{install_method}" if $verbose
+      @options.merge!(:method => @secondary_method)
       args.each do |name|
         Rails::PluginManager.install(name, @options)
       end

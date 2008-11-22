@@ -9,8 +9,12 @@ module Rails
       protected
       
         # The directory where plugins are installed.
+        def relative_plugins_dir
+          "vendor/plugins"
+        end
+
         def plugins_dir
-          "#{RAILS_ROOT}/vendor/plugins"
+          "#{RAILS_ROOT}/#{relative_plugins_dir}"
         end
     end
   end
