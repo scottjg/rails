@@ -198,6 +198,7 @@ module ActionController
         def write_recognition!
           # Create an if structure to extract the params from a match if it occurs.
           body = "params = parameter_shell.dup\n#{recognition_extraction * "\n"}\nparams"
+          body = "#{body} if conditions[:if].call(params)" if conditions[:if]
           body = "if #{recognition_conditions.join(" && ")}\n#{body}\nend"
 
           # Build the method declaration and compile it
