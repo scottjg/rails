@@ -872,7 +872,7 @@ module Commands
       options.parse!(args)
       root = @base_command.environment.root
       args.each do |name|
-        ::Plugin.new(name).uninstall
+        Rails::PluginManager.remove(name)
       end
     end
   end

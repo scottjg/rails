@@ -7,6 +7,16 @@ module Rails::PluginManager
       manager.install(uri, name, options)
     end
 
+    def remove(name, options = {})
+      manager = @managers.values.find {|manager| manager.new.has_installed?(name) }
+      if manager
+        manager.new.remove(name)
+      else
+        raise "No plugin manager was able to remove #{name}"
+        # TODO: use a FileSystemPluginManager or something.
+      end
+    end
+
     def find_plugin_manager(uri)
       scheme = URI.parse(uri).scheme
       manager = @managers[scheme.to_sym]

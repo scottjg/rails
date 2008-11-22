@@ -13,6 +13,19 @@ class GitPluginManager < Rails::PluginManager::Base
     end
   end
 
+  def remove(name)
+    if installed_using_submodule?(name)
+      puts "Removing from .gitmodules" unless options[:quiet]
+      system(%(git config -f .gitmodules --remove-section submodule."#{install_path(name)}"))
+    end
+    puts "Removing #{install_path(name)}"
+    rm_rf(install_path(name))
+  end
+
+  def has_installed?(name)
+    File.directory?("#{install_path(name)}/.git")
+  end
+
   def extract_name(uri)
     File.basename(uri).gsub(/\.git$/, '')
   end
@@ -20,7 +33,7 @@ class GitPluginManager < Rails::PluginManager::Base
   protected
 
     def install_using_checkout(uri, name, options)
-      install_path = mkdir_p "#{plugins_dir}/#{name}"
+      mkdir_p install_path(name)
       Dir.chdir install_path do
         init_cmd = "git init"
         init_cmd += " -q" if options[:quiet] and not $verbose
@@ -34,18 +47,21 @@ class GitPluginManager < Rails::PluginManager::Base
           puts "removing: .git" if $verbose
           rm_rf ".git"
         else
-          rm_rf install_path
+          rm_rf install_path(name)
         end
       end
     end
 
     def install_using_submodule(uri, name, options)
-      install_path = "#{plugins_dir}/#{name}"
-      base_cmd = "git submodule add #{uri} #{relative_plugins_dir}/#{name}"
+      base_cmd = "git submodule add #{uri} #{install_path(name)}"
       puts base_cmd if $verbose
       if not system(base_cmd)
-        rm_rf install_path
+        rm_rf install_path(name)
       end
+    end
+
+    def installed_using_submodule?(name)
+      `git submodule`.split(/\n/).any? { |line| line =~ /#{install_path(name)}$/ }
     end
 end
 

@@ -6,6 +6,14 @@ module Rails
         raise NotImplementedError, "This plugin manager does not support installing plugins."
       end
 
+      def remove(name, options = {})
+        raise NotImplementedError, "This plugin manager does not support removing plugins."
+      end
+
+      def has_installed?(name)
+        false
+      end
+
       protected
       
         # The directory where plugins are installed.
@@ -15,6 +23,10 @@ module Rails
 
         def plugins_dir
           "#{RAILS_ROOT}/#{relative_plugins_dir}"
+        end
+
+        def install_path(name)
+          "#{relative_plugins_dir}/#{name}"
         end
     end
   end
