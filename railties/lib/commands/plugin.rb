@@ -56,12 +56,13 @@
 # This is Free Software, copyright 2005 by Ryan Tomayko (rtomayko@gmail.com) 
 # and is licensed MIT: (http://www.opensource.org/licenses/mit-license.php)
 
-$verbose = false
+$verbose = true
 
 
 require 'open-uri'
 require 'fileutils'
 require 'tempfile'
+require 'lib/plugin_manager'
 
 include FileUtils
 
@@ -807,7 +808,7 @@ module Commands
       install_method = determine_install_method
       puts "Plugins will be installed using #{install_method}" if $verbose
       args.each do |name|
-        ::Plugin.find(name).install(install_method, @options)
+        Rails::PluginManager.install(name, @options)
       end
     rescue StandardError => e
       puts "Plugin not found: #{args.inspect}"
