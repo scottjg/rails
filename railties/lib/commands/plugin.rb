@@ -157,8 +157,7 @@ class Plugin
   attr_reader :name, :uri
   
   def initialize(uri, name=nil)
-    @uri = uri
-    guess_name(uri)
+    @uri, @name = uri, name
   end
   
   def self.find(name)
@@ -169,49 +168,23 @@ class Plugin
     "#{@name.ljust(30)}#{@uri}"
   end
   
-  def svn_url?
-    @uri =~ /svn(?:\+ssh)?:\/\/*/
-  end
-  
-  def git_url?
-    @uri =~ /^git:\/\// || @uri =~ /\.git$/
-  end
-  
   def installed?
-    File.directory?("#{rails_env.root}/vendor/plugins/#{name}") \
-      or rails_env.externals.detect{ |name, repo| self.uri == repo }
+    Rails::PluginManager.installed?(name || uri)
   end
   
-  def install(method=nil, options = {})
-    method ||= rails_env.best_install_method?
-    if :http == method
-      method = :export if svn_url?
-      method = :git    if git_url?
-    end
-
+  def install(options = {})
     uninstall if installed? and options[:force]
 
     unless installed?
-      send("install_using_#{method}", options)
+      Rails::PluginManager.install(uri, @options)
       run_install_hook
     else
-      puts "already installed: #{name} (#{uri}).  pass --force to reinstall"
+      puts "already installed: #{uri}.  pass --force to reinstall"
     end
   end
 
   def uninstall
-    path = "#{rails_env.root}/vendor/plugins/#{name}"
-    if File.directory?(path)
-      puts "Removing 'vendor/plugins/#{name}'" if $verbose
-      run_uninstall_hook
-      rm_r path
-    else
-      puts "Plugin doesn't exist: #{path}"
-    end
-    # clean up svn:externals
-    externals = rails_env.externals
-    externals.reject!{|n,u| name == n or name == u}
-    rails_env.externals = externals
+    Rails::PluginManager.remove(name)
   end
 
   def info
@@ -266,27 +239,6 @@ class Plugin
       end
     end
     
-    def install_using_git(options = {})
-      root = rails_env.root
-      install_path = mkdir_p "#{root}/vendor/plugins/#{name}"
-      Dir.chdir install_path do
-        init_cmd = "git init"
-        init_cmd += " -q" if options[:quiet] and not $verbose
-        puts init_cmd if $verbose
-        system(init_cmd)
-        base_cmd = "git pull --depth 1 #{uri}"
-        base_cmd += " -q" if options[:quiet] and not $verbose
-        base_cmd += " #{options[:revision]}" if options[:revision]
-        puts base_cmd if $verbose
-        if system(base_cmd)
-          puts "removing: .git" if $verbose
-          rm_rf ".git"
-        else
-          rm_rf install_path
-        end
-      end
-    end
-
     def svn_command(cmd, options = {})
       root = rails_env.root
       mkdir_p "#{root}/vendor/plugins"
@@ -297,14 +249,6 @@ class Plugin
       system(base_cmd)
     end
 
-    def guess_name(url)
-      @name = File.basename(url)
-      if @name == 'trunk' || @name.empty?
-        @name = File.basename(File.dirname(url))
-      end
-      @name.gsub!(/\.git$/, '') if @name =~ /\.git$/
-    end
-    
     def rails_env
       @rails_env || RailsEnvironment.default
     end
@@ -778,12 +722,12 @@ module Commands
     
     def parse!(args)
       options.parse!(args)
-      args.each do |name|
-        Rails::PluginManager.install(name, @options)
+      args.each do |uri_or_name|
+        ::Plugin.new(uri_or_name).install
       end
     rescue StandardError => e
       puts "Plugin not found: #{args.inspect}"
-      puts e.inspect if $verbose
+      puts e.inspect, e.backtrace if $verbose
       exit 1
     end
   end

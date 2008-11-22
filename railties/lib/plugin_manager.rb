@@ -2,6 +2,7 @@
 $:.unshift(File.dirname(__FILE__))
 $:.unshift(File.dirname(__FILE__) + "/../../activesupport/lib")
 
+require 'plugin_manager/helpers'
 require 'plugin_manager/commands'
 
 module Rails::PluginManager

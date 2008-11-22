@@ -22,7 +22,7 @@ class GitPluginManager < Rails::PluginManager::Base
     rm_rf(install_path(name))
   end
 
-  def has_installed?(name)
+  def self.has_installed?(name)
     File.directory?("#{install_path(name)}/.git")
   end
 
