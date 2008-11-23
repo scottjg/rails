@@ -1,8 +1,3 @@
-<<<<<<< HEAD:actionmailer/lib/action_mailer/base.rb
-#require 'tmail/net'
-
-=======
->>>>>>> 6de1060eb555b5053f7d95269ceb23fce04e0523:actionmailer/lib/action_mailer/base.rb
 module ActionMailer #:nodoc:
   # Action Mailer allows you to send email from your application using a mailer model and views.
   #
