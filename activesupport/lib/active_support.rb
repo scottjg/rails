@@ -29,6 +29,7 @@ require 'active_support/callbacks'
 require 'active_support/core_ext'
 
 require 'active_support/buffered_logger'
+require 'active_support/backtrace_cleaner'
 
 require 'active_support/gzip'
 require 'active_support/cache'
@@ -58,4 +59,4 @@ require 'active_support/secure_random'
 
 require 'active_support/rescuable'
 
-I18n.load_path << File.dirname(__FILE__) + '/active_support/locale/en-US.yml'
+I18n.load_path << File.dirname(__FILE__) + '/active_support/locale/en.yml'

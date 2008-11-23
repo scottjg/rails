@@ -1,5 +1,6 @@
 require 'rbconfig'
 require 'digest/md5' 
+require 'active_support/secure_random'
 
 class AppGenerator < Rails::Generator::Base
   DEFAULT_SHEBANG = File.join(Config::CONFIG['bindir'],
@@ -47,7 +48,8 @@ class AppGenerator < Rails::Generator::Base
       m.file "README",         "README"
 
       # Application
-      m.template "helpers/application.rb",        "app/controllers/application.rb", :assigns => { :app_name => @app_name, :app_secret => md5.hexdigest }
+      m.template "helpers/application_controller.rb", "app/controllers/application_controller.rb", :assigns => { 
+        :app_name => @app_name, :app_secret => md5.hexdigest }
       m.template "helpers/application_helper.rb", "app/helpers/application_helper.rb"
       m.template "helpers/test_helper.rb",        "test/test_helper.rb"
       m.template "helpers/performance_test.rb",   "test/performance/browsing_test.rb"
@@ -60,9 +62,13 @@ class AppGenerator < Rails::Generator::Base
       m.template "configs/routes.rb", "config/routes.rb"
 
       # Initializers
-      m.template "configs/initializers/inflections.rb", "config/initializers/inflections.rb"
-      m.template "configs/initializers/mime_types.rb", "config/initializers/mime_types.rb"
-      m.template "configs/initializers/new_rails_defaults.rb", "config/initializers/new_rails_defaults.rb"
+      m.template "configs/initializers/backtrace_silencers.rb", "config/initializers/backtrace_silencers.rb"
+      m.template "configs/initializers/inflections.rb",         "config/initializers/inflections.rb"
+      m.template "configs/initializers/mime_types.rb",          "config/initializers/mime_types.rb"
+      m.template "configs/initializers/new_rails_defaults.rb",  "config/initializers/new_rails_defaults.rb"
+
+      # Locale
+      m.template "configs/locales/en.yml", "config/locales/en.yml"
 
       # Environments
       m.file "environments/boot.rb",    "config/boot.rb"
@@ -142,6 +148,7 @@ class AppGenerator < Rails::Generator::Base
     app/views/layouts
     config/environments
     config/initializers
+    config/locales
     db
     doc
     lib

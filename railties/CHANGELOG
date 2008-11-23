@@ -1,4 +1,22 @@
-*2.2.0 [RC1] (October 23rd, 2008)*
+*2.3.0 [Edge]*
+
+* Added Rails.backtrace_cleaner as an accessor for the Rails::BacktraceCleaner instance used by the framework to cut down on backtrace noise and config/initializers/backtrace_silencers.rb to add your own (or turn them all off) [DHH]
+
+* Switch from Test::Unit::TestCase to ActiveSupport::TestCase.  [Jeremy Kemper]
+
+* Added config.i18n settings gatherer to config/environment, auto-loading of all locales in config/locales/*.rb,yml, and config/locales/en.yml as a sample locale [DHH]
+
+* BACKWARDS INCOMPATIBLE: Renamed application.rb to application_controller.rb and removed all the special casing that was in place to support the former. You must do this rename in your own application when you upgrade to this version [DHH]
+
+
+*2.2.1 [RC2] (November 14th, 2008)*
+
+* Fixed plugin generator so that generated unit tests would subclass ActiveSupport::TestCase, also introduced a helper script to reduce the needed require statements #1137 [Mathias Meyer]
+
+* Update Prototype to 1.6.0.3 [sam]
+
+
+*2.2.0 [RC1] (October 24th, 2008)*
 
 * Fixed that sqlite would report "db/development.sqlite3 already exists" whether true or not on db:create #614 [Antonio Cangiano]
 

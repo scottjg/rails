@@ -32,6 +32,7 @@ rescue LoadError
 end
 
 $:.unshift "#{File.dirname(__FILE__)}/action_controller/vendor/html-scanner"
+require 'action_controller/vendor/rack'
 
 require 'action_controller/base'
 require 'action_controller/request'
@@ -49,7 +50,6 @@ require 'action_controller/verification'
 require 'action_controller/streaming'
 require 'action_controller/session_management'
 require 'action_controller/http_authentication'
-require 'action_controller/components'
 require 'action_controller/rack_process'
 require 'action_controller/record_identifier'
 require 'action_controller/request_forgery_protection'
@@ -72,7 +72,6 @@ ActionController::Base.class_eval do
   include ActionController::Streaming
   include ActionController::SessionManagement
   include ActionController::HttpAuthentication::Basic::ControllerMethods
-  include ActionController::Components
   include ActionController::RecordIdentifier
   include ActionController::RequestForgeryProtection
   include ActionController::Translation

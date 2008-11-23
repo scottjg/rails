@@ -51,8 +51,8 @@ module ActiveSupport
 
       private
         def deprecation_message(callstack, message = nil)
-          message ||= "You are using deprecated behavior which will be removed from Rails 2.0."
-          "DEPRECATION WARNING: #{message}  See http://www.rubyonrails.org/deprecation for details. #{deprecation_caller_message(callstack)}"
+          message ||= "You are using deprecated behavior which will be removed from the next major or minor release."
+          "DEPRECATION WARNING: #{message}. #{deprecation_caller_message(callstack)}"
         end
 
         def deprecation_caller_message(callstack)
@@ -221,23 +221,30 @@ class Module
   include ActiveSupport::Deprecation::ClassMethods
 end
 
-require 'test/unit/error'
 
-module Test
-  module Unit
-    class TestCase
-      include ActiveSupport::Deprecation::Assertions
-    end
+require 'active_support/test_case'
 
-    class Error # :nodoc:
-      # Silence warnings when reporting test errors.
-      def message_with_silenced_deprecation
-        ActiveSupport::Deprecation.silence do
-          message_without_silenced_deprecation
+class ActiveSupport::TestCase
+  include ActiveSupport::Deprecation::Assertions
+end
+
+begin
+  require 'test/unit/error'
+
+  module Test
+    module Unit
+      class Error # :nodoc:
+        # Silence warnings when reporting test errors.
+        def message_with_silenced_deprecation
+          ActiveSupport::Deprecation.silence do
+            message_without_silenced_deprecation
+          end
         end
-      end
 
-      alias_method_chain :message, :silenced_deprecation
+        alias_method_chain :message, :silenced_deprecation
+      end
     end
   end
+rescue LoadError
+  # Using miniunit, ignore.
 end
