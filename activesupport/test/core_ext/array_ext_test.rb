@@ -21,7 +21,7 @@ class ArrayExtAccessTests < Test::Unit::TestCase
     assert_equal array[2], array.third
     assert_equal array[3], array.fourth
     assert_equal array[4], array.fifth
-    assert_equal array[41], array.fourty_two
+    assert_equal array[41], array.forty_two
   end
 end
 
@@ -290,16 +290,14 @@ class ArrayExtractOptionsTests < Test::Unit::TestCase
   end
 end
 
-uses_mocha "ArrayExtRandomTests" do
-  class ArrayExtRandomTests < Test::Unit::TestCase
-    def test_random_element_from_array
-      assert_nil [].rand
+class ArrayExtRandomTests < Test::Unit::TestCase
+  def test_random_element_from_array
+    assert_nil [].rand
 
-      Kernel.expects(:rand).with(1).returns(0)
-      assert_equal 'x', ['x'].rand
+    Kernel.expects(:rand).with(1).returns(0)
+    assert_equal 'x', ['x'].rand
 
-      Kernel.expects(:rand).with(3).returns(1)
-      assert_equal 2, [1, 2, 3].rand
-    end
+    Kernel.expects(:rand).with(3).returns(1)
+    assert_equal 2, [1, 2, 3].rand
   end
 end

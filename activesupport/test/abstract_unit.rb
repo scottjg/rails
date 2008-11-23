@@ -3,12 +3,9 @@ require 'test/unit'
 gem 'mocha', '>= 0.9.0'
 require 'mocha'
 
+$:.unshift "#{File.dirname(__FILE__)}/../lib"
 require 'active_support'
 require 'active_support/test_case'
-
-def uses_mocha(test_name, &block)
-  yield
-end
 
 def uses_memcached(test_name)
   require 'memcache'
