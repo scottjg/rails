@@ -1,4 +1,4 @@
-require 'tmail/net'
+#require 'tmail/net'
 
 module ActionMailer #:nodoc:
   # Action Mailer allows you to send email from your application using a mailer model and views.
