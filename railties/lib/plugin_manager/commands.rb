@@ -11,7 +11,7 @@ module Rails::PluginManager
     end
 
     def remove(name, options = {})
-      manager = @managers.values.find {|manager| manager.has_installed?(name) }
+      manager = managers.values.find {|manager| manager.has_installed?(name) }
       if manager
         manager.new.remove(name)
       else
@@ -22,24 +22,26 @@ module Rails::PluginManager
 
     def installed?(name_or_uri)
       File.directory?(install_path(name_or_uri)) ||
-        @managers.values.any? {|manager| manager.has_installed?(name_or_uri) }
+        managers.values.any? {|manager| manager.has_installed?(name_or_uri) }
     end
 
     def find_plugin_manager(uri)
       scheme = URI.parse(uri).scheme
-      manager = @managers[scheme.to_sym]
+      manager = managers[scheme.to_sym]
       if manager.nil?
         raise ArgumentError, "No Plugin Manager installed for the URI scheme `#{scheme}`"
       end
-      manager.new
+      manager
     end
 
     def add_plugin_manager(uri_scheme, manager)
-      @managers ||= {}
-      @managers[uri_scheme.to_sym] = manager
+      managers[uri_scheme.to_sym] = manager
     end
 
     private
+      def managers
+        @managers ||= {}
+      end
 
       def run_install_hook(name)
         install_hook_file = "#{install_path(name)}/install.rb"
