@@ -177,7 +177,6 @@ class Plugin
 
     unless installed?
       Rails::PluginManager.install(uri, options)
-      run_install_hook
     else
       puts "already installed: #{uri}.  pass --force to reinstall"
     end
@@ -202,16 +201,6 @@ class Plugin
   end
 
   private 
-
-    def run_install_hook
-      install_hook_file = "#{rails_env.root}/vendor/plugins/#{name}/install.rb"
-      load install_hook_file if File.exist? install_hook_file
-    end
-
-    def run_uninstall_hook
-      uninstall_hook_file = "#{rails_env.root}/vendor/plugins/#{name}/uninstall.rb"
-      load uninstall_hook_file if File.exist? uninstall_hook_file
-    end
 
     def install_using_export(options = {})
       svn_command :export, options

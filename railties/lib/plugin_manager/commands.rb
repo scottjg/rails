@@ -47,5 +47,10 @@ module Rails::PluginManager
         install_hook_file = "#{install_path(name)}/install.rb"
         load install_hook_file if File.exist? install_hook_file
       end
+
+      def run_uninstall_hook
+        uninstall_hook_file = "#{install_path(name)}/uninstall.rb"
+        load uninstall_hook_file if File.exist? uninstall_hook_file
+      end
   end
 end
