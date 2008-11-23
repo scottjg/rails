@@ -153,96 +153,6 @@ class RailsEnvironment
   
 end
 
-class Plugin
-  attr_reader :name, :uri
-  
-  def initialize(uri, name=nil)
-    @uri, @name = uri, name
-  end
-  
-  def self.find(name)
-    name =~ /\// ? new(name) : Repositories.instance.find_plugin(name)
-  end
-  
-  def to_s
-    "#{@name.ljust(30)}#{@uri}"
-  end
-  
-  def installed?
-    Rails::PluginManager.installed?(name || uri)
-  end
-  
-  def install(options = {})
-    uninstall if installed? and options[:force]
-
-    unless installed?
-      Rails::PluginManager.install(uri, options)
-    else
-      puts "already installed: #{uri}.  pass --force to reinstall"
-    end
-  end
-
-  def uninstall
-    Rails::PluginManager.remove(name)
-  end
-
-  def info
-    tmp = "#{rails_env.root}/_tmp_about.yml"
-    if svn_url?
-      cmd = "svn export #{@uri} \"#{rails_env.root}/#{tmp}\""
-      puts cmd if $verbose
-      system(cmd)
-    end
-    open(svn_url? ? tmp : File.join(@uri, 'about.yml')) do |stream|
-      stream.read
-    end rescue "No about.yml found in #{uri}"
-  ensure
-    FileUtils.rm_rf tmp if svn_url?
-  end
-
-  private 
-
-    def install_using_export(options = {})
-      svn_command :export, options
-    end
-    
-    def install_using_checkout(options = {})
-      svn_command :checkout, options
-    end
-    
-    def install_using_externals(options = {})
-      externals = rails_env.externals
-      externals.push([@name, uri])
-      rails_env.externals = externals
-      install_using_checkout(options)
-    end
-
-    def install_using_http(options = {})
-      root = rails_env.root
-      mkdir_p "#{root}/vendor/plugins/#{@name}"
-      Dir.chdir "#{root}/vendor/plugins/#{@name}" do
-        puts "fetching from '#{uri}'" if $verbose
-        fetcher = RecursiveHTTPFetcher.new(uri, -1)
-        fetcher.quiet = true if options[:quiet]
-        fetcher.fetch
-      end
-    end
-    
-    def svn_command(cmd, options = {})
-      root = rails_env.root
-      mkdir_p "#{root}/vendor/plugins"
-      base_cmd = "svn #{cmd} #{uri} \"#{root}/vendor/plugins/#{name}\""
-      base_cmd += ' -q' if options[:quiet] and not $verbose
-      base_cmd += " -r #{options[:revision]}" if options[:revision]
-      puts base_cmd if $verbose
-      system(base_cmd)
-    end
-
-    def rails_env
-      @rails_env || RailsEnvironment.default
-    end
-end
-
 class Repositories
   include Enumerable
   
@@ -712,7 +622,7 @@ module Commands
     def parse!(args)
       options.parse!(args)
       args.each do |uri_or_name|
-        ::Plugin.new(uri_or_name).install
+        Rails::PluginManager.install(uri_or_name, options)
       end
     rescue StandardError => e
       puts "Plugin not found: #{args.inspect}"
@@ -773,7 +683,7 @@ module Commands
       options.parse!(args)
       root = @base_command.environment.root
       args.each do |name|
-        Rails::PluginManager.remove(name)
+        Rails::PluginManager.remove(name, options)
       end
     end
   end
