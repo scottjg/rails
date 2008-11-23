@@ -176,7 +176,7 @@ class Plugin
     uninstall if installed? and options[:force]
 
     unless installed?
-      Rails::PluginManager.install(uri, @options)
+      Rails::PluginManager.install(uri, options)
       run_install_hook
     else
       puts "already installed: #{uri}.  pass --force to reinstall"
