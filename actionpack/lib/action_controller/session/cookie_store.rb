@@ -1,6 +1,5 @@
 require 'cgi'
 require 'cgi/session'
-require 'openssl'       # to generate the HMAC message digest
 
 # This cookie-based session store is the Rails default. Sessions typically
 # contain at most a user_id and flash message; both fit within the 4K cookie
@@ -50,7 +49,6 @@ class CGI::Session::CookieStore
 
   # Called from CGI::Session only.
   def initialize(session, options = {})
-    options.reverse_merge!( 'stable_session_id' => false )
     # The session_key option is required.
     if options['session_key'].blank?
       raise ArgumentError, 'A session_key is required to write a cookie containing the session data. Use config.action_controller.session = { :session_key => "_myapp_session", :secret => "some secret phrase" } in config/environment.rb'
@@ -60,7 +58,7 @@ class CGI::Session::CookieStore
     ensure_secret_secure(options['secret'])
 
     # Keep the session and its secret on hand so we can read and write cookies.
-    @session, @secret, @stable_session_id = session, options['secret'], options['stable_session_id']
+    @session, @secret = session, options['secret']
 
     # Message digest defaults to SHA1.
     @digest = options['digest'] || 'SHA1'
@@ -122,47 +120,20 @@ class CGI::Session::CookieStore
     write_cookie('value' => nil, 'expires' => 1.year.ago)
   end
 
-  # Generate the HMAC keyed message digest. Uses SHA1 by default.
-  def generate_digest(data)
-    key = @secret.respond_to?(:call) ? @secret.call(@session) : @secret
-    OpenSSL::HMAC.hexdigest(OpenSSL::Digest::Digest.new(@digest), key, data)
-  end
-
   private
     # Marshal a session hash into safe cookie data. Include an integrity hash.
     def marshal(session)
-      data = ActiveSupport::Base64.encode64s(Marshal.dump(session))
-      "#{data}--#{generate_digest(data)}"
+      verifier.generate(session)
     end
 
     # Unmarshal cookie data to a hash and verify its integrity.
     def unmarshal(cookie)
       if cookie
-        data, digest = cookie.split('--')
-
-        # Do two checks to transparently support old double-escaped data.
-        unless digest == generate_digest(data) || digest == generate_digest(data = CGI.unescape(data))
-          delete
-          raise TamperedWithCookie
-        end
-
-        returning( stable_session_id!( Marshal.load(ActiveSupport::Base64.decode64(data)) ) ) do |data|
-          @session.instance_variable_set(:@session_id, data[:session_id]) if @stable_session_id 
-        end
+        verifier.verify(cookie)
       end
-    end
-
-    def stable_session_id!( data  )
-      return data unless @stable_session_id
-      ( data ||= {} ).merge( inject_stable_session_id!( data ) )
-    end
-
-    def inject_stable_session_id!( data )
-      if data.respond_to?(:key?) && !data.key?( :session_id )
-        { :session_id => CGI::Session.generate_unique_id }
-      else
-        {}
-      end  
+    rescue ActiveSupport::MessageVerifier::InvalidSignature
+      delete
+      raise TamperedWithCookie
     end
 
     # Read the session data cookie.
@@ -179,5 +150,14 @@ class CGI::Session::CookieStore
     # Clear cookie value so subsequent new_session doesn't reload old data.
     def clear_old_cookie_value
       @session.cgi.cookies[@cookie_options['name']].clear
+    end
+    
+    def verifier
+      if @secret.respond_to?(:call)
+        key = @secret.call
+      else
+        key = @secret
+      end
+      ActiveSupport::MessageVerifier.new(key, @digest)
     end
 end
