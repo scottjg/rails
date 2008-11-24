@@ -35,3 +35,4 @@ end
 
 require 'plugin_manager/plugin'
 require 'plugin_manager/git_plugin'
+require 'plugin_manager/mercurial_plugin'
