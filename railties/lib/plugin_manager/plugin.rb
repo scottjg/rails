@@ -26,6 +26,11 @@ module Rails
         raise NotImplementedError, "The base Plugin does not implement plugin installation."
       end
 
+      def remove(options = {})
+        puts "Removing #{install_path(name)}" unless options[:quiet]
+        rm_rf path
+      end
+
       protected
 
         def extract_name

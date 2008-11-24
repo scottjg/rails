@@ -18,6 +18,13 @@ module Rails
         end
       end
 
+      def remove(options = {})
+        if installed_as_submodule?
+          puts "Removing from .gitmodules" unless options[:quiet]
+          system(%(git config -f .gitmodules --remove-section submodule."#{path}"))
+        end
+      end
+
       def extract_name
         super.gsub(/\.git$/, '')
       end
@@ -50,6 +57,10 @@ module Rails
           if not system(base_cmd)
             rm_rf path
           end
+        end
+
+        def installed_as_submodule?
+          `git submodule`.split(/\n/).any? { |line| line =~ /#{path}$/ }
         end
     end
   end
