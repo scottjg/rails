@@ -22,6 +22,10 @@ module Rails
         File.directory?(path)
       end
 
+      def install(options = {})
+        raise NotImplementedError, "The base Plugin does not implement plugin installation."
+      end
+
       protected
 
         def extract_name
