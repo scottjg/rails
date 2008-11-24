@@ -19,6 +19,10 @@ module PluginManager
       assert_equal "acts_as_lame", plugin(:name => "acts_as_lame").name
     end
 
+    def test_plugin_should_have_a_correct_path
+      assert_equal "vendor/plugins/acts_as_awesome", plugin.path
+    end
+
     protected
 
       def plugin(options = {})

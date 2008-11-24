@@ -14,6 +14,10 @@ module Rails
         @name ||= extract_name
       end
 
+      def path
+        "vendor/plugins/#{name}"
+      end
+
       protected
 
         def extract_name
