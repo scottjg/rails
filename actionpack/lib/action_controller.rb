@@ -31,8 +31,6 @@ rescue LoadError
   end
 end
 
-$:.unshift "#{File.dirname(__FILE__)}/action_controller/vendor/html-scanner"
-
 module ActionController
   # TODO: Review explicit to see if they will automatically be handled by
   # the initilizer if they are really needed.
@@ -53,6 +51,7 @@ module ActionController
   autoload :Flash, 'action_controller/flash'
   autoload :Helpers, 'action_controller/helpers'
   autoload :HttpAuthentication, 'action_controller/http_authentication'
+  autoload :Integration, 'action_controller/integration'
   autoload :IntegrationTest, 'action_controller/integration'
   autoload :Layout, 'action_controller/layout'
   autoload :MimeResponds, 'action_controller/mime_responds'
@@ -74,6 +73,15 @@ module ActionController
   autoload :UrlWriter, 'action_controller/url_rewriter'
   autoload :Verification, 'action_controller/verification'
 
+  module Assertions
+    autoload :DomAssertions, 'action_controller/assertions/dom_assertions'
+    autoload :ModelAssertions, 'action_controller/assertions/model_assertions'
+    autoload :ResponseAssertions, 'action_controller/assertions/response_assertions'
+    autoload :RoutingAssertions, 'action_controller/assertions/routing_assertions'
+    autoload :SelectorAssertions, 'action_controller/assertions/selector_assertions'
+    autoload :TagAssertions, 'action_controller/assertions/tag_assertions'
+  end
+
   module Http
     autoload :Headers, 'action_controller/headers'
   end
@@ -89,6 +97,8 @@ class CGI
 end
 
 autoload :Mime, 'action_controller/mime_type'
+
+autoload :HTML, 'action_controller/vendor/html-scanner'
 autoload :Rack, 'action_controller/vendor/rack'
 
-ActionController.load_all!
+ActionController.load_all! unless ENV['LAZY']
