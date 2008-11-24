@@ -8,23 +8,33 @@ module Rails::PluginManager
   extend Rails::PluginManager::Commands
 
   class << self
-    def add_plugin_implementation(uri_scheme, implementation)
-      implementations[uri_scheme.to_sym] = implementation
+    def add_plugin_implementation(implementation)
+      implementations << implementation
     end
 
     def find_plugin_implementation(uri)
-      scheme = URI.parse(uri).scheme
-      implementation = implementations[scheme.to_sym]
-      if implementation.nil?
-        raise ArgumentError, "No Plugin Manager installed for the URI scheme `#{scheme}`"
+      uri_scheme = URI.parse(uri).scheme.to_sym
+
+      supported_schemes = Hash.new { |h, k| h[k] = [] }
+      implementations.each do |impl|
+        impl.supported_uri_schemes.each { |scheme| supported_schemes[scheme] << impl }
       end
-      implementation
+
+      candidates = supported_schemes[uri_scheme]
+      case candidates.length
+      when 0
+        raise ArgumentError, "No Plugin Manager installed for the URI scheme `#{scheme}`"
+      when 1
+        candidates.first
+      else
+        # TODO: Use heuristics to determine which implementation to use.
+      end
     end
 
     private
 
       def implementations
-        @implementations ||= {}
+        @implementations ||= []
       end
   end
 end

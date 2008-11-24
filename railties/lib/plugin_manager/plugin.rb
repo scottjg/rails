@@ -39,6 +39,10 @@ module Rails
         rm_rf path
       end
 
+      def self.supported_uri_schemes
+        []
+      end
+
       protected
 
         def extract_name

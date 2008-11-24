@@ -29,6 +29,10 @@ module Rails
         super.gsub(/\.git$/, '')
       end
 
+      def self.supported_uri_schemes
+        [:git]
+      end
+
       protected
 
         def install_using_checkout(options)
@@ -64,6 +68,6 @@ module Rails
         end
     end
 
-    PluginManager.add_plugin_implementation(:git, GitPlugin)
+    PluginManager.add_plugin_implementation(GitPlugin)
   end
 end
