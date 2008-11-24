@@ -4,7 +4,7 @@ module Rails
       attr_reader :uri
 
       def initialize(options = {})
-        @name, @uri = options[:name], options[:uri]
+        @name, @uri = options.delete(:name), options.delete(:uri)
         if @name.nil? && @uri.nil?
           raise ArgumentError, "A plugin needs at least a name or an URI."
         end
