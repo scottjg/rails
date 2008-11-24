@@ -18,6 +18,10 @@ module Rails
         "vendor/plugins/#{name}"
       end
 
+      def installed?
+        File.directory?(path)
+      end
+
       protected
 
         def extract_name
