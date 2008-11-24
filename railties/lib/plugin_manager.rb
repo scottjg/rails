@@ -13,17 +13,11 @@ module Rails::PluginManager
     end
 
     def find_plugin_implementation(uri)
-      uri_scheme = URI.parse(uri).scheme.to_sym
+      candidates = implementations.select { |impl| impl.can_handle_uri?(uri) }
 
-      supported_schemes = Hash.new { |h, k| h[k] = [] }
-      implementations.each do |impl|
-        impl.supported_uri_schemes.each { |scheme| supported_schemes[scheme] << impl }
-      end
-
-      candidates = supported_schemes[uri_scheme]
       case candidates.length
       when 0
-        raise ArgumentError, "No Plugin Manager installed for the URI scheme `#{scheme}`"
+        raise ArgumentError, "No Plugin Manager can install the plugin at `#{uri}.`"
       when 1
         candidates.first
       else

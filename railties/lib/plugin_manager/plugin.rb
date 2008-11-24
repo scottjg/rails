@@ -39,8 +39,8 @@ module Rails
         rm_rf path
       end
 
-      def self.supported_uri_schemes
-        []
+      def self.can_handle_uri
+        false
       end
 
       protected

@@ -29,8 +29,8 @@ module Rails
         super.gsub(/\.git$/, '')
       end
 
-      def self.supported_uri_schemes
-        [:git]
+      def self.can_handle_uri?(uri)
+        /^git:\/\// =~ uri
       end
 
       protected

@@ -16,7 +16,7 @@ module PluginManager
     end
 
     def test_supported_uri_schemes
-      assert_equal [:git], GitPlugin.supported_uri_schemes
+      assert GitPlugin.can_handle_uri?("git://foobar.org/acts_as_awesome")
     end
   end
 end
