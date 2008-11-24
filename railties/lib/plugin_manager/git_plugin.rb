@@ -63,5 +63,7 @@ module Rails
           `git submodule`.split(/\n/).any? { |line| line =~ /#{path}$/ }
         end
     end
+
+    PluginManager.add_plugin_implementation(:git, GitPlugin)
   end
 end

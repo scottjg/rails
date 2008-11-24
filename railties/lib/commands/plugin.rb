@@ -605,6 +605,9 @@ module Commands
         o.separator   "Options:"
         o.on(         "-m", "--method=METHOD", String,
                       "Use an alternative install method.") { |method| @options[:method] = method.to_sym }
+        o.on(         "-n", "--name=NAME", String,
+                      "Specify a name for the plugin.",
+                      "By default, a name will be extracted from the URI.") { |name| @options[:name] = name }
         o.on(         "-q", "--quiet",
                       "Suppresses the output from installation.",
                       "Ignored if -v is passed (./script/plugin -v install ...)") { |v| @options[:quiet] = true }
@@ -622,7 +625,7 @@ module Commands
     def parse!(args)
       options.parse!(args)
       args.each do |uri_or_name|
-        Rails::PluginManager.install(uri_or_name, options)
+        Rails::PluginManager.install(uri_or_name, @options)
       end
     rescue StandardError => e
       puts "Plugin not found: #{args.inspect}"
