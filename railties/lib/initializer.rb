@@ -57,10 +57,7 @@ module Rails
     end
 
     def env
-      @_env ||= begin
-        require 'active_support/string_inquirer'
-        ActiveSupport::StringInquirer.new(RAILS_ENV)
-      end
+      @_env ||= ActiveSupport::StringInquirer.new(RAILS_ENV)
     end
 
     def cache
@@ -139,6 +136,7 @@ module Rails
       add_gem_load_paths
 
       require_frameworks
+      preload_frameworks
       set_autoload_paths
       add_plugin_load_paths
       load_environment
@@ -265,8 +263,21 @@ module Rails
     def require_frameworks
       configuration.frameworks.each { |framework| require(framework.to_s) }
     rescue LoadError => e
-      # re-raise because Mongrel would swallow it
+      # Re-raise as RuntimeError because Mongrel would swallow LoadError.
       raise e.to_s
+    end
+
+    # Preload all frameworks specified by the Configuration#frameworks.
+    # Used by Passenger to ensure everything's loaded before forking and
+    # to avoid autoload race conditions in JRuby.
+    def preload_frameworks
+      if configuration.preload_frameworks
+        configuration.frameworks.each do |framework|
+          # String#classify and #constantize aren't available yet.
+          toplevel = Object.const_get(framework.to_s.gsub(/(?:^|_)(.)/) { $1.upcase })
+          toplevel.load_all!
+        end
+      end
     end
 
     # Add the load paths used by support functions such as the info controller
@@ -608,12 +619,15 @@ Run `rake gems:install` to install the missing gems.
     # A stub for setting options on ActiveSupport.
     attr_accessor :active_support
 
+    # Whether to preload all frameworks at startup.
+    attr_accessor :preload_frameworks
+
     # Whether or not classes should be cached (set to false if you want
     # application classes to be reloaded on each request)
     attr_accessor :cache_classes
 
     # The list of paths that should be searched for controllers. (Defaults
-    # to <tt>app/controllers</tt> and <tt>components</tt>.)
+    # to <tt>app/controllers</tt>.)
     attr_accessor :controller_paths
 
     # The path to the database configuration file to use. (Defaults to
@@ -774,6 +788,7 @@ Run `rake gems:install` to install the missing gems.
       self.log_level                    = default_log_level
       self.view_path                    = default_view_path
       self.controller_paths             = default_controller_paths
+      self.preload_frameworks           = default_preload_frameworks
       self.cache_classes                = default_cache_classes
       self.dependency_loading           = default_dependency_loading
       self.whiny_nils                   = default_whiny_nils
@@ -816,6 +831,7 @@ Run `rake gems:install` to install the missing gems.
     # multiple database connections. Also disables automatic dependency loading
     # after boot
     def threadsafe!
+      self.preload_frameworks = true
       self.cache_classes = true
       self.dependency_loading = false
       self.action_controller.allow_concurrency = true
@@ -872,10 +888,10 @@ Run `rake gems:install` to install the missing gems.
 
     def framework_paths
       paths = %w(railties railties/lib activesupport/lib)
-      paths << 'actionpack/lib' if frameworks.include? :action_controller or frameworks.include? :action_view
+      paths << 'actionpack/lib' if frameworks.include?(:action_controller) || frameworks.include?(:action_view)
 
       [:active_record, :action_mailer, :active_resource, :action_web_service].each do |framework|
-        paths << "#{framework.to_s.gsub('_', '')}/lib" if frameworks.include? framework
+        paths << "#{framework.to_s.gsub('_', '')}/lib" if frameworks.include?(framework)
       end
 
       paths.map { |dir| "#{framework_root_path}/#{dir}" }.select { |dir| File.directory?(dir) }
@@ -899,9 +915,6 @@ Run `rake gems:install` to install the missing gems.
         # Add the app's controller directory
         paths.concat(Dir["#{root_path}/app/controllers/"])
 
-        # Then components subdirectories.
-        paths.concat(Dir["#{root_path}/components/[_a-z]*"])
-
         # Followed by the standard includes.
         paths.concat %w(
           app
@@ -909,7 +922,6 @@ Run `rake gems:install` to install the missing gems.
           app/controllers
           app/helpers
           app/services
-          components
           config
           lib
           vendor
@@ -959,6 +971,10 @@ Run `rake gems:install` to install the missing gems.
 
       def default_dependency_loading
         true
+      end
+
+      def default_preload_frameworks
+        false
       end
 
       def default_cache_classes
