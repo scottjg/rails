@@ -12,15 +12,6 @@ module ActionController
           after_dispatch :cleanup_application
         end
 
-        # Common callbacks
-        to_prepare :load_application_controller do
-          begin
-            require_dependency 'application' unless defined?(::ApplicationController)
-          rescue LoadError => error
-            raise unless error.message =~ /application\.rb/
-          end
-        end
-
         if defined?(ActiveRecord)
           after_dispatch :checkin_connections
           to_prepare(:activerecord_instantiate_observers) { ActiveRecord::Base.instantiate_observers }
@@ -185,7 +176,7 @@ module ActionController
 
       def failsafe_rescue(exception)
         self.class.failsafe_response(@output, '500 Internal Server Error', exception) do
-          if @controller ||= defined?(::ApplicationController) ? ::ApplicationController : Base
+          if @controller ||= (::ApplicationController rescue Base)
             @controller.process_with_exception(@request, @response, exception).out(@output)
           else
             raise exception

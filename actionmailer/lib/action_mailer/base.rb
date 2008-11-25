@@ -1,9 +1,3 @@
-require 'action_mailer/adv_attr_accessor'
-require 'action_mailer/part'
-require 'action_mailer/part_container'
-require 'action_mailer/utils'
-require 'tmail/net'
-
 module ActionMailer #:nodoc:
   # Action Mailer allows you to send email from your application using a mailer model and views.
   #
@@ -245,7 +239,7 @@ module ActionMailer #:nodoc:
   #   and appear last in the mime encoded message. You can also pick a different order from inside a method with
   #   +implicit_parts_order+.
   class Base
-    include AdvAttrAccessor, PartContainer
+    include AdvAttrAccessor, PartContainer, Quoting, Utils
     if Object.const_defined?(:ActionController)
       include ActionController::UrlWriter
       include ActionController::Layout
@@ -549,7 +543,12 @@ module ActionMailer #:nodoc:
       end
 
       def render_message(method_name, body)
+        if method_name.respond_to?(:content_type)
+          @current_template_content_type = method_name.content_type
+        end
         render :file => method_name, :body => body
+      ensure
+        @current_template_content_type = nil
       end
 
       def render(opts)
@@ -568,7 +567,11 @@ module ActionMailer #:nodoc:
       end
 
       def default_template_format
-        :html
+        if @current_template_content_type
+          Mime::Type.lookup(@current_template_content_type).to_sym
+        else
+          :html
+        end
       end
 
       def candidate_for_layout?(options)
@@ -588,7 +591,9 @@ module ActionMailer #:nodoc:
       end
 
       def initialize_template_class(assigns)
-        ActionView::Base.new(view_paths, assigns, self)
+        template = ActionView::Base.new(view_paths, assigns, self)
+        template.template_format = default_template_format
+        template
       end
 
       def sort_parts(parts, order = [])
@@ -637,11 +642,11 @@ module ActionMailer #:nodoc:
 
         if @parts.empty?
           m.set_content_type(real_content_type, nil, ctype_attrs)
-          m.body = Utils.normalize_new_lines(body)
+          m.body = normalize_new_lines(body)
         else
           if String === body
             part = TMail::Mail.new
-            part.body = Utils.normalize_new_lines(body)
+            part.body = normalize_new_lines(body)
             part.set_content_type(real_content_type, nil, ctype_attrs)
             part.set_content_disposition "inline"
             m.parts << part
@@ -686,5 +691,10 @@ module ActionMailer #:nodoc:
       def perform_delivery_test(mail)
         deliveries << mail
       end
+  end
+
+  Base.class_eval do
+    include Helpers
+    helper MailHelper
   end
 end

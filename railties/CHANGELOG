@@ -1,4 +1,23 @@
-*2.2.1 [RC2 or 2.2 final]*
+*2.3.0 [Edge]*
+
+* Add config.preload_frameworks to load all frameworks at startup. Default to false so Rails autoloads itself as it's used. Turn this on for Passenger and JRuby. Also turned on by config.threadsafe!  [Jeremy Kemper]
+
+* Add a rake task to generate dispatchers : rake rails:generate_dispatchers [Pratik]
+
+* "rails <app>" will not generate public/dispatch.cgi/fcgi/rb files by default now. Please use "--with-dispatchers" option if you need them. [Yaroslav Markin, Pratik Naik]
+
+* Added rake rails:update:application_controller to renamed application.rb to application_controller.rb -- included in rake rails:update so upgrading to 2.3 will automatically trigger it #1439 [kastner]
+
+* Added Rails.backtrace_cleaner as an accessor for the Rails::BacktraceCleaner instance used by the framework to cut down on backtrace noise and config/initializers/backtrace_silencers.rb to add your own (or turn them all off) [DHH]
+
+* Switch from Test::Unit::TestCase to ActiveSupport::TestCase.  [Jeremy Kemper]
+
+* Added config.i18n settings gatherer to config/environment, auto-loading of all locales in config/locales/*.rb,yml, and config/locales/en.yml as a sample locale [DHH]
+
+* BACKWARDS INCOMPATIBLE: Renamed application.rb to application_controller.rb and removed all the special casing that was in place to support the former. You must do this rename in your own application when you upgrade to this version [DHH]
+
+
+*2.2.1 [RC2] (November 14th, 2008)*
 
 * Fixed plugin generator so that generated unit tests would subclass ActiveSupport::TestCase, also introduced a helper script to reduce the needed require statements #1137 [Mathias Meyer]
 

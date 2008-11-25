@@ -7,6 +7,8 @@ module ActionController
       # Mapper instances have relatively few instance methods, in order to avoid
       # clashes with named routes.
       class Mapper #:doc:
+        include ActionController::Resources
+
         def initialize(set) #:nodoc:
           @set = set
         end
@@ -168,6 +170,7 @@ module ActionController
             #
             @module.module_eval <<-end_eval # We use module_eval to avoid leaks
               def #{selector}(*args)
+
                 #{generate_optimisation_block(route, kind)}
 
                 opts = if args.empty? || Hash === args.first

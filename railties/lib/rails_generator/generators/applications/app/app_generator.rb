@@ -1,5 +1,6 @@
 require 'rbconfig'
 require 'digest/md5' 
+require 'active_support/secure_random'
 
 class AppGenerator < Rails::Generator::Base
   DEFAULT_SHEBANG = File.join(Config::CONFIG['bindir'],
@@ -9,7 +10,7 @@ class AppGenerator < Rails::Generator::Base
   DEFAULT_DATABASE = 'sqlite3'
 
   default_options   :db => (ENV["RAILS_DEFAULT_DATABASE"] || DEFAULT_DATABASE),
-    :shebang => DEFAULT_SHEBANG, :freeze => false
+    :shebang => DEFAULT_SHEBANG, :with_dispatchers => false, :freeze => false
   mandatory_options :source => "#{File.dirname(__FILE__)}/../../../../.."
 
   def initialize(runtime_args, runtime_options = {})
@@ -47,7 +48,8 @@ class AppGenerator < Rails::Generator::Base
       m.file "README",         "README"
 
       # Application
-      m.template "helpers/application.rb",        "app/controllers/application.rb", :assigns => { :app_name => @app_name, :app_secret => md5.hexdigest }
+      m.template "helpers/application_controller.rb", "app/controllers/application_controller.rb", :assigns => { 
+        :app_name => @app_name, :app_secret => md5.hexdigest }
       m.template "helpers/application_helper.rb", "app/helpers/application_helper.rb"
       m.template "helpers/test_helper.rb",        "test/test_helper.rb"
       m.template "helpers/performance_test.rb",   "test/performance/browsing_test.rb"
@@ -60,9 +62,13 @@ class AppGenerator < Rails::Generator::Base
       m.template "configs/routes.rb", "config/routes.rb"
 
       # Initializers
-      m.template "configs/initializers/inflections.rb", "config/initializers/inflections.rb"
-      m.template "configs/initializers/mime_types.rb", "config/initializers/mime_types.rb"
-      m.template "configs/initializers/new_rails_defaults.rb", "config/initializers/new_rails_defaults.rb"
+      m.template "configs/initializers/backtrace_silencers.rb", "config/initializers/backtrace_silencers.rb"
+      m.template "configs/initializers/inflections.rb",         "config/initializers/inflections.rb"
+      m.template "configs/initializers/mime_types.rb",          "config/initializers/mime_types.rb"
+      m.template "configs/initializers/new_rails_defaults.rb",  "config/initializers/new_rails_defaults.rb"
+
+      # Locale
+      m.template "configs/locales/en.yml", "config/locales/en.yml"
 
       # Environments
       m.file "environments/boot.rb",    "config/boot.rb"
@@ -77,9 +83,11 @@ class AppGenerator < Rails::Generator::Base
       end
 
       # Dispatches
-      m.file "dispatches/dispatch.rb",   "public/dispatch.rb", dispatcher_options
-      m.file "dispatches/dispatch.rb",   "public/dispatch.cgi", dispatcher_options
-      m.file "dispatches/dispatch.fcgi", "public/dispatch.fcgi", dispatcher_options
+      if options[:with_dispatchers]
+        m.file "dispatches/dispatch.rb",   "public/dispatch.rb", dispatcher_options
+        m.file "dispatches/dispatch.rb",   "public/dispatch.cgi", dispatcher_options
+        m.file "dispatches/dispatch.fcgi", "public/dispatch.fcgi", dispatcher_options
+      end
 
       # HTML files
       %w(404 422 500 index).each do |file|
@@ -123,6 +131,10 @@ class AppGenerator < Rails::Generator::Base
             "Preconfigure for selected database (options: #{DATABASES.join('/')}).",
             "Default: #{DEFAULT_DATABASE}") { |v| options[:db] = v }
 
+      opt.on("-D", "--with-dispatchers",
+            "Add CGI/FastCGI/mod_ruby dispatches code to generated application skeleton",
+            "Default: false") { |v| options[:with_dispatchers] = v }
+
       opt.on("-f", "--freeze",
             "Freeze Rails in vendor/rails from the gems generating the skeleton",
             "Default: false") { |v| options[:freeze] = v }
@@ -142,6 +154,7 @@ class AppGenerator < Rails::Generator::Base
     app/views/layouts
     config/environments
     config/initializers
+    config/locales
     db
     doc
     lib

@@ -495,6 +495,10 @@ module ActiveRecord #:nodoc:
     superclass_delegating_accessor :store_full_sti_class
     self.store_full_sti_class = false
 
+    # Stores the default scope for the class
+    class_inheritable_accessor :default_scoping, :instance_writer => false
+    self.default_scoping = []
+
     class << self # Class methods
       # Find operates with four different retrieval approaches:
       #
@@ -1612,9 +1616,17 @@ module ActiveRecord #:nodoc:
           end
         end
 
+        def default_select(qualified)
+          if qualified
+            quoted_table_name + '.*'
+          else
+            '*'
+          end
+        end
+
         def construct_finder_sql(options)
           scope = scope(:find)
-          sql  = "SELECT #{options[:select] || (scope && scope[:select]) || ((options[:joins] || (scope && scope[:joins])) && quoted_table_name + '.*') || '*'} "
+          sql  = "SELECT #{options[:select] || (scope && scope[:select]) || default_select(options[:joins] || (scope && scope[:joins]))} "
           sql << "FROM #{(scope && scope[:from]) || options[:from] || quoted_table_name} "
 
           add_joins!(sql, options[:joins], scope)
@@ -2008,6 +2020,16 @@ module ActiveRecord #:nodoc:
           @@subclasses[self] + extra = @@subclasses[self].inject([]) {|list, subclass| list + subclass.subclasses }
         end
 
+        # Sets the default options for the model. The format of the
+        # <tt>method_scoping</tt> argument is the same as in with_scope.
+        #
+        #   class Person < ActiveRecord::Base
+        #     default_scope :find => { :order => 'last_name, first_name' }
+        #   end
+        def default_scope(options = {})
+          self.default_scoping << { :find => options, :create => (options.is_a?(Hash) && options.has_key?(:conditions)) ? options[:conditions] : {} }
+        end
+
         # Test whether the given method and optional key are scoped.
         def scoped?(method, key = nil) #:nodoc:
           if current_scoped_methods && (scope = current_scoped_methods[method])
@@ -2023,7 +2045,7 @@ module ActiveRecord #:nodoc:
         end
 
         def scoped_methods #:nodoc:
-          Thread.current[:"#{self}_scoped_methods"] ||= []
+          Thread.current[:"#{self}_scoped_methods"] ||= self.default_scoping.dup
         end
 
         def current_scoped_methods #:nodoc:
@@ -2300,7 +2322,7 @@ module ActiveRecord #:nodoc:
       # construct an URI with the user object's 'id' in it:
       #
       #   user = User.find_by_name('Phusion')
-      #   user_path(path)  # => "/users/1"
+      #   user_path(user)  # => "/users/1"
       #
       # You can override +to_param+ in your model to make +users_path+ construct
       # an URI using the user's name instead of the user's id:
@@ -2312,7 +2334,7 @@ module ActiveRecord #:nodoc:
       #   end
       #   
       #   user = User.find_by_name('Phusion')
-      #   user_path(path)  # => "/users/Phusion"
+      #   user_path(user)  # => "/users/Phusion"
       def to_param
         # We can't use alias_method here, because method 'id' optimizes itself on the fly.
         (id = self.id) ? id.to_s : nil # Be sure to stringify the id for routes
@@ -2956,4 +2978,18 @@ module ActiveRecord #:nodoc:
         value
       end
   end
+
+  Base.class_eval do
+    extend QueryCache
+    include Validations
+    include Locking::Optimistic, Locking::Pessimistic
+    include AttributeMethods
+    include Dirty
+    include Callbacks, Observing, Timestamp
+    include Associations, AssociationPreload, NamedScope
+    include Aggregations, Transactions, Reflection, Calculations, Serialization
+  end
 end
+
+# TODO: Remove this and make it work with LAZY flag
+require 'active_record/connection_adapters/abstract_adapter'

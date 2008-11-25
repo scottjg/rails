@@ -29,7 +29,7 @@ module Backoffice
   end
 end
 
-class ResourcesTest < Test::Unit::TestCase
+class ResourcesTest < ActionController::TestCase
   # The assertions in these tests are incompatible with the hash method
   # optimisation.  This could indicate user level problems
   def setup
@@ -971,6 +971,42 @@ class ResourcesTest < Test::Unit::TestCase
     end
   end
 
+  def test_nested_resource_ignores_only_option
+    with_routing do |set|
+      set.draw do |map|
+        map.resources :products, :only => :show do |product|
+          product.resources :images, :except => :destroy
+        end
+      end
+
+      assert_resource_allowed_routes('images', { :product_id => '1' },                    { :id => '2' }, [:index, :new, :create, :show, :edit, :update], :destroy, 'products/1/images')
+      assert_resource_allowed_routes('images', { :product_id => '1', :format => 'xml' },  { :id => '2' }, [:index, :new, :create, :show, :edit, :update], :destroy, 'products/1/images')
+    end
+  end
+
+  def test_nested_resource_ignores_except_option
+    with_routing do |set|
+      set.draw do |map|
+        map.resources :products, :except => :show do |product|
+          product.resources :images, :only => :destroy
+        end
+      end
+
+      assert_resource_allowed_routes('images', { :product_id => '1' },                    { :id => '2' }, :destroy, [:index, :new, :create, :show, :edit, :update], 'products/1/images')
+      assert_resource_allowed_routes('images', { :product_id => '1', :format => 'xml' },  { :id => '2' }, :destroy, [:index, :new, :create, :show, :edit, :update], 'products/1/images')
+    end
+  end
+
+  def test_default_singleton_restful_route_uses_get
+    with_routing do |set|
+      set.draw do |map|
+        map.resource :product
+      end
+
+      assert_equal :get, set.named_routes.routes[:product].conditions[:method]
+    end
+  end
+
   protected
     def with_restful_routing(*args)
       with_routing do |set|
@@ -1214,7 +1250,7 @@ class ResourcesTest < Test::Unit::TestCase
     end
 
     def assert_not_recognizes(expected_options, path)
-      assert_raise ActionController::RoutingError, ActionController::MethodNotAllowed, Test::Unit::AssertionFailedError do
+      assert_raise ActionController::RoutingError, ActionController::MethodNotAllowed, Assertion do
         assert_recognizes(expected_options, path)
       end
     end
