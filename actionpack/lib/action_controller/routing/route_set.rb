@@ -185,6 +185,14 @@ module ActionController
                 end
 
                 url_for(#{hash_access_method}(opts))
+                
+              end
+              #Add an alias to support the now deprecated formatted_* URL.
+              def formatted_#{selector}(*args)
+                ActiveSupport::Deprecation.warn(
+                  "formatted_#{selector}() has been deprecated. please pass format to the standard" +
+                  "#{selector}() method instead.", caller)
+                #{selector}(*args)
               end
               #Add an alias to the formatted_* URL, which is no longer created a separate route.
               alias_method :formatted_#{selector}, :#{selector}              
