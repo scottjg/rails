@@ -204,6 +204,12 @@ module ActionController
 
       attr_accessor :routes, :named_routes, :configuration_files
 
+      DEFAULT_ROUTE = ":controller/:action/:id".freeze
+
+      INDEX = 'index'.freeze
+
+      FORWARD_SLASH = '/'.freeze
+
       def initialize
         self.configuration_files = []
 
@@ -283,7 +289,7 @@ module ActionController
           configuration_files.each { |config| load(config) }
           @routes_last_modified = routes_changed_at
         else
-          add_route ":controller/:action/:id"
+          add_route DEFAULT_ROUTE
         end
       end
       
@@ -326,7 +332,7 @@ module ActionController
         # great fun, eh?
 
         options_as_params = options.clone
-        options_as_params[:action] ||= 'index' if options[:controller]
+        options_as_params[:action] ||= INDEX if options[:controller]
         options_as_params[:action] = options_as_params[:action].to_s if options_as_params[:action]
         options_as_params
       end
@@ -367,10 +373,10 @@ module ActionController
         # on admin/get, and the new controller is 'set', the new controller
         # should really be admin/set.
         if !named_route && expire_on[:controller] && options[:controller] && options[:controller][0] != ?/
-          old_parts = recall[:controller].split('/')
-          new_parts = options[:controller].split('/')
+          old_parts = recall[:controller].split( FORWARD_SLASH )
+          new_parts = options[:controller].split( FORWARD_SLASH )
           parts = old_parts[0..-(new_parts.length + 1)] + new_parts
-          options[:controller] = parts.join('/')
+          options[:controller] = parts.join( FORWARD_SLASH )
         end
 
         # drop the leading '/' on the controller name
@@ -385,8 +391,8 @@ module ActionController
             return path
           end
         else
-          merged[:action] ||= 'index'
-          options[:action] ||= 'index'
+          merged[:action] ||= INDEX
+          options[:action] ||= INDEX
 
           controller = merged[:controller]
           action = merged[:action]
@@ -448,7 +454,7 @@ module ActionController
         raise "Need controller and action!" unless controller && action
         controller = merged[:controller]
         merged = options if expire_on[:controller]
-        action = merged[:action] || 'index'
+        action = merged[:action] || INDEX
 
         routes_by_controller[controller][action][merged.keys]
       end

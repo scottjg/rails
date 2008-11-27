@@ -23,6 +23,9 @@ class NilClass
 end
 
 class Regexp #:nodoc:
+  
+  UNOPTIONALIZE = [/\A\(\?:(.*)\)\?\Z/, /\A(.|\(.*\))\?\Z/].freeze
+  
   def number_of_captures
     Regexp.new("|#{source}").match('').captures.length
   end
@@ -40,7 +43,7 @@ class Regexp #:nodoc:
     end
 
     def unoptionalize(pattern)
-      [/\A\(\?:(.*)\)\?\Z/, /\A(.|\(.*\))\?\Z/].each do |regexp|
+      UNOPTIONALIZE.each do |regexp|
         return $1 if regexp =~ pattern
       end
       return pattern

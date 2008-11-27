@@ -4,6 +4,16 @@ module ActionController
       attr_reader :separators, :optional_separators
       attr_reader :separator_regexp, :nonseparator_regexp, :interval_regexp
 
+      FORMAT_SEGMENT_REGEX = /\A\.(:format)?\// 
+
+      CONTROLLER_SEGMENT_REGEX = /\A:(\w+)/
+
+      PATH_SEGMENT_REGEX = /\A\*(\w+)/
+
+      STATIC_SEGMENT_REGEX = /\A\?(.*?)\?/
+
+      ANCHOR_REGEX = %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
+
       def initialize
         @separators = Routing::SEPARATORS
         @optional_separators = %w( / )
@@ -34,14 +44,14 @@ module ActionController
       def segment_for(string)
         segment =
           case string
-            when  /\A\.(:format)?\// 
+            when  FORMAT_SEGMENT_REGEX
               OptionalFormatSegment.new
-            when /\A:(\w+)/
+            when CONTROLLER_SEGMENT_REGEX
               key = $1.to_sym
               key == :controller ? ControllerSegment.new(key) : DynamicSegment.new(key)
-            when /\A\*(\w+)/
+            when PATH_SEGMENT_REGEX 
               PathSegment.new($1.to_sym, :optional => true)
-            when /\A\?(.*?)\?/
+            when STATIC_SEGMENT_REGEX
               StaticSegment.new($1, :optional => true)
             when nonseparator_regexp
               StaticSegment.new($1)
@@ -90,7 +100,7 @@ module ActionController
           segment = segment_named[key]
           if segment
             raise TypeError, "#{key}: requirements on a path segment must be regular expressions" unless requirement.is_a?(Regexp)
-            if requirement.source =~ %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
+            if requirement.source =~ ANCHOR_REGEX
               raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
             end
             if requirement.multiline?

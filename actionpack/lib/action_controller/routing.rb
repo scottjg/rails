@@ -270,6 +270,12 @@ module ActionController
 
     ALLOWED_REQUIREMENTS_FOR_OPTIMISATION = [:controller, :action].to_set
 
+    PATH_REGEX = %r{[^/\\]+[/\\]\.\.[/\\]}
+
+    TRAILING_SLASH_REGEX = %r{(.)[\\/]$}
+
+    CONTROLLER_REGEX = /_controller\.rb\Z/
+
     # The root paths which may contain controller files
     mattr_accessor :controller_paths
     self.controller_paths = []
@@ -301,11 +307,10 @@ module ActionController
           path = path.
             gsub("//", "/").           # replace double / chars with a single
             gsub("\\\\", "\\").        # replace double \ chars with a single
-            gsub(%r{(.)[\\/]$}, '\1')  # drop final / or \ if path ends with it
+            gsub(TRAILING_SLASH_REGEX, '\1')  # drop final / or \ if path ends with it
 
           # eliminate .. paths where possible
-          re = %r{[^/\\]+[/\\]\.\.[/\\]}
-          path.gsub!(re, "") while path.match(re)
+          path.gsub!(PATH_REGEX, "") while path.match(PATH_REGEX)
           path
         end
 
@@ -327,7 +332,7 @@ module ActionController
 
               controller_name = path[(load_path.length + 1)..-1]
 
-              controller_name.gsub!(/_controller\.rb\Z/, '')
+              controller_name.gsub!(CONTROLLER_REGEX, '')
               @possible_controllers << controller_name
             end
           end

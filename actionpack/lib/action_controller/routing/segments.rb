@@ -119,6 +119,9 @@ module ActionController
     end
 
     class DynamicSegment < Segment #:nodoc:
+      
+      OPTIONALLY_IMPLIED = [:action, :id].freeze
+      
       attr_reader :key
 
       # TODO: Convert these accessors to read only
@@ -230,7 +233,7 @@ module ActionController
       end
 
       def optionality_implied?
-        [:action, :id].include? key
+        OPTIONALLY_IMPLIED.include? key
       end
 
       def regexp_has_modifiers?
@@ -242,20 +245,26 @@ module ActionController
     # :format, which decreases the amount of routes created by 50%.
     class OptionalFormatSegment < DynamicSegment
 
+      INTERPOLATION_CHUNK = ".".freeze
+
+      REGEXP_CHUNK = '(\.[^/?\.]+)'.freeze 
+
+      TO_S = '(.:format)?'.freeze
+
       def initialize(key = nil, options = {})
         super(:format, {:optional => true}.merge(options))            
       end
 
       def interpolation_chunk
-        "." + super
+        INTERPOLATION_CHUNK + super
       end
 
       def regexp_chunk
-        '(\.[^/?\.]+)'
+        REGEXP_CHUNK
       end
 
       def to_s
-        '(.:format)?'
+        TO_S
       end
 
       #the value should not include the period (.)
@@ -299,6 +308,9 @@ module ActionController
     end
 
     class PathSegment < DynamicSegment #:nodoc:
+      
+      DEFAULT_REGEXP_CHUNK = "(.*)".freeze
+      
       def interpolation_chunk(value_code = local_name)
         "\#{#{value_code}}"
       end
@@ -320,7 +332,7 @@ module ActionController
       end
 
       def regexp_chunk
-        regexp || "(.*)"
+        regexp || DEFAULT_REGEXP_CHUNK
       end
 
       def number_of_captures
@@ -337,37 +349,7 @@ module ActionController
           new strings.collect {|str| URI.unescape str}
         end
       end
+
     end
-    
-    # The OptionalFormatSegment allows for any resource route to have an optional
-    # :format, which decreases the amount of routes created by 50%.
-    class OptionalFormatSegment < DynamicSegment
-    
-      def initialize(key = nil, options = {})
-        super(:format, {:optional => true}.merge(options))            
-      end
-    
-      def interpolation_chunk
-        "." + super
-      end
-    
-      def regexp_chunk
-        '(\.[^/?\.]+)?'
-      end
-    
-      def to_s
-        '(.:format)?'
-      end
-    
-      #the value should not include the period (.)
-      def match_extraction(next_capture)
-        %[
-          if (m = match[#{next_capture}])
-            params[:#{key}] = URI.unescape(m.from(1))
-          end
-        ]
-      end
-    end
-    
   end
 end
