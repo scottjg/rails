@@ -295,27 +295,26 @@ module ActionController
         end
       end
     end
-    
+
     # The OptionalFormatSegment allows for any resource route to have an optional
     # :format, which decreases the amount of routes created by 50%.
     class OptionalFormatSegment < DynamicSegment
-    
       def initialize(key = nil, options = {})
-        super(:format, {:optional => true}.merge(options))            
+        super(:format, {:optional => true}.merge(options))
       end
-    
+
       def to_path(values = {})
         ".#{super}"
       end
-    
+
       def regexp_chunk
         '(\.[^/?\.]+)?'
       end
-    
+
       def to_s
         '(.:format)?'
       end
-    
+
       #the value should not include the period (.)
       def match_extraction(next_capture)
         %[
@@ -325,6 +324,5 @@ module ActionController
         ]
       end
     end
-    
   end
 end
