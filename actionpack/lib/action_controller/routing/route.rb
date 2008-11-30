@@ -2,6 +2,7 @@ module ActionController
   module Routing
     class Route #:nodoc:
       attr_accessor :segments, :requirements, :conditions, :optimise
+      attr_reader :value_regexps
 
       def initialize(segments = [], requirements = {}, conditions = {})
         @segments = segments
@@ -22,6 +23,8 @@ module ActionController
         else
           @optimise = true
         end
+
+        @value_regexps = Hash.new { |h, re| h[re] = Regexp.new("\\A#{re.to_s}\\Z") }
       end
 
       # Indicates whether the routes should be optimised with the string interpolation
@@ -114,7 +117,6 @@ module ActionController
       # TODO: Route should be prepared and frozen on initialize
       def freeze
         unless frozen?
-          write_generation!
           write_recognition!
           prepare_matching!
 
@@ -139,59 +141,45 @@ module ActionController
 
       private
         def requirement_for(key)
-          return requirements[key] if requirements.key? key
-          segments.each do |segment|
-            return segment.regexp if segment.respond_to?(:key) && segment.key == key
+          if requirements.include?(key)
+            requirements[key]
+          elsif segment = segments.find { |s| s.respond_to?(:key) && s.key == key }
+            segment.regexp
           end
-          nil
         end
 
-        # Write and compile a +generate+ method for this Route.
-        def write_generation!
-          # Build the main body of the generation
-          body = "expired = false\n#{generation_extraction}\n#{generation_structure}"
+        def generate_raw(options, hash, expire_on = {})
+          unless requirements_met?(options, hash)
+            [nil, hash]
+          else
+            expired = false
+            values = {}
 
-          # If we have conditions that must be tested first, nest the body inside an if
-          body = "if #{generation_requirements}\n#{body}\nend" if generation_requirements
-          args = "options, hash, expire_on = {}"
+            segments.each do |segment|
+              if segment.is_a?(DynamicSegment)
+                value = segment.extract_value(hash)
+                values[segment.key] = value
+                return nil, nil unless segment.matches?(value)
 
-          # Nest the body inside of a def block, and then compile it.
-          raw_method = method_decl = "def generate_raw(#{args})\npath = begin\n#{body}\nend\n[path, hash]\nend"
-          instance_eval method_decl, "generated code (#{__FILE__}:#{__LINE__})"
+                if !expired && expire_on[segment.key]
+                  expired, hash = true, options
+                end
+              end
+            end
 
-          # expire_on.keys == recall.keys; in other words, the keys in the expire_on hash
-          # are the same as the keys that were recalled from the previous request. Thus,
-          # we can use the expire_on.keys to determine which keys ought to be used to build
-          # the query string. (Never use keys from the recalled request when building the
-          # query string.)
-
-          raw_method
+            segs = segments.dup
+            [segs.pop.generate_path(segs, values), hash]
+          end
         end
 
-        # Build several lines of code that extract values from the options hash. If any
-        # of the values are missing or rejected then a return will be executed.
-        def generation_extraction
-          segments.collect do |segment|
-            segment.extraction_code
-          end.compact * "\n"
-        end
-
-        # Produce a condition expression that will check the requirements of this route
-        # upon generation.
-        def generation_requirements
-          requirement_conditions = requirements.collect do |key, req|
+        def requirements_met?(options, hash)
+          requirements.all? do |key, req|
             if req.is_a? Regexp
-              value_regexp = Regexp.new "\\A#{req.to_s}\\Z"
-              "hash[:#{key}] && #{value_regexp.inspect} =~ options[:#{key}]"
+              hash[key] && value_regexps[req] =~ options[key]
             else
-              "hash[:#{key}] == #{req.inspect}"
+              hash[key] == req
             end
           end
-          requirement_conditions * ' && ' unless requirement_conditions.empty?
-        end
-
-        def generation_structure
-          segments.last.string_structure segments[0..-2]
         end
 
         # Write and compile a +recognize+ method for this Route.

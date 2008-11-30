@@ -59,34 +59,29 @@ class UriReservedCharactersRoutingTest < Test::Unit::TestCase
 end
 
 class SegmentTest < Test::Unit::TestCase
-  def test_first_segment_should_interpolate_for_structure
-    s = ROUTING::Segment.new
-    def s.interpolation_statement(array) 'hello' end
-    assert_equal 'hello', s.continue_string_structure([])
-  end
-
-  def test_interpolation_statement
+  def test_to_path
     s = ROUTING::StaticSegment.new("Hello")
-    assert_equal "Hello", eval(s.interpolation_statement([]))
-    assert_equal "HelloHello", eval(s.interpolation_statement([s]))
+    assert_equal "Hello", s.to_path
+    assert_equal "Hello", s.generate_path([])
+    assert_equal "HelloHello", s.generate_path([s])
 
     s2 = ROUTING::StaticSegment.new("-")
-    assert_equal "Hello-Hello", eval(s.interpolation_statement([s, s2]))
+    assert_equal "Hello-Hello", s.generate_path([s, s2])
 
     s3 = ROUTING::StaticSegment.new("World")
-    assert_equal "Hello-World", eval(s3.interpolation_statement([s, s2]))
+    assert_equal "Hello-World", s3.generate_path([s, s2])
   end
 end
 
 class StaticSegmentTest < Test::Unit::TestCase
-  def test_interpolation_chunk_should_respect_raw
+  def test_to_path_should_respect_raw
     s = ROUTING::StaticSegment.new('Hello World')
     assert !s.raw?
-    assert_equal 'Hello%20World', s.interpolation_chunk
+    assert_equal 'Hello%20World', s.to_path
 
     s = ROUTING::StaticSegment.new('Hello World', :raw => true)
     assert s.raw?
-    assert_equal 'Hello World', s.interpolation_chunk
+    assert_equal 'Hello World', s.to_path
   end
 
   def test_regexp_chunk_should_escape_specials
@@ -117,163 +112,60 @@ class DynamicSegmentTest < Test::Unit::TestCase
   def test_extract_value
     s = ROUTING::DynamicSegment.new(:a)
 
-    hash = {:a => '10', :b => '20'}
-    assert_equal '10', eval(s.extract_value)
+    assert_equal '10', s.extract_value(:a => '10', :b => '20')
 
-    hash = {:b => '20'}
-    assert_equal nil, eval(s.extract_value)
+    assert_equal nil, s.extract_value(:b => '20')
 
     s.default = '20'
-    assert_equal '20', eval(s.extract_value)
-  end
-
-  def test_default_local_name
-    assert_equal 'a_value', segment.local_name,
-      "Unexpected name -- all value_check tests will fail!"
+    assert_equal '20', s.extract_value({})
   end
 
   def test_presence_value_check
-    a_value = 10
-    assert eval(segment.value_check)
+    assert segment.matches?(10)
   end
 
   def test_regexp_value_check_rejects_nil
     segment = segment(:regexp => /\d+/)
-
-    a_value = nil
-    assert !eval(segment.value_check)
+    assert !segment.matches?(nil)
   end
 
   def test_optional_regexp_value_check_should_accept_nil
     segment = segment(:regexp => /\d+/, :optional => true)
-
-    a_value = nil
-    assert eval(segment.value_check)
+    assert segment.matches?(nil)
   end
 
   def test_regexp_value_check_rejects_no_match
     segment = segment(:regexp => /\d+/)
 
-    a_value = "Hello20World"
-    assert !eval(segment.value_check)
-
-    a_value = "20Hi"
-    assert !eval(segment.value_check)
+    assert !segment.matches?('Hello20World')
+    assert !segment.matches?('20Hi')
   end
 
   def test_regexp_value_check_accepts_match
     segment = segment(:regexp => /\d+/)
-    a_value = "30"
-    assert eval(segment.value_check)
+    assert segment.matches?('30')
   end
 
   def test_value_check_fails_on_nil
-    a_value = nil
-    assert ! eval(segment.value_check)
+    assert !segment.matches?(nil)
   end
 
   def test_optional_value_needs_no_check
     segment = segment(:optional => true)
-
-    a_value = nil
-    assert_equal nil, segment.value_check
+    assert segment.matches?(nil)
   end
 
   def test_regexp_value_check_should_accept_match_with_default
     segment = segment(:regexp => /\d+/, :default => '200')
-
-    a_value = '100'
-    assert eval(segment.value_check)
+    assert segment.matches?('100')
   end
 
-  def test_expiry_should_not_trigger_once_expired
-    expired = true
-    hash = merged = {:a => 2, :b => 3}
-    options = {:b => 3}
-    expire_on = Hash.new { raise 'No!!!' }
-
-    eval(segment.expiry_statement)
-  rescue RuntimeError
-    flunk "Expiry check should not have occurred!"
+  def test_to_path
+    assert_equal 'Hi', segment.to_path(:a => 'Hi')
   end
 
-  def test_expiry_should_occur_according_to_expire_on
-    expired = false
-    hash = merged = {:a => 2, :b => 3}
-    options = {:b => 3}
-
-    expire_on = {:b => true, :a => false}
-    eval(segment.expiry_statement)
-    assert !expired
-    assert_equal({:a => 2, :b => 3}, hash)
-
-    expire_on = {:b => true, :a => true}
-    eval(segment.expiry_statement)
-    assert expired
-    assert_equal({:b => 3}, hash)
-  end
-
-  def test_extraction_code_should_return_on_nil
-    hash = merged = {:b => 3}
-    options = {:b => 3}
-    a_value = nil
-
-    # Local jump because of return inside eval.
-    assert_raises(LocalJumpError) { eval(segment.extraction_code) }
-  end
-
-  def test_extraction_code_should_return_on_mismatch
-    segment = segment(:regexp => /\d+/)
-    hash = merged = {:a => 'Hi', :b => '3'}
-    options = {:b => '3'}
-    a_value = nil
-
-    # Local jump because of return inside eval.
-    assert_raises(LocalJumpError) { eval(segment.extraction_code) }
-  end
-
-  def test_extraction_code_should_accept_value_and_set_local
-    hash = merged = {:a => 'Hi', :b => '3'}
-    options = {:b => '3'}
-    a_value = nil
-    expired = true
-
-    eval(segment.extraction_code)
-    assert_equal 'Hi', a_value
-  end
-
-  def test_extraction_should_work_without_value_check
-    segment.default = 'hi'
-    hash = merged = {:b => '3'}
-    options = {:b => '3'}
-    a_value = nil
-    expired = true
-
-    eval(segment.extraction_code)
-    assert_equal 'hi', a_value
-  end
-
-  def test_extraction_code_should_perform_expiry
-    expired = false
-    hash = merged = {:a => 'Hi', :b => '3'}
-    options = {:b => '3'}
-    expire_on = {:a => true}
-    a_value = nil
-
-    eval(segment.extraction_code)
-    assert_equal 'Hi', a_value
-    assert expired
-    assert_equal options, hash
-  end
-
-  def test_interpolation_chunk_should_replace_value
-    a_value = 'Hi'
-    assert_equal a_value, eval(%("#{segment.interpolation_chunk}"))
-  end
-
-  def test_interpolation_chunk_should_accept_nil
-    a_value = nil
-    assert_equal '', eval(%("#{segment.interpolation_chunk('a_value')}"))
+  def test_to_path_should_accept_nil
+    assert_equal '', segment.to_path(:a => nil)
   end
 
   def test_value_regexp_should_be_nil_without_regexp
@@ -709,9 +601,8 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
       host     = options.delete(:host) || "named.route.test"
       anchor   = "##{options.delete(:anchor)}" if options.key?(:anchor)
 
-      path = routes.generate(options)
-
-      only_path ? "#{path}#{anchor}" : "#{protocol}://#{host}#{port_string}#{path}#{anchor}"
+      path = "#{ActionController::Base.relative_url_root unless options[:skip_relative_url_root]}#{routes.generate(options)}#{anchor}"
+      only_path ? path : "#{protocol}://#{host}#{port_string}#{path}"
     end
 
     def request
@@ -908,9 +799,9 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
       rs.add_named_route :home, '', :controller => 'content', :action => 'list'
       x = setup_for_named_route
       ActionController::Base.relative_url_root = "/foo"
-      assert_equal("http://named.route.test/foo/",
-                   x.send(:home_url))
+      assert_equal "http://named.route.test/foo/", x.send(:home_url)
       assert_equal "/foo/", x.send(:home_path)
+    ensure
       ActionController::Base.relative_url_root = nil
     end
 
@@ -950,7 +841,7 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
                    x.send(:users_url))
     end
 
-    def test_optimised_named_route_call_never_uses_url_for
+    def old_test_optimised_named_route_call_never_uses_url_for
       rs.add_named_route :users, 'admin/user', :controller => '/admin/user', :action => 'index'
       rs.add_named_route :user, 'admin/user/:id', :controller=>'/admin/user', :action=>'show'
       x = setup_for_named_route
@@ -961,7 +852,7 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
       x.send(:user_path, 3, :bar=>"foo")
     end
 
-    def test_optimised_named_route_with_host
+    def old_test_optimised_named_route_with_host
       rs.add_named_route :pages, 'pages', :controller => 'content', :action => 'show_page', :host => 'foo.com'
       x = setup_for_named_route
       x.expects(:url_for).with(:host => 'foo.com', :only_path => false, :controller => 'content', :action => 'show_page', :use_route => :pages).once
@@ -1390,12 +1281,12 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
 
     def test_failed_requirements_raises_exception_with_violated_requirements
       rs.draw do |r|
-        r.foo_with_requirement 'foos/:id', :controller=>'foos', :requirements=>{:id=>/\d+/}
+        r.foo_with_requirement 'foos/:id', :controller => 'foos', :requirements => { :id => /\d+/ }
       end
 
       x = setup_for_named_route
       assert_raises(ActionController::RoutingError) do
-        x.send(:foo_with_requirement_url, "I am Against the requirements")
+        assert_not_equal '/foos/a', x.send(:foo_with_requirement_path, 'a')
       end
     end
 

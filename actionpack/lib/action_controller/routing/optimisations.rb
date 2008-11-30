@@ -124,7 +124,8 @@ module ActionController
         end
       end
 
-      OPTIMISERS = [PositionalArguments, PositionalArgumentsWithAdditionalParams]
+      #OPTIMISERS = [PositionalArguments, PositionalArgumentsWithAdditionalParams]
+      OPTIMISERS = []
     end
   end
 end

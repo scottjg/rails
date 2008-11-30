@@ -9,48 +9,42 @@ module ActionController
       attr_accessor :is_optional
       alias_method :optional?, :is_optional
 
+      def self.escape_path(value)
+        value.nil? ? '' : URI.escape(value.to_s, UNSAFE_PCHAR)
+      end
+
       def initialize
         @is_optional = false
+      end
+
+      def present?(values = nil)
+        true
       end
 
       def number_of_captures
         Regexp.new(regexp_chunk).number_of_captures
       end
 
-      def extraction_code
-        nil
+      def to_path(values = nil)
+        self.class.escape_path(value)
       end
 
-      # Continue generating string for the prior segments.
-      def continue_string_structure(prior_segments)
-        if prior_segments.empty?
-          interpolation_statement(prior_segments)
+      def generate_path(prior_segments, values = {})
+        if optional?
+          if prior_segments.empty?
+            to_path(values)
+          else
+            prior_segments.pop.generate_path(prior_segments, values)
+          end
         else
-          new_priors = prior_segments[0..-2]
-          prior_segments.last.string_structure(new_priors)
+          segments_to_path_if_optional_segments_have_values(prior_segments, values)
         end
       end
 
-      def interpolation_chunk
-        URI.escape(value, UNSAFE_PCHAR)
-      end
-
-      # Return a string interpolation statement for this segment and those before it.
-      def interpolation_statement(prior_segments)
-        chunks = prior_segments.collect { |s| s.interpolation_chunk }
-        chunks << interpolation_chunk
-        "\"#{chunks * ''}\"#{all_optionals_available_condition(prior_segments)}"
-      end
-
-      def string_structure(prior_segments)
-        optional? ? continue_string_structure(prior_segments) : interpolation_statement(prior_segments)
-      end
-
-      # Return an if condition that is true if all the prior segments can be generated.
-      # If there are no optional segments before this one, then nil is returned.
-      def all_optionals_available_condition(prior_segments)
-        optional_locals = prior_segments.collect { |s| s.local_name if s.optional? && s.respond_to?(:local_name) }.compact
-        optional_locals.empty? ? nil : " if #{optional_locals * ' && '}"
+      def segments_to_path_if_optional_segments_have_values(prior_segments, values)
+        if prior_segments.all? { |s| !s.optional? || s.present?(values) }
+          "#{prior_segments.map { |s| s.to_path(values) }.join}#{to_path(values)}"
+        end
       end
 
       # Recognition
@@ -79,8 +73,8 @@ module ActionController
         @is_optional = options[:optional] if options.key?(:optional)
       end
 
-      def interpolation_chunk
-        raw? ? value : super
+      def to_path(values = nil)
+        raw? ? value.to_s : super
       end
 
       def regexp_chunk
@@ -123,71 +117,60 @@ module ActionController
 
       # TODO: Convert these accessors to read only
       attr_accessor :default, :regexp
+      attr_reader :value_regexp
 
       def initialize(key = nil, options = {})
         super()
+
         @key = key
         @default = options[:default] if options.key?(:default)
-        @regexp = options[:regexp] if options.key?(:regexp)
+        self.regexp = options[:regexp] if options.key?(:regexp)
         @is_optional = true if options[:optional] || options.key?(:default)
+      end
+
+      def regexp=(re)
+        if @regexp = re
+          @value_regexp = Regexp.new("\\A#{@regexp.to_s}\\Z")
+        end
+        re
       end
 
       def to_s
         ":#{key}"
       end
 
-      # The local variable name that the value of this segment will be extracted to.
-      def local_name
-        "#{key}_value"
+      def present?(values = {})
+        !values[key].nil?
       end
 
-      def extract_value
-        "#{local_name} = hash[:#{key}] && hash[:#{key}].to_param #{"|| #{default.inspect}" if default}"
+      def extract_value(hash)
+        (hash[key] && hash[key].to_param) || default
       end
 
-      def value_check
-        if default # Then we know it won't be nil
-          "#{value_regexp.inspect} =~ #{local_name}" if regexp
+      def matches?(value)
+        if default
+          !value_regexp || value_regexp =~ value
         elsif optional?
-          # If we have a regexp check that the value is not given, or that it matches.
-          # If we have no regexp, return nil since we do not require a condition.
-          "#{local_name}.nil? || #{value_regexp.inspect} =~ #{local_name}" if regexp
-        else # Then it must be present, and if we have a regexp, it must match too.
-          "#{local_name} #{"&& #{value_regexp.inspect} =~ #{local_name}" if regexp}"
-        end
-      end
-
-      def expiry_statement
-        "expired, hash = true, options if !expired && expire_on[:#{key}]"
-      end
-
-      def extraction_code
-        s = extract_value
-        vc = value_check
-        s << "\nreturn [nil,nil] unless #{vc}" if vc
-        s << "\n#{expiry_statement}"
-      end
-
-      def interpolation_chunk(value_code = local_name)
-        "\#{URI.escape(#{value_code}.to_s, ActionController::Routing::Segment::UNSAFE_PCHAR)}"
-      end
-
-      def string_structure(prior_segments)
-        if optional? # We have a conditional to do...
-          # If we should not appear in the url, just write the code for the prior
-          # segments. This occurs if our value is the default value, or, if we are
-          # optional, if we have nil as our value.
-          "if #{local_name} == #{default.inspect}\n" +
-            continue_string_structure(prior_segments) +
-          "\nelse\n" + # Otherwise, write the code up to here
-            "#{interpolation_statement(prior_segments)}\nend"
+          value.nil? || !value_regexp || value_regexp =~ value
         else
-          interpolation_statement(prior_segments)
+          value && (!value_regexp || value_regexp =~ value)
         end
       end
 
-      def value_regexp
-        Regexp.new "\\A#{regexp.to_s}\\Z" if regexp
+      def to_path(values = {})
+        self.class.escape_path(values[key])
+      end
+
+      def generate_path(prior_segments, values = {})
+        if optional? && values[key] == default
+          if prior_segments.empty?
+            to_path(values)
+          else
+            prior_segments.pop.generate_path(prior_segments, values)
+          end
+        else
+          segments_to_path_if_optional_segments_have_values(prior_segments, values)
+        end
       end
 
       def regexp_chunk
@@ -239,6 +222,16 @@ module ActionController
     end
 
     class ControllerSegment < DynamicSegment #:nodoc:
+      def to_path(values = {})
+        values[key].to_s
+      end
+
+      # Make sure controller names like Admin/Content are correctly normalized to
+      # admin/content
+      def extract_value(hash)
+        (hash[key] || default).to_s.downcase
+      end
+
       def regexp_chunk
         possible_names = Routing.possible_controllers.collect { |name| Regexp.escape name }
         "(?i-:(#{(regexp || Regexp.union(*possible_names)).source}))"
@@ -246,17 +239,6 @@ module ActionController
 
       def number_of_captures
         1
-      end
-
-      # Don't URI.escape the controller name since it may contain slashes.
-      def interpolation_chunk(value_code = local_name)
-        "\#{#{value_code}.to_s}"
-      end
-
-      # Make sure controller names like Admin/Content are correctly normalized to
-      # admin/content
-      def extract_value
-        "#{local_name} = (hash[:#{key}] #{"|| #{default.inspect}" if default}).downcase"
       end
 
       def match_extraction(next_capture)
@@ -269,12 +251,17 @@ module ActionController
     end
 
     class PathSegment < DynamicSegment #:nodoc:
-      def interpolation_chunk(value_code = local_name)
-        "\#{#{value_code}}"
+      def to_path(values = {})
+        values[key].to_s
       end
 
-      def extract_value
-        "#{local_name} = hash[:#{key}] && Array(hash[:#{key}]).collect { |path_component| URI.escape(path_component.to_param, ActionController::Routing::Segment::UNSAFE_PCHAR) }.to_param #{"|| #{default.inspect}" if default}"
+      def extract_value(hash)
+        if value = hash[key]
+          value = value.split('/') if value.is_a?(String)
+          Array(value).map { |p| self.class.escape_path(p.to_param) }.to_param
+        else
+          default
+        end
       end
 
       def default
@@ -317,8 +304,8 @@ module ActionController
         super(:format, {:optional => true}.merge(options))            
       end
     
-      def interpolation_chunk
-        "." + super
+      def to_path(values = {})
+        ".#{super}"
       end
     
       def regexp_chunk
