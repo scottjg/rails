@@ -139,10 +139,8 @@ module ActionController
             selector = :"hash_for_#{name}_#{kind}"
 
             named_helper_module_eval <<-end_eval
-              protected
-                def #{selector}(options = nil)
-                  generate_named_route_hash(:#{name}, :#{kind}, options)
-                end
+              def #{selector}(options = nil) generate_named_route_hash(:#{name}, :#{kind}, options) end
+              protected :#{selector}
             end_eval
 
             helpers << selector
@@ -165,9 +163,9 @@ module ActionController
             selector = :"#{name}_#{kind}"
 
             named_helper_module_eval <<-end_eval
-              protected
-                def #{selector}(*args) generate_named_route(:#{name}, :#{kind}, *args) end
-                def formatted_#{selector}(*args) deprecated_formatted_named_route(:#{selector}, *args) end
+              def #{selector}(*args) generate_named_route(:#{name}, :#{kind}, *args) end
+              def formatted_#{selector}(*args) deprecated_formatted_named_route(:#{selector}, *args) end
+              protected :#{selector}, :formatted_#{selector}
             end_eval
 
             helpers << selector
