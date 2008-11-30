@@ -75,14 +75,16 @@ module ActionController
           @helpers = []
 
           @module ||= Module.new
-          @module.instance_methods.each do |selector|
+          @module.instance_methods(false).each do |selector|
             @module.class_eval { remove_method selector }
           end
+          @module.send :include, UrlHelperMixin
         end
 
         def add(name, route)
+          name = name.to_sym
           routes[name.to_sym] = route
-          define_named_route_methods(name, route)
+          define_named_route_methods(name)
         end
 
         def get(name)
@@ -122,81 +124,94 @@ module ActionController
         end
 
         private
-          def url_helper_name(name, kind = :url)
-            :"#{name}_#{kind}"
+          def define_named_route_methods(name)
+            define_hash_access name, :url
+            define_hash_access name, :path
+            define_url_helper name, :url
+            define_url_helper name, :path
           end
 
-          def hash_access_name(name, kind = :url)
-            :"hash_for_#{name}_#{kind}"
-          end
+          def define_hash_access(name, kind)
+            selector = :"hash_for_#{name}_#{kind}"
 
-          def define_named_route_methods(name, route)
-            {:url => {:only_path => false}, :path => {:only_path => true}}.each do |kind, opts|
-              hash = route.defaults.merge(:use_route => name).merge(opts)
-              define_hash_access route, name, kind, hash
-              define_url_helper route, name, kind, hash
-            end
-          end
-
-          def define_hash_access(route, name, kind, options)
-            selector = hash_access_name(name, kind)
-            @module.module_eval <<-end_eval # We use module_eval to avoid leaks
-              def #{selector}(options = nil)
-                options ? #{options.inspect}.merge(options) : #{options.inspect}
-              end
-              protected :#{selector}
-            end_eval
-            helpers << selector
-          end
-
-          def define_url_helper(route, name, kind, options)
-            selector = url_helper_name(name, kind)
-            # The segment keys used for positional paramters
-
-            hash_access_method = hash_access_name(name, kind)
-
-            # allow ordered parameters to be associated with corresponding
-            # dynamic segments, so you can do
-            #
-            #   foo_url(bar, baz, bang)
-            #
-            # instead of
-            #
-            #   foo_url(:bar => bar, :baz => baz, :bang => bang)
-            #
-            # Also allow options hash, so you can do
-            #
-            #   foo_url(bar, baz, bang, :sort_by => 'baz')
-            #
-            @module.module_eval <<-end_eval # We use module_eval to avoid leaks
-              def #{selector}(*args)
-
-                #{generate_optimisation_block(route, kind)}
-
-                opts = if args.empty? || Hash === args.first
-                  args.first || {}
-                else
-                  options = args.extract_options!
-                  args = args.zip(#{route.segment_keys.inspect}).inject({}) do |h, (v, k)|
-                    h[k] = v
-                    h
-                  end
-                  options.merge(args)
+            @module.module_eval <<-end_eval
+              protected
+                def #{selector}(options = nil)
+                  generate_named_route_hash(:#{name}, :#{kind}, options)
                 end
-
-                url_for(#{hash_access_method}(opts))
-                
-              end
-              #Add an alias to support the now deprecated formatted_* URL.
-              def formatted_#{selector}(*args)
-                ActiveSupport::Deprecation.warn(
-                  "formatted_#{selector}() has been deprecated. please pass format to the standard" +
-                  "#{selector}() method instead.", caller)
-                #{selector}(*args)
-              end
-              protected :#{selector}
             end_eval
+
             helpers << selector
+          end
+
+          # allow ordered parameters to be associated with corresponding
+          # dynamic segments, so you can do
+          #
+          #   foo_url(bar, baz, bang)
+          #
+          # instead of
+          #
+          #   foo_url(:bar => bar, :baz => baz, :bang => bang)
+          #
+          # Also allow options hash, so you can do
+          #
+          #   foo_url(bar, baz, bang, :sort_by => 'baz')
+          #
+          def define_url_helper(name, kind)
+            selector = :"#{name}_#{kind}"
+
+            @module.module_eval <<-end_eval
+              protected
+                def #{selector}(*args) generate_named_route(:#{name}, :#{kind}, *args) end
+                def formatted_#{selector}(*args) deprecated_formatted_named_route(:#{selector}, *args) end
+            end_eval
+
+            helpers << selector
+          end
+
+          module UrlHelperMixin
+            protected
+              def generate_named_route(name, kind, *args)
+                route = named_route_for(name)
+                #generate_optimisation_block(route, kind)
+
+                opts =
+                  if args.empty?
+                    {}
+                  elsif args.first === Hash
+                    args.first
+                  else
+                    options = args.extract_options!
+                    args = args.zip(route.segment_keys).inject({}) do |h, (v, k)|
+                      h[k] = v
+                      h
+                    end
+                    options.merge(args)
+                  end
+
+                url_for(generate_named_route_hash(name, kind, opts))
+              end
+
+              def deprecated_formatted_named_route(selector, *args)
+                ActiveSupport::Deprecation.warn("formatted_#{selector}() has been deprecated. please pass format to the standard #{selector}() method instead.", caller)
+                send(selector, *args)
+              end
+
+              def generate_named_route_hash(name, kind, options)
+                named_route_for(name).defaults.merge(:use_route => name, :only_path => kind == :path).merge(options || {})
+              end
+
+              def named_route_for(name)
+                if route_set = self.class.installed_route_set
+                  if route = route_set.named_routes.routes[name.to_sym]
+                    route
+                  else
+                    raise "Missing #{name.inspect} in #{route_set.named_routes.routes.inspect}" unless route
+                  end
+                else
+                  raise "Missing #{name.inspect}: no route set is installed on #{self.class}"
+                end
+              end
           end
       end
 
@@ -225,6 +240,8 @@ module ActionController
       def clear!
         routes.clear
         named_routes.clear
+        @installed_at.each { |c| c.installed_route_set = nil } if @installed_at
+        @installed_at = nil
         @combined_regexp = nil
         @routes_by_controller = nil
         # This will force routing/recognition_optimization.rb
@@ -233,7 +250,12 @@ module ActionController
       end
 
       def install_helpers(destinations = [ActionController::Base, ActionView::Base], regenerate_code = false)
-        Array(destinations).each { |d| d.module_eval { include Helpers } }
+        @installed_at = Array(destinations)
+        @installed_at.each do |d|
+          d.cattr_accessor :installed_route_set unless d.respond_to?(:installed_route_set=)
+          d.installed_route_set = self
+          d.module_eval { include Helpers }
+        end
         named_routes.install(destinations, regenerate_code)
       end
 
@@ -399,7 +421,8 @@ module ActionController
           end
 
           # don't use the recalled keys when determining which routes to check
-          routes = routes_by_controller[controller][action][options.reject {|k,v| !v}.keys.sort_by { |x| x.object_id }]
+          keys = options.keys.select { |k| options[k] }.sort_by(&:object_id)
+          routes = routes_by_controller[controller][action][keys]
 
           routes.each do |route|
             results = route.__send__(method, options, merged, expire_on)
@@ -448,7 +471,7 @@ module ActionController
         merged = options if expire_on[:controller]
         action = merged[:action] || 'index'
 
-        routes_by_controller[controller][action][merged.keys]
+        routes_by_controller[controller][action][merged.keys.sort_by(&:object_id)]
       end
 
       def routes_for_controller_and_action(controller, action)

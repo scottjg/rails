@@ -469,7 +469,7 @@ module ActionController #:nodoc:
     end
 
     def method_missing(selector, *args, &block)
-      if @controller && ActionController::Routing::Routes.named_routes.helpers.include?(selector)
+      if @controller && @controller.class.installed_route_set.named_routes.helpers.include?(selector.to_sym)
         @controller.send(selector, *args, &block)
       else
         super

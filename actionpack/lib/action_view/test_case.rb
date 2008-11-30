@@ -53,9 +53,14 @@ module ActionView
 
     private
       def method_missing(selector, *args)
-        controller = TestController.new
-        return controller.__send__(selector, *args) if ActionController::Routing::Routes.named_routes.helpers.include?(selector)
-        super
+        @controller ||= TestController.new
+        if @controller.class.installed_route_set.named_routes.helpers.include?(selector.to_sym)
+          @controller.send(:assign_shortcuts, ActionController::TestRequest.new, ActionController::TestResponse.new)
+          @controller.send(:initialize_current_url)
+          @controller.__send__(selector, *args)
+        else
+          super
+        end
       end
   end
 end
