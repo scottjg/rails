@@ -131,10 +131,14 @@ module ActionController
             define_url_helper name, :path
           end
 
+          def named_helper_module_eval(code, *args)
+            @module.module_eval(code, *args)
+          end
+
           def define_hash_access(name, kind)
             selector = :"hash_for_#{name}_#{kind}"
 
-            @module.module_eval <<-end_eval
+            named_helper_module_eval <<-end_eval
               protected
                 def #{selector}(options = nil)
                   generate_named_route_hash(:#{name}, :#{kind}, options)
@@ -160,7 +164,7 @@ module ActionController
           def define_url_helper(name, kind)
             selector = :"#{name}_#{kind}"
 
-            @module.module_eval <<-end_eval
+            named_helper_module_eval <<-end_eval
               protected
                 def #{selector}(*args) generate_named_route(:#{name}, :#{kind}, *args) end
                 def formatted_#{selector}(*args) deprecated_formatted_named_route(:#{selector}, *args) end
@@ -202,15 +206,15 @@ module ActionController
               end
 
               def named_route_for(name)
-                if route_set = self.class.installed_route_set
-                  if route = route_set.named_routes.routes[name.to_sym]
-                    route
-                  else
-                    raise "Missing #{name.inspect} in #{route_set.named_routes.routes.inspect}" unless route
-                  end
-                else
+                unless route_set = self.class.installed_route_set
                   raise "Missing #{name.inspect}: no route set is installed on #{self.class}"
                 end
+
+                unless route = route_set.named_routes.routes[name.to_sym]
+                  raise "Missing #{name.inspect} in #{route_set.named_routes.routes.inspect}"
+                end
+
+                route
               end
           end
       end
