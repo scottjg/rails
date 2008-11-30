@@ -195,7 +195,7 @@ module ActionController
               end
 
               def deprecated_formatted_named_route(selector, *args)
-                ActiveSupport::Deprecation.warn("formatted_#{selector}() has been deprecated. Please pass :format to the #{selector}() method instead", caller)
+                ActiveSupport::Deprecation.warn("formatted_#{selector}() has been deprecated. Please pass :format to the #{selector}() method instead", caller[1..-1])
                 send(selector, *args)
               end
 
