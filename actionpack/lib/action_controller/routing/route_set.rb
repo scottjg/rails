@@ -425,7 +425,7 @@ module ActionController
           end
 
           # don't use the recalled keys when determining which routes to check
-          keys = options.keys.select { |k| options[k] }.sort_by(&:object_id)
+          keys = options.keys.select { |k| options[k] }.sort_by { |k| k.object_id }
           routes = routes_by_controller[controller][action][keys]
 
           routes.each do |route|
@@ -475,7 +475,7 @@ module ActionController
         merged = options if expire_on[:controller]
         action = merged[:action] || 'index'
 
-        routes_by_controller[controller][action][merged.keys.sort_by(&:object_id)]
+        routes_by_controller[controller][action][merged.keys.sort_by { |k| k.object_id }]
       end
 
       def routes_for_controller_and_action(controller, action)
