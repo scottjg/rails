@@ -117,7 +117,6 @@ module ActionController
       # TODO: Route should be prepared and frozen on initialize
       def freeze
         unless frozen?
-          write_recognition!
           prepare_matching!
 
           parameter_shell
@@ -139,6 +138,17 @@ module ActionController
         [path, extra_keys(options)]
       end
 
+      def recognize(path, env = {})
+        if match = recognition_conditions_met?(path, env)
+          next_capture, params = 1, parameter_shell.dup
+          segments.each do |segment|
+            segment.recognize(params, match, next_capture)
+            next_capture += segment.number_of_captures
+          end
+          params
+        end
+      end
+
       private
         def requirement_for(key)
           if requirements.include?(key)
@@ -149,7 +159,7 @@ module ActionController
         end
 
         def generate_raw(options, hash, expire_on = {})
-          unless requirements_met?(options, hash)
+          unless generation_requirements_met?(options, hash)
             [nil, hash]
           else
             expired = false
@@ -172,7 +182,7 @@ module ActionController
           end
         end
 
-        def requirements_met?(options, hash)
+        def generation_requirements_met?(options, hash)
           requirements.all? do |key, req|
             if req.is_a? Regexp
               hash[key] && value_regexps[req] =~ options[key]
@@ -182,34 +192,23 @@ module ActionController
           end
         end
 
-        # Write and compile a +recognize+ method for this Route.
-        def write_recognition!
-          # Create an if structure to extract the params from a match if it occurs.
-          body = "params = parameter_shell.dup\n#{recognition_extraction * "\n"}\nparams"
-          body = "if #{recognition_conditions.join(" && ")}\n#{body}\nend"
-
-          # Build the method declaration and compile it
-          method_decl = "def recognize(path, env = {})\n#{body}\nend"
-          instance_eval method_decl, "generated code (#{__FILE__}:#{__LINE__})"
-          method_decl
-        end
-
         # Plugins may override this method to add other conditions, like checks on
         # host, subdomain, and so forth. Note that changes here only affect route
         # recognition, not generation.
-        def recognition_conditions
-          result = ["(match = #{Regexp.new(recognition_pattern).inspect}.match(path))"]
-          result << "[conditions[:method]].flatten.include?(env[:method])" if conditions[:method]
-          result
+        def recognition_conditions_met?(path, env)
+          match = recognition_regexp.match(path)
+          if !conditions[:method] || Array(conditions[:method]).include?(env[:method])
+            match
+          end
         end
 
-        # Build the regular expression pattern that will match this route.
-        def recognition_pattern(wrap = true)
+        # Build the regular expression to match this route.
+        def recognition_regexp
           pattern = ''
           segments.reverse_each do |segment|
-            pattern = segment.build_pattern pattern
+            pattern = segment.build_pattern(pattern)
           end
-          wrap ? ("\\A" + pattern + "\\Z") : pattern
+          Regexp.new("\\A#{pattern}\\Z")
         end
 
         # Write the code to extract the parameters from a matched route.
@@ -226,9 +225,10 @@ module ActionController
         # Generate the query string with any extra keys in the hash and append
         # it to the given path, returning the new path.
         def append_query_string(path, hash, query_keys = nil)
-          return nil unless path
-          query_keys ||= extra_keys(hash)
-          "#{path}#{build_query_string(hash, query_keys)}"
+          if path
+            query_keys ||= extra_keys(hash)
+            "#{path}#{build_query_string(hash, query_keys)}"
+          end
         end
 
         # Determine which keys in the given hash are "extra". Extra keys are

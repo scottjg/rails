@@ -49,8 +49,7 @@ module ActionController
 
       # Recognition
 
-      def match_extraction(next_capture)
-        nil
+      def recognize(params, match, next_capture)
       end
 
       # Warning
@@ -198,18 +197,13 @@ module ActionController
         optional? ? Regexp.optionalize(pattern) : pattern
       end
 
-      def match_extraction(next_capture)
-        # All non code-related keys (such as :id, :slug) are URI-unescaped as
-        # path parameters.
-        default_value = default ? default.inspect : nil
-        %[
-          value = if (m = match[#{next_capture}])
-            URI.unescape(m)
-          else
-            #{default_value}
-          end
-          params[:#{key}] = value if value
-        ]
+      # All non code-related keys (such as :id, :slug) are URI-unescaped as path parameters.
+      def recognize(params, match, next_capture)
+        if value = match[next_capture]
+          params[key] = URI.unescape(value)
+        elsif default
+          params[key] = default
+        end
       end
 
       def optionality_implied?
@@ -241,11 +235,11 @@ module ActionController
         1
       end
 
-      def match_extraction(next_capture)
+      def recognize(params, match, next_capture)
         if default
-          "params[:#{key}] = match[#{next_capture}] ? match[#{next_capture}].downcase : '#{default}'"
+          params[key] = match[next_capture] ? match[next_capture].downcase : default
         else
-          "params[:#{key}] = match[#{next_capture}].downcase if match[#{next_capture}]"
+          params[key] = match[next_capture].downcase if match[next_capture]
         end
       end
     end
@@ -272,8 +266,10 @@ module ActionController
         raise RoutingError, "paths cannot have non-empty default values" unless path.blank?
       end
 
-      def match_extraction(next_capture)
-        "params[:#{key}] = PathSegment::Result.new_escaped((match[#{next_capture}]#{" || " + default.inspect if default}).split('/'))#{" if match[" + next_capture + "]" if !default}"
+      def recognize(params, match, next_capture)
+        if value = match[next_capture] || default
+          params[key] = PathSegment::Result.new_escaped(value.split('/'))
+        end
       end
 
       def regexp_chunk
@@ -315,13 +311,11 @@ module ActionController
         '(.:format)?'
       end
 
-      #the value should not include the period (.)
-      def match_extraction(next_capture)
-        %[
-          if (m = match[#{next_capture}])
-            params[:#{key}] = URI.unescape(m.from(1))
-          end
-        ]
+      # The value should not include the period (.)
+      def recognize(params, match, next_capture)
+        if value = match[next_capture]
+          params[key] = URI.unescape(value.from(1))
+        end
       end
     end
   end
