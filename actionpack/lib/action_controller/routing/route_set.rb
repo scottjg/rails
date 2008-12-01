@@ -204,11 +204,11 @@ module ActionController
               end
 
               def named_route_for(name)
-                unless route_set = self.class.installed_route_set
+                unless installed_route_set
                   raise "Missing #{name.inspect}: no route set is installed on #{self.class}"
                 end
 
-                unless route = route_set.named_routes.routes[name.to_sym]
+                unless route = installed_route_set.named_routes.routes[name.to_sym]
                   raise "Missing #{name.inspect} in #{route_set.named_routes.routes.inspect}"
                 end
 
