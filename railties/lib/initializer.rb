@@ -48,8 +48,8 @@ module Rails
       end
     end
 
-    def root(*args)
-      File.join(RAILS_ROOT, *args.compact) if defined?(RAILS_ROOT)
+    def root
+      Pathname.new(RAILS_ROOT) if defined?(RAILS_ROOT)
     end
 
     def env
@@ -516,10 +516,15 @@ Run `rake gems:install` to install the missing gems.
     def initialize_time_zone
       if configuration.time_zone
         zone_default = Time.__send__(:get_zone, configuration.time_zone)
+
         unless zone_default
-          raise %{Value assigned to config.time_zone not recognized. Run "rake -D time" for a list of tasks for finding appropriate time zone names.}
+          raise \
+            'Value assigned to config.time_zone not recognized.' +
+            'Run "rake -D time" for a list of tasks for finding appropriate time zone names.'
         end
+
         Time.zone_default = zone_default
+
         if configuration.frameworks.include?(:active_record)
           ActiveRecord::Base.time_zone_aware_attributes = true
           ActiveRecord::Base.default_timezone = :utc
@@ -567,7 +572,7 @@ Run `rake gems:install` to install the missing gems.
     def load_application_initializers
       if gems_dependencies_loaded
         Dir["#{configuration.root_path}/config/initializers/**/*.rb"].sort.each do |initializer|
-          load(initializer)
+          load initializer.sub(/^#{Regexp.escape(configuration.root_path)}\//, '')
         end
       end
     end
