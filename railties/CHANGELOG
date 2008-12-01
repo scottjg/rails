@@ -1,5 +1,7 @@
 *2.3.0 [Edge]*
 
+* Plugins can now contain migrations, in a db/migrate folder. Running db:migrate:copy_from_plugins will copy pending migrations into the main migration stream. Running db:migrate will warn if any migrations are pending [James Adam]
+
 * Add "-m/--template" option to Rails generator to apply a template to the generated application. [Jeremy McAnally]
 
     This has been extracted from rg - http://github.com/jeremymcanally/rg
@@ -46,6 +48,8 @@
 * Extracted the process scripts (inspector, reaper, spawner) into the plugin irs_process_scripts [DHH]
 
 * Changed Rails.root to return a Pathname object (allows for Rails.root.join('app', 'controllers') => "#{RAILS_ROOT}/app/controllers") #1482 [Damian Janowski/?]
+
+* Enhanced Rails.root to take parameters that'll be join with the root, like Rails.root('app', 'controllers') => File.join(Rails.root, 'app', 'controllers') #1482 [Damian Janowski]
 
 * Added view path support for engines [DHH]
 
