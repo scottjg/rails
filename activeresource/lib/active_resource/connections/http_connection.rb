@@ -1,68 +1,5 @@
-require 'net/https'
-require 'date'
-require 'time'
-require 'uri'
-require 'benchmark'
-
 module ActiveResource
-  class ConnectionError < StandardError # :nodoc:
-    attr_reader :response
-
-    def initialize(response, message = nil)
-      @response = response
-      @message  = message
-    end
-
-    def to_s
-      "Failed with #{response.code} #{response.message if response.respond_to?(:message)}"
-    end
-  end
-
-  # Raised when a Timeout::Error occurs.
-  class TimeoutError < ConnectionError
-    def initialize(message)
-      @message = message
-    end
-    def to_s; @message ;end
-  end
-
-  # 3xx Redirection
-  class Redirection < ConnectionError # :nodoc:
-    def to_s; response['Location'] ? "#{super} => #{response['Location']}" : super; end
-  end
-
-  # 4xx Client Error
-  class ClientError < ConnectionError; end # :nodoc:
-
-  # 400 Bad Request
-  class BadRequest < ClientError; end # :nodoc
-
-  # 401 Unauthorized
-  class UnauthorizedAccess < ClientError; end # :nodoc
-
-  # 403 Forbidden
-  class ForbiddenAccess < ClientError; end # :nodoc
-
-  # 404 Not Found
-  class ResourceNotFound < ClientError; end # :nodoc:
-
-  # 409 Conflict
-  class ResourceConflict < ClientError; end # :nodoc:
-
-  # 5xx Server Error
-  class ServerError < ConnectionError; end # :nodoc:
-
-  # 405 Method Not Allowed
-  class MethodNotAllowed < ClientError # :nodoc:
-    def allowed_methods
-      @response['Allow'].split(',').map { |verb| verb.strip.downcase.to_sym }
-    end
-  end
-
-  # Class to handle connections to remote web services.
-  # This class is used by ActiveResource::Base to interface with REST
-  # services.
-  class Connection
+  class HttpConnection < Connection
 
     HTTP_FORMAT_HEADER_NAMES = {  :get => 'Accept',
       :put => 'Content-Type',
@@ -70,7 +7,6 @@ module ActiveResource
       :delete => 'Accept'
     }
 
-    # TODO support site for backwards-compatibility; resource may be more sensible
     attr_reader :site, :user, :password, :timeout
     attr_accessor :format
 
@@ -94,16 +30,6 @@ module ActiveResource
       @site = site.is_a?(URI) ? site : URI.parse(site)
       @user = URI.decode(@site.user) if @site.user
       @password = URI.decode(@site.password) if @site.password
-    end
-
-    # Gets the \scheme for accessing remote resources.
-    def scheme
-      site.scheme
-    end
-
-    # Gets the \host for accessing remote resources.
-    def host
-      site.host
     end
 
     # Set user for remote service.

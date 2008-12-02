@@ -244,6 +244,16 @@ module ActiveResource
         end
       end
 
+      # Gets the \scheme for accessing remote resources.
+      def scheme
+        site.scheme
+      end
+
+      # Gets the \host for accessing remote resources.
+      def host
+        site.host
+      end
+
       # Gets the \user for REST HTTP authentication.
       def user
         # Not using superclass_delegating_reader. See +site+ for explanation
@@ -318,7 +328,16 @@ module ActiveResource
       # or not (defaults to <tt>false</tt>).
       def connection(refresh = false)
         if defined?(@connection) || superclass == Object
-          @connection = Connection.new(site, format) if refresh || @connection.nil?
+          if refresh || @connection.nil?
+            case scheme
+            when "xmpp"
+              @connection = XmppConnection.new(site, format)
+            else
+              @connection = HttpConnection.new(site, format)
+            end
+          end
+
+          # TODO user + password are http-specific
           @connection.user = user if user
           @connection.password = password if password
           @connection.timeout = timeout if timeout
@@ -338,7 +357,7 @@ module ActiveResource
 
       attr_accessor_with_default(:collection_name) { element_name.pluralize } #:nodoc:
       attr_accessor_with_default(:primary_key, 'id') #:nodoc:
-      
+
       # Gets the \prefix for a resource's nested URL (e.g., <tt>prefix/collectionname/1.xml</tt>)
       # This method is regenerated at runtime based on what the \prefix is set to.
       def prefix(options={})
