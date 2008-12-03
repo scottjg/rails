@@ -852,8 +852,10 @@ module ActiveRecord
       # * <tt>:unless</tt> - Specifies a method, proc or string to call to determine if the validation should
       #   not occur (e.g. <tt>:unless => :skip_validation</tt>, or <tt>:unless => Proc.new { |user| user.signup_step <= 2 }</tt>).  The
       #   method, proc or string should return or evaluate to a true or false value.
+      # * <tt>:case_sensitive</tt> - Looks for an exact match. If true, enumerable object specified by <tt>:in</tt> should 
+      #   contain only lowercase values (default is +true+).
       def validates_exclusion_of(*attr_names)
-        configuration = { :on => :save }
+        configuration = { :on => :save, :case_sensitive => true }
         configuration.update(attr_names.extract_options!)
 
         enum = configuration[:in] || configuration[:within]
@@ -861,7 +863,7 @@ module ActiveRecord
         raise(ArgumentError, "An object with the method include? is required must be supplied as the :in option of the configuration hash") unless enum.respond_to?(:include?)
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
-          if enum.include?(value)
+          if enum.include?(value) || (!configuration[:case_sensitive] && value.respond_to?(:downcase) && enum.include?(value.downcase))
             record.errors.add(attr_name, :exclusion, :default => configuration[:message], :value => value) 
           end
         end
