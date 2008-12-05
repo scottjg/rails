@@ -26,6 +26,14 @@ ActiveRecord::Schema.define do
     t.integer :credit_limit
   end
 
+  create_table :artists, :force => true do |t|
+    t.integer :day
+    t.integer :month
+    t.integer :year
+    t.integer :start_year
+    t.string  :location
+  end
+
   create_table :audit_logs, :force => true do |t|
     t.column :message, :string, :null=>false
     t.column :developer_id, :integer, :null=>false

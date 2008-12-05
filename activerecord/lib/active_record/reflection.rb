@@ -17,6 +17,8 @@ module ActiveRecord
             reflection = klass.new(macro, name, options, active_record)
           when :composed_of
             reflection = AggregateReflection.new(macro, name, options, active_record)
+          when :attribute_decorator
+            reflection = AttributeDecoratorReflection.new(macro, name, options, active_record)
         end
         write_inheritable_hash :reflections, name => reflection
         reflection
@@ -43,6 +45,19 @@ module ActiveRecord
       #
       def reflect_on_aggregation(aggregation)
         reflections[aggregation].is_a?(AggregateReflection) ? reflections[aggregation] : nil
+      end
+
+      # Returns an array of DecoratorReflection objects for all the attribute decorators in the class.
+      def reflect_on_all_attribute_decorators
+        reflections.values.select { |reflection| reflection.is_a?(AttributeDecoratorReflection) }
+      end
+
+      # Returns the DecoratorReflection object for the named <tt>attribute decorator</tt> (use the symbol). Example:
+      #
+      #   Account.reflect_on_decorator(:balance) # returns the balance DecoratorReflection
+      #
+      def reflect_on_attribute_decorator(attribute_decorator)
+        reflections[attribute_decorator].is_a?(AttributeDecoratorReflection) ? reflections[attribute_decorator] : nil
       end
 
       # Returns an array of AssociationReflection objects for all the associations in the class. If you only want to reflect on a
@@ -131,6 +146,10 @@ module ActiveRecord
 
     # Holds all the meta-data about an aggregation as it was specified in the Active Record class.
     class AggregateReflection < MacroReflection #:nodoc:
+    end
+
+    # Holds all the meta-data about an aggregation as it was specified in the Active Record class.
+    class AttributeDecoratorReflection < MacroReflection #:nodoc:
     end
 
     # Holds all the meta-data about an association as it was specified in the Active Record class.

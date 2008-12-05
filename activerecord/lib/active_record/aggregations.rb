@@ -192,6 +192,8 @@ module ActiveRecord
       #               :converter => Proc.new { |ip| ip.is_a?(Integer) ? IPAddr.new(ip, Socket::AF_INET) : IPAddr.new(ip.to_s) }
       #
       def composed_of(part_id, options = {}, &block)
+        ActiveSupport::Deprecation.warn("ActiveRecord::Aggregations::composed_of has been deprecated. Please use ActiveRecord::AttributeDecorator::attribute_decorator.")
+
         options.assert_valid_keys(:class_name, :mapping, :allow_nil, :constructor, :converter)
 
         name        = part_id.id2name

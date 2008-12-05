@@ -1,5 +1,7 @@
 require "cases/helper"
-require 'models/customer'
+ActiveSupport::Deprecation.silence do
+  require 'models/customer'
+end
 
 class AggregationsTest < ActiveRecord::TestCase
   fixtures :customers
@@ -152,12 +154,14 @@ class OverridingAggregationsTest < ActiveRecord::TestCase
   class Name; end
   class DifferentName; end
 
-  class Person   < ActiveRecord::Base
-    composed_of :composed_of, :mapping => %w(person_first_name first_name)
-  end
+  ActiveSupport::Deprecation.silence do
+    class Person   < ActiveRecord::Base
+      composed_of :composed_of, :mapping => %w(person_first_name first_name)
+    end
 
-  class DifferentPerson < Person
-    composed_of :composed_of, :class_name => 'DifferentName', :mapping => %w(different_person_first_name first_name)
+    class DifferentPerson < Person
+      composed_of :composed_of, :class_name => 'DifferentName', :mapping => %w(different_person_first_name first_name)
+    end
   end
 
   def test_composed_of_aggregation_redefinition_reflections_should_differ_and_not_inherited

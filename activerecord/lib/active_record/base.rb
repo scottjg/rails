@@ -2578,6 +2578,7 @@ module ActiveRecord #:nodoc:
       # an exclusive row lock.
       def reload(options = nil)
         clear_aggregation_cache
+        clear_attribute_decorator_cache
         clear_association_cache
         @attributes.update(self.class.find(self.id, options).instance_variable_get('@attributes'))
         @attributes_cache = {}
@@ -3014,6 +3015,7 @@ module ActiveRecord #:nodoc:
     extend QueryCache
     include Validations
     include Locking::Optimistic, Locking::Pessimistic
+    include AttributeDecorator
     include AttributeMethods
     include Dirty
     include Callbacks, Observing, Timestamp

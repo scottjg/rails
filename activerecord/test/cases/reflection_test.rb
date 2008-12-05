@@ -1,5 +1,6 @@
 require "cases/helper"
 require 'models/topic'
+require 'models/artist'
 require 'models/customer'
 require 'models/company'
 require 'models/company_in_module'
@@ -89,6 +90,30 @@ class ReflectionTest < ActiveRecord::TestCase
     assert_equal Address, Customer.reflect_on_aggregation(:address).klass
 
     assert_equal Money, Customer.reflect_on_aggregation(:balance).klass
+  end
+
+  def test_attribute_decorator_reflection
+    reflection_for_date_of_birth = ActiveRecord::Reflection::AttributeDecoratorReflection.new(
+      :attribute_decorator, :date_of_birth, {
+        :class_name => 'Decorators::CompositeDate',
+        :decorates => [:day, :month, :year]
+      }, Artist
+    )
+    
+    reflection_for_gps_location = ActiveRecord::Reflection::AttributeDecoratorReflection.new(
+      :attribute_decorator, :gps_location, { :class_name => 'Decorators::GPSCoordinator', :decorates => :location }, Artist
+    )
+    
+    reflection_for_start_year = ActiveRecord::Reflection::AttributeDecoratorReflection.new(
+      :attribute_decorator, :start_year, { :class_name => 'Decorators::Year' }, Artist
+    )
+    
+    [reflection_for_date_of_birth, reflection_for_gps_location, reflection_for_start_year].each do |reflection|
+      assert Artist.reflect_on_all_attribute_decorators.include?(reflection)
+    end
+    
+    assert_equal reflection_for_date_of_birth, Artist.reflect_on_attribute_decorator(:date_of_birth)
+    assert_equal Decorators::CompositeDate, Artist.reflect_on_attribute_decorator(:date_of_birth).klass
   end
 
   def test_has_many_reflection

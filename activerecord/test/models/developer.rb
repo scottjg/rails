@@ -62,10 +62,18 @@ class AuditLog < ActiveRecord::Base
   belongs_to :unvalidated_developer, :class_name => 'Developer'
 end
 
-DeveloperSalary = Struct.new(:amount)
-class DeveloperWithAggregate < ActiveRecord::Base
+ActiveSupport::Deprecation.silence do
+  DeveloperSalary = Struct.new(:amount)
+  class DeveloperWithAggregate < ActiveRecord::Base
+    self.table_name = 'developers'
+    composed_of :salary, :class_name => 'DeveloperSalary', :mapping => [%w(salary amount)]
+  end
+end
+
+DeveloperSalaryDecorator = Struct.new(:amount)
+class DeveloperWithAttributeDecorator < ActiveRecord::Base
   self.table_name = 'developers'
-  composed_of :salary, :class_name => 'DeveloperSalary', :mapping => [%w(salary amount)]
+  attribute_decorator :salary, :class => DeveloperSalaryDecorator
 end
 
 class DeveloperWithBeforeDestroyRaise < ActiveRecord::Base
