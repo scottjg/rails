@@ -1851,7 +1851,7 @@ module ActiveRecord
           def remove_duplicate_results!(base, records, associations)
             case associations
               when Symbol, String
-                reflection = base.reflections[associations]
+                reflection = base.reflections.with_indifferent_access[associations]
                 if reflection && [:has_many, :has_and_belongs_to_many].include?(reflection.macro)
                   records.each { |record| record.send(reflection.name).target.uniq! }
                 end
@@ -1861,7 +1861,7 @@ module ActiveRecord
                 end
               when Hash
                 associations.keys.each do |name|
-                  reflection = base.reflections[name]
+                  reflection = base.reflections.with_indifferent_access[name]
                   is_collection = [:has_many, :has_and_belongs_to_many].include?(reflection.macro)
 
                   parent_records = records.map do |record|
