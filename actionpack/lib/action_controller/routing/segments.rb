@@ -70,10 +70,12 @@ module ActionController
         @value = value
         @raw = options[:raw] if options.key?(:raw)
         @is_optional = options[:optional] if options.key?(:optional)
+
+        @path = raw? ? @value.to_s : self.class.escape_path(@value)
       end
 
       def to_path(values = nil)
-        raw? ? value.to_s : super
+        @path
       end
 
       def regexp_chunk
