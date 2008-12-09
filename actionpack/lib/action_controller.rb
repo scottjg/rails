@@ -46,10 +46,9 @@ module ActionController
   autoload :Base, 'action_controller/base'
   autoload :Benchmarking, 'action_controller/benchmarking'
   autoload :Caching, 'action_controller/caching'
-  autoload :CgiRequest, 'action_controller/cgi_process'
-  autoload :CgiResponse, 'action_controller/cgi_process'
   autoload :Cookies, 'action_controller/cookies'
   autoload :Dispatcher, 'action_controller/dispatcher'
+  autoload :Failsafe, 'action_controller/failsafe'
   autoload :Filters, 'action_controller/filters'
   autoload :Flash, 'action_controller/flash'
   autoload :Helpers, 'action_controller/helpers'
@@ -57,6 +56,7 @@ module ActionController
   autoload :Integration, 'action_controller/integration'
   autoload :IntegrationTest, 'action_controller/integration'
   autoload :Layout, 'action_controller/layout'
+  autoload :MiddlewareStack, 'action_controller/middleware_stack'
   autoload :MimeResponds, 'action_controller/mime_responds'
   autoload :PolymorphicRoutes, 'action_controller/polymorphic_routes'
   autoload :RackRequest, 'action_controller/rack_process'
@@ -88,6 +88,11 @@ module ActionController
   module Http
     autoload :Headers, 'action_controller/headers'
   end
+
+  # DEPRECATE: Remove CGI support
+  autoload :CgiRequest, 'action_controller/cgi_process'
+  autoload :CgiResponse, 'action_controller/cgi_process'
+  autoload :CGIHandler, 'action_controller/cgi_process'
 end
 
 class CGI
