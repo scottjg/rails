@@ -30,7 +30,7 @@ module ActionController
       end
 
       def generate_path(prior_segments, values = {})
-        if optional?
+        if generate_optional?(values)
           if prior_segments.empty?
             to_path(values)
           else
@@ -59,6 +59,11 @@ module ActionController
       def optionality_implied?
         false
       end
+
+      protected
+        def generate_optional?(values)
+          optional?
+        end
     end
 
     class StaticSegment < Segment #:nodoc:
@@ -162,18 +167,6 @@ module ActionController
         self.class.escape_path(values[key])
       end
 
-      def generate_path(prior_segments, values = {})
-        if optional? && values[key] == default
-          if prior_segments.empty?
-            to_path(values)
-          else
-            prior_segments.pop.generate_path(prior_segments, values)
-          end
-        else
-          segments_to_path_if_optional_segments_have_values(prior_segments, values)
-        end
-      end
-
       def regexp_chunk
         if regexp
           if regexp_has_modifiers?
@@ -215,6 +208,11 @@ module ActionController
       def regexp_has_modifiers?
         regexp.options & (Regexp::IGNORECASE | Regexp::EXTENDED) != 0
       end
+
+      protected
+        def generate_optional?(values)
+          optional? && values[key] == default
+        end
     end
 
     class ControllerSegment < DynamicSegment #:nodoc:
