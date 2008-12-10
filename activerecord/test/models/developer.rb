@@ -70,10 +70,10 @@ ActiveSupport::Deprecation.silence do
   end
 end
 
-DeveloperSalaryDecorator = Struct.new(:amount)
-class DeveloperWithAttributeDecorator < ActiveRecord::Base
+DeveloperSalaryView = Struct.new(:amount)
+class DeveloperWithAttributeView < ActiveRecord::Base
   self.table_name = 'developers'
-  attribute_decorator :salary, :class => DeveloperSalaryDecorator
+  view :salary, :as => DeveloperSalaryView
 end
 
 class DeveloperWithBeforeDestroyRaise < ActiveRecord::Base

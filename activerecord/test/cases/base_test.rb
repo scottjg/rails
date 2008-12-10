@@ -1246,12 +1246,12 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_clone_with_attribute_decorator_of_same_name_as_attribute
-    dev = DeveloperWithAttributeDecorator.find(1)
-    assert_kind_of DeveloperSalaryDecorator, dev.salary
+    dev = DeveloperWithAttributeView.find(1)
+    assert_kind_of DeveloperSalaryView, dev.salary
 
     clone = nil
     assert_nothing_raised { clone = dev.clone }
-    assert_kind_of DeveloperSalaryDecorator, clone.salary
+    assert_kind_of DeveloperSalaryView, clone.salary
     assert_equal dev.salary.amount, clone.salary.amount
     assert clone.new_record?
     

@@ -41,10 +41,10 @@ module ActiveRecord
   autoload :ConnectionNotEstablished, 'active_record/base'
 
   autoload :Aggregations, 'active_record/aggregations'
-  autoload :AttributeDecorator, 'active_record/attribute_decorator'
   autoload :AssociationPreload, 'active_record/association_preload'
   autoload :Associations, 'active_record/associations'
   autoload :AttributeMethods, 'active_record/attribute_methods'
+  autoload :AttributeView, 'active_record/attribute_view'
   autoload :Base, 'active_record/base'
   autoload :Calculations, 'active_record/calculations'
   autoload :Callbacks, 'active_record/callbacks'

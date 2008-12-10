@@ -92,28 +92,28 @@ class ReflectionTest < ActiveRecord::TestCase
     assert_equal Money, Customer.reflect_on_aggregation(:balance).klass
   end
 
-  def test_attribute_decorator_reflection
-    reflection_for_date_of_birth = ActiveRecord::Reflection::AttributeDecoratorReflection.new(
-      :attribute_decorator, :date_of_birth, {
-        :class_name => 'Decorators::CompositeDate',
-        :decorates => [:day, :month, :year]
+  def test_attribute_view_reflection
+    reflection_for_date_of_birth = ActiveRecord::Reflection::AttributeViewReflection.new(
+      :view, :date_of_birth, {
+        :as => AttributeViews::CompositeDate,
+        :decorating => [:day, :month, :year]
       }, Artist
     )
     
-    reflection_for_gps_location = ActiveRecord::Reflection::AttributeDecoratorReflection.new(
-      :attribute_decorator, :gps_location, { :class_name => 'Decorators::GPSCoordinator', :decorates => :location }, Artist
+    reflection_for_gps_location = ActiveRecord::Reflection::AttributeViewReflection.new(
+      :view, :gps_location, { :as => AttributeViews::GPSCoordinator, :decorating => :location }, Artist
     )
     
-    reflection_for_start_year = ActiveRecord::Reflection::AttributeDecoratorReflection.new(
-      :attribute_decorator, :start_year, { :class_name => 'Decorators::Year' }, Artist
+    reflection_for_start_year = ActiveRecord::Reflection::AttributeViewReflection.new(
+      :view, :start_year, { :as => AttributeViews::Year }, Artist
     )
     
     [reflection_for_date_of_birth, reflection_for_gps_location, reflection_for_start_year].each do |reflection|
-      assert Artist.reflect_on_all_attribute_decorators.include?(reflection)
+      assert Artist.reflect_on_all_attribute_views.include?(reflection)
     end
     
-    assert_equal reflection_for_date_of_birth, Artist.reflect_on_attribute_decorator(:date_of_birth)
-    assert_equal Decorators::CompositeDate, Artist.reflect_on_attribute_decorator(:date_of_birth).klass
+    assert_equal reflection_for_date_of_birth, Artist.reflect_on_attribute_view(:date_of_birth)
+    assert_equal AttributeViews::CompositeDate, Artist.reflect_on_attribute_view(:date_of_birth).klass
   end
 
   def test_has_many_reflection

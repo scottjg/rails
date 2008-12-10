@@ -17,8 +17,8 @@ module ActiveRecord
             reflection = klass.new(macro, name, options, active_record)
           when :composed_of
             reflection = AggregateReflection.new(macro, name, options, active_record)
-          when :attribute_decorator
-            reflection = AttributeDecoratorReflection.new(macro, name, options, active_record)
+          when :view
+            reflection = AttributeViewReflection.new(macro, name, options, active_record)
         end
         write_inheritable_hash :reflections, name => reflection
         reflection
@@ -47,17 +47,17 @@ module ActiveRecord
         reflections[aggregation].is_a?(AggregateReflection) ? reflections[aggregation] : nil
       end
 
-      # Returns an array of DecoratorReflection objects for all the attribute decorators in the class.
-      def reflect_on_all_attribute_decorators
-        reflections.values.select { |reflection| reflection.is_a?(AttributeDecoratorReflection) }
+      # Returns an array of AttrbuteViewReflection objects for all the attribute views in the class.
+      def reflect_on_all_attribute_views
+        reflections.values.select { |reflection| reflection.is_a?(AttributeViewReflection) }
       end
 
-      # Returns the DecoratorReflection object for the named <tt>attribute decorator</tt> (use the symbol). Example:
+      # Returns the AttributeViewReflection object for the named <tt>view</tt> (use the symbol). Example:
       #
-      #   Account.reflect_on_decorator(:balance) # returns the balance DecoratorReflection
+      #   Account.reflect_on_attribute_view(:balance) # returns the balance AttributeViewReflection
       #
-      def reflect_on_attribute_decorator(attribute_decorator)
-        reflections[attribute_decorator].is_a?(AttributeDecoratorReflection) ? reflections[attribute_decorator] : nil
+      def reflect_on_attribute_view(attribute_view)
+        reflections[attribute_view].is_a?(AttributeViewReflection) ? reflections[attribute_view] : nil
       end
 
       # Returns an array of AssociationReflection objects for all the associations in the class. If you only want to reflect on a
@@ -148,8 +148,11 @@ module ActiveRecord
     class AggregateReflection < MacroReflection #:nodoc:
     end
 
-    # Holds all the meta-data about an aggregation as it was specified in the Active Record class.
-    class AttributeDecoratorReflection < MacroReflection #:nodoc:
+    # Holds all the meta-data about an attribute view as it was specified in the Active Record class.
+    class AttributeViewReflection < MacroReflection #:nodoc:
+      def klass
+        options[:as]
+      end
     end
 
     # Holds all the meta-data about an association as it was specified in the Active Record class.
