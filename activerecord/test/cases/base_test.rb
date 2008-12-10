@@ -1245,7 +1245,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert clone.id != dev.id
   end
 
-  def test_clone_with_attribute_decorator_of_same_name_as_attribute
+  def test_clone_with_attribute_view_of_same_name_as_attribute
     dev = DeveloperWithAttributeView.find(1)
     assert_kind_of DeveloperSalaryView, dev.salary
 
