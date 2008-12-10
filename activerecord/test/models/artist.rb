@@ -65,16 +65,16 @@ module AttributeViews
 end
 
 class Artist < ActiveRecord::Base
-  # Defines a non existing attribute decorating multiple existing attributes
+  # Defines an attribute view decorating multiple existing attributes
   view :date_of_birth, :as => AttributeViews::CompositeDate, :decorating => [:day, :month, :year]
 
-  # Defines a decorates for one attribute.
+  # Defines a view for one attribute.
   view :gps_location, :as => AttributeViews::GPSCoordinator, :decorating => :location
 
-  # Defines a decorator for an existing attribute.
+  # Defines a view for an existing attribute.
   view :start_year, :as => AttributeViews::Year
 
-  # These validations are defined inline in the test cases. See attribute_decorator_test.rb.
+  # These validations are defined inline in the test cases. See attribute_view_test.rb.
   #
   # validates_view :date_of_birth, :start_year
   # validates_view :start_year, :message => 'is not a valid date', :on => :update

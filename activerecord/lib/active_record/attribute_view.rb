@@ -13,26 +13,25 @@ module ActiveRecord
     end
 
     module ClassMethods
-      # Adds reader and writer methods for decorating one or more attributes:
-      # <tt>attribute_decorator :date_of_birth</tt> adds <tt>date_of_birth</tt> and <tt>date_of_birth=(new_date_of_birth)</tt> methods.
+      # Defines an attribute view, which adds a reader and a writer method for decorating one or more attributes:
+      # <tt>view :date_of_birth</tt> adds <tt>date_of_birth</tt> and <tt>date_of_birth=(new_date_of_birth)</tt> methods.
       #
       # Options are:
-      # * <tt>:class</tt> - specify the decorator class.
-      # * <tt>:class_name</tt> - specify the class name of the decorator class,
-      #   this should be used if, at the time of loading the model class, the decorator class is not yet available.
-      # * <tt>:decorating</tt> - specifies the attributes that should be wrapped by the decorator class.
-      #   Takes an array of attributes or a single attribute. If none is specified the same name as the name of the attribute_decorator is assumed.
+      # * <tt>:as</tt> - specify the attribute view class.
+      # * <tt>:decorating</tt> - specifies the attributes that should be wrapped by the attribute view class.
+      #   Takes an array of attributes or a single attribute. If none is specified the same name as the name of the view is assumed.
       #
-      # The decorator class should implement a class method called <tt>parse</tt>, which takes 1 argument.
-      # In that method your decorator class is responsible for returning an instance of itself with the attribute(s) parsed and assigned.
+      # The attribute view class should implement a class method called <tt>parse</tt>, which should take 1 argument.
+      # In that method your attribute view class is responsible for returning an instance of itself with the attribute(s) parsed and assigned.
       #
-      # Your decorator class’s initialize method should take as it’s arguments the attributes that were specified
-      # to the <tt>:decorating</tt> option and in the same order as they were specified.
+      # Your attribute view class’s initialize method should take, as it’s arguments, the attributes that were specified
+      # with the <tt>:decorating</tt> option and in the same order as they were specified.
       # You should also implement a <tt>to_a</tt> method which should return the parsed values as an array,
       # again in the same order as specified with the <tt>:decorating</tt> option.
+      # Lastly, an implementation of <tt>to_s</tt> is needed which will be used by, for instance, the form helpers.
       #
-      # If you wish to use <tt>validates_decorator</tt>, your decorator class should also implement a <tt>valid?</tt> instance method,
-      # which is responsible for checking the validity of the value(s). See <tt>validates_decorator</tt> for more info.
+      # If you wish to use <tt>validates_view</tt>, your attribute view class should also implement a <tt>valid?</tt> instance method,
+      # which is responsible for checking the validity of the value(s). See <tt>validates_view</tt> for more info.
       #
       #   class CompositeDate
       #     attr_accessor :day, :month, :year
@@ -53,7 +52,7 @@ module ActiveRecord
       #       [@day, @month, @year]
       #     end
       #     
-      #     # Here we return a string representation of the value, this will for instance be used by the form helpers.
+      #     # Here we return a string representation of the value, this will, for instance, be used by the form helpers.
       #     def to_s
       #       "#{@day}-#{@month}-#{@year}"
       #     end
@@ -65,16 +64,16 @@ module ActiveRecord
       #   end
       #
       #   class Artist < ActiveRecord::Base
-      #     attribute_decorator :date_of_birth, :class => CompositeDate, :decorating => [:day, :month, :year]
-      #     validates_decorator :date_of_birth, :message => 'is not a valid date'
+      #     view :date_of_birth, :as => CompositeDate, :decorating => [:day, :month, :year]
+      #     validates_view :date_of_birth, :message => 'is not a valid date'
       #   end
       #
       # Option examples:
-      #   attribute_decorator :date_of_birth, :class => CompositeDate, :decorating => [:day, :month, :year]
-      #   attribute_decorator :gps_location, :class_name => 'GPSCoordinator', :decorating => :location
-      #   attribute_decorator :balance, :class_name => 'Money'
-      #   attribute_decorator :english_date_of_birth, :class => (Class.new(CompositeDate) do
-      #     # This is a anonymous subclass of CompositeDate that supports the date in English order
+      #   view :date_of_birth, :as => CompositeDate, :decorating => [:day, :month, :year]
+      #   view :gps_location, :as => 'GPSCoordinator', :decorating => :location
+      #   view :balance, :as => Money
+      #   view :english_date_of_birth, :as => (Class.new(CompositeDate) do
+      #     # This is an anonymous subclass of CompositeDate that supports the date in English order
       #     def to_s
       #       "#{@month}/#{@day}/#{@year}"
       #     end
@@ -99,7 +98,7 @@ module ActiveRecord
         create_reflection(:view, attr, options, self)
       end
 
-      # Validates wether the decorated attribute is valid by sending the decorator instance the <tt>valid?</tt> message.
+      # Validates wether the attribute view is valid by sending it the <tt>valid?</tt> message.
       #
       #   class CompositeDate
       #     attr_accessor :day, :month, :year
@@ -128,8 +127,8 @@ module ActiveRecord
       #   end
       #
       #   class Artist < ActiveRecord::Base
-      #     attribute_decorator :date_of_birth, :class => CompositeDate, :decorating => [:day, :month, :year]
-      #     validates_decorator :date_of_birth, :message => 'is not a valid date'
+      #     view :date_of_birth, :as => CompositeDate, :decorating => [:day, :month, :year]
+      #     validates_view :date_of_birth, :message => 'is not a valid date'
       #   end
       #
       #   artist = Artist.new
