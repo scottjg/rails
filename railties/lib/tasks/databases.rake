@@ -147,6 +147,59 @@ namespace :db do
       ActiveRecord::Migrator.run(:down, "db/migrate/", version)
       Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
     end
+    
+    def plugin_and_migration_name_from(path)
+      path_parts = migration_file.split("/")
+      plugin_name = path_parts[path_parts.index("migrate")-1]
+      migration_name = path_parts.last
+      return plugin_name, migration_name
+    end
+    
+    def display_plugin_migrations(migrations_by_plugin)
+      puts "\n\n"
+      migrations_by_plugin.each do |plugin_name, migrations|
+        puts "from '#{plugin_name}':"
+        migrations.each { |m| puts "\t#{m}"}
+      end
+      puts "\n"
+    end
+    
+    desc 'Copies any missing migrations from plugins into main migration directory. Specify specific plugins via PLUGINS=plugin_a,plugin_b,...'
+    task :copy_from_plugins do
+      plugins_to_migrate = ENV['PLUGINS'] || "*"
+      new_migrations = {}
+      Dir["vendor/plugins/**/#{plugins_to_migrate}/db/migrate/*.rb"].each do |migration_file|
+        plugin_name, migration_name = plugin_and_migration_name_from(migration_file)
+        unless File.exist?(File.join("db", "migrate", migration_name))
+          FileUtils.cp(migration_file, "db/migrate")
+          new_migrations[plugin_name] ||= []
+          new_migrations[plugin_name] << migration_name
+        end
+      end
+      unless new_migrations.empty?
+        puts "The following migrations have been copied into your db/migrate directory:"
+        display_plugin_migrations(new_migrations)
+        puts "Please inspect these files to be SURE you're happy with what they'll do."
+        puts "The migrations will be incorporated the next time you run 'rake db:migrate'."
+      end
+    end
+    
+    desc 'Checks for any migrations in plugins that are not in the main db/migrate directory'
+    task :check_for_pending_plugin_migrations do
+      missing_migrations = {}
+      Dir["vendor/plugins/**/db/migrate/*.rb"].each do |migration_file|
+        plugin_name, migration_name = plugin_and_migration_name_from(migration_file)
+        unless File.exist?(File.join("db", "migrate", migration_name))
+          missing_migrations[plugin_name] ||= []
+          missing_migrations[plugin_name] << migration_name
+        end
+      end
+      unless new_migrations.empty?
+        puts "The following migrations are included in plugins, but not present in your db/migrate directory:"
+        display_plugin_migrations(missing_migrations)
+        puts "Run db:migrate:plugins to incorporate these migrations into your application."
+      end
+    end
   end
 
   desc 'Rolls the schema back to the previous version. Specify the number of steps with STEP=n'
