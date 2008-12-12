@@ -1,7 +1,5 @@
 *2.3.0 [Edge]*
 
-* Plugins can now contain migrations, in a db/migrate folder. Running db:migrate:copy_from_plugins will copy pending migrations into the main migration stream. Running db:migrate will warn if any migrations are pending [James Adam]
-
 * Add "-m/--template" option to Rails generator to apply a template to the generated application. [Jeremy McAnally]
 
     This has been extracted from rg - http://github.com/jeremymcanally/rg
