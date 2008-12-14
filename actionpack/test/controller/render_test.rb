@@ -147,7 +147,7 @@ class TestController < ActionController::Base
   end
 
   def render_json_with_custom_content_type
-    render :json => {:hello => 'world'}.to_json, :content_type => 'text/javascript'
+    render :json => {:hello => 'world'}.to_json, :content_type => Mime::JS
   end
 
   def render_symbol_json
@@ -780,7 +780,7 @@ class RenderTest < ActionController::TestCase
   def test_render_json_with_custom_content_type
     get :render_json_with_custom_content_type
     assert_equal '{"hello": "world"}', @response.body
-    assert_equal 'text/javascript', @response.content_type
+    assert_equal Mime::JS, @response.content_type
   end
 
   def test_render_symbol_json
@@ -860,7 +860,7 @@ class RenderTest < ActionController::TestCase
   def test_render_vanilla_js
     get :render_vanilla_js_hello
     assert_equal "alert('hello')", @response.body
-    assert_equal "text/javascript", @response.content_type
+    assert_equal Mime::JS, @response.content_type
   end
 
   def test_render_xml

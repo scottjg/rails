@@ -76,15 +76,15 @@ class AssetTagHelperTest < ActionView::TestCase
   }
 
   JavascriptIncludeToTag = {
-    %(javascript_include_tag("xmlhr")) => %(<script src="/javascripts/xmlhr.js" type="text/javascript"></script>),
-    %(javascript_include_tag("xmlhr.js")) => %(<script src="/javascripts/xmlhr.js" type="text/javascript"></script>),
-    %(javascript_include_tag("xmlhr", :lang => "vbscript")) => %(<script lang="vbscript" src="/javascripts/xmlhr.js" type="text/javascript"></script>),
-    %(javascript_include_tag("common.javascript", "/elsewhere/cools")) => %(<script src="/javascripts/common.javascript" type="text/javascript"></script>\n<script src="/elsewhere/cools.js" type="text/javascript"></script>),
-    %(javascript_include_tag(:defaults)) => %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>),
-    %(javascript_include_tag(:all)) => %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>\n<script src="/javascripts/bank.js" type="text/javascript"></script>\n<script src="/javascripts/robber.js" type="text/javascript"></script>\n<script src="/javascripts/version.1.0.js" type="text/javascript"></script>),
-    %(javascript_include_tag(:all, :recursive => true)) => %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>\n<script src="/javascripts/bank.js" type="text/javascript"></script>\n<script src="/javascripts/robber.js" type="text/javascript"></script>\n<script src="/javascripts/subdir/subdir.js" type="text/javascript"></script>\n<script src="/javascripts/version.1.0.js" type="text/javascript"></script>),
-    %(javascript_include_tag(:defaults, "test")) => %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/test.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>),
-    %(javascript_include_tag("test", :defaults)) => %(<script src="/javascripts/test.js" type="text/javascript"></script>\n<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>)
+    %(javascript_include_tag("xmlhr")) => %(<script src="/javascripts/xmlhr.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag("xmlhr.js")) => %(<script src="/javascripts/xmlhr.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag("xmlhr", :lang => "vbscript")) => %(<script lang="vbscript" src="/javascripts/xmlhr.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag("common.javascript", "/elsewhere/cools")) => %(<script src="/javascripts/common.javascript" type="#{Mime::JS}"></script>\n<script src="/elsewhere/cools.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag(:defaults)) => %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag(:all)) => %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/bank.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/robber.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/version.1.0.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag(:all, :recursive => true)) => %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/bank.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/robber.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/subdir/subdir.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/version.1.0.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag(:defaults, "test")) => %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/test.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>),
+    %(javascript_include_tag("test", :defaults)) => %(<script src="/javascripts/test.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>)
   }
 
   StylePathToTag = {
@@ -163,31 +163,31 @@ class AssetTagHelperTest < ActionView::TestCase
 
   def test_javascript_include_tag_with_given_asset_id
     ENV["RAILS_ASSET_ID"] = "1"
-    assert_dom_equal(%(<script src="/javascripts/prototype.js?1" type="text/javascript"></script>\n<script src="/javascripts/effects.js?1" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js?1" type="text/javascript"></script>\n<script src="/javascripts/controls.js?1" type="text/javascript"></script>\n<script src="/javascripts/application.js?1" type="text/javascript"></script>), javascript_include_tag(:defaults))
+    assert_dom_equal(%(<script src="/javascripts/prototype.js?1" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js?1" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js?1" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js?1" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js?1" type="#{Mime::JS}"></script>), javascript_include_tag(:defaults))
   end
 
   def test_register_javascript_include_default
     ENV["RAILS_ASSET_ID"] = ""
     ActionView::Helpers::AssetTagHelper::register_javascript_include_default 'slider'
-    assert_dom_equal  %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/slider.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>), javascript_include_tag(:defaults)
+    assert_dom_equal  %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/slider.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>), javascript_include_tag(:defaults)
   end
 
   def test_register_javascript_include_default_mixed_defaults
     ENV["RAILS_ASSET_ID"] = ""
     ActionView::Helpers::AssetTagHelper::register_javascript_include_default 'slider'
     ActionView::Helpers::AssetTagHelper::register_javascript_include_default 'lib1', '/elsewhere/blub/lib2'
-    assert_dom_equal  %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/slider.js" type="text/javascript"></script>\n<script src="/javascripts/lib1.js" type="text/javascript"></script>\n<script src="/elsewhere/blub/lib2.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>), javascript_include_tag(:defaults)
+    assert_dom_equal  %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/slider.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/lib1.js" type="#{Mime::JS}"></script>\n<script src="/elsewhere/blub/lib2.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>), javascript_include_tag(:defaults)
   end
 
   def test_custom_javascript_expansions
     ActionView::Helpers::AssetTagHelper::register_javascript_expansion :monkey => ["head", "body", "tail"]
-    assert_dom_equal  %(<script src="/javascripts/first.js" type="text/javascript"></script>\n<script src="/javascripts/head.js" type="text/javascript"></script>\n<script src="/javascripts/body.js" type="text/javascript"></script>\n<script src="/javascripts/tail.js" type="text/javascript"></script>\n<script src="/javascripts/last.js" type="text/javascript"></script>), javascript_include_tag('first', :monkey, 'last')
+    assert_dom_equal  %(<script src="/javascripts/first.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/head.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/body.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/tail.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/last.js" type="#{Mime::JS}"></script>), javascript_include_tag('first', :monkey, 'last')
   end
 
   def test_custom_javascript_expansions_and_defaults_puts_application_js_at_the_end
     ENV["RAILS_ASSET_ID"] = ""
     ActionView::Helpers::AssetTagHelper::register_javascript_expansion :monkey => ["head", "body", "tail"]
-    assert_dom_equal  %(<script src="/javascripts/first.js" type="text/javascript"></script>\n<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/head.js" type="text/javascript"></script>\n<script src="/javascripts/body.js" type="text/javascript"></script>\n<script src="/javascripts/tail.js" type="text/javascript"></script>\n<script src="/javascripts/last.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>), javascript_include_tag('first', :defaults, :monkey, 'last')
+    assert_dom_equal  %(<script src="/javascripts/first.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/head.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/body.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/tail.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/last.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>), javascript_include_tag('first', :defaults, :monkey, 'last')
   end
 
   def test_custom_javascript_expansions_with_undefined_symbol
@@ -287,14 +287,14 @@ class AssetTagHelperTest < ActionView::TestCase
     ActionController::Base.perform_caching = true
 
     assert_dom_equal(
-      %(<script src="http://a0.example.com/javascripts/all.js" type="text/javascript"></script>),
+      %(<script src="http://a0.example.com/javascripts/all.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => true)
     )
 
     assert File.exist?(File.join(ActionView::Helpers::AssetTagHelper::JAVASCRIPTS_DIR, 'all.js'))
 
     assert_dom_equal(
-      %(<script src="http://a0.example.com/javascripts/money.js" type="text/javascript"></script>),
+      %(<script src="http://a0.example.com/javascripts/money.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "money")
     )
 
@@ -312,7 +312,7 @@ class AssetTagHelperTest < ActionView::TestCase
 
     assert_equal '/javascripts/scripts.js'.length, 23
     assert_dom_equal(
-      %(<script src="http://a23.example.com/javascripts/scripts.js" type="text/javascript"></script>),
+      %(<script src="http://a23.example.com/javascripts/scripts.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => 'scripts')
     )
 
@@ -335,7 +335,7 @@ class AssetTagHelperTest < ActionView::TestCase
 
     assert_equal '/javascripts/vanilla.js'.length, 23
     assert_dom_equal(
-      %(<script src="http://assets23.example.com/javascripts/vanilla.js" type="text/javascript"></script>),
+      %(<script src="http://assets23.example.com/javascripts/vanilla.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => 'vanilla')
     )
 
@@ -348,7 +348,7 @@ class AssetTagHelperTest < ActionView::TestCase
 
     assert_equal '/javascripts/secure.js'.length, 22
     assert_dom_equal(
-      %(<script src="https://localhost/javascripts/secure.js" type="text/javascript"></script>),
+      %(<script src="https://localhost/javascripts/secure.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => 'secure')
     )
 
@@ -375,7 +375,7 @@ class AssetTagHelperTest < ActionView::TestCase
 
     assert_equal '/javascripts/vanilla.js'.length, 23
     assert_dom_equal(
-      %(<script src="http://assets23.example.com/javascripts/vanilla.js" type="text/javascript"></script>),
+      %(<script src="http://assets23.example.com/javascripts/vanilla.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => 'vanilla')
     )
 
@@ -388,7 +388,7 @@ class AssetTagHelperTest < ActionView::TestCase
 
     assert_equal '/javascripts/secure.js'.length, 22
     assert_dom_equal(
-      %(<script src="https://localhost/javascripts/secure.js" type="text/javascript"></script>),
+      %(<script src="https://localhost/javascripts/secure.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => 'secure')
     )
 
@@ -406,7 +406,7 @@ class AssetTagHelperTest < ActionView::TestCase
 
     hash = '/javascripts/cache/money.js'.hash % 4
     assert_dom_equal(
-      %(<script src="http://a#{hash}.example.com/javascripts/cache/money.js" type="text/javascript"></script>),
+      %(<script src="http://a#{hash}.example.com/javascripts/cache/money.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "cache/money")
     )
 
@@ -421,7 +421,7 @@ class AssetTagHelperTest < ActionView::TestCase
     ActionController::Base.perform_caching = true
 
     assert_dom_equal(
-      %(<script src="http://a0.example.com/javascripts/combined.js" type="text/javascript"></script>),
+      %(<script src="http://a0.example.com/javascripts/combined.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "combined", :recursive => true)
     )
 
@@ -442,7 +442,7 @@ class AssetTagHelperTest < ActionView::TestCase
     ActionController::Base.perform_caching = true
 
     assert_dom_equal(
-      %(<script src="http://a0.example.com/javascripts/combined.js" type="text/javascript"></script>),
+      %(<script src="http://a0.example.com/javascripts/combined.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "combined")
     )
 
@@ -463,14 +463,14 @@ class AssetTagHelperTest < ActionView::TestCase
     ActionController::Base.perform_caching = true
 
     assert_dom_equal(
-      %(<script src="/collaboration/hieraki/javascripts/all.js" type="text/javascript"></script>),
+      %(<script src="/collaboration/hieraki/javascripts/all.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => true)
     )
 
     assert File.exist?(File.join(ActionView::Helpers::AssetTagHelper::JAVASCRIPTS_DIR, 'all.js'))
 
     assert_dom_equal(
-      %(<script src="/collaboration/hieraki/javascripts/money.js" type="text/javascript"></script>),
+      %(<script src="/collaboration/hieraki/javascripts/money.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "money")
     )
 
@@ -487,24 +487,24 @@ class AssetTagHelperTest < ActionView::TestCase
     ActionController::Base.perform_caching = false
 
     assert_dom_equal(
-      %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>\n<script src="/javascripts/bank.js" type="text/javascript"></script>\n<script src="/javascripts/robber.js" type="text/javascript"></script>\n<script src="/javascripts/version.1.0.js" type="text/javascript"></script>),
+      %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/bank.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/robber.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/version.1.0.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => true)
     )
 
     assert_dom_equal(
-      %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>\n<script src="/javascripts/bank.js" type="text/javascript"></script>\n<script src="/javascripts/robber.js" type="text/javascript"></script>\n<script src="/javascripts/subdir/subdir.js" type="text/javascript"></script>\n<script src="/javascripts/version.1.0.js" type="text/javascript"></script>),
+      %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/bank.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/robber.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/subdir/subdir.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/version.1.0.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => true, :recursive => true)
     )
 
     assert !File.exist?(File.join(ActionView::Helpers::AssetTagHelper::JAVASCRIPTS_DIR, 'all.js'))
 
     assert_dom_equal(
-      %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>\n<script src="/javascripts/bank.js" type="text/javascript"></script>\n<script src="/javascripts/robber.js" type="text/javascript"></script>\n<script src="/javascripts/version.1.0.js" type="text/javascript"></script>),
+      %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/bank.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/robber.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/version.1.0.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "money")
     )
 
     assert_dom_equal(
-      %(<script src="/javascripts/prototype.js" type="text/javascript"></script>\n<script src="/javascripts/effects.js" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js" type="text/javascript"></script>\n<script src="/javascripts/controls.js" type="text/javascript"></script>\n<script src="/javascripts/application.js" type="text/javascript"></script>\n<script src="/javascripts/bank.js" type="text/javascript"></script>\n<script src="/javascripts/robber.js" type="text/javascript"></script>\n<script src="/javascripts/subdir/subdir.js" type="text/javascript"></script>\n<script src="/javascripts/version.1.0.js" type="text/javascript"></script>),
+      %(<script src="/javascripts/prototype.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/effects.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/dragdrop.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/controls.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/application.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/bank.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/robber.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/subdir/subdir.js" type="#{Mime::JS}"></script>\n<script src="/javascripts/version.1.0.js" type="#{Mime::JS}"></script>),
       javascript_include_tag(:all, :cache => "money", :recursive => true)
     )
 
