@@ -849,7 +849,7 @@ module ActionController #:nodoc:
       #
       # In addition to using RJS with render :update, you can also just render vanilla JavaScript with :js.
       #
-      #   # Renders "alert('hello')" and sets the mime type to text/javascript
+      #   # Renders "alert('hello')" and sets the mime type to application/javascript
       #   render :js => "alert('hello')"
       #
       # === Rendering with status and location headers

@@ -442,7 +442,7 @@ module ActionView
       #   # => <a href="mailto:me@domain.com">me@domain.com</a>
       #
       #   mail_to "me@domain.com", "My email", :encode => "javascript"
-      #   # => <script type="text/javascript">eval(decodeURIComponent('%64%6f%63...%27%29%3b'))</script>
+      #   # => <script type="application/javascript">eval(decodeURIComponent('%64%6f%63...%27%29%3b'))</script>
       #
       #   mail_to "me@domain.com", "My email", :encode => "hex"
       #   # => <a href="mailto:%6d%65@%64%6f%6d%61%69%6e.%63%6f%6d">My email</a>

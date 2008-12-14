@@ -173,26 +173,26 @@ module ActionView
       #
       # ==== Examples
       #   javascript_include_tag "xmlhr" # =>
-      #     <script type="text/javascript" src="/javascripts/xmlhr.js"></script>
+      #     <script type="application/javascript" src="/javascripts/xmlhr.js"></script>
       #
       #   javascript_include_tag "xmlhr.js" # =>
-      #     <script type="text/javascript" src="/javascripts/xmlhr.js"></script>
+      #     <script type="application/javascript" src="/javascripts/xmlhr.js"></script>
       #
       #   javascript_include_tag "common.javascript", "/elsewhere/cools" # =>
-      #     <script type="text/javascript" src="/javascripts/common.javascript"></script>
-      #     <script type="text/javascript" src="/elsewhere/cools.js"></script>
+      #     <script type="application/javascript" src="/javascripts/common.javascript"></script>
+      #     <script type="application/javascript" src="/elsewhere/cools.js"></script>
       #
       #   javascript_include_tag "http://www.railsapplication.com/xmlhr" # =>
-      #     <script type="text/javascript" src="http://www.railsapplication.com/xmlhr.js"></script>
+      #     <script type="application/javascript" src="http://www.railsapplication.com/xmlhr.js"></script>
       #
       #   javascript_include_tag "http://www.railsapplication.com/xmlhr.js" # =>
-      #     <script type="text/javascript" src="http://www.railsapplication.com/xmlhr.js"></script>
+      #     <script type="application/javascript" src="http://www.railsapplication.com/xmlhr.js"></script>
       #
       #   javascript_include_tag :defaults # =>
-      #     <script type="text/javascript" src="/javascripts/prototype.js"></script>
-      #     <script type="text/javascript" src="/javascripts/effects.js"></script>
+      #     <script type="application/javascript" src="/javascripts/prototype.js"></script>
+      #     <script type="application/javascript" src="/javascripts/effects.js"></script>
       #     ...
-      #     <script type="text/javascript" src="/javascripts/application.js"></script>
+      #     <script type="application/javascript" src="/javascripts/application.js"></script>
       #
       # * = The application.js file is only referenced if it exists
       #
@@ -202,12 +202,12 @@ module ActionView
       # You can also include all javascripts in the javascripts directory using <tt>:all</tt> as the source:
       #
       #   javascript_include_tag :all # =>
-      #     <script type="text/javascript" src="/javascripts/prototype.js"></script>
-      #     <script type="text/javascript" src="/javascripts/effects.js"></script>
+      #     <script type="application/javascript" src="/javascripts/prototype.js"></script>
+      #     <script type="application/javascript" src="/javascripts/effects.js"></script>
       #     ...
-      #     <script type="text/javascript" src="/javascripts/application.js"></script>
-      #     <script type="text/javascript" src="/javascripts/shop.js"></script>
-      #     <script type="text/javascript" src="/javascripts/checkout.js"></script>
+      #     <script type="application/javascript" src="/javascripts/application.js"></script>
+      #     <script type="application/javascript" src="/javascripts/shop.js"></script>
+      #     <script type="application/javascript" src="/javascripts/checkout.js"></script>
       #
       # Note that the default javascript files will be included first. So Prototype and Scriptaculous are available to
       # all subsequently included files.
@@ -225,23 +225,23 @@ module ActionView
       #
       # ==== Examples
       #   javascript_include_tag :all, :cache => true # when ActionController::Base.perform_caching is false =>
-      #     <script type="text/javascript" src="/javascripts/prototype.js"></script>
-      #     <script type="text/javascript" src="/javascripts/effects.js"></script>
+      #     <script type="application/javascript" src="/javascripts/prototype.js"></script>
+      #     <script type="application/javascript" src="/javascripts/effects.js"></script>
       #     ...
-      #     <script type="text/javascript" src="/javascripts/application.js"></script>
-      #     <script type="text/javascript" src="/javascripts/shop.js"></script>
-      #     <script type="text/javascript" src="/javascripts/checkout.js"></script>
+      #     <script type="application/javascript" src="/javascripts/application.js"></script>
+      #     <script type="application/javascript" src="/javascripts/shop.js"></script>
+      #     <script type="application/javascript" src="/javascripts/checkout.js"></script>
       #
       #   javascript_include_tag :all, :cache => true # when ActionController::Base.perform_caching is true =>
-      #     <script type="text/javascript" src="/javascripts/all.js"></script>
+      #     <script type="application/javascript" src="/javascripts/all.js"></script>
       #
       #   javascript_include_tag "prototype", "cart", "checkout", :cache => "shop" # when ActionController::Base.perform_caching is false =>
-      #     <script type="text/javascript" src="/javascripts/prototype.js"></script>
-      #     <script type="text/javascript" src="/javascripts/cart.js"></script>
-      #     <script type="text/javascript" src="/javascripts/checkout.js"></script>
+      #     <script type="application/javascript" src="/javascripts/prototype.js"></script>
+      #     <script type="application/javascript" src="/javascripts/cart.js"></script>
+      #     <script type="application/javascript" src="/javascripts/checkout.js"></script>
       #
       #   javascript_include_tag "prototype", "cart", "checkout", :cache => "shop" # when ActionController::Base.perform_caching is true =>
-      #     <script type="text/javascript" src="/javascripts/shop.js"></script>
+      #     <script type="application/javascript" src="/javascripts/shop.js"></script>
       #
       # The <tt>:recursive</tt> option is also available for caching:
       #
@@ -274,9 +274,9 @@ module ActionView
       #   ActionView::Helpers::AssetTagHelper.register_javascript_expansion :monkey => ["head", "body", "tail"]
       #
       #   javascript_include_tag :monkey # =>
-      #     <script type="text/javascript" src="/javascripts/head.js"></script>
-      #     <script type="text/javascript" src="/javascripts/body.js"></script>
-      #     <script type="text/javascript" src="/javascripts/tail.js"></script>
+      #     <script type="application/javascript" src="/javascripts/head.js"></script>
+      #     <script type="application/javascript" src="/javascripts/body.js"></script>
+      #     <script type="application/javascript" src="/javascripts/tail.js"></script>
       def self.register_javascript_expansion(expansions)
         JavaScriptSources.expansions.merge!(expansions)
       end

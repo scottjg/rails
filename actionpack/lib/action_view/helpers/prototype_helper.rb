@@ -598,7 +598,7 @@ module ActionView
         # JavaScriptGenerator generates blocks of JavaScript code that allow you
         # to change the content and presentation of multiple DOM elements.  Use
         # this in your Ajax response bodies, either in a <script> tag or as plain
-        # JavaScript sent with a Content-type of "text/javascript".
+        # JavaScript sent with a Content-type of "application/javascript".
         #
         # Create new instances with PrototypeHelper#update_page or with
         # ActionController::Base#render, then call +insert_html+, +replace_html+,

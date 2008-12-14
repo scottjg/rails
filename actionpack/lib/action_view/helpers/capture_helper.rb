@@ -74,7 +74,7 @@ module ActionView
       #   Please login!
       #
       #   <% content_for :script do %>
-      #     <script type="text/javascript">alert('You are not authorized to view this page!')</script>
+      #     <script type="application/javascript">alert('You are not authorized to view this page!')</script>
       #   <% end %>
       #
       # Then, in another view, you could to do something like this:
