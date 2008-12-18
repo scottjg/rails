@@ -32,7 +32,6 @@ module ActiveSupport
   autoload :BufferedLogger, 'active_support/buffered_logger'
   autoload :Cache, 'active_support/cache'
   autoload :Callbacks, 'active_support/callbacks'
-  autoload :Dependencies, 'active_support/dependencies'
   autoload :Deprecation, 'active_support/deprecation'
   autoload :Duration, 'active_support/duration'
   autoload :Gzip, 'active_support/gzip'
@@ -49,10 +48,12 @@ module ActiveSupport
   autoload :StringInquirer, 'active_support/string_inquirer'
   autoload :TimeWithZone, 'active_support/time_with_zone'
   autoload :TimeZone, 'active_support/values/time_zone'
+  autoload :XmlMini, 'active_support/xml_mini'
 end
 
 require 'active_support/vendor'
 require 'active_support/core_ext'
+require 'active_support/dependencies'
 require 'active_support/json'
 
 I18n.load_path << "#{File.dirname(__FILE__)}/active_support/locale/en.yml"

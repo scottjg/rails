@@ -13,6 +13,8 @@ module ActiveSupport
 
     MAX_BUFFER_SIZE = 1000
 
+    ##
+    # :singleton-method:
     # Set to false to disable the silencer
     cattr_accessor :silencer
     self.silencer = true
@@ -94,9 +96,12 @@ module ActiveSupport
       @guard.synchronize do
         unless buffer.empty?
           old_buffer = buffer
-          clear_buffer
           @log.write(old_buffer.join)
         end
+
+        # Important to do this even if buffer was empty or else @buffer will
+        # accumulate empty arrays for each request where nothing was logged.
+        clear_buffer
       end
     end
 

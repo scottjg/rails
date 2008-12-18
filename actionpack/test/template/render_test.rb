@@ -1,10 +1,10 @@
 require 'abstract_unit'
 require 'controller/fake_models'
 
-class ViewRenderTest < Test::Unit::TestCase
-  def setup
+module RenderTestCases
+  def setup_view(paths)
     @assigns = { :secret => 'in the sauce' }
-    @view = ActionView::Base.new(ActionController::Base.view_paths, @assigns)
+    @view = ActionView::Base.new(paths, @assigns)
   end
 
   def test_render_file
@@ -137,12 +137,6 @@ class ViewRenderTest < Test::Unit::TestCase
   end
 
   # TODO: The reason for this test is unclear, improve documentation
-  def test_render_js_partial_and_fallback_to_erb_layout
-    @view.template_format = :js
-    assert_equal "Before (Josh)\n\nAfter", @view.render(:partial => "test/layout_for_partial", :locals => { :name => "Josh" })
-  end
-
-  # TODO: The reason for this test is unclear, improve documentation
   def test_render_missing_xml_partial_and_raise_missing_template
     @view.template_format = :xml
     assert_raise(ActionView::MissingTemplate) { @view.render(:partial => "test/layout_for_partial") }
@@ -157,7 +151,7 @@ class ViewRenderTest < Test::Unit::TestCase
   end
 
   def test_render_fallbacks_to_erb_for_unknown_types
-    assert_equal "Hello, World!", @view.render(:inline => "Hello, World!", :type => :foo)
+    assert_equal "Hello, World!", @view.render(:inline => "Hello, World!", :type => :bar)
   end
 
   CustomHandler = lambda do |template|
@@ -194,5 +188,28 @@ class ViewRenderTest < Test::Unit::TestCase
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout.erb", :layout => "layouts/yield")
+  end
+end
+
+class CachedViewRenderTest < Test::Unit::TestCase
+  include RenderTestCases
+
+  # Ensure view path cache is primed
+  def setup
+    view_paths = ActionController::Base.view_paths
+    assert view_paths.first.loaded?
+    setup_view(view_paths)
+  end
+end
+
+class LazyViewRenderTest < Test::Unit::TestCase
+  include RenderTestCases
+
+  # Test the same thing as above, but make sure the view path
+  # is not eager loaded
+  def setup
+    view_paths = ActionView::Base.process_view_paths(FIXTURE_LOAD_PATH)
+    assert !view_paths.first.loaded?
+    setup_view(view_paths)
   end
 end

@@ -13,6 +13,7 @@ require 'mocha'
 
 begin
   require 'ruby-debug'
+  Debugger.settings[:autoeval] = true
   Debugger.start
 rescue LoadError
   # Debugging disabled. `gem install ruby-debug` to enable.
@@ -29,9 +30,11 @@ ActiveSupport::Deprecation.debug = true
 ActionController::Base.logger = nil
 ActionController::Routing::Routes.reload rescue nil
 
+ActionController::Base.session_store = nil
+
 FIXTURE_LOAD_PATH = File.join(File.dirname(__FILE__), 'fixtures')
-ActionView::PathSet::Path.eager_load_templates!
 ActionController::Base.view_paths = FIXTURE_LOAD_PATH
+ActionController::Base.view_paths.load
 
 def uses_mocha(test_name)
   yield

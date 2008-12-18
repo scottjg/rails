@@ -38,7 +38,7 @@ module ActionController
   # TODO: Review explicit to see if they will automatically be handled by
   # the initilizer if they are really needed.
   def self.load_all!
-    [Base, CgiRequest, CgiResponse, RackRequest, RackRequest, Http::Headers, UrlRewriter, UrlWriter]
+    [Base, CGIHandler, CgiRequest, RackRequest, RackRequest, Http::Headers, UrlRewriter, UrlWriter]
   end
 
   autoload :AbstractRequest, 'action_controller/request'
@@ -46,10 +46,9 @@ module ActionController
   autoload :Base, 'action_controller/base'
   autoload :Benchmarking, 'action_controller/benchmarking'
   autoload :Caching, 'action_controller/caching'
-  autoload :CgiRequest, 'action_controller/cgi_process'
-  autoload :CgiResponse, 'action_controller/cgi_process'
   autoload :Cookies, 'action_controller/cookies'
   autoload :Dispatcher, 'action_controller/dispatcher'
+  autoload :Failsafe, 'action_controller/failsafe'
   autoload :Filters, 'action_controller/filters'
   autoload :Flash, 'action_controller/flash'
   autoload :Helpers, 'action_controller/helpers'
@@ -57,6 +56,7 @@ module ActionController
   autoload :Integration, 'action_controller/integration'
   autoload :IntegrationTest, 'action_controller/integration'
   autoload :Layout, 'action_controller/layout'
+  autoload :MiddlewareStack, 'action_controller/middleware_stack'
   autoload :MimeResponds, 'action_controller/mime_responds'
   autoload :PolymorphicRoutes, 'action_controller/polymorphic_routes'
   autoload :RackRequest, 'action_controller/rack_process'
@@ -88,15 +88,16 @@ module ActionController
   module Http
     autoload :Headers, 'action_controller/headers'
   end
-end
 
-class CGI
-  class Session
-    autoload :ActiveRecordStore, 'action_controller/session/active_record_store'
+  module Session
+    autoload :AbstractStore, 'action_controller/session/abstract_store'
     autoload :CookieStore, 'action_controller/session/cookie_store'
-    autoload :DRbStore, 'action_controller/session/drb_store'
     autoload :MemCacheStore, 'action_controller/session/mem_cache_store'
   end
+
+  # DEPRECATE: Remove CGI support
+  autoload :CgiRequest, 'action_controller/cgi_process'
+  autoload :CGIHandler, 'action_controller/cgi_process'
 end
 
 autoload :Mime, 'action_controller/mime_type'

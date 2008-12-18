@@ -39,7 +39,7 @@ module Rails
         nil
       end
     end
-    
+
     def backtrace_cleaner
       @@backtrace_cleaner ||= begin
         # Relies on ActiveSupport, so we have to lazy load to postpone definition until AS has been loaded
@@ -49,11 +49,7 @@ module Rails
     end
 
     def root
-      if defined?(RAILS_ROOT)
-        RAILS_ROOT
-      else
-        nil
-      end
+      Pathname.new(RAILS_ROOT) if defined?(RAILS_ROOT)
     end
 
     def env
@@ -152,13 +148,14 @@ module Rails
 
       initialize_dependency_mechanism
       initialize_whiny_nils
-      initialize_temporary_session_directory
 
       initialize_time_zone
       initialize_i18n
 
       initialize_framework_settings
       initialize_framework_views
+
+      initialize_metal
 
       add_support_load_paths
 
@@ -372,9 +369,10 @@ Run `rake gems:install` to install the missing gems.
 
     def load_view_paths
       if configuration.frameworks.include?(:action_view)
-        ActionView::PathSet::Path.eager_load_templates! if configuration.cache_classes
-        ActionController::Base.view_paths.load if configuration.frameworks.include?(:action_controller)
-        ActionMailer::Base.template_root.load if configuration.frameworks.include?(:action_mailer)
+        if configuration.cache_classes
+          ActionController::Base.view_paths.load if configuration.frameworks.include?(:action_controller)
+          ActionMailer::Base.template_root.load if configuration.frameworks.include?(:action_mailer)
+        end
       end
     end
 
@@ -486,8 +484,9 @@ Run `rake gems:install` to install the missing gems.
     # loading module used to lazily load controllers (Configuration#controller_paths).
     def initialize_routing
       return unless configuration.frameworks.include?(:action_controller)
-      ActionController::Routing.controller_paths = configuration.controller_paths
-      ActionController::Routing::Routes.configuration_file = configuration.routes_configuration_file
+
+      ActionController::Routing.controller_paths += configuration.controller_paths
+      ActionController::Routing::Routes.add_configuration_file(configuration.routes_configuration_file)
       ActionController::Routing::Routes.reload
     end
 
@@ -503,22 +502,20 @@ Run `rake gems:install` to install the missing gems.
       require('active_support/whiny_nil') if configuration.whiny_nils
     end
 
-    def initialize_temporary_session_directory
-      if configuration.frameworks.include?(:action_controller)
-        session_path = "#{configuration.root_path}/tmp/sessions/"
-        ActionController::Base.session_options[:tmpdir] = File.exist?(session_path) ? session_path : Dir::tmpdir
-      end
-    end
-
     # Sets the default value for Time.zone, and turns on ActiveRecord::Base#time_zone_aware_attributes.
     # If assigned value cannot be matched to a TimeZone, an exception will be raised.
     def initialize_time_zone
       if configuration.time_zone
         zone_default = Time.__send__(:get_zone, configuration.time_zone)
+
         unless zone_default
-          raise %{Value assigned to config.time_zone not recognized. Run "rake -D time" for a list of tasks for finding appropriate time zone names.}
+          raise \
+            'Value assigned to config.time_zone not recognized.' +
+            'Run "rake -D time" for a list of tasks for finding appropriate time zone names.'
         end
+
         Time.zone_default = zone_default
+
         if configuration.frameworks.include?(:active_record)
           ActiveRecord::Base.time_zone_aware_attributes = true
           ActiveRecord::Base.default_timezone = :utc
@@ -526,7 +523,7 @@ Run `rake gems:install` to install the missing gems.
       end
     end
 
-    # Set the i18n configuration from config.i18n but special-case for the load_path which should be 
+    # Set the i18n configuration from config.i18n but special-case for the load_path which should be
     # appended to what's already set instead of overwritten.
     def initialize_i18n
       configuration.i18n.each do |setting, value|
@@ -536,6 +533,10 @@ Run `rake gems:install` to install the missing gems.
           I18n.send("#{setting}=", value)
         end
       end
+    end
+
+    def initialize_metal
+      configuration.middleware.use Rails::Rack::Metal
     end
 
     # Initializes framework-specific settings for each of the loaded frameworks
@@ -878,6 +879,11 @@ Run `rake gems:install` to install the missing gems.
       end
     end
 
+    def middleware
+      require 'action_controller'
+      ActionController::Dispatcher.middleware
+    end
+
     def builtin_directories
       # Include builtins only in the development environment.
       (environment == 'development') ? Dir["#{RAILTIES_PATH}/builtin/*/"] : []
@@ -915,11 +921,11 @@ Run `rake gems:install` to install the missing gems.
         # Followed by the standard includes.
         paths.concat %w(
           app
+          app/metal
           app/models
           app/controllers
           app/helpers
           app/services
-          config
           lib
           vendor
         ).map { |dir| "#{root_path}/#{dir}" }.select { |dir| File.directory?(dir) }
@@ -934,6 +940,7 @@ Run `rake gems:install` to install the missing gems.
 
       def default_eager_load_paths
         %w(
+          app/metal
           app/models
           app/controllers
           app/helpers

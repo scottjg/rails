@@ -283,7 +283,12 @@ module ActionController
     # * <tt>:new</tt> - Same as <tt>:collection</tt>, but for actions that operate on the new \resource action.
     # * <tt>:controller</tt> - Specify the controller name for the routes.
     # * <tt>:singular</tt> - Specify the singular name used in the member routes.
-    # * <tt>:requirements</tt> - Set custom routing parameter requirements.
+    # * <tt>:requirements</tt> - Set custom routing parameter requirements; this is a hash of either 
+    #     regular expressions (which must match for the route to match) or extra parameters. For example:
+    #
+    #       map.resource :profile, :path_prefix => ':name', :requirements => { :name => /[a-zA-Z]+/, :extra => 'value' }
+    #
+    #     will only match if the first part is alphabetic, and will pass the parameter :extra to the controller.
     # * <tt>:conditions</tt> - Specify custom routing recognition conditions.  \Resources sets the <tt>:method</tt> value for the method-specific routes.
     # * <tt>:as</tt> - Specify a different \resource name to use in the URL path. For example:
     #     # products_path == '/productos'
@@ -639,10 +644,8 @@ module ActionController
           formatted_route_path = "#{route_path}.:format"
 
           if route_name && @set.named_routes[route_name.to_sym].nil?
-            map.named_route(route_name, route_path, action_options)
-            map.named_route("formatted_#{route_name}", formatted_route_path, action_options)
+            map.named_route(route_name, formatted_route_path, action_options)
           else
-            map.connect(route_path, action_options)
             map.connect(formatted_route_path, action_options)
           end
         end

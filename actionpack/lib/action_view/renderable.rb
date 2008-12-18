@@ -28,11 +28,6 @@ module ActionView
       stack = view.instance_variable_get(:@_render_stack)
       stack.push(self)
 
-      # This is only used for TestResponse to set rendered_template
-      unless is_a?(InlineTemplate) || view.instance_variable_get(:@_first_render)
-        view.instance_variable_set(:@_first_render, self)
-      end
-
       view.send(:_evaluate_assigns_and_ivars)
       view.send(:_set_controller_content_type, mime_type) if respond_to?(:mime_type)
 
@@ -96,7 +91,7 @@ module ActionView
       # The template will be compiled if the file has not been compiled yet, or
       # if local_assigns has a new key, which isn't supported by the compiled code yet.
       def recompile?(symbol)
-        !(ActionView::PathSet::Path.eager_load_templates? && Base::CompiledTemplates.method_defined?(symbol))
+        !Base::CompiledTemplates.method_defined?(symbol) || !loaded?
       end
   end
 end

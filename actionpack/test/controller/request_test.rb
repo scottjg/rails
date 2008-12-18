@@ -66,6 +66,15 @@ class RequestTest < ActiveSupport::TestCase
     assert_match /HTTP_X_FORWARDED_FOR="9.9.9.9, 3.4.5.6, 10.0.0.1, 172.31.4.4"/, e.message
     assert_match /HTTP_CLIENT_IP="8.8.8.8"/, e.message
 
+    # turn IP Spoofing detection off.
+    # This is useful for sites that are aimed at non-IP clients.  The typical
+    # example is WAP.  Since the cellular network is not IP based, it's a
+    # leap of faith to assume that their proxies are ever going to set the
+    # HTTP_CLIENT_IP/HTTP_X_FORWARDED_FOR headers properly.
+    ActionController::Base.ip_spoofing_check = false
+    assert_equal('8.8.8.8', @request.remote_ip(true))
+    ActionController::Base.ip_spoofing_check = true
+
     @request.env['HTTP_X_FORWARDED_FOR'] = '8.8.8.8, 9.9.9.9'
     assert_equal '8.8.8.8', @request.remote_ip(true)
 
@@ -628,7 +637,7 @@ class UrlEncodedRequestParameterParsingTest < ActiveSupport::TestCase
     input = {
       "customers[boston][first][name]" => [ "David" ],
       "something_else" => [ "blah" ],
-      "logo" => [ File.new(File.dirname(__FILE__) + "/cgi_test.rb").path ]
+      "logo" => [ File.new(File.dirname(__FILE__) + "/rack_test.rb").path ]
     }
 
     expected_output = {
@@ -640,7 +649,7 @@ class UrlEncodedRequestParameterParsingTest < ActiveSupport::TestCase
         }
       },
       "something_else" => "blah",
-      "logo" => File.new(File.dirname(__FILE__) + "/cgi_test.rb").path,
+      "logo" => File.new(File.dirname(__FILE__) + "/rack_test.rb").path,
     }
 
     assert_equal expected_output, ActionController::AbstractRequest.parse_request_parameters(input)
