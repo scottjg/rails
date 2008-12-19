@@ -3,7 +3,7 @@ gems:
 - name: geminstaller
   version: >= 0.4.3
 - name: mocha
-  version: >= 0.9.0
+  version: > 0.9.3 # 0.9.3 has bugs, need to force a higher version to exist
 - name: mysql
   #version: >= 2.7
   version: = 2.7
