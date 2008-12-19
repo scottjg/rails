@@ -229,7 +229,7 @@ end
 class RackResponseTest < BaseRackTest
   def setup
     super
-    @response = ActionController::RackResponse.new
+    @response = ActionController::Response.new
   end
 
   def test_simple_output
@@ -237,7 +237,7 @@ class RackResponseTest < BaseRackTest
     @response.prepare!
 
     status, headers, body = @response.to_a
-    assert_equal "200 OK", status
+    assert_equal 200, status
     assert_equal({
       "Content-Type" => "text/html; charset=utf-8",
       "Cache-Control" => "private, max-age=0, must-revalidate",
@@ -258,7 +258,7 @@ class RackResponseTest < BaseRackTest
     @response.prepare!
 
     status, headers, body = @response.to_a
-    assert_equal "200 OK", status
+    assert_equal 200, status
     assert_equal({"Content-Type" => "text/html; charset=utf-8", "Cache-Control" => "no-cache", "Set-Cookie" => []}, headers)
 
     parts = []
@@ -270,18 +270,18 @@ end
 class RackResponseHeadersTest < BaseRackTest
   def setup
     super
-    @response = ActionController::RackResponse.new
-    @response.headers['Status'] = "200 OK"
+    @response = ActionController::Response.new
+    @response.status = "200 OK"
   end
 
   def test_content_type
     [204, 304].each do |c|
-      @response.headers['Status'] = c.to_s
+      @response.status = c.to_s
       assert !response_headers.has_key?("Content-Type"), "#{c} should not have Content-Type header"
     end
 
     [200, 302, 404, 500].each do |c|
-      @response.headers['Status'] = c.to_s
+      @response.status = c.to_s
       assert response_headers.has_key?("Content-Type"), "#{c} did not have Content-Type header"
     end
   end
