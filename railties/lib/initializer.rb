@@ -39,7 +39,7 @@ module Rails
         nil
       end
     end
-    
+
     def backtrace_cleaner
       @@backtrace_cleaner ||= begin
         # Relies on ActiveSupport, so we have to lazy load to postpone definition until AS has been loaded
@@ -148,13 +148,14 @@ module Rails
 
       initialize_dependency_mechanism
       initialize_whiny_nils
-      initialize_temporary_session_directory
 
       initialize_time_zone
       initialize_i18n
 
       initialize_framework_settings
       initialize_framework_views
+
+      initialize_metal
 
       add_support_load_paths
 
@@ -501,13 +502,6 @@ Run `rake gems:install` to install the missing gems.
       require('active_support/whiny_nil') if configuration.whiny_nils
     end
 
-    def initialize_temporary_session_directory
-      if configuration.frameworks.include?(:action_controller)
-        session_path = "#{configuration.root_path}/tmp/sessions/"
-        ActionController::Base.session_options[:tmpdir] = File.exist?(session_path) ? session_path : Dir::tmpdir
-      end
-    end
-
     # Sets the default value for Time.zone, and turns on ActiveRecord::Base#time_zone_aware_attributes.
     # If assigned value cannot be matched to a TimeZone, an exception will be raised.
     def initialize_time_zone
@@ -529,7 +523,7 @@ Run `rake gems:install` to install the missing gems.
       end
     end
 
-    # Set the i18n configuration from config.i18n but special-case for the load_path which should be 
+    # Set the i18n configuration from config.i18n but special-case for the load_path which should be
     # appended to what's already set instead of overwritten.
     def initialize_i18n
       configuration.i18n.each do |setting, value|
@@ -539,6 +533,10 @@ Run `rake gems:install` to install the missing gems.
           I18n.send("#{setting}=", value)
         end
       end
+    end
+
+    def initialize_metal
+      configuration.middleware.use Rails::Rack::Metal
     end
 
     # Initializes framework-specific settings for each of the loaded frameworks
@@ -923,6 +921,7 @@ Run `rake gems:install` to install the missing gems.
         # Followed by the standard includes.
         paths.concat %w(
           app
+          app/metal
           app/models
           app/controllers
           app/helpers
@@ -941,6 +940,7 @@ Run `rake gems:install` to install the missing gems.
 
       def default_eager_load_paths
         %w(
+          app/metal
           app/models
           app/controllers
           app/helpers

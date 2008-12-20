@@ -153,7 +153,7 @@ module ActiveRecord
     #   #others.destroy_all               |   X   |    X     |    X
     #   #others.find(*args)               |   X   |    X     |    X
     #   #others.find_first                |   X   |          |
-    #   #others.exist?                    |   X   |    X     |    X
+    #   #others.exists?                   |   X   |    X     |    X
     #   #others.uniq                      |   X   |    X     |    X
     #   #others.reset                     |   X   |    X     |    X
     #
@@ -652,7 +652,7 @@ module ActiveRecord
       #   Returns the number of associated objects.
       # [collection.find(...)]
       #   Finds an associated object according to the same rules as ActiveRecord::Base.find.
-      # [collection.exist?(...)]
+      # [collection.exists?(...)]
       #   Checks whether an associated object with the given conditions exists.
       #   Uses the same rules as ActiveRecord::Base.exists?.
       # [collection.build(attributes = {}, ...)]
@@ -682,7 +682,7 @@ module ActiveRecord
       # * <tt>Firm#clients.empty?</tt> (similar to <tt>firm.clients.size == 0</tt>)
       # * <tt>Firm#clients.size</tt> (similar to <tt>Client.count "firm_id = #{id}"</tt>)
       # * <tt>Firm#clients.find</tt> (similar to <tt>Client.find(id, :conditions => "firm_id = #{id}")</tt>)
-      # * <tt>Firm#clients.exist?(:name => 'ACME')</tt> (similar to <tt>Client.exist?(:name => 'ACME', :firm_id => firm.id)</tt>)
+      # * <tt>Firm#clients.exists?(:name => 'ACME')</tt> (similar to <tt>Client.exists?(:name => 'ACME', :firm_id => firm.id)</tt>)
       # * <tt>Firm#clients.build</tt> (similar to <tt>Client.new("firm_id" => id)</tt>)
       # * <tt>Firm#clients.create</tt> (similar to <tt>c = Client.new("firm_id" => id); c.save; c</tt>)
       # The declaration can also include an options hash to specialize the behavior of the association.
@@ -1107,7 +1107,7 @@ module ActiveRecord
       #   Finds an associated object responding to the +id+ and that
       #   meets the condition that it has to be associated with this object.
       #   Uses the same rules as ActiveRecord::Base.find.
-      # [collection.exist?(...)]
+      # [collection.exists?(...)]
       #   Checks whether an associated object with the given conditions exists.
       #   Uses the same rules as ActiveRecord::Base.exists?.
       # [collection.build(attributes = {})]
@@ -1133,7 +1133,7 @@ module ActiveRecord
       # * <tt>Developer#projects.empty?</tt>
       # * <tt>Developer#projects.size</tt>
       # * <tt>Developer#projects.find(id)</tt>
-      # * <tt>Developer#clients.exist?(...)</tt>
+      # * <tt>Developer#clients.exists?(...)</tt>
       # * <tt>Developer#projects.build</tt> (similar to <tt>Project.new("project_id" => id)</tt>)
       # * <tt>Developer#projects.create</tt> (similar to <tt>c = Project.new("project_id" => id); c.save; c</tt>)
       # The declaration may include an options hash to specialize the behavior of the association.
@@ -1731,6 +1731,11 @@ module ActiveRecord
           return sanitize_sql(sql)
         end
 
+        def tables_in_string(string)
+          return [] if string.blank?
+          string.scan(/([\.a-zA-Z_]+).?\./).flatten
+        end
+
         def conditions_tables(options)
           # look in both sets of conditions
           conditions = [scope(:find, :conditions), options[:conditions]].inject([]) do |all, cond|
@@ -1741,37 +1746,55 @@ module ActiveRecord
               else            all << cond
             end
           end
-          conditions.join(' ').scan(/([\.a-zA-Z_]+).?\./).flatten
+          tables_in_string(conditions.join(' '))
         end
 
         def order_tables(options)
           order = [options[:order], scope(:find, :order) ].join(", ")
           return [] unless order && order.is_a?(String)
-          order.scan(/([\.a-zA-Z_]+).?\./).flatten
+          tables_in_string(order)
         end
 
         def selects_tables(options)
           select = options[:select]
           return [] unless select && select.is_a?(String)
-          select.scan(/"?([\.a-zA-Z_]+)"?.?\./).flatten
+          tables_in_string(select)
+        end
+
+        def joined_tables(options)
+          scope = scope(:find)
+          joins = options[:joins]
+          merged_joins = scope && scope[:joins] && joins ? merge_joins(scope[:joins], joins) : (joins || scope && scope[:joins])
+          [table_name] + case merged_joins
+          when Symbol, Hash, Array
+            if array_of_strings?(merged_joins)
+              tables_in_string(merged_joins.join(' '))
+            else
+              join_dependency = ActiveRecord::Associations::ClassMethods::InnerJoinDependency.new(self, merged_joins, nil)
+              join_dependency.join_associations.collect {|join_association| [join_association.aliased_join_table_name, join_association.aliased_table_name]}.flatten.compact
+            end
+          else
+            tables_in_string(merged_joins)
+          end
         end
 
         # Checks if the conditions reference a table other than the current model table
-        def include_eager_conditions?(options, tables = nil)
-          ((tables || conditions_tables(options)) - [table_name]).any?
+        def include_eager_conditions?(options, tables = nil, joined_tables = nil)
+          ((tables || conditions_tables(options)) - (joined_tables || joined_tables(options))).any?
         end
 
         # Checks if the query order references a table other than the current model's table.
-        def include_eager_order?(options, tables = nil)
-          ((tables || order_tables(options)) - [table_name]).any?
+        def include_eager_order?(options, tables = nil, joined_tables = nil)
+          ((tables || order_tables(options)) - (joined_tables || joined_tables(options))).any?
         end
 
-        def include_eager_select?(options)
-          (selects_tables(options) - [table_name]).any?
+        def include_eager_select?(options, joined_tables = nil)
+          (selects_tables(options) - (joined_tables || joined_tables(options))).any?
         end
 
         def references_eager_loaded_tables?(options)
-          include_eager_order?(options) || include_eager_conditions?(options) || include_eager_select?(options)
+          joined_tables = joined_tables(options)
+          include_eager_order?(options, nil, joined_tables) || include_eager_conditions?(options, nil, joined_tables) || include_eager_select?(options, joined_tables)
         end
 
         def using_limitable_reflections?(reflections)

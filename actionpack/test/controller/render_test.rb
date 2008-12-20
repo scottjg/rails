@@ -209,6 +209,10 @@ class TestController < ActionController::Base
     # let's just rely on the template
   end
 
+  def blank_response
+    render :text => ' '
+  end
+
   def layout_test
     render :action => "hello_world"
   end
@@ -1095,14 +1099,14 @@ class RenderTest < ActionController::TestCase
   def test_update_page
     get :update_page
     assert_template nil
-    assert_equal 'text/javascript; charset=utf-8', @response.headers['type']
+    assert_equal 'text/javascript; charset=utf-8', @response.headers['Content-Type']
     assert_equal 2, @response.body.split($/).length
   end
 
   def test_update_page_with_instance_variables
     get :update_page_with_instance_variables
     assert_template nil
-    assert_equal 'text/javascript; charset=utf-8', @response.headers['type']
+    assert_equal 'text/javascript; charset=utf-8', @response.headers["Content-Type"]
     assert_match /balance/, @response.body
     assert_match /\$37/, @response.body
   end
@@ -1110,7 +1114,7 @@ class RenderTest < ActionController::TestCase
   def test_update_page_with_view_method
     get :update_page_with_view_method
     assert_template nil
-    assert_equal 'text/javascript; charset=utf-8', @response.headers['type']
+    assert_equal 'text/javascript; charset=utf-8', @response.headers["Content-Type"]
     assert_match /2 people/, @response.body
   end
 
@@ -1143,11 +1147,11 @@ class RenderTest < ActionController::TestCase
 
   def test_head_with_symbolic_status
     get :head_with_symbolic_status, :status => "ok"
-    assert_equal "200 OK", @response.headers["Status"]
+    assert_equal "200 OK", @response.status
     assert_response :ok
 
     get :head_with_symbolic_status, :status => "not_found"
-    assert_equal "404 Not Found", @response.headers["Status"]
+    assert_equal "404 Not Found", @response.status
     assert_response :not_found
 
     ActionController::StatusCodes::SYMBOL_TO_STATUS_CODE.each do |status, code|
@@ -1310,21 +1314,28 @@ class RenderTest < ActionController::TestCase
   def test_partial_collection_with_spacer
     get :partial_collection_with_spacer
     assert_equal "Hello: davidonly partialHello: mary", @response.body
+    assert_template :partial => 'test/_partial_only'
+    assert_template :partial => '_customer'
   end
 
   def test_partial_collection_shorthand_with_locals
     get :partial_collection_shorthand_with_locals
     assert_equal "Bonjour: davidBonjour: mary", @response.body
+    assert_template :partial => 'customers/_customer', :count => 2
+    assert_template :partial => '_completely_fake_and_made_up_template_that_cannot_possibly_be_rendered', :count => 0
   end
 
   def test_partial_collection_shorthand_with_different_types_of_records
     get :partial_collection_shorthand_with_different_types_of_records
     assert_equal "Bonjour bad customer: mark0Bonjour good customer: craig1Bonjour bad customer: john2Bonjour good customer: zach3Bonjour good customer: brandon4Bonjour bad customer: dan5", @response.body
+    assert_template :partial => 'good_customers/_good_customer', :count => 3
+    assert_template :partial => 'bad_customers/_bad_customer', :count => 3
   end
 
   def test_empty_partial_collection
     get :empty_partial_collection
     assert_equal " ", @response.body
+    assert_template :partial => false
   end
 
   def test_partial_with_hash_object
@@ -1372,6 +1383,11 @@ class EtagRenderTest < ActionController::TestCase
   def setup
     @request.host = "www.nextangle.com"
     @expected_bang_etag = etag_for(expand_key([:foo, 123]))
+  end
+
+  def test_render_blank_body_shouldnt_set_etag
+    get :blank_response
+    assert !@response.etag?
   end
 
   def test_render_200_should_set_etag

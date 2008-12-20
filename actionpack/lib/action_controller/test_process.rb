@@ -166,7 +166,7 @@ module ActionController #:nodoc:
   module TestResponseBehavior #:nodoc:
     # The response code of the request
     def response_code
-      status[0,3].to_i rescue 0
+      status.to_s[0,3].to_i rescue 0
     end
 
     # Returns a String to ensure compatibility with Net::HTTPResponse
@@ -221,8 +221,8 @@ module ActionController #:nodoc:
 
     # Returns the template of the file which was used to
     # render this response (or nil)
-    def rendered_template
-      template.instance_variable_get(:@_first_render)
+    def rendered
+      template.instance_variable_get(:@_rendered)
     end
 
     # A shortcut to the flash. Returns an empty hash if no session flash exists.
@@ -232,7 +232,7 @@ module ActionController #:nodoc:
 
     # Do we have a flash?
     def has_flash?
-      !session['flash'].empty?
+      !flash.empty?
     end
 
     # Do we have a flash that has contents?
@@ -264,7 +264,12 @@ module ActionController #:nodoc:
     #
     #   assert_equal ['AuthorOfNewPage'], r.cookies['author'].value
     def cookies
-      headers['cookie'].inject({}) { |hash, cookie| hash[cookie.name] = cookie; hash }
+      cookies = {}
+      Array(headers['Set-Cookie']).each do |cookie|
+        key, value = cookie.split(";").first.split("=")
+        cookies[key] = [value].compact
+      end
+      cookies
     end
 
     # Returns binary content (downloadable file), converted to a String
@@ -285,8 +290,8 @@ module ActionController #:nodoc:
   # TestResponse, which represent the HTTP response results of the requested
   # controller actions.
   #
-  # See AbstractResponse for more information on controller response objects.
-  class TestResponse < AbstractResponse
+  # See Response for more information on controller response objects.
+  class TestResponse < Response
     include TestResponseBehavior
 
     def recycle!
@@ -413,7 +418,7 @@ module ActionController #:nodoc:
 
     def xml_http_request(request_method, action, parameters = nil, session = nil, flash = nil)
       @request.env['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest'
-      @request.env['HTTP_ACCEPT'] = 'text/javascript, text/html, application/xml, text/xml, */*'
+      @request.env['HTTP_ACCEPT'] =  [Mime::JS, Mime::HTML, Mime::XML, 'text/xml', Mime::ALL].join(', ')
       returning __send__(request_method, action, parameters, session, flash) do
         @request.env.delete 'HTTP_X_REQUESTED_WITH'
         @request.env.delete 'HTTP_ACCEPT'
@@ -430,7 +435,7 @@ module ActionController #:nodoc:
     end
 
     def session
-      @response.session
+      @request.session
     end
 
     def flash

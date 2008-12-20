@@ -39,7 +39,7 @@ module ActionController #:nodoc:
     }
 
     RESCUES_TEMPLATE_PATH = ActionView::PathSet::Path.new(
-      "#{File.dirname(__FILE__)}/templates", true)
+      File.join(File.dirname(__FILE__), "templates"), true)
 
     def self.included(base) #:nodoc:
       base.cattr_accessor :rescue_responses
@@ -102,9 +102,9 @@ module ActionController #:nodoc:
       # doesn't exist, the body of the response will be left empty.
       def render_optional_error_file(status_code)
         status = interpret_status(status_code)
-        path = "#{Rails.public_path}/#{status[0,3]}.html"
+        path = "#{Rails.public_path}/#{status.to_s[0,3]}.html"
         if File.exist?(path)
-          render :file => path, :status => status
+          render :file => path, :status => status, :content_type => Mime::HTML
         else
           head status
         end

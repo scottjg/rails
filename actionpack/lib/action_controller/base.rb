@@ -164,8 +164,8 @@ module ActionController #:nodoc:
   #
   # Other options for session storage are:
   #
-  # * ActiveRecordStore - Sessions are stored in your database, which works better than PStore with multiple app servers and,
-  #   unlike CookieStore, hides your session contents from the user. To use ActiveRecordStore, set
+  # * ActiveRecord::SessionStore - Sessions are stored in your database, which works better than PStore with multiple app servers and,
+  #   unlike CookieStore, hides your session contents from the user. To use ActiveRecord::SessionStore, set
   #
   #     config.action_controller.session_store = :active_record_store
   #
@@ -990,7 +990,7 @@ module ActionController #:nodoc:
         @performed_redirect = false
         response.redirected_to = nil
         response.redirected_to_method_params = nil
-        response.headers['Status'] = DEFAULT_RENDER_STATUS_CODE
+        response.status = DEFAULT_RENDER_STATUS_CODE
         response.headers.delete('Location')
       end
 
@@ -1160,9 +1160,7 @@ module ActionController #:nodoc:
       def reset_session #:doc:
         request.reset_session
         @_session = request.session
-        response.session = @_session
       end
-
 
     private
       def render_for_file(template_path, status = nil, layout = nil, locals = {}) #:nodoc:
@@ -1173,7 +1171,7 @@ module ActionController #:nodoc:
       def render_for_text(text = nil, status = nil, append_response = false) #:nodoc:
         @performed_render = true
 
-        response.headers['Status'] = interpret_status(status || DEFAULT_RENDER_STATUS_CODE)
+        response.status = interpret_status(status || DEFAULT_RENDER_STATUS_CODE)
 
         if append_response
           response.body ||= ''
@@ -1213,7 +1211,6 @@ module ActionController #:nodoc:
       def log_processing
         if logger && logger.info?
           log_processing_for_request_id
-          log_processing_for_session_id
           log_processing_for_parameters
         end
       end
@@ -1224,13 +1221,6 @@ module ActionController #:nodoc:
         request_id << "(for #{request_origin}) [#{request.method.to_s.upcase}]"
 
         logger.info(request_id)
-      end
-
-      def log_processing_for_session_id
-        if @_session && @_session.respond_to?(:session_id) && @_session.respond_to?(:dbman) &&
-            !@_session.dbman.is_a?(CGI::Session::CookieStore)
-          logger.info "  Session ID: #{@_session.session_id}"
-        end
       end
 
       def log_processing_for_parameters

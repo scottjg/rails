@@ -30,14 +30,6 @@ class SessionTest < Test::Unit::TestCase
     assert_raise(RuntimeError) { @session.follow_redirect! }
   end
 
-  def test_follow_redirect_calls_get_and_returns_status
-    @session.stubs(:redirect?).returns(true)
-    @session.stubs(:headers).returns({"location" => ["www.google.com"]})
-    @session.stubs(:status).returns(200)
-    @session.expects(:get)
-    assert_equal 200, @session.follow_redirect!
-  end
-
   def test_request_via_redirect_uses_given_method
     path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue"}
     @session.expects(:put).with(path, args, headers)
@@ -239,8 +231,6 @@ end
 
 class IntegrationProcessTest < ActionController::IntegrationTest
   class IntegrationController < ActionController::Base
-    session :off
-
     def get
       respond_to do |format|
         format.html { render :text => "OK", :status => 200 }
@@ -323,6 +313,10 @@ class IntegrationProcessTest < ActionController::IntegrationTest
       assert_equal "<html><body>You are being <a href=\"http://www.example.com/get\">redirected</a>.</body></html>", response.body
       assert_kind_of HTML::Document, html_document
       assert_equal 1, request_count
+
+      follow_redirect!
+      assert_response :success
+      assert_equal "/get", path
     end
   end
 
@@ -377,6 +371,37 @@ class IntegrationProcessTest < ActionController::IntegrationTest
         yield
       end
     end
+end
+
+class MetalTest < ActionController::IntegrationTest
+  class Poller
+    def self.call(env)
+      if env["PATH_INFO"] =~ /^\/success/
+        [200, {"Content-Type" => "text/plain"}, "Hello World!"]
+      else
+        [404, {"Content-Type" => "text/plain"}, '']
+      end
+    end
+  end
+
+  def setup
+    @integration_session = ActionController::Integration::Session.new(Poller)
+  end
+
+  def test_successful_get
+    get "/success"
+    assert_response 200
+    assert_response :success
+    assert_response :ok
+    assert_equal "Hello World!", response.body
+  end
+
+  def test_failed_get
+    get "/failure"
+    assert_response 404
+    assert_response :not_found
+    assert_equal '', response.body
+  end
 end
 
 end

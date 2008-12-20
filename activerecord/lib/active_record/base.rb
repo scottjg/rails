@@ -811,8 +811,7 @@ module ActiveRecord #:nodoc:
       #
       # ==== Parameters
       #
-      # * +updates+ - A string of column and value pairs that will be set on any records that match conditions.
-      #               What goes into the SET clause.
+      # * +updates+ - A string of column and value pairs that will be set on any records that match conditions. This creates the SET clause of the generated SQL.
       # * +conditions+ - An SQL fragment like "administrator = 1" or [ "user_name = ?", username ]. See conditions in the intro for more info.
       # * +options+ - Additional options are <tt>:limit</tt> and <tt>:order</tt>, see the examples for usage.
       #
@@ -1417,8 +1416,8 @@ module ActiveRecord #:nodoc:
       def benchmark(title, log_level = Logger::DEBUG, use_silence = true)
         if logger && logger.level <= log_level
           result = nil
-          seconds = Benchmark.realtime { result = use_silence ? silence { yield } : yield }
-          logger.add(log_level, "#{title} (#{'%.1f' % (seconds * 1000)}ms)")
+          ms = Benchmark.ms { result = use_silence ? silence { yield } : yield }
+          logger.add(log_level, '%s (%.1fms)' % [title, ms])
           result
         else
           yield
@@ -1829,7 +1828,7 @@ module ActiveRecord #:nodoc:
                   else
                     find(:#{finder}, options.merge(finder_options))
                   end
-                  #{'result || raise(RecordNotFound)' if bang}
+                  #{'result || raise(RecordNotFound, "Couldn\'t find #{name} with #{attributes.to_a.collect {|pair| "#{pair.first} = #{pair.second}"}.join(\', \')}")' if bang}
                 end
               }, __FILE__, __LINE__
               send(method_id, *arguments)
@@ -2052,10 +2051,10 @@ module ActiveRecord #:nodoc:
         end
 
         # Sets the default options for the model. The format of the
-        # <tt>method_scoping</tt> argument is the same as in with_scope.
+        # <tt>options</tt> argument is the same as in find.
         #
         #   class Person < ActiveRecord::Base
-        #     default_scope :find => { :order => 'last_name, first_name' }
+        #     default_scope :order => 'last_name, first_name'
         #   end
         def default_scope(options = {})
           self.default_scoping << { :find => options, :create => (options.is_a?(Hash) && options.has_key?(:conditions)) ? options[:conditions] : {} }
