@@ -621,6 +621,18 @@ module ActiveRecord
         end
       end
 
+      # Creates a schema for the given user
+      #
+      # Example:
+      #   create_schema('products', 'jim')
+      def create_schema(name, username)
+        query("CREATE SCHEMA #{name} AUTHORIZATION #{username}")
+      end
+      
+      # Returns an array of all schemas in the database
+      def all_schemas
+        query('SELECT schema_name FROM information_schema.schemata').flatten
+      end
 
       # Returns the list of all tables in the schema search path or a specified schema.
       def tables(name = nil)

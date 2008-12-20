@@ -16,6 +16,10 @@ class PostgresqlActiveSchemaTest < Test::Unit::TestCase
     assert_equal %(CREATE DATABASE "matt" ENCODING = 'utf8'), create_database(:matt)
     assert_equal %(CREATE DATABASE "aimonetti" ENCODING = 'latin1'), create_database(:aimonetti, :encoding => :latin1)
   end
+  
+  def test_create_schema
+    assert_equal %(CREATE SCHEMA "products" AUTHORIZATION "jim"), create_schema(:products, :jim)
+  end
 
   private
     def method_missing(method_symbol, *arguments)

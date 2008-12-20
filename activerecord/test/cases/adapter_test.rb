@@ -69,6 +69,10 @@ class AdapterTest < ActiveRecord::TestCase
     def test_encoding
       assert_not_nil @connection.encoding
     end
+    
+    def test_all_schemas
+      assert_equal @connection.all_schemas, %w{test_schema test_schema2}
+    end
   end
 
   def test_table_alias
