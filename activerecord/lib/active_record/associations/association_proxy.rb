@@ -274,6 +274,19 @@ module ActiveRecord
         def owner_quoted_id
           @owner.quoted_id
         end
+        
+        def set_inverse_instance(record, instance)
+          return if record.nil? || !we_can_set_the_inverse_on_this?(record)
+          inverse_relationship = @reflection.inverse
+          unless inverse_relationship.nil?
+            record.send(:"set_#{inverse_relationship}_target", instance)
+          end
+        end
+        
+        # Override in subclasses
+        def we_can_set_the_inverse_on_this?(record)
+          false
+        end
     end
   end
 end

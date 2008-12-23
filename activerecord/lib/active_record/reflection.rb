@@ -225,6 +225,10 @@ module ActiveRecord
         nil
       end
 
+      def inverse
+        @inverse ||= @options[:inverse]
+      end
+
       private
         def derive_class_name
           class_name = name.to_s.camelize

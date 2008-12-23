@@ -30,7 +30,9 @@ module ActiveRecord
           @owner[@reflection.primary_key_name] = record.id unless record.new_record?
           @updated = true
         end
-
+        
+        set_inverse_instance(record, @owner)
+        
         loaded
         record
       end
@@ -41,17 +43,31 @@ module ActiveRecord
       
       private
         def find_target
-          @reflection.klass.find(
+          the_target = @reflection.klass.find(
             @owner[@reflection.primary_key_name],
             :select     => @reflection.options[:select],
             :conditions => conditions,
             :include    => @reflection.options[:include],
             :readonly   => @reflection.options[:readonly]
           )
+          set_inverse_instance(the_target, @owner)
+          the_target
         end
 
         def foreign_key_present
           !@owner[@reflection.primary_key_name].nil?
+        end
+        
+        # NOTE - for now, we're only supporting inverse setting from belongs_to back onto
+        # has_one associations.
+        def we_can_set_the_inverse_on_this?(record)
+          inverse = @reflection.inverse
+          if inverse.nil?
+            false
+          else
+            inverse = record.class.reflect_on_association(inverse)
+            inverse && inverse.macro == :has_one
+          end
         end
     end
   end
