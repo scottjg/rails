@@ -3,25 +3,43 @@ require 'stringio'
 require 'strscan'
 
 require 'active_support/memoizable'
+require 'action_controller/cgi_ext'
 
 module ActionController
   # CgiRequest and TestRequest provide concrete implementations.
-  class AbstractRequest
+  class Request
     extend ActiveSupport::Memoizable
 
-    def self.relative_url_root=(relative_url_root)
-      ActiveSupport::Deprecation.warn(
-        "ActionController::AbstractRequest.relative_url_root= has been renamed." +
-        "You can now set it with config.action_controller.relative_url_root=", caller)
-      ActionController::Base.relative_url_root=relative_url_root
+    class SessionFixationAttempt < StandardError #:nodoc:
     end
-
-    HTTP_METHODS = %w(get head put post delete options)
-    HTTP_METHOD_LOOKUP = HTTP_METHODS.inject({}) { |h, m| h[m] = h[m.upcase] = m.to_sym; h }
 
     # The hash of environment variables for this request,
     # such as { 'RAILS_ENV' => 'production' }.
     attr_reader :env
+
+    def initialize(env)
+      @env = env
+    end
+
+    %w[ AUTH_TYPE GATEWAY_INTERFACE PATH_INFO
+        PATH_TRANSLATED REMOTE_HOST
+        REMOTE_IDENT REMOTE_USER SCRIPT_NAME
+        SERVER_NAME SERVER_PROTOCOL
+
+        HTTP_ACCEPT HTTP_ACCEPT_CHARSET HTTP_ACCEPT_ENCODING
+        HTTP_ACCEPT_LANGUAGE HTTP_CACHE_CONTROL HTTP_FROM
+        HTTP_NEGOTIATE HTTP_PRAGMA HTTP_REFERER HTTP_USER_AGENT ].each do |env|
+      define_method(env.sub(/^HTTP_/n, '').downcase) do
+        @env[env]
+      end
+    end
+
+    def key?(key)
+      @env.key?(key)
+    end
+
+    HTTP_METHODS = %w(get head put post delete options)
+    HTTP_METHOD_LOOKUP = HTTP_METHODS.inject({}) { |h, m| h[m] = h[m.upcase] = m.to_sym; h }
 
     # The true HTTP request \method as a lowercase symbol, such as <tt>:get</tt>.
     # UnknownHttpMethod is raised for invalid methods not listed in ACCEPTED_HTTP_METHODS.
@@ -248,7 +266,6 @@ EOM
     end
     memoize :server_software
 
-
     # Returns the complete URL used for this request.
     def url
       protocol + host_with_port + request_uri
@@ -332,11 +349,7 @@ EOM
 
     # Returns the query string, accounting for server idiosyncrasies.
     def query_string
-      if uri = @env['REQUEST_URI']
-        uri.split('?', 2)[1] || ''
-      else
-        @env['QUERY_STRING'] || ''
-      end
+      @env['QUERY_STRING'].present? ? @env['QUERY_STRING'] : (@env['REQUEST_URI'].split('?', 2)[1] || '')
     end
     memoize :query_string
 
@@ -430,7 +443,6 @@ EOM
     end
     alias referer referrer
 
-
     def query_parameters
       @query_parameters ||= self.class.parse_query_parameters(query_string)
     end
@@ -439,25 +451,36 @@ EOM
       @request_parameters ||= parse_formatted_request_parameters
     end
 
-
-    #--
-    # Must be implemented in the concrete request
-    #++
-
     def body_stream #:nodoc:
+      @env['rack.input']
     end
 
-    def cookies #:nodoc:
+    def cookies
+      Rack::Request.new(@env).cookies
     end
 
-    def session #:nodoc:
+    def session
+      @env['rack.session'] ||= {}
     end
 
     def session=(session) #:nodoc:
       @session = session
     end
 
-    def reset_session #:nodoc:
+    def reset_session
+      @env['rack.session'] = {}
+    end
+
+    def session_options
+      @env['rack.session.options'] ||= {}
+    end
+
+    def session_options=(options)
+      @env['rack.session.options'] = options
+    end
+
+    def server_port
+      @env['SERVER_PORT'].to_i
     end
 
     protected
