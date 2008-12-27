@@ -83,23 +83,31 @@ module Rails
 
     # Adds an entry into config/environment.rb for the supplied gem :
     def gem(name, options = {})
-      puts "adding gem #{name}"
+      env_config('gem', name, false, options)
+    end
 
+    def env_config(name, value, assign=true, options = {})
+      puts "adding config.#{name} entry #{value} with options: #{options.inspect}"  
+
+      config_entry = "config.#{name}"
+      config_entry << " =" if assign
+      config_entry << " #{value}"
+      
       sentinel = 'Rails::Initializer.run do |config|'
-      gems_code = "config.gem '#{name}'"
 
       if options.any?
         opts = options.inject([]) {|result, h| result << [":#{h[0]} => '#{h[1]}'"] }.join(", ")
-        gems_code << ", #{opts}"
+        config_entry << ", #{opts}"
       end
 
       in_root do
         gsub_file 'config/environment.rb', /(#{Regexp.escape(sentinel)})/mi do |match|
-          "#{match}\n  #{gems_code}"
+          "#{match}\n  #{config_entry}"
         end
       end
+      
     end
-
+    
     # Run a command in git.
     #
     # ==== Examples
@@ -271,7 +279,7 @@ module Rails
       puts "running rake task #{command}"
       env = options[:env] || 'development'
       sudo = options[:sudo] ? 'sudo ' : ''
-      in_root { `#{sudo}rake #{command} RAILS_ENV=#{env}` }
+      in_root { result = `#{sudo}rake #{command} RAILS_ENV=#{env}`; return result }
     end
 
     # Just run the capify command in root
