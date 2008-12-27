@@ -279,7 +279,7 @@ module Rails
       puts "running rake task #{command}"
       env = options[:env] || 'development'
       sudo = options[:sudo] ? 'sudo ' : ''
-      in_root { result = `#{sudo}rake --trace #{command} RAILS_ENV=#{env}`; return result }
+      in_root { result = `#{sudo}rake #{command} RAILS_ENV=#{env}`; return result }
     end
 
     # Just run the capify command in root
