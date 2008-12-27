@@ -1,17 +1,36 @@
+require 'active_support/ordered_hash'
+
 module Rails
   module Rack
     class Metal
-      def self.new(app)
-        apps = Dir["#{Rails.root}/app/metal/*.rb"].map do |file|
-          File.basename(file, '.rb').camelize.constantize
+      NotFoundResponse = [404, {}, []].freeze
+      NotFound = lambda { NotFoundResponse }
+
+      def self.metals
+        base = "#{Rails.root}/app/metal"
+        matcher = /\A#{Regexp.escape(base)}\/(.*)\.rb\Z/
+
+        Dir["#{base}/**/*.rb"].sort.map do |file|
+          file.sub!(matcher, '\1')
+          require file
+          file.classify.constantize
         end
-        apps << app
-        ::Rack::Cascade.new(apps)
       end
 
-      NotFound = lambda { |env|
-        [404, {"Content-Type" => "text/html"}, "Not Found"]
-      }
+      def initialize(app)
+        @app = app
+        @metals = ActiveSupport::OrderedHash.new
+        self.class.metals.each { |app| @metals[app] = true }
+        freeze
+      end
+
+      def call(env)
+        @metals.keys.each do |app|
+          result = app.call(env)
+          return result unless result[0].to_i == 404
+        end
+        @app.call(env)
+      end
     end
   end
 end

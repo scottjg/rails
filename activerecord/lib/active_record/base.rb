@@ -811,8 +811,7 @@ module ActiveRecord #:nodoc:
       #
       # ==== Parameters
       #
-      # * +updates+ - A string of column and value pairs that will be set on any records that match conditions.
-      #               What goes into the SET clause.
+      # * +updates+ - A string of column and value pairs that will be set on any records that match conditions. This creates the SET clause of the generated SQL.
       # * +conditions+ - An SQL fragment like "administrator = 1" or [ "user_name = ?", username ]. See conditions in the intro for more info.
       # * +options+ - Additional options are <tt>:limit</tt> and <tt>:order</tt>, see the examples for usage.
       #
@@ -1495,11 +1494,16 @@ module ActiveRecord #:nodoc:
           end
 
           if scoped?(:find, :order)
-            scoped_order = reverse_sql_order(scope(:find, :order))
-            scoped_methods.select { |s| s[:find].update(:order => scoped_order) }
+            scope = scope(:find)
+            original_scoped_order = scope[:order]
+            scope[:order] = reverse_sql_order(original_scoped_order)
           end
 
-          find_initial(options.merge({ :order => order }))
+          begin
+            find_initial(options.merge({ :order => order }))
+          ensure
+            scope[:order] = original_scoped_order if original_scoped_order
+          end
         end
 
         def reverse_sql_order(order_query)
@@ -3011,7 +3015,7 @@ module ActiveRecord #:nodoc:
   end
 
   Base.class_eval do
-    extend QueryCache
+    extend QueryCache::ClassMethods
     include Validations
     include Locking::Optimistic, Locking::Pessimistic
     include AttributeMethods

@@ -25,11 +25,16 @@ class CookieStoreTest < ActionController::IntegrationTest
 
     def set_session_value
       session[:foo] = "bar"
-      render :text => Marshal.dump(session.to_hash)
+      render :text => Verifier.generate(session.to_hash)
     end
 
     def get_session_value
       render :text => "foo: #{session[:foo].inspect}"
+    end
+
+    def call_reset_session
+      reset_session
+      head :ok
     end
 
     def raise_data_overflow
@@ -89,8 +94,7 @@ class CookieStoreTest < ActionController::IntegrationTest
     with_test_route_set do
       get '/set_session_value'
       assert_response :success
-      session_payload = Verifier.generate( Marshal.load(response.body) )
-      assert_equal ["_myapp_session=#{session_payload}; path=/"],
+      assert_equal ["_myapp_session=#{response.body}; path=/"],
         headers['Set-Cookie']
    end
   end
@@ -136,6 +140,25 @@ class CookieStoreTest < ActionController::IntegrationTest
       get '/no_session_access'
       assert_response :success
       assert_equal [], headers['Set-Cookie']
+    end
+  end
+
+  def test_setting_session_value_after_session_reset
+    with_test_route_set do
+      get '/set_session_value'
+      assert_response :success
+      session_payload = response.body
+      assert_equal ["_myapp_session=#{response.body}; path=/"],
+        headers['Set-Cookie']
+
+      get '/call_reset_session'
+      assert_response :success
+      assert_not_equal [], headers['Set-Cookie']
+      assert_not_equal session_payload, cookies[SessionKey]
+
+      get '/get_session_value'
+      assert_response :success
+      assert_equal 'foo: nil', response.body
     end
   end
 

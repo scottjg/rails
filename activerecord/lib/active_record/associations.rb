@@ -153,7 +153,7 @@ module ActiveRecord
     #   #others.destroy_all               |   X   |    X     |    X
     #   #others.find(*args)               |   X   |    X     |    X
     #   #others.find_first                |   X   |          |
-    #   #others.exist?                    |   X   |    X     |    X
+    #   #others.exists?                   |   X   |    X     |    X
     #   #others.uniq                      |   X   |    X     |    X
     #   #others.reset                     |   X   |    X     |    X
     #
@@ -652,7 +652,7 @@ module ActiveRecord
       #   Returns the number of associated objects.
       # [collection.find(...)]
       #   Finds an associated object according to the same rules as ActiveRecord::Base.find.
-      # [collection.exist?(...)]
+      # [collection.exists?(...)]
       #   Checks whether an associated object with the given conditions exists.
       #   Uses the same rules as ActiveRecord::Base.exists?.
       # [collection.build(attributes = {}, ...)]
@@ -682,7 +682,7 @@ module ActiveRecord
       # * <tt>Firm#clients.empty?</tt> (similar to <tt>firm.clients.size == 0</tt>)
       # * <tt>Firm#clients.size</tt> (similar to <tt>Client.count "firm_id = #{id}"</tt>)
       # * <tt>Firm#clients.find</tt> (similar to <tt>Client.find(id, :conditions => "firm_id = #{id}")</tt>)
-      # * <tt>Firm#clients.exist?(:name => 'ACME')</tt> (similar to <tt>Client.exist?(:name => 'ACME', :firm_id => firm.id)</tt>)
+      # * <tt>Firm#clients.exists?(:name => 'ACME')</tt> (similar to <tt>Client.exists?(:name => 'ACME', :firm_id => firm.id)</tt>)
       # * <tt>Firm#clients.build</tt> (similar to <tt>Client.new("firm_id" => id)</tt>)
       # * <tt>Firm#clients.create</tt> (similar to <tt>c = Client.new("firm_id" => id); c.save; c</tt>)
       # The declaration can also include an options hash to specialize the behavior of the association.
@@ -1107,7 +1107,7 @@ module ActiveRecord
       #   Finds an associated object responding to the +id+ and that
       #   meets the condition that it has to be associated with this object.
       #   Uses the same rules as ActiveRecord::Base.find.
-      # [collection.exist?(...)]
+      # [collection.exists?(...)]
       #   Checks whether an associated object with the given conditions exists.
       #   Uses the same rules as ActiveRecord::Base.exists?.
       # [collection.build(attributes = {})]
@@ -1133,7 +1133,7 @@ module ActiveRecord
       # * <tt>Developer#projects.empty?</tt>
       # * <tt>Developer#projects.size</tt>
       # * <tt>Developer#projects.find(id)</tt>
-      # * <tt>Developer#clients.exist?(...)</tt>
+      # * <tt>Developer#clients.exists?(...)</tt>
       # * <tt>Developer#projects.build</tt> (similar to <tt>Project.new("project_id" => id)</tt>)
       # * <tt>Developer#projects.create</tt> (similar to <tt>c = Project.new("project_id" => id); c.save; c</tt>)
       # The declaration may include an options hash to specialize the behavior of the association.
@@ -1453,7 +1453,7 @@ module ActiveRecord
             dependent_conditions << sanitize_sql(reflection.options[:conditions]) if reflection.options[:conditions]
             dependent_conditions << extra_conditions if extra_conditions
             dependent_conditions = dependent_conditions.collect {|where| "(#{where})" }.join(" AND ")
-
+            dependent_conditions = dependent_conditions.gsub('@', '\@')
             case reflection.options[:dependent]
               when :destroy
                 method_name = "has_many_dependent_destroy_for_#{reflection.name}".to_sym
@@ -1467,7 +1467,7 @@ module ActiveRecord
                     delete_all_has_many_dependencies(record,
                       "#{reflection.name}",
                       #{reflection.class_name},
-                      "#{dependent_conditions}")
+                      %@#{dependent_conditions}@)
                   end
                 }
               when :nullify
@@ -1477,7 +1477,7 @@ module ActiveRecord
                       "#{reflection.name}",
                       #{reflection.class_name},
                       "#{reflection.primary_key_name}",
-                      "#{dependent_conditions}")
+                      %@#{dependent_conditions}@)
                   end
                 }
               else
@@ -2198,7 +2198,7 @@ module ActiveRecord
             protected
 
               def aliased_table_name_for(name, suffix = nil)
-                if !parent.table_joins.blank? && parent.table_joins.to_s.downcase =~ %r{join(\s+\w+)?\s+#{name.downcase}\son}
+                if !parent.table_joins.blank? && parent.table_joins.to_s.downcase =~ %r{join(\s+\w+)?\s+#{active_record.connection.quote_table_name name.downcase}\son}
                   @join_dependency.table_aliases[name] += 1
                 end
 
