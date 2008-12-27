@@ -83,7 +83,7 @@ module Rails
 
     # Adds an entry into config/environment.rb for the supplied gem :
     def gem(name, options = {})
-      env_config('gem', name, false, options)
+      env_config('gem', "'#{name}'", false, options)
     end
 
     def env_config(name, value, assign=true, options = {})
@@ -279,7 +279,7 @@ module Rails
       puts "running rake task #{command}"
       env = options[:env] || 'development'
       sudo = options[:sudo] ? 'sudo ' : ''
-      in_root { result = `#{sudo}rake #{command} RAILS_ENV=#{env}`; return result }
+      in_root { result = `#{sudo}rake --trace #{command} RAILS_ENV=#{env}`; return result }
     end
 
     # Just run the capify command in root
