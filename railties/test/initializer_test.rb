@@ -1,13 +1,6 @@
 require 'abstract_unit'
 require 'initializer'
 
-# Mocks out the configuration
-module Rails
-  def self.configuration
-    Rails::Configuration.new
-  end
-end
-
 class ConfigurationMock < Rails::Configuration
   attr_reader :environment_path
 
@@ -35,14 +28,13 @@ class Initializer_eager_loading_Test < Test::Unit::TestCase
     @config.cache_classes = true
     @config.load_paths = [File.expand_path(File.dirname(__FILE__) + "/fixtures/eager")]
     @config.eager_load_paths = [File.expand_path(File.dirname(__FILE__) + "/fixtures/eager")]
-    @initializer = Rails::Initializer.new(@config)
-    @initializer.set_load_path
-    @initializer.set_autoload_paths
+    Rails::Initializer.run(:set_load_path, @config)
+    Rails::Initializer.run(:set_autoload_paths, @config)
   end
 
   def test_eager_loading_loads_parent_classes_before_children
     assert_nothing_raised do
-      @initializer.load_application_classes
+      Rails::Initializer.run(:load_application_classes, @config)
     end
   end
 end
@@ -59,8 +51,8 @@ uses_mocha 'Initializer after_initialize' do
       end
       assert_nil $test_after_initialize_block1
       assert_nil $test_after_initialize_block2
-
-      Rails::Initializer.any_instance.expects(:gems_dependencies_loaded).returns(true)
+      
+      config.expects(:gems_dependencies_loaded).returns(true)
       Rails::Initializer.run(:after_initialize, config)
     end
 
@@ -90,7 +82,7 @@ uses_mocha 'Initializer after_initialize' do
       end
       assert_nil $test_after_initialize_block1
 
-      Rails::Initializer.any_instance.expects(:gems_dependencies_loaded).returns(true)
+      config.expects(:gems_dependencies_loaded).returns(true)
       Rails::Initializer.run(:after_initialize, config)
     end
 
@@ -145,31 +137,27 @@ uses_mocha 'framework paths' do
 
     def test_unknown_framework_raises_error
       @config.frameworks << :action_foo
-      initializer = Rails::Initializer.new @config
-      initializer.expects(:require).raises(LoadError)
-
       assert_raise RuntimeError do
-        initializer.send :require_frameworks
+        Rails::Initializer.run(:require_frameworks, @config)
       end
     end
 
     def test_action_mailer_load_paths_set_only_if_action_mailer_in_use
       @config.frameworks = [:action_controller]
-      initializer = Rails::Initializer.new @config
-      initializer.send :require_frameworks
+      Rails::Initializer.run(:require_frameworks, @config)
 
       assert_nothing_raised NameError do
-        initializer.send :load_view_paths
+        Rails::Initializer.run(:load_view_paths, @config)
       end
     end
 
     def test_action_controller_load_paths_set_only_if_action_controller_in_use
       @config.frameworks = []
-      initializer = Rails::Initializer.new @config
-      initializer.send :require_frameworks
+      Rails::Initializer.run(:require_frameworks, @config)
+      Rails::Initializer.run(:initialize_framework_views, @config)
 
       assert_nothing_raised NameError do
-        initializer.send :load_view_paths
+        Rails::Initializer.run(:load_view_paths, @config)
       end
     end
 
@@ -188,65 +176,64 @@ uses_mocha "Initializer plugin loading tests" do
     def setup
       @configuration     = Rails::Configuration.new
       @configuration.plugin_paths << plugin_fixture_root_path
-      @initializer       = Rails::Initializer.new(@configuration)
       @valid_plugin_path = plugin_fixture_path('default/stubby')
       @empty_plugin_path = plugin_fixture_path('default/empty')
     end
 
     def test_no_plugins_are_loaded_if_the_configuration_has_an_empty_plugin_list
-      only_load_the_following_plugins! []
-      @initializer.load_plugins
-      assert_equal [], @initializer.loaded_plugins
+      @configuration.plugins = []
+      Rails::Initializer.run(:load_plugins, @configuration)
+      assert_equal [], @configuration.loaded_plugins
     end
 
     def test_only_the_specified_plugins_are_located_in_the_order_listed
       plugin_names = [:plugin_with_no_lib_dir, :acts_as_chunky_bacon]
-      only_load_the_following_plugins! plugin_names
+      @configuration.plugins = plugin_names
       load_plugins!
-      assert_plugins plugin_names, @initializer.loaded_plugins
+      assert_plugins plugin_names, Rails.configuration.loaded_plugins
     end
 
     def test_all_plugins_are_loaded_when_registered_plugin_list_is_untouched
       failure_tip = "It's likely someone has added a new plugin fixture without updating this list"
       load_plugins!
-      assert_plugins [:a, :acts_as_chunky_bacon, :engine, :gemlike, :plugin_with_no_lib_dir, :stubby], @initializer.loaded_plugins, failure_tip
+      assert_plugins [:a, :acts_as_chunky_bacon, :engine, :gemlike, :plugin_with_no_lib_dir, :stubby], Rails.configuration.loaded_plugins, failure_tip
     end
 
     def test_all_plugins_loaded_when_all_is_used
       plugin_names = [:stubby, :acts_as_chunky_bacon, :all]
-      only_load_the_following_plugins! plugin_names
+      @configuration.plugins = plugin_names
       load_plugins!
       failure_tip = "It's likely someone has added a new plugin fixture without updating this list"
-      assert_plugins [:stubby, :acts_as_chunky_bacon, :a, :engine, :gemlike, :plugin_with_no_lib_dir], @initializer.loaded_plugins, failure_tip
+      assert_plugins [:stubby, :acts_as_chunky_bacon, :a, :engine, :gemlike, :plugin_with_no_lib_dir], Rails.configuration.loaded_plugins, failure_tip
     end
 
     def test_all_plugins_loaded_after_all
       plugin_names = [:stubby, :all, :acts_as_chunky_bacon]
-      only_load_the_following_plugins! plugin_names
+      @configuration.plugins =  plugin_names
       load_plugins!
       failure_tip = "It's likely someone has added a new plugin fixture without updating this list"
-      assert_plugins [:stubby, :a, :engine, :gemlike, :plugin_with_no_lib_dir, :acts_as_chunky_bacon], @initializer.loaded_plugins, failure_tip
+      assert_plugins [:stubby, :a, :engine, :gemlike, :plugin_with_no_lib_dir, :acts_as_chunky_bacon], Rails.configuration.loaded_plugins, failure_tip
     end
 
     def test_plugin_names_may_be_strings
       plugin_names = ['stubby', 'acts_as_chunky_bacon', :a, :plugin_with_no_lib_dir]
-      only_load_the_following_plugins! plugin_names
+      @configuration.plugins =  plugin_names
       load_plugins!
       failure_tip = "It's likely someone has added a new plugin fixture without updating this list"
-      assert_plugins plugin_names, @initializer.loaded_plugins, failure_tip
+      assert_plugins plugin_names, Rails.configuration.loaded_plugins, failure_tip
     end
 
     def test_registering_a_plugin_name_that_does_not_exist_raises_a_load_error
-      only_load_the_following_plugins! [:stubby, :acts_as_a_non_existant_plugin]
+      @configuration.plugins = [:stubby, :acts_as_a_non_existant_plugin]
       assert_raises(LoadError) do
         load_plugins!
       end
     end
 
     def test_should_ensure_all_loaded_plugins_load_paths_are_added_to_the_load_path
-      only_load_the_following_plugins! [:stubby, :acts_as_chunky_bacon]
+      @configuration.plugins = [:stubby, :acts_as_chunky_bacon]
 
-      @initializer.add_plugin_load_paths
+      Rails::Initializer.run(:add_plugin_load_paths, @configuration)
 
       assert $LOAD_PATH.include?(File.join(plugin_fixture_path('default/stubby'), 'lib'))
       assert $LOAD_PATH.include?(File.join(plugin_fixture_path('default/acts/acts_as_chunky_bacon'), 'lib'))
@@ -256,8 +243,8 @@ uses_mocha "Initializer plugin loading tests" do
     private
 
       def load_plugins!
-        @initializer.add_plugin_load_paths
-        @initializer.load_plugins
+        Rails::Initializer.run(:add_plugin_load_paths, @configuration)
+        Rails::Initializer.run(:load_plugins, @configuration)
       end
   end
 end

@@ -5,13 +5,14 @@ uses_mocha "Plugin Locator Tests" do
   class PluginLocatorTest < Test::Unit::TestCase
   
     def test_should_require_subclasses_to_implement_the_plugins_method
+      Rails.configuration = nil
       assert_raises(RuntimeError) do
-        Rails::Plugin::Locator.new(nil).plugins
+        Rails::Plugin::Locator.new.plugins
       end
     end
   
     def test_should_iterator_over_plugins_returned_by_plugins_when_calling_each
-      locator = Rails::Plugin::Locator.new(nil)
+      locator = Rails::Plugin::Locator.new
       locator.stubs(:plugins).returns([:a, :b, :c])
       plugin_consumer = mock
       plugin_consumer.expects(:consume).with(:a)
@@ -25,15 +26,14 @@ uses_mocha "Plugin Locator Tests" do
   
   end
 
-
   class PluginFileSystemLocatorTest < Test::Unit::TestCase
     def setup
       @configuration = Rails::Configuration.new
+      Rails.configuration = @configuration
       # We need to add our testing plugin directory to the plugin paths so
       # the locator knows where to look for our plugins
       @configuration.plugin_paths << plugin_fixture_root_path
-      @initializer       = Rails::Initializer.new(@configuration)
-      @locator           = Rails::Plugin::FileSystemLocator.new(@initializer)
+      @locator           = Rails::Plugin::FileSystemLocator.new
       @valid_plugin_path = plugin_fixture_path('default/stubby')
       @empty_plugin_path = plugin_fixture_path('default/empty')
     end

@@ -13,10 +13,7 @@ module Rails
       # It is the loader's responsibility to ensure that only the plugins specified
       # in the configuration are actually loaded, and that the order defined
       # is respected.
-      def initialize(initializer)
-        @initializer = initializer
-      end
-      
+
       # Returns the plugins to be loaded, in the order they should be loaded.
       def plugins
         @plugins ||= all_plugins.select { |plugin| should_load?(plugin) }.sort { |p1, p2| order_plugins(p1, p2) }
@@ -32,7 +29,7 @@ module Rails
         @all_plugins ||= locate_plugins
         @all_plugins
       end
-    
+      
       def load_plugins
         plugins.each do |plugin| 
           plugin.load(initializer)
@@ -94,17 +91,17 @@ module Rails
         # find the set of all plugins available to this Rails application.
         def locate_plugins
           configuration.plugin_locators.map do |locator|
-            locator.new(initializer).plugins
+            locator.new.plugins
           end.flatten
           # TODO: sorting based on config.plugins
         end
 
         def register_plugin_as_loaded(plugin)
-          initializer.loaded_plugins << plugin
+          configuration.loaded_plugins << plugin
         end
 
         def configuration
-          initializer.configuration
+          Rails.configuration
         end
         
         def should_load?(plugin)
@@ -169,7 +166,7 @@ module Rails
         end
         
         def loaded?(plugin_name)
-          initializer.loaded_plugins.detect { |plugin| plugin.name == plugin_name.to_s }
+          configuration.loaded_plugins.detect { |plugin| plugin.name == plugin_name.to_s }
         end
         
         def ensure_all_registered_plugins_are_loaded!

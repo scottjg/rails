@@ -7,12 +7,6 @@ module Rails
     class Locator
       include Enumerable
       
-      attr_reader :initializer
-      
-      def initialize(initializer)
-        @initializer = initializer
-      end
-      
       # This method should return all the plugins which this Plugin::Locator can find
       # These will then be used by the current Plugin::Loader, which is responsible for actually
       # loading the plugins themselves
@@ -40,7 +34,7 @@ module Rails
       # Returns all the plugins which can be loaded in the filesystem, under the paths given
       # by configuration.plugin_paths.
       def plugins
-        initializer.configuration.plugin_paths.flatten.inject([]) do |plugins, path|
+        Rails.configuration.plugin_paths.flatten.inject([]) do |plugins, path|
           plugins.concat locate_plugins_under(path)
           plugins
         end.flatten
@@ -78,7 +72,7 @@ module Rails
     # a <tt>rails/init.rb</tt> file.
     class GemLocator < Locator
       def plugins
-        gem_index = initializer.configuration.gems.inject({}) { |memo, gem| memo.update gem.specification => gem }
+        gem_index = Rails.configuration.gems.inject({}) { |memo, gem| memo.update gem.specification => gem }
         specs     = gem_index.keys
         specs    += Gem.loaded_specs.values.select do |spec|
           spec.loaded_from && # prune stubs

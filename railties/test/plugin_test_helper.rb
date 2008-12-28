@@ -16,7 +16,7 @@ class Test::Unit::TestCase
     end
   
     def only_load_the_following_plugins!(plugins)
-      @initializer.configuration.plugins = plugins
+      Rails.configuration.plugins = plugins
     end
   
     def plugin_fixture_path(path)

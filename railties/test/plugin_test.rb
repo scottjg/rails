@@ -5,7 +5,7 @@ uses_mocha "Plugin Tests" do
   class PluginTest < Test::Unit::TestCase
 
     def setup
-      @initializer         = Rails::Initializer.new(Rails::Configuration.new)
+      Rails.configuration  = Rails::Configuration.new
       @valid_plugin_path   = plugin_fixture_path('default/stubby')
       @empty_plugin_path   = plugin_fixture_path('default/empty')
       @gemlike_plugin_path = plugin_fixture_path('default/gemlike')

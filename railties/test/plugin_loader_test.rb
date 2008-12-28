@@ -3,28 +3,21 @@ require 'plugin_test_helper'
 $:.unshift File.dirname(__FILE__) + "/../../actionpack/lib"
 require 'action_controller'
 
-# Mocks out the configuration
-module Rails
-  def self.configuration
-    Rails::Configuration.new
-  end
-end
-
 class TestPluginLoader < Test::Unit::TestCase
   ORIGINAL_LOAD_PATH = $LOAD_PATH.dup
 
   def setup
     reset_load_path!
 
-    @configuration     = Rails::Configuration.new
+    @configuration      = Rails::Configuration.new
+    Rails.configuration = @configuration
     @configuration.plugin_paths << plugin_fixture_root_path
-    @initializer       = Rails::Initializer.new(@configuration)
     @valid_plugin_path = plugin_fixture_path('default/stubby')
     @empty_plugin_path = plugin_fixture_path('default/empty')
 
     @failure_tip = "It's likely someone has added a new plugin fixture without updating this list"
 
-    @loader = Rails::Plugin::Loader.new(@initializer)
+    @loader = Rails::Plugin::Loader.new
   end
 
   def test_should_locate_plugins_by_asking_each_locator_specifed_in_configuration_for_its_plugins_result
@@ -36,11 +29,11 @@ class TestPluginLoader < Test::Unit::TestCase
     assert_equal [:a, :b, :c, :d, :e, :f], @loader.send(:locate_plugins)
   end
 
+  require 'ruby-debug'
   def test_should_memoize_the_result_of_locate_plugins_as_all_plugins
     plugin_list = [:a, :b, :c]
     @loader.expects(:locate_plugins).once.returns(plugin_list)
     assert_equal plugin_list, @loader.all_plugins
-    assert_equal plugin_list, @loader.all_plugins # ensuring that locate_plugins isn't called again
   end
 
   def test_should_return_empty_array_if_configuration_plugins_is_empty
@@ -63,38 +56,38 @@ class TestPluginLoader < Test::Unit::TestCase
 
   def test_should_return_specific_plugins_named_in_config_plugins_array_if_set
     plugin_names = [:acts_as_chunky_bacon, :stubby]
-    only_load_the_following_plugins! plugin_names
+    @configuration.plugins = plugin_names
     assert_plugins plugin_names, @loader.plugins
   end
 
   def test_should_respect_the_order_of_plugins_given_in_configuration
     plugin_names = [:stubby, :acts_as_chunky_bacon]
-    only_load_the_following_plugins! plugin_names
+    @configuration.plugins = plugin_names
     assert_plugins plugin_names, @loader.plugins
   end
 
   def test_should_load_all_plugins_in_natural_order_when_all_is_used
-    only_load_the_following_plugins! [:all]
+    @configuration.plugins = [:all]
     assert_plugins [:a, :acts_as_chunky_bacon, :engine, :gemlike, :plugin_with_no_lib_dir, :stubby], @loader.plugins, @failure_tip
   end
 
   def test_should_load_specified_plugins_in_order_and_then_all_remaining_plugins_when_all_is_used
-    only_load_the_following_plugins! [:stubby, :acts_as_chunky_bacon, :all]
+    @configuration.plugins = [:stubby, :acts_as_chunky_bacon, :all]
     assert_plugins [:stubby, :acts_as_chunky_bacon, :a, :engine, :gemlike, :plugin_with_no_lib_dir], @loader.plugins, @failure_tip
   end
 
   def test_should_be_able_to_specify_loading_of_plugins_loaded_after_all
-    only_load_the_following_plugins!  [:stubby, :all, :acts_as_chunky_bacon]
+    @configuration.plugins =  [:stubby, :all, :acts_as_chunky_bacon]
     assert_plugins [:stubby, :a, :engine, :gemlike, :plugin_with_no_lib_dir, :acts_as_chunky_bacon], @loader.plugins, @failure_tip
   end
 
   def test_should_accept_plugin_names_given_as_strings
-    only_load_the_following_plugins! ['stubby', 'acts_as_chunky_bacon', :a, :plugin_with_no_lib_dir]
+    @configuration.plugins = ['stubby', 'acts_as_chunky_bacon', :a, :plugin_with_no_lib_dir]
     assert_plugins [:stubby, :acts_as_chunky_bacon, :a, :plugin_with_no_lib_dir], @loader.plugins, @failure_tip
   end
 
   def test_should_add_plugin_load_paths_to_global_LOAD_PATH_array
-    only_load_the_following_plugins! [:stubby, :acts_as_chunky_bacon]
+    @configuration.plugins = [:stubby, :acts_as_chunky_bacon]
     stubbed_application_lib_index_in_LOAD_PATHS = 4
     @loader.stubs(:application_lib_index).returns(stubbed_application_lib_index_in_LOAD_PATHS)
 
@@ -105,7 +98,7 @@ class TestPluginLoader < Test::Unit::TestCase
   end
 
   def test_should_add_plugin_load_paths_to_Dependencies_load_paths
-    only_load_the_following_plugins! [:stubby, :acts_as_chunky_bacon]
+    @configuration.plugins = [:stubby, :acts_as_chunky_bacon]
 
     @loader.add_plugin_load_paths
 
@@ -114,7 +107,7 @@ class TestPluginLoader < Test::Unit::TestCase
   end
 
   def test_should_add_engine_load_paths_to_Dependencies_load_paths
-    only_load_the_following_plugins! [:engine]
+    @configuration.plugins = [:engine]
 
     @loader.add_plugin_load_paths
 
@@ -126,7 +119,7 @@ class TestPluginLoader < Test::Unit::TestCase
   end
   
   def test_engine_controllers_should_have_their_view_path_set_when_loaded
-    only_load_the_following_plugins!([ :engine ])
+    @configuration.plugins = [ :engine ]
 
     @loader.send :add_engine_view_paths
     
@@ -134,7 +127,7 @@ class TestPluginLoader < Test::Unit::TestCase
   end
 
   def test_should_add_plugin_load_paths_to_Dependencies_load_once_paths
-    only_load_the_following_plugins! [:stubby, :acts_as_chunky_bacon]
+    @configuration.plugins = [:stubby, :acts_as_chunky_bacon]
 
     @loader.add_plugin_load_paths
 

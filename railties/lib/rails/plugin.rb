@@ -137,7 +137,7 @@ module Rails
         if has_init_file?
           silence_warnings do
             # Allow plugins to reference the current configuration object
-            config = initializer.configuration
+            config = Rails.configuration
             
             eval(IO.read(init_path), binding, init_path)
           end

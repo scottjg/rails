@@ -4,6 +4,7 @@
 RAILS_ROOT = "#{File.dirname(__FILE__)}/.." unless defined?(RAILS_ROOT)
 
 module Rails
+  
   class << self
     def boot!
       unless booted?
@@ -11,7 +12,7 @@ module Rails
         pick_boot.run
       end
     end
-
+    
     def booted?
       defined? Rails::Initializer
     end
@@ -99,6 +100,7 @@ module Rails
 
       private
         def read_environment_rb
+          puts "GOING TO READ THE ENV #{RAILS_ROOT}/config/environment.rb"
           File.read("#{RAILS_ROOT}/config/environment.rb")
         end
     end

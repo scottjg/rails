@@ -47,7 +47,7 @@ end
 FileUtils.mkdir_p RAILS_ROOT
 
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../../lib"
-require 'initializer'
+require "initializer"
 
 # Mocks out the configuration
 module Rails
