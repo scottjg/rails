@@ -105,6 +105,9 @@ $ sudo aptitude install sqlite sqlite3 libsqlite-dev libsqlite3-dev
 $ sudo aptitude install postgresql postgresql-server-dev-8.3
 $ sudo su - postgres -c 'createuser -s ci'
 
+* Install fcgi libraries
+$ sudo apt-get install libfcgi-dev
+
 * Install and run GemInstaller to get all dependency gems
 $ sudo gem install geminstaller
 $ cd ~/.cruise/projects/rails/work
