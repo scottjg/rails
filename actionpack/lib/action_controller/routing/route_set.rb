@@ -145,10 +145,10 @@ module ActionController
           def define_hash_access(route, name, kind, options)
             selector = hash_access_name(name, kind)
             named_helper_module_eval <<-end_eval # We use module_eval to avoid leaks
-              def #{selector}(options = nil)
-                options ? #{options.inspect}.merge(options) : #{options.inspect}
-              end
-              protected :#{selector}
+              def #{selector}(options = nil)                                      # def hash_for_users_url(options = nil)
+                options ? #{options.inspect}.merge(options) : #{options.inspect}  #   options ? {:only_path=>false}.merge(options) : {:only_path=>false}
+              end                                                                 # end
+              protected :#{selector}                                              # protected :hash_for_users_url
             end_eval
             helpers << selector
           end
@@ -173,46 +173,39 @@ module ActionController
             #   foo_url(bar, baz, bang, :sort_by => 'baz')
             #
             named_helper_module_eval <<-end_eval # We use module_eval to avoid leaks
-              def #{selector}(*args)
-
-                #{generate_optimisation_block(route, kind)}
-
-                opts = if args.empty? || Hash === args.first
-                  args.first || {}
-                else
-                  options = args.extract_options!
-                  args = args.zip(#{route.segment_keys.inspect}).inject({}) do |h, (v, k)|
-                    h[k] = v
-                    h
-                  end
-                  options.merge(args)
-                end
-
-                url_for(#{hash_access_method}(opts))
-                
-              end
-              #Add an alias to support the now deprecated formatted_* URL.
-              def formatted_#{selector}(*args)
-                ActiveSupport::Deprecation.warn(
-                  "formatted_#{selector}() has been deprecated. please pass format to the standard" +
-                  "#{selector}() method instead.", caller)
-                #{selector}(*args)
-              end
-              #Add an alias to the formatted_* URL, which is no longer created a separate route.
-              alias_method :formatted_#{selector}, :#{selector}              
-              protected :#{selector}
+              def #{selector}(*args)                                                        # def users_url(*args)
+                                                                                            #
+                #{generate_optimisation_block(route, kind)}                                 #   #{generate_optimisation_block(route, kind)}
+                                                                                            #
+                opts = if args.empty? || Hash === args.first                                #   opts = if args.empty? || Hash === args.first
+                  args.first || {}                                                          #     args.first || {}
+                else                                                                        #   else
+                  options = args.extract_options!                                           #     options = args.extract_options!
+                  args = args.zip(#{route.segment_keys.inspect}).inject({}) do |h, (v, k)|  #     args = args.zip([]).inject({}) do |h, (v, k)|
+                    h[k] = v                                                                #       h[k] = v
+                    h                                                                       #       h
+                  end                                                                       #     end
+                  options.merge(args)                                                       #     options.merge(args)
+                end                                                                         #   end
+                                                                                            #
+                url_for(#{hash_access_method}(opts))                                        #   url_for(hash_for_users_url(opts))
+                                                                                            #
+              end                                                                           # end
+              #Add an alias to support the now deprecated formatted_* URL.                  # #Add an alias to support the now deprecated formatted_* URL.
+              def formatted_#{selector}(*args)                                              # def formatted_users_url(*args)
+                ActiveSupport::Deprecation.warn(                                            #   ActiveSupport::Deprecation.warn(
+                  "formatted_#{selector}() has been deprecated. " +                         #     "formatted_users_url() has been deprecated. " +
+                  "please pass format to the standard" +                                    #     "please pass format to the standard" +
+                  "#{selector}() method instead.", caller)                                  #     "users_url() method instead.", caller)
+                #{selector}(*args)                                                          #   users_url(*args)
+              end                                                                           # end
+              protected :#{selector}                                                        # protected :users_url
             end_eval
             helpers << selector
           end
       end
 
       attr_accessor :routes, :named_routes, :configuration_files
-
-      DEFAULT_ROUTE = ":controller/:action/:id".freeze
-
-      INDEX = 'index'.freeze
-
-      FORWARD_SLASH = '/'.freeze
 
       def initialize
         self.configuration_files = []
@@ -293,7 +286,7 @@ module ActionController
           configuration_files.each { |config| load(config) }
           @routes_last_modified = routes_changed_at
         else
-          add_route DEFAULT_ROUTE
+          add_route ":controller/:action/:id"
         end
       end
       
@@ -336,7 +329,7 @@ module ActionController
         # great fun, eh?
 
         options_as_params = options.clone
-        options_as_params[:action] ||= INDEX if options[:controller]
+        options_as_params[:action] ||= 'index' if options[:controller]
         options_as_params[:action] = options_as_params[:action].to_s if options_as_params[:action]
         options_as_params
       end
@@ -377,10 +370,10 @@ module ActionController
         # on admin/get, and the new controller is 'set', the new controller
         # should really be admin/set.
         if !named_route && expire_on[:controller] && options[:controller] && options[:controller][0] != ?/
-          old_parts = recall[:controller].split( FORWARD_SLASH )
-          new_parts = options[:controller].split( FORWARD_SLASH )
+          old_parts = recall[:controller].split('/')
+          new_parts = options[:controller].split('/')
           parts = old_parts[0..-(new_parts.length + 1)] + new_parts
-          options[:controller] = parts.join( FORWARD_SLASH )
+          options[:controller] = parts.join('/')
         end
 
         # drop the leading '/' on the controller name
@@ -395,8 +388,8 @@ module ActionController
             return path
           end
         else
-          merged[:action] ||= INDEX
-          options[:action] ||= INDEX
+          merged[:action] ||= 'index'
+          options[:action] ||= 'index'
 
           controller = merged[:controller]
           action = merged[:action]
@@ -434,6 +427,12 @@ module ActionController
         end
       end
 
+      def call(env)
+        request = Request.new(env)
+        app = Routing::Routes.recognize(request)
+        app.call(env).to_a
+      end
+
       def recognize(request)
         params = recognize_path(request.path, extract_request_environment(request))
         request.path_parameters = params.with_indifferent_access
@@ -458,7 +457,7 @@ module ActionController
         raise "Need controller and action!" unless controller && action
         controller = merged[:controller]
         merged = options if expire_on[:controller]
-        action = merged[:action] || INDEX
+        action = merged[:action] || 'index'
 
         routes_by_controller[controller][action][merged.keys]
       end
