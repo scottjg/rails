@@ -147,14 +147,10 @@ module ActionController #:nodoc:
       def self.generate_method_for_mime(mime)
         sym = mime.is_a?(Symbol) ? mime : mime.to_sym
         const = sym.to_s.upcase
-        class_eval <<-RUBY
-          def #{sym}(&block)                          # def html(&block)
-            if Mime::SET.include?(Mime::#{const})     #   if Mime::Set.include?(Mime::HTML)
-              custom(Mime::#{const}, &block)          #     custom(Mime::HTML, &block)
-            else                                      #   else
-              super                                   #     super
-            end                                       #   end
-          end                                         # end
+        class_eval <<-RUBY, __FILE__, __LINE__ + 1
+          def #{sym}(&block)                # def html(&block)
+            custom(Mime::#{const}, &block)  #   custom(Mime::HTML, &block)
+          end                               # end
         RUBY
       end
 
