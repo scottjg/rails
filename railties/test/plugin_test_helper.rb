@@ -2,7 +2,7 @@ $:.unshift File.dirname(__FILE__) + "/../lib"
 $:.unshift File.dirname(__FILE__) + "/../../activesupport/lib"
 
 require 'test/unit'
-require 'active_support'
+require 'active_support'; require 'active_support/all'
 require 'initializer'
 require File.join(File.dirname(__FILE__), 'abstract_unit')
 

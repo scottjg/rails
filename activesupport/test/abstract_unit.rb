@@ -4,7 +4,7 @@ gem 'mocha', '>= 0.9.3'
 require 'mocha'
 
 $:.unshift "#{File.dirname(__FILE__)}/../lib"
-require 'active_support'
+require 'active_support'; require 'active_support/all'
 require 'active_support/test_case'
 
 def uses_memcached(test_name)

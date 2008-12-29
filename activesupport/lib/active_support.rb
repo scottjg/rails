@@ -50,10 +50,3 @@ module ActiveSupport
   autoload :TimeZone, 'active_support/values/time_zone'
   autoload :XmlMini, 'active_support/xml_mini'
 end
-
-require 'active_support/vendor'
-require 'active_support/core_ext'
-require 'active_support/dependencies'
-require 'active_support/json'
-
-I18n.load_path << "#{File.dirname(__FILE__)}/active_support/locale/en.yml"

@@ -4,7 +4,7 @@ require 'rubygems'
 require 'test/unit'
 require 'mocha'
 require 'i18n'
-require 'active_support'
+require 'active_support'; require 'active_support/all'
 
 class I18nExceptionsTest < Test::Unit::TestCase
   def test_invalid_locale_stores_locale

@@ -6,7 +6,7 @@ begin
 rescue Gem::LoadError
   $:.unshift "#{File.dirname(__FILE__)}/vendor/builder-2.1.2"
 end
-require 'builder'
+require "builder"
 
 begin
   gem 'memcache-client', '~> 1.5.0.5'

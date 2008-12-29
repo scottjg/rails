@@ -3,7 +3,7 @@ $:.unshift File.dirname(__FILE__) + "/../builtin/rails_info"
 $:.unshift File.dirname(__FILE__) + "/../../activesupport/lib"
 
 require 'test/unit'
-require 'active_support'
+require 'active_support'; require 'active_support/all'
 
 unless defined?(Rails) && defined?(Rails::Info)
   module Rails
