@@ -2,6 +2,8 @@
 gems:
 - name: geminstaller
   version: >= 0.4.3
+- name: fcgi
+  version: >= 0.8.7
 # - name: mocha
 #   version: > 0.9.3 # 0.9.3 has bugs, need to force a higher version to exist
 - name: floehopper-mocha  # use this beta github version until a fixed version > 0.9.3 is released on rubyforge
