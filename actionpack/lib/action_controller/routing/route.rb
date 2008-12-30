@@ -197,7 +197,10 @@ module ActionController
         # Write and compile a +recognize+ method for this Route.
         def write_recognition!
           # Create an if structure to extract the params from a match if it occurs.
-          body = "params = parameter_shell.dup\n#{recognition_extraction * "\n"}\nparams"
+          body = "params = parameter_shell.dup\n#{recognition_extraction * "\n"}\n"
+          body << "params[:namespace] = '#{requirements[:namespace]}' if params[:controller]\n" if requirements[:namespace]
+          body << "params"
+          
           body = "if #{recognition_conditions.join(" && ")}\n#{body}\nend"
 
           # Build the method declaration and compile it

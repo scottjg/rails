@@ -122,7 +122,7 @@ module ActionController
       attr_reader :key
 
       # TODO: Convert these accessors to read only
-      attr_accessor :default, :regexp
+      attr_accessor :default, :regexp, :namespace
 
       def initialize(key = nil, options = {})
         super()
@@ -130,6 +130,7 @@ module ActionController
         @default = options[:default] if options.key?(:default)
         @regexp = options[:regexp] if options.key?(:regexp)
         @is_optional = true if options[:optional] || options.key?(:default)
+        @namespace = options.key?(:namespace) ? options[:namespace] : nil
       end
 
       def to_s
@@ -241,6 +242,15 @@ module ActionController
     class ControllerSegment < DynamicSegment #:nodoc:
       def regexp_chunk
         possible_names = Routing.possible_controllers.collect { |name| Regexp.escape name }
+        if namespace
+          namespaced_names = []
+          possible_names.each do |name|
+            if name.start_with? namespace
+              namespaced_names << name.gsub(/^#{namespace}[\/]?/, '') 
+            end 
+          end
+          possible_names = possible_names | namespaced_names
+        end
         "(?i-:(#{(regexp || Regexp.union(*possible_names)).source}))"
       end
 

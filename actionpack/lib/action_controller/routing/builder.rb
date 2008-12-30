@@ -19,11 +19,11 @@ module ActionController
       # to be set separately, via the +assign_route_options+ method, and the
       # <tt>optional?</tt> method for each segment will not be reliable until after
       # +assign_route_options+ is called, as well.
-      def segments_for_route_path(path)
+      def segments_for_route_path(path, options = {})
         rest, segments = path, []
 
         until rest.empty?
-          segment, rest = segment_for(rest)
+          segment, rest = segment_for(rest, options)
           segments << segment
         end
         segments
@@ -31,14 +31,14 @@ module ActionController
 
       # A factory method that returns a new segment instance appropriate for the
       # format of the given string.
-      def segment_for(string)
+      def segment_for(string, options = {})
         segment =
           case string
             when  /\A\.(:format)?\// 
               OptionalFormatSegment.new
             when /\A:(\w+)/
               key = $1.to_sym
-              key == :controller ? ControllerSegment.new(key) : DynamicSegment.new(key)
+              key == :controller ? ControllerSegment.new(key, options) : DynamicSegment.new(key)
             when /\A\*(\w+)/
               PathSegment.new($1.to_sym, :optional => true)
             when /\A\?(.*?)\?/
@@ -57,8 +57,8 @@ module ActionController
       def divide_route_options(segments, options)
         options = options.except(:path_prefix, :name_prefix)
 
-        if options[:namespace]
-          options[:controller] = "#{options.delete(:namespace).sub(/\/$/, '')}/#{options[:controller]}"
+        if options[:namespace] 
+          options[:controller] = "#{options.delete(:namespace).sub(/\/$/, '')}/#{options[:controller]}" if options[:controller]
         end
 
         requirements = (options.delete(:requirements) || {}).dup
@@ -161,7 +161,7 @@ module ActionController
 
         path = "/#{options[:path_prefix].to_s.gsub(/^\//,'')}#{path}" if options[:path_prefix]
 
-        segments = segments_for_route_path(path)
+        segments = segments_for_route_path(path, options)
         defaults, requirements, conditions = divide_route_options(segments, options)
         requirements = assign_route_options(segments, defaults, requirements)
 

@@ -2084,6 +2084,26 @@ uses_mocha 'LegacyRouteSet, Route, RouteSet and RouteLoading' do
     ensure
       Object.send(:remove_const, :Api)
     end
+    
+    def test_namespaced_defaults
+      Object.const_set(:Api, Module.new { |m| m.const_set(:ProductsController, Class.new) })
+      
+      ActionController::Routing.with_controllers(['api/products']) do
+        set.draw do |map|
+          map.namespace 'api' do |api|
+            api.connect ':controller/:action/:id'
+          end
+        end
+      
+        request.env["REQUEST_METHOD"] = "GET"
+        request.path = "/api/products/index"
+        assert_nothing_raised { set.recognize(request) }
+        request.path = "/api/products/show/1"
+        assert_nothing_raised { set.recognize(request) }
+      end
+    ensure
+      Object.send(:remove_const, :Api)
+    end
 
     def test_namespace_with_path_prefix
       Object.const_set(:Api, Module.new { |m| m.const_set(:ProductsController, Class.new) })

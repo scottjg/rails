@@ -436,7 +436,11 @@ module ActionController
       def recognize(request)
         params = recognize_path(request.path, extract_request_environment(request))
         request.path_parameters = params.with_indifferent_access
-        "#{params[:controller].camelize}Controller".constantize
+        controller = params[:controller]
+        if params[:namespace]
+          controller = params[:namespace] + controller unless controller.start_with? params[:namespace]
+        end
+        "#{controller.camelize}Controller".constantize
       end
 
       def recognize_path(path, environment={})
