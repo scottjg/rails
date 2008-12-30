@@ -38,13 +38,12 @@ cd "#{root_dir}/activerecord" do
   build_results[:activerecord_postgresql8] = system 'rake test_postgresql'
 end
 
-# Sqlite2 is disabled until tests are fixed
-# cd "#{root_dir}/activerecord" do
-#  puts
-#  puts "[CruiseControl] Building ActiveRecord with SQLite 2"
-#  puts
-#  build_results[:activerecord_sqlite] = system 'rake test_sqlite'
-# end
+cd "#{root_dir}/activerecord" do
+ puts
+ puts "[CruiseControl] Building ActiveRecord with SQLite 2"
+ puts
+ build_results[:activerecord_sqlite] = system 'rake test_sqlite'
+end
 
 cd "#{root_dir}/activerecord" do
   puts
