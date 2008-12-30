@@ -38,7 +38,7 @@ module ActionView #:nodoc:
       # should not be confused with format extensions +html+, +js+, +xml+,
       # etc. A format must be supplied to match a formated file. +hello/index+
       # will never match +hello/index.html.erb+.
-      def [](path)
+      def find_template(path)
         templates_in_path do |template|
           if template.accessible_paths.include?(path)
             return template
@@ -73,7 +73,7 @@ module ActionView #:nodoc:
         @paths.freeze
       end
 
-      def [](path)
+      def find_template(path)
         @paths[path]
       end
     end

@@ -37,9 +37,9 @@ module ActionView #:nodoc:
       template_path = original_template_path.sub(/^\//, '')
 
       each do |load_path|
-        if format && (template = load_path["#{template_path}.#{format}"])
+        if format && (template = load_path.find_template("#{template_path}.#{format}"))
           return template
-        elsif template = load_path[template_path]
+        elsif template = load_path.find_template(template_path)
           return template
         end
       end
