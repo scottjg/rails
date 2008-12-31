@@ -863,13 +863,15 @@ module ActionController #:nodoc:
       # All renders take the <tt>:status</tt> and <tt>:location</tt> options and turn them into headers. They can even be used together:
       #
       #   render :xml => post.to_xml, :status => :created, :location => post_url(post)
+      def formats
+        request.formats.map {|f| f.symbol }.compact
+      end
+
       def render(options = nil, extra_options = {}, &block) #:doc:
         raise DoubleRenderError, "Can only render or redirect once per action" if performed?
 
         validate_render_arguments(options, extra_options, block_given?)
              
-        formats = request.formats.map {|f| f.symbol }.compact
-                
         if options.nil?
           options = { :parts => [action_name, formats, controller_path], :layout => true }
         elsif options == :update
@@ -921,13 +923,22 @@ module ActionController #:nodoc:
                              :locals => options[:locals]
 
           elsif template
-            render_for_file(template, options[:status], layout, options[:locals] || {})
+            render_for_parts :parts => [template],
+                             :status => options[:status],
+                             :layout => layout,
+                             :locals => options[:locals]
 
           elsif inline = options[:inline]
             render_for_text(@template.render(options.merge(:layout => layout)), options[:status])
 
           elsif action_name = options[:action]
-            render_for_file(default_template(action_name.to_s), options[:status], layout)
+            if action_name.is_a?(String)
+              action_name = action_name.sub(/^#{controller_path}\//, '')
+            end
+            
+            render_for_parts :parts => [action_name.to_s, formats, controller_name],
+                             :status => options[:status],
+                             :layout => layout
 
           elsif xml = options[:xml]
             response.content_type ||= Mime::XML
@@ -1197,7 +1208,8 @@ module ActionController #:nodoc:
         render_for_text @template.render(
           :parts => options[:parts],
           :locals => options[:locals] || {}, 
-          :layout => options[:layout]
+          :layout => options[:layout],
+          :status => options[:status]
         ), options[:status]
       end
       

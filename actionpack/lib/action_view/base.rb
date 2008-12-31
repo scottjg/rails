@@ -244,6 +244,7 @@ module ActionView #:nodoc:
           _render_with_layout(options, local_assigns, &block)
         elsif parts = options[:parts]
           template = self.view_paths.find_by_parts(*parts)
+          logger.info("Rendering #{template.path_without_extension}" + (options[:status] ? " (#{options[:status]})" : '')) if logger
           template.render_template(self, options[:locals])
         elsif template = options[:file]
           unless template.respond_to?(:render)
