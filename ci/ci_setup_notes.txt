@@ -108,6 +108,9 @@ $ sudo su - postgres -c 'createuser -s ci'
 * Install fcgi libraries
 $ sudo apt-get install libfcgi-dev
 
+* Install memcached
+$ sudo aptitude install memcached
+
 * Install and run GemInstaller to get all dependency gems
 $ sudo gem install geminstaller
 $ cd ~/.cruise/projects/rails/work
