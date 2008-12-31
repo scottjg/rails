@@ -108,8 +108,9 @@ $ sudo su - postgres -c 'createuser -s ci'
 * Install fcgi libraries
 $ sudo apt-get install libfcgi-dev
 
-* Install memcached
+* Install memcached and start for first time (should start on reboot automatically)
 $ sudo aptitude install memcached
+$ sudo /etc/init.d/memcached start
 
 * Install and run GemInstaller to get all dependency gems
 $ sudo gem install geminstaller
