@@ -908,37 +908,24 @@ module ActionController #:nodoc:
 
         else
           file, template = options[:file], options[:template]
-          file = template.sub(%r{^/}, '') if template.is_a?(String)
-
-          if parts = options[:parts]
-            render_for_parts :parts => parts, 
-                             :layout => layout, 
-                             :status => options[:status],
-                             :locals => options[:locals]
-            
-          elsif file
-            render_for_parts :parts => [file, request.format.to_sym],
-                             :layout => layout, 
-                             :status => options[:status],
-                             :locals => options[:locals]
-
-          elsif template
-            render_for_parts :parts => [template],
-                             :status => options[:status],
-                             :layout => layout,
-                             :locals => options[:locals]
-
-          elsif inline = options[:inline]
-            render_for_text(@template.render(options.merge(:layout => layout)), options[:status])
-
-          elsif action_name = options[:action]
-            if action_name.is_a?(String)
-              action_name = action_name.sub(/^#{controller_path}\//, '')
+          file = template.sub(%r{^/}, '') unless template.nil?
+          
+          if file
+            parts = [file, request.format.to_sym]
+          elsif action_option = options[:action]
+            if action_option.is_a?(String)
+              action_option = action_option.sub(/^#{controller_path}\//, '')
             end
             
-            render_for_parts :parts => [action_name.to_s, formats, controller_name],
-                             :status => options[:status],
-                             :layout => layout
+            parts = [action_option.to_s, formats, controller_name]
+          end
+          
+          if parts
+            return render_for_parts(parts, layout, options)
+          end
+          
+          if inline = options[:inline]
+            render_for_text(@template.render(options.merge(:layout => layout)), options[:status])
 
           elsif xml = options[:xml]
             response.content_type ||= Mime::XML
@@ -973,7 +960,7 @@ module ActionController #:nodoc:
             render_for_text(nil, options[:status])
 
           else
-            render_for_file(default_template, options[:status], layout)
+            render_for_parts([action_name, formats, controller_path], layout, options)
           end
         end
       end
@@ -1203,12 +1190,12 @@ module ActionController #:nodoc:
       end
 
     private
-      def render_for_parts(options = {})
+      def render_for_parts(parts, layout, options = {})
         # logger.info("Rendering #{name}, #{extension}, #{prefix}" + (status ? " (#{status})" : '')) if logger
         render_for_text @template.render(
-          :parts => options[:parts],
+          :parts => parts,
+          :layout => layout,
           :locals => options[:locals] || {}, 
-          :layout => options[:layout],
           :status => options[:status]
         ), options[:status]
       end
