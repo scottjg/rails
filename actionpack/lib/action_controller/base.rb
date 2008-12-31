@@ -867,9 +867,9 @@ module ActionController #:nodoc:
         raise DoubleRenderError, "Can only render or redirect once per action" if performed?
 
         validate_render_arguments(options, extra_options, block_given?)
-
+        
         if options.nil?
-          options = { :template => default_template, :layout => true }
+          options = { :parts => [action_name, request.format.symbol, controller_path], :layout => true }
         elsif options == :update
           options = extra_options.merge({ :update => true })
         elsif options.is_a?(String) || options.is_a?(Symbol)
@@ -886,6 +886,7 @@ module ActionController #:nodoc:
         end
 
         layout = pick_layout(options)
+
         response.layout = layout.path_without_format_and_extension if layout
         logger.info("Rendering template within #{layout.path_without_format_and_extension}") if logger && layout
 
@@ -902,10 +903,22 @@ module ActionController #:nodoc:
           render_for_text(text, options[:status])
 
         else
-          if file = options[:file]
-            render_for_file(file, options[:status], layout, options[:locals] || {})
+          file, template = options[:file], options[:template]
+          file = template.sub(%r{^/}, '') if template.is_a?(String)
 
-          elsif template = options[:template]
+          if parts = options[:parts]
+            render_for_parts :parts => parts, 
+                             :layout => layout, 
+                             :status => options[:status],
+                             :locals => options[:locals]
+            
+          elsif file
+            render_for_parts :parts => [file, request.format.to_sym],
+                             :layout => layout, 
+                             :status => options[:status],
+                             :locals => options[:locals]
+
+          elsif template
             render_for_file(template, options[:status], layout, options[:locals] || {})
 
           elsif inline = options[:inline]
@@ -1177,6 +1190,15 @@ module ActionController #:nodoc:
       end
 
     private
+      def render_for_parts(options = {})
+        # logger.info("Rendering #{name}, #{extension}, #{prefix}" + (status ? " (#{status})" : '')) if logger
+        render_for_text @template.render(
+          :parts => options[:parts],
+          :locals => options[:locals] || {}, 
+          :layout => options[:layout]
+        ), options[:status]
+      end
+      
       def render_for_file(template_path, status = nil, layout = nil, locals = {}) #:nodoc:
         path = template_path.respond_to?(:path_without_format_and_extension) ? template_path.path_without_format_and_extension : template_path
         logger.info("Rendering #{path}" + (status ? " (#{status})" : '')) if logger
@@ -1271,7 +1293,7 @@ module ActionController #:nodoc:
             default_render
           rescue ActionView::MissingTemplate => e
             # Was the implicit template missing, or was it another template?
-            if e.path == default_template_name
+            if e.path == action_name
               raise UnknownAction, "No action responded to #{action_name}. Actions: #{action_methods.sort.to_sentence}", caller
             else
               raise e

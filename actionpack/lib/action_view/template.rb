@@ -47,6 +47,13 @@ module ActionView #:nodoc:
         nil
       end
 
+      def find_by_parts(name, extension = nil, prefix = nil, partial = nil)
+        path = prefix ? "#{prefix}/" : ""
+        path << name
+        extensioned_path = extension ? "#{path}.#{extension}" : path
+        find_template(extensioned_path) || find_template(path)
+      end
+      
       private
         def templates_in_path
           (Dir.glob("#{@path}/**/*/**") | Dir.glob("#{@path}/**")).each do |file|

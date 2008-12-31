@@ -242,9 +242,14 @@ module ActionView #:nodoc:
         options = options.reverse_merge(:locals => {})
         if options[:layout]
           _render_with_layout(options, local_assigns, &block)
-        elsif options[:file]
-          tempalte = self.view_paths.find_template(options[:file], template_format)
-          tempalte.render_template(self, options[:locals])
+        elsif parts = options[:parts]
+          template = self.view_paths.find_by_parts(*parts)
+          template.render_template(self, options[:locals])
+        elsif template = options[:file]
+          unless template.respond_to?(:render)
+            template = self.view_paths.find_by_parts(template, template_format)
+          end
+          template.render_template(self, options[:locals])
         elsif options[:partial]
           render_partial(options)
         elsif options[:inline]
@@ -260,7 +265,7 @@ module ActionView #:nodoc:
     end
 
     # The format to be used when choosing between multiple templates with
-    # the same name but differing formats.  See +Request#template_format+
+    # the same name but differing formats.  See +Request#format+
     # for more details.
     def template_format
       if defined? @template_format
@@ -317,7 +322,7 @@ module ActionView #:nodoc:
             original_content_for_layout = @content_for_layout if defined?(@content_for_layout)
             @content_for_layout = render(options)
 
-            if (options[:inline] || options[:file] || options[:text])
+            if (options[:inline] || options[:file] || options[:text] || options[:parts])
               @cached_content_for_layout = @content_for_layout
               render(:file => partial_layout, :locals => local_assigns)
             else
