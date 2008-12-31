@@ -109,10 +109,16 @@ module ActionController
     def accepts
       header = @env['HTTP_ACCEPT'].to_s.strip
 
+      fallback = xhr? ? Mime::JS : Mime::HTML
+
       if header.empty?
-        [content_type, Mime::ALL].compact
+        [content_type, fallback, Mime::ALL].compact
       else
-        Mime::Type.parse(header)
+        ret = Mime::Type.parse(header)
+        if ret.last == Mime::ALL
+          ret.insert(-2, fallback)
+        end
+        ret
       end
     end
     memoize :accepts
@@ -174,7 +180,7 @@ module ActionController
     def formats
       @formats = 
         if Base.use_accept_header
-          Array(Mime[parameters[:format]] || accepts)
+          ret = Array(Mime[parameters[:format]] || accepts)
         else
           [format]
         end

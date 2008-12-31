@@ -47,11 +47,17 @@ module ActionView #:nodoc:
         nil
       end
 
-      def find_by_parts(name, extension = nil, prefix = nil, partial = nil)
+      def find_by_parts(name, extensions = nil, prefix = nil, partial = nil)
         path = prefix ? "#{prefix}/" : ""
         path << name
-        extensioned_path = extension ? "#{path}.#{extension}" : path
-        find_template(extensioned_path) || find_template(path)
+
+        template = nil
+        Array(extensions).each do |extension|
+          extensioned_path = extension ? "#{path}.#{extension}" : path
+          template = find_template(extensioned_path) || find_template(path)
+          break if template
+        end
+        template
       end
       
       private

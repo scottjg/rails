@@ -867,9 +867,11 @@ module ActionController #:nodoc:
         raise DoubleRenderError, "Can only render or redirect once per action" if performed?
 
         validate_render_arguments(options, extra_options, block_given?)
-        
+             
+        formats = request.formats.map {|f| f.symbol }.compact
+                
         if options.nil?
-          options = { :parts => [action_name, request.format.symbol, controller_path], :layout => true }
+          options = { :parts => [action_name, formats, controller_path], :layout => true }
         elsif options == :update
           options = extra_options.merge({ :update => true })
         elsif options.is_a?(String) || options.is_a?(Symbol)
