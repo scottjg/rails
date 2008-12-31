@@ -31,7 +31,16 @@ rescue LoadError
   end
 end
 
-module ActiveRecord
+module ActiveOrm
   autoload :VERSION, 'active_orm/version'
+  autoload :Core, 'active_orm/core'
+  
+  module Proxies
+    autoload :AbstractProxy, 'active_orm/proxies/abstract_proxy'
+    autoload :SequelProxy, 'active_orm/proxies/sequel_proxy'
+  end
 end
+
+#ActiveOrm::Core.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
+
 

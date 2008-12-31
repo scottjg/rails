@@ -5,11 +5,11 @@ require 'rake/rdoctask'
 require 'rake/packagetask'
 require 'rake/gempackagetask'
 require 'rake/contrib/sshpublisher'
-require File.join(File.dirname(__FILE__), 'lib', 'action_orm', 'version')
+require File.join(File.dirname(__FILE__), 'lib', 'active_orm', 'version')
 
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME      = 'actionorm'
-PKG_VERSION   = ActionOrm::VERSION::STRING + PKG_BUILD
+PKG_NAME      = 'activenorm'
+PKG_VERSION   = ActiveOrm::VERSION::STRING + PKG_BUILD
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
 RELEASE_NAME  = "REL #{PKG_VERSION}"
