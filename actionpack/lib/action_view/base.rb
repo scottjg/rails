@@ -244,8 +244,19 @@ module ActionView #:nodoc:
           _render_with_layout(options, local_assigns, &block)
         elsif parts = options[:parts]
           template = self.view_paths.find_by_parts(*parts)
+          
+          if spacer = options[:spacer_template]
+            spacer = view_paths.find_by_parts(spacer, *parts[1..-1])
+            options[:join] = spacer.render_template(self)
+          end
+          
           logger.info("Rendering #{template.path_without_extension}" + (options[:status] ? " (#{options[:status]})" : '')) if logger
-          template.render_template(self, options[:locals])
+          if parts[3] # partial
+            object = parts[3] == true ? nil : parts[3]
+            template.render_partial_top(self, object, options)
+          else
+            template.render_template(self, options[:locals])
+          end
         elsif template = options[:file]
           unless template.respond_to?(:render)
             template = self.view_paths.find_by_parts(template, template_format)

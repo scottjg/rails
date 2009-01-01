@@ -24,6 +24,46 @@ module ActionView
       end
     end
 
+    def render_partial_top(view, object, options)
+      locals = options[:locals].dup
+
+      if options[:collection]
+        return nil if options[:collection].blank?
+        index = 0
+        options[:collection].map do |object|
+          locals[counter_name] = index
+          index += 1
+          _render_partial(view, object, locals, options)
+        end.join(options[:join])
+      else
+        _render_partial(view, object, locals, options)
+      end
+      
+    end
+    
+    def _render_partial(view, object, locals, options)
+      # Twiddle the variables around the get us the precise required mix
+      object ||= locals[:object] || locals[variable_name]
+      object = _deprecated_ivar_assign(view) if object.nil?
+
+      locals[:object] = locals[variable_name] = object
+      locals[options[:as]] = object if options[:as]
+
+      render_template(view, locals)
+    end
+
+    def _deprecated_ivar_assign(view)
+      if view.respond_to?(:controller)
+        ivar = :"@#{variable_name}"
+        object =
+          if view.controller.instance_variable_defined?(ivar)
+            ActiveSupport::Deprecation::DeprecatedObjectProxy.new(
+              view.controller.instance_variable_get(ivar),
+              "#{ivar} will no longer be implicitly assigned to #{variable_name}")
+          end
+      end
+    end
+
     def render_partial(view, object = nil, local_assigns = {}, as = nil)
       object ||= local_assigns[:object] || local_assigns[variable_name]
 

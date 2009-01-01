@@ -871,9 +871,9 @@ module ActionController #:nodoc:
         (name.is_a?(String) ? name.sub(/^#{controller_path}\//, '') : name).to_s
       end
 
-      def extract_partial_name(name)
+      def partial_parts(name)
         segments = name.split("/")
-        parts = segments.last.split(".")
+        parts = segments.pop.split(".")
 
         case parts.size
         when 1
@@ -885,9 +885,10 @@ module ActionController #:nodoc:
           end
           parts.pop if parts.size == 2
         end
-        segments[-1] = parts.join(".")
-        segments.unshift controller_path unless segments.size > 1
-        segments.join("/")
+        path = parts.join(".")
+        prefix = segments[0..-2].join("/")
+        prefix = prefix.blank? ? controller_path : prefix
+        [path, formats, prefix]
       end
 
       def render(options = nil, extra_options = {}, &block) #:doc:
@@ -964,8 +965,8 @@ module ActionController #:nodoc:
             if partial == true
               parts = [action_name_base, formats, controller_name, true]
             elsif partial.is_a?(String)
-              partial_name = extract_partial_name(partial)
-              parts = [partial_name, formats, nil, true]
+              parts = partial_parts(partial)
+              parts.push options[:object] || true
             else # This is the old logic for thing like render :partial => @form
               # TODO: REMOVE
               if layout
@@ -1219,13 +1220,13 @@ module ActionController #:nodoc:
     private
       def render_for_parts(parts, layout, options = {})
         # logger.info("Rendering #{name}, #{extension}, #{prefix}" + (status ? " (#{status})" : '')) if logger
-        options[:locals] ||= {}
         part_options = {
           :parts => parts,
           :layout => layout,
           :locals => options[:locals] || {}, 
           :status => options[:status]
         }
+        
         part_options.merge!(
           :collection => options[:collection],
           :as => options[:as],
