@@ -243,16 +243,17 @@ module ActionView #:nodoc:
         if options[:layout]
           _render_with_layout(options, local_assigns, &block)
         elsif parts = options[:parts]
+          name, formats, extension, partial = parts
           template = self.view_paths.find_by_parts(*parts)
           
           if spacer = options[:spacer_template]
-            spacer = view_paths.find_by_parts(spacer, *parts[1..-1])
+            spacer = view_paths.find_by_parts(spacer, formats, extension, partial)
             options[:join] = spacer.render_template(self)
           end
           
           logger.info("Rendering #{template.path_without_extension}" + (options[:status] ? " (#{options[:status]})" : '')) if logger
-          if parts[3] # partial
-            object = parts[3] == true ? nil : parts[3]
+          if partial # partial (can be 'true' or contain the object)
+            object = partial == true ? nil : partial
             template.render_partial_top(self, object, options)
           else
             template.render_template(self, options[:locals])
@@ -262,7 +263,7 @@ module ActionView #:nodoc:
             template = self.view_paths.find_by_parts(template, template_format)
           end
           template.render_template(self, options[:locals])
-        elsif options[:partial]
+        elsif partial = options[:partial]
           render_partial(options)
         elsif options[:inline]
           InlineTemplate.new(options[:inline], options[:type]).render(self, options[:locals])
