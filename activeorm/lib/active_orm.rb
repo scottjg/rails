@@ -37,10 +37,10 @@ module ActiveOrm
   
   module Proxies
     autoload :AbstractProxy, 'active_orm/proxies/abstract_proxy'
+    autoload :DataMapperProxy, 'active_orm/proxies/datamapper_proxy'
     autoload :SequelProxy, 'active_orm/proxies/sequel_proxy'
   end
 end
 
-#ActiveOrm::Core.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
-
+# ActiveOrm::Core.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
 
