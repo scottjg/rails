@@ -1233,7 +1233,9 @@ module ActionController #:nodoc:
           :spacer_template => options[:spacer_template]
         ) if options[:partial]
         
-        render_for_text @template.render(part_options), options[:status]
+        render_for_text(
+          @template.render_for_parts(parts, layout, part_options), 
+          options[:status])
       end
       
       def render_for_file(template_path, status = nil, layout = nil, locals = {}) #:nodoc:

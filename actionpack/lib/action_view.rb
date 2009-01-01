@@ -31,6 +31,8 @@ rescue LoadError
   end
 end
 
+require File.join(File.dirname(__FILE__), "action_pack")
+
 module ActionView
   def self.load_all!
     [Base, InlineTemplate, TemplateError]

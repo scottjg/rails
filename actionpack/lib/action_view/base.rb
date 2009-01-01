@@ -240,24 +240,8 @@ module ActionView #:nodoc:
       case options
       when Hash
         options = options.reverse_merge(:locals => {})
-        if options[:layout]
-          _render_with_layout(options, local_assigns, &block)
-        elsif parts = options[:parts]
-          name, formats, extension, partial = parts
-          template = self.view_paths.find_by_parts(*parts)
-          
-          if spacer = options[:spacer_template]
-            spacer = view_paths.find_by_parts(spacer, formats, extension, partial)
-            options[:join] = spacer.render_template(self)
-          end
-          
-          logger.info("Rendering #{template.path_without_extension}" + (options[:status] ? " (#{options[:status]})" : '')) if logger
-          if partial # partial (can be 'true' or contain the object)
-            object = partial == true ? nil : partial
-            template.render_partial_top(self, object, options)
-          else
-            template.render_template(self, options[:locals])
-          end
+        if layout = options.delete(:layout)
+          _render_with_layout(layout, options, local_assigns, &block)
         elsif template = options[:file]
           unless template.respond_to?(:render)
             template = self.view_paths.find_by_parts(template, template_format)
@@ -274,6 +258,38 @@ module ActionView #:nodoc:
         update_page(&block)
       else
         render_partial(:partial => options, :locals => local_assigns)
+      end
+    end
+    
+    def render_for_parts(parts, layout, options)
+      name, formats, extension, partial = parts
+      template = self.view_paths.find_by_parts(*parts)
+      
+      if spacer = options[:spacer_template]
+        spacer = view_paths.find_by_parts(spacer, formats, extension, partial)
+        options[:join] = spacer.render_template(self)
+      end
+      
+      logger.info("Rendering #{template.path_without_extension}" + (options[:status] ? " (#{options[:status]})" : '')) if logger
+      if partial # partial (can be 'true' or contain the object)
+        object = partial == true ? nil : partial
+        content = template.render_partial_top(self, object, options)
+      else
+        content = template.render_template(self, options[:locals])
+      end
+      
+      if layout
+        begin
+          original_content_for_layout = @content_for_layout if defined?(@content_for_layout)
+          @content_for_layout = content
+
+          @cached_content_for_layout = @content_for_layout
+          render(:file => layout, :locals => options[:locals])
+        ensure
+          @content_for_layout = original_content_for_layout
+        end
+      else
+        content
       end
     end
 
@@ -320,13 +336,11 @@ module ActionView #:nodoc:
         end
       end
 
-      def _render_with_layout(options, local_assigns, &block) #:nodoc:
-        partial_layout = options.delete(:layout)
-
+      def _render_with_layout(layout, options, local_assigns, &block) #:nodoc:
         if block_given?
           begin
             @_proc_for_layout = block
-            concat(render(options.merge(:partial => partial_layout)))
+            concat(render(options.merge(:partial => layout)))
           ensure
             @_proc_for_layout = nil
           end
@@ -337,9 +351,9 @@ module ActionView #:nodoc:
 
             if (options[:inline] || options[:file] || options[:text] || options[:parts])
               @cached_content_for_layout = @content_for_layout
-              render(:file => partial_layout, :locals => local_assigns)
+              render(:file => layout, :locals => local_assigns)
             else
-              render(options.merge(:partial => partial_layout))
+              render(options.merge(:partial => layout))
             end
           ensure
             @content_for_layout = original_content_for_layout
