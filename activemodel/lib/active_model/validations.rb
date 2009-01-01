@@ -96,7 +96,8 @@ module ActiveModel
         ActiveSupport::Deprecations.warn "Base#validate has been deprecated, please use Base.validate :method instead"
         validate
       end
-
+      
+      #TODO Pending ActiveORM Refactor.
       if new_record?
         run_callbacks(:validate_on_create)
 
