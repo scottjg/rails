@@ -8,10 +8,11 @@ silence_warnings do
     alias_method :author_name_before_type_cast, :author_name unless respond_to?(:author_name_before_type_cast)
     alias_method :secret?, :secret
 
+    #TODO Pending ActiveORM Refactor.
     def new_record=(boolean)
       @new_record = boolean
     end
-
+    #TODO Pending ActiveORM Refactor.
     def new_record?
       @new_record
     end
@@ -21,6 +22,7 @@ silence_warnings do
     attr_reader :id
     attr_reader :post_id
     def save; @id = 1; @post_id = 1 end
+    #TODO Pending ActiveORM Refactor.
     def new_record?; @id.nil? end
     def to_param; @id; end
     def name
