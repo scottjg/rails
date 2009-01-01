@@ -49,7 +49,11 @@ module ActionView #:nodoc:
 
       def find_by_parts(name, extensions = nil, prefix = nil, partial = nil)
         path = prefix ? "#{prefix}/" : ""
-        path << name
+        
+        name = name.split("/")
+        name[-1] = "_#{name[-1]}" if partial
+        
+        path << name.join("/")
 
         template = nil
         Array(extensions).each do |extension|

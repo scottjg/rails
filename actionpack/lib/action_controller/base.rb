@@ -867,6 +867,29 @@ module ActionController #:nodoc:
         request.formats.map {|f| f.symbol }.compact
       end
 
+      def action_name_base(name = action_name)
+        (name.is_a?(String) ? name.sub(/^#{controller_path}\//, '') : name).to_s
+      end
+
+      def extract_partial_name(name)
+        segments = name.split("/")
+        parts = segments.last.split(".")
+
+        case parts.size
+        when 1
+          parts
+        when 2, 3
+          extension = parts.delete_at(1).to_sym
+          if formats.include?(extension)
+            self.formats.replace [extension]
+          end
+          parts.pop if parts.size == 2
+        end
+        segments[-1] = parts.join(".")
+        segments.unshift controller_path unless segments.size > 1
+        segments.join("/")
+      end
+
       def render(options = nil, extra_options = {}, &block) #:doc:
         raise DoubleRenderError, "Can only render or redirect once per action" if performed?
 
@@ -913,11 +936,7 @@ module ActionController #:nodoc:
           if file
             parts = [file, request.format.to_sym]
           elsif action_option = options[:action]
-            if action_option.is_a?(String)
-              action_option = action_option.sub(/^#{controller_path}\//, '')
-            end
-            
-            parts = [action_option.to_s, formats, controller_name]
+            parts = [action_name_base(action_option), formats, controller_name]
           end
           
           if parts
@@ -941,14 +960,22 @@ module ActionController #:nodoc:
             response.content_type ||= Mime::JSON
             render_for_text(json, options[:status])
 
-          elsif options[:partial]
-            options[:partial] = default_template_name if options[:partial] == true
-            if layout
-              render_for_text(@template.render(:text => @template.render(options), :layout => layout), options[:status])
-            else
-              render_for_text(@template.render(options), options[:status])
+          elsif partial = options[:partial]
+            if partial == true
+              parts = [action_name_base, formats, controller_name, true]
+            elsif partial.is_a?(String)
+              partial_name = extract_partial_name(partial)
+              parts = [partial_name, formats, nil, true]
+            else # This is the old logic for thing like render :partial => @form
+              # TODO: REMOVE
+              if layout
+                return render_for_text(@template.render(:text => @template.render(options), :layout => layout), options[:status])
+              else
+                return render_for_text(@template.render(options), options[:status])
+              end
             end
-
+            render_for_parts(parts, layout, options)
+            
           elsif options[:update]
             @template.send(:_evaluate_assigns_and_ivars)
 
@@ -1192,12 +1219,20 @@ module ActionController #:nodoc:
     private
       def render_for_parts(parts, layout, options = {})
         # logger.info("Rendering #{name}, #{extension}, #{prefix}" + (status ? " (#{status})" : '')) if logger
-        render_for_text @template.render(
+        options[:locals] ||= {}
+        part_options = {
           :parts => parts,
           :layout => layout,
           :locals => options[:locals] || {}, 
           :status => options[:status]
-        ), options[:status]
+        }
+        part_options.merge!(
+          :collection => options[:collection],
+          :as => options[:as],
+          :spacer_template => options[:spacer_template]
+        ) if options[:partial]
+        
+        render_for_text @template.render(part_options), options[:status]
       end
       
       def render_for_file(template_path, status = nil, layout = nil, locals = {}) #:nodoc:
