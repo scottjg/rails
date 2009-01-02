@@ -11,7 +11,7 @@ module ActiveOrm
 
       def proxy obj
         @_proxy_cache ||= {}
-        @_proxy_cache[obj.object_id] ||= @_proxy_registry[find_key(obj)].new(obj)
+        @_proxy_registry[find_key(obj)].new(obj)
       end
 
       def register obj_class, obj_proxy_class
@@ -21,7 +21,8 @@ module ActiveOrm
       
       protected
         def find_key(obj)
-          obj.class.ancestors.find{|a| @_proxy_registry[a] } || obj.class.included_modules.find{|a| @_proxy_registry[a] }
+          @_proxy_key_cache ||= {}
+          @_proxy_key_cache[obj.class] ||= obj.class.ancestors.find{|a| @_proxy_registry[a] } || obj.class.included_modules.find{|a| @_proxy_registry[a] }
         end
     end
   end

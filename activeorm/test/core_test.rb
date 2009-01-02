@@ -35,14 +35,15 @@ class CoreTest < Test::Unit::TestCase
   def test_subclass_proxy
     assert ActiveOrm.proxyable?(SubclassModel.new)
   end
-  
-  def test_proxy_uses_cache
-    proxy = ActiveOrm.proxy @model
-    class << proxy
-      def am_using_cache; end
-    end
-    cached = ActiveOrm.proxy @model
-    assert cached.respond_to? :am_using_cache
-  end
+    
+  # Cache was a source of a memory leak, good idea though...
+  #def test_proxy_uses_cache
+  #  proxy = ActiveOrm.proxy @model
+  #  class << proxy
+  #    def am_using_cache; end
+  #  end
+  #  cached = ActiveOrm.proxy @model
+  #  assert cached.respond_to? :am_using_cache
+  #end
 
 end
