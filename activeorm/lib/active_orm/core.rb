@@ -13,8 +13,8 @@ module ActiveOrm
         raise ProxyNotFoundException unless proxyable? obj
         @_proxy_cache ||= {}
         key = obj.class.included_modules.find{|m| @_proxy_registry[m]} || obj.class
-        
-        @_proxy_cache[obj] ||= @_proxy_registry[key].new(obj)
+
+        @_proxy_cache[obj.object_id] ||= @_proxy_registry[key].new(obj)
       end
 
       def register obj_class, obj_proxy_class

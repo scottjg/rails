@@ -15,10 +15,7 @@ uses_datamapper('DatamapperTest') do
 
   Page.auto_migrate!
 
-  puts "blah"
   ActiveOrm::Core.register DataMapper::Resource, ActiveOrm::Proxies::DataMapperProxy
-  puts 
-  puts "too"
   
   class DatamapperTest < Test::Unit::TestCase
     def setup
@@ -39,6 +36,7 @@ uses_datamapper('DatamapperTest') do
     end
   
     def test_valid?
+      puts @proxy_invalid_page.inspect
       assert @proxy_page.valid?
       assert !@proxy_invalid_page.valid?
     end
