@@ -35,7 +35,6 @@ class CoreTest < Test::Unit::TestCase
   def test_subclass_proxy
     assert ActiveOrm.proxyable?(SubclassModel.new)
   end
-    
   
   def test_proxy_uses_cache
     proxy = ActiveOrm.proxy @model

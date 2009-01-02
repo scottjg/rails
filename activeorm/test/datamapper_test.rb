@@ -39,6 +39,11 @@ uses_datamapper('DatamapperTest') do
       assert @proxy_page.valid?
       assert !@proxy_invalid_page.valid?
     end
+    
+    def test_errors?
+      assert_equal @page.errors, @proxy_page.errors
+      assert_equal @invalid_page.errors, @proxy_invalid_page.errors
+    end
 
   end
 end
