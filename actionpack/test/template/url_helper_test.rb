@@ -464,6 +464,7 @@ class Workshop
     @id, @new_record = id, new_record
   end
 
+  #TODO Pending ActiveORM Refactor.
   def new_record?
     @new_record
   end
@@ -480,6 +481,7 @@ class Session
     @id, @new_record = id, new_record
   end
 
+  #TODO Pending ActiveORM Refactor.
   def new_record?
     @new_record
   end

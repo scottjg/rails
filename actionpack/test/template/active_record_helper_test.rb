@@ -39,6 +39,7 @@ class ActiveRecordHelperTest < ActionView::TestCase
       }.new
     end
 
+    #TODO Pending ActiveORM Refactor.
     def @post.new_record?() true end
     def @post.to_param() nil end
 
@@ -67,7 +68,8 @@ class ActiveRecordHelperTest < ActionView::TestCase
         def full_messages() [ "User email can't be empty" ] end
       }.new
     end
-
+    
+    #TODO Pending ActiveORM Refactor.
     def @user.new_record?() true end
     def @user.to_param() nil end
 
@@ -129,6 +131,7 @@ class ActiveRecordHelperTest < ActionView::TestCase
 
     silence_warnings do
       class << @post
+        #TODO Pending ActiveORM Refactor.
         def new_record?() false end
         def to_param() id end
         def id() 1 end

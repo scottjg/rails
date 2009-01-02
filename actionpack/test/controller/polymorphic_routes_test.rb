@@ -3,6 +3,7 @@ require 'abstract_unit'
 class Article
   attr_reader :id
   def save; @id = 1 end
+  #TODO Pending ActiveORM Refactor.
   def new_record?; @id.nil? end
   def name
     model = self.class.name.downcase
@@ -38,12 +39,14 @@ uses_mocha 'polymorphic URL helpers' do
 
     def test_with_new_record
       expects(:articles_url).with()
+      #TODO Pending ActiveORM Refactor.
       @article.expects(:new_record?).returns(true)
       polymorphic_url(@article)
     end
 
     def test_with_record_and_action
       expects(:new_article_url).with()
+      #TODO Pending ActiveORM Refactor.
       @article.expects(:new_record?).never
       polymorphic_url(@article, :action => 'new')
     end

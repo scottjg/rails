@@ -71,6 +71,7 @@ module ActiveModel
             end
           end
 
+          #TODO Pending ActiveORM Refactor.
           unless record.new_record?
             condition_sql << " AND #{record.class.quoted_table_name}.#{record.class.primary_key} <> ?"
             condition_params << record.send(:id)

@@ -38,6 +38,7 @@ module ActiveSupport
       #       end
       #
       #       def show_errors(exception)
+      #         #TODO Pending ActiveORM Refactor.
       #         exception.record.new_record? ? ...
       #       end
       #   end

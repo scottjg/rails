@@ -5,6 +5,7 @@ Bunny = Struct.new(:Bunny, :id)
 class Author
   attr_reader :id
   def save; @id = 1 end
+  #TODO Pending ActiveORM Refactor.
   def new_record?; @id.nil? end
   def name
     @id.nil? ? 'new author' : "author ##{@id}"
@@ -15,6 +16,7 @@ class Article
   attr_reader :id
   attr_reader :author_id
   def save; @id = 1; @author_id = 1 end
+  #TODO Pending ActiveORM Refactor.
   def new_record?; @id.nil? end
   def name
     @id.nil? ? 'new article' : "article ##{@id}"

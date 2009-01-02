@@ -1,3 +1,5 @@
+#TODO Pending ActiveORM Refactor.
+# The name of this file might need to change? Perhaps orm_helper.rb ? Obviously this file is loaded with AR assumptions!
 require 'cgi'
 require 'action_view/helpers/form_helper'
 
@@ -76,12 +78,14 @@ module ActionView
         record = instance_variable_get("@#{record_name}")
 
         options = options.symbolize_keys
+        #TODO Pending ActiveORM Refactor.
         options[:action] ||= record.new_record? ? "create" : "update"
         action = url_for(:action => options[:action], :id => record)
 
         submit_value = options[:submit_value] || options[:action].gsub(/[^\w]/, '').capitalize
 
         contents = form_tag({:action => action}, :method =>(options[:method] || 'post'), :enctype => options[:multipart] ? 'multipart/form-data': nil)
+        #TODO Pending ActiveORM Refactor.
         contents << hidden_field(record_name, :id) unless record.new_record?
         contents << all_input_tags(record, record_name, options)
         yield contents if block_given?
@@ -118,6 +122,7 @@ module ActionView
         end
         options.reverse_merge!(:prepend_text => '', :append_text => '', :css_class => 'formError')
 
+        #TODO Pending ActiveORM Refactor.
         if (obj = (object.respond_to?(:errors) ? object : instance_variable_get("@#{object}"))) &&
           (errors = obj.errors.on(method))
           content_tag("div",
@@ -194,10 +199,12 @@ module ActionView
               options[:header_message]
             else
               object_name = options[:object_name].to_s.gsub('_', ' ')
+              #TODO Pending ActiveORM Refactor.
               object_name = I18n.t(object_name, :default => object_name, :scope => [:activerecord, :models], :count => 1)
               locale.t :header, :count => count, :model => object_name
             end
             message = options.include?(:message) ? options[:message] : locale.t(:body)
+            #TODO Pending ActiveORM Refactor.
             error_messages = objects.sum {|object| object.errors.full_messages.map {|msg| content_tag(:li, msg) } }.join
 
             contents = ''
@@ -215,6 +222,7 @@ module ActionView
       private
         def all_input_tags(record, record_name, options)
           input_block = options[:input_block] || default_input_block
+          #TODO Pending ActiveORM Refactor.
           record.class.content_columns.collect{ |column| input_block.call(record_name, column) }.join("\n")
         end
 
@@ -246,6 +254,7 @@ module ActionView
 
       alias_method :tag_without_error_wrapping, :tag
       def tag(name, options)
+        #TODO Pending ActiveORM Refactor.
         if object.respond_to?(:errors) && object.errors.respond_to?(:on)
           error_wrapping(tag_without_error_wrapping(name, options), object.errors.on(@method_name))
         else
@@ -255,6 +264,7 @@ module ActionView
 
       alias_method :content_tag_without_error_wrapping, :content_tag
       def content_tag(name, value, options)
+        #TODO Pending ActiveORM Refactor.
         if object.respond_to?(:errors) && object.errors.respond_to?(:on)
           error_wrapping(content_tag_without_error_wrapping(name, value, options), object.errors.on(@method_name))
         else
@@ -264,6 +274,7 @@ module ActionView
 
       alias_method :to_date_select_tag_without_error_wrapping, :to_date_select_tag
       def to_date_select_tag(options = {}, html_options = {})
+        #TODO Pending ActiveORM Refactor.
         if object.respond_to?(:errors) && object.errors.respond_to?(:on)
           error_wrapping(to_date_select_tag_without_error_wrapping(options, html_options), object.errors.on(@method_name))
         else
@@ -273,6 +284,7 @@ module ActionView
 
       alias_method :to_datetime_select_tag_without_error_wrapping, :to_datetime_select_tag
       def to_datetime_select_tag(options = {}, html_options = {})
+        #TODO Pending ActiveORM Refactor.
         if object.respond_to?(:errors) && object.errors.respond_to?(:on)
             error_wrapping(to_datetime_select_tag_without_error_wrapping(options, html_options), object.errors.on(@method_name))
           else
@@ -282,6 +294,7 @@ module ActionView
 
       alias_method :to_time_select_tag_without_error_wrapping, :to_time_select_tag
       def to_time_select_tag(options = {}, html_options = {})
+        #TODO Pending ActiveORM Refactor.
         if object.respond_to?(:errors) && object.errors.respond_to?(:on)
           error_wrapping(to_time_select_tag_without_error_wrapping(options, html_options), object.errors.on(@method_name))
         else
@@ -294,10 +307,12 @@ module ActionView
       end
 
       def error_message
+        #TODO Pending ActiveORM Refactor.
         object.errors.on(@method_name)
       end
 
       def column_type
+        #TODO Pending ActiveORM Refactor.
         object.send(:column_for_attribute, @method_name).type
       end
     end

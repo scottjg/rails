@@ -1,10 +1,10 @@
 module ActiveOrm
   module Proxies
-    class SequelProxy < AbstractProxy
+    class DataMapperProxy  < AbstractProxy
       def new?
-        model.new?
+        model.new_record?
       end
-
+      
       def valid?
         model.valid?
       end

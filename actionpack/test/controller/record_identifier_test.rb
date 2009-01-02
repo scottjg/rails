@@ -3,6 +3,7 @@ require 'abstract_unit'
 class Comment
   attr_reader :id
   def save; @id = 1 end
+  #TODO Pending ActiveORM Refactor.
   def new_record?; @id.nil? end
   def name
     @id.nil? ? 'new comment' : "comment ##{@id}"
