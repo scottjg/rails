@@ -12,7 +12,7 @@ module ActiveOrm
       end
   
       def errors
-        model.errors
+        raise AbstractProxyMethod
       end
   
       def valid?
