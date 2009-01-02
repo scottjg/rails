@@ -36,7 +36,6 @@ uses_datamapper('DatamapperTest') do
     end
   
     def test_valid?
-      puts @proxy_invalid_page.inspect
       assert @proxy_page.valid?
       assert !@proxy_invalid_page.valid?
     end
