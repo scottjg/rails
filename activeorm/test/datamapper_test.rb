@@ -21,28 +21,23 @@ uses_datamapper('DatamapperTest') do
     def setup
       @page = Page.new :name => "test"
       @invalid_page = Page.new
-      @proxy_page = ActiveOrm.proxy @page    
-      @proxy_invalid_page = ActiveOrm.proxy @invalid_page
+      @proxy_page = ActiveOrm.new @page    
+      @proxy_invalid_page = ActiveOrm.new @invalid_page
     end
   
     def test_proxyable?
       assert ActiveOrm.proxyable? @page
     end
   
-    def test_new?
-      assert @proxy_page.new?
+    def test_new_record?
+      assert @proxy_page.new_record?
       @page.save
-      assert !@proxy_page.new?
+      assert !@proxy_page.new_record?
     end
   
     def test_valid?
       assert @proxy_page.valid?
       assert !@proxy_invalid_page.valid?
-    end
-    
-    def test_errors?
-      assert_equal @page.errors, @proxy_page.errors
-      assert_equal @invalid_page.errors, @proxy_invalid_page.errors
     end
 
   end

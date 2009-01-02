@@ -29,7 +29,7 @@ class CoreTest < Test::Unit::TestCase
   end
   
   def test_proxy
-    assert_equal @model, (ActiveOrm.proxy @model).model
+    assert_equal @model, (ActiveOrm.new @model).model
   end
   
   def test_subclass_proxy

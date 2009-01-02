@@ -9,19 +9,14 @@ module ActiveOrm
         !find_key(obj).empty?
       end
 
-      def proxy obj
+      def new obj
         @_proxy_cache ||= {}
-        puts find_key(obj).inspect
         @_proxy_registry[find_key(obj)].new(obj)
       end
 
       def register obj_class, obj_proxy_class
         @_proxy_registry ||= {}
         @_proxy_registry[obj_class.to_s] = obj_proxy_class
-      end
-      
-      def load
-        # Rails::Initializer.after_app_loads
       end
       
       protected
