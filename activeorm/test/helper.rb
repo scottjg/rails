@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'test/unit'
 
 $:.unshift "#{File.dirname(__FILE__)}/../lib"
@@ -9,12 +10,21 @@ require 'active_orm'
 ActiveSupport::Deprecation.debug = true
 
 def uses_mocha(description)
-  require 'rubygems'
   gem 'mocha', '>= 0.9.3'
   require 'mocha'
   yield
 rescue LoadError
   $stderr.puts "Skipping #{description} tests. `gem install mocha` and try again."
+end
+
+def uses_datamapper(description)
+    gem 'dm-core'
+    gem 'dm-validations'
+    require 'dm-core'
+    require 'dm-validations'
+    yield
+  rescue LoadError
+    $stderr.puts "Skipping #{description} tests. `gem install dm-core dm-validations` and try again."
 end
 
 class OrmModel

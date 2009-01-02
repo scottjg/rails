@@ -257,9 +257,8 @@ module ActionView
       def apply_form_for_options!(object_or_array, options) #:nodoc:
         object = object_or_array.is_a?(Array) ? object_or_array.last : object_or_array
 
-        #TODO Pending ActiveORM Refactor.
         html_options =
-          if object.respond_to?(:new_record?) && object.new_record?
+          if ActiveOrm.proxyable? object && ActiveOrm.proxy(object).new?
             { :class  => dom_class(object, :new),  :id => dom_id(object), :method => :post }
           else
             { :class  => dom_class(object, :edit), :id => dom_id(object, :edit), :method => :put }

@@ -90,8 +90,7 @@ module ActionController
         when options[:action].to_s == "new"
           args.pop
           :singular
-        #TODO Pending ActiveORM Refactor.
-        when record.respond_to?(:new_record?) && record.new_record?
+        when ActiveOrm.proxyable? record && ActiveOrm.proxy(record).new?
           args.pop
           :plural
         else
