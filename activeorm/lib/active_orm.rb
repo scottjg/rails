@@ -41,7 +41,11 @@ module ActiveOrm
     autoload :DataMapperProxy, 'active_orm/proxies/datamapper_proxy'
     autoload :SequelProxy, 'active_orm/proxies/sequel_proxy'
   end
+  
+  class << self
+    include Core::ClassMethods
+  end
 end
 
-# ActiveOrm::Core.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
+# ActiveOrm.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
 

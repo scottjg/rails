@@ -89,5 +89,5 @@ class OrmModelProxy < ActiveOrm::Proxies::AbstractProxy
   end
 end
 
-ActiveOrm::Core.register OrmModel, OrmModelProxy
-ActiveOrm::Core.register OrmModule, OrmModelProxy
+ActiveOrm.register OrmModel, OrmModelProxy
+ActiveOrm.register OrmModule, OrmModelProxy

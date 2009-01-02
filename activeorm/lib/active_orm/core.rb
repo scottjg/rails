@@ -4,7 +4,7 @@ module ActiveOrm
   class AbstractProxyMethod < ActiveOrmError; end
 
   module Core
-    class << self
+    module ClassMethods
       def proxyable? obj
         find_key(obj)
       end

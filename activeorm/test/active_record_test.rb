@@ -6,18 +6,18 @@ uses_active_record('ActiveRecordTest') do
     validate_presence_of :name
   end
 
-  ActiveOrm::Core.register ActiveRecord::Base, ActiveOrm::Proxies::DataMapperProxy
+  ActiveOrm.register ActiveRecord::Base, ActiveOrm::Proxies::DataMapperProxy
 
   class ActiveRecordTest < Test::Unit::TestCase
     def setup
       @page = Page.new :name => "test"
       @invalid_page = Page.new
-      @proxy_page = ActiveOrm::Core.proxy @page    
-      @proxy_invalid_page = ActiveOrm::Core.proxy @invalid_page
+      @proxy_page = ActiveOrm.proxy @page    
+      @proxy_invalid_page = ActiveOrm.proxy @invalid_page
     end
   
     def test_proxyable?
-      assert ActiveOrm::Core.proxyable? @page
+      assert ActiveOrm.proxyable? @page
     end
   
     def test_new?
