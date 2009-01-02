@@ -1,6 +1,9 @@
 require 'helper'
 require 'active_orm/core'
 
+class FailingModel
+end
+
 class CoreTest < Test::Unit::TestCase
   def setup
     @model = OrmModel.new
@@ -16,6 +19,10 @@ class CoreTest < Test::Unit::TestCase
   
   def test_proxyable_for_module
     assert ActiveOrm::Core.proxyable? @modulemodel
+  end
+  
+  def test_failing_proxyable?
+    assert !ActiveOrm::Core.proxyable?(FailingModel.new)
   end
   
   def test_proxy
