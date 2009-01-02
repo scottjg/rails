@@ -4,10 +4,6 @@ module ActiveOrm
       def new?
         model.new?
       end
-
-      def valid?
-        model.valid?
-      end
     end
   end
 end

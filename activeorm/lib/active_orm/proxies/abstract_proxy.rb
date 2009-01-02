@@ -8,7 +8,7 @@ module ActiveOrm
       end
   
       def new?
-        raise AbstractProxyMethod
+        model.new_record?
       end
   
       def errors
@@ -16,7 +16,7 @@ module ActiveOrm
       end
   
       def valid?
-        raise AbstractProxyMethod
+        model.valid?
       end
     end
   end
