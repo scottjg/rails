@@ -31,6 +31,18 @@ rescue LoadError
   end
 end
 
+begin
+  require 'active_orm'
+rescue LoadError
+  activeorm_path = "#{File.dirname(__FILE__)}/../../activeorm/lib"
+  if File.directory?(activeorm_path)
+    $:.unshift activeorm_path
+    require 'active_orm'
+  end
+end
+
+ActiveOrm.register "ActiveRecord::Base", ActiveOrm::Proxies::ActiveRecordProxy
+
 gem 'rack', '~> 0.4.0'
 require 'rack'
 
