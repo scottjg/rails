@@ -11,7 +11,8 @@ module ActiveOrm
 
       def new obj
         @_proxy_cache ||= {}
-        @_proxy_registry[find_key(obj)].new(obj)
+        registry = @_proxy_registry[find_key(obj)]
+        registry ? registry.new(obj) : (raise ProxyNotFoundException)
       end
 
       def register obj_class, obj_proxy_class

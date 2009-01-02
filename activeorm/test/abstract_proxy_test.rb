@@ -1,5 +1,7 @@
 require 'helper'
 
+class FailedModel; end
+
 class AbstractProxyTest < Test::Unit::TestCase
   def setup
     @model = OrmModel.new
@@ -7,6 +9,12 @@ class AbstractProxyTest < Test::Unit::TestCase
   end
 
   def teardown
+  end
+  
+  def test_failed_model?
+    assert_raise ActiveOrm::ProxyNotFoundException do
+      ActiveOrm.new(FailedModel.new)
+    end
   end
 
   def test_new_record?
