@@ -1,26 +1,14 @@
 require 'helper'
 
-uses_datamapper('DatamapperTest') do
-  DataMapper.setup(:default, 'sqlite3::memory:')
+uses_active_record('ActiveRecordTest') do
 
-  class Page
-    include DataMapper::Resource
-  
-    property :id,   Serial
-    property :name, String
-    property :body, String
-  
-    validates_present :name
+  class Page < ActiveRecord::Base
+    validate_presence_of :name
   end
 
-  Page.auto_migrate!
+  ActiveOrm::Core.register ActiveRecord::Base, ActiveOrm::Proxies::DataMapperProxy
 
-  puts "blah"
-  ActiveOrm::Core.register DataMapper::Resource, ActiveOrm::Proxies::DataMapperProxy
-  puts 
-  puts "too"
-  
-  class DatamapperTest < Test::Unit::TestCase
+  class ActiveRecordTest < Test::Unit::TestCase
     def setup
       @page = Page.new :name => "test"
       @invalid_page = Page.new

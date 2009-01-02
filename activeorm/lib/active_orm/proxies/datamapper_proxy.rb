@@ -1,6 +1,6 @@
 module ActiveOrm
   module Proxies
-    class DataMapperProxy  < AbstractProxy
+    class DataMapperProxy  < AbstractProxy      
       def new?
         model.new_record?
       end

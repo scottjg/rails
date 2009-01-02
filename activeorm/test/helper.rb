@@ -17,6 +17,14 @@ rescue LoadError
   $stderr.puts "Skipping #{description} tests. `gem install mocha` and try again."
 end
 
+def uses_active_record(description)
+    gem 'active_record'
+    require 'active_record'
+    yield
+  rescue LoadError
+    $stderr.puts "Skipping #{description} tests. `gem install active_record` and try again."
+end
+
 def uses_datamapper(description)
     gem 'dm-core'
     gem 'dm-validations'
