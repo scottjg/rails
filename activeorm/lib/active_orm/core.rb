@@ -4,23 +4,25 @@ module ActiveOrm
   class AbstractProxyMethod < ActiveOrmError; end
 
   module Core
-    class << self
+    module ClassMethods
       def proxyable? obj
-        obj.class.ancestors.find{|a| @_proxy_registry.key? a } || obj.class.included_modules.find{|a| @_proxy_registry.key? a }
+        find_key(obj)
       end
 
       def proxy obj
-        raise ProxyNotFoundException unless proxyable? obj
         @_proxy_cache ||= {}
-        key = obj.class.included_modules.find{|m| @_proxy_registry[m]} || obj.class
 
-        @_proxy_cache[obj.object_id] ||= @_proxy_registry[key].new(obj)
+        @_proxy_cache[obj.object_id] ||= @_proxy_registry[find_key(obj)].new(obj)
       end
 
       def register obj_class, obj_proxy_class
         @_proxy_registry ||= {}
         @_proxy_registry[obj_class] = obj_proxy_class
       end
+      protected
+        def find_key(obj)
+          obj.class.ancestors.find{|a| @_proxy_registry[a] } || obj.class.included_modules.find{|a| @_proxy_registry[a] }
+        end
     end
   end
 end

@@ -14,27 +14,27 @@ class CoreTest < Test::Unit::TestCase
   end
 
   def test_proxyable?
-    assert ActiveOrm::Core.proxyable? @model
+    assert ActiveOrm.proxyable? @model
   end
   
   def test_proxyable_for_module
-    assert ActiveOrm::Core.proxyable? @modulemodel
+    assert ActiveOrm.proxyable? @modulemodel
   end
   
   def test_failing_proxyable?
-    assert !ActiveOrm::Core.proxyable?(FailingModel.new)
+    assert !ActiveOrm.proxyable?(FailingModel.new)
   end
   
   def test_proxy
-    assert_equal @model, (ActiveOrm::Core.proxy @model).model
+    assert_equal @model, (ActiveOrm.proxy @model).model
   end
   
   def test_proxy_uses_cache
-    proxy = ActiveOrm::Core.proxy @model
+    proxy = ActiveOrm.proxy @model
     class << proxy
       def am_using_cache; end
     end
-    cached = ActiveOrm::Core.proxy @model
+    cached = ActiveOrm.proxy @model
     assert cached.respond_to? :am_using_cache
   end
 
