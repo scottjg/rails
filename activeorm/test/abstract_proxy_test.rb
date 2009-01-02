@@ -20,12 +20,4 @@ class AbstractProxyTest < Test::Unit::TestCase
     @model.invalidate
     assert !@proxy.valid?
   end
-  
-  def test_proxy_uses_cache
-    class << @proxy
-      def am_using_cache; end
-    end
-    cached = ActiveOrm::Core.proxy @model
-    assert cached.respond_to? :am_using_cache
-  end
 end

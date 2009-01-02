@@ -6,7 +6,7 @@ module ActiveOrm
   module Core
     class << self
       def proxyable? obj
-        obj.class.ancestors.find{|a| @_proxy_registry.key? a }
+        obj.class.ancestors.find{|a| @_proxy_registry.key? a } || obj.class.included_modules.find{|a| @_proxy_registry.key? a }
       end
 
       def proxy obj
