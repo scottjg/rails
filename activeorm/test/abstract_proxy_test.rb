@@ -9,10 +9,10 @@ class AbstractProxyTest < Test::Unit::TestCase
   def teardown
   end
 
-  def test_new?
-    assert @proxy.new?
+  def test_new_record?
+    assert @proxy.new_record?
     @model.save
-    assert !@proxy.new?
+    assert !@proxy.new_record?
   end
   
   def test_valid?

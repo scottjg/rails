@@ -7,7 +7,7 @@ module ActiveOrm
         @model = obj
       end
   
-      def new?
+      def new_record?
         model.new_record?
       end
   

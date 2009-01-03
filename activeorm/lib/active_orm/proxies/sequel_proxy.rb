@@ -1,7 +1,7 @@
 module ActiveOrm
   module Proxies
     class SequelProxy < AbstractProxy
-      def new?
+      def new_record?
         model.new?
       end
     end
