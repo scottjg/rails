@@ -4,12 +4,12 @@ require 'active_orm/core'
 class FailingModel
 end
 
-class SubclassModel < OrmModel
+class SubclassModel < ActiveOrm::TestOrmModel
 end
 
 class CoreTest < Test::Unit::TestCase
   def setup
-    @model = OrmModel.new
+    @model = ActiveOrm::TestOrmModel.new
     @modulemodel = OrmModuleModel.new
   end
 

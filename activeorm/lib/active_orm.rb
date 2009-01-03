@@ -47,5 +47,3 @@ module ActiveOrm
   end
 end
 
-# ActiveOrm.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
-

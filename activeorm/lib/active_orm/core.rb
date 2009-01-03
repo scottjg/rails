@@ -17,6 +17,24 @@ module ActiveOrm
         @_proxy_registry ||= {}
         @_proxy_registry[obj_class] = obj_proxy_class
       end
+      
+      # TODO: This is not a permanant method. Will be replaced with something
+      # more flexible at a later date pending the bootloader changes.
+      def use(orm)
+        case orm
+        when /test[_\W\s]orm/i
+          ActiveOrm.register ActiveOrm::TestOrmModel, ActiveOrm::Proxies::TestOrmProxy
+        when /sequel/i
+          ActiveOrm.register Sequel::Model, ActiveOrm::Proxies::SequelProxy
+        when /active[_\W\s]record/i
+          ActiveOrm.register ActiveRecord::Base, ActiveOrm::Proxies::ActiveRecordProxy
+        when /data[_\W\s]mapper/i
+          ActiveOrm.register DataMapper::Resource, ActiveOrm::Proxies::DataMapperProxy
+        else
+          raise ProxyNotFoundException
+        end
+      end
+      
       protected
         def find_key(obj)
           @_proxy_key_cache ||= {}

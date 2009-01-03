@@ -5,6 +5,8 @@ $:.unshift "#{File.dirname(__FILE__)}/../lib"
 $:.unshift "#{File.dirname(__FILE__)}/../../activesupport/lib"
 $:.unshift "#{File.dirname(__FILE__)}/../../actionpack/lib"
 require 'active_orm'
+require 'active_orm/test_orm_model'
+require 'active_orm/proxies/test_orm_proxy'
 
 # Show backtraces for deprecated behavior for quicker cleanup.
 ActiveSupport::Deprecation.debug = true
@@ -38,26 +40,6 @@ end
 module OrmModule
 end
 
-class OrmModel
-  
-  def initialize
-    @new = true
-    @valid = true
-  end
-  def save
-    @new = false
-  end
-  def new_record?
-    @new
-  end
-  def invalidate
-    @valid = false
-  end
-  def valid?
-    @valid
-  end
-end
-
 class OrmModuleModel
   include OrmModule
   
@@ -79,15 +61,5 @@ class OrmModuleModel
   end
 end
 
-class OrmModelProxy < ActiveOrm::Proxies::AbstractProxy
-  def new?
-    model.new_record?
-  end
-  
-  def valid?
-    model.valid?
-  end
-end
-
-ActiveOrm.register OrmModel, OrmModelProxy
-ActiveOrm.register OrmModule, OrmModelProxy
+ActiveOrm.use 'test_orm'
+ActiveOrm.register OrmModule, ActiveOrm::Proxies::TestOrmProxy
