@@ -56,6 +56,7 @@ module ActionView #:nodoc:
         path << name.join("/")
 
         template = nil
+
         Array(extensions).each do |extension|
           extensioned_path = extension ? "#{path}.#{extension}" : path
           template = find_template(extensioned_path) || find_template(path)

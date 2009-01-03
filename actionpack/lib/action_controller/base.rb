@@ -518,8 +518,8 @@ module ActionController #:nodoc:
       def process(request, response, method = :perform_action, *arguments) #:nodoc:
         response.request = request
 
-        initialize_template_class(response)
         assign_shortcuts(request, response)
+        initialize_template_class(response)
         initialize_current_url
         assign_names
 
@@ -865,7 +865,7 @@ module ActionController #:nodoc:
       #
       #   render :xml => post.to_xml, :status => :created, :location => post_url(post)
       def formats
-        request.formats.map {|f| f.symbol }.compact
+        @_request.formats.map {|f| f.symbol }.compact
       end
 
       def action_name_base(name = action_name)
@@ -1253,7 +1253,7 @@ module ActionController #:nodoc:
       end
 
       def initialize_template_class(response)
-        response.template = ActionView::Base.new(self.class.view_paths, {}, self)
+        @template = response.template = ActionView::Base.new(self.class.view_paths, {}, self, formats)
         response.template.helpers.send :include, self.class.master_helper_module
         response.redirected_to = nil
         @performed_render = @performed_redirect = false
@@ -1266,7 +1266,6 @@ module ActionController #:nodoc:
         @_response.session = request.session
 
         @_session = @_response.session
-        @template = @_response.template
 
         @_headers = @_response.headers
       end

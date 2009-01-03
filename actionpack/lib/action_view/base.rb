@@ -163,10 +163,8 @@ module ActionView #:nodoc:
     include Helpers, Partials, ::ERB::Util
     extend ActiveSupport::Memoizable
 
-    attr_accessor :base_path, :assigns, :template_extension
+    attr_accessor :base_path, :assigns, :template_extension, :formats
     attr_accessor :controller
-
-    attr_writer :template_format
 
     attr_accessor :output_buffer
 
@@ -209,7 +207,8 @@ module ActionView #:nodoc:
       end
     end
 
-    def initialize(view_paths = [], assigns_for_first_render = {}, controller = nil)#:nodoc:
+    def initialize(view_paths = [], assigns_for_first_render = {}, controller = nil, formats = nil)#:nodoc:
+      @formats = formats || [:html]
       @assigns = assigns_for_first_render
       @assigns_added = nil
       @_render_stack = []
@@ -244,7 +243,7 @@ module ActionView #:nodoc:
           _render_with_layout(layout, options, local_assigns, &block)
         elsif template = options[:file]
           unless template.respond_to?(:render)
-            template = self.view_paths.find_by_parts(template, template_format)
+            template = self.view_paths.find_by_parts(template, formats)
           end
           template.render_template(self, options[:locals])
         elsif partial = options[:partial]
@@ -292,20 +291,7 @@ module ActionView #:nodoc:
         content
       end
     end
-
-    # The format to be used when choosing between multiple templates with
-    # the same name but differing formats.  See +Request#format+
-    # for more details.
-    def template_format
-      if defined? @template_format
-        @template_format
-      elsif controller && controller.respond_to?(:request)
-        @template_format = controller.request.format.to_sym
-      else
-        @template_format = :html
-      end
-    end
-
+    
     # Access the current template being rendered.
     # Returns a ActionView::Template object.
     def template

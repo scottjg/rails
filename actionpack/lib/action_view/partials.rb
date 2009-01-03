@@ -220,15 +220,10 @@ module ActionView
       end
 
       def _pick_partial_template(partial_path) #:nodoc:
-        if partial_path.include?('/')
-          path = File.join(File.dirname(partial_path), "_#{File.basename(partial_path)}")
-        elsif controller
-          path = "#{controller.class.controller_path}/_#{partial_path}"
-        else
-          path = "_#{partial_path}"
+        unless partial_path.include?('/')
+          prefix = (controller && controller.class.controller_path)
         end
-
-        self.view_paths.find_template(path, self.template_format)
+        view_paths.find_by_parts(partial_path, formats, prefix, true)
       end
       memoize :_pick_partial_template
   end

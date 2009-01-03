@@ -172,10 +172,10 @@ module ActionController #:nodoc:
         @layout_conditions ||= read_inheritable_attribute(:layout_conditions)
       end
 
-      def default_layout(format) #:nodoc:
+      def default_layout(formats) #:nodoc:
         layout = read_inheritable_attribute(:layout)
         return layout unless read_inheritable_attribute(:auto_layout)
-        find_layout(layout, format)
+        find_layout(layout, formats)
       end
 
       def layout_list #:nodoc:
@@ -212,7 +212,7 @@ module ActionController #:nodoc:
     # object). If the layout was defined without a directory, layouts is assumed. So <tt>layout "weblog/standard"</tt> will return
     # weblog/standard, but <tt>layout "standard"</tt> will return layouts/standard.
     def active_layout(passed_layout = nil)
-      layout = passed_layout || self.class.default_layout(default_template_format)
+      layout = passed_layout || self.class.default_layout(formats)
 
       active_layout = case layout
         when Symbol then __send__(layout)
@@ -221,7 +221,7 @@ module ActionController #:nodoc:
       end
 
       if active_layout
-        if layout = self.class.find_layout(active_layout, @template.template_format)
+        if layout = self.class.find_layout(active_layout, @template.formats)
           layout
         else
           raise ActionView::MissingTemplate.new(self.class.view_paths, active_layout)
@@ -274,7 +274,7 @@ module ActionController #:nodoc:
       end
 
       def default_template_format
-        response.template.template_format
+        response.template.formats
       end
   end
 end
