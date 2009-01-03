@@ -34,6 +34,8 @@ end
 gem 'rack', '~> 0.4.0'
 require 'rack'
 
+require File.join(File.dirname(__FILE__), "action_pack", "common")
+
 module ActionController
   # TODO: Review explicit to see if they will automatically be handled by
   # the initilizer if they are really needed.

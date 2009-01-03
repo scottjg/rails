@@ -250,6 +250,7 @@ module ActionController #:nodoc:
     DEFAULT_RENDER_STATUS_CODE = "200 OK"
 
     include StatusCodes
+    include ActionPack::Common
 
     cattr_reader :protected_instance_variables
     # Controller specific instance variables which will not be accessible inside views.
@@ -871,26 +872,6 @@ module ActionController #:nodoc:
         (name.is_a?(String) ? name.sub(/^#{controller_path}\//, '') : name).to_s
       end
 
-      def partial_parts(name)
-        segments = name.split("/")
-        parts = segments.pop.split(".")
-
-        case parts.size
-        when 1
-          parts
-        when 2, 3
-          extension = parts.delete_at(1).to_sym
-          if formats.include?(extension)
-            self.formats.replace [extension]
-          end
-          parts.pop if parts.size == 2
-        end
-        path = parts.join(".")
-        prefix = segments[0..-2].join("/")
-        prefix = prefix.blank? ? controller_path : prefix
-        [path, formats, prefix]
-      end
-
       def render(options = nil, extra_options = {}, &block) #:doc:
         raise DoubleRenderError, "Can only render or redirect once per action" if performed?
 
@@ -1400,6 +1381,7 @@ module ActionController #:nodoc:
       def strip_out_controller(path)
         path.split('/', 2).last
       end
+
 
       def template_path_includes_controller?(path)
         self.controller_path.split('/')[-1] == path.split('/')[0]
