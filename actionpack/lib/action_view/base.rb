@@ -236,13 +236,15 @@ module ActionView #:nodoc:
     def render(options = {}, local_assigns = {}, &block) #:nodoc:
       local_assigns ||= {}
 
+      @exempt_from_layout = true
+
       case options
       when Hash
         options = options.reverse_merge(:locals => {})
         if layout = options.delete(:layout)
           _render_with_layout(layout, options, local_assigns, &block)
         elsif template = options[:file]
-          unless template.respond_to?(:render)
+          unless template.respond_to?(:render_template)
             template = self.view_paths.find_by_parts(template, formats)
           end
           template.render_template(self, options[:locals])
@@ -258,6 +260,34 @@ module ActionView #:nodoc:
       else
         render_partial(:partial => options, :locals => local_assigns)
       end
+    end
+        
+    def _render_content_with_layout(content, layout, locals)
+      locals ||= {}
+
+      if layout
+        response.layout = layout.path_without_format_and_extension
+        logger.info("Rendering template within #{layout.path_without_format_and_extension}") if logger
+      end
+      
+      begin
+        original_content_for_layout = @content_for_layout if defined?(@content_for_layout)
+        @content_for_layout = content
+
+        @cached_content_for_layout = @content_for_layout
+        render(:file => layout, :locals => locals)
+      ensure
+        @content_for_layout = original_content_for_layout
+      end
+    end
+    
+    def render_inline(inline, layout, options)
+      content = InlineTemplate.new(options[:inline], options[:type]).render(self, options[:locals] || {})
+      layout ? _render_content_with_layout(content, layout, options[:locals]) : content
+    end
+
+    def render_text(text, layout, options)
+      layout ? _render_content_with_layout(text, layout, options[:locals]) : text
     end
     
     def render_for_parts(parts, layout, options)
@@ -277,16 +307,8 @@ module ActionView #:nodoc:
         content = template.render_template(self, options[:locals])
       end
       
-      if layout
-        begin
-          original_content_for_layout = @content_for_layout if defined?(@content_for_layout)
-          @content_for_layout = content
-
-          @cached_content_for_layout = @content_for_layout
-          render(:file => layout, :locals => options[:locals])
-        ensure
-          @content_for_layout = original_content_for_layout
-        end
+      if layout && !template.exempt_from_layout?
+        _render_content_with_layout(content, layout, options[:locals])
       else
         content
       end

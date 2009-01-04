@@ -894,10 +894,7 @@ module ActionController #:nodoc:
           options = extra_options
         end
 
-        layout = pick_layout(options)
-
-        response.layout = layout.path_without_format_and_extension if layout
-        logger.info("Rendering template within #{layout.path_without_format_and_extension}") if logger && layout
+        layout = _pick_layout(options)
 
         if content_type = options[:content_type]
           response.content_type = content_type.to_s
@@ -907,9 +904,8 @@ module ActionController #:nodoc:
           response.headers["Location"] = url_for(location)
         end
 
-        if options.has_key?(:text)
-          text = layout ? @template.render(options.merge(:text => options[:text], :layout => layout)) : options[:text]
-          render_for_text(text, options[:status])
+        if options.key?(:text)
+          render_for_text(@template.render_text(options[:text], layout, options), options[:status])
 
         else
           file, template = options[:file], options[:template]
@@ -926,7 +922,7 @@ module ActionController #:nodoc:
           end
           
           if inline = options[:inline]
-            render_for_text(@template.render(options.merge(:layout => layout)), options[:status])
+            render_for_text(@template.render_inline(inline, layout, options), options[:status])
 
           elsif xml = options[:xml]
             response.content_type ||= Mime::XML

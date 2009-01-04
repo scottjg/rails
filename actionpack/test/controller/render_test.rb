@@ -1607,7 +1607,7 @@ class RenderingLoggingTest < ActionController::TestCase
     @controller.logger = MockLogger.new
     get :layout_test
     logged = @controller.logger.logged.find_all {|l| l =~ /render/i }
-    assert_equal "Rendering template within layouts/standard", logged[0]
-    assert_equal "Rendering test/hello_world", logged[1]
+    assert_equal "Rendering test/hello_world", logged[0]
+    assert_equal "Rendering template within layouts/standard", logged[1]
   end
 end

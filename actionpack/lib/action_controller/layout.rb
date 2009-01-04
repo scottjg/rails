@@ -2,6 +2,7 @@ module ActionController #:nodoc:
   module Layout #:nodoc:
     def self.included(base)
       base.extend(ClassMethods)
+      base.class_inheritable_accessor :layout_name, :auto_layout
       base.class_eval do
         class << self
           alias_method_chain :inherited, :layout
@@ -164,8 +165,8 @@ module ActionController #:nodoc:
       # performance and have access to them as any normal template would.
       def layout(template_name, conditions = {}, auto = false)
         add_layout_conditions(conditions)
-        write_inheritable_attribute(:layout, template_name)
-        write_inheritable_attribute(:auto_layout, auto)
+        self.layout_name = template_name
+        self.auto_layout = auto
       end
 
       def layout_conditions #:nodoc:
@@ -173,20 +174,23 @@ module ActionController #:nodoc:
       end
 
       def default_layout(formats) #:nodoc:
-        layout = read_inheritable_attribute(:layout)
-        return layout unless read_inheritable_attribute(:auto_layout)
-        find_layout(layout, formats)
+        layout = self.layout_name
+        return layout unless self.auto_layout
+        begin
+          layout.is_a?(String) ? find_layout(layout, formats) : layout
+        rescue ActionView::MissingTemplate
+          nil
+        end
+      end
+
+      def find_layout(layout, formats) #:nodoc:
+        return layout if layout.nil? || layout.respond_to?(:render)
+        prefix = layout.to_s =~ /layouts\// ? nil : "layouts"
+        view_paths.find_by_parts(layout.to_s, formats, prefix)
       end
 
       def layout_list #:nodoc:
         Array(view_paths).sum([]) { |path| Dir["#{path}/layouts/**/*"] }
-      end
-
-      def find_layout(layout, *formats) #:nodoc:
-        return layout if layout.respond_to?(:render)
-        view_paths.find_template(layout.to_s =~ /layouts\// ? layout : "layouts/#{layout}", *formats)
-      rescue ActionView::MissingTemplate
-        nil
       end
 
       private
@@ -206,75 +210,40 @@ module ActionController #:nodoc:
           conditions.inject({}) {|hash, (key, value)| hash.merge(key => [value].flatten.map {|action| action.to_s})}
         end
     end
-
-    # Returns the name of the active layout. If the layout was specified as a method reference (through a symbol), this method
-    # is called and the return value is used. Likewise if the layout was specified as an inline method (through a proc or method
-    # object). If the layout was defined without a directory, layouts is assumed. So <tt>layout "weblog/standard"</tt> will return
-    # weblog/standard, but <tt>layout "standard"</tt> will return layouts/standard.
-    def active_layout(passed_layout = nil)
-      layout = passed_layout || self.class.default_layout(formats)
-
-      active_layout = case layout
-        when Symbol then __send__(layout)
-        when Proc   then layout.call(self)
-        else layout
+    
+    def active_layout(name = nil)
+      return nil if name == false
+      name = (name.nil? || name == true) ? self.class.default_layout(formats) : name
+      
+      layout_name = case name
+        when Symbol then __send__(name)
+        when Proc   then name.call(self)
+        else name
       end
+      
+      self.class.find_layout(layout_name, formats)
+    end
 
-      if active_layout
-        if layout = self.class.find_layout(active_layout, @template.formats)
-          layout
-        else
-          raise ActionView::MissingTemplate.new(self.class.view_paths, active_layout)
-        end
-      end
+    # TODO: Have AV ask for this when AV's ready. There's a somewhat messy interaction
+    #       here where no error should be raised if the final template is exempt
+    #       from layout, but we're not yet sure what that template will be.
+    def _pick_layout(options)
+      return if !options.key?(:layout) && 
+        options.values_at(:text, :xml, :json, :file, :inline, 
+        :partial, :nothing, :update).nitems > 0
+        
+      return if formats.first == :js
+      
+      active_layout(options.delete(:layout)) if action_has_layout?
     end
 
     private
-      def candidate_for_layout?(options)
-        template = options[:template] || default_template(options[:action])
-        if options.values_at(:text, :xml, :json, :file, :inline, :partial, :nothing, :update).compact.empty?
-          begin
-            !self.view_paths.find_template(template, default_template_format).exempt_from_layout?
-          rescue ActionView::MissingTemplate
-            true
-          end
-        end
-      rescue ActionView::MissingTemplate
-        false
-      end
-
-      def pick_layout(options)
-        if options.has_key?(:layout)
-          case layout = options.delete(:layout)
-          when FalseClass
-            nil
-          when NilClass, TrueClass
-            active_layout if action_has_layout? && candidate_for_layout?(:template => default_template_name)
-          else
-            active_layout(layout)
-          end
-        else
-          active_layout if action_has_layout? && candidate_for_layout?(options)
-        end
-      end
-
       def action_has_layout?
-        if conditions = self.class.layout_conditions
-          case
-            when only = conditions[:only]
-              only.include?(action_name)
-            when except = conditions[:except]
-              !except.include?(action_name)
-            else
-              true
-          end
-        else
-          true
-        end
+        return true unless conditions = self.class.layout_conditions
+        return only.include?(action_name) if only = conditions[:only]
+        return !except.include?(action_name) if except = conditions[:except]
+        true
       end
 
-      def default_template_format
-        response.template.formats
-      end
   end
 end
