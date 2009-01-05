@@ -1234,7 +1234,7 @@ module ActiveRecord
 
         def create_has_many_reflection(association_id, options, &extension)
           options.assert_valid_keys(
-            :class_name, :table_name, :foreign_key,
+            :class_name, :table_name, :foreign_key, :primary_key,
             :dependent,
             :select, :conditions, :include, :order, :group, :limit, :offset,
             :as, :through, :source, :source_type,
