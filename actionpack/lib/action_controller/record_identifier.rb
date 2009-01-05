@@ -82,6 +82,11 @@ module ActionController
     def singular_class_name(record_or_class)
       class_from_record_or_class(record_or_class).name.underscore.tr('/', '_')
     end
+    
+    # Returns whether or not the class name of a record or class is uncountable
+    def uncountable_class_name?(record_or_class)
+      singular_class_name(record_or_class) == plural_class_name(record_or_class) ? true : false
+    end
 
     private
       def class_from_record_or_class(record_or_class)

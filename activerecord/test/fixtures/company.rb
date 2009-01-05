@@ -94,6 +94,7 @@ end
 
 class Account < ActiveRecord::Base
   belongs_to :firm
+  has_many :clients_of_firm, :through => :firm
   
   def self.destroyed_account_ids
     @destroyed_account_ids ||= Hash.new { |h,k| h[k] = [] }

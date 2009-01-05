@@ -70,7 +70,7 @@ module ActionController
       # Don't set the Content-Length for block-based bodies as that would mean reading it all into memory. Not nice
       # for, say, a 2GB streaming file.
       def set_content_length!
-        self.headers["Content-Length"] = body.size unless body.respond_to?(:call)
+        self.headers["Content-Length"] = body.size unless body.respond_to?(:call) || !self.headers["Content-Length"].blank?
       end
   end
 end

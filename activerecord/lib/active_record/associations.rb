@@ -48,6 +48,12 @@ module ActiveRecord
       super("Cannot associate new records through '#{owner.class.name}##{reflection.name}' on '#{reflection.source_reflection.class_name rescue nil}##{reflection.source_reflection.name rescue nil}'. Both records must have an id in order to create the has_many :through record associating them.")
     end
   end
+  
+  class HasManyThroughBelongsToThroughDoesntExist < ActiveRecordError #:nodoc:
+    def initialize(owner, reflection)
+      super("Cannot associate new records through '#{owner.class.name}##{reflection.name}' on '#{reflection.source_reflection.class_name rescue nil}##{reflection.source_reflection.name rescue nil}'. Association '#{owner.class.name}##{reflection.through_reflection.name rescue nil}' cannnot be nil.")
+    end
+  end
 
   class HasManyThroughCantDissociateNewRecords < ActiveRecordError #:nodoc:
     def initialize(owner, reflection)
@@ -378,6 +384,30 @@ module ActiveRecord
     #   @firm = Firm.find :first
     #   @firm.clients.collect { |c| c.invoices }.flatten # select all invoices for all clients of the firm
     #   @firm.invoices                                   # selects all invoices by going through the Client join model.
+    #
+    # You can also go through a +belongs_to+ association on the owner model:
+    #
+    #   class App < ActiveRecord::Base
+    #     belongs_to :client
+    #     has_many   :users, :through => :client
+    #   end
+    #
+    #   class Client < ActiveRecord::Base
+    #     has_many :apps
+    #     has_many :users
+    #   end
+    #
+    #   class User < ActiveRecord::Base
+    #     belongs_to :client
+    #   end
+    #
+    #   @app = App.find :first
+    #   @app.client.users	# select all the users for a given application
+    #   @app.users              # selects all the users for a given application through the Client join model.
+    #
+    # It is recommended that in this last case you use delegate :users, :to => :client
+    # unless you have a need to extend the users association proxy in a manner that
+    # requires the use of the owner object (@app).
     #
     # === Polymorphic Associations
     #
@@ -1399,7 +1429,7 @@ module ActiveRecord
 
         def create_extension_modules(association_id, block_extension, extensions)
           if block_extension
-            extension_module_name = "#{self.to_s}#{association_id.to_s.camelize}AssociationExtension"
+            extension_module_name = "#{self.to_s.demodulize}#{association_id.to_s.camelize}AssociationExtension"
 
             silence_warnings do
               Object.const_set(extension_module_name, Module.new(&block_extension))
@@ -1668,7 +1698,10 @@ module ActiveRecord
                       else
                         jt_foreign_key = through_reflection.primary_key_name
                       end
-
+                      
+                      p_primary_key = parent.primary_key
+                      jt_foreign_key, p_primary_key = p_primary_key, jt_foreign_key if through_reflection.macro == :belongs_to
+                      
                       case source_reflection.macro
                       when :has_many
                         if source_reflection.options[:as]
@@ -1680,7 +1713,7 @@ module ActiveRecord
                             klass.quote_value(source_reflection.active_record.base_class.name)
                           ]
                         else
-                          first_key   = through_reflection.klass.base_class.to_s.foreign_key
+                          first_key   = source_reflection.options[:foreign_key] || through_reflection.klass.base_class.to_s.foreign_key
                           second_key  = options[:foreign_key] || primary_key
                         end
 
@@ -1707,7 +1740,7 @@ module ActiveRecord
                       " #{join_type} %s ON (%s.%s = %s.%s%s%s%s) " % [
                         table_alias_for(through_reflection.klass.table_name, aliased_join_table_name),
                         connection.quote_table_name(parent.aliased_table_name),
-                        connection.quote_column_name(parent.primary_key),
+                        connection.quote_column_name(p_primary_key),
                         connection.quote_table_name(aliased_join_table_name),
                         connection.quote_column_name(jt_foreign_key),
                         jt_as_extra, jt_source_extra, jt_sti_extra

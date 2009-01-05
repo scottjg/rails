@@ -45,19 +45,35 @@ module ActiveRecord
       # will raise ActiveRecord::HasManyThroughCantAssociateNewRecords if
       # either is a new record.  Calls create! so you can rescue errors.
       #
+      # If you are using through on a belongs_to association as in
+      #
+      #   class App < ActiveRecord::Base
+      #     belongs_to :client
+      #     has_many :users, :through => :client
+      #   end
+      #
+      # Then app.users << user is equivalent to app.client.users << user
+      # Therefore the only requirement is that the associated client exists
+      #
       # The :before_add and :after_add callbacks are not yet supported.
       def <<(*records)
         return if records.empty?
         through = @reflection.through_reflection
-        raise ActiveRecord::HasManyThroughCantAssociateNewRecords.new(@owner, through) if @owner.new_record?
+        raise ActiveRecord::HasManyThroughCantAssociateNewRecords.new(@owner, through) if through.macro != :belongs_to && @owner.new_record?
+        raise ActiveRecord::HasManyThroughBelongsToThroughDoesntExist.new(@owner, @reflection) if through.macro == :belongs_to && @owner.send(through.name) == nil
 
         klass = through.klass
         klass.transaction do
           flatten_deeper(records).each do |associate|
             raise_on_type_mismatch(associate)
-            raise ActiveRecord::HasManyThroughCantAssociateNewRecords.new(@owner, through) unless associate.respond_to?(:new_record?) && !associate.new_record?
-
-            @owner.send(@reflection.through_reflection.name).proxy_target << klass.send(:with_scope, :create => construct_join_attributes(associate)) { klass.create! }
+            
+            if through.macro == :belongs_to
+              @owner.send(@reflection.through_reflection.name).send(@reflection.name) << associate
+            else
+              raise ActiveRecord::HasManyThroughCantAssociateNewRecords.new(@owner, through) unless associate.respond_to?(:new_record?) && !associate.new_record?
+  
+              @owner.send(@reflection.through_reflection.name).proxy_target << klass.send(:with_scope, :create => construct_join_attributes(associate)) { klass.create! }
+            end
             @target << associate if loaded?
           end
         end
@@ -158,7 +174,11 @@ module ActiveRecord
             { "#{as}_id" => @owner.id,
               "#{as}_type" => @owner.class.base_class.name.to_s }
           else
-            { reflection.primary_key_name => @owner.id }
+            if reflection.macro == :belongs_to
+              { 'id' => @owner[reflection.primary_key_name] }
+            else
+              { reflection.primary_key_name => @owner.id }
+            end
           end
         end
 
@@ -179,7 +199,11 @@ module ActiveRecord
                 @owner.class.base_class.name.to_s,
                 reflection.klass.columns_hash["#{as}_type"]) }
           else
-            { reflection.primary_key_name => @owner.quoted_id }
+            if reflection.macro == :belongs_to
+              { 'id' => @owner.class.quote_value(@owner[reflection.primary_key_name]) }
+            else
+              { reflection.primary_key_name => @owner.quoted_id }
+            end
           end
         end
 

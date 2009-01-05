@@ -9,12 +9,14 @@ require 'fixtures/category'
 require 'fixtures/categorization'
 require 'fixtures/vertex'
 require 'fixtures/edge'
+require 'fixtures/reader'
+require 'fixtures/person'
 require 'fixtures/book'
 require 'fixtures/citation'
 
 class AssociationsJoinModelTest < Test::Unit::TestCase
   self.use_transactional_fixtures = false
-  fixtures :posts, :authors, :categories, :categorizations, :comments, :tags, :taggings, :author_favorites, :vertices, :items, :books
+  fixtures :posts, :authors, :categories, :categorizations, :comments, :tags, :taggings, :author_favorites, :vertices, :items, :books, :readers, :people
 
   def test_has_many
     assert authors(:david).categories.include?(categories(:general))
@@ -458,6 +460,33 @@ class AssociationsJoinModelTest < Test::Unit::TestCase
 
     # Raises if the wrong reflection name is used to set the Edge belongs_to
     assert_nothing_raised { vertices(:vertex_1).sinks << vertices(:vertex_5) }
+  end
+  
+  def test_create_associate_when_adding_to_has_many_through_on_belongs_to_not_loaded
+    comment = comments(:check_eager_sti_on_associations)
+    count = comment.readers.size
+    reader = Reader.new(:person_id => 3)
+    assert !comment.readers.loaded?
+    assert_nothing_raised { comment.readers << reader }
+    assert_equal count + 1, comment.readers.size
+    assert_equal count + 1, comment.readers(true).size
+  end
+  
+  def test_create_associate_when_adding_to_has_many_through_on_belongs_to_loaded
+    comment = comments(:check_eager_sti_on_associations)
+    count = comment.readers.size
+    comment.readers.first
+    reader = Reader.new(:person_id => 3)
+    assert comment.readers.loaded?
+    assert_nothing_raised { comment.readers << reader }
+    assert_equal count + 1, comment.readers.size
+    assert_equal count + 1, comment.readers(true).size
+  end
+  
+  def test_create_associate_when_adding_to_has_many_through_on_belongs_to_with_missing_association
+    comment = Comment.create!(:post_id => 0)
+    reader = Reader.new(:person_id => 3)
+    assert_raise(ActiveRecord::HasManyThroughBelongsToThroughDoesntExist) { comment.readers << reader }
   end
 
   def test_has_many_through_collection_size_doesnt_load_target_if_not_loaded

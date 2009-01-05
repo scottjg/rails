@@ -133,6 +133,19 @@ class EagerAssociationTest < Test::Unit::TestCase
     assert_equal authors(:david), assert_no_queries { posts_with_author.first.author }
     assert_equal authors(:david), assert_no_queries { posts_with_comments_and_author.first.author }
   end
+  
+  def test_eager_with_has_many_through_on_belongs_to
+    readers_with_person = comments(:check_eager_sti_on_associations).readers.find(:all, :include => :person)
+    comment_with_readers = Comment.find(9, :include => :readers)
+    assert_equal people(:jim), assert_no_queries { readers_with_person.first.person }
+    assert_no_queries { comment_with_readers.readers }
+  end
+  
+  def test_eager_with_has_many_through_on_belongs_to_an_sti_join_model
+    account = Account.find(1, :include => :clients_of_firm)
+    assert_no_queries { account.clients_of_firm }
+    assert_equal Client.find_all_by_client_of(1), assert_no_queries { account.clients_of_firm }
+  end
 
   def test_eager_with_has_many_through_an_sti_join_model
     author = Author.find(:first, :include => :special_post_comments, :order => 'authors.id')

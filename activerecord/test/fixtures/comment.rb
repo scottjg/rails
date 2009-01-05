@@ -1,5 +1,6 @@
 class Comment < ActiveRecord::Base
   belongs_to :post
+  has_many :readers, :through => :post
   
   def self.what_are_you
     'a comment...'

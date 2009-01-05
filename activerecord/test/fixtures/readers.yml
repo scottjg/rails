@@ -2,3 +2,13 @@ michael_welcome:
   id: 1
   post_id: 1
   person_id: 1
+
+through_reader_1:
+  id: 2
+  post_id: 5
+  person_id: 2
+  
+through_reader_2:
+  id: 3
+  post_id: 5
+  person_id: 2
