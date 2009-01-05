@@ -105,6 +105,10 @@ module Inflector
   #   "CamelOctopus".pluralize #=> "CamelOctopi"
   def pluralize(word)
     result = word.to_s.dup
+    
+    if m = /(.*_)([a-z]+)/.match(result)
+      result = m[2]
+    end
 
     if word.empty? || inflections.uncountables.include?(result.downcase)
       result
@@ -112,6 +116,7 @@ module Inflector
       inflections.plurals.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
       result
     end
+    m ? m[1] + result : result
   end
 
   # The reverse of pluralize, returns the singular form of a word in a string.
