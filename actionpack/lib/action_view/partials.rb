@@ -176,12 +176,26 @@ module ActionView
       def render_partial(options = {}) #:nodoc:
         local_assigns = options[:locals] || {}
 
+        if options[:partial].respond_to?(:render)
+          template = options[:partial]
+          options[:object] ||= local_assigns[:object] || local_assigns[template.variable_name]
+
+          # Ensure correct object is reassigned to other accessors
+          local_assigns[:object] = local_assigns[template.variable_name] = options[:object]
+          if as = options[:as]
+            local_assigns[as] = options[:object]
+          end
+
+          return render(template, local_assigns)
+        end
+
         case partial_path = options[:partial]
         when String, Symbol, NilClass
           if options.has_key?(:collection)
             render_partial_collection(options)
           else
-            _pick_partial_template(partial_path).render_partial(self, options[:object], local_assigns)
+            options[:partial] = _pick_partial_template(partial_path)
+            render_partial(options)
           end
         when ActionView::Helpers::FormBuilder
           builder_partial_path = partial_path.class.to_s.demodulize.underscore.sub(/_builder$/, '')
@@ -205,7 +219,6 @@ module ActionView
         partial = options[:partial]
         spacer = options[:spacer_template] ? render(:partial => options[:spacer_template]) : ''
         local_assigns = options[:locals] ? options[:locals].clone : {}
-        as = options[:as]
 
         index = 0
         options[:collection].map do |object|
@@ -213,7 +226,12 @@ module ActionView
             ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path)
           template = _pick_partial_template(_partial_path)
           local_assigns[template.counter_name] = index
-          result = template.render_partial(self, object, local_assigns.dup, as)
+          result = render_partial(
+            :partial => template,
+            :object => object,
+            :locals => local_assigns.dup,
+            :as => options[:as]
+          )
           index += 1
           result
         end.join(spacer)

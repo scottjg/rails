@@ -647,11 +647,6 @@ class TestController < ActionController::Base
     render :partial => "hash_greeting", :collection => [ {:first_name => "Pratik"}, {:first_name => "Amy"} ], :locals => { :greeting => "Hola" }
   end
 
-  def partial_with_implicit_local_assignment
-    @customer = Customer.new("Marcel")
-    render :partial => "customer"
-  end
-
   def render_call_to_partial_with_layout
     render :action => "calling_partial_with_layout"
   end
@@ -1415,13 +1410,6 @@ class RenderTest < ActionController::TestCase
   def test_partial_hash_collection_with_locals
     get :partial_hash_collection_with_locals
     assert_equal "Hola: PratikHola: Amy", @response.body
-  end
-
-  def test_partial_with_implicit_local_assignment
-    assert_deprecated do
-      get :partial_with_implicit_local_assignment
-      assert_equal "Hello: Marcel", @response.body
-    end
   end
 
   def test_render_missing_partial_template

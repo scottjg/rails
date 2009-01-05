@@ -96,11 +96,27 @@ module ActionView #:nodoc:
     attr_accessor :filename, :load_path, :base_path, :name, :format, :extension
     delegate :to_s, :to => :path
 
+    module RenderWithBacktrace
+      def render(context, local_assigns = {}, &block)
+        super
+      rescue Exception => e
+        raise e unless filename
+        if TemplateError === e
+          e.sub_template_of(self)
+          raise e
+        else
+          raise TemplateError.new(self, context.assigns, e)
+        end
+      end
+    end
+
     def initialize(template_path, load_paths = [])
       template_path = template_path.dup
       @load_path, @filename = find_full_path(template_path, load_paths)
       @base_path, @name, @format, @extension = split(template_path)
       @base_path.to_s.gsub!(/\/$/, '') # Push to split method
+
+      extend RenderWithBacktrace
 
       # Extend with partial super powers
       extend RenderablePartial if @name =~ /^_/
@@ -176,18 +192,6 @@ module ActionView #:nodoc:
       relative_path.to_s.gsub(/([^a-zA-Z0-9_])/) { $1.ord }
     end
     memoize :method_segment
-
-    def render_template(view, local_assigns = {})
-      render(view, local_assigns)
-    rescue Exception => e
-      raise e unless filename
-      if TemplateError === e
-        e.sub_template_of(self)
-        raise e
-      else
-        raise TemplateError.new(self, view.assigns, e)
-      end
-    end
 
     def stale?
       File.mtime(filename) > mtime

@@ -237,18 +237,40 @@ module ActionView #:nodoc:
     def render(options = {}, local_assigns = {}, &block) #:nodoc:
       local_assigns ||= {}
 
+      if options.respond_to?(:render)
+        template = options
+        @_render_stack.push(template)
+        _evaluate_assigns_and_ivars
+        if template.respond_to?(:mime_type)
+          _set_controller_content_type(template.mime_type)
+        end
+        result = template.render(self, local_assigns) do |*names|
+          ivar = :@_proc_for_layout
+          if !self.instance_variable_defined?(:"@content_for_#{names.first}") &&
+              self.instance_variable_defined?(ivar) &&
+              (proc = self.instance_variable_get(ivar))
+            self.capture(*names, &proc)
+          elsif self.instance_variable_defined?(ivar = :"@content_for_#{names.first || :layout}")
+            self.instance_variable_get(ivar)
+          end
+        end
+        @_render_stack.pop
+        return result
+      end
+
       case options
       when Hash
         options = options.reverse_merge(:locals => {})
         if options[:layout]
           _render_with_layout(options, local_assigns, &block)
         elsif options[:file]
-          tempalte = self.view_paths.find_template(options[:file], template_format)
-          tempalte.render_template(self, options[:locals])
+          template = self.view_paths.find_template(options[:file], template_format)
+          render(template, options[:locals])
         elsif options[:partial]
           render_partial(options)
         elsif options[:inline]
-          InlineTemplate.new(options[:inline], options[:type]).render(self, options[:locals])
+          template = InlineTemplate.new(options[:inline], options[:type])
+          render(template, options[:locals])
         elsif options[:text]
           options[:text]
         end
