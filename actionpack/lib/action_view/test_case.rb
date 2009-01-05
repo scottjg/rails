@@ -7,15 +7,15 @@ module ActionView
     end
   end
 
-  module Renderable
+  module Compilable
     alias_method :render_without_template_tracking, :render
-    def render(view, local_assigns = {}, &block)
+    def render(context, local_assigns = {}, &block)
       if respond_to?(:path) && !is_a?(InlineTemplate)
-        rendered = view.instance_variable_get(:@_rendered)
+        rendered = context.instance_variable_get(:@_rendered)
         rendered[:partials][self] += 1 if is_a?(RenderablePartial)
         rendered[:template] ||= self
       end
-      render_without_template_tracking(view, local_assigns, &block)
+      render_without_template_tracking(context, local_assigns, &block)
     end
   end
 

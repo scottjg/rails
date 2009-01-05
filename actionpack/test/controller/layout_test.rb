@@ -4,8 +4,15 @@ require 'abstract_unit'
 # method has access to the view_paths array when looking for a layout to automatically assign.
 old_load_paths = ActionController::Base.view_paths
 
-ActionView::Template::register_template_handler :mab,
-  lambda { |template| template.source.inspect }
+module MabHandler
+  include ActionView::Compilable
+
+  def compile
+    source.inspect
+  end
+end
+
+ActionView::Template::register_template_handler :mab, MabHandler
 
 ActionController::Base.view_paths = [ File.dirname(__FILE__) + '/../fixtures/layout_tests/' ]
 

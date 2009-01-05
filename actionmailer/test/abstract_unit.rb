@@ -10,8 +10,20 @@ require 'action_mailer/test_case'
 ActiveSupport::Deprecation.debug = true
 
 # Bogus template processors
-ActionView::Template.register_template_handler :haml, lambda { |template| "Look its HAML!".inspect }
-ActionView::Template.register_template_handler :bak, lambda { |template| "Lame backup".inspect }
+module HamlEngine
+  def compile
+    "Look its HAML!".inspect
+  end
+end
+
+module BackupHandler
+  def compile
+    "Lame backup".inspect
+  end
+end
+
+ActionView::Template.register_template_handler :haml, HamlEngine
+ActionView::Template.register_template_handler :bak, BackupHandler
 
 $:.unshift "#{File.dirname(__FILE__)}/fixtures/helpers"
 

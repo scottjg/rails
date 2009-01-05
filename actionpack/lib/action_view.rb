@@ -37,15 +37,14 @@ module ActionView
   end
 
   autoload :Base, 'action_view/base'
+  autoload :Compilable, 'action_view/compilable'
   autoload :Helpers, 'action_view/helpers'
   autoload :InlineTemplate, 'action_view/inline_template'
   autoload :Partials, 'action_view/partials'
   autoload :PathSet, 'action_view/paths'
-  autoload :Renderable, 'action_view/renderable'
   autoload :RenderablePartial, 'action_view/renderable_partial'
   autoload :Template, 'action_view/template'
   autoload :TemplateError, 'action_view/template_error'
-  autoload :TemplateHandler, 'action_view/template_handler'
   autoload :TemplateHandlers, 'action_view/template_handlers'
   autoload :Helpers, 'action_view/helpers'
 end

@@ -80,7 +80,6 @@ module ActionView #:nodoc:
 
     extend TemplateHandlers
     extend ActiveSupport::Memoizable
-    include Renderable
 
     # Templates that are exempt from layouts
     @@exempt_from_layout = Set.new([/\.rjs$/])
@@ -115,6 +114,8 @@ module ActionView #:nodoc:
       @load_path, @filename = find_full_path(template_path, load_paths)
       @base_path, @name, @format, @extension = split(template_path)
       @base_path.to_s.gsub!(/\/$/, '') # Push to split method
+
+      extend Template.handler_class_for_extension(@extension)
 
       extend RenderWithBacktrace
 

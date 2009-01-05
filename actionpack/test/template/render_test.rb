@@ -154,9 +154,13 @@ module RenderTestCases
     assert_equal "Hello, World!", @view.render(:inline => "Hello, World!", :type => :bar)
   end
 
-  CustomHandler = lambda do |template|
-    "@output_buffer = ''\n" +
-      "@output_buffer << 'source: #{template.source.inspect}'\n"
+  module CustomHandler
+    include ActionView::Compilable
+
+    def compile
+      "@output_buffer = ''\n" +
+        "@output_buffer << 'source: #{source.inspect}'\n"
+    end
   end
 
   def test_render_inline_with_compilable_custom_type
@@ -167,17 +171,6 @@ module RenderTestCases
   def test_render_inline_with_locals_and_compilable_custom_type
     ActionView::Template.register_template_handler :foo, CustomHandler
     assert_equal 'source: "Hello, <%= name %>!"', @view.render(:inline => "Hello, <%= name %>!", :locals => { :name => "Josh" }, :type => :foo)
-  end
-
-  class LegacyHandler < ActionView::TemplateHandler
-    def render(template, local_assigns)
-      "source: #{template.source}; locals: #{local_assigns.inspect}"
-    end
-  end
-
-  def test_render_legacy_handler_with_custom_type
-    ActionView::Template.register_template_handler :foo, LegacyHandler
-    assert_equal 'source: Hello, <%= name %>!; locals: {:name=>"Josh"}', @view.render(:inline => "Hello, <%= name %>!", :locals => { :name => "Josh" }, :type => :foo)
   end
 
   def test_render_with_layout

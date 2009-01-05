@@ -1,12 +1,12 @@
 module ActionView
   module TemplateHandlers
-    class RJS < TemplateHandler
+    module RJS
       include Compilable
 
-      def compile(template)
+      def compile
         "@template_format = :html;" +
         "controller.response.content_type ||= Mime::JS;" +
-          "update_page do |page|;#{template.source}\nend"
+          "update_page do |page|;#{source}\nend"
       end
     end
   end
