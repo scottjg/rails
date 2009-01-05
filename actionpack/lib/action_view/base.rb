@@ -258,7 +258,7 @@ module ActionView #:nodoc:
       when :update
         update_page(&block)
       when String, NilClass
-        render_partial(:partial => options, :locals => local_assigns)
+        _render_partial(nil, :partial => options, :locals => local_assigns)
       end
     end
         
