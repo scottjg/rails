@@ -815,7 +815,7 @@ module ActiveResource
       # Create (i.e., save to the remote service) the new resource.
       def create
         returning connection.post(collection_path, to_xml, self.class.headers) do |response|
-          self.id = id_from_response(response)
+          self.id = id_from_response(response) if /^3/.match(response.code)
           load_attributes_from_response(response)
         end
       end
