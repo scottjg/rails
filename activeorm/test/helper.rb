@@ -37,4 +37,4 @@ def uses_datamapper(description)
     $stderr.puts "Skipping #{description} tests. `gem install dm-core dm-validations` and try again."
 end
 
-ActiveOrm.use :orm => 'test_orm'
+ActiveOrm.use :orm => :test_orm

@@ -15,7 +15,7 @@ uses_datamapper('DatamapperTest') do
 
   Page.auto_migrate!
 
-  ActiveOrm.register :klass => DataMapper::Resource, :proxy => ActiveOrm::Proxies::DataMapperProxy
+  ActiveOrm.register :orm => 'data_mapper'
   
   class DatamapperTest < Test::Unit::TestCase
     def setup

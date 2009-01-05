@@ -20,14 +20,14 @@ module ActiveOrm
       end
 
       def use(options)
-        case options[:orm]
-        when /test[_\W\s]orm/i
+        case options[:orm].to_s
+        when /test[_\W\s]?orm/i
           options.reverse_merge!( :klass => ActiveOrm::TestOrmModel, :proxy => ActiveOrm::Proxies::TestOrmProxy )
         when /sequel/i
           options.reverse_merge!( :klass => Sequel::Model, :proxy => ActiveOrm::Proxies::SequelProxy )
-        when /active[_\W\s]record/i
+        when /active[_\W\s]?record/i
           options.reverse_merge!( :klass => ActiveRecord::Base, :proxy => :none )
-        when /data[_\W\s]mapper/i
+        when /data[_\W\s]?mapper/i
           options.reverse_merge!( :klass => DataMapper::Resource, :proxy => :none )
         end
         ActiveOrm.register options[:klass], options[:proxy]
