@@ -31,7 +31,7 @@ rescue LoadError
   end
 end
 
-module ActiveOrm
+module ActiveORM
   autoload :VERSION, 'active_orm/version'
   autoload :Core, 'active_orm/core'
   

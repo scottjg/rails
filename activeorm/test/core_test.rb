@@ -2,11 +2,11 @@ require 'helper'
 require 'active_orm/core'
 
 
-module OrmModule
+module TestModule
 end
 
-class OrmModuleModel
-  include OrmModule
+class TestModuleModel
+  include TestModule
   
   def initialize
     @new = true
@@ -26,39 +26,39 @@ class OrmModuleModel
   end
 end
 
-class FailingModel
+class TestFailingModel
 end
 
-class SubclassModel < ActiveOrm::TestOrmModel
+class TestSubclassModel < ActiveORM::TestORMModel
 end
 
 class CoreTest < Test::Unit::TestCase
   def setup
-    @model = ActiveOrm::TestOrmModel.new
-    @modulemodel = OrmModuleModel.new
+    @model = ActiveORM::TestORMModel.new
+    @modulemodel = TestModuleModel.new
   end
 
   def teardown
   end
 
   def test_supports?
-    assert ActiveOrm.supports? @model
+    assert ActiveORM.supports? @model
   end
   
   def test_supports_for_module
-    ActiveOrm.use :klass => OrmModule, :proxy => ActiveOrm::Proxies::TestOrmProxy
-    assert ActiveOrm.supports? @modulemodel
+    ActiveORM.use :klass => TestModuleModel, :proxy => ActiveORM::Proxies::TestORMProxy
+    assert ActiveORM.supports? @modulemodel
   end
   
   def test_supports_failing?
-    assert !ActiveOrm.supports?(FailingModel.new)
+    assert !ActiveORM.supports?(TestFailingModel.new)
   end
   
   def test_proxy
-    assert_equal @model, (ActiveOrm.for @model).model
+    assert_equal @model, (ActiveORM.for @model).model
   end
   
   def test_subclass_proxy
-    assert ActiveOrm.supports?(SubclassModel.new)
+    assert ActiveORM.supports?(TestSubclassModel.new)
   end
 end

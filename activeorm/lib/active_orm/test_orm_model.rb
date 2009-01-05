@@ -1,5 +1,5 @@
-module ActiveOrm
-  class TestOrmModel
+module ActiveORM
+  class TestORMModel
     def initialize
       @new = true
       @valid = true

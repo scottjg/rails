@@ -2,8 +2,8 @@ require 'helper'
 
 class AbstractProxyTest < Test::Unit::TestCase
   def setup
-    @model = ActiveOrm::TestOrmModel.new
-    @proxy = ActiveOrm.for @model
+    @model = ActiveORM::TestORMModel.new
+    @proxy = ActiveORM.for @model
   end
 
   def teardown

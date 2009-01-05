@@ -6,18 +6,18 @@ uses_active_record('ActiveRecordTest') do
     validate_presence_of :name
   end
 
-  ActiveOrm.use :orm => "active_record"
+  ActiveORM.use :orm => "active_record"
 
   class ActiveRecordTest < Test::Unit::TestCase
     def setup
       @page = Page.new :name => "test"
       @invalid_page = Page.new
-      @proxy_page = ActiveOrm.for @page    
-      @proxy_invalid_page = ActiveOrm.for @invalid_page
+      @proxy_page = ActiveORM.for @page    
+      @proxy_invalid_page = ActiveORM.for @invalid_page
     end
   
     def test_supports?
-      assert ActiveOrm.supports? @page
+      assert ActiveORM.supports? @page
     end
   
     def test_new?

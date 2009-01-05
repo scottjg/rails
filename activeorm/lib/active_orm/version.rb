@@ -1,4 +1,4 @@
-module ActiveOrm
+module ActiveORM
   module VERSION #:nodoc:
     MAJOR = 0
     MINOR = 0

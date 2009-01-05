@@ -1,6 +1,6 @@
-module ActiveOrm
+module ActiveORM
   module Proxies
-    class TestOrmProxy < ActiveOrm::Proxies::AbstractProxy
+    class TestORMProxy < AbstractProxy
       def new?
         model.new_record?
       end

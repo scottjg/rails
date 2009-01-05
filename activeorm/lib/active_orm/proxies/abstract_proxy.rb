@@ -1,4 +1,4 @@
-module ActiveOrm
+module ActiveORM
   module Proxies
     class AbstractProxy
       attr :model

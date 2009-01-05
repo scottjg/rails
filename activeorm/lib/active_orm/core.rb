@@ -1,7 +1,7 @@
-module ActiveOrm
-  class ActiveOrmError < StandardError; end
-  class ProxyNotFoundException < ActiveOrmError; end
-  class AbstractProxyMethod < ActiveOrmError; end
+module ActiveORM
+  class ActiveORMError < StandardError; end
+  class ProxyNotFoundException < ActiveORMError; end
+  class AbstractProxyMethod < ActiveORMError; end
 
   module Core
     module ClassMethods
@@ -22,15 +22,15 @@ module ActiveOrm
       def use(options)
         case options[:orm].to_s
         when /test[_\W\s]?orm/i
-          options.reverse_merge!( :klass => ActiveOrm::TestOrmModel, :proxy => ActiveOrm::Proxies::TestOrmProxy )
+          options.reverse_merge!( :klass => ActiveORM::TestORMModel, :proxy => Proxies::TestORMProxy )
         when /sequel/i
-          options.reverse_merge!( :klass => Sequel::Model, :proxy => ActiveOrm::Proxies::SequelProxy )
+          options.reverse_merge!( :klass => Sequel::Model, :proxy => Proxies::SequelProxy )
         when /active[_\W\s]?record/i
           options.reverse_merge!( :klass => ActiveRecord::Base, :proxy => :none )
         when /data[_\W\s]?mapper/i
           options.reverse_merge!( :klass => DataMapper::Resource, :proxy => :none )
         end
-        ActiveOrm.register options[:klass], options[:proxy]
+        ActiveORM.register options[:klass], options[:proxy]
       end
       
       protected
