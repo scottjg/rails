@@ -58,8 +58,10 @@ module ActiveSupport #:nodoc:
           end
         end
 
+        # If the structure is paginated (as in the case of ActiveRecord arrays), then a root must be specified, 
+        # otherwise it will incorrectly set the root as "records"
         def to_xml(options = {})
-          raise "Not all elements respond to to_xml" unless all? { |e| e.respond_to? :to_xml }
+          raise "Not all elements respond to to_xml" unless paginated? || all? { |e| e.respond_to? :to_xml }
 
           options[:root]     ||= all? { |e| e.is_a?(first.class) && first.class.to_s != "Hash" } ? first.class.to_s.underscore.pluralize : "records"
           options[:children] ||= options[:root].singularize
@@ -82,12 +84,26 @@ module ActiveSupport #:nodoc:
             xml.tag!(root, options[:skip_types] ? {} : {:type => "array"})
           else
             xml.tag!(root, options[:skip_types] ? {} : {:type => "array"}) {
+              # Adds support for custom total count
+              xml.tag!('total', self.last, options[:skip_types] ? {} : {:type => "integer"})
+              
               yield xml if block_given?
-              each { |e| e.to_xml(opts.merge!({ :skip_instruct => true })) }
+              
+              if paginated?
+                self.first.each { |e| e.to_xml(opts.merge!({ :skip_instruct => true })) }
+              else
+                each { |e| e.to_xml(opts.merge!({ :skip_instruct => true })) }
+              end
             }
           end
         end
 
+        private
+        # Allows to_xml to determine whether or not the structure qualifies as being paginated
+        def paginated?
+          children = self.first
+          self.last.is_a?(Fixnum) && children.all? {|e| e.is_a?(children.first.class) && children.first.class.to_s != "Hash" }
+        end
       end
     end
   end
