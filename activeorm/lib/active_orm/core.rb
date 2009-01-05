@@ -10,7 +10,13 @@ module ActiveOrm
       end
 
       def proxy obj
-        @_proxy_registry[find_key(obj)].new(obj)
+        proxy = find_key(obj)
+        case proxy
+        when :none
+          return obj
+        else
+          return @_proxy_registry[proxy].new(obj)
+        end
       end
 
       def use(options)
@@ -20,9 +26,9 @@ module ActiveOrm
         when /sequel/i
           options.reverse_merge!( :klass => Sequel::Model, :proxy => ActiveOrm::Proxies::SequelProxy )
         when /active[_\W\s]record/i
-          options.reverse_merge!( :klass => ActiveRecord::Base, :proxy => ActiveOrm::Proxies::ActiveRecordProxy )
+          options.reverse_merge!( :klass => ActiveRecord::Base, :proxy => :none )
         when /data[_\W\s]mapper/i
-          options.reverse_merge!( :klass => DataMapper::Resource, :proxy => ActiveOrm::Proxies::DataMapperProxy )
+          options.reverse_merge!( :klass => DataMapper::Resource, :proxy => :none )
         end
         ActiveOrm.register options[:klass], options[:proxy]
       end
