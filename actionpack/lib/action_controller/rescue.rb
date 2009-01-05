@@ -125,11 +125,12 @@ module ActionController #:nodoc:
         @template.instance_variable_set("@exception", exception)
         @template.instance_variable_set("@rescues_path", RESCUES_TEMPLATE_PATH)
         @template.instance_variable_set("@contents",
-          @template.render(:file => template_path_for_local_rescue(exception)))
+          template_path_for_local_rescue(exception).render_template(@template))
 
         response.content_type = Mime::HTML
-        render_for_file(rescues_path("layout"),
-          response_code_for_rescue(exception))
+
+        content = rescues_path("layout").render_template(@template)
+        render_for_text(content, response_code_for_rescue(exception))
       end
 
       def rescue_action_without_handler(exception)

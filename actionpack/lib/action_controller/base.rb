@@ -905,7 +905,7 @@ module ActionController #:nodoc:
         end
 
         if options.key?(:text)
-          render_for_text(@template.render_text(options[:text], layout, options), options[:status])
+          render_for_text(@template._render_text(options[:text], layout, options), options[:status])
 
         else
           file, template = options[:file], options[:template]
@@ -922,7 +922,7 @@ module ActionController #:nodoc:
           end
           
           if inline = options[:inline]
-            render_for_text(@template.render_inline(inline, layout, options), options[:status])
+            render_for_text(@template._render_inline(inline, layout, options), options[:status])
 
           elsif xml = options[:xml]
             response.content_type ||= Mime::XML
@@ -1211,7 +1211,7 @@ module ActionController #:nodoc:
         ) if options[:partial]
         
         render_for_text(
-          @template.render_for_parts(parts, layout, part_options), 
+          @template._render_for_parts(parts, layout, part_options), 
           options[:status])
       end
       
