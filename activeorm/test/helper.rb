@@ -37,29 +37,4 @@ def uses_datamapper(description)
     $stderr.puts "Skipping #{description} tests. `gem install dm-core dm-validations` and try again."
 end
 
-module OrmModule
-end
-
-class OrmModuleModel
-  include OrmModule
-  
-  def initialize
-    @new = true
-    @valid = true
-  end
-  def save
-    @new = false
-  end
-  def new_record?
-    @new
-  end
-  def invalidate
-    @valid = false
-  end
-  def valid?
-    @valid
-  end
-end
-
 ActiveOrm.use :orm => 'test_orm'
-ActiveOrm.use :klass => OrmModule, :proxy => ActiveOrm::Proxies::TestOrmProxy

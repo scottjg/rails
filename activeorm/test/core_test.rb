@@ -1,6 +1,31 @@
 require 'helper'
 require 'active_orm/core'
 
+
+module OrmModule
+end
+
+class OrmModuleModel
+  include OrmModule
+  
+  def initialize
+    @new = true
+    @valid = true
+  end
+  def save
+    @new = false
+  end
+  def new_record?
+    @new
+  end
+  def invalidate
+    @valid = false
+  end
+  def valid?
+    @valid
+  end
+end
+
 class FailingModel
 end
 
@@ -21,6 +46,7 @@ class CoreTest < Test::Unit::TestCase
   end
   
   def test_proxyable_for_module
+    ActiveOrm.use :klass => OrmModule, :proxy => ActiveOrm::Proxies::TestOrmProxy
     assert ActiveOrm.proxyable? @modulemodel
   end
   
