@@ -1259,7 +1259,7 @@ module ActiveRecord
 
         def create_belongs_to_reflection(association_id, options)
           options.assert_valid_keys(
-            :class_name, :foreign_key, :foreign_type, :remote, :conditions, :order, :include, :dependent,
+            :class_name, :foreign_key, :foreign_type, :remote, :conditions, :order, :include,
             :counter_cache, :extend, :polymorphic
           )
 
