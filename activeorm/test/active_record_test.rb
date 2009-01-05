@@ -12,12 +12,12 @@ uses_active_record('ActiveRecordTest') do
     def setup
       @page = Page.new :name => "test"
       @invalid_page = Page.new
-      @proxy_page = ActiveOrm.proxy @page    
-      @proxy_invalid_page = ActiveOrm.proxy @invalid_page
+      @proxy_page = ActiveOrm.for @page    
+      @proxy_invalid_page = ActiveOrm.for @invalid_page
     end
   
-    def test_proxyable?
-      assert ActiveOrm.proxyable? @page
+    def test_supports?
+      assert ActiveOrm.supports? @page
     end
   
     def test_new?

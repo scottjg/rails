@@ -5,11 +5,11 @@ module ActiveOrm
 
   module Core
     module ClassMethods
-      def proxyable? obj
+      def supports? obj
         find_key(obj)
       end
 
-      def proxy obj
+      def for obj
         proxy = find_key(obj)
         case proxy
         when :none

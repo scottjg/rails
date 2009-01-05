@@ -258,7 +258,7 @@ module ActionView
         object = object_or_array.is_a?(Array) ? object_or_array.last : object_or_array
 
         html_options =
-          if ActiveOrm.proxyable? object && ActiveOrm.proxy(object).new?
+          if ActiveOrm.supports? object && ActiveOrm.for(object).new?
             { :class  => dom_class(object, :new),  :id => dom_id(object), :method => :post }
           else
             { :class  => dom_class(object, :edit), :id => dom_id(object, :edit), :method => :put }

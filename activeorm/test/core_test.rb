@@ -41,35 +41,24 @@ class CoreTest < Test::Unit::TestCase
   def teardown
   end
 
-  def test_proxyable?
-    assert ActiveOrm.proxyable? @model
+  def test_supports?
+    assert ActiveOrm.supports? @model
   end
   
-  def test_proxyable_for_module
+  def test_supports_for_module
     ActiveOrm.use :klass => OrmModule, :proxy => ActiveOrm::Proxies::TestOrmProxy
-    assert ActiveOrm.proxyable? @modulemodel
+    assert ActiveOrm.supports? @modulemodel
   end
   
-  def test_failing_proxyable?
-    assert !ActiveOrm.proxyable?(FailingModel.new)
+  def test_supports_failing?
+    assert !ActiveOrm.supports?(FailingModel.new)
   end
   
   def test_proxy
-    assert_equal @model, (ActiveOrm.proxy @model).model
+    assert_equal @model, (ActiveOrm.for @model).model
   end
   
   def test_subclass_proxy
-    assert ActiveOrm.proxyable?(SubclassModel.new)
+    assert ActiveOrm.supports?(SubclassModel.new)
   end
-    
-  # Cache was a source of a memory leak, good idea though...
-  #def test_proxy_uses_cache
-  #  proxy = ActiveOrm.proxy @model
-  #  class << proxy
-  #    def am_using_cache; end
-  #  end
-  #  cached = ActiveOrm.proxy @model
-  #  assert cached.respond_to? :am_using_cache
-  #end
-
 end
