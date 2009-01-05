@@ -591,7 +591,7 @@ module ActiveRecord
         notnull = options[:null] == false
 
         # Add the column.
-        execute("ALTER TABLE #{table_name} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}")
+        execute("ALTER TABLE #{table_name} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
 
         change_column_default(table_name, column_name, default) if options_include_default?(options)
         change_column_null(table_name, column_name, false, default) if notnull
