@@ -52,6 +52,7 @@ module ActiveRecord #:nodoc:
           associations = include_has_options ? include_associations.keys : Array(include_associations)
 
           for association in associations
+            association, includes = association.is_a?(Hash) ? [association.keys.first, association.values.first] : [association, nil]
             records = case @record.class.reflect_on_association(association).macro
             when :has_many, :has_and_belongs_to_many
               @record.send(association).to_a
@@ -62,6 +63,7 @@ module ActiveRecord #:nodoc:
             unless records.nil?
               association_options = include_has_options ? include_associations[association] : base_only_or_except
               opts = options.merge(association_options)
+              opts.merge!(:include => includes) if includes
               yield(association, records, opts)
             end
           end
