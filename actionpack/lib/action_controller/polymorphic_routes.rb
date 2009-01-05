@@ -90,7 +90,7 @@ module ActionController
         when options[:action].to_s == "new"
           args.pop
           :singular
-        when ActiveOrm.proxyable? record && ActiveOrm.proxy(record).new?
+        when ActiveOrm.proxyable? record && ActiveOrm.proxy(record).new_record?
           args.pop
           :plural
         else

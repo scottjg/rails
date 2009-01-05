@@ -38,7 +38,7 @@ module ActiveOrm
       protected
         def find_key(obj)
           @_proxy_key_cache ||= {}
-          @_proxy_key_cache[obj.class] ||= obj.class.ancestors.find{|a| @_proxy_registry[a] } || obj.class.included_modules.find{|a| @_proxy_registry[a] }
+          @_proxy_key_cache[obj.class] ||= @_proxy_registry.keys.find {|k, v| obj.is_a? k }
         end
     end
   end
