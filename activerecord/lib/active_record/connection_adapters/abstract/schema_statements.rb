@@ -115,6 +115,16 @@ module ActiveRecord
       def drop_table(table_name, options = {})
         execute "DROP TABLE #{quote_table_name(table_name)}"
       end
+      
+      # Checks to see if a table exists in the database.
+      def table_exists?(table_name)
+        begin
+          execute "SELECT 1 FROM #{table_name} LIMIT 1"
+          return true
+        rescue
+          return false
+        end
+      end
 
       # Adds a new column to the named table.
       # See TableDefinition#column for details of the options you can use.
