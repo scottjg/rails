@@ -6,7 +6,7 @@ uses_active_record('ActiveRecordTest') do
     validate_presence_of :name
   end
 
-  ActiveOrm.register ActiveRecord::Base, ActiveOrm::Proxies::ActiveRecordProxy
+  ActiveOrm.use :klass => ActiveRecord::Base, :proxy => ActiveOrm::Proxies::ActiveRecordProxy
 
   class ActiveRecordTest < Test::Unit::TestCase
     def setup

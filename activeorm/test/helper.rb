@@ -61,5 +61,5 @@ class OrmModuleModel
   end
 end
 
-ActiveOrm.use 'test_orm'
-ActiveOrm.register OrmModule, ActiveOrm::Proxies::TestOrmProxy
+ActiveOrm.use :orm => 'test_orm'
+ActiveOrm.use :klass => OrmModule, :proxy => ActiveOrm::Proxies::TestOrmProxy
