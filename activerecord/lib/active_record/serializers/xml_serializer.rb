@@ -207,7 +207,8 @@ module ActiveRecord #:nodoc:
             records.each do |record|
               record.to_xml opts.merge(
                 :root => association_name,
-                :type => (record.class.to_s.underscore == association_name ? nil : record.class.name)
+                :type => (record.class.to_s.underscore == association_name ? nil : record.class.name),
+                :methods => []
               )
             end
           end
