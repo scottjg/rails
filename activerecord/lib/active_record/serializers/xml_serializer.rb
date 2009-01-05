@@ -182,7 +182,7 @@ module ActiveRecord #:nodoc:
     def add_procs
       if procs = options.delete(:procs)
         [ *procs ].each do |proc|
-          proc.call(options)
+          proc.arity == 1 ? proc.call(options) : proc.call(options, @record)
         end
       end
     end
