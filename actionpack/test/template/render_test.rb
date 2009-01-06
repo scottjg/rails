@@ -2,9 +2,15 @@ require 'abstract_unit'
 require 'controller/fake_models'
 
 module RenderTestCases
-  def setup_view(paths)
+  def setup_view(view_path)
+    @templates = view_path
     @assigns = { :secret => 'in the sauce' }
-    @view = ActionView::Base.new(paths, @assigns)
+    @view = ActionView::Base.new(@templates, @assigns)
+  end
+
+  def test_render_template
+    template = @templates.find_template("test/hello_world.erb")
+    assert_equal "Hello world!", @view.render(template)
   end
 
   def test_render_file
@@ -154,7 +160,28 @@ module RenderTestCases
     assert_equal "Hello, World!", @view.render(:inline => "Hello, World!", :type => :bar)
   end
 
-  module CustomHandler
+  class CustomTemplate
+    def render(context, local_assigns = {}, &block)
+      if local_assigns.any?
+        "locals: #{local_assigns.inspect}"
+      else
+        "Hello, World!"
+      end
+    end
+  end
+
+  def test_render_custom_template
+    template = CustomTemplate.new
+    assert_equal "Hello, World!", @view.render(template)
+  end
+
+  def test_render_custom_template_with_locals
+    template = CustomTemplate.new
+    assert_equal 'locals: {:locals=>{:name=>"Josh"}}',
+      @view.render(template, :locals => { :name => "Josh" })
+  end
+
+  module MyTemplateCompiler
     include ActionView::Compilable
 
     def compile
@@ -164,12 +191,28 @@ module RenderTestCases
   end
 
   def test_render_inline_with_compilable_custom_type
-    ActionView::Template.register_template_handler :foo, CustomHandler
+    ActionView::Template.register_template_handler :foo, MyTemplateCompiler
     assert_equal 'source: "Hello, World!"', @view.render(:inline => "Hello, World!", :type => :foo)
   end
 
   def test_render_inline_with_locals_and_compilable_custom_type
-    ActionView::Template.register_template_handler :foo, CustomHandler
+    ActionView::Template.register_template_handler :foo, MyTemplateCompiler
+    assert_equal 'source: "Hello, <%= name %>!"', @view.render(:inline => "Hello, <%= name %>!", :locals => { :name => "Josh" }, :type => :foo)
+  end
+
+  module MyTemplateRender
+    def render(context, local_assigns = {}, &block)
+      "source: #{source.inspect}"
+    end
+  end
+
+  def test_render_inline_with_compilable_custom_type
+    ActionView::Template.register_template_handler :foo, MyTemplateRender
+    assert_equal 'source: "Hello, World!"', @view.render(:inline => "Hello, World!", :type => :foo)
+  end
+
+  def test_render_inline_with_locals_and_compilable_custom_type
+    ActionView::Template.register_template_handler :foo, MyTemplateRender
     assert_equal 'source: "Hello, <%= name %>!"', @view.render(:inline => "Hello, <%= name %>!", :locals => { :name => "Josh" }, :type => :foo)
   end
 

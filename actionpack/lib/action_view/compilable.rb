@@ -1,16 +1,13 @@
 module ActionView
   module Compilable
     def render(context, local_assigns = {}, &block)
-      render_symbol = method_name(local_assigns)
-      if !Base::CompiledTemplates.method_defined?(render_symbol) || recompile?
-        compile!(render_symbol, local_assigns)
+      render_symbol = ['_run', extension, method_segment].compact.join('_')
+      if local_assigns && local_assigns.any?
+        render_symbol << "_locals_#{local_assigns.keys.map { |k| k.to_s }.sort.join('_')}"
       end
-      context.send(render_symbol, local_assigns, &block)
-    end
+      render_symbol = render_symbol.to_sym
 
-    private
-      # TODO: Merge with render method
-      def compile!(render_symbol, local_assigns)
+      if !Base::CompiledTemplates.method_defined?(render_symbol) || recompile?
         locals_code = local_assigns.keys.map { |key| "#{key} = local_assigns[:#{key}];" }.join
 
         source = <<-end_src
@@ -34,13 +31,7 @@ module ActionView
         end
       end
 
-      # TODO: Merge with render method
-      def method_name(local_assigns)
-        method_name = ['_run', extension, method_segment].compact.join('_')
-        if local_assigns && local_assigns.any?
-          method_name << "_locals_#{local_assigns.keys.map { |k| k.to_s }.sort.join('_')}"
-        end
-        method_name.to_sym
-      end
+      context.send(render_symbol, local_assigns, &block)
+    end
   end
 end
