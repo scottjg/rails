@@ -9,10 +9,10 @@ module ActiveSupport
 
       def []=(key, value)
         if pair = assoc(key)
-          pair.pop
-          pair << value
+          pair[1] = value
         else
           self << [key, value]
+          value
         end
       end
 

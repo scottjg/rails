@@ -30,6 +30,18 @@ class OrderedHashTest < Test::Unit::TestCase
     assert_equal value, @ordered_hash[key]
   end
 
+  def test_assignment_return_value
+    key, value = 'purple', '5422a8'
+
+    ret = @ordered_hash[key] = value
+    assert_equal value, ret
+
+    value = '5422a7'
+    ret = @ordered_hash[key] = value
+    assert_equal value, ret
+    assert_equal value, @ordered_hash[key]
+  end
+
   def test_each_pair
     out = []
     @ordered_hash.each_pair {|k, v| out.push([k,v]) }
