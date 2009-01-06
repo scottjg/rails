@@ -288,7 +288,7 @@ module ActionView #:nodoc:
       locals ||= {}
 
       if controller && layout
-        response.layout = layout.path_without_format_and_extension
+        response.layout = layout.path_without_format_and_extension if controller.respond_to?(:response)
         logger.info("Rendering template within #{layout.path_without_format_and_extension}") if logger
       end
       
@@ -313,27 +313,32 @@ module ActionView #:nodoc:
     end
     
     def _render_for_parts(parts, layout, options)
-      name, formats, extension, partial = parts
+      name, formats, prefix, partial = parts
       template = self.view_paths.find_by_parts(*parts)
       
+      _render_for_template(template, layout, options, partial, prefix)
+    end
+    
+    def _render_for_template(template, layout = nil, options = {}, partial = false, prefix = nil)
       if controller && logger
-        logger.info("Rendering #{template.path_without_extension}" + (options[:status] ? " (#{options[:status]})" : ''))
+        logger.info("Rendering #{template.path_without_extension}" + 
+          (options[:status] ? " (#{options[:status]})" : ''))
       end
       
-      if partial # partial (can be 'true' or contain the object)
+      if partial
         if spacer = options[:spacer_template]
-          spacer = view_paths.find_by_parts(spacer, formats, extension, partial)
+          spacer = view_paths.find_by_parts(spacer, formats, prefix, partial)
           options[:join] = spacer.render_template(self)
         end
         
         object = partial == true ? nil : partial
         content = template.render_partial_top(self, object, options)
       else
-        content = template.render_template(self, options[:locals])
+        content = template.render_template(self, options[:locals] || {})
       end
       
       if layout && !template.exempt_from_layout?
-        _render_content_with_layout(content, layout, options[:locals])
+        _render_content_with_layout(content, layout, options[:locals] || {})
       else
         content
       end

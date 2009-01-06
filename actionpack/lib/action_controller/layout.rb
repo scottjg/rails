@@ -239,9 +239,13 @@ module ActionController #:nodoc:
 
     private
       def action_has_layout?
-        return true unless conditions = self.class.layout_conditions
-        return only.include?(action_name) if only = conditions[:only]
-        return !except.include?(action_name) if except = conditions[:except]
+        if conditions = self.class.layout_conditions
+          if only = conditions[:only]
+            return only.include?(action_name)
+          elsif except = conditions[:except]
+            return !except.include?(action_name) 
+          end
+        end
         true
       end
 
