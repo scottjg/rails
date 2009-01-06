@@ -4,7 +4,7 @@ module ActionView
       include Compilable
 
       def compile(template)
-        "@formats = :html;" +
+        "@formats = [:html];" +
         "controller.response.content_type ||= Mime::JS;" +
           "update_page do |page|;#{template.source}\nend"
       end

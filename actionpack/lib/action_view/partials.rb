@@ -177,28 +177,22 @@ module ActionView
         local_assigns = options[:locals] || {}
 
         case partial_path = options[:partial]
-        when String, Symbol, NilClass
-          if options.has_key?(:collection)
-            render_partial_collection(options)
-          else
-            _pick_partial_template(partial_path).render_partial(self, options[:object], local_assigns)
-          end
+        when String
+          _render_for_parts(partial_parts(partial_path, options), nil, options)
         when ActionView::Helpers::FormBuilder
           builder_partial_path = partial_path.class.to_s.demodulize.underscore.sub(/_builder$/, '')
           local_assigns.merge!(builder_partial_path.to_sym => partial_path)
-          render_partial(:partial => builder_partial_path, :object => options[:object], :locals => local_assigns)
+          _render_for_parts(partial_parts(builder_partial_path, options), nil, :locals => local_assigns)
         when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope
-          render_partial_collection(options.except(:partial).merge(:collection => partial_path))
+          return render_partial_collection(options.except(:partial).merge(:collection => partial_path))
         else
           object = partial_path
-          render_partial(
-            :partial => ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path),
-            :object => object,
-            :locals => local_assigns
-          )
+          partial_path = ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path),
+          _render_for_parts(partial_parts(partial_path, options), nil, options)
         end
       end
 
+      # The last piece of the puzzle to be merged into the new scheme. Next up: _render_for_template
       def render_partial_collection(options = {}) #:nodoc:
         return nil if options[:collection].blank?
 

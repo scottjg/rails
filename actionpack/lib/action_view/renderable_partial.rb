@@ -29,20 +29,21 @@ module ActionView
 
       if options[:collection]
         return nil if options[:collection].blank?
-        index = 0
+        index, last_object = 0, nil
         options[:collection].map do |object|
           locals[counter_name] = index
           index += 1
           _render_partial(view, object, locals, options)
         end.join(options[:join])
       else
+        return nil if options.key?(:collection)
         _render_partial(view, object, locals, options)
       end
       
     end
     
     def _render_partial(view, object, locals, options)
-      # Twiddle the variables around the get us the precise required mix
+      # Twiddle the variables around the get us the precise required mix      
       object ||= locals[:object] || locals[variable_name]
       object = _deprecated_ivar_assign(view) if object.nil?
 
@@ -50,6 +51,8 @@ module ActionView
       locals[options[:as]] = object if options[:as]
 
       render_template(view, locals)
+    ensure
+      locals[variable_name] = locals[:object] = nil
     end
 
     def _deprecated_ivar_assign(view)

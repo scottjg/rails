@@ -161,6 +161,8 @@ module ActionView #:nodoc:
   # See the ActionView::Helpers::PrototypeHelper::GeneratorMethods documentation for more details.
   class Base
     include Helpers, Partials, ::ERB::Util
+    include ActionPack::Common
+    
     extend ActiveSupport::Memoizable
 
     attr_accessor :base_path, :assigns, :template_extension, :formats
@@ -181,6 +183,8 @@ module ActionView #:nodoc:
     cattr_accessor :debug_rjs
 
     attr_internal :request
+
+    delegate :controller_path, :to => :controller, :allow_nil => true
 
     delegate :request_forgery_protection_token, :template, :params, :session, :cookies, :response, :headers,
              :flash, :logger, :action_name, :controller_name, :to => :controller

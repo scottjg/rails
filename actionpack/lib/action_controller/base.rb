@@ -942,16 +942,11 @@ module ActionController #:nodoc:
             if partial == true
               parts = [action_name_base, formats, controller_name, true]
             elsif partial.is_a?(String)
-              parts = partial_parts(partial)
-              parts.push options[:object] || true
-            else # This is the old logic for thing like render :partial => @form
-              # TODO: REMOVE
-              if layout
-                return render_for_text(@template.render(:text => @template.render(options), :layout => layout), options[:status])
-              else
-                return render_for_text(@template.render(options), options[:status])
-              end
+              parts = partial_parts(partial, options)
+            else
+              return render_for_text(@template._render_partial(nil, options), options[:status])
             end
+            
             render_for_parts(parts, layout, options)
             
           elsif options[:update]
@@ -1204,8 +1199,9 @@ module ActionController #:nodoc:
           :status => options[:status]
         }
         
+        part_options.merge!(:collection => options[:collection]) if options[:collection]
+        
         part_options.merge!(
-          :collection => options[:collection],
           :as => options[:as],
           :spacer_template => options[:spacer_template]
         ) if options[:partial]
