@@ -186,7 +186,13 @@ module ActionView
             local_assigns[as] = options[:object]
           end
 
-          return render(template, local_assigns)
+          if defined? ActionController
+            ActionController::Base.benchmark("Rendered #{template.path_without_format_and_extension}", Logger::DEBUG, false) do
+              return render(template, local_assigns)
+            end
+          else
+            return render(template, local_assigns)
+          end
         end
 
         case partial_path = options[:partial]

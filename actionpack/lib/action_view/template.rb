@@ -99,7 +99,6 @@ module ActionView #:nodoc:
       def render(context, local_assigns = {}, &block)
         super
       rescue Exception => e
-        raise e unless filename
         if TemplateError === e
           e.sub_template_of(self)
           raise e
@@ -116,11 +115,7 @@ module ActionView #:nodoc:
       @base_path.to_s.gsub!(/\/$/, '') # Push to split method
 
       extend Template.handler_class_for_extension(@extension)
-
       extend RenderWithBacktrace
-
-      # Extend with partial super powers
-      extend RenderablePartial if @name =~ /^_/
     end
 
     def accessible_paths
@@ -174,6 +169,21 @@ module ActionView #:nodoc:
       path
     end
     memoize :relative_path
+
+    def partial?
+      name =~ /^_/
+    end
+    memoize :partial?
+
+    def variable_name
+      name.sub(/\A_/, '').to_sym if partial?
+    end
+    memoize :variable_name
+
+    def counter_name
+      "#{variable_name}_counter".to_sym if partial?
+    end
+    memoize :counter_name
 
     def exempt_from_layout?
       @@exempt_from_layout.any? { |exempted| path =~ exempted }

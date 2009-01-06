@@ -12,7 +12,7 @@ module ActionView
     def render(context, local_assigns = {}, &block)
       if respond_to?(:path) && !is_a?(InlineTemplate)
         rendered = context.instance_variable_get(:@_rendered)
-        rendered[:partials][self] += 1 if is_a?(RenderablePartial)
+        rendered[:partials][self] += 1 if partial?
         rendered[:template] ||= self
       end
       render_without_template_tracking(context, local_assigns, &block)

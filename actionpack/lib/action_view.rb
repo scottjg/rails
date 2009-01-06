@@ -42,7 +42,6 @@ module ActionView
   autoload :InlineTemplate, 'action_view/inline_template'
   autoload :Partials, 'action_view/partials'
   autoload :PathSet, 'action_view/paths'
-  autoload :RenderablePartial, 'action_view/renderable_partial'
   autoload :Template, 'action_view/template'
   autoload :TemplateError, 'action_view/template_error'
   autoload :TemplateHandlers, 'action_view/template_handlers'
