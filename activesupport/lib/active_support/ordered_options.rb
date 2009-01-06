@@ -5,6 +5,8 @@ module ActiveSupport
     OrderedHash = ::Hash
   else
     class OrderedHash < Array #:nodoc:
+      alias_method :each_pair, :each
+
       def []=(key, value)
         if pair = assoc(key)
           pair.pop

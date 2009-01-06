@@ -29,6 +29,14 @@ class OrderedHashTest < Test::Unit::TestCase
     assert_equal value, @ordered_hash.values.last
     assert_equal value, @ordered_hash[key]
   end
+
+  def test_each_pair
+    out = []
+    @ordered_hash.each_pair {|k, v| out.push([k,v]) }
+
+    assert_equal @keys,   out.collect {|i| i[0] }
+    assert_equal @values, out.collect {|i| i[1] }
+  end
 end
 
 class OrderedOptionsTest < Test::Unit::TestCase
