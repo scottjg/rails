@@ -69,10 +69,15 @@ module ActiveSupport #:nodoc:
           ::Date.new(year, month, day)
         end
 
-        # Attempts to convert self to a Ruby Time object; returns self if out of range of Ruby Time class
-        # If self has an offset other than 0, self will just be returned unaltered, since there's no clean way to map it to a Time
+        # Attempts to convert self to a Ruby Time object.
+        # The resulting Time will _always_ end up in UTC.
         def to_time
-          self.offset == 0 ? ::Time.utc_time(year, month, day, hour, min, sec) : self
+          dt = if self.offset == 0
+            self
+          else
+            new_offset(0)
+          end
+          ::Time.utc_time(dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec)
         end
 
         # To be able to keep Times, Dates and DateTimes interchangeable on conversions
