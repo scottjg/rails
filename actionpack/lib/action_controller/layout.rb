@@ -227,14 +227,12 @@ module ActionController #:nodoc:
     # TODO: Have AV ask for this when AV's ready. There's a somewhat messy interaction
     #       here where no error should be raised if the final template is exempt
     #       from layout, but we're not yet sure what that template will be.
-    def _pick_layout(options)
-      return if !options.key?(:layout) && 
-        options.values_at(:text, :xml, :json, :file, :inline, 
-        :partial, :nothing, :update).nitems > 0
-        
+    def _pick_layout(layout_name, implicit = false)
+      return if !layout_name && !implicit
+      
       return if formats.first == :js
       
-      active_layout(options.delete(:layout)) if action_has_layout?
+      active_layout(layout_name) if action_has_layout?
     end
 
     private

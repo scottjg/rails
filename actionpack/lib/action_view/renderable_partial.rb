@@ -25,7 +25,7 @@ module ActionView
     end
 
     def render_partial_top(view, object, options)
-      locals = options[:locals].dup
+      locals = (options[:locals] || {}).dup
 
       if options[:collection]
         return nil if options[:collection].blank?

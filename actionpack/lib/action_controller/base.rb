@@ -864,105 +864,87 @@ module ActionController #:nodoc:
       # All renders take the <tt>:status</tt> and <tt>:location</tt> options and turn them into headers. They can even be used together:
       #
       #   render :xml => post.to_xml, :status => :created, :location => post_url(post)
+      def render(options = nil, extra_options = {}, &block) #:doc:
+        raise DoubleRenderError, "Can only render or redirect once per action" if performed?
+
+        options = { :layout => true } if options.nil?
+        original, options = options, extra_options unless options.is_a?(Hash)
+        
+        layout_name = options.delete(:layout)
+
+        _process_options(options)
+        
+        if block_given?
+          @template.send(:_evaluate_assigns_and_ivars)
+
+          generator = ActionView::Helpers::PrototypeHelper::JavaScriptGenerator.new(@template, &block)
+          response.content_type = Mime::JS
+          return render_for_text(generator.to_s)
+        end
+        
+        if original
+          return render_for_name(original, layout_name, options) unless block_given?
+        end
+        
+        if options.key?(:text)
+          return render_for_text(@template._render_text(options[:text], 
+            _pick_layout(layout_name), options))
+        end
+
+        file, template = options.values_at(:file, :template)
+        if file || template
+          file = template.sub(/^\//, '') if template
+          return render_for_file(file, _pick_layout(layout_name, !!template), options)
+        end
+                
+        if action_option = options[:action]
+          return render_for_action(action_option, _pick_layout(layout_name, true), options)
+        end
+        
+        layout = _pick_layout(layout_name)
+        
+        if inline = options[:inline]          
+          render_for_text(@template._render_inline(inline, layout, options))
+
+        elsif xml = options[:xml]
+          response.content_type ||= Mime::XML
+          render_for_text(xml.respond_to?(:to_xml) ? xml.to_xml : xml)
+
+        elsif js = options[:js]
+          response.content_type ||= Mime::JS
+          render_for_text(js)
+
+        elsif json = options[:json]
+          json = json.to_json unless json.is_a?(String)
+          json = "#{options[:callback]}(#{json})" unless options[:callback].blank?
+          response.content_type ||= Mime::JSON
+          render_for_text(json)
+
+        elsif partial = options[:partial]
+          if partial == true
+            parts = [action_name_base, formats, controller_name, true]
+          elsif partial.is_a?(String)
+            parts = partial_parts(partial, options)
+          else
+            return render_for_text(@template._render_partial(nil, options))
+          end
+          
+          render_for_parts(parts, layout, options)
+          
+        elsif options[:nothing]
+          render_for_text(nil)
+
+        else
+          render_for_parts([action_name, formats, controller_path], layout, options)
+        end
+      end
+
       def formats
         @_request.formats.map {|f| f.symbol }.compact
       end
 
       def action_name_base(name = action_name)
         (name.is_a?(String) ? name.sub(/^#{controller_path}\//, '') : name).to_s
-      end
-
-      def render(options = nil, extra_options = {}, &block) #:doc:
-        raise DoubleRenderError, "Can only render or redirect once per action" if performed?
-
-        validate_render_arguments(options, extra_options, block_given?)
-             
-        if options.nil?
-          options = { :parts => [action_name, formats, controller_path], :layout => true }
-        elsif options == :update
-          options = extra_options.merge({ :update => true })
-        elsif options.is_a?(String) || options.is_a?(Symbol)
-          case options.to_s.index('/')
-          when 0
-            extra_options[:file] = options
-          when nil
-            extra_options[:action] = options
-          else
-            extra_options[:template] = options
-          end
-
-          options = extra_options
-        end
-
-        layout = _pick_layout(options)
-
-        if content_type = options[:content_type]
-          response.content_type = content_type.to_s
-        end
-
-        if location = options[:location]
-          response.headers["Location"] = url_for(location)
-        end
-
-        if options.key?(:text)
-          render_for_text(@template._render_text(options[:text], layout, options), options[:status])
-
-        else
-          file, template = options[:file], options[:template]
-          file = template.sub(%r{^/}, '') unless template.nil?
-          
-          if file
-            parts = [file, request.format.to_sym]
-          elsif action_option = options[:action]
-            parts = [action_name_base(action_option), formats, controller_name]
-          end
-          
-          if parts
-            return render_for_parts(parts, layout, options)
-          end
-          
-          if inline = options[:inline]
-            render_for_text(@template._render_inline(inline, layout, options), options[:status])
-
-          elsif xml = options[:xml]
-            response.content_type ||= Mime::XML
-            render_for_text(xml.respond_to?(:to_xml) ? xml.to_xml : xml, options[:status])
-
-          elsif js = options[:js]
-            response.content_type ||= Mime::JS
-            render_for_text(js, options[:status])
-
-          elsif json = options[:json]
-            json = json.to_json unless json.is_a?(String)
-            json = "#{options[:callback]}(#{json})" unless options[:callback].blank?
-            response.content_type ||= Mime::JSON
-            render_for_text(json, options[:status])
-
-          elsif partial = options[:partial]
-            if partial == true
-              parts = [action_name_base, formats, controller_name, true]
-            elsif partial.is_a?(String)
-              parts = partial_parts(partial, options)
-            else
-              return render_for_text(@template._render_partial(nil, options), options[:status])
-            end
-            
-            render_for_parts(parts, layout, options)
-            
-          elsif options[:update]
-            @template.send(:_evaluate_assigns_and_ivars)
-
-            generator = ActionView::Helpers::PrototypeHelper::JavaScriptGenerator.new(@template, &block)
-            response.content_type = Mime::JS
-            render_for_text(generator.to_s, options[:status])
-
-          elsif options[:nothing]
-            render_for_text(nil, options[:status])
-
-          else
-            render_for_parts([action_name, formats, controller_path], layout, options)
-          end
-        end
       end
 
       # Renders according to the same rules as <tt>render</tt>, but returns the result in a string instead
@@ -1190,37 +1172,47 @@ module ActionController #:nodoc:
       end
 
     private
+      def _process_options(options)
+        if content_type = options[:content_type]
+          response.content_type = content_type.to_s
+        end
+
+        if location = options[:location]
+          response.headers["Location"] = url_for(location)
+        end
+
+        response.status = interpret_status(options[:status] || DEFAULT_RENDER_STATUS_CODE)
+      end
+
+      def render_for_name(name, layout, options)
+        case name.to_s.index('/')
+        when 0
+          render_for_file(name, _pick_layout(layout), options)
+        when nil
+          render_for_action(name, _pick_layout(layout), options)
+        else
+          render_for_file(name.sub(/^\//, ''), _pick_layout(layout, true), options)
+        end
+      end
+    
       def render_for_parts(parts, layout, options = {})
-        # logger.info("Rendering #{name}, #{extension}, #{prefix}" + (status ? " (#{status})" : '')) if logger
-        part_options = {
-          :parts => parts,
-          :layout => layout,
-          :locals => options[:locals] || {}, 
-          :status => options[:status]
-        }
-        
-        part_options.merge!(:collection => options[:collection]) if options[:collection]
-        
-        part_options.merge!(
-          :as => options[:as],
-          :spacer_template => options[:spacer_template]
-        ) if options[:partial]
+        tmp = view_paths.find_by_parts(*parts)
         
         render_for_text(
-          @template._render_for_parts(parts, layout, part_options), 
-          options[:status])
+          @template._render_for_template(tmp, layout, options, parts[3], parts[2]))
+      end
+
+      def render_for_file(file, layout, options)
+        render_for_parts([file, [request.format.to_sym]], layout, options)
       end
       
-      def render_for_file(template_path, status = nil, layout = nil, locals = {}) #:nodoc:
-        path = template_path.respond_to?(:path_without_format_and_extension) ? template_path.path_without_format_and_extension : template_path
-        logger.info("Rendering #{path}" + (status ? " (#{status})" : '')) if logger
-        render_for_text @template.render(:file => template_path, :locals => locals, :layout => layout), status
+      def render_for_action(name, layout, options)
+        parts = [action_name_base(name), formats, controller_name]
+        render_for_parts(parts, layout, options)
       end
-
-      def render_for_text(text = nil, status = nil, append_response = false) #:nodoc:
+      
+      def render_for_text(text = nil, append_response = false) #:nodoc:
         @performed_render = true
-
-        response.status = interpret_status(status || DEFAULT_RENDER_STATUS_CODE)
 
         if append_response
           response.body ||= ''
@@ -1231,16 +1223,6 @@ module ActionController #:nodoc:
             when nil  then " " # Safari doesn't pass the headers of the return if the response is zero length
             else           text.to_s
           end
-        end
-      end
-
-      def validate_render_arguments(options, extra_options, has_block)
-        if options && (has_block && options != :update) && !options.is_a?(String) && !options.is_a?(Hash) && !options.is_a?(Symbol)
-          raise RenderError, "You called render with invalid options : #{options.inspect}"
-        end
-
-        if !extra_options.is_a?(Hash)
-          raise RenderError, "You called render with invalid options : #{options.inspect}, #{extra_options.inspect}"
         end
       end
 
@@ -1293,23 +1275,21 @@ module ActionController #:nodoc:
       end
 
       def perform_action
-        if action_methods.include?(action_name)
-          send(action_name)
-          default_render unless performed?
-        elsif respond_to? :method_missing
-          method_missing action_name
-          default_render unless performed?
-        else
-          begin
-            default_render
-          rescue ActionView::MissingTemplate => e
-            # Was the implicit template missing, or was it another template?
-            if e.path == action_name
-              raise UnknownAction, "No action responded to #{action_name}. Actions: #{action_methods.sort.to_sentence}", caller
-            else
-              raise e
-            end
-          end
+        if called = action_methods.include?(action_name)
+          ret = send(action_name)
+        elsif called = respond_to?(:method_missing)
+          ret = method_missing(action_name)
+        end
+        
+        return (performed? ? ret : default_render) if called
+        
+        begin
+          default_render
+        rescue ActionView::MissingTemplate => e
+          raise e unless e.path == action_name
+          # If the path is the same as the action_name, the action is completely missing
+          raise UnknownAction, "No action responded to #{action_name}. Actions: " +
+            "#{action_methods.sort.to_sentence}", caller
         end
       end
 

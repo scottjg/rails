@@ -342,7 +342,7 @@ class TestController < ActionController::Base
   end
 
   def accessing_params_in_template_with_layout
-    render :layout => nil, :inline =>  "Hello: <%= params[:name] %>"
+    render :layout => true, :inline =>  "Hello: <%= params[:name] %>"
   end
 
   def render_with_explicit_template
