@@ -2,12 +2,7 @@ module ActionController #:nodoc:
   module Layout #:nodoc:
     def self.included(base)
       base.extend(ClassMethods)
-      base.class_inheritable_accessor :layout_name, :auto_layout
-      base.class_eval do
-        class << self
-          alias_method_chain :inherited, :layout
-        end
-      end
+      base.class_inheritable_accessor :layout_name, :layout_conditions
     end
 
     # Layouts reverse the common pattern of including shared headers and footers in many templates to isolate changes in
@@ -160,79 +155,71 @@ module ActionController #:nodoc:
     #
     # This will render the help action with the "help" layout instead of the controller-wide "weblog_standard" layout.
     module ClassMethods
+      extend ActiveSupport::Memoizable
+      extend ActiveSupport::SafelyMemoizable
       # If a layout is specified, all rendered actions will have their result rendered
       # when the layout <tt>yield</tt>s. This layout can itself depend on instance variables assigned during action
       # performance and have access to them as any normal template would.
       def layout(template_name, conditions = {}, auto = false)
         add_layout_conditions(conditions)
         self.layout_name = template_name
-        self.auto_layout = auto
       end
 
-      def layout_conditions #:nodoc:
-        @layout_conditions ||= read_inheritable_attribute(:layout_conditions)
-      end
-
-      def default_layout(formats) #:nodoc:
-        layout = self.layout_name
-        return layout unless self.auto_layout
-        begin
+      def memoized_default_layout(formats) #:nodoc:
+        self.layout_name || begin
+          layout = default_layout_name
           layout.is_a?(String) ? find_layout(layout, formats) : layout
         rescue ActionView::MissingTemplate
-          nil
         end
       end
+      safely_memoize :default_layout
 
-      def find_layout(layout, formats) #:nodoc:
+      def memoized_find_layout(layout, formats) #:nodoc:
         return layout if layout.nil? || layout.respond_to?(:render)
         prefix = layout.to_s =~ /layouts\// ? nil : "layouts"
         view_paths.find_by_parts(layout.to_s, formats, prefix)
       end
+      safely_memoize :find_layout
 
       def layout_list #:nodoc:
         Array(view_paths).sum([]) { |path| Dir["#{path}/layouts/**/*"] }
       end
+      memoize :layout_list
+
+      def default_layout_name
+        layout_match = name.underscore.sub(/_controller$/, '')
+        if layout_list.grep(%r{layouts/#{layout_match}(\.[a-z][0-9a-z]*)+$}).empty?
+          superclass.default_layout_name unless superclass.name.blank? || superclass == ActionController::Base
+        else
+          layout_match
+        end
+      end
+      memoize :default_layout_name
 
       private
-        def inherited_with_layout(child)
-          inherited_without_layout(child)
-          unless child.name.blank?
-            layout_match = child.name.underscore.sub(/_controller$/, '').sub(/^controllers\//, '')
-            child.layout(layout_match, {}, true) unless child.layout_list.grep(%r{layouts/#{layout_match}(\.[a-z][0-9a-z]*)+$}).empty?
-          end
-        end
-
         def add_layout_conditions(conditions)
-          write_inheritable_hash(:layout_conditions, normalize_conditions(conditions))
-        end
-
-        def normalize_conditions(conditions)
-          conditions.inject({}) {|hash, (key, value)| hash.merge(key => [value].flatten.map {|action| action.to_s})}
+          # :except => :foo == :except => [:foo] == :except => "foo" == :except => ["foo"]
+          conditions.each {|k, v| conditions[k] = Array(v).map {|a| a.to_s} }
+          write_inheritable_hash(:layout_conditions, conditions)
         end
     end
     
-    def active_layout(name = nil)
-      return nil if name == false
-      name = (name.nil? || name == true) ? self.class.default_layout(formats) : name
+    def active_layout(name)
+      name = self.class.default_layout(formats) if name == true
       
       layout_name = case name
-        when Symbol then __send__(name)
-        when Proc   then name.call(self)
+        when Symbol     then __send__(name)
+        when Proc       then name.call(self)
         else name
       end
       
       self.class.find_layout(layout_name, formats)
     end
 
-    # TODO: Have AV ask for this when AV's ready. There's a somewhat messy interaction
-    #       here where no error should be raised if the final template is exempt
-    #       from layout, but we're not yet sure what that template will be.
     def _pick_layout(layout_name, implicit = false)
-      return if !layout_name && !implicit
-      
-      return if formats.first == :js
-      
-      active_layout(layout_name) if action_has_layout?
+      return unless layout_name || implicit
+      layout_name = true if layout_name.nil?
+      active_layout(layout_name) if action_has_layout? && layout_name
     end
 
     private
