@@ -31,7 +31,7 @@ rescue LoadError
   end
 end
 
-gem 'rack', '~> 0.4.0'
+gem 'rack', '>= 0.9.0'
 require 'rack'
 
 require File.join(File.dirname(__FILE__), "action_pack")
