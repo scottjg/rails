@@ -894,17 +894,15 @@ module ActionController #:nodoc:
         file, template = options.values_at(:file, :template)
         if file || template
           file = template.sub(/^\//, '') if template
-          return render_for_file(file, _pick_layout(layout_name, !!template), options)
+          return render_for_file(file, [layout_name, !!template], options)
         end
-                
+        
         if action_option = options[:action]
-          return render_for_action(action_option, _pick_layout(layout_name, true), options)
+          return render_for_action(action_option, [layout_name, true], options)
         end
         
-        layout = _pick_layout(layout_name)
-        
-        if inline = options[:inline]          
-          render_for_text(@template._render_inline(inline, layout, options))
+        if inline = options[:inline]
+          render_for_text(@template._render_inline(inline, _pick_layout(layout_name), options))
 
         elsif xml = options[:xml]
           response.content_type ||= Mime::XML
@@ -929,13 +927,13 @@ module ActionController #:nodoc:
             return render_for_text(@template._render_partial(nil, options))
           end
           
-          render_for_parts(parts, layout, options)
+          render_for_parts(parts, layout_name, options)
           
         elsif options[:nothing]
           render_for_text(nil)
 
         else
-          render_for_parts([action_name, formats, controller_path], layout, options)
+          render_for_parts([action_name, formats, controller_path], layout_name, options)
         end
       end
 
@@ -1187,16 +1185,17 @@ module ActionController #:nodoc:
       def render_for_name(name, layout, options)
         case name.to_s.index('/')
         when 0
-          render_for_file(name, _pick_layout(layout), options)
+          render_for_file(name, layout, options)
         when nil
-          render_for_action(name, _pick_layout(layout), options)
+          render_for_action(name, layout, options)
         else
-          render_for_file(name.sub(/^\//, ''), _pick_layout(layout, true), options)
+          render_for_file(name.sub(/^\//, ''), [layout, true], options)
         end
       end
     
       def render_for_parts(parts, layout, options = {})
-        tmp = view_paths.find_by_parts(*parts)
+        tmp = view_paths.find_by_parts(*parts)        
+        layout = _pick_layout(*layout) unless tmp.exempt_from_layout?
         
         render_for_text(
           @template._render_for_template(tmp, layout, options, parts[3], parts[2]))
