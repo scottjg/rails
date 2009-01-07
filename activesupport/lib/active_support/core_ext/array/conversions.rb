@@ -24,7 +24,7 @@ module ActiveSupport #:nodoc:
           end
         end
 
-        # Calls to_param on all its elements and joins the result with slashes. This is used by url_for in Action Pack. 
+        # Calls to_param on all its elements and joins the result with slashes. This is used by url_for in Action Pack.
         def to_param
           map(&:to_param).join '/'
         end
@@ -58,7 +58,7 @@ module ActiveSupport #:nodoc:
           end
         end
 
-        # If the structure is paginated (as in the case of ActiveRecord arrays), then a root must be specified, 
+        # If the structure is paginated (as in the case of ActiveRecord arrays), then a root must be specified,
         # otherwise it will incorrectly set the root as "records"
         def to_xml(options = {})
           raise "Not all elements respond to to_xml" unless paginated? || all? { |e| e.respond_to? :to_xml }
@@ -85,10 +85,10 @@ module ActiveSupport #:nodoc:
           else
             xml.tag!(root, options[:skip_types] ? {} : {:type => "array"}) {
               # Adds support for custom total count
-              xml.tag!('total', self.last, options[:skip_types] ? {} : {:type => "integer"})
-              
+              xml.tag!('total', self.last, options[:skip_types] ? {} : {:type => "integer"}) if paginated?
+
               yield xml if block_given?
-              
+
               if paginated?
                 self.first.each { |e| e.to_xml(opts.merge!({ :skip_instruct => true })) }
               else
