@@ -186,8 +186,8 @@ module ActionView
         when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope
           return render_partial_collection(options.except(:partial).merge(:collection => partial_path))
         else
-          object = partial_path
-          partial_path = ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path),
+          options[:object] = object = partial_path
+          partial_path = ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path)
           _render_for_parts(partial_parts(partial_path, options), nil, options)
         end
       end
