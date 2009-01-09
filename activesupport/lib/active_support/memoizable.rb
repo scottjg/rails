@@ -29,8 +29,8 @@ module ActiveSupport
       symbols.each do |symbol|
         class_eval <<-RUBY, __FILE__, __LINE__ + 1
           def #{symbol}(*args)
-            @_memoized_#{symbol} = ::ActiveSupport::ConcurrentHash.new
-            @_memoized_#{symbol}[args] ||= memoized_#{symbol}(*args)
+            memoized = @_memoized_#{symbol} || ::ActiveSupport::ConcurrentHash.new
+            memoized[args] ||= memoized_#{symbol}(*args)
           end
         RUBY
       end

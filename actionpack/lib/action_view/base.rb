@@ -189,6 +189,8 @@ module ActionView #:nodoc:
     delegate :request_forgery_protection_token, :template, :params, :session, :cookies, :response, :headers,
              :flash, :logger, :action_name, :controller_name, :to => :controller
 
+    delegate :find_by_parts, :to => :view_paths
+
     module CompiledTemplates #:nodoc:
       # holds compiled template code
     end

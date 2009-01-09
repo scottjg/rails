@@ -207,17 +207,15 @@ module ActionView
             ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path)
           template = _pick_partial_template(_partial_path)
           local_assigns[template.counter_name] = index
-          result = template.render_partial(self, object, local_assigns.dup, as)
+          result = template._render_partial(self, object, local_assigns.dup, :as => as)
           index += 1
           result
         end.join(spacer)
       end
 
       def _pick_partial_template(partial_path) #:nodoc:
-        unless partial_path.include?('/')
-          prefix = (controller && controller.class.controller_path)
-        end
-        view_paths.find_by_parts(partial_path, formats, prefix, true)
+        prefix = controller_path unless partial_path.include?('/')
+        find_by_parts(partial_path, formats, prefix, true)
       end
       memoize :_pick_partial_template
   end
