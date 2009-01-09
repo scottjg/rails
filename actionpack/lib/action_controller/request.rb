@@ -387,6 +387,7 @@ EOM
     def parameters
       @parameters ||= request_parameters.merge(query_parameters).update(path_parameters).with_indifferent_access
     end
+    alias_method :params, :parameters
 
     def path_parameters=(parameters) #:nodoc:
       @env["rack.routing_args"] = parameters
@@ -412,13 +413,17 @@ EOM
       @parser.body
     end
 
-    def query_parameters
+    # Override Rack's GET method to support nested query strings
+    def GET
       @parser.query_parameters
     end
+    alias_method :query_parameters, :GET
 
-    def request_parameters
+    # Override Rack's POST method to support nested query strings
+    def POST
       @parser.request_parameters
     end
+    alias_method :request_parameters, :POST
 
     def body_stream #:nodoc:
       @env['rack.input']
