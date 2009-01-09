@@ -3019,10 +3019,8 @@ module ActiveRecord #:nodoc:
           attribute_name = multiparameter_name.split("(").first
           attributes[attribute_name] = [] unless attributes.include?(attribute_name)
 
-          unless value.empty?
-            attributes[attribute_name] <<
+          attributes[attribute_name] <<
               [ find_parameter_position(multiparameter_name), type_cast_attribute_value(multiparameter_name, value) ]
-          end
         end
 
         attributes.each { |name, values| attributes[name] = values.sort_by{ |v| v.first }.collect { |v| v.last } }
