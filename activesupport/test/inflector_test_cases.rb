@@ -166,11 +166,14 @@ module InflectorTestCases
     }
   end
 
-  UnderscoreToHuman = {
-    "employee_salary" => "Employee salary",
-    "employee_id"     => "Employee",
-    "underground"     => "Underground"
+  HumanToUnderscore = {
+    "Employee salary" => "employee_salary",
+    "Underground"     => "underground"
   }
+
+  UnderscoreToHuman = HumanToUnderscore.invert.merge(
+    "employee_id"     => "Employee"
+  )
 
   MixtureToTitleCase = {
     'active_record'       => 'Active Record',

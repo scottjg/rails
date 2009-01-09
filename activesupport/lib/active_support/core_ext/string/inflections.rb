@@ -139,6 +139,14 @@ module ActiveSupport #:nodoc:
           Inflector.humanize(self)
         end
 
+        # Inverse of humanize.
+        #
+        #   "Employee salary" # => "employee_salary"
+        #   "Author"       # => "author"
+        def dehumanize
+          Inflector.dehumanize(self)
+        end
+
         # Creates a foreign key name from a class name.
         # +separate_class_name_and_id_with_underscore+ sets whether
         # the method should put '_' between the name and 'id'.

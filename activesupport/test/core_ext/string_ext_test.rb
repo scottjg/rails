@@ -83,6 +83,12 @@ class StringInflectionsTest < Test::Unit::TestCase
     end
   end
 
+  def test_dehumanize
+    HumanToUnderscore.each do |human, underscore|
+      assert_equal(underscore, human.dehumanize)
+    end
+  end
+
   def test_ord
     assert_equal 97, 'a'.ord
     assert_equal 97, 'abc'.ord

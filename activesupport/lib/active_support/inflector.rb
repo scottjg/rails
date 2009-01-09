@@ -232,6 +232,17 @@ module ActiveSupport
       result.gsub(/_id$/, "").gsub(/_/, " ").capitalize
     end
 
+    # Inverse of humanize.
+    #
+    # Examples:
+    #   "Employee salary" # => "employee_salary"
+    #   "Author"       # => "author"
+    def dehumanize(humanized_word)
+      result = humanized_word.to_s.dup
+
+      result.gsub(/[ ]/, "_").downcase
+    end
+
     # Removes the module part from the expression in the string.
     #
     # Examples:
