@@ -189,7 +189,7 @@ module ActionController #:nodoc:
       def default_layout_name
         layout_match = name.underscore.sub(/_controller$/, '')
         if layout_list.grep(%r{layouts/#{layout_match}(\.[a-z][0-9a-z]*)+$}).empty?
-          superclass.default_layout_name unless superclass.name.blank? || superclass == ActionController::Base
+          superclass.default_layout_name if superclass.respond_to?(:default_layout_name)
         else
           layout_match
         end
@@ -212,7 +212,7 @@ module ActionController #:nodoc:
         when Proc       then name.call(self)
         else name
       end
-      
+
       self.class.find_layout(layout_name, formats)
     end
 

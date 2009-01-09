@@ -475,7 +475,7 @@ module ActionMailer #:nodoc:
               :content_type => template.content_type,
               :disposition => "inline",
               :charset => charset,
-              :body => render_message(template, @body)
+              :body => render_template(template, @body)
             )
           end
           unless @parts.empty?
@@ -546,39 +546,43 @@ module ActionMailer #:nodoc:
         @mime_version = @@default_mime_version.dup if @@default_mime_version
       end
 
-      def render_message(method_name, body)
-        if method_name.respond_to?(:content_type)
-          @current_template_content_type = method_name.content_type
+      def render_template(template, body)
+        if template.respond_to?(:content_type)
+          @current_template_content_type = template.content_type
         end
+        
+        @template = initialize_template_class(body)
+        layout = _pick_layout(layout, true) unless template.exempt_from_layout?
+        @template._render_for_template(template, layout, {})
+      ensure
+        @current_template_content_type = nil
+      end
+
+      def render_message(method_name, body)
         render :file => method_name, :body => body
       ensure
         @current_template_content_type = nil
       end
 
       def render(opts)
-        body = opts.delete(:body)
-        if opts[:file] && (opts[:file] !~ /\// && !opts[:file].respond_to?(:render))
-          opts[:file] = "#{mailer_name}/#{opts[:file]}"
-        end
-
+        layout, file = opts.delete(:layout), opts[:file]
+        
         begin
-          old_template, @template = @template, initialize_template_class(body)
-          layout = respond_to?(:_pick_layout, true) ? _pick_layout(:layout => opts[:layout]) : false
-          if opts[:file].is_a?(String)
-            tmp = @template.view_paths.find_by_parts(opts.delete(:file), @template.formats)
-          else
-            tmp = opts.delete(:file)
+          @template = initialize_template_class(opts.delete(:body))
+          
+          if file
+            prefix = mailer_name unless file =~ /\//
+            template = view_paths.find_by_parts(file, formats, prefix)
           end
 
-          if tmp
-            @template._render_for_template(tmp, layout, opts)
+          layout = _pick_layout(layout, 
+            !template || !template.exempt_from_layout?)
+
+          if template
+            @template._render_for_template(template, layout, opts)
           elsif inline = opts[:inline]
             @template._render_inline(inline, layout, opts)
-          else
-            @template.render(opts)
           end
-        ensure
-          @template = old_template
         end
       end
 
@@ -588,12 +592,6 @@ module ActionMailer #:nodoc:
         else
           :html
         end
-      end
-
-      def candidate_for_layout?(options)
-        !self.view_paths.find_template(default_template_name, default_template_format).exempt_from_layout?
-      rescue ActionView::MissingTemplate
-        return true
       end
 
       def template_root
