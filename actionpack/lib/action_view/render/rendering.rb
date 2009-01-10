@@ -23,7 +23,7 @@ module ActionView
         return _render_partial_with_layout(layout, options) if options.key?(:partial)
         return _render_partial_with_block(layout, block, options) if block_given?
     
-        layout = view_paths.find_by_parts(layout, formats) if layout
+        layout = find_by_parts(layout, formats) if layout
     
         if file = options[:file]
           _render_for_template(find_by_parts(file, formats), layout, :locals => options[:locals])
@@ -100,13 +100,6 @@ module ActionView
 
     def _render_text(text, layout, options)
       layout ? _render_content_with_layout(text, layout, options[:locals]) : text
-    end
-
-    def _render_for_parts(parts, layout, options)
-      name, formats, prefix, partial = parts
-      template = find_by_parts(*parts)
-  
-      _render_for_template(template, layout, options, partial, prefix)
     end
 
     def _render_for_template(template, layout = nil, options = {}, partial = false, prefix = nil)

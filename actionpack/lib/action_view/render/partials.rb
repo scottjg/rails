@@ -223,7 +223,7 @@ module ActionView
       def _render_partial_with_layout(layout, options)
         if layout
           prefix = controller && !layout.include?("/") ? controller.controller_path : nil
-          layout = view_paths.find_by_parts(layout, formats, prefix, true)
+          layout = find_by_parts(layout, formats, prefix, true)
         end
         content = _render_partial(options)
         return _render_content_with_layout(content, layout, options[:locals])
