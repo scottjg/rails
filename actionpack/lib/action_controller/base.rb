@@ -924,7 +924,7 @@ module ActionController #:nodoc:
           elsif partial.is_a?(String)
             parts = partial_parts(partial, options)
           else
-            return render_for_text(@template._render_partial(nil, options))
+            return render_for_text(@template._render_partial(options))
           end
           
           render_for_parts(parts, layout_name, options)

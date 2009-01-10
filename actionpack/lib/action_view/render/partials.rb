@@ -172,44 +172,100 @@ module ActionView
   module Partials
     extend ActiveSupport::Memoizable
 
-    private
-      def render_partial(options = {}) #:nodoc:
-        local_assigns = options[:locals] || {}
+    def _render_partial(options = {}) #:nodoc:
+      options[:locals] ||= {}
 
-        case partial_path = options[:partial]
-        when String
-          _render_for_parts(partial_parts(partial_path, options), nil, options)
-        when ActionView::Helpers::FormBuilder
-          builder_partial_path = partial_path.class.to_s.demodulize.underscore.sub(/_builder$/, '')
-          local_assigns.merge!(builder_partial_path.to_sym => partial_path)
-          _render_for_parts(partial_parts(builder_partial_path, options), nil, :locals => local_assigns)
-        when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope
-          return render_partial_collection(options.except(:partial).merge(:collection => partial_path))
-        else
-          options[:object] = object = partial_path
-          partial_path = ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path)
-          _render_for_parts(partial_parts(partial_path, options), nil, options)
+      case path = partial = options[:partial]        
+      when *_array_like_objects
+        return _render_partial_collection(partial, options)
+      else
+        if partial.is_a?(ActionView::Helpers::FormBuilder)
+          path = partial.class.to_s.demodulize.underscore.sub(/_builder$/, '')
+          options[:locals].merge!(path.to_sym => partial)
+        elsif !partial.is_a?(String)
+          options[:object] = object = partial
+          path = ActionController::RecordIdentifier.partial_path(object, controller_path)
+        end
+        _, _, prefix, partial = parts = partial_parts(path, options)
+        template = find_by_parts(*parts)
+        _render_for_template(template, nil, options, partial, prefix)
+      end
+    end
+
+    private
+      def _deprecated_ivar_assign(template)
+        if respond_to?(:controller)
+          ivar = :"@#{template.variable_name}"
+          object =
+            if controller.instance_variable_defined?(ivar)
+              ActiveSupport::Deprecation::DeprecatedObjectProxy.new(
+                controller.instance_variable_get(ivar),
+                "#{ivar} will no longer be implicitly assigned to #{template.variable_name}")
+            end
         end
       end
 
-      # The last piece of the puzzle to be merged into the new scheme. Next up: _render_for_template
-      def render_partial_collection(options = {}) #:nodoc:
-        return nil if options[:collection].blank?
+      def _array_like_objects
+        array_like = [Array]
+        if defined?(ActiveRecord)
+          array_like.push(ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope)
+        end
+        array_like
+      end
 
-        partial = options[:partial]
-        spacer = options[:spacer_template] ? render(:partial => options[:spacer_template]) : ''
-        local_assigns = options[:locals] ? options[:locals].clone : {}
-        as = options[:as]
+      def _render_partial_with_block(layout, block, options)
+        @_proc_for_layout = block
+        concat(_render_partial(options.merge(:partial => layout)))
+      ensure
+        @_proc_for_layout = nil
+      end
+    
+      def _render_partial_with_layout(layout, options)
+        if layout
+          prefix = controller && !layout.include?("/") ? controller.controller_path : nil
+          layout = view_paths.find_by_parts(layout, formats, prefix, true)
+        end
+        content = _render_partial(options)
+        return _render_content_with_layout(content, layout, options[:locals])
+      end
 
-        index = 0
-        options[:collection].map do |object|
-          _partial_path ||= partial ||
-            ActionController::RecordIdentifier.partial_path(object, controller.class.controller_path)
-          template = _pick_partial_template(_partial_path)
-          local_assigns[template.counter_name] = index
-          result = template._render_partial(self, object, local_assigns.dup, :as => as)
+      def _render_partial_top(template, options, object = nil)
+        if options.key?(:collection)
+          _render_partial_collection(options.delete(:collection), options, template)
+        else
+          locals = (options[:locals] ||= {})
+          object ||= locals[:object] || locals[template.variable_name]
+          
+          _set_locals(object, locals, template, options)          
+          _render_template(template, locals)
+        end
+      end
+
+      def _set_locals(object, locals, template, options)
+        object ||= _deprecated_ivar_assign(template)
+        locals[:object] = locals[template.variable_name] = object
+        locals[options[:as]] = object if options[:as]
+      end
+
+      def _render_partial_collection(collection, options = {}, passed_template = nil) #:nodoc:
+        return nil if collection.blank?
+        
+        spacer = options[:spacer_template] ? _render_partial(:partial => options[:spacer_template]) : ''
+
+        locals = (options[:locals] ||= {})
+        index, @_partial_path = 0, nil
+        collection.map do |object|
+          template = passed_template || begin
+            _partial_path = 
+              ActionController::RecordIdentifier.partial_path(object, controller_path)
+            template = _pick_partial_template(_partial_path)
+          end
+
+          _set_locals(object, locals, template, options)
+          locals[template.counter_name] = index
+          
           index += 1
-          result
+          _render_template(template, locals)
         end.join(spacer)
       end
 

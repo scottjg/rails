@@ -20,13 +20,13 @@ module ActionView
         options[:locals] ||= {}
         layout = options[:layout]
             
-        return _render_partial(layout, options) if options.key?(:partial)
+        return _render_partial_with_layout(layout, options) if options.key?(:partial)
         return _render_partial_with_block(layout, block, options) if block_given?
     
         layout = view_paths.find_by_parts(layout, formats) if layout
     
         if file = options[:file]
-          _render_for_parts([file, formats], layout, {:locals => options[:locals]})
+          _render_for_template(find_by_parts(file, formats), layout, :locals => options[:locals])
         elsif inline = options[:inline]
           _render_inline(inline, layout, options)
         elsif text = options[:text]
@@ -35,24 +35,8 @@ module ActionView
       when :update
         update_page(&block)
       when String, NilClass
-        _render_partial(nil, :partial => options, :locals => local_assigns)
+        _render_partial(:partial => options, :locals => local_assigns)
       end
-    end
-    
-    def _render_partial_with_block(layout, block, options)
-      @_proc_for_layout = block
-      concat(render_partial(options.merge(:partial => layout)))
-    ensure
-      @_proc_for_layout = nil
-    end
-    
-    def _render_partial(layout, options)
-      if layout
-        prefix = controller && !layout.include?("/") ? controller.controller_path : nil
-        layout = view_paths.find_by_parts(layout, formats, prefix, true)
-      end
-      content = render_partial(options)
-      return _render_content_with_layout(content, layout, options[:locals])
     end
     
     def _render_content_with_layout(content, layout, locals)
@@ -120,7 +104,7 @@ module ActionView
 
     def _render_for_parts(parts, layout, options)
       name, formats, prefix, partial = parts
-      template = self.view_paths.find_by_parts(*parts)
+      template = find_by_parts(*parts)
   
       _render_for_template(template, layout, options, partial, prefix)
     end
@@ -131,23 +115,15 @@ module ActionView
           (options[:status] ? " (#{options[:status]})" : ''))
       end
   
-      if partial
-        if spacer = options[:spacer_template]
-          spacer = view_paths.find_by_parts(spacer, formats, prefix, partial)
-          options[:join] = _render_template(spacer)
-        end
-    
-        object = partial == true ? nil : partial
-        content = template.render_partial_top(self, object, options)
+      content = if partial
+        object = partial unless partial == true
+        _render_partial_top(template, options, object)
       else
-        content = _render_template(template, options[:locals] || {})
+        _render_template(template, options[:locals] || {})
       end
   
-      if layout && !template.exempt_from_layout?
-        _render_content_with_layout(content, layout, options[:locals] || {})
-      else
-        content
-      end
+      return content unless layout && !template.exempt_from_layout?
+      _render_content_with_layout(content, layout, options[:locals] || {})
     end
   end
 end
