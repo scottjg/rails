@@ -1198,7 +1198,7 @@ module ActionController #:nodoc:
         layout = _pick_layout(*layout) unless tmp.exempt_from_layout?
         
         render_for_text(
-          @template._render_for_template(tmp, layout, options, parts[3], parts[2]))
+          @template._render_template_with_layout(tmp, layout, options, parts[3]))
       end
 
       def render_for_file(file, layout, options)

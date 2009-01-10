@@ -186,13 +186,29 @@ module ActionView
           options[:object] = object = partial
           path = ActionController::RecordIdentifier.partial_path(object, controller_path)
         end
-        _, _, prefix, partial = parts = partial_parts(path, options)
+        _, _, prefix, object = parts = partial_parts(path, options)
         template = find_by_parts(*parts)
-        _render_for_template(template, nil, options, partial, prefix)
+        _render_partial_object(template, options, (object unless object == true))
       end
     end
 
     private
+      def _render_partial_with_block(layout, block, options)
+        @_proc_for_layout = block
+        concat(_render_partial(options.merge(:partial => layout)))
+      ensure
+        @_proc_for_layout = nil
+      end
+  
+      def _render_partial_with_layout(layout, options)
+        if layout
+          prefix = controller && !layout.include?("/") ? controller.controller_path : nil
+          layout = find_by_parts(layout, formats, prefix, true)
+        end
+        content = _render_partial(options)
+        return _render_content_with_layout(content, layout, options[:locals])
+      end
+    
       def _deprecated_ivar_assign(template)
         if respond_to?(:controller)
           ivar = :"@#{template.variable_name}"
@@ -213,23 +229,7 @@ module ActionView
         array_like
       end
 
-      def _render_partial_with_block(layout, block, options)
-        @_proc_for_layout = block
-        concat(_render_partial(options.merge(:partial => layout)))
-      ensure
-        @_proc_for_layout = nil
-      end
-    
-      def _render_partial_with_layout(layout, options)
-        if layout
-          prefix = controller && !layout.include?("/") ? controller.controller_path : nil
-          layout = find_by_parts(layout, formats, prefix, true)
-        end
-        content = _render_partial(options)
-        return _render_content_with_layout(content, layout, options[:locals])
-      end
-
-      def _render_partial_top(template, options, object = nil)
+      def _render_partial_object(template, options, object = nil)
         if options.key?(:collection)
           _render_partial_collection(options.delete(:collection), options, template)
         else

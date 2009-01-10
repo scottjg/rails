@@ -26,7 +26,8 @@ module ActionView
         layout = find_by_parts(layout, formats) if layout
     
         if file = options[:file]
-          _render_for_template(find_by_parts(file, formats), layout, :locals => options[:locals])
+          template = find_by_parts(file, formats)
+          _render_template_with_layout(template, layout, :locals => options[:locals])
         elsif inline = options[:inline]
           _render_inline(inline, layout, options)
         elsif text = options[:text]
@@ -61,18 +62,6 @@ module ActionView
     end
 
     def _render_template(template, local_assigns = {})
-      _render(template, local_assigns)
-    rescue Exception => e
-      raise e unless template.filename
-      if TemplateError === e
-        e.sub_template_of(template)
-        raise e
-      else
-        raise TemplateError.new(template, assigns, e)
-      end
-    end
-
-    def _render(template, local_assigns = {})
       template.compile(local_assigns)
 
       @_render_stack.push(template)
@@ -91,10 +80,18 @@ module ActionView
 
       @_render_stack.pop
       result
-    end    
+    rescue Exception => e
+      raise e if !template.filename || template.is_a?(InlineTemplate)
+      if TemplateError === e
+        e.sub_template_of(template)
+        raise e
+      else
+        raise TemplateError.new(template, assigns, e)
+      end
+    end
 
     def _render_inline(inline, layout, options)
-      content = _render(InlineTemplate.new(options[:inline], options[:type]), options[:locals] || {})
+      content = _render_template(InlineTemplate.new(options[:inline], options[:type]), options[:locals] || {})
       layout ? _render_content_with_layout(content, layout, options[:locals]) : content
     end
 
@@ -102,7 +99,7 @@ module ActionView
       layout ? _render_content_with_layout(text, layout, options[:locals]) : text
     end
 
-    def _render_for_template(template, layout = nil, options = {}, partial = false, prefix = nil)
+    def _render_template_with_layout(template, layout = nil, options = {}, partial = false)
       if controller && logger
         logger.info("Rendering #{template.path_without_extension}" + 
           (options[:status] ? " (#{options[:status]})" : ''))
@@ -110,7 +107,7 @@ module ActionView
   
       content = if partial
         object = partial unless partial == true
-        _render_partial_top(template, options, object)
+        _render_partial_object(template, options, object)
       else
         _render_template(template, options[:locals] || {})
       end
