@@ -6,5 +6,5 @@
 </h1>
 <pre><%=h @exception.clean_message %></pre>
 
-<%= @rescues_path.find_template("rescues/_trace.erb").render_template(@template) %>
-<%= @rescues_path.find_template("rescues/_request_and_response.erb").render_template(@template) %>
+<%= @template._render_template(@rescues_path.find_template("rescues/_trace.erb")) %>
+<%= @template._render_template(@rescues_path.find_template("rescues/_request_and_response.erb")) %>

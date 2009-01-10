@@ -125,12 +125,12 @@ module ActionController #:nodoc:
         @template.instance_variable_set("@exception", exception)
         @template.instance_variable_set("@rescues_path", RESCUES_TEMPLATE_PATH)
         @template.instance_variable_set("@contents",
-          template_path_for_local_rescue(exception).render_template(@template))
+          @template._render_template(template_path_for_local_rescue(exception)))
 
         response.content_type = Mime::HTML
         response.status = interpret_status(response_code_for_rescue(exception))
         
-        content = rescues_path("layout").render_template(@template)
+        content = @template._render_template(rescues_path("layout"))
         render_for_text(content)
       end
 

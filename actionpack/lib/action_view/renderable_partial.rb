@@ -50,7 +50,7 @@ module ActionView
       locals[:object] = locals[variable_name] = object
       locals[options[:as]] = object if options[:as]
 
-      render_template(view, locals)
+      view._render_template(self, locals)
     ensure
       locals[variable_name] = locals[:object] = nil
     end
@@ -84,7 +84,7 @@ module ActionView
       local_assigns[:object] = local_assigns[variable_name] = object
       local_assigns[as] = object if as
 
-      render_template(view, local_assigns)
+      view._render_template(self, local_assigns)
     end
   end
 end

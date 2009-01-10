@@ -195,18 +195,6 @@ module ActionView #:nodoc:
     end
     memoize :method_segment
 
-    def render_template(view, local_assigns = {})
-      render(view, local_assigns)
-    rescue Exception => e
-      raise e unless filename
-      if TemplateError === e
-        e.sub_template_of(self)
-        raise e
-      else
-        raise TemplateError.new(self, view.assigns, e)
-      end
-    end
-
     def stale?
       File.mtime(filename) > mtime
     end

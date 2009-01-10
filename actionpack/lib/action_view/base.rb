@@ -299,12 +299,48 @@ module ActionView #:nodoc:
         @content_for_layout = content
 
         @cached_content_for_layout = @content_for_layout
-        layout.render_template(self, locals)
+        _render_template(layout, locals)
       ensure
         @content_for_layout = original_content_for_layout
       end
     end
-        
+
+    # MOD
+    def _render_template(template, local_assigns = {})
+      template.render(self, local_assigns)
+    rescue Exception => e
+      raise e unless template.filename
+      if TemplateError === e
+        e.sub_template_of(template)
+        raise e
+      else
+        raise TemplateError.new(template, assigns, e)
+      end
+    end
+    
+    def _render(view, local_assigns = {})
+      compile(local_assigns)
+
+      stack = view.instance_variable_get(:@_render_stack)
+      stack.push(self)
+
+      view.send(:_evaluate_assigns_and_ivars)
+      view.send(:_set_controller_content_type, mime_type) if respond_to?(:mime_type)
+
+      result = view.send(method_name(local_assigns), local_assigns) do |*names|
+        ivar = :@_proc_for_layout
+        if !view.instance_variable_defined?(:"@content_for_#{names.first}") && view.instance_variable_defined?(ivar) && (proc = view.instance_variable_get(ivar))
+          view.capture(*names, &proc)
+        elsif view.instance_variable_defined?(ivar = :"@content_for_#{names.first || :layout}")
+          view.instance_variable_get(ivar)
+        end
+      end
+
+      stack.pop
+      result
+    end    
+    # /MOD
+
     def _render_inline(inline, layout, options)
       content = InlineTemplate.new(options[:inline], options[:type]).render(self, options[:locals] || {})
       layout ? _render_content_with_layout(content, layout, options[:locals]) : content
@@ -330,13 +366,13 @@ module ActionView #:nodoc:
       if partial
         if spacer = options[:spacer_template]
           spacer = view_paths.find_by_parts(spacer, formats, prefix, partial)
-          options[:join] = spacer.render_template(self)
+          options[:join] = _render_template(spacer)
         end
         
         object = partial == true ? nil : partial
         content = template.render_partial_top(self, object, options)
       else
-        content = template.render_template(self, options[:locals] || {})
+        content = _render_template(template, options[:locals] || {})
       end
       
       if layout && !template.exempt_from_layout?
