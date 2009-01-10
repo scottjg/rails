@@ -67,24 +67,5 @@ module ActionView
       end
     end
 
-    def render_partial(view, object = nil, local_assigns = {}, as = nil)
-      object ||= local_assigns[:object] || local_assigns[variable_name]
-
-      if object.nil? && view.respond_to?(:controller)
-        ivar = :"@#{variable_name}"
-        object =
-          if view.controller.instance_variable_defined?(ivar)
-            ActiveSupport::Deprecation::DeprecatedObjectProxy.new(
-              view.controller.instance_variable_get(ivar),
-              "#{ivar} will no longer be implicitly assigned to #{variable_name}")
-          end
-      end
-
-      # Ensure correct object is reassigned to other accessors
-      local_assigns[:object] = local_assigns[variable_name] = object
-      local_assigns[as] = object if as
-
-      view._render_template(self, local_assigns)
-    end
   end
 end
