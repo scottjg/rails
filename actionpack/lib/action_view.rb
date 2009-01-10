@@ -44,7 +44,7 @@ module ActionView
   autoload :Partials, 'action_view/render/partials'
   autoload :PathSet, 'action_view/paths'
   autoload :Rendering, 'action_view/render/rendering'
-  autoload :Renderable, 'action_view/render/renderable'
+  autoload :Renderable, 'action_view/template/renderable'
   autoload :RenderablePartial, 'action_view/template/partial'
   autoload :Template, 'action_view/template/template'
   autoload :TemplateError, 'action_view/template/error'
