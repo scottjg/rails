@@ -90,7 +90,7 @@ module ActionController
         when options[:action].to_s == "new"
           args.pop
           :singular
-        when ActiveORM.supports? record && ActiveORM.for(record).new_record?
+        when ActiveORM.supports?(record) && ActiveORM.for(record).new_record?
           args.pop
           :plural
         else
