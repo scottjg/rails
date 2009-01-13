@@ -63,8 +63,10 @@ module ActiveRecord
       
       # Fetches the first one using SQL if possible.
       def first(*args)
-        if fetch_first_or_last_using_find?(args)
+        if fetch_first_or_last_using_find?(@first, args)
           @first = find(:first, *args)
+        elsif @first
+          @first
         else
           load_target unless loaded?
           @target.first(*args)
@@ -73,8 +75,10 @@ module ActiveRecord
 
       # Fetches the last one using SQL if possible.
       def last(*args)
-        if fetch_first_or_last_using_find?(args)
+        if fetch_first_or_last_using_find?(@last, args)
           @last = find(:last, *args)
+        elsif @last
+          @last
         else
           load_target unless loaded?
           @target.last(*args)
@@ -452,8 +456,8 @@ module ActiveRecord
           end
         end
 
-        def fetch_first_or_last_using_find?(args)
-          args.first.kind_of?(Hash) || !(loaded? || @owner.new_record? || @reflection.options[:finder_sql] ||
+        def fetch_first_or_last_using_find?(record, args)
+          args.first.kind_of?(Hash) || !(record || loaded? || @owner.new_record? || @reflection.options[:finder_sql] ||
                                          @target.any? { |record| record.new_record? } || args.first.kind_of?(Integer))
         end
     end
