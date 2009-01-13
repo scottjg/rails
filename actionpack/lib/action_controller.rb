@@ -48,8 +48,8 @@ module ActionController
   autoload :Benchmarking, 'action_controller/benchmarking'
   autoload :Caching, 'action_controller/caching'
   autoload :Cookies, 'action_controller/cookies'
-  autoload :Dispatcher, 'action_controller/dispatcher'
-  autoload :Failsafe, 'action_controller/failsafe'
+  autoload :Dispatcher, 'action_controller/dispatch/dispatcher'
+  autoload :Failsafe, 'action_controller/dispatch/rack/failsafe'
   autoload :Filters, 'action_controller/filters'
   autoload :Flash, 'action_controller/flash'
   autoload :Helpers, 'action_controller/helpers'
@@ -57,8 +57,8 @@ module ActionController
   autoload :Integration, 'action_controller/testing/integration'
   autoload :IntegrationTest, 'action_controller/integration'
   autoload :Layout, 'action_controller/layout'
-  autoload :Lock, 'action_controller/lock'
-  autoload :MiddlewareStack, 'action_controller/middleware_stack'
+  autoload :Lock, 'action_controller/dispatch/rack/lock'
+  autoload :MiddlewareStack, 'action_controller/dispatch/rack/middleware_stack'
   autoload :MimeResponds, 'action_controller/mime/responds'
   autoload :PolymorphicRoutes, 'action_controller/polymorphic_routes'
   autoload :Request, 'action_controller/dispatch/request'
@@ -66,10 +66,10 @@ module ActionController
   autoload :UrlEncodedPairParser, 'action_controller/url_encoded_pair_parser'
   autoload :UploadedStringIO, 'action_controller/uploaded_file'
   autoload :UploadedTempfile, 'action_controller/uploaded_file'
-  autoload :Response, 'action_controller/response'
+  autoload :Response, 'action_controller/dispatch/response'
   autoload :RequestForgeryProtection, 'action_controller/request_forgery_protection'
-  autoload :Rescue, 'action_controller/rescue'
-  autoload :Resources, 'action_controller/resources'
+  autoload :Rescue, 'action_controller/dispatch/rescue'
+  autoload :Resources, 'action_controller/routing/resources'
   autoload :Routing, 'action_controller/routing'
   autoload :SessionManagement, 'action_controller/session_management'
   autoload :StatusCodes, 'action_controller/dispatch/status_codes'
@@ -79,7 +79,7 @@ module ActionController
   autoload :Translation, 'action_controller/translation'
   autoload :UrlRewriter, 'action_controller/url_rewriter'
   autoload :UrlWriter, 'action_controller/url_rewriter'
-  autoload :VerbPiggybacking, 'action_controller/verb_piggybacking'
+  autoload :VerbPiggybacking, 'action_controller/dispatch/rack/verb_piggybacking'
   autoload :Verification, 'action_controller/verification'
 
   module Assertions
@@ -102,8 +102,8 @@ module ActionController
   end
 
   # DEPRECATE: Remove CGI support
-  autoload :CgiRequest, 'action_controller/cgi_process'
-  autoload :CGIHandler, 'action_controller/cgi_process'
+  autoload :CgiRequest, 'action_controller/cgi/process'
+  autoload :CGIHandler, 'action_controller/cgi/process'
 end
 
 autoload :Mime, 'action_controller/mime/type'
