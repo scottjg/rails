@@ -70,6 +70,7 @@ module ActionController
   autoload :RequestForgeryProtection, 'action_controller/base/request_forgery_protection'
   autoload :Rescue, 'action_controller/dispatch/rescue'
   autoload :Resources, 'action_controller/routing/resources'
+  autoload :RewindableInput, 'action_controller/rewindable_input'
   autoload :Routing, 'action_controller/routing'
   autoload :SessionManagement, 'action_controller/session/management'
   autoload :StatusCodes, 'action_controller/dispatch/status_codes'
