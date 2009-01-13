@@ -71,7 +71,7 @@ module ActionController
   autoload :Rescue, 'action_controller/dispatch/rescue'
   autoload :Resources, 'action_controller/routing/resources'
   autoload :Routing, 'action_controller/routing'
-  autoload :SessionManagement, 'action_controller/session_management'
+  autoload :SessionManagement, 'action_controller/session/management'
   autoload :StatusCodes, 'action_controller/dispatch/status_codes'
   autoload :Streaming, 'action_controller/streaming'
   autoload :TestCase, 'action_controller/testing/test_case'
