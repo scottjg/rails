@@ -184,7 +184,7 @@ module ActionView
           options[:locals].merge!(path.to_sym => partial)
         elsif !partial.is_a?(String)
           options[:object] = object = partial
-          path = ActionController::RecordIdentifier.partial_path(object, controller_path)
+          path = ActionPack::RecordIdentifier.partial_path(object, controller_path)
         end
         _, _, prefix, object = parts = partial_parts(path, options)
         template = find_by_parts(*parts)
@@ -257,7 +257,7 @@ module ActionView
         collection.map do |object|
           template = passed_template || begin
             _partial_path = 
-              ActionController::RecordIdentifier.partial_path(object, controller_path)
+              ActionPack::RecordIdentifier.partial_path(object, controller_path)
             template = _pick_partial_template(_partial_path)
           end
 

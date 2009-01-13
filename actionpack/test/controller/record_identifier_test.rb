@@ -24,7 +24,7 @@ end
 
 
 class RecordIdentifierTest < Test::Unit::TestCase
-  include ActionController::RecordIdentifier
+  include ActionPack::RecordIdentifier
 
   def setup
     @klass  = Comment

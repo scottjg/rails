@@ -47,7 +47,7 @@ module ActionView
 
     include ActionView::Helpers
     include ActionController::PolymorphicRoutes
-    include ActionController::RecordIdentifier
+    include ActionPack::RecordIdentifier
 
     setup :setup_with_helper_class
 
