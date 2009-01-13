@@ -62,6 +62,16 @@ module ActiveRecord
       end
       
       # Fetches the first one using SQL if possible.
+      #
+      # It will always return the same instance, unless first is called with
+      # arguments
+      #
+      # If the target is loaded _after_ first _and_ the record is present in
+      # the target, it will replace the new instance. Thus always yielding the
+      # same instance.
+      #
+      #   firm.clients.first.object_id # => 297990
+      #   firm.clients.map(&:object_id) # => [297990, 287070]
       def first(*args)
         if fetch_first_or_last_using_find?(@first, args)
           record = find(:first, *args)
@@ -76,6 +86,16 @@ module ActiveRecord
       end
 
       # Fetches the last one using SQL if possible.
+      #
+      # It will always return the same instance, unless last is called with
+      # arguments
+      #
+      # If the target is loaded _after_ last _and_ the record is present in the
+      # target, it will replace the new instance. Thus always yielding the same
+      # instance.
+      #
+      #   firm.clients.last.object_id # => 297990
+      #   firm.clients.last(&:object_id) # => [297990, 287070]
       def last(*args)
         if fetch_first_or_last_using_find?(@last, args)
           record = find(:last, *args)
