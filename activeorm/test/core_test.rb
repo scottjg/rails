@@ -46,7 +46,7 @@ class CoreTest < Test::Unit::TestCase
   end
   
   def test_supports_for_module
-    ActiveORM.use :klass => TestModuleModel, :proxy => ActiveORM::Proxies::TestORMProxy
+    ActiveORM.use :proxy => ActiveORM::Proxies::TestORMProxy, :for => TestModuleModel
     assert ActiveORM.supports?(@modulemodel)
   end
   
