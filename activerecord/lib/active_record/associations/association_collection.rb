@@ -61,10 +61,9 @@ module ActiveRecord
         end
       end
       
-      # Fetches the first one using SQL if possible.
+      # Fetches the first record using SQL if possible.
       #
-      # It will always return the same instance, unless first is called with
-      # arguments
+      # It will always return the same instance, unless called with arguments.
       #
       # If the target is loaded _after_ first _and_ the record is present in
       # the target, it will replace the new instance. Thus always yielding the
@@ -85,10 +84,9 @@ module ActiveRecord
         end
       end
 
-      # Fetches the last one using SQL if possible.
+      # Fetches the last record using SQL if possible.
       #
-      # It will always return the same instance, unless last is called with
-      # arguments
+      # It will always return the same instance, unless called with arguments.
       #
       # If the target is loaded _after_ last _and_ the record is present in the
       # target, it will replace the new instance. Thus always yielding the same
