@@ -1106,6 +1106,12 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal clients.last.object_id,  clients.last.object_id
   end
 
+  def test_calling_first_or_last_a_second_time_with_arguments_should_not_return_the_same_object
+    clients = companies(:first_firm).clients
+    assert_not_equal clients.first.object_id, clients.first(:order => :name).object_id
+    assert_not_equal clients.last.object_id,  clients.last(:order => :name).object_id
+  end
+
   def test_calling_reset_should_clear_the_first_and_last_cache
     clients = companies(:first_firm).clients
     def clients.first_ivar; @first end
