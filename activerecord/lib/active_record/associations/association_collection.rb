@@ -64,7 +64,9 @@ module ActiveRecord
       # Fetches the first one using SQL if possible.
       def first(*args)
         if fetch_first_or_last_using_find?(@first, args)
-          @first = find(:first, *args)
+          record = find(:first, *args)
+          @first = args.first.is_a?(Hash) ? nil : record
+          record
         elsif @first
           @first
         else
@@ -76,7 +78,9 @@ module ActiveRecord
       # Fetches the last one using SQL if possible.
       def last(*args)
         if fetch_first_or_last_using_find?(@last, args)
-          @last = find(:last, *args)
+          record = find(:last, *args)
+          @last = args.first.is_a?(Hash) ? nil : record
+          record
         elsif @last
           @last
         else
