@@ -34,6 +34,8 @@ end
 gem 'rack', '>= 0.9.0'
 require 'rack'
 
+require File.join(File.dirname(__FILE__), "action_pack")
+
 module ActionController
   # TODO: Review explicit to see if they will automatically be handled by
   # the initilizer if they are really needed.
@@ -41,57 +43,57 @@ module ActionController
     [Base, CGIHandler, CgiRequest, Request, Response, Http::Headers, UrlRewriter, UrlWriter]
   end
 
-  autoload :AbstractRequest, 'action_controller/request'
-  autoload :Base, 'action_controller/base'
-  autoload :Benchmarking, 'action_controller/benchmarking'
+  autoload :AbstractRequest, 'action_controller/dispatch/request'
+  autoload :Base, 'action_controller/base/base'
+  autoload :Benchmarking, 'action_controller/base/chained/benchmarking'
   autoload :Caching, 'action_controller/caching'
-  autoload :Cookies, 'action_controller/cookies'
-  autoload :Dispatcher, 'action_controller/dispatcher'
-  autoload :Failsafe, 'action_controller/failsafe'
-  autoload :Filters, 'action_controller/filters'
-  autoload :Flash, 'action_controller/flash'
-  autoload :Helpers, 'action_controller/helpers'
-  autoload :HttpAuthentication, 'action_controller/http_authentication'
-  autoload :Integration, 'action_controller/integration'
+  autoload :Cookies, 'action_controller/base/cookies'
+  autoload :Dispatcher, 'action_controller/dispatch/dispatcher'
+  autoload :Failsafe, 'action_controller/dispatch/rack/failsafe'
+  autoload :Filters, 'action_controller/base/chained/filters'
+  autoload :Flash, 'action_controller/base/chained/flash'
+  autoload :Helpers, 'action_controller/base/helpers'
+  autoload :HttpAuthentication, 'action_controller/base/http_authentication'
+  autoload :Integration, 'action_controller/testing/integration'
   autoload :IntegrationTest, 'action_controller/integration'
-  autoload :Layout, 'action_controller/layout'
-  autoload :Lock, 'action_controller/lock'
-  autoload :MiddlewareStack, 'action_controller/middleware_stack'
-  autoload :MimeResponds, 'action_controller/mime_responds'
-  autoload :PolymorphicRoutes, 'action_controller/polymorphic_routes'
-  autoload :Request, 'action_controller/request'
-  autoload :RequestParser, 'action_controller/request_parser'
-  autoload :UrlEncodedPairParser, 'action_controller/url_encoded_pair_parser'
-  autoload :UploadedStringIO, 'action_controller/uploaded_file'
-  autoload :UploadedTempfile, 'action_controller/uploaded_file'
-  autoload :RecordIdentifier, 'action_controller/record_identifier'
-  autoload :Response, 'action_controller/response'
-  autoload :RequestForgeryProtection, 'action_controller/request_forgery_protection'
-  autoload :Rescue, 'action_controller/rescue'
-  autoload :Resources, 'action_controller/resources'
+  autoload :Layout, 'action_controller/base/layout'
+  autoload :Lock, 'action_controller/dispatch/rack/lock'
+  autoload :MiddlewareStack, 'action_controller/dispatch/rack/middleware_stack'
+  autoload :MimeResponds, 'action_controller/mime/responds'
+  autoload :PolymorphicRoutes, 'action_controller/routing/generation/polymorphic_routes'
+  autoload :Request, 'action_controller/dispatch/request'
+  autoload :RequestParser, 'action_controller/dispatch/request_parser'
+  autoload :UrlEncodedPairParser, 'action_controller/dispatch/url_encoded_pair_parser'
+  autoload :UploadedStringIO, 'action_controller/dispatch/uploaded_file'
+  autoload :UploadedTempfile, 'action_controller/dispatch/uploaded_file'
+  autoload :Response, 'action_controller/dispatch/response'
+  autoload :RequestForgeryProtection, 'action_controller/base/request_forgery_protection'
+  autoload :Rescue, 'action_controller/dispatch/rescue'
+  autoload :Resources, 'action_controller/routing/resources'
+  autoload :RewindableInput, 'action_controller/rewindable_input'
   autoload :Routing, 'action_controller/routing'
-  autoload :SessionManagement, 'action_controller/session_management'
-  autoload :StatusCodes, 'action_controller/status_codes'
-  autoload :Streaming, 'action_controller/streaming'
-  autoload :TestCase, 'action_controller/test_case'
-  autoload :TestProcess, 'action_controller/test_process'
+  autoload :SessionManagement, 'action_controller/session/management'
+  autoload :StatusCodes, 'action_controller/dispatch/status_codes'
+  autoload :Streaming, 'action_controller/base/streaming'
+  autoload :TestCase, 'action_controller/testing/test_case'
+  autoload :TestProcess, 'action_controller/testing/process'
   autoload :Translation, 'action_controller/translation'
-  autoload :UrlRewriter, 'action_controller/url_rewriter'
+  autoload :UrlRewriter, 'action_controller/routing/generation/url_rewriter'
   autoload :UrlWriter, 'action_controller/url_rewriter'
-  autoload :VerbPiggybacking, 'action_controller/verb_piggybacking'
-  autoload :Verification, 'action_controller/verification'
+  autoload :VerbPiggybacking, 'action_controller/dispatch/rack/verb_piggybacking'
+  autoload :Verification, 'action_controller/base/verification'
 
   module Assertions
-    autoload :DomAssertions, 'action_controller/assertions/dom_assertions'
-    autoload :ModelAssertions, 'action_controller/assertions/model_assertions'
-    autoload :ResponseAssertions, 'action_controller/assertions/response_assertions'
-    autoload :RoutingAssertions, 'action_controller/assertions/routing_assertions'
-    autoload :SelectorAssertions, 'action_controller/assertions/selector_assertions'
-    autoload :TagAssertions, 'action_controller/assertions/tag_assertions'
+    autoload :DomAssertions, 'action_controller/testing/assertions/dom'
+    autoload :ModelAssertions, 'action_controller/testing/assertions/model'
+    autoload :ResponseAssertions, 'action_controller/testing/assertions/response'
+    autoload :RoutingAssertions, 'action_controller/testing/assertions/routing'
+    autoload :SelectorAssertions, 'action_controller/testing/assertions/selector'
+    autoload :TagAssertions, 'action_controller/testing/assertions/tag'
   end
 
   module Http
-    autoload :Headers, 'action_controller/headers'
+    autoload :Headers, 'action_controller/base/headers'
   end
 
   module Session
@@ -101,11 +103,11 @@ module ActionController
   end
 
   # DEPRECATE: Remove CGI support
-  autoload :CgiRequest, 'action_controller/cgi_process'
-  autoload :CGIHandler, 'action_controller/cgi_process'
+  autoload :CgiRequest, 'action_controller/cgi/process'
+  autoload :CGIHandler, 'action_controller/cgi/process'
 end
 
-autoload :Mime, 'action_controller/mime_type'
+autoload :Mime, 'action_controller/mime/type'
 
 autoload :HTML, 'action_controller/vendor/html-scanner'
 

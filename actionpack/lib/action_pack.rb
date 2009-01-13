@@ -22,3 +22,5 @@
 #++
 
 require 'action_pack/version'
+require 'action_pack/common'
+require 'action_pack/record_identifier'

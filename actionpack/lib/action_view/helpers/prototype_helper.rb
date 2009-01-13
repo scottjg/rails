@@ -381,12 +381,12 @@ module ActionView
           object_name = record_or_name_or_array
         when Array
           object = record_or_name_or_array.last
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
+          object_name = ActionPack::RecordIdentifier.singular_class_name(object)
           apply_form_for_options!(record_or_name_or_array, options)
           args.unshift object
         else
           object      = record_or_name_or_array
-          object_name = ActionController::RecordIdentifier.singular_class_name(record_or_name_or_array)
+          object_name = ActionPack::RecordIdentifier.singular_class_name(record_or_name_or_array)
           apply_form_for_options!(object, options)
           args.unshift object
         end
@@ -669,7 +669,7 @@ module ActionView
           #   page['blank_slate'].show             # => $('blank_slate').show();
           #   page['blank_slate'].show('first').up # => $('blank_slate').show('first').up();
           #
-          # You can also pass in a record, which will use ActionController::RecordIdentifier.dom_id to lookup
+          # You can also pass in a record, which will use ActionPack::RecordIdentifier.dom_id to lookup
           # the correct id:
           #
           #   page[@post]     # => $('post_45')
@@ -679,7 +679,7 @@ module ActionView
               when String, Symbol, NilClass
                 JavaScriptElementProxy.new(self, id)
               else
-                JavaScriptElementProxy.new(self, ActionController::RecordIdentifier.dom_id(id))
+                JavaScriptElementProxy.new(self, ActionPack::RecordIdentifier.dom_id(id))
             end
           end
 
@@ -987,13 +987,13 @@ module ActionView
             end
 
             def render(*options_for_render)
-              old_format = @context && @context.template_format
-              @context.template_format = :html if @context
+              old_formats = @context && @context.formats
+              @context.formats = [:html] if @context
               Hash === options_for_render.first ?
                 @context.render(*options_for_render) :
                   options_for_render.first.to_s
             ensure
-              @context.template_format = old_format if @context
+              @context.formats = old_formats if @context
             end
 
             def javascript_object_for(object)
