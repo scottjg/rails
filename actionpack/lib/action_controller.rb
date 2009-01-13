@@ -84,12 +84,12 @@ module ActionController
   autoload :Verification, 'action_controller/verification'
 
   module Assertions
-    autoload :DomAssertions, 'action_controller/assertions/dom_assertions'
-    autoload :ModelAssertions, 'action_controller/assertions/model_assertions'
-    autoload :ResponseAssertions, 'action_controller/assertions/response_assertions'
-    autoload :RoutingAssertions, 'action_controller/assertions/routing_assertions'
-    autoload :SelectorAssertions, 'action_controller/assertions/selector_assertions'
-    autoload :TagAssertions, 'action_controller/assertions/tag_assertions'
+    autoload :DomAssertions, 'action_controller/testing/assertions/dom'
+    autoload :ModelAssertions, 'action_controller/testing/assertions/model'
+    autoload :ResponseAssertions, 'action_controller/testing/assertions/response'
+    autoload :RoutingAssertions, 'action_controller/testing/assertions/routing'
+    autoload :SelectorAssertions, 'action_controller/testing/assertions/selector'
+    autoload :TagAssertions, 'action_controller/testing/assertions/tag'
   end
 
   module Http
