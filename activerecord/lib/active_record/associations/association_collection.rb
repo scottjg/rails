@@ -351,8 +351,8 @@ module ActiveRecord
                   @target = find_target + @target.find_all {|t| t.new_record? }
                 else
                   @target = find_target
-                  @target[@target.index(@first)] = @first if @first
-                  @target[@target.index(@last)] = @last if @last
+                  @first  = replace_in_target(@first)
+                  @last   = replace_in_target(@last)
                   @target
                 end
               end
@@ -459,6 +459,13 @@ module ActiveRecord
         def fetch_first_or_last_using_find?(record, args)
           args.first.kind_of?(Hash) || !(record || loaded? || @owner.new_record? || @reflection.options[:finder_sql] ||
                                          @target.any? { |record| record.new_record? } || args.first.kind_of?(Integer))
+        end
+
+        # Returns the +record+ if it was replaced or +nil+ otherwise.
+        def replace_in_target(record)
+          if record && index = @target.index(record)
+            @target[index] = record
+          end
         end
     end
   end

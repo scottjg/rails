@@ -1112,8 +1112,34 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_not_equal clients.last.object_id,  clients.last(:order => :name).object_id
   end
 
+  def test_calling_first_then_load_target_should_clear_the_first_cache_if_not_in_the_result_set
+    clients = companies(:first_firm).clients
+    first = clients.first
+
+    # add singleton methods to get the ivar and stub find_target
+    def clients.first_ivar; @first end
+    def clients.find_target; [] end
+
+    clients.class # force load target
+    assert_nil clients.first_ivar
+  end
+
+  def test_calling_last_then_load_target_should_clear_the_last_cache_if_not_in_the_result_set
+    clients = companies(:first_firm).clients
+    last = clients.last
+
+    # add singleton methods to get the ivar and stub find_target
+    def clients.last_ivar; @last end
+    def clients.find_target; [] end
+
+    clients.class # force load target
+    assert_nil clients.last_ivar
+  end
+
   def test_calling_reset_should_clear_the_first_and_last_cache
     clients = companies(:first_firm).clients
+
+    # add singleton methods to get the ivars
     def clients.first_ivar; @first end
     def clients.last_ivar; @last end
 
