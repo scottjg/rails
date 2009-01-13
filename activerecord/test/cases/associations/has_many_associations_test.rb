@@ -1078,6 +1078,46 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert firm.clients.loaded?
   end
 
+  def test_calling_first_or_last_then_load_target_should_not_replace_first_or_last_object
+    firm = companies(:first_firm)
+
+    # why the extra show fields ?
+    # because first/last and load_target both query for it...
+    assert_queries 4 do
+      expected = firm.clients.first.object_id
+      firm.clients.class # force load target
+      result = firm.clients.first.object_id
+
+      assert_equal expected, result
+    end
+
+    firm.clients.reset
+
+    assert_queries 2 do
+      expected = firm.clients.last.object_id
+      firm.clients.class # force load target
+      result = firm.clients.last.object_id
+
+      assert_equal expected, result
+    end
+  end
+
+  def test_calling_reset_should_clear_the_first_and_last_cache
+    firm = companies(:first_firm)
+    def (firm.clients).first_ivar; @first end
+    def (firm.clients).last_ivar; @last end
+
+    firm.clients.first
+    firm.clients.reset
+    assert_nil firm.clients.first_ivar
+
+    firm.clients.reset
+
+    firm.clients.last
+    firm.clients.reset
+    assert_nil firm.clients.last_ivar
+  end
+
   def test_joins_with_namespaced_model_should_use_correct_type
     old = ActiveRecord::Base.store_full_sti_class
     ActiveRecord::Base.store_full_sti_class = true

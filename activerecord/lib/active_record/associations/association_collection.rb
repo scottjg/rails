@@ -64,7 +64,7 @@ module ActiveRecord
       # Fetches the first one using SQL if possible.
       def first(*args)
         if fetch_first_or_last_using_find?(args)
-          find(:first, *args)
+          @first = find(:first, *args)
         else
           load_target unless loaded?
           @target.first(*args)
@@ -74,7 +74,7 @@ module ActiveRecord
       # Fetches the last one using SQL if possible.
       def last(*args)
         if fetch_first_or_last_using_find?(args)
-          find(:last, *args)
+          @last = find(:last, *args)
         else
           load_target unless loaded?
           @target.last(*args)
@@ -93,6 +93,7 @@ module ActiveRecord
       def reset
         reset_target!
         @loaded = false
+        @first = @last = nil
       end
 
       def build(attributes = {}, &block)
@@ -346,6 +347,9 @@ module ActiveRecord
                   @target = find_target + @target.find_all {|t| t.new_record? }
                 else
                   @target = find_target
+                  @target[@target.index(@first)] = @first if @first
+                  @target[@target.index(@last)] = @last if @last
+                  @target
                 end
               end
             rescue ActiveRecord::RecordNotFound
