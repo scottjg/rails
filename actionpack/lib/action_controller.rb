@@ -101,10 +101,6 @@ module ActionController
     autoload :CookieStore, 'action_controller/session/cookie_store'
     autoload :MemCacheStore, 'action_controller/session/mem_cache_store'
   end
-
-  # DEPRECATE: Remove CGI support
-  autoload :CgiRequest, 'action_controller/cgi/process'
-  autoload :CGIHandler, 'action_controller/cgi/process'
 end
 
 autoload :Mime, 'action_controller/mime/type'
