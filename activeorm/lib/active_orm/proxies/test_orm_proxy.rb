@@ -1,7 +1,7 @@
 module ActiveORM
   module Proxies
     class TestORMProxy < AbstractProxy
-      def new?
+      def new_record?
         model.new_record?
       end
   

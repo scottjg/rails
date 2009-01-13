@@ -31,6 +31,16 @@ rescue LoadError
   end
 end
 
+begin
+  require 'active_orm'
+rescue LoadError
+  activeorm_path = "#{File.dirname(__FILE__)}/../../activeorm/lib"
+  if File.directory?(activeorm_path)
+    $:.unshift activeorm_path
+    require 'active_orm'
+  end
+end
+
 module ActionView
   def self.load_all!
     [Base, InlineTemplate, TemplateError]

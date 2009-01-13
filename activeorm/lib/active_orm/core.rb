@@ -5,17 +5,16 @@ module ActiveORM
 
   module Core
     module ClassMethods
-      def supports? obj
-        find_key(obj)
+      def supports?(obj)
+        find_key(obj) || obj.respond_to?(:new_record?)
       end
 
-      def for obj
+      def for(obj)
         proxy = find_key(obj)
-        case proxy
-        when :none
-          return obj
+        if proxy == :none || proxy.nil?
+          obj
         else
-          return @_proxy_registry[proxy].new(obj)
+          @_proxy_registry[proxy].new(obj)
         end
       end
 
@@ -34,14 +33,20 @@ module ActiveORM
       end
       
       protected
-        def register obj_class, obj_proxy_class
+        def proxy_registry
           @_proxy_registry ||= {}
-          @_proxy_registry[obj_class] = obj_proxy_class
+        end
+        
+        def proxy_key_cache
+          @_proxy_key_cache ||= {}
+        end
+      
+        def register(obj_class, obj_proxy_class)
+          proxy_registry[obj_class] = obj_proxy_class
         end
         
         def find_key(obj)
-          @_proxy_key_cache ||= {}
-          @_proxy_key_cache[obj.class] ||= @_proxy_registry.keys.find {|k, v| obj.is_a? k }
+          proxy_key_cache[obj.class] ||= proxy_registry.keys.find {|k, v| obj.is_a? k }
         end
     end
   end
