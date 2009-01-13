@@ -59,7 +59,7 @@ module ActionController
   autoload :Layout, 'action_controller/layout'
   autoload :Lock, 'action_controller/lock'
   autoload :MiddlewareStack, 'action_controller/middleware_stack'
-  autoload :MimeResponds, 'action_controller/mime_responds'
+  autoload :MimeResponds, 'action_controller/mime/responds'
   autoload :PolymorphicRoutes, 'action_controller/polymorphic_routes'
   autoload :Request, 'action_controller/request'
   autoload :RequestParser, 'action_controller/request_parser'
@@ -75,8 +75,8 @@ module ActionController
   autoload :SessionManagement, 'action_controller/session_management'
   autoload :StatusCodes, 'action_controller/status_codes'
   autoload :Streaming, 'action_controller/streaming'
-  autoload :TestCase, 'action_controller/test_case'
-  autoload :TestProcess, 'action_controller/test_process'
+  autoload :TestCase, 'action_controller/testing/test_case'
+  autoload :TestProcess, 'action_controller/testing/process'
   autoload :Translation, 'action_controller/translation'
   autoload :UrlRewriter, 'action_controller/url_rewriter'
   autoload :UrlWriter, 'action_controller/url_rewriter'
@@ -107,7 +107,7 @@ module ActionController
   autoload :CGIHandler, 'action_controller/cgi_process'
 end
 
-autoload :Mime, 'action_controller/mime_type'
+autoload :Mime, 'action_controller/mime/type'
 
 autoload :HTML, 'action_controller/vendor/html-scanner'
 
