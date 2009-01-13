@@ -11,10 +11,10 @@ module ActiveORM
 
       def for(obj)
         proxy = find_key(obj)
-        if proxy == :none || proxy.nil?
+        if proxy.nil? || [proxy, proxy_registry[proxy]].include?(:none)
           obj
         else
-          @_proxy_registry[proxy].new(obj)
+          proxy_registry[proxy].new(obj)
         end
       end
 

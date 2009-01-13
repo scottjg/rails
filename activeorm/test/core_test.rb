@@ -42,12 +42,12 @@ class CoreTest < Test::Unit::TestCase
   end
 
   def test_supports?
-    assert ActiveORM.supports? @model
+    assert ActiveORM.supports?(@model)
   end
   
   def test_supports_for_module
     ActiveORM.use :klass => TestModuleModel, :proxy => ActiveORM::Proxies::TestORMProxy
-    assert ActiveORM.supports? @modulemodel
+    assert ActiveORM.supports?(@modulemodel)
   end
   
   def test_supports_failing?

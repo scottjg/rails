@@ -15,7 +15,7 @@ uses_datamapper('DatamapperTest') do
 
   Page.auto_migrate!
 
-  ActiveORM.register :orm => 'data_mapper'
+  ActiveORM.use :orm => 'data_mapper'
   
   class DatamapperTest < Test::Unit::TestCase
     def setup
@@ -26,13 +26,13 @@ uses_datamapper('DatamapperTest') do
     end
   
     def test_supports?
-      assert ActiveORM.supports? @page
+      assert ActiveORM.supports?(@page)
     end
   
     def test_new?
-      assert @proxy_page.new?
+      assert @proxy_page.new_record?
       @page.save
-      assert !@proxy_page.new?
+      assert !@proxy_page.new_record?
     end
   
     def test_valid?

@@ -17,7 +17,7 @@ uses_active_record('ActiveRecordTest') do
     end
   
     def test_supports?
-      assert ActiveORM.supports? @page
+      assert ActiveORM.supports?(@page)
     end
   
     def test_new?
