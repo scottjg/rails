@@ -20,6 +20,7 @@ rescue LoadError
 end
 
 require 'action_controller'
+require 'action_controller/cgi_ext'
 require 'action_controller/testing/process'
 require 'action_view/test_case'
 
