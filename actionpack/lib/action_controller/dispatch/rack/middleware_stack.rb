@@ -27,9 +27,9 @@ module ActionController
       end
 
       def klass
-        if @klass.is_a?(Class)
+        if !@klass.is_a?(String)
           @klass
-        else
+        elsif active?
           @klass.to_s.constantize
         end
       end
