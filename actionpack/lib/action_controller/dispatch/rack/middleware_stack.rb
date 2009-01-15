@@ -32,6 +32,8 @@ module ActionController
         elsif active?
           @klass.to_s.constantize
         end
+      rescue NameError
+        @klass
       end
 
       def active?

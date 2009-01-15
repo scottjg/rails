@@ -33,6 +33,7 @@ end
 
 gem 'rack', '>= 0.9.0'
 require 'rack'
+require 'action_controller/rack_ext'
 
 require File.join(File.dirname(__FILE__), "action_pack")
 
@@ -83,7 +84,6 @@ module ActionController
   autoload :Translation, 'action_controller/translation'
   autoload :UrlRewriter, 'action_controller/routing/generation/url_rewriter'
   autoload :UrlWriter, 'action_controller/url_rewriter'
-  autoload :VerbPiggybacking, 'action_controller/dispatch/rack/verb_piggybacking'
   autoload :Verification, 'action_controller/base/verification'
 
   module Assertions
