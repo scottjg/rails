@@ -46,6 +46,7 @@ module ActiveRecord
   autoload :AssociationPreload, 'active_record/association_preload'
   autoload :Associations, 'active_record/associations'
   autoload :AttributeMethods, 'active_record/attribute_methods'
+  autoload :AutosaveAssociation, 'active_record/autosave_association'
   autoload :Base, 'active_record/base'
   autoload :Calculations, 'active_record/calculations'
   autoload :Callbacks, 'active_record/callbacks'

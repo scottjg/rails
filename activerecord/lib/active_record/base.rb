@@ -3117,6 +3117,11 @@ module ActiveRecord #:nodoc:
     include Dirty
     include Callbacks, Observing, Timestamp
     include Associations, AssociationPreload, NamedScope
+
+    # Needs to be included before Transactions, because we want
+    # #save_with_autosave_associations to be wrapped inside a transaction.
+    include AutosaveAssociation
+
     include Aggregations, Transactions, Reflection, Calculations, Serialization
   end
 end

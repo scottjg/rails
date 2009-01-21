@@ -268,6 +268,10 @@ module ActiveRecord
     # You can manipulate objects and associations before they are saved to the database, but there is some special behavior you should be
     # aware of, mostly involving the saving of associated objects.
     #
+    # Unless you enable the :autosave option on a <tt>has_one</tt>, <tt>belongs_to</tt>,
+    # <tt>has_many</tt>, or <tt>has_and_belongs_to_many</tt> association,
+    # in which case the members are always saved.
+    #
     # === One-to-one associations
     #
     # * Assigning an object to a +has_one+ association automatically saves that object and the object being replaced (if there is one), in
@@ -764,6 +768,9 @@ module ActiveRecord
       #   If true, all the associated objects are readonly through the association.
       # [:validate]
       #   If false, don't validate the associated objects when saving the parent object. true by default.
+      # [:autosave]
+      #   If true, always save any loaded members and destroy members marked for destruction, when saving the parent object. Off by default.
+      #
       # Option examples:
       #   has_many :comments, :order => "posted_on"
       #   has_many :comments, :include => :author
@@ -877,6 +884,8 @@ module ActiveRecord
       #   If true, the associated object is readonly through the association.
       # [:validate]
       #   If false, don't validate the associated object when saving the parent object. +false+ by default.
+      # [:autosave]
+      #   If true, always save the associated object or destroy it if marked for destruction, when saving the parent object. Off by default.
       #
       # Option examples:
       #   has_one :credit_card, :dependent => :destroy  # destroys the associated credit card
@@ -988,6 +997,8 @@ module ActiveRecord
       #   If true, the associated object is readonly through the association.
       # [:validate]
       #   If false, don't validate the associated objects when saving the parent object. +false+ by default.
+      # [:autosave]
+      #   If true, always save the associated object or destroy it if marked for destruction, when saving the parent object. Off by default.
       #
       # Option examples:
       #   belongs_to :firm, :foreign_key => "client_of"
@@ -1200,6 +1211,8 @@ module ActiveRecord
       #   If true, all the associated objects are readonly through the association.
       # [:validate]
       #   If false, don't validate the associated objects when saving the parent object. +true+ by default.
+      # [:autosave]
+      #   If true, always save any loaded members and destroy members marked for destruction, when saving the parent object. Off by default.
       #
       # Option examples:
       #   has_and_belongs_to_many :projects
