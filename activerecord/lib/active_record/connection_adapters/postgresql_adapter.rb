@@ -1063,3 +1063,6 @@ module ActiveRecord
     end
   end
 end
+
+
+require 'active_record/connection_adapters/postgresql_graceful_reconnect'
