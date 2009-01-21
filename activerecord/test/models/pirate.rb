@@ -1,12 +1,16 @@
 class Pirate < ActiveRecord::Base
   belongs_to :parrot
-  has_and_belongs_to_many :parrots, :autosave => true
+  has_and_belongs_to_many :parrots
   has_many :treasures, :as => :looter
 
   has_many :treasure_estimates, :through => :treasures, :source => :price_estimates
 
-  has_one :ship, :autosave => true
-  has_many :birds, :autosave => true
+  # These both have :autosave enabled because accept_nested_attributes_for is used on them.
+  has_one :ship
+  has_many :birds
+
+  accept_nested_attributes_for :parrots, :birds, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
+  accept_nested_attributes_for :ship, :allow_destroy => true
 
   validates_presence_of :catchphrase
 end
