@@ -443,8 +443,9 @@ module ActionView
       #   end
       #
       # This will allow you to specify which models to destroy in the
-      # by adding a form element for the <tt>_delete</tt> parameter with a
-      # value that evaluates to +true+ (eg. 1, '1', true, or 'true'):
+      # attributes hash by adding a form element for the <tt>_delete</tt>
+      # parameter with a value that evaluates to +true+
+      # (eg. 1, '1', true, or 'true'):
       #
       #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
       #     ...
