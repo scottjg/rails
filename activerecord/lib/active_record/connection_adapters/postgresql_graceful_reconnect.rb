@@ -16,12 +16,14 @@ module ActiveRecord
       end
 
       def gracefully_reconnect
-        @attempted_to_reconnect = false
+        retries = 0
         begin
           yield
         rescue ActiveRecord::StatementInvalid => e
-          raise e if connection_alive? || @attempted_to_reconnect
-          @attempted_to_reconnect = true
+          retries += 1
+          raise e if connection_alive? || retries > 10
+			 sleep 1
+			 @logger.info("Disconnected from database, trying to reconnect.")
           reconnect!
           retry
         end
