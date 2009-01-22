@@ -390,25 +390,16 @@ module ActionView
       #     end
       #   end
       #
-      # This model can now be used with a nested fields_for, like so:
+      # This model can now be used with a nested fields_for. The block given to
+      # the nested fields_for call will be repeated for each instance in the
+      # collection:
       #
       #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
       #     ...
       #     <% person_form.fields_for :projects do |project_fields| %>
-      #       Name: <%= project_fields.text_field :name %>
-      #     <% end %>
-      #   <% end %>
-      #
-      # Note that the block given to the nested fields_for call will be
-      # repeated for each instance in the collection. The block can optionally
-      # take the actual instance as a second argument:
-      #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
-      #     ...
-      #     <% person_form.fields_for :projects do |project_fields, project| %>
-      #       if project.active?
+      #       <% if project_fields.object.active? %>
       #         Name: <%= project_fields.text_field :name %>
-      #       end
+      #       <% end %>
       #     <% end %>
       #   <% end %>
       #
@@ -977,10 +968,7 @@ module ActionView
 
             children.map do |child|
               child_name = "#{name}[#{ child.new_record? ? new_child_id : child.id }]"
-
-              @template.fields_for(child_name, child, *args) do |form_builder|
-                block.arity == 2 ? block.call(form_builder, child) : block.call(form_builder)
-              end
+              @template.fields_for(child_name, child, *args, &block)
             end.join
           else
             @template.fields_for(name, association, *args, &block)

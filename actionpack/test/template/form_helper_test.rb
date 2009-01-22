@@ -669,11 +669,13 @@ class FormHelperTest < ActionView::TestCase
 
   def test_nested_fields_for_on_a_nested_attributes_collection_association_yields_only_builder
     @post.comments = [Comment.new(321), Comment.new]
+    yielded_comments = []
 
     form_for(:post, @post) do |f|
       concat f.text_field(:title)
       f.fields_for(:comments) do |cf|
         concat cf.text_field(:name)
+        yielded_comments << cf.object
       end
     end
 
@@ -684,29 +686,7 @@ class FormHelperTest < ActionView::TestCase
                '</form>'
 
     assert_dom_equal expected, output_buffer
-  end
-
-  def test_nested_fields_for_on_a_nested_attributes_collection_association_yields_builder_and_member
-    @post.comments = [Comment.new(321), Comment.new]
-    yielded_comments = []
-
-    form_for(:post, @post) do |f|
-      concat f.text_field(:title)
-      f.fields_for(:comments) do |cf, comment|
-        concat cf.text_field(:name)
-        yielded_comments << comment
-      end
-    end
-
     assert_equal yielded_comments, @post.comments
-
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_321_name" name="post[comments_attributes][321][name]" size="30" type="text" value="comment #321" />' +
-               '<input id="post_comments_attributes_new_1_name" name="post[comments_attributes][new_1][name]" size="30" type="text" value="new comment" />' +
-               '</form>'
-
-    assert_dom_equal expected, output_buffer
   end
 
   def test_fields_for
