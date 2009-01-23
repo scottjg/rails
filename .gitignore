@@ -15,4 +15,5 @@ railties/test/500.html
 railties/doc/guides/html/images
 railties/doc/guides/html/stylesheets
 *.rbc
-.svn
+*.swp
+*.swo
