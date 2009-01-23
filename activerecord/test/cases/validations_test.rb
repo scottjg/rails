@@ -1580,6 +1580,13 @@ class ValidatesNumericalityTest < ActiveRecord::TestCase
     assert !repeated_lng.valid?
   end
 
+  def test_find_by_floats_fields
+    # repair_validations(Topic)
+    f = PrecisionMath.create! :lat => 1.2345
+    debugger
+    assert PrecisionMath.find_by_lat(1.2345) != []
+  end
+
   def test_validates_uniqueness_of_floats_scoped_with_float
     UniqueFloat.validates_uniqueness_of :lat, :scope => :lng
     UniqueFloat.create! :lat => 1.2345, :lng => 9.8765
