@@ -18,7 +18,7 @@ module ActiveRecord
   # determine whether the object is in a valid state to be saved. See usage example in Validations.
   class Errors
     include Enumerable
-    
+
     class << self
       def default_error_messages
         ActiveSupport::Deprecation.warn("ActiveRecord::Errors.default_error_messages has been deprecated. Please use I18n.translate('activerecord.errors.messages').")
@@ -66,17 +66,17 @@ module ActiveRecord
         add(attr, :blank, :default => custom_message) if value.blank?
       end
     end
-    
+
     # Translates an error message in it's default scope (<tt>activerecord.errrors.messages</tt>).
-    # Error messages are first looked up in <tt>models.MODEL.attributes.ATTRIBUTE.MESSAGE</tt>, if it's not there, 
-    # it's looked up in <tt>models.MODEL.MESSAGE</tt> and if that is not there it returns the translation of the 
-    # default message (e.g. <tt>activerecord.errors.messages.MESSAGE</tt>). The translated model name, 
+    # Error messages are first looked up in <tt>models.MODEL.attributes.ATTRIBUTE.MESSAGE</tt>, if it's not there,
+    # it's looked up in <tt>models.MODEL.MESSAGE</tt> and if that is not there it returns the translation of the
+    # default message (e.g. <tt>activerecord.errors.messages.MESSAGE</tt>). The translated model name,
     # translated attribute name and the value are available for interpolation.
     #
     # When using inheritence in your models, it will check all the inherited models too, but only if the model itself
     # hasn't been found. Say you have <tt>class Admin < User; end</tt> and you wanted the translation for the <tt>:blank</tt>
     # error +message+ for the <tt>title</tt> +attribute+, it looks for these translations:
-    # 
+    #
     # <ol>
     # <li><tt>activerecord.errors.models.admin.attributes.title.blank</tt></li>
     # <li><tt>activerecord.errors.models.admin.blank</tt></li>
@@ -89,11 +89,11 @@ module ActiveRecord
 
       message, options[:default] = options[:default], message if options[:default].is_a?(Symbol)
 
-      defaults = @base.class.self_and_descendents_from_active_record.map do |klass| 
-        [ :"models.#{klass.name.underscore}.attributes.#{attribute}.#{message}", 
+      defaults = @base.class.self_and_descendents_from_active_record.map do |klass|
+        [ :"models.#{klass.name.underscore}.attributes.#{attribute}.#{message}",
           :"models.#{klass.name.underscore}.#{message}" ]
       end
-      
+
       defaults << options.delete(:default)
       defaults = defaults.compact.flatten << :"messages.#{message}"
 
@@ -209,7 +209,7 @@ module ActiveRecord
         end
       end
       full_messages
-    end 
+    end
 
     # Returns true if no errors have been added.
     def empty?
@@ -254,7 +254,7 @@ module ActiveRecord
         full_messages.each { |msg| e.error(msg) }
       end
     end
-    
+
   end
 
 
@@ -437,7 +437,7 @@ module ActiveRecord
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
           unless record.send("#{attr_name}_confirmation").nil? or value == record.send("#{attr_name}_confirmation")
-            record.errors.add(attr_name, :confirmation, :default => configuration[:message]) 
+            record.errors.add(attr_name, :confirmation, :default => configuration[:message])
           end
         end
       end
@@ -479,7 +479,7 @@ module ActiveRecord
 
         validates_each(attr_names,configuration) do |record, attr_name, value|
           unless value == configuration[:accept]
-            record.errors.add(attr_name, :accepted, :default => configuration[:message]) 
+            record.errors.add(attr_name, :accepted, :default => configuration[:message])
           end
         end
       end
@@ -499,7 +499,7 @@ module ActiveRecord
       #
       # Configuration options:
       # * <tt>message</tt> - A custom error message (default is: "can't be blank").
-      # * <tt>on</tt> - Specifies when this validation is active (default is <tt>:save</tt>, other options <tt>:create</tt>, 
+      # * <tt>on</tt> - Specifies when this validation is active (default is <tt>:save</tt>, other options <tt>:create</tt>,
       #   <tt>:update</tt>).
       # * <tt>if</tt> - Specifies a method, proc or string to call to determine if the validation should
       #   occur (e.g. <tt>:if => :allow_validation</tt>, or <tt>:if => Proc.new { |user| user.signup_step > 2 }</tt>).
@@ -600,7 +600,7 @@ module ActiveRecord
               unless !value.nil? and value.size.method(validity_checks[option])[option_value]
                 key = message_options[option]
                 custom_message = options[:message] || options[key]
-                record.errors.add(attr, key, :default => custom_message, :count => option_value) 
+                record.errors.add(attr, key, :default => custom_message, :count => option_value)
               end
             end
         end
@@ -688,7 +688,7 @@ module ActiveRecord
       #   ActiveRecord::ConnectionAdapters::SchemaStatements#add_index. In the
       #   rare case that a race condition occurs, the database will guarantee
       #   the field's uniqueness.
-      #   
+      #
       #   When the database catches such a duplicate insertion,
       #   ActiveRecord::Base#save will raise an ActiveRecord::StatementInvalid
       #   exception. You can either choose to let this error propagate (which
@@ -697,7 +697,7 @@ module ActiveRecord
       #   that the title already exists, and asking him to re-enter the title).
       #   This technique is also known as optimistic concurrency control:
       #   http://en.wikipedia.org/wiki/Optimistic_concurrency_control
-      #   
+      #
       #   Active Record currently provides no way to distinguish unique
       #   index constraint errors from other types of database errors, so you
       #   will have to parse the (database-specific) exception message to detect
@@ -723,6 +723,7 @@ module ActiveRecord
 
           is_text_column = finder_class.columns_hash[attr_name.to_s].text?
 
+          # I would rather move this into Base::attribute_condition method
           if value.nil?
             comparison_operator = "IS ?"
           elsif is_text_column
@@ -732,12 +733,20 @@ module ActiveRecord
             comparison_operator = "= ?"
           end
 
-          sql_attribute = "#{record.class.quoted_table_name}.#{connection.quote_column_name(attr_name)}"
+#
 
           if value.nil? || (configuration[:case_sensitive] || !is_text_column)
-            condition_sql = "#{sql_attribute} #{comparison_operator}"
-            condition_params = [value]
+            condition_sql, condition_params = attribute_condition({
+                                                                    :record => record,
+                                                                    :attr_name => attr_name,
+                                                                    :value => value,
+                                                                    :case_sensitive_operator => comparison_operator
+                                                                  })
+#             condition_sql = "#{sql_attribute} #{comparison_operator}"
+#             condition_params = [value]
           else
+            # sqlite doesnot support float operations?
+            sql_attribute = "#{record.class.quoted_table_name}.#{connection.quote_column_name(attr_name)}"
             condition_sql = "LOWER(#{sql_attribute}) #{comparison_operator}"
             condition_params = [value.mb_chars.downcase]
           end
@@ -745,8 +754,13 @@ module ActiveRecord
           if scope = configuration[:scope]
             Array(scope).map do |scope_item|
               scope_value = record.send(scope_item)
-              condition_sql << " AND #{record.class.quoted_table_name}.#{scope_item} #{attribute_condition(scope_value)}"
-              condition_params << scope_value
+              more_conds, more_params = attribute_condition({ :record => record,
+                                                              :attr_name => scope_item,
+                                                              :value => scope_value })
+              condition_sql << " AND #{more_conds}"
+              condition_params += more_params
+#               condition_sql << " AND #{record.class.quoted_table_name}.#{scope_item} #{attribute_condition(scope_value)}"
+#               condition_params << scope_value
             end
           end
 
@@ -795,7 +809,7 @@ module ActiveRecord
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
           unless value.to_s =~ configuration[:with]
-            record.errors.add(attr_name, :invalid, :default => configuration[:message], :value => value) 
+            record.errors.add(attr_name, :invalid, :default => configuration[:message], :value => value)
           end
         end
       end
@@ -829,7 +843,7 @@ module ActiveRecord
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
           unless enum.include?(value)
-            record.errors.add(attr_name, :inclusion, :default => configuration[:message], :value => value) 
+            record.errors.add(attr_name, :inclusion, :default => configuration[:message], :value => value)
           end
         end
       end
@@ -863,7 +877,7 @@ module ActiveRecord
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
           if enum.include?(value)
-            record.errors.add(attr_name, :exclusion, :default => configuration[:message], :value => value) 
+            record.errors.add(attr_name, :exclusion, :default => configuration[:message], :value => value)
           end
         end
       end
@@ -904,7 +918,7 @@ module ActiveRecord
         configuration.update(attr_names.extract_options!)
 
         validates_each(attr_names, configuration) do |record, attr_name, value|
-          unless (value.is_a?(Array) ? value : [value]).collect { |r| r.nil? || r.valid? }.all?
+          unless (value.is_a?(Array) ? value : [value]).inject(true) { |v, r| (r.nil? || r.valid?) && v }
             record.errors.add(attr_name, :invalid, :default => configuration[:message], :value => value)
           end
         end
@@ -971,7 +985,7 @@ module ActiveRecord
             case option
               when :odd, :even
                 unless raw_value.to_i.method(ALL_NUMERICALITY_CHECKS[option])[]
-                  record.errors.add(attr_name, option, :value => raw_value, :default => configuration[:message]) 
+                  record.errors.add(attr_name, option, :value => raw_value, :default => configuration[:message])
                 end
               else
                 record.errors.add(attr_name, option, :default => configuration[:message], :value => raw_value, :count => configuration[option]) unless raw_value.method(ALL_NUMERICALITY_CHECKS[option])[configuration[option]]

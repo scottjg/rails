@@ -164,7 +164,6 @@ ActiveRecord::Schema.define do
     t.column :type, :string
   end
 
-
   create_table :jobs, :force => true do |t|
     t.integer :ideal_reference_id
   end
@@ -324,6 +323,14 @@ ActiveRecord::Schema.define do
     t.string  :type
     t.integer :comments_count, :default => 0
     t.integer :taggings_count, :default => 0
+  end
+
+  create_table :precision_maths, :force => true do |t|
+    t.float    :lat
+    t.float    :lng
+    # number like 12.34567
+    t.decimal    :dec_lat, :precision => 7, :scale => 5
+    t.decimal    :dec_lng, :precision => 7, :scale => 5
   end
 
   create_table :price_estimates, :force => true do |t|

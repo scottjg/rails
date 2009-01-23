@@ -8,7 +8,8 @@ require 'models/warehouse_thing'
 require 'models/guid'
 require 'models/owner'
 require 'models/pet'
-
+require 'models/precision_math'
+require 'ruby-debug'
 # The following methods in Topic are used in test_conditional_validation_*
 class Topic
   has_many :unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
@@ -52,6 +53,18 @@ end
 class Thaumaturgist < IneptWizard
 end
 
+class UniqueFloat < PrecisionMath
+  validates_uniqueness_of :lat
+end
+
+class UniqueDecimal < PrecisionMath
+  validates_uniqueness_of :dec_lat
+end
+
+class DefineDelthaUniqueFloat < PrecisionMath
+  Floats_Deltha = 0.01
+  validates_uniqueness_of :lat
+end
 
 class ValidationsTest < ActiveRecord::TestCase
   fixtures :topics, :developers, 'warehouse-things'
@@ -479,7 +492,6 @@ class ValidationsTest < ActiveRecord::TestCase
 
     t.content = "Remaining unique"
     assert t.save, "Should still save t as unique"
-
     t2 = Topic.new("title" => "I'M UNIQUE!")
     assert t2.valid?, "Should be valid"
     assert t2.save, "Should save t2 as unique"
@@ -1556,6 +1568,50 @@ class ValidatesNumericalityTest < ActiveRecord::TestCase
 
     assert !topic.valid?
     assert_equal "greater than 4", topic.errors.on(:approved)
+  end
+
+  def test_validates_uniqueness_of_floats
+    # repair_validations(Topic)
+    UniqueFloat.validates_uniqueness_of :lat
+    UniqueFloat.create! :lat => 1.2345
+
+    repeated_lng = UniqueFloat.new :lat => 1.2345
+
+    assert !repeated_lng.valid?
+  end
+
+  def test_validates_uniqueness_of_floats_scoped_with_float
+    UniqueFloat.validates_uniqueness_of :lat, :scope => :lng
+    UniqueFloat.create! :lat => 1.2345, :lng => 9.8765
+
+    repeated_lat_lng = UniqueFloat.new :lat => 1.2345, :lng => 9.8765
+
+    assert !repeated_lat_lng.valid?
+  end
+
+  def test_validates_uniqueness_of_decimals
+    UniqueDecimal.validates_uniqueness_of :dec_lat
+    UniqueDecimal.create! :dec_lat => 1.2345
+
+    repeated_dec_lng = UniqueDecimal.new :dec_lat => 1.2345
+
+    assert !repeated_dec_lng.valid?
+  end
+
+  def test_validates_uniqueness_of_decimals_scoped_with_decimal
+    UniqueDecimal.validates_uniqueness_of :dec_lat, :scope => :dec_lng
+    UniqueDecimal.create! :dec_lat => 1.2345, :dec_lng => 9.8765
+
+    repeated_dec_lat_lng = UniqueDecimal.new :dec_lat => 1.2345, :dec_lng => 9.8765
+
+    assert !repeated_dec_lat_lng.valid?
+  end
+
+  def test_validates_uniqueness_of_defining_model_deltha
+    DefineDelthaUniqueFloat.create! :lat => 1.23
+    repeated_lat = DefineDelthaUniqueFloat.new :lat => 1.23
+
+    assert !repeated_lat.valid?
   end
 
   private

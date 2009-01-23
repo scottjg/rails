@@ -389,7 +389,7 @@ module ActiveRecord #:nodoc:
   # So it's possible to assign a logger to the class through <tt>Base.logger=</tt> which will then be used by all
   # instances in the current object space.
   class Base
-    ##  
+    ##
     # :singleton-method:
     # Accepts a logger conforming to the interface of Log4r or the default Ruby 1.8+ Logger class, which is then passed
     # on to any new database connections made and which can be retrieved on both a class and instance level by calling +logger+.
@@ -416,18 +416,18 @@ module ActiveRecord #:nodoc:
     end
 
     @@subclasses = {}
-    
+
     ##
     # :singleton-method:
     # Contains the database configuration - as is typically stored in config/database.yml -
     # as a Hash.
     #
     # For example, the following database.yml...
-    # 
+    #
     #   development:
     #     adapter: sqlite3
     #     database: db/development.sqlite3
-    #   
+    #
     #   production:
     #     adapter: sqlite3
     #     database: db/production.sqlite3
@@ -686,6 +686,15 @@ module ActiveRecord #:nodoc:
       #   Person.exists?(:name => "David")
       #   Person.exists?(['name LIKE ?', "%#{query}%"])
       def exists?(id_or_conditions)
+        ttt = connection.select_all(
+          construct_finder_sql(
+            :select     => "#{quoted_table_name}.#{primary_key}",
+            :conditions => expand_id_conditions(id_or_conditions),
+            :limit      => 1
+          ),
+          "#{name} Exists"
+        )
+
         connection.select_all(
           construct_finder_sql(
             :select     => "#{quoted_table_name}.#{primary_key}",
@@ -1332,7 +1341,7 @@ module ActiveRecord #:nodoc:
       def self_and_descendents_from_active_record#nodoc:
         klass = self
         classes = [klass]
-        while klass != klass.base_class  
+        while klass != klass.base_class
           classes << klass = klass.superclass
         end
         classes
@@ -1366,7 +1375,7 @@ module ActiveRecord #:nodoc:
       def human_name(options = {})
         defaults = self_and_descendents_from_active_record.map do |klass|
           :"#{klass.name.underscore}"
-        end 
+        end
         defaults << self.name.humanize
         I18n.translate(defaults.shift, {:scope => [:activerecord, :models], :count => 1, :default => defaults}.merge(options))
       end
@@ -1468,7 +1477,7 @@ module ActiveRecord #:nodoc:
         elsif match = DynamicScopeMatch.match(method_id)
           return true if all_attributes_exists?(match.attribute_names)
         end
-        
+
         super
       end
 
@@ -1938,7 +1947,7 @@ module ActiveRecord #:nodoc:
                   attributes = construct_attributes_from_arguments( #   attributes = construct_attributes_from_arguments(
                     [:#{attribute_names.join(',:')}], args          #     [:user_name, :password], args
                   )                                                 #   )
-                                                                    # 
+                                                                    #
                   scoped(:conditions => attributes)                 #   scoped(:conditions => attributes)
                 end                                                 # end
               }, __FILE__, __LINE__
@@ -1981,6 +1990,66 @@ module ActiveRecord #:nodoc:
             when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope then "IN (?)"
             when Range then "BETWEEN ? AND ?"
             else            "= ?"
+          end
+        end
+        alias_method :not_floats_aware_attribute_condition, :attribute_condition
+
+        # this attribute_condition is aware of floating point comparisons, and
+        # its non exact repressentation inside computer architecture
+        #
+        # if you have say X, with lat = 49.2123, lon = -2.1123
+        #
+        # SELECT x FROM xs WHERE lat = 49.2123 AND lon = -2.1123
+        # will not work as expected. The solution is to build the query like:
+        #
+        # SELECT x FROM xs WHERE lat < (expected_lat + 0.1) AND lat > (expected_lat - 0.1)
+        #                  AND lon < (expected_lon + 0.1) AND lon > (expected_lon - 0.1)
+        #
+        # that is faster that ABS version proposed by mysql team:
+        # SELECT x FROM xs WHERE ABS(lat - expected_lat) < 0.1 AND
+        #                        ABS(lon - expected_lon) < 0.1
+        # refer to benchmarks:
+        #
+        def attribute_condition(record_hash)
+          if record_hash.is_a? Hash
+            record = record_hash[:record]
+            attr_name = record_hash[:attr_name]
+            value = record_hash[:value]
+            table_dot_column = "#{ record.class.quoted_table_name }." +
+                               "#{ record.class.connection.quote_column_name(attr_name) }"
+            case record.send(attr_name)
+            when Float #BigDecimals do return well with = operator
+              deltha = explicit_or_default_deltha(record.class)
+                [
+                 "(#{table_dot_column} < ? + #{deltha}) AND " +
+                 "(#{table_dot_column} > ? - #{deltha})",
+                 [value, value]
+                ]
+              else
+              # right now only validates_uniqueness_of uses new method signature
+              # values of conditions returns as an array
+              comparison_operator = if record_hash[:case_sensitive_operator]
+                                      record_hash[:case_sensitive_operator]
+                                    else
+                                      not_floats_aware_attribute_condition(value)
+                                    end
+              ["#{table_dot_column} #{comparison_operator}", [value]]
+            end
+          else
+            # or you get the old version of attribute_condition
+            # record_hash is not a hash, is the old value parameter
+            not_floats_aware_attribute_condition(record_hash)
+          end
+        end
+
+        # this is the deltha used in the comparisons, can be overriden in model
+        # by defining a new deltha for floats comparisons
+        Floats_Deltha = 0.001
+        def explicit_or_default_deltha(klass)
+          if klass.constants.include? Floats_Deltha
+            klass::Floats_Deltha
+          else
+            Floats_Deltha
           end
         end
 
@@ -2448,7 +2517,7 @@ module ActiveRecord #:nodoc:
       #       name
       #     end
       #   end
-      #   
+      #
       #   user = User.find_by_name('Phusion')
       #   user_path(user)  # => "/users/Phusion"
       def to_param
@@ -2503,12 +2572,12 @@ module ActiveRecord #:nodoc:
       # If +perform_validation+ is true validations run. If any of them fail
       # the action is cancelled and +save+ returns +false+. If the flag is
       # false validations are bypassed altogether. See
-      # ActiveRecord::Validations for more information. 
+      # ActiveRecord::Validations for more information.
       #
       # There's a series of callbacks associated with +save+. If any of the
       # <tt>before_*</tt> callbacks return +false+ the action is cancelled and
       # +save+ returns +false+. See ActiveRecord::Callbacks for further
-      # details. 
+      # details.
       def save
         create_or_update
       end
@@ -2520,12 +2589,12 @@ module ActiveRecord #:nodoc:
       #
       # With <tt>save!</tt> validations always run. If any of them fail
       # ActiveRecord::RecordInvalid gets raised. See ActiveRecord::Validations
-      # for more information. 
+      # for more information.
       #
       # There's a series of callbacks associated with <tt>save!</tt>. If any of
       # the <tt>before_*</tt> callbacks return +false+ the action is cancelled
       # and <tt>save!</tt> raises ActiveRecord::RecordNotSaved. See
-      # ActiveRecord::Callbacks for further details. 
+      # ActiveRecord::Callbacks for further details.
       def save!
         create_or_update || raise(RecordNotSaved)
       end
@@ -2696,12 +2765,12 @@ module ActiveRecord #:nodoc:
       #   class User < ActiveRecord::Base
       #     attr_protected :is_admin
       #   end
-      #   
+      #
       #   user = User.new
       #   user.attributes = { :username => 'Phusion', :is_admin => true }
       #   user.username   # => "Phusion"
       #   user.is_admin?  # => false
-      #   
+      #
       #   user.send(:attributes=, { :username => 'Phusion', :is_admin => true }, false)
       #   user.is_admin?  # => true
       def attributes=(new_attributes, guard_protected_attributes = true)
