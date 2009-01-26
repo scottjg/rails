@@ -167,14 +167,26 @@ module ActiveRecord
           scopes[method].call(self, *args)
         else
           with_scope :find => proxy_options, :create => proxy_options[:conditions].is_a?(Hash) ?  proxy_options[:conditions] : {} do
-            method = :new if method == :build
-            proxy_scope.send(method, *args, &block)
+            if proxy_scope.reflections.include?(method)
+              passthrough_proxy_for(method)
+            elsif proxy_scope.reflections.include?(method.to_s.singularize.intern)
+              passthrough_proxy_for(method.to_s.singularize.intern)
+            else
+              method = :new if method == :build
+              proxy_scope.send(method, *args, &block)
+            end
           end
         end
       end
 
       def load_found
         @found = find(:all)
+      end
+
+      def passthrough_proxy_for(reflection_name)
+        target_reflection = proxy_scope.reflections[reflection_name]
+        ids = proxy_scope.find(:all).map(&reflection_name).flatten.map(&:id)
+        target_reflection.klass.scoped(:conditions => { :id => ids })
       end
     end
   end

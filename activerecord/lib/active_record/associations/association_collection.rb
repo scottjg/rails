@@ -366,6 +366,10 @@ module ActiveRecord
             end
           elsif @reflection.klass.scopes.include?(method)
             @reflection.klass.scopes[method].call(self, *args)
+          elsif @reflection.klass.reflections.include?(method)
+            passthrough_proxy_for(method)
+          elsif @reflection.klass.reflections.include?(method.to_s.singularize.intern)
+            passthrough_proxy_for(method.to_s.singularize.intern)
           else          
             with_scope(construct_scope) do
               if block_given?
@@ -451,6 +455,13 @@ module ActiveRecord
         def fetch_first_or_last_using_find?(args)
           args.first.kind_of?(Hash) || !(loaded? || @owner.new_record? || @reflection.options[:finder_sql] ||
                                          @target.any? { |record| record.new_record? } || args.first.kind_of?(Integer))
+        end
+
+        def passthrough_proxy_for(reflection_name)
+          target_reflection = @reflection.klass.reflections[reflection_name]
+          load_target unless loaded?
+          ids = @target.map(&reflection_name).flatten.map(&:id)
+          target_reflection.klass.scoped(:conditions => { :id => ids })
         end
     end
   end
