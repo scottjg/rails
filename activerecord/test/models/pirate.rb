@@ -5,12 +5,12 @@ class Pirate < ActiveRecord::Base
 
   has_many :treasure_estimates, :through => :treasures, :source => :price_estimates
 
-  # These both have :autosave enabled because accept_nested_attributes_for is used on them.
+  # These both have :autosave enabled because accepts_nested_attributes_for is used on them.
   has_one :ship
   has_many :birds
 
-  accept_nested_attributes_for :parrots, :birds, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
-  accept_nested_attributes_for :ship, :allow_destroy => true
+  accepts_nested_attributes_for :parrots, :birds, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
+  accepts_nested_attributes_for :ship, :allow_destroy => true
 
   validates_presence_of :catchphrase
 end

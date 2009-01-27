@@ -23,7 +23,7 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
   include AssertRaiseWithMessage
 
   def teardown
-    Pirate.accept_nested_attributes_for :ship, :allow_destroy => true
+    Pirate.accepts_nested_attributes_for :ship, :allow_destroy => true
   end
 
   def test_base_should_have_an_empty_reject_new_nested_attributes_procs
@@ -38,12 +38,12 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
 
   def test_should_raise_an_ArgumentError_for_non_existing_associations
     assert_raise_with_message ArgumentError, "No association found for name `honesty'. Has it been defined yet?" do
-      Pirate.accept_nested_attributes_for :honesty
+      Pirate.accepts_nested_attributes_for :honesty
     end
   end
 
   def test_should_disable_allow_destroy_by_default
-    Pirate.accept_nested_attributes_for :ship
+    Pirate.accepts_nested_attributes_for :ship
 
     pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
     ship = pirate.create_ship(:name => 'Nights Dirty Lightning')

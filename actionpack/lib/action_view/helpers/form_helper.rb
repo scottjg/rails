@@ -310,7 +310,7 @@ module ActionView
       #
       # Nested attribute writers are normal setter methods named after an
       # association. The most common way of defining these writers is either
-      # with +accept_nested_attributes_for+ in a model definition or by
+      # with +accepts_nested_attributes_for+ in a model definition or by
       # defining a method with the proper name. For example: the attribute
       # writer for the association <tt>:address</tt> is called
       # <tt>address_attributes=</tt>.
@@ -346,20 +346,20 @@ module ActionView
       #   <% end %>
       #
       # When address is already an association on a Person you can use
-      # +accept_nested_attributes_for+ to define the writer method for you:
+      # +accepts_nested_attributes_for+ to define the writer method for you:
       #
       #   class Person < ActiveRecord::Base
       #     has_one :address
-      #     accept_nested_attributes_for :address
+      #     accepts_nested_attributes_for :address
       #   end
       #
       # If you want to destroy the associated model through the form, you have
       # to enable it first using the <tt>:allow_destroy</tt> option for
-      # +accept_nested_attributes_for+:
+      # +accepts_nested_attributes_for+:
       #
       #   class Person < ActiveRecord::Base
       #     has_one :address
-      #     accept_nested_attributes_for :address, :allow_destroy => true
+      #     accepts_nested_attributes_for :address, :allow_destroy => true
       #   end
       #
       # Now, when you use a form element with the <tt>_delete</tt> parameter,
@@ -417,20 +417,20 @@ module ActionView
       #   <% end %>
       #
       # When projects is already an association on Person you can use
-      # +accept_nested_attributes_for+ to define the writer method for you:
+      # +accepts_nested_attributes_for+ to define the writer method for you:
       #
       #   class Person < ActiveRecord::Base
       #     has_many :projects
-      #     accept_nested_attributes_for :projects
+      #     accepts_nested_attributes_for :projects
       #   end
       #
       # If you want to destroy any of the associated models through the
       # form, you have to enable it first using the <tt>:allow_destroy</tt>
-      # option for +accept_nested_attributes_for+:
+      # option for +accepts_nested_attributes_for+:
       #
       #   class Person < ActiveRecord::Base
       #     has_many :projects
-      #     accept_nested_attributes_for :projects, :allow_destroy => true
+      #     accepts_nested_attributes_for :projects, :allow_destroy => true
       #   end
       #
       # This will allow you to specify which models to destroy in the

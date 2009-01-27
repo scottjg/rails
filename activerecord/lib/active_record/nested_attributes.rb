@@ -10,7 +10,7 @@ module ActiveRecord
     #
     # Nested attributes allow you to save attributes on associated records
     # through the parent. By default nested attribute updating is turned off,
-    # you can enable it using the accept_nested_attributes_for class method.
+    # you can enable it using the accepts_nested_attributes_for class method.
     # When you enable nested attributes an attribute writer is defined on
     # the model.
     #
@@ -23,11 +23,11 @@ module ActiveRecord
     #     has_one :author
     #     has_many :pages
     #
-    #     accept_nested_attributes_for :author, :pages
+    #     accepts_nested_attributes_for :author, :pages
     #   end
     #
     # Note that the <tt>:autosave</tt> option is automatically enabled on every
-    # association that accept_nested_attributes_for is used for.
+    # association that accepts_nested_attributes_for is used for.
     #
     # === One-to-one
     #
@@ -35,7 +35,7 @@ module ActiveRecord
     #
     #   class Member < ActiveRecord::Base
     #     has_one :avatar
-    #     accept_nested_attributes_for :avatar
+    #     accepts_nested_attributes_for :avatar
     #   end
     #
     # Enabling nested attributes on a one-to-one association allows you to
@@ -58,7 +58,7 @@ module ActiveRecord
     #
     #   class Member < ActiveRecord::Base
     #     has_one :avatar
-    #     accept_nested_attributes_for :avatar, :allow_destroy => true
+    #     accepts_nested_attributes_for :avatar, :allow_destroy => true
     #   end
     #
     # Now, when you add the <tt>_delete</tt> key to the attributes hash, with a
@@ -77,7 +77,7 @@ module ActiveRecord
     #
     #   class Member < ActiveRecord::Base
     #     has_many :posts
-    #     accept_nested_attributes_for :posts, :reject_if => proc { |attributes| attributes['title'].blank? }
+    #     accepts_nested_attributes_for :posts, :reject_if => proc { |attributes| attributes['title'].blank? }
     #   end
     #
     # You can now set or update attributes on an associated post model through
@@ -123,7 +123,7 @@ module ActiveRecord
     #
     #   class Member < ActiveRecord::Base
     #     has_many :posts
-    #     accept_nested_attributes_for :posts, :allow_destroy => true
+    #     accepts_nested_attributes_for :posts, :allow_destroy => true
     #   end
     #
     #   params = {'member' => { 'name' => 'joe', 'posts_attributes' => {
@@ -156,11 +156,11 @@ module ActiveRecord
       #   is specified a record will be built for all attribute hashes.
       #
       # Examples:
-      #   accept_nested_attributes_for :avatar
-      #   accept_nested_attributes_for :avatar, :allow_destroy => true
-      #   accept_nested_attributes_for :avatar, :reject_if => proc { ... }
-      #   accept_nested_attributes_for :avatar, :posts, :allow_destroy => true, :reject_if => proc { ... }
-      def accept_nested_attributes_for(*attr_names)
+      #   accepts_nested_attributes_for :avatar
+      #   accepts_nested_attributes_for :avatar, :allow_destroy => true
+      #   accepts_nested_attributes_for :avatar, :reject_if => proc { ... }
+      #   accepts_nested_attributes_for :avatar, :posts, :allow_destroy => true, :reject_if => proc { ... }
+      def accepts_nested_attributes_for(*attr_names)
         options = { :allow_destroy => false }
         options.update(attr_names.extract_options!)
         options.assert_valid_keys(:allow_destroy, :reject_if)
