@@ -596,7 +596,11 @@ module ActionView
           # If the day is hidden and the month is visible, the day should be set to the 1st so all month choices are
           # valid (otherwise it could be 31 and february wouldn't be a valid date)
           if @datetime && @options[:discard_day] && !@options[:discard_month]
-            @datetime = @datetime.change(:day => 1)
+            if @datetime.respond_to?(:change)
+              @datetime = @datetime.change(:day => 1)
+            else
+              @datetime.day = 1
+            end
           end
 
           [:day, :month, :year].each { |o| order.unshift(o) unless order.include?(o) }
@@ -624,7 +628,11 @@ module ActionView
           # If the day is hidden and the month is visible, the day should be set to the 1st so all month choices are
           # valid (otherwise it could be 31 and february wouldn't be a valid date)
           if @datetime && @options[:discard_day] && !@options[:discard_month]
-            @datetime = @datetime.change(:day => 1)
+            if @datetime.respond_to?(:change)
+              @datetime = @datetime.change(:day => 1)
+            else
+              @datetime.day = 1
+            end
           end
         end
 
