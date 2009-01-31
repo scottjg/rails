@@ -1,3 +1,10 @@
+* backports
+
+ Dropped formatted_* routes in favor of just passing in :format as an option. This cuts resource routes generation in half #1359 [aaronbatalion]
+
+
+
+
 *2.2.3 (pending release)*
 
 * Backwards Compatibility: bring back Request#relative_url_root but deprecate it.
