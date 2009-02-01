@@ -51,9 +51,8 @@ module ActiveSupport #:nodoc:
     mattr_accessor :constant_watch_stack
     self.constant_watch_stack = []
 
-    # An internal directory contents cache to reduce stat calls
-    mattr_accessor :directory_cache
-    self.directory_cache = {}
+    mattr_accessor :constant_watch_stack_mutex
+    self.constant_watch_stack_mutex = Mutex.new
 
     # Module includes this module
     module ModuleConstMissing #:nodoc:
@@ -332,17 +331,9 @@ module ActiveSupport #:nodoc:
       path_suffix = path_suffix + '.rb' unless path_suffix.ends_with? '.rb'
       load_paths.each do |root|
         path = File.join(root, path_suffix)
-        return path if files_in( root ).include?( path )  
-      end  
+        return path if File.file? path
+      end
       nil # Gee, I sure wish we had first_match ;-)
-    end
-
-    def files_in( directory )
-      if directory_cache[directory]
-        directory_cache[directory]
-      else
-        directory_cache[directory] = Dir.glob("#{directory}/**/*.rb")
-      end    
     end
 
     # Does the provided path_suffix correspond to an autoloadable module?
@@ -521,7 +512,9 @@ module ActiveSupport #:nodoc:
         [mod_name, initial_constants]
       end
 
-      constant_watch_stack.concat watch_frames
+      constant_watch_stack_mutex.synchronize do
+        constant_watch_stack.concat watch_frames
+      end
 
       aborting = true
       begin
@@ -538,8 +531,10 @@ module ActiveSupport #:nodoc:
           new_constants = mod.local_constant_names - prior_constants
 
           # Make sure no other frames takes credit for these constants.
-          constant_watch_stack.each do |frame_name, constants|
-            constants.concat new_constants if frame_name == mod_name
+          constant_watch_stack_mutex.synchronize do
+            constant_watch_stack.each do |frame_name, constants|
+              constants.concat new_constants if frame_name == mod_name
+            end
           end
 
           new_constants.collect do |suffix|
@@ -561,8 +556,10 @@ module ActiveSupport #:nodoc:
       # Remove the stack frames that we added.
       if defined?(watch_frames) && ! watch_frames.blank?
         frame_ids = watch_frames.collect { |frame| frame.object_id }
-        constant_watch_stack.delete_if do |watch_frame|
-          frame_ids.include? watch_frame.object_id
+        constant_watch_stack_mutex.synchronize do
+          constant_watch_stack.delete_if do |watch_frame|
+            frame_ids.include? watch_frame.object_id
+          end
         end
       end
     end
