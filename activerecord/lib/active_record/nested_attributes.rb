@@ -42,7 +42,7 @@ module ActiveRecord
     # create the member and avatar in one go:
     #
     #   params = { 'member' => { 'name' => 'Jack', 'avatar_attributes' => { 'icon' => 'smiling' } } }
-    #   member = Member.create(params)
+    #   member = Member.create(params['member'])
     #   member.avatar.icon #=> 'smiling'
     #
     # It also allows you to update the avatar through the member:
