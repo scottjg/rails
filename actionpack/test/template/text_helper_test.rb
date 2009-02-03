@@ -356,6 +356,9 @@ class TextHelperTest < ActionView::TestCase
     linked2 = generate_result('www.rubyonrails.com', 'http://www.rubyonrails.com')
     assert_equal linked1, auto_link(linked1)
     assert_equal linked2, auto_link(linked2)
+    email_raw = "david@loudthinking.com"
+    email_linked = %(<a href="mailto:#{email_raw}">Mail me!</a>)
+    assert_equal email_linked, auto_link(email_linked)
   end
 
   def test_auto_link_with_brackets

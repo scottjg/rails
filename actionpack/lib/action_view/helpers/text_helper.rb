@@ -563,8 +563,10 @@ module ActionView
           body = text.dup
           text.gsub(/([\w\.!#\$%\-+.]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)+)/) do
             text = $1
-
-            if body.match(/<a\b[^>]*>(.*)(#{Regexp.escape(text)})(.*)<\/a>/)
+            last_string = $`
+            if last_string =~ /mailto:$/i || last_string =~ /mailto:#{text}\"\>$/i
+              text    
+            elsif body.match(/<a\b[^>]*>(.*)(#{Regexp.escape(text)})(.*)<\/a>/)
               text
             else
               display_text = (block_given?) ? yield(text) : text
