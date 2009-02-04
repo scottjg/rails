@@ -135,8 +135,8 @@ module ActionController
           end
         end
         
-        route << 'index_' if RecordIdentifier.uncountable_class_name?(record) && record.new_record?
         route << "#{RecordIdentifier.send!("#{inflection}_class_name", record)}_"
+        route << 'index_' if RecordIdentifier.uncountable_class_name?(record) && record.new_record?
 
         action_prefix(options) + namespace + route + routing_type(options).to_s
       end
