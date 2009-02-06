@@ -88,11 +88,11 @@ module ActiveRecord
     # evaluates to +true+.
     #
     #   params = { :member => {
-    #     :name => 'joe', :posts_attributes => {
-    #       '0' => { :title => 'Kari, the awesome Ruby documentation browser!' },
-    #       '1' => { :title => 'The egalitarian assumption of the modern citizen' },
-    #       '2' => { :title => '', :_delete => '1' } # this will be ignored
-    #     }
+    #     :name => 'joe', :posts_attributes => [
+    #       { :title => 'Kari, the awesome Ruby documentation browser!' },
+    #       { :title => 'The egalitarian assumption of the modern citizen' },
+    #       { :title => '', :_delete => '1' } # this will be ignored
+    #     ]
     #   }}
     #
     #   member = Member.create(params['member'])
@@ -110,11 +110,11 @@ module ActiveRecord
     #    end
     #
     #   params = { :member => {
-    #     :name => 'joe', :posts_attributes => {
-    #       '0' => { :title => 'Kari, the awesome Ruby documentation browser!' },
-    #       '1' => { :title => 'The egalitarian assumption of the modern citizen' },
-    #       '2' => { :title => '' } # this will be ignored because of reject_if
-    #     }
+    #     :name => 'joe', :posts_attributes => [
+    #       { :title => 'Kari, the awesome Ruby documentation browser!' },
+    #       { :title => 'The egalitarian assumption of the modern citizen' },
+    #       { :title => '' } # this will be ignored because of reject_if
+    #     ]
     #   }}
     #
     #   member = Member.create(params['member'])
@@ -127,10 +127,10 @@ module ActiveRecord
     #
     #   member.attributes = {
     #     :name => 'Joe',
-    #     :posts_attributes => {
-    #       '0' => { :title => '[UPDATED] An, as of yet, undisclosed awesome Ruby documentation browser!' },
-    #       '1' => { :title => '[UPDATED] other post' }
-    #     }
+    #     :posts_attributes => [
+    #       { :title => '[UPDATED] An, as of yet, undisclosed awesome Ruby documentation browser!' },
+    #       { :title => '[UPDATED] other post' }
+    #     ]
     #   }
     #
     # By default the associated records are protected from being destroyed. If
@@ -144,9 +144,9 @@ module ActiveRecord
     #     accepts_nested_attributes_for :posts, :allow_destroy => true
     #   end
     #
-    #   params = {:member => { :name => 'joe', :posts_attributes => {
-    #     '0' => { :id => '2', :_delete => '1' }
-    #   }}}
+    #   params = {:member => { :name => 'joe', :posts_attributes => [
+    #     { :id => '2', :_delete => '1' }
+    #   ]}}
     #   member.attributes = params['member']
     #   member.posts.detect { |p| p.id == 2 }.marked_for_destruction? # => true
     #   member.posts.length #=> 2
@@ -268,14 +268,24 @@ module ActiveRecord
     #
     # Will update the name of the Person with ID 1, build a new associated person with
     # the name 'John', and mark the associatied Person with ID 2 for destruction.
+    #
+    # Will also accept an Array of attribute hashes, which function as normal. For example:
+    #
+    #   assign_nested_attributes_for_collection_association(:people, [
+    #     { :id => '1', :name => 'Peter' },
+    #     { :name => 'John' },
+    #     { :id => '2', :_delete => true }
+    #   ])
     def assign_nested_attributes_for_collection_association(association_name, attributes_collection, allow_destroy)
-      unless attributes_collection.is_a?(Hash)
-        raise ArgumentError, "Hash expected, got #{attributes_collection.class.name} (#{attributes_collection.inspect})"
+      unless attributes_collection.is_a?(Hash) or attributes_collection.is_a?(Array)
+        raise ArgumentError, "Hash or Array expected, got #{attributes_collection.class.name} (#{attributes_collection.inspect})"
       end
 
-      sorted_attributes = attributes_collection.to_a.sort_by {|i| i[0].to_i}.collect {|i| i[1]}
+      if attributes_collection.is_a? Hash
+        attributes_collection = attributes_collection.to_a.sort_by {|i| i[0].to_i}.collect {|i| i[1]}
+      end
 
-      sorted_attributes.each do |attributes|
+      attributes_collection.each do |attributes|
         if id_from(attributes).blank?
           unless has_delete_flag?(attributes) or reject_new_record?(association_name, attributes)
             send(association_name).build(attributes.except(*unassignable_keys))

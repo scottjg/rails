@@ -287,6 +287,12 @@ module NestedAttributesOnACollectionAssociationTests
     @pirate.update_attributes @alternate_params
     assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.reload.name, @child_2.reload.name]
   end
+  
+  def test_should_take_an_array_and_assign_the_attributes_to_the_associated_models
+    @pirate.send(association_setter, @alternate_params[association_getter].values)
+    @pirate.save
+    assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.reload.name, @child_2.reload.name]
+  end
 
   def test_should_also_work_with_a_HashWithIndifferentAccess
     @pirate.send(association_setter, HashWithIndifferentAccess.new('foo' => HashWithIndifferentAccess.new(:id => @child_1.id, :name => 'Grace OMalley')))
@@ -345,11 +351,8 @@ module NestedAttributesOnACollectionAssociationTests
     assert_nothing_raised(ArgumentError) { @pirate.send(association_setter, {}) }
     assert_nothing_raised(ArgumentError) { @pirate.send(association_setter, ActiveSupport::OrderedHash.new) }
 
-    assert_raise_with_message ArgumentError, 'Hash expected, got String ("foo")' do
+    assert_raise_with_message ArgumentError, 'Hash or Array expected, got String ("foo")' do
       @pirate.send(association_setter, "foo")
-    end
-    assert_raise_with_message ArgumentError, 'Hash expected, got Array ([:foo, :bar])' do
-      @pirate.send(association_setter, [:foo, :bar])
     end
   end
 
