@@ -966,8 +966,10 @@ module ActionView
 
           if association.is_a?(Array)
             children = explicit_object ? [explicit_object] : association
+            explicit_child_index = args.last[:child_index] if args.last.is_a?(Hash)
+            
             children.map do |child|
-              fields_for_nested_model("#{name}[#{nested_child_index}]", child, args, block)
+              fields_for_nested_model("#{name}[#{explicit_child_index || nested_child_index}]", child, args, block)
             end.join
           else
             fields_for_nested_model(name, explicit_object || association, args, block)

@@ -703,6 +703,23 @@ class FormHelperTest < ActionView::TestCase
     assert_equal yielded_comments, @post.comments
   end
 
+  def test_nested_fields_for_with_child_index_option_override_on_a_nested_attributes_collection_association
+    @post.comments = []
+
+    form_for(:post, @post) do |f|
+      f.fields_for(:comments, Comment.new(321), :child_index => 'abc') do |cf|
+        concat cf.text_field(:name)
+      end
+    end
+
+    expected = '<form action="http://www.example.com" method="post">' +
+               '<input id="post_comments_attributes_abc_id" name="post[comments_attributes][abc][id]" type="hidden" value="321" />' +
+               '<input id="post_comments_attributes_abc_name" name="post[comments_attributes][abc][name]" size="30" type="text" value="comment #321" />' +
+               '</form>'
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_fields_for
     fields_for(:post, @post) do |f|
       concat f.text_field(:title)
