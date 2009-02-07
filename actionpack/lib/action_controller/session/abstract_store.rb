@@ -47,6 +47,11 @@ module ActionController
           to_hash
         end
 
+        def inspect
+          load! unless @loaded
+          super
+        end
+
         private
           def loaded?
             @loaded
@@ -139,12 +144,9 @@ module ActionController
           cookie << "; HttpOnly" if options[:httponly]
 
           headers = response[1]
-          case a = headers[SET_COOKIE]
-          when Array
-            a << cookie
-          when String
-            headers[SET_COOKIE] = [a, cookie]
-          when nil
+          unless headers[SET_COOKIE].blank?
+            headers[SET_COOKIE] << "\n#{cookie}"
+          else
             headers[SET_COOKIE] = cookie
           end
         end

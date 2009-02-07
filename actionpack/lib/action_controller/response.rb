@@ -41,7 +41,7 @@ module ActionController # :nodoc:
 
     def initialize
       @status = 200
-      @header = DEFAULT_HEADERS.dup
+      @header = Rack::Utils::HeaderHash.new(DEFAULT_HEADERS)
 
       @writer = lambda { |x| @body << x }
       @block = nil
@@ -169,6 +169,9 @@ module ActionController # :nodoc:
 
     def set_cookie(key, value)
       if value.has_key?(:http_only)
+        ActiveSupport::Deprecation.warn(
+          "The :http_only option in ActionController::Response#set_cookie " +
+          "has been renamed. Please use :httponly instead.", caller)
         value[:httponly] ||= value.delete(:http_only)
       end
 
