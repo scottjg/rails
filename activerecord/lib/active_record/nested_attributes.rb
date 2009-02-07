@@ -224,6 +224,10 @@ module ActiveRecord
 
     private
 
+    # Attribute hash keys that should not be assigned as normal attributes.
+    # These hash keys are nested attributes implementation details.
+    UNASSIGNABLE_KEYS = %w{ id _delete }
+
     # Assigns the given attributes to the association.
     #
     # If the given attributes include an <tt>:id</tt> that matches the existing record's id,
@@ -291,6 +295,8 @@ module ActiveRecord
       end
     end
 
+    # Updates a record with the +attributes+ or marks it for destruction if
+    # +allow_destroy+ is +true+ and has_delete_flag? returns +true+.
     def assign_to_or_mark_for_destruction(record, attributes, allow_destroy)
       if has_delete_flag?(attributes) && allow_destroy
         record.mark_for_destruction
@@ -299,15 +305,14 @@ module ActiveRecord
       end
     end
 
-    # Attribute hash keys that should not be assigned as normal attributes.
-    # These hash keys are nested attributes implementation details.
-    UNASSIGNABLE_KEYS = %w{ id _delete }
-
     # Determines if a hash contains a truthy _delete key.
     def has_delete_flag?(hash)
       ConnectionAdapters::Column.value_to_boolean hash['_delete']
     end
-    
+
+    # Determines if a new record should be build by checking for
+    # has_delete_flag? or if a <tt>:reject_if</tt> proc exists for this
+    # association and evaluates to +true+.
     def reject_new_record?(association_name, attributes)
       has_delete_flag?(attributes) ||
         self.class.reject_new_nested_attributes_procs[association_name].try(:call, attributes)
