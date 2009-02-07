@@ -239,8 +239,8 @@ module ActiveRecord
         end
       else
         existing_record = send(association_name)
-        if existing_record and existing_record.id == id_from(attributes).to_i
-          if has_delete_flag?(attributes) and allow_destroy
+        if existing_record && existing_record.id == id_from(attributes).to_i
+          if has_delete_flag?(attributes) && allow_destroy
             existing_record.mark_for_destruction
           else
             existing_record.attributes = attributes.except(*unassignable_keys)
@@ -275,7 +275,7 @@ module ActiveRecord
     #     { :id => '2', :_delete => true }
     #   ])
     def assign_nested_attributes_for_collection_association(association_name, attributes_collection, allow_destroy)
-      unless attributes_collection.is_a?(Hash) or attributes_collection.is_a?(Array)
+      unless attributes_collection.is_a?(Hash) || attributes_collection.is_a?(Array)
         raise ArgumentError, "Hash or Array expected, got #{attributes_collection.class.name} (#{attributes_collection.inspect})"
       end
 
@@ -285,13 +285,13 @@ module ActiveRecord
 
       attributes_collection.each do |attributes|
         if id_from(attributes).blank?
-          unless has_delete_flag?(attributes) or reject_new_record?(association_name, attributes)
+          unless reject_new_record?(association_name, attributes)
             send(association_name).build(attributes.except(*unassignable_keys))
           end
         else
           existing_record = send(association_name).detect{|r| r.id == id_from(attributes).to_i}
           if existing_record
-            if has_delete_flag?(attributes) and allow_destroy
+            if has_delete_flag?(attributes) && allow_destroy
               existing_record.mark_for_destruction
             else
               existing_record.attributes = attributes.except(*unassignable_keys)
