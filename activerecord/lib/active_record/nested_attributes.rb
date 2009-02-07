@@ -233,13 +233,15 @@ module ActiveRecord
     # If the given attributes include a matching <tt>:id</tt> attribute and a <tt>:_delete</tt>
     # key set to a truthy value, then the existing record will be marked for destruction.
     def assign_nested_attributes_for_one_to_one_association(association_name, attributes, allow_destroy)
-      if id_from(attributes).blank?
+      attributes = attributes.stringify_keys
+
+      if attributes['id'].blank?
         unless reject_new_record?(association_name, attributes)
           send("build_#{association_name}", attributes.except(*unassignable_keys))
         end
       else
         existing_record = send(association_name)
-        if existing_record && existing_record.id == id_from(attributes).to_i
+        if existing_record && existing_record.id == attributes['id'].to_i
           if has_delete_flag?(attributes) && allow_destroy
             existing_record.mark_for_destruction
           else
@@ -284,12 +286,14 @@ module ActiveRecord
       end
 
       attributes_collection.each do |attributes|
-        if id_from(attributes).blank?
+        attributes = attributes.stringify_keys
+
+        if attributes['id'].blank?
           unless reject_new_record?(association_name, attributes)
             send(association_name).build(attributes.except(*unassignable_keys))
           end
         else
-          existing_record = send(association_name).detect{|r| r.id == id_from(attributes).to_i}
+          existing_record = send(association_name).detect{|r| r.id == attributes['id'].to_i}
           if existing_record
             if has_delete_flag?(attributes) && allow_destroy
               existing_record.mark_for_destruction
@@ -304,21 +308,17 @@ module ActiveRecord
     # Attribute hash keys that should not be assigned as normal attributes.
     # These hash keys are nested attributes implementation details.
     def unassignable_keys
-      [:id, :_delete, 'id', '_delete']
+      ['id', '_delete']
     end
 
     # Determines if a hash contains a truthy _delete key.
     def has_delete_flag?(hash)
-      ConnectionAdapters::Column.value_to_boolean(hash[:_delete] || hash['_delete'])
+      ConnectionAdapters::Column.value_to_boolean(hash['_delete'])
     end
     
     def reject_new_record?(association_name, attributes)
       has_delete_flag?(attributes) ||
         self.class.reject_new_nested_attributes_procs[association_name].try(:call, attributes)
-    end
-    
-    def id_from(hash)
-      hash[:id] || hash['id']
     end
   end
 end
