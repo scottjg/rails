@@ -234,13 +234,11 @@ module ActiveRecord
     # key set to a truthy value, then the existing record will be marked for destruction.
     def assign_nested_attributes_for_one_to_one_association(association_name, attributes, allow_destroy)
       if id_from(attributes).blank?
-        # create new, or replace existing
-        unless has_delete_flag?(attributes) or reject_new_record?(association_name, attributes)
+        unless reject_new_record?(association_name, attributes)
           send("build_#{association_name}", attributes.except(*unassignable_keys))
         end
       else
         existing_record = send(association_name)
-        # modify or delete existing
         if existing_record and existing_record.id == id_from(attributes).to_i
           if has_delete_flag?(attributes) and allow_destroy
             existing_record.mark_for_destruction
@@ -315,8 +313,8 @@ module ActiveRecord
     end
     
     def reject_new_record?(association_name, attributes)
-      reject_proc = self.class.reject_new_nested_attributes_procs[association_name]
-      return (reject_proc and reject_proc.call(attributes)) ? true : false
+      has_delete_flag?(attributes) ||
+        self.class.reject_new_nested_attributes_procs[association_name].try(:call, attributes)
     end
     
     def id_from(hash)
