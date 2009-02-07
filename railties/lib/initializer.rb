@@ -545,7 +545,7 @@ Run `rake gems:install` to install the missing gems.
 
     def initialize_metal
       configuration.middleware.insert_before(
-        :"ActionController::RewindableInput",
+        :"ActionDispatch::RewindableInput",
         Rails::Rack::Metal, :if => Rails::Rack::Metal.metals.any?)
     end
 
