@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 require 'controller/fake_models'
 
@@ -9,6 +10,7 @@ module RenderTestCases
     # Reload and register danish language for testing
     I18n.reload!
     I18n.backend.store_translations 'da', {}
+    I18n.backend.store_translations 'pt-BR', {}
 
     # Ensure original are still the same since we are reindexing view paths
     assert_equal ORIGINAL_LOCALES, I18n.available_locales.map(&:to_s).sort
@@ -30,6 +32,14 @@ module RenderTestCases
     old_locale = I18n.locale
     I18n.locale = :da
     assert_equal "Hey verden", @view.render(:file => "test/hello_world")
+  ensure
+    I18n.locale = old_locale
+  end
+
+  def test_render_file_with_dashed_locale
+    old_locale = I18n.locale
+    I18n.locale = :"pt-BR"
+    assert_equal "Ola mundo", @view.render(:file => "test/hello_world")
   ensure
     I18n.locale = old_locale
   end
@@ -203,6 +213,14 @@ module RenderTestCases
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout.erb", :layout => "layouts/yield")
+  end
+
+  if '1.9'.respond_to?(:force_encoding)
+    def test_render_utf8_template
+      result = @view.render(:file => "test/utf8.html.erb", :layouts => "layouts/yield")
+      assert_equal "Русский текст\n日本語のテキスト", result
+      assert_equal Encoding::UTF_8, result.encoding
+    end
   end
 end
 

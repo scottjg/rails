@@ -17,16 +17,11 @@ module ActionController
           @loaded = false
         end
 
-        def id
-          load! unless @loaded
-          @id
-        end
-
         def session_id
           ActiveSupport::Deprecation.warn(
-            "ActionController::Session::AbstractStore::SessionHash#session_id" +
-            "has been deprecated.Please use #id instead.", caller)
-          id
+            "ActionController::Session::AbstractStore::SessionHash#session_id " +
+            "has been deprecated. Please use request.session_options[:id] instead.", caller)
+          @env[ENV_SESSION_OPTIONS_KEY][:id]
         end
 
         def [](key)
@@ -47,8 +42,8 @@ module ActionController
 
         def data
          ActiveSupport::Deprecation.warn(
-           "ActionController::Session::AbstractStore::SessionHash#data" +
-           "has been deprecated.Please use #to_hash instead.", caller)
+           "ActionController::Session::AbstractStore::SessionHash#data " +
+           "has been deprecated. Please use #to_hash instead.", caller)
           to_hash
         end
 
@@ -58,9 +53,29 @@ module ActionController
           end
 
           def load!
-            @id, session = @by.send(:load_session, @env)
-            replace(session)
-            @loaded = true
+            stale_session_check! do
+              id, session = @by.send(:load_session, @env)
+              (@env[ENV_SESSION_OPTIONS_KEY] ||= {})[:id] = id
+              replace(session)
+              @loaded = true
+            end
+          end
+
+          def stale_session_check!
+            yield
+          rescue ArgumentError => argument_error
+            if argument_error.message =~ %r{undefined class/module ([\w:]*\w)}
+              begin
+                # Note that the regexp does not allow $1 to end with a ':'
+                $1.constantize
+              rescue LoadError, NameError => const_error
+                raise ActionController::SessionRestoreError, "Session contains objects whose class definition isn\\'t available.\nRemember to require the classes for all objects kept in the session.\n(Original exception: \#{const_error.message} [\#{const_error.class}])\n"
+              end
+
+              retry
+            else
+              raise
+            end
           end
       end
 
@@ -107,11 +122,7 @@ module ActionController
         if !session_data.is_a?(AbstractStore::SessionHash) || session_data.send(:loaded?) || options[:expire_after]
           session_data.send(:load!) if session_data.is_a?(AbstractStore::SessionHash) && !session_data.send(:loaded?)
 
-          if session_data.is_a?(AbstractStore::SessionHash)
-            sid = session_data.id
-          else
-            sid = generate_sid
-          end
+          sid = options[:id] || generate_sid
 
           unless set_session(env, sid, session_data.to_hash)
             return response

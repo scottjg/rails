@@ -88,7 +88,7 @@ module ActionController
 
       def call(env)
         env[ENV_SESSION_KEY] = AbstractStore::SessionHash.new(self, env)
-        env[ENV_SESSION_OPTIONS_KEY] = @default_options
+        env[ENV_SESSION_OPTIONS_KEY] = @default_options.dup
 
         status, headers, body = @app.call(env)
 
@@ -133,7 +133,7 @@ module ActionController
             expires = "; expires=" + value[:expires].clone.gmtime.
               strftime("%a, %d-%b-%Y %H:%M:%S GMT") if value[:expires]
             secure = "; secure" if value[:secure]
-            httponly = "; httponly" if value[:httponly]
+            httponly = "; HttpOnly" if value[:httponly]
             value = value[:value]
           end
           value = [value] unless Array === value
