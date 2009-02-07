@@ -237,7 +237,7 @@ module ActiveRecord
 
       if attributes['id'].blank?
         unless reject_new_record?(association_name, attributes)
-          send("build_#{association_name}", attributes.except(*unassignable_keys))
+          send("build_#{association_name}", attributes.except(*UNASSIGNABLE_KEYS))
         end
       else
         existing_record = send(association_name)
@@ -245,7 +245,7 @@ module ActiveRecord
           if has_delete_flag?(attributes) && allow_destroy
             existing_record.mark_for_destruction
           else
-            existing_record.attributes = attributes.except(*unassignable_keys)
+            existing_record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
           end
         end
       end
@@ -282,7 +282,7 @@ module ActiveRecord
       end
 
       if attributes_collection.is_a? Hash
-        attributes_collection = attributes_collection.to_a.sort_by {|i| i[0].to_i}.collect {|i| i[1]}
+        attributes_collection = attributes_collection.sort_by { |index, _| index.to_i }.map { |_, attributes| attributes }
       end
 
       attributes_collection.each do |attributes|
@@ -290,15 +290,14 @@ module ActiveRecord
 
         if attributes['id'].blank?
           unless reject_new_record?(association_name, attributes)
-            send(association_name).build(attributes.except(*unassignable_keys))
+            send(association_name).build(attributes.except(*UNASSIGNABLE_KEYS))
           end
         else
-          existing_record = send(association_name).detect{|r| r.id == attributes['id'].to_i}
-          if existing_record
+          if existing_record = send(association_name).detect { |r| r.id == attributes['id'].to_i }
             if has_delete_flag?(attributes) && allow_destroy
               existing_record.mark_for_destruction
             else
-              existing_record.attributes = attributes.except(*unassignable_keys)
+              existing_record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
             end
           end
         end
@@ -307,13 +306,11 @@ module ActiveRecord
 
     # Attribute hash keys that should not be assigned as normal attributes.
     # These hash keys are nested attributes implementation details.
-    def unassignable_keys
-      ['id', '_delete']
-    end
+    UNASSIGNABLE_KEYS = %w{ id _delete }
 
     # Determines if a hash contains a truthy _delete key.
     def has_delete_flag?(hash)
-      ConnectionAdapters::Column.value_to_boolean(hash['_delete'])
+      ConnectionAdapters::Column.value_to_boolean hash['_delete']
     end
     
     def reject_new_record?(association_name, attributes)
