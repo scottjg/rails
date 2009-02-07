@@ -239,15 +239,8 @@ module ActiveRecord
         unless reject_new_record?(association_name, attributes)
           send("build_#{association_name}", attributes.except(*UNASSIGNABLE_KEYS))
         end
-      else
-        existing_record = send(association_name)
-        if existing_record && existing_record.id == attributes['id'].to_i
-          if has_delete_flag?(attributes) && allow_destroy
-            existing_record.mark_for_destruction
-          else
-            existing_record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
-          end
-        end
+      elsif (existing_record = send(association_name)) && existing_record.id == attributes['id'].to_i
+        assign_to_or_mark_for_destruction(existing_record, attributes, allow_destroy)
       end
     end
 
@@ -292,15 +285,17 @@ module ActiveRecord
           unless reject_new_record?(association_name, attributes)
             send(association_name).build(attributes.except(*UNASSIGNABLE_KEYS))
           end
-        else
-          if existing_record = send(association_name).detect { |r| r.id == attributes['id'].to_i }
-            if has_delete_flag?(attributes) && allow_destroy
-              existing_record.mark_for_destruction
-            else
-              existing_record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
-            end
-          end
+        elsif existing_record = send(association_name).detect { |record| record.id == attributes['id'].to_i }
+          assign_to_or_mark_for_destruction(existing_record, attributes, allow_destroy)
         end
+      end
+    end
+
+    def assign_to_or_mark_for_destruction(record, attributes, allow_destroy)
+      if has_delete_flag?(attributes) && allow_destroy
+        record.mark_for_destruction
+      else
+        record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
       end
     end
 
