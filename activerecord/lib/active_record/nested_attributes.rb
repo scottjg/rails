@@ -243,7 +243,7 @@ module ActiveRecord
         unless reject_new_record?(association_name, attributes)
           send("build_#{association_name}", attributes.except(*UNASSIGNABLE_KEYS))
         end
-      elsif (existing_record = send(association_name)) && existing_record.id == attributes['id'].to_i
+      elsif (existing_record = send(association_name)) && existing_record.id.to_s == attributes['id'].to_s
         assign_to_or_mark_for_destruction(existing_record, attributes, allow_destroy)
       end
     end
@@ -289,7 +289,7 @@ module ActiveRecord
           unless reject_new_record?(association_name, attributes)
             send(association_name).build(attributes.except(*UNASSIGNABLE_KEYS))
           end
-        elsif existing_record = send(association_name).detect { |record| record.id == attributes['id'].to_i }
+        elsif existing_record = send(association_name).detect { |record| record.id.to_s == attributes['id'].to_s }
           assign_to_or_mark_for_destruction(existing_record, attributes, allow_destroy)
         end
       end
