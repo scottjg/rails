@@ -43,13 +43,14 @@ module ActiveRecord
     #
     #   params = { :member => { :name => 'Jack', :avatar_attributes => { :icon => 'smiling' } } }
     #   member = Member.create(params)
-    #   member.avatar.icon #=> 'smiling'
+    #   member.avatar.id # => 2
+    #   member.avatar.icon # => 'smiling'
     #
     # It also allows you to update the avatar through the member:
     #
     #   params = { :member' => { :avatar_attributes => { :id => '2', :icon => 'sad' } } }
     #   member.update_attributes params['member']
-    #   member.avatar.icon #=> 'sad'
+    #   member.avatar.icon # => 'sad'
     #
     # By default you will only be able to set and update attributes on the
     # associated model. If you want to destroy the associated model through the
@@ -83,9 +84,9 @@ module ActiveRecord
     # You can now set or update attributes on an associated post model through
     # the attribute hash.
     #
-    # For each hash that does not have an <tt>id</tt> key a new record will be
-    # instantiated, unless the hash also contains a <tt>_delete</tt> key that
-    # evaluates to +true+.
+    # For each hash that does _not_ have an <tt>id</tt> key a new record will
+    # be instantiated, unless the hash also contains a <tt>_delete</tt> key
+    # that evaluates to +true+.
     #
     #   params = { :member => {
     #     :name => 'joe', :posts_attributes => [
@@ -96,13 +97,13 @@ module ActiveRecord
     #   }}
     #
     #   member = Member.create(params['member'])
-    #   member.posts.length #=> 2
-    #   member.posts.first.title #=> 'Kari, the awesome Ruby documentation browser!'
-    #   member.posts.second.title #=> 'The egalitarian assumption of the modern citizen'
+    #   member.posts.length # => 2
+    #   member.posts.first.title # => 'Kari, the awesome Ruby documentation browser!'
+    #   member.posts.second.title # => 'The egalitarian assumption of the modern citizen'
     #
-    # You may also set a :reject_if proc to silently ignore any new record hashes
-    # if they fail to pass your criteria. For example, the previous example could be
-    # rewritten as:
+    # You may also set a :reject_if proc to silently ignore any new record
+    # hashes if they fail to pass your criteria. For example, the previous
+    # example could be rewritten as:
     #
     #    class Member < ActiveRecord::Base
     #      has_many :posts
@@ -113,25 +114,28 @@ module ActiveRecord
     #     :name => 'joe', :posts_attributes => [
     #       { :title => 'Kari, the awesome Ruby documentation browser!' },
     #       { :title => 'The egalitarian assumption of the modern citizen' },
-    #       { :title => '' } # this will be ignored because of reject_if
+    #       { :title => '' } # this will be ignored because of the :reject_if proc
     #     ]
     #   }}
     #
     #   member = Member.create(params['member'])
-    #   member.posts.length #=> 2
-    #   member.posts.first.title #=> 'Kari, the awesome Ruby documentation browser!'
-    #   member.posts.second.title #=> 'The egalitarian assumption of the modern citizen'    #
+    #   member.posts.length # => 2
+    #   member.posts.first.title # => 'Kari, the awesome Ruby documentation browser!'
+    #   member.posts.second.title # => 'The egalitarian assumption of the modern citizen'
     #
-    # But if the hash contains a <tt>id</tt> key that matches an already-associated
-    # record, the matching record will be modified.
+    # If the hash contains an <tt>id</tt> key that matches an already
+    # associated record, the matching record will be modified:
     #
     #   member.attributes = {
     #     :name => 'Joe',
     #     :posts_attributes => [
-    #       { :title => '[UPDATED] An, as of yet, undisclosed awesome Ruby documentation browser!' },
-    #       { :title => '[UPDATED] other post' }
+    #       { :id => 1, :title => '[UPDATED] An, as of yet, undisclosed awesome Ruby documentation browser!' },
+    #       { :id => 2, :title => '[UPDATED] other post' }
     #     ]
     #   }
+    #
+    #   member.posts.first.title # => '[UPDATED] An, as of yet, undisclosed awesome Ruby documentation browser!'
+    #   member.posts.second.title # => '[UPDATED] other post'
     #
     # By default the associated records are protected from being destroyed. If
     # you want to destroy any of the associated records through the attributes
@@ -144,9 +148,10 @@ module ActiveRecord
     #     accepts_nested_attributes_for :posts, :allow_destroy => true
     #   end
     #
-    #   params = {:member => { :name => 'joe', :posts_attributes => [
-    #     { :id => '2', :_delete => '1' }
-    #   ]}}
+    #   params = { :member => {
+    #     :posts_attributes => [{ :id => '2', :_delete => '1' }]
+    #   }}
+    #
     #   member.attributes = params['member']
     #   member.posts.detect { |p| p.id == 2 }.marked_for_destruction? # => true
     #   member.posts.length #=> 2
@@ -160,14 +165,14 @@ module ActiveRecord
     # the parent model is saved. This happens inside the transaction initiated
     # by the parents save method. See ActiveRecord::AutosaveAssociation.
     module ClassMethods
-      # Defines an attributes writer for the specified association(s). If you are using
-      # <tt>attr_protected</tt> or <tt>attr_accessible</tt>, then you will need to add
-      # the attribute writer to the allowed list.
+      # Defines an attributes writer for the specified association(s). If you
+      # are using <tt>attr_protected</tt> or <tt>attr_accessible</tt>, then you
+      # will need to add the attribute writer to the allowed list.
       #
       # Supported options:
       # [:allow_destroy]
       #   If true, destroys any members from the attributes hash with a
-      #   <tt>_delete</tt> key and a value that converts to +true+
+      #   <tt>_delete</tt> key and a value that evaluates to +true+
       #   (eg. 1, '1', true, or 'true'). This option is off by default.
       # [:reject_if]
       #   Allows you to specify a Proc that checks whether a record should be
@@ -178,7 +183,7 @@ module ActiveRecord
       #
       # Examples:
       #   # creates avatar_attributes=
-      #   accepts_nested_attributes_for :avatar
+      #   accepts_nested_attributes_for :avatar, :reject_if => proc { |attributes| attributes['name'].blank? }
       #   # creates avatar_attributes= and posts_attributes=
       #   accepts_nested_attributes_for :avatar, :posts, :allow_destroy => true
       def accepts_nested_attributes_for(*attr_names)
@@ -213,9 +218,9 @@ module ActiveRecord
       end
     end
 
-    # Returns ActiveRecord::AutosaveAssociation::marked_for_destruction?
-    # It's used in conjunction with fields_for to build a form element
-    # for the destruction of this association.
+    # Returns ActiveRecord::AutosaveAssociation::marked_for_destruction? It's
+    # used in conjunction with fields_for to build a form element for the
+    # destruction of this association.
     #
     # See ActionView::Helpers::FormHelper::fields_for for more info.
     def _delete
@@ -230,12 +235,13 @@ module ActiveRecord
 
     # Assigns the given attributes to the association.
     #
-    # If the given attributes include an <tt>:id</tt> that matches the existing record's id,
-    # then the existing record will be modified. Otherwise a new record will be
-    # built.
+    # If the given attributes include an <tt>:id</tt> that matches the existing
+    # record’s id, then the existing record will be modified. Otherwise a new
+    # record will be built.
     #
-    # If the given attributes include a matching <tt>:id</tt> attribute and a <tt>:_delete</tt>
-    # key set to a truthy value, then the existing record will be marked for destruction.
+    # If the given attributes include a matching <tt>:id</tt> attribute _and_ a
+    # <tt>:_delete</tt> key set to a truthy value, then the existing record
+    # will be marked for destruction.
     def assign_nested_attributes_for_one_to_one_association(association_name, attributes, allow_destroy)
       attributes = attributes.stringify_keys
 
@@ -250,10 +256,11 @@ module ActiveRecord
 
     # Assigns the given attributes to the collection association.
     #
-    # Hashes with an <tt>:id</tt> value matching an existing associated record will update that record.
-    # Hashes without an <tt>:id</tt> value will build a new record for the association.
-    # Hashes with a matching <tt>:id</tt> value and a <tt>:_delete</tt> key set to a truthy
-    # value will mark the matched record for destruction.
+    # Hashes with an <tt>:id</tt> value matching an existing associated record
+    # will update that record. Hashes without an <tt>:id</tt> value will build
+    # a new record for the association. Hashes with a matching <tt>:id</tt>
+    # value and a <tt>:_delete</tt> key set to a truthy value will mark the
+    # matched record for destruction.
     #
     # For example:
     #
@@ -263,10 +270,11 @@ module ActiveRecord
     #     '3' => { :id => '2', :_delete => true }
     #   })
     #
-    # Will update the name of the Person with ID 1, build a new associated person with
-    # the name 'John', and mark the associatied Person with ID 2 for destruction.
+    # Will update the name of the Person with ID 1, build a new associated
+    # person with the name `John', and mark the associatied Person with ID 2
+    # for destruction.
     #
-    # Will also accept an Array of attribute hashes, which function as normal. For example:
+    # Also accepts an Array of attribute hashes:
     #
     #   assign_nested_attributes_for_collection_association(:people, [
     #     { :id => '1', :name => 'Peter' },
