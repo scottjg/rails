@@ -1671,8 +1671,8 @@ module ActiveRecord #:nodoc:
         # Nest the type name in the same module as this class.
         # Bar is "MyApp::Business::Bar" relative to MyApp::Business::Foo
         def type_name_with_module(type_name)
-          if store_full_sti_class
-            type_name
+          if store_full_sti_class and type_name.include?(parent.name)
+            type_name 
           else
             (/^::/ =~ type_name) ? type_name : "#{parent.name}::#{type_name}"
           end
