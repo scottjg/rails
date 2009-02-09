@@ -54,7 +54,7 @@ module Rails
               # but it's better than breaking apps. Complain to remind users to get correct specs.
               # use ActiveSupport::Deprecation.warn, as the logger is not set yet
               $stderr.puts("config.gem: Unpacked gem #{dir_name} in vendor/gems has a mismatched specification file."+
-                           " Run 'rake gems:refresh_specs' to fix this.") unless @@silence_spec_warnings
+                           " Run 'rake gems:refresh' to fix this.") unless @@silence_spec_warnings
               spec.version = dir_version
             else
               $stderr.puts("config.gem: Unpacked gem #{dir_name} in vendor/gems is not in a versioned directory"+
@@ -66,7 +66,7 @@ module Rails
           # no spec - produced by early-2008 unpack code
           # emulate old behavior, and complain.
           $stderr.puts("config.gem: Unpacked gem #{dir_name} in vendor/gems has no specification file."+
-                       " Run 'rake gems:refresh_specs' to fix this.") unless @@silence_spec_warnings
+                       " Run 'rake gems:refresh' to fix this.") unless @@silence_spec_warnings
           if dir_version
             spec = Gem::Specification.new
             spec.version = dir_version
