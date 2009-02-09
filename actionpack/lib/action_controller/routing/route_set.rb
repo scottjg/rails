@@ -52,7 +52,7 @@ module ActionController
 
         def method_missing(route_name, *args, &proc) #:nodoc:
           super unless args.length >= 1 && proc.nil?
-          @set.add_named_route(route_name, *args)
+          named_route(route_name, *args)
         end
       end
 
