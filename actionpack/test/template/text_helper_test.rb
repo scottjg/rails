@@ -359,6 +359,8 @@ class TextHelperTest < ActionView::TestCase
     email_raw = "david@loudthinking.com"
     email_linked = %(<a href="mailto:#{email_raw}">Mail me!</a>)
     assert_equal email_linked, auto_link(email_linked)
+    image = %(<img src="http://www.nu.nl/images/logo_nu_nl.gif" />)
+    assert_equal image, auto_link(image)
   end
 
   def test_auto_link_with_brackets

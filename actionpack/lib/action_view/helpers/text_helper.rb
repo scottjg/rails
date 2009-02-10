@@ -537,7 +537,7 @@ module ActionView
             href = $&
             punctuation = ''
             # detect already linked URLs
-            if $` =~ /<a\s[^>]*href="$/
+            if $` =~ /<a\s[^>]*href="$|<img\s[^>]*src="$/
               # do not change string; URL is alreay linked
               href
             else
