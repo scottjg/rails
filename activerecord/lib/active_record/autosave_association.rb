@@ -175,21 +175,18 @@ module ActiveRecord
 
     # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
     def valid_with_autosave_associations?
-      if valid_without_autosave_associations?
-        self.class.reflect_on_all_autosave_associations.all? do |reflection|
-          if (association = association_instance_get(reflection.name)) && association.loaded?
-            if association.is_a?(Array)
-              association.proxy_target.all? { |child| autosave_association_valid?(reflection, child) }
-            else
-              autosave_association_valid?(reflection, association)
-            end
+      record_valid = valid_without_autosave_associations?
+      self.class.reflect_on_all_autosave_associations.all? do |reflection|
+        if (association = association_instance_get(reflection.name)) && association.loaded?
+          if association.is_a?(Array)
+            association.proxy_target.all? { |child| autosave_association_valid?(reflection, child) }
           else
-            true # association not loaded yet, so it should be valid
+            autosave_association_valid?(reflection, association)
           end
+        else
+          true # association not loaded yet, so it should be valid
         end
-      else
-        false # self was not valid
-      end
+      end && record_valid
     end
 
     # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.

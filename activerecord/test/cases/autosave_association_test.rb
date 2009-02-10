@@ -228,6 +228,20 @@ class TestAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCase
   def test_should_not_load_the_associated_model
     assert_queries(1) { @pirate.catchphrase = 'Arr'; @pirate.save! }
   end
+  
+  def test_should_merge_errors_in_the_associated_model
+    @pirate.ship.name = nil
+    assert !@pirate.save
+    assert_equal "can't be blank", @pirate.errors['ship_name']
+  end
+  
+  def test_should_merge_errors_in_the_associated_model_even_if_master_is_not_valid
+    @pirate.ship.name = nil
+    @pirate.catchphrase = nil
+    assert !@pirate.save
+    assert_equal "can't be blank", @pirate.errors['ship_name']
+    assert_equal "can't be blank", @pirate.errors['catchphrase']
+  end
 end
 
 class TestAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
