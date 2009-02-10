@@ -153,6 +153,7 @@ module Rails
       initialize_i18n
 
       initialize_framework_settings
+      initialize_framework_views
 
       initialize_metal
 
@@ -160,8 +161,6 @@ module Rails
 
       load_gems
       load_plugins
-
-      initialize_framework_views
 
       # pick up any gems that plugins depend on
       add_gem_load_paths
@@ -177,7 +176,6 @@ module Rails
       prepare_dispatcher
 
       # Routing must be initialized after plugins to allow the former to extend the routes
-      #initialize_routing
       initialize_routing
 
       # Observers are loaded after plugins in case Observers or observed models are modified by plugins.
@@ -371,10 +369,8 @@ Run `rake gems:install` to install the missing gems.
 
     def load_view_paths
       if configuration.frameworks.include?(:action_view)
-        if configuration.cache_classes
-          ActionController::Base.view_paths = configuration.view_path if configuration.frameworks.include?(:action_controller)
-          ActionMailer::Base.template_root = configuration.view_path if configuration.frameworks.include?(:action_mailer)
-        end
+        ActionController::Base.view_paths.each { |path| path.load! } if configuration.frameworks.include?(:action_controller)
+        ActionMailer::Base.template_root.load! if configuration.frameworks.include?(:action_mailer)
       end
     end
 
