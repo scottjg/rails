@@ -901,6 +901,11 @@ module ActiveRecord
               execute("SET client_encoding TO '#{@config[:encoding]}'")
             end
           end
+
+          if (Base.default_timezone == :utc)
+            execute("SET TIME ZONE 'UTC'")
+          end
+
           self.client_min_messages = @config[:min_messages] if @config[:min_messages]
           self.schema_search_path = @config[:schema_search_path] || @config[:schema_order]
         end
