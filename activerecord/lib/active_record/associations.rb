@@ -790,7 +790,7 @@ module ActiveRecord
 
         configure_dependency_for_has_many(reflection)
 
-        add_multiple_associated_validation_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_validation_callbacks(reflection) unless options[:validate] == false
         add_multiple_associated_save_callbacks(reflection.name)
         add_association_callbacks(reflection.name, reflection.options)
 
@@ -913,7 +913,7 @@ module ActiveRecord
           end
           after_save method_name
 
-          add_single_associated_validation_callbacks(reflection.name) if options[:validate] == true
+          add_single_associated_validation_callbacks(reflection) if options[:validate] == true || options[:autosave] == true
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
           association_constructor_method(:create, reflection, HasOneAssociation)
@@ -1074,7 +1074,7 @@ module ActiveRecord
           )
         end
 
-        add_single_associated_validation_callbacks(reflection.name) if options[:validate] == true
+        add_single_associated_validation_callbacks(reflection) if options[:validate] == true || options[:autosave] == true
 
         configure_dependency_for_belongs_to(reflection)
       end
@@ -1242,7 +1242,7 @@ module ActiveRecord
       def has_and_belongs_to_many(association_id, options = {}, &extension)
         reflection = create_has_and_belongs_to_many_reflection(association_id, options, &extension)
 
-        add_multiple_associated_validation_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_validation_callbacks(reflection) unless options[:validate] == false
         add_multiple_associated_save_callbacks(reflection.name)
         collection_accessor_methods(reflection, HasAndBelongsToManyAssociation)
 
@@ -1365,7 +1365,8 @@ module ActiveRecord
           end
         end
 
-        def add_single_associated_validation_callbacks(association_name)
+        def add_single_associated_validation_callbacks(reflection)
+          association_name = reflection.name
           method_name = "validate_associated_records_for_#{association_name}".to_sym
           define_method(method_name) do
             if association = association_instance_get(association_name)
@@ -1376,11 +1377,11 @@ module ActiveRecord
           validate method_name
         end
 
-        def add_multiple_associated_validation_callbacks(association_name)
+        def add_multiple_associated_validation_callbacks(reflection)
+          association_name = reflection.name
           method_name = "validate_associated_records_for_#{association_name}".to_sym
           define_method(method_name) do
             association = association_instance_get(association_name)
-
             if association
               if new_record?
                 association
