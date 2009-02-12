@@ -25,7 +25,8 @@ class TestJSONDecoding < Test::Unit::TestCase
     %(null)  => nil,
     %(true)  => true,
     %(false) => false,
-    %q("http:\/\/test.host\/posts\/1") => "http://test.host/posts/1"
+    %q("http:\/\/test.host\/posts\/1") => "http://test.host/posts/1",
+    %q("\\u003Cbr \/\\u003E") => "<br />"
   }
   
   TESTS.each do |json, expected|

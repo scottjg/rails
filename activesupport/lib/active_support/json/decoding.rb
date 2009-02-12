@@ -18,8 +18,14 @@ module ActiveSupport
         # matches YAML-formatted dates
         DATE_REGEX = /^(?:\d{4}-\d{2}-\d{2}|\d{4}-\d{1,2}-\d{1,2}[ \t]+\d{1,2}:\d{2}:\d{2}(\.[0-9]*)?(([ \t]*)Z|[-+]\d{2}?(:\d{2})?)?)$/
 
+        def decode_json_octets(json) #:nodoc:
+          character_mapping = ActiveSupport::JSON::Encoding::ESCAPED_CHARS.invert
+          json.gsub(/\\u[a-fA-F\d]{4}/) { |s| character_mapping[s] || ' ' }
+        end
+
         # Ensure that ":" and "," are always followed by a space
         def convert_json_to_yaml(json) #:nodoc:
+          json = decode_json_octets(json)
           scanner, quoting, marks, pos, times = StringScanner.new(json), false, [], nil, []
           while scanner.scan_until(/(\\['"]|['":,\\]|\\.)/)
             case char = scanner[1]
