@@ -172,7 +172,9 @@ module ActiveRecord
         validate method_name
       end
 
-      def add_multiple_associated_save_callbacks(association_name)
+      def add_multiple_associated_save_callbacks(reflection)
+        association_name = reflection.name
+
         method_name = "before_save_associated_records_for_#{association_name}".to_sym
         define_method(method_name) do
           @new_record_before_save = new_record?
@@ -183,17 +185,28 @@ module ActiveRecord
         method_name = "after_create_or_update_associated_records_for_#{association_name}".to_sym
         define_method(method_name) do
           association = association_instance_get(association_name)
+          autosave = reflection.options[:autosave]
 
           records_to_save = if @new_record_before_save
             association
           elsif association && association.loaded?
-            association.select { |record| record.new_record? }
+            autosave ? association : association.select { |record| record.new_record? }
           elsif association && !association.loaded?
-            association.target.select { |record| record.new_record? }
+            autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
           else
             []
           end
-          records_to_save.each { |record| association.send(:insert_record, record) } unless records_to_save.blank?
+
+          unless records_to_save.blank?
+            records_to_save.each do |record|
+              if autosave && record.marked_for_destruction?
+                record.destroy
+              else
+                record.save(false) if autosave
+                association.send(:insert_record, record)
+              end
+            end
+          end
 
           # reconstruct the SQL queries now that we know the owner's id
           association.send(:construct_sql) if association.respond_to?(:construct_sql)
@@ -217,9 +230,9 @@ module ActiveRecord
           self.class.reflect_on_all_autosave_associations.each do |reflection|
             if (association = association_instance_get(reflection.name)) && association.loaded?
               if association.is_a?(Array)
-                association.proxy_target.each do |child|
-                  child.marked_for_destruction? ? child.destroy : child.save(false)
-                end
+                # association.proxy_target.each do |child|
+                #   child.marked_for_destruction? ? child.destroy : child.save(false)
+                # end
               else
                 association.marked_for_destruction? ? association.destroy : association.save(false)
               end
