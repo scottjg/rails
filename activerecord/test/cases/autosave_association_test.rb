@@ -1,12 +1,15 @@
-require "cases/helper"
-require "models/company"
-require "models/developer"
-require "models/pirate"
-require "models/ship"
-require "models/ship_part"
-require "models/bird"
-require "models/parrot"
-require "models/treasure"
+require 'cases/helper'
+require 'models/bird'
+require 'models/company'
+require 'models/developer'
+require 'models/parrot'
+require 'models/person'
+require 'models/pirate'
+require 'models/post'
+require 'models/reader'
+require 'models/ship'
+require 'models/ship_part'
+require 'models/treasure'
 
 class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
   def test_autosave_should_be_a_valid_option_for_has_one
@@ -79,7 +82,7 @@ class TestDefaultAutosaveAssociationOnABelongsToAssociation < ActiveRecord::Test
 end
 
 class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCase
-  fixtures :companies
+  fixtures :companies, :people
 
   def test_invalid_adding
     firm = Firm.find(1)
@@ -139,6 +142,102 @@ class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCa
     assert !companies(:first_firm).save
     assert new_client.new_record?
     assert_equal 1, companies(:first_firm).clients_of_firm(true).size
+  end
+
+  def test_adding_before_save
+    no_of_firms = Firm.count
+    no_of_clients = Client.count
+
+    new_firm = Firm.new("name" => "A New Firm, Inc")
+    c = Client.new("name" => "Apple")
+
+    new_firm.clients_of_firm.push Client.new("name" => "Natural Company")
+    assert_equal 1, new_firm.clients_of_firm.size
+    new_firm.clients_of_firm << c
+    assert_equal 2, new_firm.clients_of_firm.size
+
+    assert_equal no_of_firms, Firm.count      # Firm was not saved to database.
+    assert_equal no_of_clients, Client.count  # Clients were not saved to database.
+    assert new_firm.save
+    assert !new_firm.new_record?
+    assert !c.new_record?
+    assert_equal new_firm, c.firm
+    assert_equal no_of_firms+1, Firm.count      # Firm was saved to database.
+    assert_equal no_of_clients+2, Client.count  # Clients were saved to database.
+
+    assert_equal 2, new_firm.clients_of_firm.size
+    assert_equal 2, new_firm.clients_of_firm(true).size
+  end
+
+  def test_assign_ids
+    firm = Firm.new("name" => "Apple")
+    firm.client_ids = [companies(:first_client).id, companies(:second_client).id]
+    firm.save
+    firm.reload
+    assert_equal 2, firm.clients.length
+    assert firm.clients.include?(companies(:second_client))
+  end
+
+  def test_assign_ids_for_through_a_belongs_to
+    post = Post.new(:title => "Assigning IDs works!", :body => "You heared it here first, folks!")
+    post.person_ids = [people(:david).id, people(:michael).id]
+    post.save
+    post.reload
+    assert_equal 2, post.people.length
+    assert post.people.include?(people(:david))
+  end
+
+  def test_build_before_save
+    company = companies(:first_firm)
+    new_client = assert_no_queries { company.clients_of_firm.build("name" => "Another Client") }
+    assert !company.clients_of_firm.loaded?
+
+    company.name += '-changed'
+    assert_queries(2) { assert company.save }
+    assert !new_client.new_record?
+    assert_equal 2, company.clients_of_firm(true).size
+  end
+
+  def test_build_many_before_save
+    company = companies(:first_firm)
+    new_clients = assert_no_queries { company.clients_of_firm.build([{"name" => "Another Client"}, {"name" => "Another Client II"}]) }
+
+    company.name += '-changed'
+    assert_queries(3) { assert company.save }
+    assert_equal 3, company.clients_of_firm(true).size
+  end
+
+  def test_build_via_block_before_save
+    company = companies(:first_firm)
+    new_client = assert_no_queries { company.clients_of_firm.build {|client| client.name = "Another Client" } }
+    assert !company.clients_of_firm.loaded?
+
+    company.name += '-changed'
+    assert_queries(2) { assert company.save }
+    assert !new_client.new_record?
+    assert_equal 2, company.clients_of_firm(true).size
+  end
+
+  def test_build_many_via_block_before_save
+    company = companies(:first_firm)
+    new_clients = assert_no_queries do
+      company.clients_of_firm.build([{"name" => "Another Client"}, {"name" => "Another Client II"}]) do |client|
+        client.name = "changed"
+      end
+    end
+
+    company.name += '-changed'
+    assert_queries(3) { assert company.save }
+    assert_equal 3, company.clients_of_firm(true).size
+  end
+
+  def test_replace_on_new_object
+    firm = Firm.new("name" => "New Firm")
+    firm.clients = [companies(:second_client), Client.new("name" => "New Client")]
+    assert firm.save
+    firm.reload
+    assert_equal 2, firm.clients.length
+    assert firm.clients.include?(Client.find_by_name("New Client"))
   end
 end
 

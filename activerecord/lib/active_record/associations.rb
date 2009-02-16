@@ -1365,38 +1365,6 @@ module ActiveRecord
           end
         end
 
-        def add_multiple_associated_save_callbacks(association_name)
-          method_name = "before_save_associated_records_for_#{association_name}".to_sym
-          define_method(method_name) do
-            @new_record_before_save = new_record?
-            true
-          end
-          before_save method_name
-
-          method_name = "after_create_or_update_associated_records_for_#{association_name}".to_sym
-          define_method(method_name) do
-            association = association_instance_get(association_name)
-
-            records_to_save = if @new_record_before_save
-              association
-            elsif association && association.loaded?
-              association.select { |record| record.new_record? }
-            elsif association && !association.loaded?
-              association.target.select { |record| record.new_record? }
-            else
-              []
-            end
-            records_to_save.each { |record| association.send(:insert_record, record) } unless records_to_save.blank?
-
-            # reconstruct the SQL queries now that we know the owner's id
-            association.send(:construct_sql) if association.respond_to?(:construct_sql)
-          end
-
-          # Doesn't use after_save as that would save associations added in after_create/after_update twice
-          after_create method_name
-          after_update method_name
-        end
-
         def association_constructor_method(constructor, reflection, association_proxy_class)
           define_method("#{constructor}_#{reflection.name}") do |*params|
             attributees      = params.first unless params.empty?
