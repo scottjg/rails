@@ -144,15 +144,7 @@ module ActiveRecord
         method_name = "validate_associated_records_for_#{reflection.name}".to_sym
         define_method(method_name) do
           if (association = association_instance_get(reflection.name)) && !association.target.nil?
-            returning(association.valid?) do |valid|
-              if reflection.options[:autosave]
-                association.errors.each do |attribute, message|
-                  errors.add "#{reflection.name}_#{attribute}", message
-                end
-              else
-                errors.add reflection.name
-              end unless valid
-            end
+            autosave_association_valid?(reflection, association)
           end
         end
 
@@ -172,20 +164,11 @@ module ActiveRecord
             else
               autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
             end.each do |record|
-              returning(record.valid?) do |valid|
-                if autosave
-                  record.errors.each do |attribute, message|
-                    error_name = "#{reflection.name}_#{attribute}"
-                    errors.add error_name, message unless errors.on(error_name)
-                  end
-                else
-                  errors.add reflection.name
-                end unless valid
-              end
+              autosave_association_valid?(reflection, record)
             end
           end
         end
-        
+
         validate method_name
       end
     end
@@ -227,11 +210,17 @@ module ActiveRecord
 
     # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.
     def autosave_association_valid?(reflection, association)
-      returning(association.valid?) do |valid|
-        association.errors.each do |attribute, message|
-          errors.add "#{reflection.name}_#{attribute}", message
-        end unless valid
+      unless (parent_valid = association.valid?)
+        if reflection.options[:autosave]
+          association.errors.each do |attribute, message|
+            attribute = "#{reflection.name}_#{attribute}"
+            errors.add(attribute, message) unless errors.on(attribute)
+          end
+        else
+          errors.add(reflection.name)
+        end
       end
+      parent_valid
     end
 
     # Reloads the attributes of the object as usual and removes a mark for destruction.
