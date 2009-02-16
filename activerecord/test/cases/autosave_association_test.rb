@@ -293,6 +293,14 @@ class TestAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCase
     assert !@pirate.errors.on(:ship_name).blank?
   end
 
+  def test_should_merge_errors_on_the_associated_models_onto_the_parent_even_if_it_is_not_valid
+    @pirate.ship.name   = nil
+    @pirate.catchphrase = nil
+    assert !@pirate.valid?
+    assert !@pirate.errors.on(:ship_name).blank?
+    assert !@pirate.errors.on(:catchphrase).blank?
+  end
+
   def test_should_still_allow_to_bypass_validations_on_the_associated_model
     @pirate.catchphrase = ''
     @pirate.ship.name = ''
@@ -375,6 +383,14 @@ class TestAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
     assert !@ship.errors.on(:pirate_catchphrase).blank?
   end
 
+  def test_should_merge_errors_on_the_associated_model_onto_the_parent_even_if_it_is_not_valid
+    @ship.name = nil
+    @ship.pirate.catchphrase = nil
+    assert !@ship.valid?
+    assert !@ship.errors.on(:name).blank?
+    assert !@ship.errors.on(:pirate_catchphrase).blank?
+  end
+
   def test_should_still_allow_to_bypass_validations_on_the_associated_model
     @ship.pirate.catchphrase = ''
     @ship.name = ''
@@ -436,6 +452,23 @@ module AutosaveAssociationOnACollectionAssociationTests
     assert !@pirate.valid?
     assert_equal "can't be blank", @pirate.errors.on("#{@association_name}_name")
     assert @pirate.errors.on(@association_name).blank?
+  end
+
+  def test_should_not_use_default_invalid_error_on_associated_models
+    @pirate.send(@association_name).build(:name => '')
+
+    assert !@pirate.valid?
+    assert_equal "can't be blank", @pirate.errors.on("#{@association_name}_name")
+    assert @pirate.errors.on(@association_name).blank?
+  end
+
+  def test_should_merge_errors_on_the_associated_models_onto_the_parent_even_if_it_is_not_valid
+    @pirate.send(@association_name).each { |child| child.name = '' }
+    @pirate.catchphrase = nil
+
+    assert !@pirate.valid?
+    assert_equal "can't be blank", @pirate.errors.on("#{@association_name}_name")
+    assert !@pirate.errors.on(:catchphrase).blank?
   end
 
   def test_should_still_allow_to_bypass_validations_on_the_associated_models

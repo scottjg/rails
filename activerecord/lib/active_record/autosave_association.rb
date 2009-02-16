@@ -132,7 +132,6 @@ module ActiveRecord
         alias_method_chain :reload, :autosave_associations
         alias_method_chain :save,   :autosave_associations
         alias_method_chain :save!,  :autosave_associations
-        alias_method_chain :valid?, :autosave_associations
 
         %w{ has_one belongs_to has_many has_and_belongs_to_many }.each do |type|
           base.send("valid_keys_for_#{type}_association") << :autosave
@@ -144,30 +143,49 @@ module ActiveRecord
       def add_single_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}".to_sym
         define_method(method_name) do
-          if association = association_instance_get(reflection.name)
-            errors.add reflection.name unless association.target.nil? || association.valid?
+          if (association = association_instance_get(reflection.name)) && !association.target.nil?
+            returning(association.valid?) do |valid|
+              if reflection.options[:autosave]
+                association.errors.each do |attribute, message|
+                  errors.add "#{reflection.name}_#{attribute}", message
+                end
+              else
+                errors.add reflection.name
+              end unless valid
+            end
           end
         end
 
         validate method_name
       end
 
+      # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
       def add_multiple_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}".to_sym
         define_method(method_name) do
+          autosave = reflection.options[:autosave]
           if association = association_instance_get(reflection.name)
             if new_record?
               association
             elsif association.loaded?
-              association.select { |record| record.new_record? }
+              autosave ? association : association.select { |record| record.new_record? }
             else
-              association.target.select { |record| record.new_record? }
+              autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
             end.each do |record|
-              errors.add reflection.name unless record.valid?
+              returning(record.valid?) do |valid|
+                if autosave
+                  record.errors.each do |attribute, message|
+                    error_name = "#{reflection.name}_#{attribute}"
+                    errors.add error_name, message unless errors.on(error_name)
+                  end
+                else
+                  errors.add reflection.name
+                end unless valid
+              end
             end
           end
         end
-
+        
         validate method_name
       end
     end
@@ -185,10 +203,10 @@ module ActiveRecord
             if (association = association_instance_get(reflection.name)) && association.loaded?
               if association.is_a?(Array)
                 association.proxy_target.each do |child|
-                  child.marked_for_destruction? ? child.destroy : child.save(perform_validation)
+                  child.marked_for_destruction? ? child.destroy : child.save(false)
                 end
               else
-                association.marked_for_destruction? ? association.destroy : association.save(perform_validation)
+                association.marked_for_destruction? ? association.destroy : association.save(false)
               end
             end
           end
@@ -200,29 +218,10 @@ module ActiveRecord
     # will raise a RecordInvalid exception instead of returning false if the
     # record is not valid.
     def save_with_autosave_associations!
-      if valid_with_autosave_associations?
+      if valid?
         save_with_autosave_associations(false) || raise(RecordNotSaved)
       else
         raise RecordInvalid.new(self)
-      end
-    end
-
-    # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
-    def valid_with_autosave_associations?
-      if valid_without_autosave_associations?
-        self.class.reflect_on_all_autosave_associations.all? do |reflection|
-          if (association = association_instance_get(reflection.name)) && association.loaded?
-            if association.is_a?(Array)
-              association.proxy_target.all? { |child| autosave_association_valid?(reflection, child) }
-            else
-              autosave_association_valid?(reflection, association)
-            end
-          else
-            true # association not loaded yet, so it should be valid
-          end
-        end
-      else
-        false # self was not valid
       end
     end
 
