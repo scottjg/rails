@@ -790,7 +790,7 @@ module ActiveRecord
 
         configure_dependency_for_has_many(reflection)
 
-        add_multiple_associated_validation_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_validation_callbacks(reflection) unless options[:validate] == false
         add_multiple_associated_save_callbacks(reflection.name)
         add_association_callbacks(reflection.name, reflection.options)
 
@@ -913,7 +913,7 @@ module ActiveRecord
           end
           after_save method_name
 
-          add_single_associated_validation_callbacks(reflection.name) if options[:validate] == true
+          add_single_associated_validation_callbacks(reflection) if options[:validate] == true
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
           association_constructor_method(:create, reflection, HasOneAssociation)
@@ -1074,7 +1074,7 @@ module ActiveRecord
           )
         end
 
-        add_single_associated_validation_callbacks(reflection.name) if options[:validate] == true
+        add_single_associated_validation_callbacks(reflection) if options[:validate] == true
 
         configure_dependency_for_belongs_to(reflection)
       end
@@ -1242,7 +1242,7 @@ module ActiveRecord
       def has_and_belongs_to_many(association_id, options = {}, &extension)
         reflection = create_has_and_belongs_to_many_reflection(association_id, options, &extension)
 
-        add_multiple_associated_validation_callbacks(reflection.name) unless options[:validate] == false
+        add_multiple_associated_validation_callbacks(reflection) unless options[:validate] == false
         add_multiple_associated_save_callbacks(reflection.name)
         collection_accessor_methods(reflection, HasAndBelongsToManyAssociation)
 

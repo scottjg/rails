@@ -141,21 +141,21 @@ module ActiveRecord
     end
 
     module ClassMethods
-      def add_single_associated_validation_callbacks(association_name)
-        method_name = "validate_associated_records_for_#{association_name}".to_sym
+      def add_single_associated_validation_callbacks(reflection)
+        method_name = "validate_associated_records_for_#{reflection.name}".to_sym
         define_method(method_name) do
-          if association = association_instance_get(association_name)
-            errors.add association_name unless association.target.nil? || association.valid?
+          if association = association_instance_get(reflection.name)
+            errors.add reflection.name unless association.target.nil? || association.valid?
           end
         end
 
         validate method_name
       end
 
-      def add_multiple_associated_validation_callbacks(association_name)
-        method_name = "validate_associated_records_for_#{association_name}".to_sym
+      def add_multiple_associated_validation_callbacks(reflection)
+        method_name = "validate_associated_records_for_#{reflection.name}".to_sym
         define_method(method_name) do
-          if association = association_instance_get(association_name)
+          if association = association_instance_get(reflection.name)
             if new_record?
               association
             elsif association.loaded?
@@ -163,7 +163,7 @@ module ActiveRecord
             else
               association.target.select { |record| record.new_record? }
             end.each do |record|
-              errors.add association_name unless record.valid?
+              errors.add reflection.name unless record.valid?
             end
           end
         end
