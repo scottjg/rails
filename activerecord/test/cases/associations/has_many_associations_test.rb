@@ -342,56 +342,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 2, new_firm.clients_of_firm(true).size
   end
 
-  def test_invalid_adding
-    firm = Firm.find(1)
-    assert !(firm.clients_of_firm << c = Client.new)
-    assert c.new_record?
-    assert !firm.valid?
-    assert !firm.save
-    assert c.new_record?
-  end
-
-  def test_invalid_adding_before_save
-    no_of_firms = Firm.count
-    no_of_clients = Client.count
-    new_firm = Firm.new("name" => "A New Firm, Inc")
-    new_firm.clients_of_firm.concat([c = Client.new, Client.new("name" => "Apple")])
-    assert c.new_record?
-    assert !c.valid?
-    assert !new_firm.valid?
-    assert !new_firm.save
-    assert c.new_record?
-    assert new_firm.new_record?
-  end
-
-  def test_invalid_adding_with_validate_false
-    firm = Firm.find(:first)
-    client = Client.new
-    firm.unvalidated_clients_of_firm << client
-
-    assert firm.valid?
-    assert !client.valid?
-    assert firm.save
-    assert client.new_record?
-  end
-
-  def test_valid_adding_with_validate_false
-    no_of_clients = Client.count
-
-    firm = Firm.find(:first)
-    client = Client.new("name" => "Apple")
-
-    assert firm.valid?
-    assert client.valid?
-    assert client.new_record?
-
-    firm.unvalidated_clients_of_firm << client
-
-    assert firm.save
-    assert !client.new_record?
-    assert_equal no_of_clients+1, Client.count
-  end
-
   def test_build
     company = companies(:first_firm)
     new_client = assert_no_queries { company.clients_of_firm.build("name" => "Another Client") }
@@ -499,16 +449,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     end
 
     assert_equal 2, first_firm.clients_of_firm.size
-  end
-
-  def test_invalid_build
-    new_client = companies(:first_firm).clients_of_firm.build
-    assert new_client.new_record?
-    assert !new_client.valid?
-    assert_equal new_client, companies(:first_firm).clients_of_firm.last
-    assert !companies(:first_firm).save
-    assert new_client.new_record?
-    assert_equal 1, companies(:first_firm).clients_of_firm(true).size
   end
 
   def test_create

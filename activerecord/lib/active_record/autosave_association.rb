@@ -127,6 +127,8 @@ module ActiveRecord
   module AutosaveAssociation
     def self.included(base)
       base.class_eval do
+        base.extend(ClassMethods)
+
         alias_method_chain :reload, :autosave_associations
         alias_method_chain :save,   :autosave_associations
         alias_method_chain :save!,  :autosave_associations
@@ -135,6 +137,38 @@ module ActiveRecord
         %w{ has_one belongs_to has_many has_and_belongs_to_many }.each do |type|
           base.send("valid_keys_for_#{type}_association") << :autosave
         end
+      end
+    end
+
+    module ClassMethods
+      def add_single_associated_validation_callbacks(association_name)
+        method_name = "validate_associated_records_for_#{association_name}".to_sym
+        define_method(method_name) do
+          if association = association_instance_get(association_name)
+            errors.add association_name unless association.target.nil? || association.valid?
+          end
+        end
+
+        validate method_name
+      end
+
+      def add_multiple_associated_validation_callbacks(association_name)
+        method_name = "validate_associated_records_for_#{association_name}".to_sym
+        define_method(method_name) do
+          if association = association_instance_get(association_name)
+            if new_record?
+              association
+            elsif association.loaded?
+              association.select { |record| record.new_record? }
+            else
+              association.target.select { |record| record.new_record? }
+            end.each do |record|
+              errors.add association_name unless record.valid?
+            end
+          end
+        end
+
+        validate method_name
       end
     end
 

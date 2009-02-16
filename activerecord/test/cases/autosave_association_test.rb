@@ -1,4 +1,6 @@
 require "cases/helper"
+require "models/company"
+require "models/developer"
 require "models/pirate"
 require "models/ship"
 require "models/ship_part"
@@ -27,6 +29,116 @@ class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
 
   def base
     ActiveRecord::Base
+  end
+end
+
+class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCase
+  def test_save_fails_for_invalid_has_one
+    firm = Firm.find(:first)
+    assert firm.valid?
+
+    firm.account = Account.new
+
+    assert !firm.account.valid?
+    assert !firm.valid?
+    assert !firm.save
+    assert_equal "is invalid", firm.errors.on("account")
+  end
+
+  def test_save_succeeds_for_invalid_has_one_with_validate_false
+    firm = Firm.find(:first)
+    assert firm.valid?
+
+    firm.unvalidated_account = Account.new
+
+    assert !firm.unvalidated_account.valid?
+    assert firm.valid?
+    assert firm.save
+  end
+end
+
+class TestDefaultAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
+  def test_save_fails_for_invalid_belongs_to
+    assert log = AuditLog.create(:developer_id => 0, :message => "")
+
+    log.developer = Developer.new
+    assert !log.developer.valid?
+    assert !log.valid?
+    assert !log.save
+    assert_equal "is invalid", log.errors.on("developer")
+  end
+
+  def test_save_succeeds_for_invalid_belongs_to_with_validate_false
+    assert log = AuditLog.create(:developer_id => 0, :message=> "")
+
+    log.unvalidated_developer = Developer.new
+    assert !log.unvalidated_developer.valid?
+    assert log.valid?
+    assert log.save
+  end
+end
+
+class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCase
+  fixtures :companies
+
+  def test_invalid_adding
+    firm = Firm.find(1)
+    assert !(firm.clients_of_firm << c = Client.new)
+    assert c.new_record?
+    assert !firm.valid?
+    assert !firm.save
+    assert c.new_record?
+  end
+
+  def test_invalid_adding_before_save
+    no_of_firms = Firm.count
+    no_of_clients = Client.count
+    new_firm = Firm.new("name" => "A New Firm, Inc")
+    new_firm.clients_of_firm.concat([c = Client.new, Client.new("name" => "Apple")])
+    assert c.new_record?
+    assert !c.valid?
+    assert !new_firm.valid?
+    assert !new_firm.save
+    assert c.new_record?
+    assert new_firm.new_record?
+  end
+
+  def test_invalid_adding_with_validate_false
+    firm = Firm.find(:first)
+    client = Client.new
+    firm.unvalidated_clients_of_firm << client
+
+    assert firm.valid?
+    assert !client.valid?
+    assert firm.save
+    assert client.new_record?
+  end
+
+  def test_valid_adding_with_validate_false
+    no_of_clients = Client.count
+
+    firm = Firm.find(:first)
+    client = Client.new("name" => "Apple")
+
+    assert firm.valid?
+    assert client.valid?
+    assert client.new_record?
+
+    firm.unvalidated_clients_of_firm << client
+
+    assert firm.save
+    assert !client.new_record?
+    assert_equal no_of_clients+1, Client.count
+  end
+
+  def test_invalid_build
+    new_client = companies(:first_firm).clients_of_firm.build
+    assert new_client.new_record?
+    assert !new_client.valid?
+    assert_equal new_client, companies(:first_firm).clients_of_firm.last
+    assert !companies(:first_firm).save
+    assert new_client.new_record?
+    assert_equal 1, companies(:first_firm).clients_of_firm(true).size
   end
 end
 
