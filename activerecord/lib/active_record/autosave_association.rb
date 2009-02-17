@@ -130,8 +130,6 @@ module ActiveRecord
         base.extend(ClassMethods)
 
         alias_method_chain :reload, :autosave_associations
-        alias_method_chain :save,   :autosave_associations
-        alias_method_chain :save!,  :autosave_associations
 
         %w{ has_one belongs_to has_many has_and_belongs_to_many }.each do |type|
           base.send("valid_keys_for_#{type}_association") << :autosave
@@ -140,8 +138,13 @@ module ActiveRecord
     end
 
     module ClassMethods
+      # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
+
       def add_single_associated_validation_callbacks(reflection)
-        method_name = "validate_associated_records_for_#{reflection.name}".to_sym
+        # TODO: move to the enable_autosave_on_one_to_one_association
+        add_single_associated_save_callbacks(reflection) if reflection.options[:autosave]
+
+        method_name = "validate_associated_records_for_#{reflection.name}"
         define_method(method_name) do
           if (association = association_instance_get(reflection.name)) && !association.target.nil?
             autosave_association_valid?(reflection, association)
@@ -151,9 +154,8 @@ module ActiveRecord
         validate method_name
       end
 
-      # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
       def add_multiple_associated_validation_callbacks(reflection)
-        method_name = "validate_associated_records_for_#{reflection.name}".to_sym
+        method_name = "validate_associated_records_for_#{reflection.name}"
         define_method(method_name) do
           autosave = reflection.options[:autosave]
           if association = association_instance_get(reflection.name)
@@ -172,17 +174,38 @@ module ActiveRecord
         validate method_name
       end
 
+      # Saves the parent, <tt>self</tt>, and any loaded autosave associations.
+      # In addition, it destroys all children that were marked for destruction
+      # with mark_for_destruction.
+      #
+      # This all happens inside a transaction, _if_ the Transactions module is included into
+      # ActiveRecord::Base after the AutosaveAssociation module, which it does by default.
+
+      # TODO: Merge inline autosave code from Associations has_one & belongs_to
+      def add_single_associated_save_callbacks(reflection)
+        method_name = "after_create_or_update_associated_records_for_#{reflection.name}"
+        define_method(method_name) do
+          if (association = association_instance_get(reflection.name)) && !association.target.nil?
+            association.marked_for_destruction? ? association.destroy : association.save(false)
+          end
+        end
+
+        # Doesn't use after_save as that would save associations added in after_create/after_update twice
+        after_create method_name
+        after_update method_name
+      end
+
       def add_multiple_associated_save_callbacks(reflection)
         association_name = reflection.name
 
-        method_name = "before_save_associated_records_for_#{association_name}".to_sym
+        method_name = "before_save_associated_records_for_#{association_name}"
         define_method(method_name) do
           @new_record_before_save = new_record?
           true
         end
         before_save method_name
 
-        method_name = "after_create_or_update_associated_records_for_#{association_name}".to_sym
+        method_name = "after_create_or_update_associated_records_for_#{association_name}"
         define_method(method_name) do
           association = association_instance_get(association_name)
           autosave = reflection.options[:autosave]
@@ -218,30 +241,6 @@ module ActiveRecord
         # Doesn't use after_save as that would save associations added in after_create/after_update twice
         after_create method_name
         after_update method_name
-      end
-    end
-
-    # Saves the parent, <tt>self</tt>, and any loaded autosave associations.
-    # In addition, it destroys all children that were marked for destruction
-    # with mark_for_destruction.
-    #
-    # This all happens inside a transaction, _if_ the Transactions module is included into
-    # ActiveRecord::Base after the AutosaveAssociation module, which it does by default.
-    def save_with_autosave_associations(perform_validation = true)
-      returning(save_without_autosave_associations(perform_validation)) do |valid|
-        if valid
-          self.class.reflect_on_all_autosave_associations.each do |reflection|
-            if (association = association_instance_get(reflection.name)) && association.loaded?
-              if association.is_a?(Array)
-                # association.proxy_target.each do |child|
-                #   child.marked_for_destruction? ? child.destroy : child.save(false)
-                # end
-              else
-                association.marked_for_destruction? ? association.destroy : association.save(false)
-              end
-            end
-          end
-        end
       end
     end
 
