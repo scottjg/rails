@@ -244,17 +244,6 @@ module ActiveRecord
       end
     end
 
-    # Attempts to save the record just like save_with_autosave_associations but
-    # will raise a RecordInvalid exception instead of returning false if the
-    # record is not valid.
-    def save_with_autosave_associations!
-      if valid?
-        save_with_autosave_associations(false) || raise(RecordNotSaved)
-      else
-        raise RecordInvalid.new(self)
-      end
-    end
-
     # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.
     def autosave_association_valid?(reflection, association)
       unless (parent_valid = association.valid?)
