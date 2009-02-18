@@ -195,6 +195,18 @@ module ActiveRecord
         after_update method_name
       end
 
+      def add_has_one_associated_save_callbacks(reflection)
+        method_name = "has_one_after_save_for_#{reflection.name}"
+        define_method(method_name) do
+          association = association_instance_get(reflection.name)
+          if association && (new_record? || association.new_record? || association[reflection.primary_key_name] != id)
+            association[reflection.primary_key_name] = id
+            association.save(true)
+          end
+        end
+        after_save method_name
+      end
+
       def add_multiple_associated_save_callbacks(reflection)
         association_name = reflection.name
 

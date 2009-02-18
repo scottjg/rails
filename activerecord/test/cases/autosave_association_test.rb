@@ -11,6 +11,9 @@ require 'models/ship'
 require 'models/ship_part'
 require 'models/treasure'
 
+# TODO:
+# - add test case for new parent and children with invalid data and saving with validate = false
+
 class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
   def test_autosave_should_be_a_valid_option_for_has_one
     assert base.valid_keys_for_has_one_association.include?(:autosave)
@@ -57,6 +60,69 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
     assert !firm.unvalidated_account.valid?
     assert firm.valid?
     assert firm.save
+  end
+
+  def test_build_before_child_saved
+    firm = Firm.find(1)
+
+    account = firm.account.build("credit_limit" => 1000)
+    assert_equal account, firm.account
+    assert account.new_record?
+    assert firm.save
+    assert_equal account, firm.account
+    assert !account.new_record?
+  end
+
+  def test_build_before_either_saved
+    firm = Firm.new("name" => "GlobalMegaCorp")
+
+    firm.account = account = Account.new("credit_limit" => 1000)
+    assert_equal account, firm.account
+    assert account.new_record?
+    assert firm.save
+    assert_equal account, firm.account
+    assert !account.new_record?
+  end
+
+  def test_assignment_before_parent_saved
+    firm = Firm.new("name" => "GlobalMegaCorp")
+    firm.account = a = Account.find(1)
+    assert firm.new_record?
+    assert_equal a, firm.account
+    assert firm.save
+    assert_equal a, firm.account
+    assert_equal a, firm.account(true)
+  end
+
+  def test_assignment_before_either_saved
+    firm = Firm.new("name" => "GlobalMegaCorp")
+    firm.account = a = Account.new("credit_limit" => 1000)
+    assert firm.new_record?
+    assert a.new_record?
+    assert_equal a, firm.account
+    assert firm.save
+    assert !firm.new_record?
+    assert !a.new_record?
+    assert_equal a, firm.account
+    assert_equal a, firm.account(true)
+  end
+
+  def test_not_resaved_when_unchanged
+    firm = Firm.find(:first, :include => :account)
+    firm.name += '-changed'
+    assert_queries(1) { firm.save! }
+
+    firm = Firm.find(:first)
+    firm.account = Account.find(:first)
+    assert_queries(Firm.partial_updates? ? 0 : 1) { firm.save! }
+
+    firm = Firm.find(:first).clone
+    firm.account = Account.find(:first)
+    assert_queries(2) { firm.save! }
+
+    firm = Firm.find(:first).clone
+    firm.account = Account.find(:first).clone
+    assert_queries(2) { firm.save! }
   end
 end
 

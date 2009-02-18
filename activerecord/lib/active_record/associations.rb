@@ -903,16 +903,7 @@ module ActiveRecord
         else
           reflection = create_has_one_reflection(association_id, options)
 
-          method_name = "has_one_after_save_for_#{reflection.name}".to_sym
-          define_method(method_name) do
-            association = association_instance_get(reflection.name)
-            if association && (new_record? || association.new_record? || association[reflection.primary_key_name] != id)
-              association[reflection.primary_key_name] = id
-              association.save(true)
-            end
-          end
-          after_save method_name
-
+          add_has_one_associated_save_callbacks(reflection)
           add_single_associated_validation_callbacks(reflection) if options[:validate] == true || options[:autosave] == true
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
