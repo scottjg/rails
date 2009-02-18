@@ -156,16 +156,18 @@ module ActiveRecord
       def add_multiple_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}"
         define_method(method_name) do
-          autosave = reflection.options[:autosave]
-          if association = association_instance_get(reflection.name)
-            if new_record?
-              association
-            elsif association.loaded?
-              autosave ? association : association.select { |record| record.new_record? }
-            else
-              autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
-            end.each do |record|
-              autosave_association_valid?(reflection, record)
+          unless reflection.options[:validate] == false
+            autosave = reflection.options[:autosave]
+            if association = association_instance_get(reflection.name)
+              if new_record?
+                association
+              elsif association.loaded?
+                autosave ? association : association.select { |record| record.new_record? }
+              else
+                autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
+              end.each do |record|
+                autosave_association_valid?(reflection, record)
+              end
             end
           end
         end
