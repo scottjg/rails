@@ -1,7 +1,9 @@
 require 'cases/helper'
 require 'models/bird'
 require 'models/company'
+require 'models/customer'
 require 'models/developer'
+require 'models/order'
 require 'models/parrot'
 require 'models/person'
 require 'models/pirate'
@@ -144,6 +146,114 @@ class TestDefaultAutosaveAssociationOnABelongsToAssociation < ActiveRecord::Test
     assert !log.unvalidated_developer.valid?
     assert log.valid?
     assert log.save
+  end
+
+  def test_assignment_before_parent_saved
+    client = Client.find(:first)
+    apple = Firm.new("name" => "Apple")
+    client.firm = apple
+    assert_equal apple, client.firm
+    assert apple.new_record?
+    assert client.save
+    assert apple.save
+    assert !apple.new_record?
+    assert_equal apple, client.firm
+    assert_equal apple, client.firm(true)
+  end
+
+  def test_assignment_before_either_saved
+    final_cut = Client.new("name" => "Final Cut")
+    apple = Firm.new("name" => "Apple")
+    final_cut.firm = apple
+    assert final_cut.new_record?
+    assert apple.new_record?
+    assert final_cut.save
+    assert !final_cut.new_record?
+    assert !apple.new_record?
+    assert_equal apple, final_cut.firm
+    assert_equal apple, final_cut.firm(true)
+  end
+
+  def test_store_two_association_with_one_save
+    num_orders = Order.count
+    num_customers = Customer.count
+    order = Order.new
+
+    customer1 = order.billing = Customer.new
+    customer2 = order.shipping = Customer.new
+    assert order.save
+    assert_equal customer1, order.billing
+    assert_equal customer2, order.shipping
+
+    order.reload
+
+    assert_equal customer1, order.billing
+    assert_equal customer2, order.shipping
+
+    assert_equal num_orders +1, Order.count
+    assert_equal num_customers +2, Customer.count
+  end
+
+  def test_store_association_in_two_relations_with_one_save
+    num_orders = Order.count
+    num_customers = Customer.count
+    order = Order.new
+
+    customer = order.billing = order.shipping = Customer.new
+    assert order.save
+    assert_equal customer, order.billing
+    assert_equal customer, order.shipping
+
+    order.reload
+
+    assert_equal customer, order.billing
+    assert_equal customer, order.shipping
+
+    assert_equal num_orders +1, Order.count
+    assert_equal num_customers +1, Customer.count
+  end
+
+  def test_store_association_in_two_relations_with_one_save_in_existing_object
+    num_orders = Order.count
+    num_customers = Customer.count
+    order = Order.create
+
+    customer = order.billing = order.shipping = Customer.new
+    assert order.save
+    assert_equal customer, order.billing
+    assert_equal customer, order.shipping
+
+    order.reload
+
+    assert_equal customer, order.billing
+    assert_equal customer, order.shipping
+
+    assert_equal num_orders +1, Order.count
+    assert_equal num_customers +1, Customer.count
+  end
+
+  def test_store_association_in_two_relations_with_one_save_in_existing_object_with_values
+    num_orders = Order.count
+    num_customers = Customer.count
+    order = Order.create
+
+    customer = order.billing = order.shipping = Customer.new
+    assert order.save
+    assert_equal customer, order.billing
+    assert_equal customer, order.shipping
+
+    order.reload
+
+    customer = order.billing = order.shipping = Customer.new
+
+    assert order.save
+    order.reload
+
+    assert_equal customer, order.billing
+    assert_equal customer, order.shipping
+
+    assert_equal num_orders +1, Order.count
+    assert_equal num_customers +2, Customer.count
   end
 end
 

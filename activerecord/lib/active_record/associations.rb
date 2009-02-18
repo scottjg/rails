@@ -1002,42 +1002,14 @@ module ActiveRecord
       def belongs_to(association_id, options = {})
         reflection = create_belongs_to_reflection(association_id, options)
 
+        add_belongs_to_associated_save_callbacks(reflection)
+
         if reflection.options[:polymorphic]
           association_accessor_methods(reflection, BelongsToPolymorphicAssociation)
-
-          method_name = "polymorphic_belongs_to_before_save_for_#{reflection.name}".to_sym
-          define_method(method_name) do
-            association = association_instance_get(reflection.name)
-            if association && association.target
-              if association.new_record?
-                association.save(true)
-              end
-
-              if association.updated?
-                self[reflection.primary_key_name] = association.id
-                self[reflection.options[:foreign_type]] = association.class.base_class.name.to_s
-              end
-            end
-          end
-          before_save method_name
         else
           association_accessor_methods(reflection, BelongsToAssociation)
           association_constructor_method(:build,  reflection, BelongsToAssociation)
           association_constructor_method(:create, reflection, BelongsToAssociation)
-
-          method_name = "belongs_to_before_save_for_#{reflection.name}".to_sym
-          define_method(method_name) do
-            if association = association_instance_get(reflection.name)
-              if association.new_record?
-                association.save(true)
-              end
-
-              if association.updated?
-                self[reflection.primary_key_name] = association.id
-              end
-            end
-          end
-          before_save method_name
         end
 
         # Create the callbacks to update counter cache
