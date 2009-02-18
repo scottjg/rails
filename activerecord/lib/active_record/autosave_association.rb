@@ -208,39 +208,21 @@ module ActiveRecord
       end
 
       def add_belongs_to_associated_save_callbacks(reflection)
-        if reflection.options[:polymorphic]
-          # FIXME: NO TESTS FAIL WHEN DISABLING THIS CODE!
-          method_name = "polymorphic_belongs_to_before_save_for_#{reflection.name}"
-          define_method(method_name) do
-            association = association_instance_get(reflection.name)
-            if association && association.target
-              if association.new_record?
-                association.save(true)
-              end
+        method_name = "belongs_to_before_save_for_#{reflection.name}"
+        define_method(method_name) do
+          if association = association_instance_get(reflection.name)
+            association.save(true) if association.new_record?
 
-              if association.updated?
-                self[reflection.primary_key_name] = association.id
-                # This seems to be the only difference.
+            if association.updated?
+              self[reflection.primary_key_name] = association.id
+              # Removing this code doesn't seem to matter…
+              if reflection.options[:polymorphic]
                 self[reflection.options[:foreign_type]] = association.class.base_class.name.to_s
               end
             end
           end
-          before_save method_name
-        else
-          method_name = "belongs_to_before_save_for_#{reflection.name}"
-          define_method(method_name) do
-            if association = association_instance_get(reflection.name)
-              if association.new_record?
-                association.save(true)
-              end
-          
-              if association.updated?
-                self[reflection.primary_key_name] = association.id
-              end
-            end
-          end
-          before_save method_name
         end
+        before_save method_name
       end
 
       def add_multiple_associated_save_callbacks(reflection)
