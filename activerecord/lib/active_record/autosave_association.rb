@@ -220,18 +220,16 @@ module ActiveRecord
       end
 
       def add_multiple_associated_save_callbacks(reflection)
-        association_name = reflection.name
-
-        method_name = "before_save_associated_records_for_#{association_name}"
+        method_name = "before_save_associated_records_for_#{reflection.name}"
         define_method(method_name) do
           @new_record_before_save = new_record?
           true
         end
         before_save method_name
 
-        method_name = "after_create_or_update_associated_records_for_#{association_name}"
+        method_name = "after_create_or_update_associated_records_for_#{reflection.name}"
         define_method(method_name) do
-          if association = association_instance_get(association_name)
+          if association = association_instance_get(reflection.name)
             autosave = reflection.options[:autosave]
 
             records_to_save = if @new_record_before_save
