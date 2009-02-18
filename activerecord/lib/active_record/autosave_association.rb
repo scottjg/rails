@@ -231,35 +231,30 @@ module ActiveRecord
 
         method_name = "after_create_or_update_associated_records_for_#{association_name}"
         define_method(method_name) do
-          association = association_instance_get(association_name)
-          autosave = reflection.options[:autosave]
+          if association = association_instance_get(association_name)
+            autosave = reflection.options[:autosave]
 
-          records_to_save = if @new_record_before_save
-            association
-          elsif association && association.loaded?
-            autosave ? association : association.select { |record| record.new_record? }
-          elsif association && !association.loaded?
-            autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
-          else
-            []
-          end
+            records_to_save = if @new_record_before_save
+              association
+            elsif association.loaded?
+              autosave ? association : association.select { |record| record.new_record? }
+            elsif !association.loaded?
+              autosave ? association.target : association.target.select { |record| record.new_record? }
+            end
 
-          unless records_to_save.blank?
             records_to_save.each do |record|
               if autosave && record.marked_for_destruction?
                 record.destroy
-              else
-                if @new_record_before_save || record.new_record?
-                  association.send(:insert_record, record)
-                else
-                  record.save(false)
-                end
+              elsif @new_record_before_save || record.new_record?
+                association.send(:insert_record, record)
+              elsif autosave
+                record.save(false)
               end
-            end
-          end
+            end if records_to_save
 
-          # reconstruct the SQL queries now that we know the owner's id
-          association.send(:construct_sql) if association.respond_to?(:construct_sql)
+            # reconstruct the SQL queries now that we know the owner's id
+            association.send(:construct_sql) if association.respond_to?(:construct_sql)
+          end
         end
 
         # Doesn't use after_save as that would save associations added in after_create/after_update twice
