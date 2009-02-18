@@ -142,6 +142,7 @@ module ActiveRecord
 
       def add_single_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}"
+
         define_method(method_name) do
           if reflection.options[:validate] == true || reflection.options[:autosave] == true
             if (association = association_instance_get(reflection.name)) && !association.target.nil?
@@ -155,6 +156,7 @@ module ActiveRecord
 
       def add_multiple_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}"
+
         define_method(method_name) do
           if reflection.options[:validate] != false && association = association_instance_get(reflection.name)
             autosave = reflection.options[:autosave]
@@ -182,6 +184,7 @@ module ActiveRecord
 
       def add_has_one_associated_save_callbacks(reflection)
         method_name = "has_one_after_save_for_#{reflection.name}"
+
         define_method(method_name) do
           if association = association_instance_get(reflection.name)
             if reflection.options[:autosave] && association.marked_for_destruction?
@@ -192,11 +195,13 @@ module ActiveRecord
             end
           end
         end
+
         after_save method_name
       end
 
       def add_belongs_to_associated_save_callbacks(reflection)
         method_name = "belongs_to_before_save_for_#{reflection.name}"
+
         define_method(method_name) do
           if association = association_instance_get(reflection.name)
             if reflection.options[:autosave] && association.marked_for_destruction?
@@ -216,6 +221,7 @@ module ActiveRecord
             end
           end
         end
+
         before_save method_name
       end
 
@@ -254,7 +260,6 @@ module ActiveRecord
             association.send(:construct_sql) if association.respond_to?(:construct_sql)
           end
         end
-
         # Doesn't use after_save as that would save associations added in after_create/after_update twice
         after_create method_name
         after_update method_name
@@ -263,7 +268,7 @@ module ActiveRecord
 
     # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.
     def autosave_association_valid?(reflection, association)
-      unless (parent_valid = association.valid?)
+      unless parent_valid = association.valid?
         if reflection.options[:autosave]
           association.errors.each do |attribute, message|
             attribute = "#{reflection.name}_#{attribute}"
