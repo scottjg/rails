@@ -904,7 +904,7 @@ module ActiveRecord
           reflection = create_has_one_reflection(association_id, options)
 
           add_has_one_associated_save_callbacks(reflection)
-          add_single_associated_validation_callbacks(reflection) if options[:validate] == true || options[:autosave] == true
+          add_single_associated_validation_callbacks(reflection)
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
           association_constructor_method(:create, reflection, HasOneAssociation)
@@ -1036,7 +1036,7 @@ module ActiveRecord
         end
 
         add_belongs_to_associated_save_callbacks(reflection)
-        add_single_associated_validation_callbacks(reflection) if options[:validate] == true || options[:autosave] == true
+        add_single_associated_validation_callbacks(reflection)
 
         configure_dependency_for_belongs_to(reflection)
       end

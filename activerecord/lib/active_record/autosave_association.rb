@@ -143,8 +143,10 @@ module ActiveRecord
       def add_single_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}"
         define_method(method_name) do
-          if (association = association_instance_get(reflection.name)) && !association.target.nil?
-            autosave_association_valid?(reflection, association)
+          if reflection.options[:validate] == true || reflection.options[:autosave] == true
+            if (association = association_instance_get(reflection.name)) && !association.target.nil?
+              autosave_association_valid?(reflection, association)
+            end
           end
         end
 
