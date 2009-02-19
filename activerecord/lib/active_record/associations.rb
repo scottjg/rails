@@ -787,10 +787,7 @@ module ActiveRecord
       #       'ORDER BY p.first_name'
       def has_many(association_id, options = {}, &extension)
         reflection = create_has_many_reflection(association_id, options, &extension)
-
         configure_dependency_for_has_many(reflection)
-
-        add_autosave_association_callbacks(reflection)
         add_association_callbacks(reflection.name, reflection.options)
 
         if options[:through]
@@ -875,10 +872,10 @@ module ActiveRecord
       # [:source]
       #   Specifies the source association name used by <tt>has_one :through</tt> queries.  Only use it if the name cannot be
       #   inferred from the association.  <tt>has_one :favorite, :through => :favorites</tt> will look for a
-      #   <tt>:favorite</tt> on Favorite, unless a <tt>:source</tt> is given.      
+      #   <tt>:favorite</tt> on Favorite, unless a <tt>:source</tt> is given.
       # [:source_type]
       #   Specifies type of the source association used by <tt>has_one :through</tt> queries where the source
-      #   association is a polymorphic +belongs_to+.      
+      #   association is a polymorphic +belongs_to+.
       # [:readonly]
       #   If true, the associated object is readonly through the association.
       # [:validate]
@@ -901,12 +898,9 @@ module ActiveRecord
           association_accessor_methods(reflection, ActiveRecord::Associations::HasOneThroughAssociation)
         else
           reflection = create_has_one_reflection(association_id, options)
-
-          add_autosave_association_callbacks(reflection)
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
           association_constructor_method(:create, reflection, HasOneAssociation)
-
           configure_dependency_for_has_one(reflection)
         end
       end
@@ -1033,7 +1027,6 @@ module ActiveRecord
           )
         end
 
-        add_autosave_association_callbacks(reflection)
         configure_dependency_for_belongs_to(reflection)
       end
 
@@ -1199,8 +1192,6 @@ module ActiveRecord
       #   'DELETE FROM developers_projects WHERE active=1 AND developer_id = #{id} AND project_id = #{record.id}'
       def has_and_belongs_to_many(association_id, options = {}, &extension)
         reflection = create_has_and_belongs_to_many_reflection(association_id, options, &extension)
-
-        add_autosave_association_callbacks(reflection)
         collection_accessor_methods(reflection, HasAndBelongsToManyAssociation)
 
         # Don't use a before_destroy callback since users' before_destroy

@@ -125,19 +125,35 @@ module ActiveRecord
   #   post.author.name = ''
   #   post.save(false) # => true
   module AutosaveAssociation
+    ASSOCIATION_TYPES = %w{ has_one belongs_to has_many has_and_belongs_to_many }
+
     def self.included(base)
       base.class_eval do
         base.extend(ClassMethods)
-
         alias_method_chain :reload, :autosave_associations
 
-        %w{ has_one belongs_to has_many has_and_belongs_to_many }.each do |type|
+        ASSOCIATION_TYPES.each do |type|
           base.send("valid_keys_for_#{type}_association") << :autosave
         end
       end
     end
 
     module ClassMethods
+      private
+
+      # def belongs_to(name, options = {})
+      #   super
+      #   add_autosave_association_callbacks(reflect_on_association(name))
+      # end
+      ASSOCIATION_TYPES.each do |type|
+        module_eval %{
+          def #{type}(name, options = {})
+            super
+            add_autosave_association_callbacks(reflect_on_association(name))
+          end
+        }
+      end
+
       def add_autosave_association_callbacks(reflection)
         save_method = "autosave_associated_records_for_#{reflection.name}"
         validation_method = "validate_associated_records_for_#{reflection.name}"
@@ -166,6 +182,29 @@ module ActiveRecord
         end
       end
     end
+
+    # Reloads the attributes of the object as usual and removes a mark for destruction.
+    def reload_with_autosave_associations(options = nil)
+      @marked_for_destruction = false
+      reload_without_autosave_associations(options)
+    end
+
+    # Marks this record to be destroyed as part of the parents save transaction.
+    # This does _not_ actually destroy the record yet, rather it will be destroyed when <tt>parent.save</tt> is called.
+    #
+    # Only useful if the <tt>:autosave</tt> option on the parent is enabled for this associated model.
+    def mark_for_destruction
+      @marked_for_destruction = true
+    end
+
+    # Returns whether or not this record will be destroyed as part of the parents save transaction.
+    #
+    # Only useful if the <tt>:autosave</tt> option on the parent is enabled for this associated model.
+    def marked_for_destruction?
+      @marked_for_destruction
+    end
+
+    private
 
     def associated_records_to_validate_or_save(association, new_record, autosave)
       if new_record
@@ -260,34 +299,13 @@ module ActiveRecord
 
           if association.updated?
             self[reflection.primary_key_name] = association.id
-            # Removing this code doesn't seem to matter…
+            # TODO: Removing this code doesn't seem to matter…
             if reflection.options[:polymorphic]
               self[reflection.options[:foreign_type]] = association.class.base_class.name.to_s
             end
           end
         end
       end
-    end
-
-    # Reloads the attributes of the object as usual and removes a mark for destruction.
-    def reload_with_autosave_associations(options = nil)
-      @marked_for_destruction = false
-      reload_without_autosave_associations(options)
-    end
-
-    # Marks this record to be destroyed as part of the parents save transaction.
-    # This does _not_ actually destroy the record yet, rather it will be destroyed when <tt>parent.save</tt> is called.
-    #
-    # Only useful if the <tt>:autosave</tt> option on the parent is enabled for this associated model.
-    def mark_for_destruction
-      @marked_for_destruction = true
-    end
-
-    # Returns whether or not this record will be destroyed as part of the parents save transaction.
-    #
-    # Only useful if the <tt>:autosave</tt> option on the parent is enabled for this associated model.
-    def marked_for_destruction?
-      @marked_for_destruction
     end
   end
 end
