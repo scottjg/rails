@@ -171,10 +171,11 @@ module ActiveRecord
 
           define_method(validation_method) { validate_collection_association(reflection) }
         else
-          if reflection.macro == :has_one
+          case reflection.macro
+          when :has_one
             define_method(save_method) { save_has_one_association(reflection) }
             after_save save_method
-          elsif reflection.macro == :belongs_to
+          when :belongs_to
             define_method(save_method) { save_belongs_to_association(reflection) }
             before_save save_method
           end
