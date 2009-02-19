@@ -139,32 +139,25 @@ module ActiveRecord
 
     module ClassMethods
       def add_autosave_association_callbacks(reflection)
+        validation_method = "validate_associated_records_for_#{reflection.name}"
+        
         case reflection.macro
         when :has_many, :has_and_belongs_to_many
-          add_multiple_associated_validation_callbacks(reflection)
+          define_method(validation_method) { validate_collection_association(reflection) }
           add_multiple_associated_save_callbacks(reflection)
-          return
-        when :has_one
-          add_has_one_associated_save_callbacks(reflection)
-        when :belongs_to
-          add_belongs_to_associated_save_callbacks(reflection)
+        else
+          case reflection.macro
+          when :has_one
+            add_has_one_associated_save_callbacks(reflection)
+          when :belongs_to
+            add_belongs_to_associated_save_callbacks(reflection)
+          end
+          define_method(validation_method) { validate_single_association(reflection) }
         end
-        add_single_associated_validation_callbacks(reflection)
+        validate validation_method
       end
 
       # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
-
-      def add_single_associated_validation_callbacks(reflection)
-        method_name = "validate_associated_records_for_#{reflection.name}"
-        define_method(method_name) { validate_single_association(reflection) }
-        validate method_name
-      end
-
-      def add_multiple_associated_validation_callbacks(reflection)
-        method_name = "validate_associated_records_for_#{reflection.name}"
-        define_method(method_name) { validate_collection_association(reflection) }
-        validate method_name
-      end
 
       def add_has_one_associated_save_callbacks(reflection)
         method_name = "has_one_after_save_for_#{reflection.name}"
