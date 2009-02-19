@@ -139,25 +139,21 @@ module ActiveRecord
 
     module ClassMethods
       def add_autosave_association_callbacks(reflection)
-        validation_method = "validate_associated_records_for_#{reflection.name}"
-        
+        validate(validation_method = "validate_associated_records_for_#{reflection.name}")
+
         case reflection.macro
         when :has_many, :has_and_belongs_to_many
           define_method(validation_method) { validate_collection_association(reflection) }
           add_multiple_associated_save_callbacks(reflection)
         else
-          case reflection.macro
-          when :has_one
+          if reflection.macro == :has_one
             add_has_one_associated_save_callbacks(reflection)
-          when :belongs_to
+          else
             add_belongs_to_associated_save_callbacks(reflection)
           end
           define_method(validation_method) { validate_single_association(reflection) }
         end
-        validate validation_method
       end
-
-      # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
 
       def add_has_one_associated_save_callbacks(reflection)
         method_name = "has_one_after_save_for_#{reflection.name}"
@@ -183,6 +179,16 @@ module ActiveRecord
       end
     end
 
+    def associated_records_to_validate_or_save(association, new_record, autosave)
+      if new_record
+        association
+      elsif association.loaded?
+        autosave ? association : association.select { |record| record.new_record? }
+      else
+        autosave ? association.target : association.target.select { |record| record.new_record? }
+      end
+    end
+
     def validate_single_association(reflection)
       if reflection.options[:validate] == true || reflection.options[:autosave] == true
         if (association = association_instance_get(reflection.name)) && !association.target.nil?
@@ -193,15 +199,8 @@ module ActiveRecord
 
     def validate_collection_association(reflection)
       if reflection.options[:validate] != false && association = association_instance_get(reflection.name)
-        autosave = reflection.options[:autosave]
-        if new_record?
-          association
-        elsif association.loaded?
-          autosave ? association : association.select { |record| record.new_record? }
-        else
-          autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
-        end.each do |record|
-          association_valid?(reflection, record)
+        if records = associated_records_to_validate_or_save(association, new_record?, reflection.options[:autosave])
+          records.each { |record| association_valid?(reflection, record) }
         end
       end
     end
@@ -236,23 +235,17 @@ module ActiveRecord
       if association = association_instance_get(reflection.name)
         autosave = reflection.options[:autosave]
 
-        records_to_save = if @new_record_before_save
-          association
-        elsif association.loaded?
-          autosave ? association : association.select { |record| record.new_record? }
-        elsif !association.loaded?
-          autosave ? association.target : association.target.select { |record| record.new_record? }
-        end
-
-        records_to_save.each do |record|
-          if autosave && record.marked_for_destruction?
-            record.destroy
-          elsif @new_record_before_save || record.new_record?
-            association.send(:insert_record, record)
-          elsif autosave
-            record.save(false)
+        if records = associated_records_to_validate_or_save(association, @new_record_before_save, autosave)
+          records.each do |record|
+            if autosave && record.marked_for_destruction?
+              record.destroy
+            elsif @new_record_before_save || record.new_record?
+              association.send(:insert_record, record)
+            elsif autosave
+              record.save(false)
+            end
           end
-        end if records_to_save
+        end
 
         # reconstruct the SQL queries now that we know the owner's id
         association.send(:construct_sql) if association.respond_to?(:construct_sql)
@@ -275,9 +268,7 @@ module ActiveRecord
         if reflection.options[:autosave] && association.marked_for_destruction?
           association.destroy
         else
-          if association.new_record? || reflection.options[:autosave]
-            association.save(false)
-          end
+          association.save(false) if association.new_record? || reflection.options[:autosave]
 
           if association.updated?
             self[reflection.primary_key_name] = association.id
