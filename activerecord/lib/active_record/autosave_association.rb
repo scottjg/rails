@@ -179,12 +179,8 @@ module ActiveRecord
       end
 
       def add_multiple_associated_save_callbacks(reflection)
-        method_name = "before_save_associated_records_for_#{reflection.name}"
-        define_method(method_name) do
-          @new_record_before_save = new_record?
-          true
-        end
-        before_save method_name
+        # TODO: make sure this method isn't added to the before_save callbacks multiple times.
+        before_save :before_save_collection_association
 
         method_name = "after_create_or_update_associated_records_for_#{reflection.name}"
         define_method(method_name) { save_collection_association(reflection) }
@@ -197,7 +193,7 @@ module ActiveRecord
     def validate_single_association(reflection)
       if reflection.options[:validate] == true || reflection.options[:autosave] == true
         if (association = association_instance_get(reflection.name)) && !association.target.nil?
-          autosave_association_valid?(reflection, association)
+          association_valid?(reflection, association)
         end
       end
     end
@@ -212,13 +208,13 @@ module ActiveRecord
         else
           autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
         end.each do |record|
-          autosave_association_valid?(reflection, record)
+          association_valid?(reflection, record)
         end
       end
     end
 
     # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.
-    def autosave_association_valid?(reflection, association)
+    def association_valid?(reflection, association)
       unless valid = association.valid?
         if reflection.options[:autosave]
           association.errors.each do |attribute, message|
@@ -230,6 +226,11 @@ module ActiveRecord
         end
       end
       valid
+    end
+
+    def before_save_collection_association
+      @new_record_before_save = new_record?
+      true
     end
 
     # Saves the parent, <tt>self</tt>, and any loaded autosave associations.
