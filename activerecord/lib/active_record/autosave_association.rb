@@ -139,43 +139,31 @@ module ActiveRecord
 
     module ClassMethods
       def add_autosave_association_callbacks(reflection)
-        validate(validation_method = "validate_associated_records_for_#{reflection.name}")
+        save_method = "autosave_associated_records_for_#{reflection.name}"
+        validation_method = "validate_associated_records_for_#{reflection.name}"
+        validate validation_method
 
         case reflection.macro
         when :has_many, :has_and_belongs_to_many
+          # TODO: make sure this method isn't added to the before_save callbacks multiple times.
+          before_save :before_save_collection_association
+
+          define_method(save_method) { save_collection_association(reflection) }
+          # Doesn't use after_save as that would save associations added in after_create/after_update twice
+          after_create save_method
+          after_update save_method
+
           define_method(validation_method) { validate_collection_association(reflection) }
-          add_multiple_associated_save_callbacks(reflection)
         else
           if reflection.macro == :has_one
-            add_has_one_associated_save_callbacks(reflection)
-          else
-            add_belongs_to_associated_save_callbacks(reflection)
+            define_method(save_method) { save_has_one_association(reflection) }
+            after_save save_method
+          elsif reflection.macro == :belongs_to
+            define_method(save_method) { save_belongs_to_association(reflection) }
+            before_save save_method
           end
           define_method(validation_method) { validate_single_association(reflection) }
         end
-      end
-
-      def add_has_one_associated_save_callbacks(reflection)
-        method_name = "has_one_after_save_for_#{reflection.name}"
-        define_method(method_name) { save_has_one_association(reflection) }
-        after_save method_name
-      end
-
-      def add_belongs_to_associated_save_callbacks(reflection)
-        method_name = "belongs_to_before_save_for_#{reflection.name}"
-        define_method(method_name) { save_belongs_to_association(reflection) }
-        before_save method_name
-      end
-
-      def add_multiple_associated_save_callbacks(reflection)
-        # TODO: make sure this method isn't added to the before_save callbacks multiple times.
-        before_save :before_save_collection_association
-
-        method_name = "after_create_or_update_associated_records_for_#{reflection.name}"
-        define_method(method_name) { save_collection_association(reflection) }
-        # Doesn't use after_save as that would save associations added in after_create/after_update twice
-        after_create method_name
-        after_update method_name
       end
     end
 
