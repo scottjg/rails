@@ -156,36 +156,13 @@ module ActiveRecord
 
       def add_single_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}"
-
-        define_method(method_name) do
-          if reflection.options[:validate] == true || reflection.options[:autosave] == true
-            if (association = association_instance_get(reflection.name)) && !association.target.nil?
-              autosave_association_valid?(reflection, association)
-            end
-          end
-        end
-
+        define_method(method_name) { validate_single_association(reflection) }
         validate method_name
       end
 
       def add_multiple_associated_validation_callbacks(reflection)
         method_name = "validate_associated_records_for_#{reflection.name}"
-
-        define_method(method_name) do
-          if reflection.options[:validate] != false && association = association_instance_get(reflection.name)
-            autosave = reflection.options[:autosave]
-            if new_record?
-              association
-            elsif association.loaded?
-              autosave ? association : association.select { |record| record.new_record? }
-            else
-              autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
-            end.each do |record|
-              autosave_association_valid?(reflection, record)
-            end
-          end
-        end
-
+        define_method(method_name) { validate_collection_association(reflection) }
         validate method_name
       end
 
@@ -277,6 +254,29 @@ module ActiveRecord
         # Doesn't use after_save as that would save associations added in after_create/after_update twice
         after_create method_name
         after_update method_name
+      end
+    end
+
+    def validate_single_association(reflection)
+      if reflection.options[:validate] == true || reflection.options[:autosave] == true
+        if (association = association_instance_get(reflection.name)) && !association.target.nil?
+          autosave_association_valid?(reflection, association)
+        end
+      end
+    end
+
+    def validate_collection_association(reflection)
+      if reflection.options[:validate] != false && association = association_instance_get(reflection.name)
+        autosave = reflection.options[:autosave]
+        if new_record?
+          association
+        elsif association.loaded?
+          autosave ? association : association.select { |record| record.new_record? }
+        else
+          autosave ? (association.target || []) : association.target.select { |record| record.new_record? }
+        end.each do |record|
+          autosave_association_valid?(reflection, record)
+        end
       end
     end
 
