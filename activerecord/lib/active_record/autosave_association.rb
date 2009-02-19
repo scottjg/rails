@@ -166,53 +166,15 @@ module ActiveRecord
         validate method_name
       end
 
-      # Saves the parent, <tt>self</tt>, and any loaded autosave associations.
-      # In addition, it destroys all children that were marked for destruction
-      # with mark_for_destruction.
-      #
-      # This all happens inside a transaction, _if_ the Transactions module is included into
-      # ActiveRecord::Base after the AutosaveAssociation module, which it does by default.
-
       def add_has_one_associated_save_callbacks(reflection)
         method_name = "has_one_after_save_for_#{reflection.name}"
-
-        define_method(method_name) do
-          if association = association_instance_get(reflection.name)
-            if reflection.options[:autosave] && association.marked_for_destruction?
-              association.destroy
-            elsif new_record? || association.new_record? || association[reflection.primary_key_name] != id || reflection.options[:autosave]
-              association[reflection.primary_key_name] = id
-              association.save(false)
-            end
-          end
-        end
-
+        define_method(method_name) { save_has_one_association(reflection) }
         after_save method_name
       end
 
       def add_belongs_to_associated_save_callbacks(reflection)
         method_name = "belongs_to_before_save_for_#{reflection.name}"
-
-        define_method(method_name) do
-          if association = association_instance_get(reflection.name)
-            if reflection.options[:autosave] && association.marked_for_destruction?
-              association.destroy
-            else
-              if association.new_record? || reflection.options[:autosave]
-                association.save(false)
-              end
-
-              if association.updated?
-                self[reflection.primary_key_name] = association.id
-                # Removing this code doesn't seem to matter…
-                if reflection.options[:polymorphic]
-                  self[reflection.options[:foreign_type]] = association.class.base_class.name.to_s
-                end
-              end
-            end
-          end
-        end
-
+        define_method(method_name) { save_belongs_to_association(reflection) }
         before_save method_name
       end
 
@@ -225,32 +187,7 @@ module ActiveRecord
         before_save method_name
 
         method_name = "after_create_or_update_associated_records_for_#{reflection.name}"
-        define_method(method_name) do
-          if association = association_instance_get(reflection.name)
-            autosave = reflection.options[:autosave]
-
-            records_to_save = if @new_record_before_save
-              association
-            elsif association.loaded?
-              autosave ? association : association.select { |record| record.new_record? }
-            elsif !association.loaded?
-              autosave ? association.target : association.target.select { |record| record.new_record? }
-            end
-
-            records_to_save.each do |record|
-              if autosave && record.marked_for_destruction?
-                record.destroy
-              elsif @new_record_before_save || record.new_record?
-                association.send(:insert_record, record)
-              elsif autosave
-                record.save(false)
-              end
-            end if records_to_save
-
-            # reconstruct the SQL queries now that we know the owner's id
-            association.send(:construct_sql) if association.respond_to?(:construct_sql)
-          end
-        end
+        define_method(method_name) { save_collection_association(reflection) }
         # Doesn't use after_save as that would save associations added in after_create/after_update twice
         after_create method_name
         after_update method_name
@@ -282,7 +219,7 @@ module ActiveRecord
 
     # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.
     def autosave_association_valid?(reflection, association)
-      unless parent_valid = association.valid?
+      unless valid = association.valid?
         if reflection.options[:autosave]
           association.errors.each do |attribute, message|
             attribute = "#{reflection.name}_#{attribute}"
@@ -292,7 +229,71 @@ module ActiveRecord
           errors.add(reflection.name)
         end
       end
-      parent_valid
+      valid
+    end
+
+    # Saves the parent, <tt>self</tt>, and any loaded autosave associations.
+    # In addition, it destroys all children that were marked for destruction
+    # with mark_for_destruction.
+    #
+    # This all happens inside a transaction, _if_ the Transactions module is included into
+    # ActiveRecord::Base after the AutosaveAssociation module, which it does by default.
+    def save_collection_association(reflection)
+      if association = association_instance_get(reflection.name)
+        autosave = reflection.options[:autosave]
+
+        records_to_save = if @new_record_before_save
+          association
+        elsif association.loaded?
+          autosave ? association : association.select { |record| record.new_record? }
+        elsif !association.loaded?
+          autosave ? association.target : association.target.select { |record| record.new_record? }
+        end
+
+        records_to_save.each do |record|
+          if autosave && record.marked_for_destruction?
+            record.destroy
+          elsif @new_record_before_save || record.new_record?
+            association.send(:insert_record, record)
+          elsif autosave
+            record.save(false)
+          end
+        end if records_to_save
+
+        # reconstruct the SQL queries now that we know the owner's id
+        association.send(:construct_sql) if association.respond_to?(:construct_sql)
+      end
+    end
+
+    def save_has_one_association(reflection)
+      if association = association_instance_get(reflection.name)
+        if reflection.options[:autosave] && association.marked_for_destruction?
+          association.destroy
+        elsif new_record? || association.new_record? || association[reflection.primary_key_name] != id || reflection.options[:autosave]
+          association[reflection.primary_key_name] = id
+          association.save(false)
+        end
+      end
+    end
+
+    def save_belongs_to_association(reflection)
+      if association = association_instance_get(reflection.name)
+        if reflection.options[:autosave] && association.marked_for_destruction?
+          association.destroy
+        else
+          if association.new_record? || reflection.options[:autosave]
+            association.save(false)
+          end
+
+          if association.updated?
+            self[reflection.primary_key_name] = association.id
+            # Removing this code doesn't seem to matter…
+            if reflection.options[:polymorphic]
+              self[reflection.options[:foreign_type]] = association.class.base_class.name.to_s
+            end
+          end
+        end
+      end
     end
 
     # Reloads the attributes of the object as usual and removes a mark for destruction.
