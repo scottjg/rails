@@ -790,8 +790,7 @@ module ActiveRecord
 
         configure_dependency_for_has_many(reflection)
 
-        add_multiple_associated_validation_callbacks(reflection)
-        add_multiple_associated_save_callbacks(reflection)
+        add_autosave_association_callbacks(reflection)
         add_association_callbacks(reflection.name, reflection.options)
 
         if options[:through]
@@ -903,8 +902,7 @@ module ActiveRecord
         else
           reflection = create_has_one_reflection(association_id, options)
 
-          add_has_one_associated_save_callbacks(reflection)
-          add_single_associated_validation_callbacks(reflection)
+          add_autosave_association_callbacks(reflection)
           association_accessor_methods(reflection, HasOneAssociation)
           association_constructor_method(:build,  reflection, HasOneAssociation)
           association_constructor_method(:create, reflection, HasOneAssociation)
@@ -1035,9 +1033,7 @@ module ActiveRecord
           )
         end
 
-        add_belongs_to_associated_save_callbacks(reflection)
-        add_single_associated_validation_callbacks(reflection)
-
+        add_autosave_association_callbacks(reflection)
         configure_dependency_for_belongs_to(reflection)
       end
 
@@ -1204,8 +1200,7 @@ module ActiveRecord
       def has_and_belongs_to_many(association_id, options = {}, &extension)
         reflection = create_has_and_belongs_to_many_reflection(association_id, options, &extension)
 
-        add_multiple_associated_validation_callbacks(reflection)
-        add_multiple_associated_save_callbacks(reflection)
+        add_autosave_association_callbacks(reflection)
         collection_accessor_methods(reflection, HasAndBelongsToManyAssociation)
 
         # Don't use a before_destroy callback since users' before_destroy

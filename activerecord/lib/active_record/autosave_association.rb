@@ -138,6 +138,20 @@ module ActiveRecord
     end
 
     module ClassMethods
+      def add_autosave_association_callbacks(reflection)
+        case reflection.macro
+        when :has_many, :has_and_belongs_to_many
+          add_multiple_associated_validation_callbacks(reflection)
+          add_multiple_associated_save_callbacks(reflection)
+          return
+        when :has_one
+          add_has_one_associated_save_callbacks(reflection)
+        when :belongs_to
+          add_belongs_to_associated_save_callbacks(reflection)
+        end
+        add_single_associated_validation_callbacks(reflection)
+      end
+
       # Returns whether or not the parent, <tt>self</tt>, and any loaded autosave associations are valid.
 
       def add_single_associated_validation_callbacks(reflection)
