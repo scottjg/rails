@@ -165,7 +165,7 @@ module ActiveRecord
 
         case reflection.macro
         when :has_many, :has_and_belongs_to_many
-          # TODO: make sure this method isn't added to the before_save callbacks multiple times.
+          # TODO: make sure this method isn't added to the before_save callbacks multiple times. (same as above)
           before_save :before_save_collection_association
 
           define_method(save_method) { save_collection_association(reflection) }

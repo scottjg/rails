@@ -200,8 +200,7 @@ module ActiveRecord
               :collection
             end
 
-            #reflection.options[:autosave] = true
-            send(reflection.macro, reflection.name, reflection.options.merge(:autosave => true))
+            reflection.options[:autosave] = true
             self.reject_new_nested_attributes_procs[association_name.to_sym] = options[:reject_if]
 
             # def pirate_attributes=(attributes)
