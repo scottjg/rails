@@ -151,8 +151,7 @@ class TestPluginLoader < Test::Unit::TestCase
 
     plugin_load_paths.each { |path| assert $LOAD_PATH.include?(path) }
   end
-
-
+  
   private
     def reset_load_path!
       $LOAD_PATH.clear

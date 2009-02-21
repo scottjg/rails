@@ -46,6 +46,7 @@ module Rails
       return if loaded?
       report_nonexistant_or_empty_plugin! unless valid?
       evaluate_init_rb(initializer)
+      load_locales
       @loaded = true
     end
     
@@ -70,8 +71,7 @@ module Rails
     def routed?
       File.exist?(routing_file)
     end
-
-
+    
     def view_path
       File.join(directory, 'app', 'views')
     end
@@ -123,6 +123,23 @@ module Rails
       def has_app_directory?
         File.directory?(File.join(directory, 'app'))
       end
+      
+      def has_locales_directory?
+        File.directory?(File.join(directory, 'locales'))
+      end
+      
+      def load_locales
+        if has_locales_directory?
+          first_app_element = I18n.load_path.select { |e| 
+            e =~ /^#{ RAILS_ROOT }/ 
+          }.reject{ |e| 
+            e =~ /^#{ RAILS_ROOT }\/vendor\/plugins/ 
+          }.first
+          app_index = I18n.load_path.index(first_app_element) || -1          
+          locale_files = Dir[File.join(directory, 'locales', '*.{rb,yml}')]
+          I18n.load_path.insert(app_index, *locale_files)
+        end
+      end
 
       def has_lib_directory?
         File.directory?(lib_path)
@@ -131,7 +148,6 @@ module Rails
       def has_init_file?
         File.file?(init_path)
       end
-
 
       def evaluate_init_rb(initializer)
         if has_init_file?

@@ -149,13 +149,19 @@ class PluginTest < Test::Unit::TestCase
   def test_should_return_empty_hash_for_about_if_about_yml_is_malformed
     assert_equal({}, plugin_for(about_yml_plugin_path('bad_about_yml')).about)
   end
-
+  
+  def test_should_make_locale_information_from_plugins_available
+    plugin = plugin_for(plugin_fixture_path('default/acts_as_i18n'))
+    plugin.load(@initializer)
+    assert I18n.load_path.include?(File.join(plugin_fixture_path('default/acts_as_i18n/locales/en_EN.rb')))
+  end
+  
   private
-
+    
     def about_yml_plugin_path(name)
       File.join(File.dirname(__FILE__), 'fixtures', 'about_yml_plugins', name)
     end
-
+    
     def plugin_for(path)
       Rails::Plugin.new(path)
     end

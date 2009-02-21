@@ -89,7 +89,7 @@ module Rails
           # reverse it such that the last engine can overwrite view paths from the first, like with routes
           ActionController::Base.view_paths += ActionView::PathSet.new(engines.collect(&:view_path).reverse)
         end
-
+        
         # The locate_plugins method uses each class in config.plugin_locators to
         # find the set of all plugins available to this Rails application.
         def locate_plugins
