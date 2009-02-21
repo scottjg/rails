@@ -191,6 +191,10 @@ module ActiveRecord
         @primary_key_name ||= options[:foreign_key] || derive_primary_key_name
       end
 
+      def quoted_primary_key_name
+        klass.connection.quote_column_name(primary_key_name)
+      end
+
       def association_foreign_key
         @association_foreign_key ||= @options[:association_foreign_key] || class_name.foreign_key
       end

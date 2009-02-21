@@ -1520,7 +1520,7 @@ module ActiveRecord #:nodoc:
           if order
             order = reverse_sql_order(order)
           elsif !scoped?(:find, :order)
-            order = "#{table_name}.#{primary_key} DESC"
+            order = "#{connection.quote_table_name(table_name)}.#{connection.quote_column_name(primary_key)} DESC"
           end
 
           if scoped?(:find, :order)
