@@ -147,6 +147,57 @@ namespace :db do
       ActiveRecord::Migrator.run(:down, "db/migrate/", version)
       Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
     end
+    
+    def with_plugin_migrations
+      plugins_to_migrate = ENV['PLUGINS'] || "*"
+      Dir["vendor/plugins/**/#{plugins_to_migrate}/db/migrate/*.rb"].each do |migration_file|
+        path_parts = migration_file.split("/")
+        plugin_name = path_parts[path_parts.index("migrate")-2]
+        migration_name = path_parts.last
+        yield plugin_name, migration_name, migration_file
+      end
+    end
+
+    desc 'Copies any missing migrations from plugins into main migration directory. Specify specific plugins via PLUGINS=plugin_a,plugin_b,...'
+    task :copy_from_plugins do
+      new_migrations = {}
+      with_plugin_migrations do |plugin, migration_name, migration_file|
+        unless File.exist?(File.join("db", "migrate", migration_name))
+          FileUtils.cp(migration_file, "db/migrate")
+          new_migrations[plugin] ||= []
+          new_migrations[plugin] << migration_name
+        end
+      end
+      if new_migrations.empty?
+        puts "No new migrations found in plugins"
+      else
+        puts "The following new plugin migrations have been copied into your db/migrate directory:\n\n"
+        sequentially_indexed_migration_found = false
+        new_migrations.each do |plugin_name, migrations|
+          puts "from '#{plugin_name}':"
+          migrations.each do |migration_name|
+            if migration_name =~ /^\d{3}_/
+              sequentially_indexed_migration_found = true
+              puts "\t#{migration_name} (WARNING: see below)"
+            else 
+              puts "\t#{migration_name}"
+            end
+          end
+        end
+        if sequentially_indexed_migration_found
+          $stderr.puts <<-EOM
+          
+WARNING: Plugin migrations should always use timestamps, rather than 
+sequential numbering, as it is possible (and indeed likely) that two
+migrations such as 001_from_application.rb and 001_from_plugin.rb will
+exist. Proceed with extreme caution.
+
+          EOM
+        end
+        puts "\nPlease inspect these files to be SURE you're happy with what they'll do."
+        puts "The migrations will be incorporated the next time you run 'rake db:migrate'."
+      end
+    end
   end
 
   desc 'Rolls the schema back to the previous version. Specify the number of steps with STEP=n'
@@ -158,6 +209,22 @@ namespace :db do
 
   desc 'Drops and recreates the database from db/schema.rb for the current environment.'
   task :reset => ['db:drop', 'db:create', 'db:schema:load']
+
+  def plugin_and_migration_name_from(path)
+    path_parts = migration_file.split("/")
+    plugin_name = path_parts[path_parts.index("migrate")-1]
+    migration_name = path_parts.last
+    return plugin_name, migration_name
+  end
+  
+  def display_plugin_migrations(migrations_by_plugin)
+    puts "\n\n"
+    migrations_by_plugin.each do |plugin_name, migrations|
+      puts "from '#{plugin_name}':"
+      migrations.each { |m| puts "\t#{m}"}
+    end
+    puts "\n"
+  end
 
   desc "Retrieves the charset for the current environment's database"
   task :charset => :environment do
