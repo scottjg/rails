@@ -498,7 +498,7 @@ module ActiveRecord
         files = Dir["#{@migrations_path}/[0-9]*_*.rb"]
         
         migrations = files.inject([]) do |klasses, file|
-          version, name = file.scan(/([0-9]+)_([_a-z0-9]*).rb/).first
+          version, name = file.scan(/([0-9]+)_([_a-z0-9]*)(\..*)?.rb/).first
           
           raise IllegalMigrationNameError.new(file) unless version
           version = version.to_i

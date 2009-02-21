@@ -147,6 +147,66 @@ namespace :db do
       ActiveRecord::Migrator.run(:down, "db/migrate/", version)
       Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
     end
+    
+    class PluginMigrationHelper
+      def self.with_plugin_migrations
+        plugins_to_migrate = ENV['PLUGINS'] || "*"
+        Dir["vendor/plugins/**/#{plugins_to_migrate}/db/migrate/*.rb"].each do |migration_file|
+          path_parts = migration_file.split("/")
+          plugin_name = path_parts[path_parts.index("migrate")-2]
+          migration_name = File.basename(migration_file, ".rb").split("_")[1..-1].join("_") # without the timestamp
+          yield plugin_name, migration_name, migration_file
+        end
+      end
+    
+      # These are taken from Rails::Generator::Base, it's a shame they can't be easily reused.
+      def self.current_migration_number
+        Dir.glob("#{RAILS_ROOT}/db/migrate/[0-9]*_*.rb").inject(0) do |max, file_path|
+          n = File.basename(file_path).split('_', 2).first.to_i
+          if n > max then n else max end
+        end
+      end
+       
+      def self.next_migration_number
+        current_migration_number + 1
+      end
+
+      def self.next_migration_string(padding = 3)
+        if ActiveRecord::Base.timestamped_migrations
+          Time.now.utc.strftime("%Y%m%d%H%M%S")
+        else
+          "%.#{padding}d" % next_migration_number
+        end
+      end
+    end
+
+    desc 'Copies any missing migrations from plugins into main migration directory. Specify specific plugins via PLUGINS=plugin_a,plugin_b,...'
+    task :plugins do
+      require 'active_record'
+      new_migrations = Hash.new
+      PluginMigrationHelper.with_plugin_migrations do |plugin, migration_name, migration_file|
+        migration_name_with_plugin = "#{migration_name}.#{plugin}.rb"
+        unless Dir.glob("#{RAILS_ROOT}/db/migrate/[0-9]*_#{migration_name_with_plugin}").any?
+          retimestamped_migration = "#{PluginMigrationHelper.next_migration_string}_#{migration_name_with_plugin}"
+          FileUtils.cp(migration_file, "db/migrate/#{retimestamped_migration}")
+          new_migrations[plugin] ||= []
+          new_migrations[plugin] << retimestamped_migration
+        end
+      end
+      if new_migrations.empty?
+        puts "No new migrations found in plugins"
+      else
+        puts "The following new plugin migrations have been copied into your db/migrate directory:\n\n"
+        new_migrations.each do |plugin_name, migrations|
+          puts "from '#{plugin_name}':"
+          migrations.each do |migration_name|
+            puts "\t#{migration_name}"
+          end
+        end
+        puts "\nPlease inspect these files to be SURE you're happy with what they'll do."
+        puts "The migrations will be incorporated the next time you run 'rake db:migrate'."
+      end
+    end
   end
 
   desc 'Rolls the schema back to the previous version. Specify the number of steps with STEP=n'
@@ -158,6 +218,22 @@ namespace :db do
 
   desc 'Drops and recreates the database from db/schema.rb for the current environment.'
   task :reset => ['db:drop', 'db:create', 'db:schema:load']
+
+  def plugin_and_migration_name_from(path)
+    path_parts = migration_file.split("/")
+    plugin_name = path_parts[path_parts.index("migrate")-1]
+    migration_name = path_parts.last
+    return plugin_name, migration_name
+  end
+  
+  def display_plugin_migrations(migrations_by_plugin)
+    puts "\n\n"
+    migrations_by_plugin.each do |plugin_name, migrations|
+      puts "from '#{plugin_name}':"
+      migrations.each { |m| puts "\t#{m}"}
+    end
+    puts "\n"
+  end
 
   desc "Retrieves the charset for the current environment's database"
   task :charset => :environment do
