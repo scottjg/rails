@@ -119,9 +119,6 @@ module ActionController
     end
 
     class DynamicSegment < Segment #:nodoc:
-      
-      OPTIONALLY_IMPLIED = [:action, :id].freeze
-      
       attr_reader :key
 
       # TODO: Convert these accessors to read only
@@ -194,23 +191,19 @@ module ActionController
       end
 
       def regexp_chunk
-        if regexp
-          if regexp_has_modifiers?
-            "(#{regexp.to_s})"
-          else
-            "(#{regexp.source})"
-          end
-        else
-          "([^#{Routing::SEPARATORS.join}]+)"
-        end
+        regexp ? regexp_string : default_regexp_chunk
+      end
+
+      def regexp_string
+        regexp_has_modifiers? ? "(#{regexp.to_s})" : "(#{regexp.source})"
+      end
+
+      def default_regexp_chunk
+        "([^#{Routing::SEPARATORS.join}]+)"
       end
 
       def number_of_captures
-        if regexp
-          regexp.number_of_captures + 1
-        else
-          1
-        end
+        regexp ? regexp.number_of_captures + 1 : 1
       end
 
       def build_pattern(pattern)
@@ -233,7 +226,7 @@ module ActionController
       end
 
       def optionality_implied?
-        OPTIONALLY_IMPLIED.include? key
+        [:action, :id].include? key
       end
 
       def regexp_has_modifiers?
@@ -241,50 +234,10 @@ module ActionController
       end
     end
 
-    # The OptionalFormatSegment allows for any resource route to have an optional
-    # :format, which decreases the amount of routes created by 50%.
-    class OptionalFormatSegment < DynamicSegment
-
-      INTERPOLATION_CHUNK = ".".freeze
-
-      REGEXP_CHUNK = '(\.[^/?\.]+)'.freeze 
-
-      TO_S = '(.:format)?'.freeze
-
-      def initialize(key = nil, options = {})
-        super(:format, {:optional => true}.merge(options))            
-      end
-
-      def interpolation_chunk
-        INTERPOLATION_CHUNK + super
-      end
-
-      def regexp_chunk
-        REGEXP_CHUNK
-      end
-
-      def to_s
-        TO_S
-      end
-
-      #the value should not include the period (.)
-      def match_extraction(next_capture)
-        %[
-          if (m = match[#{next_capture}])
-            params[:#{key}] = URI.unescape(m.from(1))
-          end
-        ]
-      end
-    end
-
     class ControllerSegment < DynamicSegment #:nodoc:
       def regexp_chunk
         possible_names = Routing.possible_controllers.collect { |name| Regexp.escape name }
         "(?i-:(#{(regexp || Regexp.union(*possible_names)).source}))"
-      end
-
-      def number_of_captures
-        1
       end
 
       # Don't URI.escape the controller name since it may contain slashes.
@@ -308,9 +261,6 @@ module ActionController
     end
 
     class PathSegment < DynamicSegment #:nodoc:
-      
-      DEFAULT_REGEXP_CHUNK = "(.*)".freeze
-      
       def interpolation_chunk(value_code = local_name)
         "\#{#{value_code}}"
       end
@@ -331,8 +281,8 @@ module ActionController
         "params[:#{key}] = PathSegment::Result.new_escaped((match[#{next_capture}]#{" || " + default.inspect if default}).split('/'))#{" if match[" + next_capture + "]" if !default}"
       end
 
-      def regexp_chunk
-        regexp || DEFAULT_REGEXP_CHUNK
+      def default_regexp_chunk
+        "(.*)"
       end
 
       def number_of_captures
@@ -349,7 +299,37 @@ module ActionController
           new strings.collect {|str| URI.unescape str}
         end
       end
-
     end
+    
+    # The OptionalFormatSegment allows for any resource route to have an optional
+    # :format, which decreases the amount of routes created by 50%.
+    class OptionalFormatSegment < DynamicSegment
+    
+      def initialize(key = nil, options = {})
+        super(:format, {:optional => true}.merge(options))            
+      end
+    
+      def interpolation_chunk
+        "." + super
+      end
+    
+      def regexp_chunk
+        '(\.[^/?\.]+)?'
+      end
+    
+      def to_s
+        '(.:format)?'
+      end
+    
+      #the value should not include the period (.)
+      def match_extraction(next_capture)
+        %[
+          if (m = match[#{next_capture}])
+            params[:#{key}] = URI.unescape(m.from(1))
+          end
+        ]
+      end
+    end
+    
   end
 end

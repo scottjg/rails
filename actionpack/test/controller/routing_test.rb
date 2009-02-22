@@ -340,6 +340,30 @@ class ControllerSegmentTest < Test::Unit::TestCase
   end
 end
 
+class PathSegmentTest < Test::Unit::TestCase
+  def segment(options = {})
+    unless @segment
+      @segment = ROUTING::PathSegment.new(:path, options)
+    end
+    @segment
+  end
+
+  def test_regexp_chunk_should_return_string
+    segment = segment(:regexp => /[a-z]+/)
+    assert_kind_of String, segment.regexp_chunk
+  end
+
+  def test_regexp_chunk_should_be_wrapped_with_parenthesis
+    segment = segment(:regexp => /[a-z]+/)
+    assert_equal "([a-z]+)", segment.regexp_chunk
+  end
+
+  def test_regexp_chunk_should_respect_options
+    segment = segment(:regexp => /[a-z]+/i)
+    assert_equal "((?i-mx:[a-z]+))", segment.regexp_chunk
+  end
+end
+
 class RouteBuilderTest < Test::Unit::TestCase
   def builder
     @builder ||= ROUTING::RouteBuilder.new
@@ -850,6 +874,15 @@ class LegacyRouteSetTests < Test::Unit::TestCase
     assert_equal({:controller => "content", :action => "foo"}, rs.recognize_path("/content/foo"))
     assert_equal '/admin/user/foo', rs.generate(:controller => "admin/user", :admintoken => "foo", :action => "index")
     assert_equal '/content/foo', rs.generate(:controller => "content", :action => "foo")
+  end
+
+  def test_route_with_regexp_and_captures_for_controller
+    rs.draw do |map|
+      map.connect ':controller/:action/:id', :controller => /admin\/(accounts|users)/
+    end
+    assert_equal({:controller => "admin/accounts", :action => "index"}, rs.recognize_path("/admin/accounts"))
+    assert_equal({:controller => "admin/users", :action => "index"}, rs.recognize_path("/admin/users"))
+    assert_raises(ActionController::RoutingError) { rs.recognize_path("/admin/products") }
   end
 
   def test_route_with_regexp_and_dot
