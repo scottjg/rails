@@ -154,6 +154,8 @@ module ActiveRecord
         }
       end
 
+      # Adds a validate and save callback for the association as specified by
+      # the +reflection+.
       def add_autosave_association_callbacks(reflection)
         save_method = "autosave_associated_records_for_#{reflection.name}"
         validation_method = "validate_associated_records_for_#{reflection.name}"
@@ -206,6 +208,9 @@ module ActiveRecord
 
     private
 
+    # Returns the record for an association collection that should be validated
+    # or saved. If +autosave+ is +false+ only new records will be returned,
+    # unless the parent is/was a new record itself.
     def associated_records_to_validate_or_save(association, new_record, autosave)
       if new_record
         association
@@ -216,6 +221,8 @@ module ActiveRecord
       end
     end
 
+    # Validate the association if <tt>:validate</tt> or <tt>:autosave</tt> is
+    # turned on for the association specified by +reflection+.
     def validate_single_association(reflection)
       if reflection.options[:validate] == true || reflection.options[:autosave] == true
         if (association = association_instance_get(reflection.name)) && !association.target.nil?
@@ -224,6 +231,9 @@ module ActiveRecord
       end
     end
 
+    # Validate the associated records if <tt>:validate</tt> or
+    # <tt>:autosave</tt> is turned on for the association specified by
+    # +reflection+.
     def validate_collection_association(reflection)
       if reflection.options[:validate] != false && association = association_instance_get(reflection.name)
         if records = associated_records_to_validate_or_save(association, new_record?, reflection.options[:autosave])
@@ -232,7 +242,8 @@ module ActiveRecord
       end
     end
 
-    # Returns whether or not the association is valid and applies any errors to the parent, <tt>self</tt>, if it wasn't.
+    # Returns whether or not the association is valid and applies any errors to
+    # the parent, <tt>self</tt>, if it wasn't.
     def association_valid?(reflection, association)
       unless valid = association.valid?
         if reflection.options[:autosave]
@@ -247,12 +258,16 @@ module ActiveRecord
       valid
     end
 
+    # Is used as a before_save callback to check while saving a collection
+    # association whether or not the parent was a new record before saving.
     def before_save_collection_association
       @new_record_before_save = new_record?
       true
     end
 
-    # Saves the parent, <tt>self</tt>, and any loaded autosave associations.
+    # Saves any new associated records, or all loaded autosave associations if
+    # <tt>:autosave</tt> is enabled on the association.
+    #
     # In addition, it destroys all children that were marked for destruction
     # with mark_for_destruction.
     #
@@ -283,6 +298,14 @@ module ActiveRecord
       end
     end
 
+    # Saves the associated record if it's new or <tt>:autosave</tt> is enabled
+    # on the association.
+    #
+    # In addition, it will destroy the association if it was marked for
+    # destruction with mark_for_destruction.
+    #
+    # This all happens inside a transaction, _if_ the Transactions module is included into
+    # ActiveRecord::Base after the AutosaveAssociation module, which it does by default.
     def save_has_one_association(reflection)
       if association = association_instance_get(reflection.name)
         if reflection.options[:autosave] && association.marked_for_destruction?
@@ -294,6 +317,14 @@ module ActiveRecord
       end
     end
 
+    # Saves the associated record if it's new or <tt>:autosave</tt> is enabled
+    # on the association.
+    #
+    # In addition, it will destroy the association if it was marked for
+    # destruction with mark_for_destruction.
+    #
+    # This all happens inside a transaction, _if_ the Transactions module is included into
+    # ActiveRecord::Base after the AutosaveAssociation module, which it does by default.
     def save_belongs_to_association(reflection)
       if association = association_instance_get(reflection.name)
         if reflection.options[:autosave] && association.marked_for_destruction?
