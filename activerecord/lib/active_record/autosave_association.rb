@@ -157,15 +157,10 @@ module ActiveRecord
       def add_autosave_association_callbacks(reflection)
         save_method = "autosave_associated_records_for_#{reflection.name}"
         validation_method = "validate_associated_records_for_#{reflection.name}"
-
-        # TODO: Actually there's no point at all in allowing multiple callbacks for the same method
-        # in both save and validation callbacks. So this should maybe be fixed in callbacks.rb
-        # @validate_callbacks.try(:delete_if) { |callback| callback.method == validation_method }
         validate validation_method
 
         case reflection.macro
         when :has_many, :has_and_belongs_to_many
-          # TODO: make sure this method isn't added to the before_save callbacks multiple times. (same as above)
           before_save :before_save_collection_association
 
           define_method(save_method) { save_collection_association(reflection) }

@@ -33,16 +33,6 @@ class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
     assert base.valid_keys_for_has_and_belongs_to_many_association.include?(:autosave)
   end
 
-  # def test_autosave_callbacks_should_not_be_added_multiple_times
-  #   valdation_callbacks = Pirate.instance_variable_get(:@validate_callbacks)
-  #   valdations = "valdation_callbacks.select { |c| c.method == 'validate_associated_records_for_birds' }.length"
-  # 
-  #   assert_no_difference(valdations) do
-  #     reflection = Pirate.reflect_on_association(:birds)
-  #     Pirate.send(:add_autosave_association_callbacks, reflection)
-  #   end
-  # end
-
   private
 
   def base
