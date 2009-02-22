@@ -756,7 +756,7 @@ module AutosaveAssociationOnACollectionAssociationTests
     assert !@pirate.errors.on(:catchphrase).blank?
   end
 
-  def test_should_still_allow_to_bypass_validations_on_the_associated_models
+  def test_should_allow_to_bypass_validations_on_the_associated_models_on_update
     @pirate.catchphrase = ''
     @pirate.send(@association_name).each { |child| child.name = '' }
 
@@ -766,6 +766,20 @@ module AutosaveAssociationOnACollectionAssociationTests
       @pirate.send(@association_name).first.name,
       @pirate.send(@association_name).last.name
     ]
+  end
+
+  def test_should_validation_the_associated_models_on_create
+    assert_no_difference("#{ @association_name == :birds ? 'Bird' : 'Parrot' }.count") do
+      2.times { @pirate.send(@association_name).build }
+      @pirate.save(true)
+    end
+  end
+
+  def test_should_allow_to_bypass_validations_on_the_associated_models_on_create
+    assert_difference("#{ @association_name == :birds ? 'Bird' : 'Parrot' }.count", +2) do
+      2.times { @pirate.send(@association_name).build }
+      @pirate.save(false)
+    end
   end
 
   def test_should_rollback_any_changes_if_an_exception_occurred_while_saving

@@ -272,7 +272,11 @@ module ActiveRecord
             if autosave && record.marked_for_destruction?
               record.destroy
             elsif @new_record_before_save || record.new_record?
-              association.send(:insert_record, record)
+              if autosave
+                association.send(:insert_record, record, false, false)
+              else
+                association.send(:insert_record, record)
+              end
             elsif autosave
               record.save(false)
             end
