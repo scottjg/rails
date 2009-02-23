@@ -484,8 +484,8 @@ Run `rake gems:install` to install the missing gems.
     def initialize_framework_views
       if configuration.frameworks.include?(:action_view)
         view_path = ActionView::PathSet.type_cast(configuration.view_path)
-        ActionMailer::Base.template_root ||= view_path if configuration.frameworks.include?(:action_mailer)
-        ActionController::Base.view_paths = view_path if configuration.frameworks.include?(:action_controller) && ActionController::Base.view_paths.empty?
+        ActionMailer::Base.template_root  = view_path if configuration.frameworks.include?(:action_mailer) && ActionMailer::Base.view_paths.blank?
+        ActionController::Base.view_paths = view_path if configuration.frameworks.include?(:action_controller) && ActionController::Base.view_paths.blank?
       end
     end
 
@@ -497,7 +497,7 @@ Run `rake gems:install` to install the missing gems.
 
       ActionController::Routing.controller_paths += configuration.controller_paths
       ActionController::Routing::Routes.add_configuration_file(configuration.routes_configuration_file)
-      ActionController::Routing::Routes.reload
+      ActionController::Routing::Routes.reload!
     end
 
     # Sets the dependency loading mechanism based on the value of
