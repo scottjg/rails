@@ -1030,8 +1030,14 @@ module ActiveResource
         namespaces = module_names[0, module_names.size-1].map do |module_name|
           receiver = receiver.const_get(module_name)
         end
-        if namespace = namespaces.reverse.detect { |ns| ns.const_defined?(resource_name) }
-          return namespace.const_get(resource_name)
+        resource = namespaces.reverse.inject(nil) do |s,ns|
+          begin
+            break ns.const_get(resource_name)
+          rescue NameError
+          end
+        end
+        if resource
+          return resource
         else
           raise NameError
         end
