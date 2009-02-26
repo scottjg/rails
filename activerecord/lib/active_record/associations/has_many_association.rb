@@ -71,8 +71,8 @@ module ActiveRecord
             else
               ids = quoted_record_ids(records)
               @reflection.klass.update_all(
-                "#{@reflection.primary_key_name} = NULL", 
-                "#{@reflection.primary_key_name} = #{owner_quoted_id} AND #{@reflection.klass.primary_key} IN (#{ids})"
+                "#{@reflection.quoted_primary_key_name} = NULL", 
+                "#{@reflection.quoted_primary_key_name} = #{owner_quoted_id} AND #{@owner.class.quote_value(@reflection.klass.primary_key)} IN (#{ids})"
               )
           end
         end

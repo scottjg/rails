@@ -750,7 +750,7 @@ module ActiveRecord
           end
 
           unless record.new_record?
-            condition_sql << " AND #{record.class.quoted_table_name}.#{record.class.primary_key} <> ?"
+            condition_sql << " AND #{record.class.quoted_table_name}.#{connection.quote_column_name(record.class.primary_key)} <> ?"
             condition_params << record.send(:id)
           end
 

@@ -59,7 +59,7 @@ module ActiveModel
           else
             # sqlite has case sensitive SELECT query, while MySQL/Postgresql don't.
             # Hence, this is needed only for sqlite.
-            condition_sql = "LOWER(#{record.class.quoted_table_name}.#{attr_name}) #{attribute_condition(value)}"
+            condition_sql = "LOWER(#{record.class.quoted_table_name}.#{connection.quote_column_name attr_name}) #{attribute_condition(value)}"
             condition_params = [value.downcase]
           end
 
@@ -72,7 +72,7 @@ module ActiveModel
           end
 
           unless record.new_record?
-            condition_sql << " AND #{record.class.quoted_table_name}.#{record.class.primary_key} <> ?"
+            condition_sql << " AND #{record.class.quoted_table_name}.#{connection.quote_column_name record.class.primary_key} <> ?"
             condition_params << record.send(:id)
           end
 

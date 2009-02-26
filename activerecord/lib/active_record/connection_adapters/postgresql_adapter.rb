@@ -963,7 +963,7 @@ module ActiveRecord
 
         # Returns the current ID of a table's sequence.
         def last_insert_id(table, sequence_name) #:nodoc:
-          Integer(select_value("SELECT currval('#{sequence_name}')"))
+          Integer(select_value("SELECT currval('#{quote_column_name sequence_name}')"))
         end
 
         # Executes a SELECT query and returns the results, performing any data type

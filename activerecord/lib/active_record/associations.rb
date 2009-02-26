@@ -1335,7 +1335,7 @@ module ActiveRecord
             if send(reflection.name).loaded? || reflection.options[:finder_sql]
               send(reflection.name).map(&:id)
             else
-              send(reflection.name).all(:select => "#{reflection.quoted_table_name}.#{reflection.klass.primary_key}").map(&:id)
+              send(reflection.name).all(:select => "#{reflection.quoted_table_name}.#{connection.quote_column_name reflection.klass.primary_key}").map(&:id)
             end
           end
         end
@@ -1670,7 +1670,7 @@ module ActiveRecord
 
         def construct_finder_sql_with_included_associations(options, join_dependency)
           scope = scope(:find)
-          sql = "SELECT #{column_aliases(join_dependency)} FROM #{(scope && scope[:from]) || options[:from] || quoted_table_name} "
+          sql = "SELECT #{column_aliases(join_dependency)} FROM #{(scope && connection.quote_table_name(scope[:from])) || connection.quote_table_name(options[:from]) || quoted_table_name} "
           sql << join_dependency.join_associations.collect{|join| join.association_join }.join
 
           add_joins!(sql, options[:joins], scope)
@@ -1687,7 +1687,7 @@ module ActiveRecord
 
         def add_limited_ids_condition!(sql, options, join_dependency)
           unless (id_list = select_limited_ids_list(options, join_dependency)).empty?
-            sql << "#{condition_word(sql)} #{connection.quote_table_name table_name}.#{primary_key} IN (#{id_list}) "
+            sql << "#{condition_word(sql)} #{connection.quote_table_name table_name}.#{connection.quote_column_name primary_key} IN (#{id_list}) "
           else
             throw :invalid_query
           end
@@ -1721,7 +1721,7 @@ module ActiveRecord
           is_distinct = !options[:joins].blank? || include_eager_conditions?(options, tables_from_conditions) || include_eager_order?(options, tables_from_order)
           sql = "SELECT "
           if is_distinct
-            sql << connection.distinct("#{connection.quote_table_name table_name}.#{primary_key}", order)
+            sql << connection.distinct("#{connection.quote_table_name table_name}.#{connection.quote_column_name primary_key}", order)
           else
             sql << primary_key
           end
