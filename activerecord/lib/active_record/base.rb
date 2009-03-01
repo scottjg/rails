@@ -1689,7 +1689,7 @@ module ActiveRecord #:nodoc:
         def construct_finder_sql(options)
           scope = scope(:find)
           sql  = "SELECT #{options[:select] || (scope && scope[:select]) || default_select(options[:joins] || (scope && scope[:joins]))} "
-          sql << "FROM #{(scope && self.connection.quote_table_name(scope[:from])) || self.connection.quote_table_name(options)[:from] || quoted_table_name} "
+          sql << "FROM #{scope && scope[:from] || options[:from] || quoted_table_name} "
 
           add_joins!(sql, options[:joins], scope)
           add_conditions!(sql, options[:conditions], scope)

@@ -599,7 +599,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 0, firm.clients_of_firm(true).size
     assert_equal [], Client.destroyed_client_ids[firm.id]
 
-    # Should not be destroyed since the association is not dependent.
+    # Should not be destroyed since the asociation is not dependent.
     assert_nothing_raised do
       assert Client.find(client_id).firm.nil?
     end
