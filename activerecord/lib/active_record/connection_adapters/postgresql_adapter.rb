@@ -397,6 +397,17 @@ module ActiveRecord
         %("#{name}")
       end
 
+      # Quote table names for use in SQL queries, making sure not to wrap
+      # schema name if provided.
+      def quote_table_name(name)
+        before, after = name.to_s.split(/\./)
+        if after
+          %(#{before}."#{after}")
+        else
+          %("#{before}")
+        end
+      end
+
       # Quote date/time values for use in SQL input. Includes microseconds
       # if the value is a Time responding to usec.
       def quoted_date(value) #:nodoc:
