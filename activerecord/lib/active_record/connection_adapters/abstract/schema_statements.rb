@@ -319,8 +319,9 @@ module ActiveRecord
         unless tables.detect { |t| t == sm_table }
           create_table(sm_table, :id => false) do |schema_migrations_table|
             schema_migrations_table.column :version, :string, :null => false
+            schema_migrations_table.column :plugin,  :string
           end
-          add_index sm_table, :version, :unique => true,
+          add_index sm_table, [ :version, :plugin ], :unique => true,
             :name => 'unique_schema_migrations'
 
           # Backwards-compatibility: if we find schema_info, assume we've

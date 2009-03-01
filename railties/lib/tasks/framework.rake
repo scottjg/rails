@@ -78,7 +78,7 @@ namespace :rails do
   end
 
   desc "Update both configs, scripts and public/javascripts from Rails"
-  task :update => [ "update:scripts", "update:javascripts", "update:configs", "update:application_controller" ]
+  task :update => [ "update:scripts", "update:javascripts", "update:configs", "update:application_controller", "update:schema_migrations" ]
 
   desc "Applies the template supplied by LOCATION=/path/to/template"
   task :template do
@@ -128,6 +128,19 @@ namespace :rails do
       if File.exists?(old_style) && !File.exists?(new_style)
         FileUtils.mv(old_style, new_style)
         puts "#{old_style} has been renamed to #{new_style}, update your SCM as necessary"
+      end
+    end
+    
+    desc "Update schema_migrations table structure"
+    task :schema_migrations => :environment do
+      sm_table = ActiveRecord::Migrator.schema_migrations_table_name
+      connection = ActiveRecord::Base.connection
+
+      unless connection.columns(sm_table).map(&:name).include?('plugin')
+        connection.add_column   sm_table, :plugin, :string
+        connection.remove_index sm_table, :version rescue nil
+        connection.add_index [ :version, :plugin ], :unique => true,
+          :name => 'unique_schema_migrations'
       end
     end
     

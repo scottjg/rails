@@ -71,6 +71,10 @@ module Rails
     def public_path=(path)
       @@public_path = path
     end
+    
+    def plugins
+      @@plugins ||= ActiveSupport::OrderedHash.new
+    end
   end
 
   # The Initializer is responsible for processing the Rails configuration, such

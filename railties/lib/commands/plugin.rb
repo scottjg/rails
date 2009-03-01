@@ -479,6 +479,7 @@ module Commands
         o.separator "  source     Add a plugin source repository."
         o.separator "  unsource   Remove a plugin repository."
         o.separator "  sources    List currently configured plugin repositories."
+        o.separator "  rename     Rename a plugin in the migrations table."
         
         o.separator ""
         o.separator "EXAMPLES"
@@ -503,7 +504,9 @@ module Commands
         o.separator "  Remove a repository from the source list:"
         o.separator "    #{@script_name} unsource http://dev.rubyonrails.com/svn/rails/plugins/\n"
         o.separator "  Show currently configured repositories:"
-        o.separator "    #{@script_name} sources\n"        
+        o.separator "    #{@script_name} sources\n"  
+        o.separator "  Rename a plugin:"
+        o.separator "    #{@script_name} rename continuous-builder continuous_builder\n"  
       end
     end
     
@@ -512,7 +515,7 @@ module Commands
       options.parse!(general)
       
       command = general.shift
-      if command =~ /^(list|discover|install|source|unsource|sources|remove|update|info)$/
+      if command =~ /^(list|discover|install|source|unsource|sources|remove|update|rename|info)$/
         command = Commands.const_get(command.capitalize).new(self)
         command.parse!(sub)
       else
@@ -892,6 +895,36 @@ module Commands
         puts ::Plugin.find(name).info
         puts
       end
+    end
+  end
+  
+  class Rename
+    def initialize(base_command)
+      require File.expand_path(File.join(RAILS_ROOT, 'config', 'environment'))
+      @base_command = base_command
+    end
+
+    def options
+      OptionParser.new do |o|
+        o.set_summary_indent('  ')
+        o.banner =    "Usage: #{@base_command.script_name} rename OLD_NAME NEW_NAME"
+        o.define_head "Rename a plugin in the migrations table."
+      end
+    end
+
+    def parse!(args)
+      options.parse!(args)
+      old_name, new_name = args
+
+      ActiveRecord::Base.transaction do
+        FileUtils.mv(File.join(RAILS_ROOT, 'vendor', 'plugins', old_name),
+          File.join(RAILS_ROOT, 'vendor', 'plugins', new_name))
+
+        sanitized_sql = ActiveRecord::Base.send(:sanitize_sql, "UPDATE #{ActiveRecord::Migrator.schema_migrations_table_name} set plugin = '#{new_name}' WHERE plugin = '#{old_name}'")
+        ActiveRecord::Base.connection.update(sanitized_sql)
+      end
+
+      puts "Renamed #{old_name} in #{new_name}"
     end
   end
 end

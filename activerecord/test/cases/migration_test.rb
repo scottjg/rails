@@ -961,6 +961,14 @@ if ActiveRecord::Base.connection.supports_migrations?
       migrations[0].name    == 'innocent_jointable'
     end
 
+    def test_finds_plugin_pending_migrations
+      ActiveRecord::Migrator.up(MIGRATIONS_ROOT + "/interleaved/pass_2", 1, 'foo')
+      migrations = ActiveRecord::Migrator.new(:up, MIGRATIONS_ROOT + "/interleaved/pass_2", nil, 'foo').pending_migrations
+      assert_equal 1, migrations.size
+      migrations[0].version == '3'
+      migrations[0].name    == 'innocent_jointable'
+    end
+
     def test_only_loads_pending_migrations
       # migrate up to 1
       ActiveRecord::Migrator.up(MIGRATIONS_ROOT + "/valid", 1)
@@ -994,6 +1002,38 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert_nothing_raised do
         ActiveRecord::Migrator.down(MIGRATIONS_ROOT + "/interleaved/pass_3")
       end
+    end
+
+    def test_record_version_state_after_migrating
+      assert_equal(0, ActiveRecord::Migrator.current_version)
+      sm_table = ActiveRecord::Migrator.schema_migrations_table_name
+      version  = ActiveRecord::Migrator.current_version + 1
+      plugin_name = 'foo'
+
+      assert_sql("INSERT INTO #{sm_table} (version) VALUES ('#{version}')") do
+        ActiveRecord::Migrator.up(MIGRATIONS_ROOT + "/valid", 1)
+      end
+      
+      assert_sql("DELETE FROM #{sm_table} WHERE version = '#{version}'") do
+        ActiveRecord::Migrator.down(MIGRATIONS_ROOT + "/valid", 0)
+      end
+
+      assert_sql("INSERT INTO #{sm_table} (version, plugin) VALUES ('#{version}', '#{plugin_name}')") do
+        ActiveRecord::Migrator.up(MIGRATIONS_ROOT + "/valid", 1, plugin_name)
+      end
+
+      assert_sql("DELETE FROM #{sm_table} WHERE version = '#{version}' AND plugin = '#{plugin_name}'") do
+        ActiveRecord::Migrator.down(MIGRATIONS_ROOT + "/valid", 0, plugin_name)
+      end
+    end
+
+    def test_get_all_versions
+      assert_equal(0, ActiveRecord::Migrator.current_version)
+      ActiveRecord::Migrator.run(:up, MIGRATIONS_ROOT + "/valid", 1)
+      ActiveRecord::Migrator.run(:up, MIGRATIONS_ROOT + "/valid", 2, 'foo')
+      
+      assert_equal [ 1 ], ActiveRecord::Migrator.get_all_versions
+      assert_equal [ 2 ], ActiveRecord::Migrator.get_all_versions('foo')
     end
 
     def test_migrator_db_has_no_schema_migrations_table
@@ -1053,6 +1093,23 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert_equal(0, ActiveRecord::Migrator.current_version)
     end
 
+    def test_migrator_plugin_rollback
+      ActiveRecord::Migrator.migrate(MIGRATIONS_ROOT + "/valid", nil, 'foo')
+      assert_equal(3, ActiveRecord::Migrator.current_version('foo'))
+      
+      ActiveRecord::Migrator.rollback(MIGRATIONS_ROOT + "/valid", 1, 'foo')
+      assert_equal(2, ActiveRecord::Migrator.current_version('foo'))
+      
+      ActiveRecord::Migrator.rollback(MIGRATIONS_ROOT + "/valid", 1, 'foo')
+      assert_equal(1, ActiveRecord::Migrator.current_version('foo'))
+      
+      ActiveRecord::Migrator.rollback(MIGRATIONS_ROOT + "/valid", 1, 'foo')
+      assert_equal(0, ActiveRecord::Migrator.current_version('foo'))
+      
+      ActiveRecord::Migrator.rollback(MIGRATIONS_ROOT + "/valid", 1, 'foo')
+      assert_equal(0, ActiveRecord::Migrator.current_version('foo'))
+    end
+
     def test_schema_migrations_table_name
       ActiveRecord::Base.table_name_prefix = "prefix_"
       ActiveRecord::Base.table_name_suffix = "_suffix"
@@ -1065,6 +1122,11 @@ if ActiveRecord::Base.connection.supports_migrations?
     ensure
       ActiveRecord::Base.table_name_prefix = ""
       ActiveRecord::Base.table_name_suffix = ""
+    end
+
+    def test_schema_migrations_table_structure
+      Person.connection.initialize_schema_migrations_table
+      assert_equal %w(version plugin), Person.connection.columns(ActiveRecord::Migrator.schema_migrations_table_name).map(&:name)
     end
 
     def test_proper_table_name
@@ -1145,6 +1207,12 @@ if ActiveRecord::Base.connection.supports_migrations?
     def test_migrator_with_duplicate_names
       assert_raises(ActiveRecord::DuplicateMigrationNameError, "Multiple migrations have the name Chunky") do
         ActiveRecord::Migrator.migrate(MIGRATIONS_ROOT + "/duplicate_names", nil)
+      end
+    end
+
+    def test_migrator_with_duplicates_from_plugin
+      assert_raises(ActiveRecord::DuplicateMigrationVersionError) do
+        ActiveRecord::Migrator.migrate(MIGRATIONS_ROOT + "/duplicate", nil, 'foo')
       end
     end
 

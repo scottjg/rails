@@ -359,7 +359,7 @@ module ActiveRecord
   # until they are needed
   class MigrationProxy
 
-    attr_accessor :name, :version, :filename
+    attr_accessor :name, :version, :filename, :plugin
 
     delegate :migrate, :announce, :write, :to=>:migration
 
@@ -378,48 +378,47 @@ module ActiveRecord
 
   class Migrator#:nodoc:
     class << self
-      def migrate(migrations_path, target_version = nil)
+      def migrate(migrations_path, target_version = nil, plugin_name = nil)
         case
-          when target_version.nil?              then up(migrations_path, target_version)
-          when current_version > target_version then down(migrations_path, target_version)
-          else                                       up(migrations_path, target_version)
+          when target_version.nil?                           then up(migrations_path, target_version, plugin_name)
+          when current_version(plugin_name) > target_version then down(migrations_path, target_version, plugin_name)
+          else                                                    up(migrations_path, target_version, plugin_name)
         end
       end
 
-      def rollback(migrations_path, steps=1)
-        migrator = self.new(:down, migrations_path)
+      def rollback(migrations_path, steps=1, plugin_name = nil)
+        migrator = self.new(:down, migrations_path, nil, plugin_name)
         start_index = migrator.migrations.index(migrator.current_migration)
-        
         return unless start_index
         
         finish = migrator.migrations[start_index + steps]
-        down(migrations_path, finish ? finish.version : 0)
+        down(migrations_path, finish ? finish.version : 0, plugin_name)
       end
 
-      def up(migrations_path, target_version = nil)
-        self.new(:up, migrations_path, target_version).migrate
+      def up(migrations_path, target_version = nil, plugin_name = nil)
+        self.new(:up, migrations_path, target_version, plugin_name).migrate
       end
 
-      def down(migrations_path, target_version = nil)
-        self.new(:down, migrations_path, target_version).migrate
+      def down(migrations_path, target_version = nil, plugin_name = nil)
+        self.new(:down, migrations_path, target_version, plugin_name).migrate
       end
       
-      def run(direction, migrations_path, target_version)
-        self.new(direction, migrations_path, target_version).run
+      def run(direction, migrations_path, target_version, plugin_name = nil)
+        self.new(direction, migrations_path, target_version, plugin_name).run
       end
 
       def schema_migrations_table_name
         Base.table_name_prefix + 'schema_migrations' + Base.table_name_suffix
       end
 
-      def get_all_versions
-        Base.connection.select_values("SELECT version FROM #{schema_migrations_table_name}").map(&:to_i).sort
+      def get_all_versions(plugin_name = nil)
+        Base.connection.select_values("SELECT version FROM #{schema_migrations_table_name} WHERE plugin #{plugin_name ? "= '#{plugin_name}'" : "IS NULL"}").map(&:to_i).sort
       end
 
-      def current_version
+      def current_version(plugin_name = nil)
         sm_table = schema_migrations_table_name
         if Base.connection.table_exists?(sm_table)
-          get_all_versions.max || 0
+          get_all_versions(plugin_name).max || 0
         else
           0
         end
@@ -431,10 +430,10 @@ module ActiveRecord
       end
     end
 
-    def initialize(direction, migrations_path, target_version = nil)
+    def initialize(direction, migrations_path, target_version = nil, plugin_name = nil)
       raise StandardError.new("This database does not yet support migrations") unless Base.connection.supports_migrations?
       Base.connection.initialize_schema_migrations_table
-      @direction, @migrations_path, @target_version = direction, migrations_path, target_version      
+      @direction, @migrations_path, @target_version, @plugin_name = direction, migrations_path, target_version, plugin_name
     end
 
     def current_version
@@ -515,6 +514,7 @@ module ActiveRecord
             migration.name     = name.camelize
             migration.version  = version
             migration.filename = file
+            migration.plugin   = @plugin_name
           end
         end
         
@@ -529,7 +529,7 @@ module ActiveRecord
     end
 
     def migrated
-      @migrated_versions ||= self.class.get_all_versions
+      @migrated_versions ||= self.class.get_all_versions(@plugin_name)
     end
 
     private
@@ -539,10 +539,14 @@ module ActiveRecord
         @migrated_versions ||= []
         if down?
           @migrated_versions.delete(version.to_i)
-          Base.connection.update("DELETE FROM #{sm_table} WHERE version = '#{version}'")
+          Base.connection.update(@plugin_name ?
+            "DELETE FROM #{sm_table} WHERE version = '#{version}' AND plugin = '#{@plugin_name}'" :
+            "DELETE FROM #{sm_table} WHERE version = '#{version}'")
         else
           @migrated_versions.push(version.to_i).sort!
-          Base.connection.insert("INSERT INTO #{sm_table} (version) VALUES ('#{version}')")
+          Base.connection.insert(@plugin_name ?
+            "INSERT INTO #{sm_table} (version, plugin) VALUES ('#{version}', '#{@plugin_name}')" :
+            "INSERT INTO #{sm_table} (version) VALUES ('#{version}')")
         end
       end
 

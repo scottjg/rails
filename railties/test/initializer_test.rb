@@ -190,6 +190,7 @@ class InitializerPluginLoadingTests < Test::Unit::TestCase
     @initializer       = Rails::Initializer.new(@configuration)
     @valid_plugin_path = plugin_fixture_path('default/stubby')
     @empty_plugin_path = plugin_fixture_path('default/empty')
+    Rails.plugins.clear
   end
 
   def test_no_plugins_are_loaded_if_the_configuration_has_an_empty_plugin_list
@@ -271,8 +272,19 @@ class InitializerPluginLoadingTests < Test::Unit::TestCase
     assert $LOAD_PATH.include?(File.join(plugin_fixture_path('default/acts/acts_as_chunky_bacon'), 'lib'))
   end
 
-  private
+  def test_should_store_loaded_plugins_in_rails_module
+    load_plugins!
+    assert_plugins [:a, :acts_as_chunky_bacon, :engine, :gemlike, :plugin_with_no_lib_dir, :stubby], Rails.plugins.values
+  end
 
+  def test_should_store_only_specified_plugins_in_rails_module
+    plugin_names = [:plugin_with_no_lib_dir, :acts_as_chunky_bacon]
+    only_load_the_following_plugins! plugin_names
+    load_plugins!
+    assert_plugins plugin_names, Rails.plugins.values
+  end
+
+  private
     def load_plugins!
       @initializer.add_plugin_load_paths
       @initializer.load_plugins

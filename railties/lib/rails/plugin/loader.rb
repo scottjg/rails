@@ -106,6 +106,7 @@ module Rails
 
         def register_plugin_as_loaded(plugin)
           initializer.loaded_plugins << plugin
+          Rails.plugins[plugin.name] = plugin
         end
 
         def configuration
