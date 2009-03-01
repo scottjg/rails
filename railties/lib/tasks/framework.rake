@@ -138,8 +138,8 @@ namespace :rails do
 
       unless connection.columns(sm_table).map(&:name).include?('plugin')
         connection.add_column   sm_table, :plugin, :string
-        connection.remove_index sm_table, :version rescue nil
-        connection.add_index [ :version, :plugin ], :unique => true,
+        connection.remove_index sm_table, :name => 'unique_schema_migrations' rescue nil
+        connection.add_index sm_table, [ :version, :plugin ], :unique => true,
           :name => 'unique_schema_migrations'
       end
     end
