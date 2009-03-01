@@ -113,16 +113,21 @@ namespace :db do
   task :migrate => ['db:migrate:application', 'db:migrate:plugins']
 
   namespace :migrate do
+    
+    def run_migrations_from(source_directory, plugin_name=nil)
+      ActiveRecord::Migration.verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
+      ActiveRecord::Migrator.migrate(source_directory, ENV["VERSION"] ? ENV["VERSION"].to_i : nil, plugin_name)
+      Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
+    end
+    
     desc "Run migrations from application"
     task :application => :environment do
-      ActiveRecord::Migration.verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
-      ActiveRecord::Migrator.migrate("db/migrate/", ENV["VERSION"] ? ENV["VERSION"].to_i : nil)
-      Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
+      run_migrations_from("db/migrate/")
     end
     
     desc "Run migrations from plugins"
     task :plugins => :environment do
-      raise "PLUGIN is require when specify PLUGIN_VERSION" if ENV['PLUGIN_VERSION'] && !ENV['PLUGIN']
+      raise "PLUGIN is require when specify VERSION" if ENV['VERSION'] && !ENV['PLUGIN']
 
       plugins = if ENV["PLUGIN"]
         raise "Unknown plugin: #{ENV["PLUGIN"]}" unless Rails.plugins.key?(ENV["PLUGIN"])
@@ -132,10 +137,7 @@ namespace :db do
       end
 
       plugins.each do |name, plugin|
-        plugin_migrations_path = "#{plugin.directory}/db/migrate"
-        ActiveRecord::Migration.verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
-        ActiveRecord::Migrator.migrate(plugin_migrations_path, ENV["PLUGIN_VERSION"] ? ENV["PLUGIN_VERSION"].to_i : nil, name)
-        Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
+        run_migrations_from("#{plugin.directory}/db/migrate", name)
       end
     end
     
