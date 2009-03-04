@@ -60,11 +60,31 @@ class MiddlewareStackTest < ActiveSupport::TestCase
     assert_equal BazMiddleware, @stack[2].klass
   end
 
+  test "swaps one middleware out for another" do
+    assert_equal FooMiddleware, @stack[0].klass
+    @stack.swap(FooMiddleware, BazMiddleware)
+    assert_equal BazMiddleware, @stack[0].klass
+  end
+
   test "active returns all only enabled middleware" do
     assert_no_difference "@stack.active.size" do
       assert_difference "@stack.size" do
         @stack.use BazMiddleware, :if => lambda { false }
       end
     end
+  end
+
+  test "lazy evaluates middleware class" do
+    assert_difference "@stack.size" do
+      @stack.use lambda { BazMiddleware }
+    end
+    assert_equal BazMiddleware, @stack.last.klass
+  end
+
+  test "lazy evaluates middleware arguments" do
+    assert_difference "@stack.size" do
+      @stack.use BazMiddleware, lambda { :foo }
+    end
+    assert_equal [:foo], @stack.last.send(:build_args)
   end
 end

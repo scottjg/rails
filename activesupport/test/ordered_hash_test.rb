@@ -45,6 +45,10 @@ class OrderedHashTest < Test::Unit::TestCase
     assert_nil @ordered_hash.delete(bad_key)
   end
 
+  def test_to_hash
+    assert_same @ordered_hash, @ordered_hash.to_hash
+  end
+
   def test_has_key
     assert_equal true, @ordered_hash.has_key?('blue')
     assert_equal true, @ordered_hash.key?('blue')
@@ -98,7 +102,8 @@ class OrderedHashTest < Test::Unit::TestCase
   end
 
   def test_delete_if
-    (copy = @ordered_hash.dup).delete('pink')
+    copy = @ordered_hash.dup
+    copy.delete('pink')
     assert_equal copy, @ordered_hash.delete_if { |k, _| k == 'pink' }
     assert !@ordered_hash.keys.include?('pink')
   end
@@ -115,6 +120,7 @@ class OrderedHashTest < Test::Unit::TestCase
     new_ordered_hash = @ordered_hash.reject { |k, _| k == 'pink' }
     assert_equal copy, @ordered_hash
     assert !new_ordered_hash.keys.include?('pink')
+    assert @ordered_hash.keys.include?('pink')
   end
 
   def test_clear
@@ -139,5 +145,11 @@ class OrderedHashTest < Test::Unit::TestCase
     pair = @ordered_hash.shift
     assert_equal [@keys.first, @values.first], pair
     assert !@ordered_hash.keys.include?(pair.first)
+  end
+  
+  def test_keys
+    original = @ordered_hash.keys.dup
+    @ordered_hash.keys.pop
+    assert_equal original, @ordered_hash.keys
   end
 end
