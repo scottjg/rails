@@ -51,6 +51,12 @@ module ActiveRecord
     end
   end
 
+  class HasAndBelongsToManyAssociationForeignKeyNeeded < ActiveRecordError #:nodoc:
+    def initialize(reflection)
+      super("Cannot create self referential has_and_belongs_to_many association on '#{reflection.class_name rescue nil}##{reflection.name rescue nil}'. :association_foreign_key cannot be the same as the :foreign_key.")
+    end
+  end
+
   class EagerLoadPolymorphicError < ActiveRecordError #:nodoc:
     def initialize(reflection)
       super("Can not eagerly load the polymorphic association #{reflection.name.inspect}")
@@ -65,7 +71,7 @@ module ActiveRecord
 
   # See ActiveRecord::Associations::ClassMethods for documentation.
   module Associations # :nodoc:
-    # These classes will be loaded when associatoins are created.
+    # These classes will be loaded when associations are created.
     # So there is no need to eager load them.
     autoload :AssociationCollection, 'active_record/associations/association_collection'
     autoload :AssociationProxy, 'active_record/associations/association_proxy'
@@ -997,9 +1003,7 @@ module ActiveRecord
 
         # Create the callbacks to update counter cache
         if options[:counter_cache]
-          cache_column = options[:counter_cache] == true ?
-            "#{self.to_s.demodulize.underscore.pluralize}_count" :
-            options[:counter_cache]
+          cache_column = reflection.counter_cache_column
 
           method_name = "belongs_to_counter_cache_after_create_for_#{reflection.name}".to_sym
           define_method(method_name) do
@@ -1526,6 +1530,10 @@ module ActiveRecord
           options[:extend] = create_extension_modules(association_id, extension, options[:extend])
 
           reflection = create_reflection(:has_and_belongs_to_many, association_id, options, self)
+          
+          if reflection.association_foreign_key == reflection.primary_key_name
+            raise HasAndBelongsToManyAssociationForeignKeyNeeded.new(reflection)
+          end
 
           reflection.options[:join_table] ||= join_table_name(undecorated_table_name(self.to_s), undecorated_table_name(reflection.class_name))
 

@@ -8,6 +8,7 @@ require 'models/warehouse_thing'
 require 'models/guid'
 require 'models/owner'
 require 'models/pet'
+require 'models/event'
 
 # The following methods in Topic are used in test_conditional_validation_*
 class Topic
@@ -528,6 +529,14 @@ class ValidationsTest < ActiveRecord::TestCase
       g.key = "foo"
       assert_nothing_raised { !g.valid? }
     end
+  end
+
+  def test_validate_uniqueness_with_limit
+    # Event.title is limited to 5 characters
+    e1 = Event.create(:title => "abcde")
+    assert e1.valid?, "Could not create an event with a unique, 5 character title"
+    e2 = Event.create(:title => "abcdefgh")
+    assert !e2.valid?, "Created an event whose title, with limit taken into account, is not unique"
   end
 
   def test_validate_straight_inheritance_uniqueness
@@ -1442,20 +1451,6 @@ class ValidationsTest < ActiveRecord::TestCase
     t.author_name = "Hubert J. Farnsworth"
     assert t.valid?, "A topic with an important title and author should be valid"
   end
-
-  private
-    def with_kcode(kcode)
-      if RUBY_VERSION < '1.9'
-        orig_kcode, $KCODE = $KCODE, kcode
-        begin
-          yield
-        ensure
-          $KCODE = orig_kcode
-        end
-      else
-        yield
-      end
-    end
 end
 
 

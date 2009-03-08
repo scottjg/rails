@@ -191,6 +191,13 @@ class FinderTest < ActiveRecord::TestCase
     assert developers.all? { |developer|  developer.salary > 10000 }
   end
 
+  def test_find_with_group_and_sanitized_having
+    developers =  Developer.find(:all, :group => "salary", :having => ["sum(salary) > ?", 10000], :select => "salary")
+    assert_equal 3, developers.size
+    assert_equal 3, developers.map(&:salary).uniq.size
+    assert developers.all? { |developer|  developer.salary > 10000 }
+  end
+
   def test_find_with_entire_select_statement
     topics = Topic.find_by_sql "SELECT * FROM topics WHERE author_name = 'Mary'"
 
@@ -1055,6 +1062,14 @@ class FinderTest < ActiveRecord::TestCase
     posts = Post.find(:all, :include => :author, :select => ' posts.*, authors.id as "author_id"', :limit => 3, :order => 'posts.id')
     assert_equal 3, posts.size
     assert_equal [0, 1, 1], posts.map(&:author_id).sort
+  end
+
+  def test_finder_with_scoped_from
+    all_topics = Topic.all
+
+    Topic.with_scope(:find => { :from => 'fake_topics' }) do
+      assert_equal all_topics, Topic.all(:from => 'topics')
+    end
   end
 
   protected
