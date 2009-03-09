@@ -166,3 +166,22 @@ class BaseLoadTest < Test::Unit::TestCase
     assert_kind_of Highrise::Deeply::Nested::Comment, n.comments.first
   end
 end
+
+
+class NamespaceLoadTest < Test::Unit::TestCase
+  def setup
+    ActiveSupport::Dependencies.load_paths << "#{File.dirname(__FILE__)}/../../test/fixtures"
+    @user = Accounts::User.new
+  end
+
+  def teardown
+    ActiveSupport::Dependencies.load_paths.delete "#{File.dirname(__FILE__)}/../../test/fixtures"
+  end
+
+  def test_user_load
+    @user.load(:addresses => [{:street => '123 Main'}])
+    assert_kind_of Accounts::Address, @user.addresses.first
+  end
+
+
+end
