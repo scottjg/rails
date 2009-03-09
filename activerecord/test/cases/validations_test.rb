@@ -114,8 +114,8 @@ class ValidationsTest < ActiveRecord::TestCase
   end
 
   def test_invalid_record_exception
-    assert_raises(ActiveRecord::RecordInvalid) { Reply.create! }
-    assert_raises(ActiveRecord::RecordInvalid) { Reply.new.save! }
+    assert_raise(ActiveRecord::RecordInvalid) { Reply.create! }
+    assert_raise(ActiveRecord::RecordInvalid) { Reply.new.save! }
 
     begin
       r = Reply.new
@@ -127,13 +127,13 @@ class ValidationsTest < ActiveRecord::TestCase
   end
 
   def test_exception_on_create_bang_many
-    assert_raises(ActiveRecord::RecordInvalid) do
+    assert_raise(ActiveRecord::RecordInvalid) do
       Reply.create!([ { "title" => "OK" }, { "title" => "Wrong Create" }])
     end
   end
 
   def test_exception_on_create_bang_with_block
-    assert_raises(ActiveRecord::RecordInvalid) do
+    assert_raise(ActiveRecord::RecordInvalid) do
       Reply.create!({ "title" => "OK" }) do |r|
         r.content = nil
       end
@@ -141,7 +141,7 @@ class ValidationsTest < ActiveRecord::TestCase
   end
 
   def test_exception_on_create_bang_many_with_block
-    assert_raises(ActiveRecord::RecordInvalid) do
+    assert_raise(ActiveRecord::RecordInvalid) do
       Reply.create!([{ "title" => "OK" }, { "title" => "Wrong Create" }]) do |r|
         r.content = nil
       end
@@ -150,7 +150,7 @@ class ValidationsTest < ActiveRecord::TestCase
 
   def test_scoped_create_without_attributes
     Reply.with_scope(:create => {}) do
-      assert_raises(ActiveRecord::RecordInvalid) { Reply.create! }
+      assert_raise(ActiveRecord::RecordInvalid) { Reply.create! }
     end
   end
 
@@ -170,7 +170,7 @@ class ValidationsTest < ActiveRecord::TestCase
         assert_equal person.first_name, "Mary", "should be ok when no attributes are passed to create!"
       end
     end
- end
+  end
 
   def test_single_error_per_attr_iteration
     r = Reply.new
@@ -1428,6 +1428,17 @@ class ValidationsTest < ActiveRecord::TestCase
      t = Topic.new("title" => "")
      assert !t.valid?
      assert_equal "can't be blank", t.errors.on("title").first
+  end
+
+  def test_invalid_should_be_the_opposite_of_valid
+    Topic.validates_presence_of :title
+
+    t = Topic.new
+    assert t.invalid?
+    assert t.errors.invalid?(:title)
+
+    t.title = 'Things are going to change'
+    assert !t.invalid?
   end
 
   # previous implementation of validates_presence_of eval'd the
