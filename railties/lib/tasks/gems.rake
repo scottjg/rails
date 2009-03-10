@@ -9,71 +9,62 @@ task :gems => 'gems:base' do
   puts "R = Framework (loaded before rails starts)"
 end
 
-def print_gem_status(gem, indent=1)
-  code = gem.loaded? ? (gem.frozen? ? (gem.framework_gem? ? "R" : "F") : "I") : " "
-  puts "   "*(indent-1)+" - [#{code}] #{gem.name} #{gem.requirement.to_s}"
-  gem.dependencies.each { |g| print_gem_status(g, indent+1)} if gem.loaded?
-end
-
 namespace :gems do
   task :base do
     $gems_rake_task = true
+    require 'rubygems'
+    require 'rubygems/gem_runner'
     Rake::Task[:environment].invoke
   end
 
   desc "Build any native extensions for unpacked gems"
   task :build do
-    $gems_rake_task = true
-    require 'rails/gem_builder'
-    Dir[File.join(Rails::GemDependency.unpacked_path, '*')].each do |gem_dir|
-      spec_file = File.join(gem_dir, '.specification')
-      next unless File.exists?(spec_file)
-      specification = YAML::load_file(spec_file)
-      next unless ENV['GEM'].blank? || ENV['GEM'] == specification.name
-      Rails::GemBuilder.new(specification, gem_dir).build_extensions
-      puts "Built gem: '#{gem_dir}'"
-    end
+    $gems_build_rake_task = true
+    Rake::Task['gems:unpack'].invoke
+    Rails.configuration.gems.each { |gem| gem.build }
   end
 
-  desc "Installs all required gems for this application."
+  desc "Installs all required gems."
   task :install => :base do
-    require 'rubygems'
-    require 'rubygems/gem_runner'
-    Rails.configuration.gems.each { |gem| gem.install unless gem.loaded? }
+    Rails.configuration.gems.each { |gem| gem.install }
   end
 
-  desc "Unpacks the specified gem into vendor/gems."
-  task :unpack => :base do
-    require 'rubygems'
-    require 'rubygems/gem_runner'
-    Rails.configuration.gems.each do |gem|
-      next unless ENV['GEM'].blank? || ENV['GEM'] == gem.name
-      gem.unpack_to(Rails::GemDependency.unpacked_path)
-    end
-  end
-
-  namespace :unpack do
-    desc "Unpacks the specified gems and its dependencies into vendor/gems"
-    task :dependencies => :unpack do
-      require 'rubygems'
-      require 'rubygems/gem_runner'
-      Rails.configuration.gems.each do |gem|
-        next unless ENV['GEM'].blank? || ENV['GEM'] == gem.name
-        gem.dependencies(:flatten => true).each do |dependency|
-          dependency.unpack_to(Rails::GemDependency.unpacked_path)
-        end
-      end
-    end
+  desc "Unpacks all required gems into vendor/gems."
+  task :unpack => :install do
+    Rails.configuration.gems.each { |gem| gem.unpack }
   end
 
   desc "Regenerate gem specifications in correct format."
-  task :refresh_specs => :base do
-    require 'rubygems'
-    require 'rubygems/gem_runner'
-    Rails::VendorGemSourceIndex.silence_spec_warnings = true
-    Rails.configuration.gems.each do |gem|
-      next unless gem.frozen? && (ENV['GEM'].blank? || ENV['GEM'] == gem.name)
-      gem.refresh_spec(Rails::GemDependency.unpacked_path) if gem.loaded?
+  task :refresh => :base do
+    Rails.configuration.gems.each { |gem| gem.refresh }
+  end
+
+  # deprecated
+  namespace :install do
+    task :dependencies do
+      puts "DEPRECATED: gems:install:dependencies is no longer necessary."
+      puts "  Use gems:install instead."
+      Rake::Task['gems:install'].invoke
     end
   end
+
+  # deprecated
+  namespace :unpack do
+    task :dependencies do
+      puts "DEPRECATED: gems:unpack:dependencies is no longer necessary."
+      puts "  Use gems:unpack instead."
+      Rake::Task['gems:unpack'].invoke
+    end
+  end
+end
+
+def print_gem_status(gem, indent=1)
+  code = case
+    when gem.framework_gem? then 'R'
+    when gem.frozen?        then 'F'
+    when gem.installed?     then 'I'
+    else                         ' '
+  end
+  puts "   "*(indent-1)+" - [#{code}] #{gem.name} #{gem.requirement.to_s}"
+  gem.dependencies.each { |g| print_gem_status(g, indent+1) }
 end
