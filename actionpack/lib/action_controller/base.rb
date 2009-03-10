@@ -908,12 +908,14 @@ module ActionController #:nodoc:
           end
 
           options = extra_options
+        elsif !options.is_a?(Hash)
+          extra_options[:partial] = options
+          options = extra_options
         end
 
         layout = pick_layout(options)
         response.layout = layout.path_without_format_and_extension if layout
         logger.info("Rendering template within #{layout.path_without_format_and_extension}") if logger && layout
-        layout = layout.path_without_format_and_extension if layout
 
         if content_type = options[:content_type]
           response.content_type = content_type.to_s
@@ -1101,7 +1103,6 @@ module ActionController #:nodoc:
         end
 
         response.redirected_to = options
-        logger.info("Redirected to #{options}") if logger && logger.info?
 
         case options
           # The scheme name consist of a letter followed by any combination of
@@ -1124,6 +1125,7 @@ module ActionController #:nodoc:
 
       def redirect_to_full_url(url, status)
         raise DoubleRenderError if performed?
+        logger.info("Redirected to #{url}") if logger && logger.info?
         response.redirect(url, interpret_status(status))
         @performed_redirect = true
       end
@@ -1206,10 +1208,12 @@ module ActionController #:nodoc:
         cache_control = response.headers["Cache-Control"].split(",").map {|k| k.strip }
 
         cache_control << "max-age=#{seconds}"
+        cache_control.delete("no-cache")
         if options[:public]
           cache_control.delete("private")
-          cache_control.delete("no-cache")
           cache_control << "public"
+        else
+          cache_control << "private"
         end
         
         # This allows for additional headers to be passed through like 'max-stale' => 5.hours

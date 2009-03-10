@@ -27,7 +27,7 @@ class MetalTest < Test::Unit::TestCase
       assert_equal(["MetalB"], found_metals_as_string_array)
     end
   end
-p
+
   def test_metal_finding_should_work_with_subfolders
     use_appdir("subfolders") do
       assert_equal(["Folder::MetalA", "Folder::MetalB"], found_metals_as_string_array)
@@ -38,6 +38,15 @@ p
     use_appdir("subfolders") do
       Rails::Rack::Metal.requested_metals = ["Folder::MetalB"]
       assert_equal(["Folder::MetalB"], found_metals_as_string_array)
+    end
+  end
+
+  def test_metal_finding_should_work_with_multiple_metal_paths_in_185_and_below
+    use_appdir("singlemetal") do
+      engine_metal_path = "#{File.dirname(__FILE__)}/fixtures/plugins/engines/engine/app/metal" 
+      Rails::Rack::Metal.metal_paths << engine_metal_path
+      $LOAD_PATH << engine_metal_path
+      assert_equal(["FooMetal", "EngineMetal"], found_metals_as_string_array)
     end
   end
 
