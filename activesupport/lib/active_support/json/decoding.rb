@@ -43,7 +43,16 @@ module ActiveSupport
           end
 
           if marks.empty?
-            json.gsub(/\\\//, '/')
+            json.gsub(/\\([\\\/]|u[[:xdigit:]]{4})/) do
+              ustr = $1
+              if ustr.starts_with?('u')
+                [ustr[1..-1].to_i(16)].pack("U")
+              elsif ustr == '\\'
+                '\\\\'
+              else
+                ustr
+              end
+            end
           else
             left_pos  = [-1].push(*marks)
             right_pos = marks << scanner.pos + scanner.rest_size
