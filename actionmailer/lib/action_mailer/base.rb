@@ -222,7 +222,7 @@ module ActionMailer #:nodoc:
   #
   # * <tt>raise_delivery_errors</tt> - Whether or not errors should be raised if the email fails to be delivered.
   #
-  # * <tt>delivery_method</tt> - Defines a delivery method. Possible values are <tt>:smtp</tt> (default), <tt>:sendmail</tt>, and <tt>:test</tt>.
+  # * <tt>delivery_method</tt> - Defines a delivery method. Possible values are <tt>:smtp</tt> (default), <tt>:sendmail</tt>, <tt>:test</tt>, and <tt>:test_fail</tt>.
   #
   # * <tt>perform_deliveries</tt> - Determines whether <tt>deliver_*</tt> methods are actually carried out. By default they are,
   #   but this can be turned off to help functional testing.
@@ -695,6 +695,10 @@ module ActionMailer #:nodoc:
 
       def perform_delivery_test(mail)
         deliveries << mail
+      end
+
+      def perform_delivery_test_fail(mail)
+        raise
       end
   end
 
