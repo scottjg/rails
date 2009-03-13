@@ -694,6 +694,7 @@ module ActionMailer #:nodoc:
       end
 
       def perform_delivery_test(mail)
+        mail.message_id ="<#{rand(1000000000)}@mail.test.com>"
         deliveries << mail
       end
   end
