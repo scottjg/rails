@@ -200,7 +200,7 @@ module ActiveRecord
                 reflection.klass.columns_hash["#{as}_type"]) }
           else
             if reflection.macro == :belongs_to
-              { 'id' => @owner.class.quote_value(@owner[reflection.primary_key_name]) }
+              { reflection.klass.primary_key => @owner.class.quote_value(@owner[reflection.primary_key_name]) }
             else
               { reflection.primary_key_name => @owner.quoted_id }
             end
@@ -238,7 +238,7 @@ module ActiveRecord
             end
           else
             reflection_primary_key = @reflection.source_reflection.primary_key_name
-            source_primary_key     = @reflection.klass.primary_key
+            source_primary_key     = @reflection.source_reflection.options[:primary_key] || @reflection.klass.primary_key
             if @reflection.source_reflection.options[:as]
               polymorphic_join = "AND %s.%s = %s" % [
                 @reflection.table_name, "#{@reflection.source_reflection.options[:as]}_type",
