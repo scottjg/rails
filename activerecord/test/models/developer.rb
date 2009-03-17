@@ -90,12 +90,13 @@ class DeveloperOrderedBySalary < ActiveRecord::Base
   end
 end
 
-class DeveloperCalledDavid < ActiveRecord::Base
-  self.table_name = 'developers'
-  default_scope :conditions => "name = 'David'"
+class DeveloperSalaryHiding < DeveloperOrderedBySalary  
+  default_scope :conditions => "salary > 0"
 end
 
-class DeveloperCalledJamis < ActiveRecord::Base
+class DeveloperCurrent < ActiveRecord::Base
   self.table_name = 'developers'
-  default_scope :conditions => { :name => 'Jamis' }
+  default_scope do
+    { :conditions => ['created_at <= ?', Time.now] }
+  end
 end

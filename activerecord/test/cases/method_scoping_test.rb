@@ -590,6 +590,12 @@ class DefaultScopingTest < ActiveRecord::TestCase
     received = DeveloperOrderedBySalary.find(:all).collect { |dev| dev.salary }
     assert_equal expected, received
   end
+  
+  def test_default_scope_with_block
+    assert_equal 12, Developer.count
+    assert_equal 11, DeveloperCurrent.count
+    assert_instance_of Time, DeveloperCurrent.send(:eval_default_scoping)[:find][:conditions][1]
+  end
 
   def test_default_scope_with_conditions_string
     assert_equal Developer.find_all_by_name('David').map(&:id).sort, DeveloperCalledDavid.all.map(&:id).sort
@@ -602,26 +608,32 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_default_scoping_with_threads
-    scope = [{ :create => {}, :find => { :order => 'salary DESC' } }]
+    scope = { :create => {}, :find => { :order => 'salary DESC' } }
 
     2.times do
-      Thread.new { assert_equal scope, DeveloperOrderedBySalary.send(:scoped_methods) }.join
+      Thread.new { assert_equal scope, DeveloperOrderedBySalary.send(:eval_default_scoping) }.join
     end
   end
 
   def test_default_scoping_with_inheritance
-    scope = [{ :create => {}, :find => { :order => 'salary DESC' } }]
-
+    scope = { :create => {}, :find => { :order => 'salary DESC' } }
+  
     # Inherit a class having a default scope and define a new default scope
     klass = Class.new(DeveloperOrderedBySalary)
-    klass.send :default_scope, {}
-
+    klass.send :default_scope, { :conditions => { :salary => 0 } }
+    
     # Scopes added on children should append to parent scope
-    expected_klass_scope = [{ :create => {}, :find => { :order => 'salary DESC' }}, { :create => {}, :find => {} }]
-    assert_equal expected_klass_scope, klass.send(:scoped_methods)
-
+    expected_klass_scope = { :create => { :salary => 0 }, 
+                             :find => { :conditions => { :salary => 0 }, :order => 'salary DESC' } }
+    assert_equal expected_klass_scope, klass.send(:eval_default_scoping)
+  
     # Parent should still have the original scope
-    assert_equal scope, DeveloperOrderedBySalary.send(:scoped_methods)
+    assert_equal scope, DeveloperOrderedBySalary.send(:eval_default_scoping)
+  end
+  
+  def test_default_scoping_with_condition_string_and_inheritance
+    scope = { :create => {}, :find => { :conditions => "salary > 0", :order => 'salary DESC' } }
+    assert_equal scope, DeveloperSalaryHiding.send(:eval_default_scoping)
   end
 
   def test_method_scope
@@ -638,9 +650,9 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal expected, received
   end
 
-  def test_named_scope_overwrites_default
-    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.by_name.find(:all).collect { |dev| dev.name }
+  def test_named_scope
+    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.salary }
+    received = DeveloperOrderedBySalary.by_name.find(:all).collect { |dev| dev.salary }
     assert_equal expected, received
   end
 
@@ -657,6 +669,21 @@ class DefaultScopingTest < ActiveRecord::TestCase
     received = DeveloperOrderedBySalary.find(:all, :order => 'salary').collect { |dev| dev.salary }
     assert_equal expected, received
   end
+  
+  def test_without_default_scope
+    count = Developer.count
+    assert_equal (count - 1), DeveloperCurrent.count
+    assert_equal count, DeveloperCurrent.send(:without_default_scope){ DeveloperCurrent.count }
+  end
+  
+  def test_without_default_scope_inside_with_scope
+    expected = Developer.find(:all, :order => 'name').map(&:name)
+    received = DeveloperCurrent.send(:with_scope, :find => { :order => "name" }) do
+      DeveloperCurrent.send(:without_default_scope){ DeveloperCurrent.find(:all) }.map(&:name)
+    end
+    assert_equal expected, received
+  end
+  
 end
 
 =begin

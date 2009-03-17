@@ -1795,8 +1795,8 @@ class BasicsTest < ActiveRecord::TestCase
     scoped_developers = Developer.with_scope(:find => { :limit => 1, :order => 'salary DESC' }) do
       Developer.find(:all)
     end
-    assert_equal 'Jamis', scoped_developers.first.name
-    assert scoped_developers.include?(developers(:jamis))
+    assert_equal 'Future', scoped_developers.first.name
+    assert scoped_developers.include?(developers(:future))
     # Test scope without order and order in find
     scoped_developers = Developer.with_scope(:find => { :limit => 1 }) do
       Developer.find(:all, :order => 'salary DESC')
@@ -1835,7 +1835,7 @@ class BasicsTest < ActiveRecord::TestCase
     developers = Developer.with_scope(:find => { :group => 'developers.salary', :having => "SUM(salary) > 10000", :select => "SUM(salary) as salary" }) do
       Developer.find(:all)
     end
-    assert_equal 3, developers.size
+    assert_equal 4, developers.size
   end
 
   def test_find_last
