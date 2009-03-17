@@ -1547,13 +1547,9 @@ module ActiveRecord #:nodoc:
           if scoped?(:find, :order)
             scope = scope(:find)
             original_scoped_order = scope[:order]
-            scope[:order] = reverse_sql_order(original_scoped_order)
-          end
-
-          begin
+            with_scope(:find => { :order => reverse_sql_order(scope[:order]) }) { find_initial(options) }
+          else
             find_initial(options.merge({ :order => order }))
-          ensure
-            scope[:order] = original_scoped_order if original_scoped_order
           end
         end
 
@@ -2124,55 +2120,15 @@ module ActiveRecord #:nodoc:
         def with_scope(method_scoping = {}, action = :merge, &block)
           method_scoping = method_scoping.method_scoping if method_scoping.respond_to?(:method_scoping)
 
-          # Dup first and second level of hash (method and params).
-          method_scoping = method_scoping.inject({}) do |hash, (method, params)|
-            hash[method] = (params == true) ? params : params.dup
-            hash
-          end
-
           method_scoping.assert_valid_keys([ :find, :create ])
 
           if f = method_scoping[:find]
             f.assert_valid_keys(VALID_FIND_OPTIONS)
             set_readonly_option! f
           end
-
-          # Merge scopings
-          if [:merge, :reverse_merge].include?(action) && current_scoped_methods
-            method_scoping = current_scoped_methods.inject(method_scoping) do |hash, (method, params)|
-              case hash[method]
-                when Hash
-                  if method == :find
-                    (hash[method].keys + params.keys).uniq.each do |key|
-                      merge = hash[method][key] && params[key] # merge if both scopes have the same key
-                      if key == :conditions && merge
-                        if params[key].is_a?(Hash) && hash[method][key].is_a?(Hash)
-                          hash[method][key] = merge_conditions(hash[method][key].deep_merge(params[key]))
-                        else
-                          hash[method][key] = merge_conditions(params[key], hash[method][key])
-                        end
-                      elsif key == :include && merge
-                        hash[method][key] = merge_includes(hash[method][key], params[key]).uniq
-                      elsif key == :joins && merge
-                        hash[method][key] = merge_joins(params[key], hash[method][key])
-                      else
-                        hash[method][key] = hash[method][key] || params[key]
-                      end
-                    end
-                  else
-                    if action == :reverse_merge
-                      hash[method] = hash[method].merge(params)
-                    else
-                      hash[method] = params.merge(hash[method])
-                    end
-                  end
-                else
-                  hash[method] = params
-              end
-              hash
-            end
-          end
-
+          
+          method_scoping = merge_scopings(method_scoping, current_scoped_methods || {}, action)
+          
           self.scoped_methods << method_scoping
           begin
             yield
@@ -2180,10 +2136,80 @@ module ActiveRecord #:nodoc:
             self.scoped_methods.pop
           end
         end
+        
+        def without_default_scope
+          backup_default_scoping = self.default_scoping.dup
+          self.default_scoping = []
+          begin
+            yield
+          ensure
+            self.default_scoping = backup_default_scoping
+          end
+        end
 
         # Works like with_scope, but discards any nested properties.
         def with_exclusive_scope(method_scoping = {}, &block)
-          with_scope(method_scoping, :overwrite, &block)
+          without_default_scope { with_scope(method_scoping, :overwrite, &block) }
+        end
+        
+        def merge_scopings(new_scopings, existing_scopings, action = :merge)
+          # Dup first and second level of hash (method and params).
+          new_scopings = new_scopings.inject({}) do |hash, (method, params)|
+            hash[method] = (params == true) ? params : params.dup
+            hash
+          end
+          
+          return new_scopings unless [:merge, :reverse_merge].include?(action)
+          
+          existing_scopings.inject(new_scopings) do |hash, (method, params)|
+            case hash[method]
+              when Hash
+                if method == :find
+                  (hash[method].keys + params.keys).uniq.each do |key|
+                    merge = hash[method][key] && params[key] # merge if both scopes have the same key
+                    if key == :conditions && merge
+                      if params[key].is_a?(Hash) && hash[method][key].is_a?(Hash)
+                        hash[method][key] = merge_conditions(hash[method][key].deep_merge(params[key]))
+                      else
+                        hash[method][key] = merge_conditions(params[key], hash[method][key])
+                      end
+                    elsif key == :include && merge
+                      hash[method][key] = merge_includes(hash[method][key], params[key]).uniq
+                    elsif key == :joins && merge
+                      hash[method][key] = merge_joins(params[key], hash[method][key])
+                    else
+                      hash[method][key] = hash[method][key] || params[key]
+                    end
+                  end
+                else
+                  if action == :reverse_merge
+                    hash[method] = hash[method].merge(params)
+                  else
+                    hash[method] = params.merge(hash[method])
+                  end
+                end
+              else
+                hash[method] = params
+            end
+            hash
+          end
+        end
+        
+        def eval_default_scoping
+          default_scoping.inject({}) do |hash, ds|
+            scope_options = ds.call
+            
+            clean_scope_options = { :find => scope_options }
+            clean_scope_options[:create] = 
+              (scope_options.is_a?(Hash) && scope_options.has_key?(:conditions) && scope_options[:conditions].respond_to?(:merge)) ? 
+                scope_options[:conditions] : {}
+                
+            merge_scopings(hash, clean_scope_options, :merge)
+          end
+        end
+        
+        def current_merged_scopings
+          merge_scopings(current_scoped_methods || {}, eval_default_scoping, :merge)
         end
 
         def subclasses #:nodoc:
@@ -2197,26 +2223,27 @@ module ActiveRecord #:nodoc:
         #   class Person < ActiveRecord::Base
         #     default_scope :order => 'last_name, first_name'
         #   end
-        def default_scope(options = {})
-          self.default_scoping << { :find => options, :create => options[:conditions].is_a?(Hash) ? options[:conditions] : {} }
+        def default_scope(options = {}, &block)
+          raise ArgumentError.new("Cannot take options and block at the same time") if !options.empty? && block_given?
+          self.default_scoping << lambda{ block ? block.call : options }
         end
 
         # Test whether the given method and optional key are scoped.
         def scoped?(method, key = nil) #:nodoc:
-          if current_scoped_methods && (scope = current_scoped_methods[method])
+          if scope = current_merged_scopings[method]
             !key || !scope[key].nil?
           end
         end
 
         # Retrieve the scope for the given method and optional key.
         def scope(method, key = nil) #:nodoc:
-          if current_scoped_methods && (scope = current_scoped_methods[method])
+          if scope = current_merged_scopings[method]
             key ? scope[key] : scope
           end
         end
 
         def scoped_methods #:nodoc:
-          Thread.current[:"#{self}_scoped_methods"] ||= self.default_scoping.dup
+          Thread.current[:"#{self}_scoped_methods"] ||= []
         end
 
         def current_scoped_methods #:nodoc:

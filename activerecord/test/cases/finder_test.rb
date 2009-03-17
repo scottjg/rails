@@ -139,11 +139,11 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal 2, Entrant.find([1,3,2], :limit => 2).size
     assert_equal 1, Entrant.find([1,3,2], :limit => 3, :offset => 2).size
 
-    # Also test an edge case: If you have 11 results, and you set a
-    #   limit of 3 and offset of 9, then you should find that there
+    # Also test an edge case: If you have 12 results, and you set a
+    #   limit of 3 and offset of 10, then you should find that there
     #   will be only 2 results, regardless of the limit.
     devs = Developer.find :all
-    last_devs = Developer.find devs.map(&:id), :limit => 3, :offset => 9
+    last_devs = Developer.find devs.map(&:id), :limit => 3, :offset => 10
     assert_equal 2, last_devs.size
   end
 
@@ -185,21 +185,21 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_find_with_group
     developers =  Developer.find(:all, :group => "salary", :select => "salary")
-    assert_equal 4, developers.size
-    assert_equal 4, developers.map(&:salary).uniq.size
+    assert_equal 5, developers.size
+    assert_equal 5, developers.map(&:salary).uniq.size
   end
 
   def test_find_with_group_and_having
     developers =  Developer.find(:all, :group => "salary", :having => "sum(salary) >  10000", :select => "salary")
-    assert_equal 3, developers.size
-    assert_equal 3, developers.map(&:salary).uniq.size
+    assert_equal 4, developers.size
+    assert_equal 4, developers.map(&:salary).uniq.size
     assert developers.all? { |developer|  developer.salary > 10000 }
   end
 
   def test_find_with_group_and_sanitized_having
     developers =  Developer.find(:all, :group => "salary", :having => ["sum(salary) > ?", 10000], :select => "salary")
-    assert_equal 3, developers.size
-    assert_equal 3, developers.map(&:salary).uniq.size
+    assert_equal 4, developers.size
+    assert_equal 4, developers.map(&:salary).uniq.size
     assert developers.all? { |developer|  developer.salary > 10000 }
   end
 

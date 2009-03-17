@@ -19,3 +19,9 @@ poor_jamis:
   id: 11
   name: Jamis
   salary: 9000
+  
+future:
+  id: 12
+  name: Future
+  salary: 1000000
+  created_at: <%= Time.now.tomorrow.to_s(:db) %>
