@@ -16,3 +16,4 @@ railties/test/500.html
 *.rbc
 .svn
 *~
+actionpack/test/fixtures/layout_tests/layouts/symlinked.lnk
