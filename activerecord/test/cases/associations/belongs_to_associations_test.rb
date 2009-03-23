@@ -36,7 +36,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_type_mismatch
-    assert_raise(ActiveRecord::AssociationTypeMismatch) { Account.find(1).firm = 1 }
+    assert_raise(ActiveRecord::AssociationTypeMismatch) { Account.find(1).firm = 1.0 }
     assert_raise(ActiveRecord::AssociationTypeMismatch) { Account.find(1).firm = Project.find(1) }
   end
 
@@ -44,6 +44,20 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     apple = Firm.create("name" => "Apple")
     citibank = Account.create("credit_limit" => 10)
     citibank.firm = apple
+    assert_equal apple.id, citibank.firm_id
+  end
+
+  def test_fixnum_assignment
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+    citibank.firm = apple.id
+    assert_equal apple.id, citibank.firm_id
+  end
+
+  def test_string_assignment
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+    citibank.firm = apple.id.to_s
     assert_equal apple.id, citibank.firm_id
   end
 

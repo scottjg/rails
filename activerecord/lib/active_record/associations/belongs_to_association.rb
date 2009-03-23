@@ -18,6 +18,8 @@ module ActiveRecord
           end
 
           @target = @owner[@reflection.primary_key_name] = nil
+        elsif record.kind_of?(Fixnum) || record.kind_of?(String)
+          return replace(@reflection.klass.find(record))
         else
           raise_on_type_mismatch(record)
 
