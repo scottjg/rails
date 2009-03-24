@@ -808,6 +808,8 @@ module ActiveRecord
       #   If true, all the associated objects are readonly through the association.
       # [:validate]
       #   If false, don't validate the associated objects when saving the parent object. true by default.
+      # [:accessible]
+      #   Mass assignment is allowed for this assocation (similar to <tt>ActiveRecord::Base#attr_accessible</tt>).
       # [:autosave]
       #   If true, always save any loaded members and destroy members marked for destruction, when saving the parent object. Off by default.
       #
@@ -921,6 +923,8 @@ module ActiveRecord
       #   If false, don't validate the associated object when saving the parent object. +false+ by default.
       # [:autosave]
       #   If true, always save the associated object or destroy it if marked for destruction, when saving the parent object. Off by default.
+      # [:accessible]
+      #   Mass assignment is allowed for this assocation (similar to <tt>ActiveRecord::Base#attr_accessible</tt>).
       #
       # Option examples:
       #   has_one :credit_card, :dependent => :destroy  # destroys the associated credit card
@@ -1023,6 +1027,8 @@ module ActiveRecord
       # [:touch]
       #   If true, the associated object will be touched (the updated_at/on attributes set to now) when this record is either saved or
       #   destroyed. If you specify a symbol, that attribute will be updated with the current time instead of the updated_at/on attribute.
+      # [:accessible]
+      #   Mass assignment is allowed for this assocation (similar to <tt>ActiveRecord::Base#attr_accessible</tt>).
       #
       # Option examples:
       #   belongs_to :firm, :foreign_key => "client_of"
@@ -1203,6 +1209,8 @@ module ActiveRecord
       #   If false, don't validate the associated objects when saving the parent object. +true+ by default.
       # [:autosave]
       #   If true, always save any loaded members and destroy members marked for destruction, when saving the parent object. Off by default.
+      # [:accessible<]
+      #   Mass assignment is allowed for this assocation (similar to <tt>ActiveRecord::Base#attr_accessible</tt>).
       #
       # Option examples:
       #   has_and_belongs_to_many :projects
@@ -1275,6 +1283,8 @@ module ActiveRecord
             if association.nil? || association.target != new_value
               association = association_proxy_class.new(self, reflection)
             end
+
+            new_value = reflection.build_association(new_value) if reflection.options[:accessible] && new_value.is_a?(Hash)
 
             if association_proxy_class == HasOneThroughAssociation
               association.create_through_record(new_value)
@@ -1531,11 +1541,12 @@ module ActiveRecord
           :finder_sql, :counter_sql,
           :before_add, :after_add, :before_remove, :after_remove,
           :extend, :readonly,
-          :validate, :inverse_of
+          :validate, :inverse_of, :accessible
         ]
 
         def create_has_many_reflection(association_id, options, &extension)
           options.assert_valid_keys(valid_keys_for_has_many_association)
+
           options[:extend] = create_extension_modules(association_id, extension, options[:extend])
 
           create_reflection(:has_many, association_id, options, self)
@@ -1545,11 +1556,12 @@ module ActiveRecord
         @@valid_keys_for_has_one_association = [
           :class_name, :foreign_key, :remote, :select, :conditions, :order,
           :include, :dependent, :counter_cache, :extend, :as, :readonly,
-          :validate, :primary_key, :inverse_of
+          :validate, :primary_key, :inverse_of, :accessible
         ]
 
         def create_has_one_reflection(association_id, options)
           options.assert_valid_keys(valid_keys_for_has_one_association)
+
           create_reflection(:has_one, association_id, options, self)
         end
 
@@ -1564,11 +1576,12 @@ module ActiveRecord
         @@valid_keys_for_belongs_to_association = [
           :class_name, :primary_key, :foreign_key, :foreign_type, :remote, :select, :conditions,
           :include, :dependent, :counter_cache, :extend, :polymorphic, :readonly,
-          :validate, :touch, :inverse_of
+          :validate, :touch, :inverse_of, :accessible
         ]
 
         def create_belongs_to_reflection(association_id, options)
           options.assert_valid_keys(valid_keys_for_belongs_to_association)
+
           reflection = create_reflection(:belongs_to, association_id, options, self)
 
           if options[:polymorphic]
@@ -1586,12 +1599,11 @@ module ActiveRecord
           :finder_sql, :counter_sql, :delete_sql, :insert_sql,
           :before_add, :after_add, :before_remove, :after_remove,
           :extend, :readonly,
-          :validate
+          :validate, :accessible
         ]
 
         def create_has_and_belongs_to_many_reflection(association_id, options, &extension)
           options.assert_valid_keys(valid_keys_for_has_and_belongs_to_many_association)
-
           options[:extend] = create_extension_modules(association_id, extension, options[:extend])
 
           reflection = create_reflection(:has_and_belongs_to_many, association_id, options, self)
