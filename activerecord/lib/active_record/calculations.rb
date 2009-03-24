@@ -164,6 +164,7 @@ module ActiveRecord
             raise ArgumentError, "Unexpected parameters passed to count(): #{args.inspect}"
           end
 
+          column_name = :all if column_name.to_s.index(',')
           [column_name || :all, options]
         end
 

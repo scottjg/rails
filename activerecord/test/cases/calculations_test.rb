@@ -298,6 +298,10 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal 1, Account.scoped(:select => "credit_limit").count(:conditions => ['credit_limit >= 50'])
   end
 
+  def test_could_should_ignore_scoped_select_with_comma
+    assert_equal 6, Account.scoped(:select => "credit_limit, firm_id").count
+  end
+
   def test_should_count_manual_select_with_include
     assert_equal 6, Account.count(:select => "DISTINCT accounts.id", :include => :firm)
   end
