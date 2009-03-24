@@ -10,6 +10,10 @@ module ActiveRecord
       end
 
       def replace(record)
+        if record.kind_of?(Fixnum) || record.kind_of?(String)
+          record = @reflection.klass.find(record)
+        end
+
         counter_cache_name = @reflection.counter_cache_column
 
         if record.nil?
@@ -18,8 +22,6 @@ module ActiveRecord
           end
 
           @target = @owner[@reflection.primary_key_name] = nil
-        elsif record.kind_of?(Fixnum) || record.kind_of?(String)
-          return replace(@reflection.klass.find(record))
         else
           raise_on_type_mismatch(record)
 

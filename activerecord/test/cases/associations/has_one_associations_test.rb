@@ -59,7 +59,7 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_type_mismatch
-    assert_raise(ActiveRecord::AssociationTypeMismatch) { companies(:first_firm).account = 1 }
+    assert_raise(ActiveRecord::AssociationTypeMismatch) { companies(:first_firm).account = 1.0 }
     assert_raise(ActiveRecord::AssociationTypeMismatch) { companies(:first_firm).account = Project.find(1) }
   end
 
@@ -77,6 +77,24 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     assert_nil companies(:first_firm).account
     # account is dependent, therefore is destroyed when reference to owner is lost
     assert_raise(ActiveRecord::RecordNotFound) { Account.find(old_account_id) }
+  end
+
+  def test_fixnum_assignment
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+    apple.account = citibank.id
+    citibank.reload # implicitly finding another instance under the hood
+    
+    assert_equal apple.id, citibank.firm_id
+  end
+
+  def test_string_assignment
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+    apple.account = citibank.id.to_s
+    citibank.reload # implicitly finding another instance under the hood
+
+    assert_equal apple.id, citibank.firm_id
   end
 
   def test_nullification_on_association_change

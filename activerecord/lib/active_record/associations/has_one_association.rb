@@ -25,6 +25,8 @@ module ActiveRecord
       end
 
       def replace(obj, dont_save = false)
+        obj = @reflection.klass.find(obj) if obj.kind_of?(Fixnum) || obj.kind_of?(String)
+        
         load_target
 
         unless @target.nil? || @target == obj
