@@ -2150,11 +2150,7 @@ module ActiveRecord #:nodoc:
                     (hash[method].keys + params.keys).uniq.each do |key|
                       merge = hash[method][key] && params[key] # merge if both scopes have the same key
                       if key == :conditions && merge
-                        if params[key].is_a?(Hash) && hash[method][key].is_a?(Hash)
-                          hash[method][key] = merge_conditions(hash[method][key].deep_merge(params[key]))
-                        else
-                          hash[method][key] = merge_conditions(params[key], hash[method][key])
-                        end
+                        hash[method][key] = merge_conditions(params[key], hash[method][key])
                       elsif key == :include && merge
                         hash[method][key] = merge_includes(hash[method][key], params[key]).uniq
                       elsif key == :joins && merge
