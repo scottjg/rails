@@ -816,12 +816,14 @@ module ActiveRecord
         superclass_delegating_accessor :fixture_class_names
         superclass_delegating_accessor :use_transactional_fixtures
         superclass_delegating_accessor :use_instantiated_fixtures   # true, false, or :no_instances
+        superclass_delegating_accessor :fixture_transaction_joinable
         superclass_delegating_accessor :pre_loaded_fixtures
 
         self.fixture_table_names = []
         self.use_transactional_fixtures = false
         self.use_instantiated_fixtures = true
         self.pre_loaded_fixtures = false
+        self.fixture_transaction_joinable = false
 
         self.fixture_class_names = {}
       end
@@ -927,7 +929,7 @@ module ActiveRecord
           @@already_loaded_fixtures[self.class] = @loaded_fixtures
         end
         ActiveRecord::Base.connection.increment_open_transactions
-        ActiveRecord::Base.connection.transaction_joinable = false
+        ActiveRecord::Base.connection.transaction_joinable = fixture_transaction_joinable
         ActiveRecord::Base.connection.begin_db_transaction
       # Load fixtures for every test.
       else
