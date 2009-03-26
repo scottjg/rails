@@ -684,6 +684,13 @@ class BaseTest < Test::Unit::TestCase
     Person.headers.delete('key')
   end
 
+  def test_deflate_header
+    Person.enable_deflate
+    assert_equal Person.headers['Accept-Encoding'], 'deflate'
+  ensure
+    Person.headers.delete('Accept-Encoding')
+  end
+
   def test_save
     rick = Person.new
     assert rick.save

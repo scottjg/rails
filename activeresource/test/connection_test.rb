@@ -78,6 +78,17 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
+  def test_handle_deflated_response
+    mock_response = mock('Net::HTTPResponse')
+    mock_response.expects(:header).returns("content-encoding" => "deflate")
+    mock_response.expects(:inflate!)
+    mock_response.stubs(  :code => '200', :message => "OK",
+                          :content_type => "text/html",
+                          :body => '')
+
+    handle_response(mock_response)
+  end
+
   ResponseHeaderStub = Struct.new(:code, :message, 'Allow')
   def test_should_return_allowed_methods_for_method_no_allowed_exception
     begin

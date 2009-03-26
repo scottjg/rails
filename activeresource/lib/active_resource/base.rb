@@ -551,6 +551,11 @@ module ActiveResource
         @headers ||= {}
       end
 
+      # Set headers to accept deflate encoding
+      def enable_deflate
+        @headers['Accept-Encoding'] = 'deflate'
+      end
+
       attr_accessor_with_default(:element_name)    { model_name.element } #:nodoc:
       attr_accessor_with_default(:collection_name) { ActiveSupport::Inflector.pluralize(element_name) } #:nodoc:
 
