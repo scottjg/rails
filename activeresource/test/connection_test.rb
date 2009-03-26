@@ -74,6 +74,17 @@ class ConnectionTest < Test::Unit::TestCase
       assert_response_raises ActiveResource::ConnectionError, code
     end
   end
+  
+  def test_handle_deflated_response
+    mock_response = mock('Net::HTTPResponse')
+    mock_response.expects(:header).returns("content-encoding" => "deflate")
+    mock_response.expects(:inflate!)
+    mock_response.stubs(  :code => '200', :message => "OK",
+                          :content_type => "text/html",
+                          :body => '')
+    
+    handle_response(mock_response)
+  end 
 
   ResponseHeaderStub = Struct.new(:code, :message, 'Allow')
   def test_should_return_allowed_methods_for_method_no_allowed_exception
@@ -182,6 +193,8 @@ class ConnectionTest < Test::Unit::TestCase
     @http.expects(:get).with(path,  {'Accept' => 'application/xhtml+xml'}).returns(ActiveResource::Response.new(@matz, 200, {'Content-Type' => 'text/xhtml'}))
     assert_nothing_raised(Mocha::ExpectationError) { @conn.get(path, {'Accept' => 'application/xhtml+xml'}) }
   end
+  
+  
 
   protected
     def assert_response_raises(klass, code)

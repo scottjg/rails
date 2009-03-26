@@ -155,6 +155,9 @@ module ActiveResource
 
       # Handles response and error codes from remote service.
       def handle_response(response)
+        
+        response.inflate! if response.respond_to?(:header) && response.header["content-encoding"] == "deflate"
+        
         case response.code.to_i
           when 301,302
             raise(Redirection.new(response))
