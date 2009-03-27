@@ -816,6 +816,11 @@ class EagerAssociationTest < ActiveRecord::TestCase
                  Project.find(1, :include => :ordered_by_salary_developers).ordered_by_salary_developers
   end
 
+  def test_non_preload_non_self_referential_association_obeys_scope
+    assert_equal Project.find(1).ordered_by_salary_developers,
+                 Project.find(1, :include => :ordered_by_salary_developers, :conditions => 'developers.salary > 0').ordered_by_salary_developers
+  end
+
   def test_preload_has_many_using_primary_key
     expected = Firm.find(:first).clients_using_primary_key.to_a
     firm = Firm.find :first, :include => :clients_using_primary_key

@@ -1630,15 +1630,30 @@ module ActiveRecord
           sql = "SELECT #{column_aliases(join_dependency)} FROM #{(scope && scope[:from]) || options[:from] || quoted_table_name} "
           sql << join_dependency.join_associations.collect{|join| join.association_join }.join
 
-          add_joins!(sql, options[:joins], scope)
-          add_conditions!(sql, options[:conditions], scope)
-          add_limited_ids_condition!(sql, options, join_dependency) if !using_limitable_reflections?(join_dependency.reflections) && ((scope && scope[:limit]) || options[:limit])
+          recursively_scope = Proc.new do |scopes|
+            if scope = scopes.pop
+              with_scope(:find => scope) do
+                recursively_scope.call(scopes)
+              end
+            else
+              scope = scope(:find)
 
-          add_group!(sql, options[:group], options[:having], scope)
-          add_order!(sql, options[:order], scope)
-          add_limit!(sql, options, scope) if using_limitable_reflections?(join_dependency.reflections)
-          add_lock!(sql, options, scope)
+              add_joins!(sql, options[:joins], scope)
+              add_conditions!(sql, options[:conditions], scope)
+              add_limited_ids_condition!(sql, options, join_dependency) if !using_limitable_reflections?(join_dependency.reflections) && ((scope && scope[:limit]) || options[:limit])
 
+              add_group!(sql, options[:group], options[:having], scope)
+              add_order!(sql, options[:order], scope)
+              add_limit!(sql, options, scope) if using_limitable_reflections?(join_dependency.reflections)
+              add_lock!(sql, options, scope)
+            end
+          end
+
+          scopes = join_dependency.join_associations.map(&:klass).map do |klass|
+            klass.scope(:find)
+          end.compact
+
+          recursively_scope.call(scopes)
           return sanitize_sql(sql)
         end
 
