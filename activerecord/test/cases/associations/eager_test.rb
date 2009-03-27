@@ -795,7 +795,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal author_addresses(:david_address), authors[0].author_address
   end
 
-  def test_preload_belongs_to_uses_exclusive_scope
+  def test_preload_self_referential_belongs_to_uses_exclusive_scope
     people = Person.males.find(:all, :include => :primary_contact)
     assert_not_equal people.length, 0
     people.each do |person|
@@ -804,11 +804,16 @@ class EagerAssociationTest < ActiveRecord::TestCase
     end
   end
 
-  def test_preload_has_many_uses_exclusive_scope
+  def test_preload_self_referential_has_many_uses_exclusive_scope
     people = Person.males.find :all, :include => :agents
     people.each do |person|
       assert_equal Person.find(person.id).agents, person.agents
     end
+  end
+
+  def test_preload_non_self_referential_association_obeys_scope
+    assert_equal Project.find(1).ordered_by_salary_developers,
+                 Project.find(1, :include => :ordered_by_salary_developers).ordered_by_salary_developers
   end
 
   def test_preload_has_many_using_primary_key

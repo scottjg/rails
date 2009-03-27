@@ -79,6 +79,8 @@ class DeveloperWithBeforeDestroyRaise < ActiveRecord::Base
 end
 
 class DeveloperOrderedBySalary < ActiveRecord::Base
+  has_and_belongs_to_many :projects
+
   self.table_name = 'developers'
   default_scope :order => 'salary DESC'
   named_scope :by_name, :order => 'name DESC'

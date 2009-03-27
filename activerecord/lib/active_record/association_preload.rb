@@ -190,13 +190,11 @@ module ActiveRecord
         conditions = "t0.#{reflection.primary_key_name} #{in_or_equals_for_ids(ids)}"
         conditions << append_conditions(reflection, preload_options)
 
-        associated_records = reflection.klass.with_exclusive_scope do
-          reflection.klass.find(:all, :conditions => [conditions, ids],
-            :include => options[:include],
-            :joins => "INNER JOIN #{connection.quote_table_name options[:join_table]} t0 ON #{reflection.klass.quoted_table_name}.#{reflection.klass.primary_key} = t0.#{reflection.association_foreign_key}",
-            :select => "#{options[:select] || table_name+'.*'}, t0.#{reflection.primary_key_name} as the_parent_record_id",
-            :order => options[:order])
-        end
+        find_options = { :conditions => [conditions, ids], :include => options[:include], :order => options[:order],
+                         :joins => "INNER JOIN #{connection.quote_table_name options[:join_table]} t0 ON #{reflection.klass.quoted_table_name}.#{reflection.klass.primary_key} = t0.#{reflection.association_foreign_key}",
+                         :select => "#{options[:select] || table_name+'.*'}, t0.#{reflection.primary_key_name} as the_parent_record_id" }
+
+        associated_records = reflection.klass.send(reflection.klass == self ? :with_exclusive_scope : :with_scope, :find => find_options) { reflection.klass.all }
         set_association_collection_records(id_to_record_map, reflection.name, associated_records, 'the_parent_record_id')
       end
 
@@ -345,13 +343,11 @@ module ActiveRecord
           end
           conditions = "#{table_name}.#{connection.quote_column_name(primary_key)} #{in_or_equals_for_ids(ids)}"
           conditions << append_conditions(reflection, preload_options)
-          associated_records = klass.with_exclusive_scope do
-            klass.find(:all, :conditions => [conditions, ids],
-                                          :include => options[:include],
-                                          :select => options[:select],
-                                          :joins => options[:joins],
-                                          :order => options[:order])
-          end
+
+          find_options = { :conditions => [conditions, ids], :include => options[:include],
+                           :select => options[:select], :joins => options[:joins], :order => options[:order] }
+
+          associated_records = klass.send(klass == self ? :with_exclusive_scope : :with_scope, :find => find_options) { klass.all }
           set_association_single_records(id_map, reflection.name, associated_records, primary_key)
         end
       end
@@ -375,15 +371,12 @@ module ActiveRecord
 
         conditions << append_conditions(reflection, preload_options)
 
-        reflection.klass.with_exclusive_scope do
-          reflection.klass.find(:all,
-                              :select => (preload_options[:select] || options[:select] || "#{table_name}.*"),
-                              :include => preload_options[:include] || options[:include],
-                              :conditions => [conditions, ids],
-                              :joins => options[:joins],
-                              :group => preload_options[:group] || options[:group],
-                              :order => preload_options[:order] || options[:order])
-        end
+        find_options = { :select => (preload_options[:select] || options[:select] || "#{table_name}.*"),
+                         :include => preload_options[:include] || options[:include], :conditions => [conditions, ids],
+                         :joins => options[:joins], :group => preload_options[:group] || options[:group],
+                         :order => preload_options[:order] || options[:order] }
+
+        reflection.klass.send(reflection.klass == self ? :with_exclusive_scope : :with_scope, :find => find_options) { reflection.klass.all }
       end
 
 
