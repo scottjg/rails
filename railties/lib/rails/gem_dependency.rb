@@ -29,6 +29,13 @@ module Rails
       end
     end
 
+    def self.from_directory_name(directory_name)
+      directory_name_parts = File.basename(directory_name).split('-')
+      name    = directory_name_parts[0..-2].join('-')
+      version = directory_name_parts.last
+      self.new(name, :version => version)
+    end
+
     def initialize(name, options = {})
       require 'rubygems' unless Object.const_defined?(:Gem)
 
