@@ -2,15 +2,20 @@ require "cases/helper"
 require 'models/company'
 require 'models/topic'
 require 'models/edge'
+require 'models/tag'
+require 'models/tagging'
+require 'models/post'
 
 Company.has_many :accounts
+
+Tagging.named_scope :posts , :conditions => {:taggable_type => 'Post' }
 
 class NumericData < ActiveRecord::Base
   self.table_name = 'numeric_data'
 end
 
 class CalculationsTest < ActiveRecord::TestCase
-  fixtures :companies, :accounts, :topics
+  fixtures :companies, :accounts, :topics, :books, :references
 
   def test_should_sum_field
     assert_equal 318, Account.sum(:credit_limit)
@@ -344,5 +349,16 @@ class CalculationsTest < ActiveRecord::TestCase
   def test_from_option_with_table_different_than_class
     assert_equal Account.count(:all), Company.count(:all, :from => 'accounts')
   end
-
+  
+  def test_should_count_from_a_proxy
+    assert_nothing_raised do
+      Tag.first.tagged_posts.count
+    end
+  end
+  
+  def test_should_count_from_a_name_scope
+    assert_nothing_raised do
+      Tag.first.tagged_posts.containing_the_letter_a.count
+    end
+  end
 end
