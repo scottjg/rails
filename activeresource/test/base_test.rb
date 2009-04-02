@@ -568,6 +568,13 @@ class BaseTest < Test::Unit::TestCase
   ensure
     Person.headers.delete('key')
   end
+  
+  def test_deflate_header
+    Person.enable_deflate
+    assert_equal Person.headers['Accept-Encoding'], 'deflate'
+  ensure
+    Person.headers.delete('Accept-Encoding')
+  end
 
   def test_find_by_id_not_found
     assert_raise(ActiveResource::ResourceNotFound) { Person.find(99) }

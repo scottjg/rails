@@ -333,6 +333,11 @@ module ActiveResource
       def headers
         @headers ||= {}
       end
+      
+      # Set headers to accept deflate encoding
+      def enable_deflate
+        @headers['Accept-Encoding'] = 'deflate'
+      end
 
       # Do not include any modules in the default element name. This makes it easier to seclude ARes objects
       # in a separate namespace without having to set element_name repeatedly.
