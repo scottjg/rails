@@ -153,7 +153,7 @@ module ActiveRecord
       # a new association object. Use +build_association+ or +create_association+
       # instead. This allows plugins to hook into association object creation.
       def klass
-        @klass ||= active_record.send(:compute_type, class_name)
+        @klass ||= active_record.send(:compute_type, class_name, true)
       end
 
       # Returns a new, unsaved instance of the associated class. +options+ will

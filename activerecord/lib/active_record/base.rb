@@ -1668,11 +1668,7 @@ module ActiveRecord #:nodoc:
         # Nest the type name in the same module as this class.
         # Bar is "MyApp::Business::Bar" relative to MyApp::Business::Foo
         def type_name_with_module(type_name)
-          if store_full_sti_class
-            type_name
-          else
-            (/^::/ =~ type_name) ? type_name : "#{parent.name}::#{type_name}"
-          end
+          (/^::/ =~ type_name) ? type_name : "#{parent.name}::#{type_name}"
         end
 
         def default_select(qualified)
@@ -2195,8 +2191,8 @@ module ActiveRecord #:nodoc:
 
         # Returns the class type of the record using the current module as a prefix. So descendants of
         # MyApp::Business::Account would appear as MyApp::Business::AccountSubclass.
-        def compute_type(type_name)
-          modularized_name = type_name_with_module(type_name)
+        def compute_type(type_name, compute_module = !store_full_sti_class)
+          modularized_name = compute_module ? type_name_with_module(type_name) : type_name
           silence_warnings do
             begin
               class_eval(modularized_name, __FILE__, __LINE__)

@@ -168,6 +168,38 @@ class ReflectionTest < ActiveRecord::TestCase
       :table_name => 'companies'
   end
 
+  def test_association_reflection_in_modules_with_store_full_sti_class_true
+    assert_reflection MyApplication::Billed::Account,
+      :firm,
+      :klass      => MyApplication::Business::Firm,
+      :class_name => 'MyApplication::Business::Firm',
+      :table_name => 'companies'
+
+    assert_reflection MyApplication::Billed::Account,
+      :qualified_billing_firm,
+      :klass      => MyApplication::Billed::Firm,
+      :class_name => 'MyApplication::Billed::Firm',
+      :table_name => 'companies'
+
+    assert_reflection MyApplication::Billed::Account,
+      :unqualified_billing_firm,
+      :klass      => MyApplication::Billed::Firm,
+      :class_name => 'Firm',
+      :table_name => 'companies'
+
+    assert_reflection MyApplication::Billed::Account,
+      :nested_qualified_billing_firm,
+      :klass      => MyApplication::Billed::Nested::Firm,
+      :class_name => 'MyApplication::Billed::Nested::Firm',
+      :table_name => 'companies'
+
+    assert_reflection MyApplication::Billed::Account,
+      :nested_unqualified_billing_firm,
+      :klass      => MyApplication::Billed::Nested::Firm,
+      :class_name => 'Nested::Firm',
+      :table_name => 'companies'
+  end
+
   def test_reflection_of_all_associations
     # FIXME these assertions bust a lot
     assert_equal 28, Firm.reflect_on_all_associations.size

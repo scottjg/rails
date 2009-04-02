@@ -58,4 +58,34 @@ module MyApplication
         end
     end
   end
+  
+  module Billed
+    class Firm < ActiveRecord::Base
+      self.store_full_sti_class = true
+      self.table_name = 'companies'
+    end
+
+    module Nested
+      class Firm < ActiveRecord::Base
+        self.store_full_sti_class = true
+        self.table_name = 'companies'
+      end
+    end
+
+    class Account < ActiveRecord::Base
+      self.store_full_sti_class = true
+      with_options(:foreign_key => :firm_id) do |i|
+        i.belongs_to :firm, :class_name => 'MyApplication::Business::Firm'
+        i.belongs_to :qualified_billing_firm, :class_name => 'MyApplication::Billed::Firm'
+        i.belongs_to :unqualified_billing_firm, :class_name => 'Firm'
+        i.belongs_to :nested_qualified_billing_firm, :class_name => 'MyApplication::Billed::Nested::Firm'
+        i.belongs_to :nested_unqualified_billing_firm, :class_name => 'Nested::Firm'
+      end
+
+      protected
+        def validate
+          errors.add_on_empty "credit_limit"
+        end
+    end
+  end
 end
