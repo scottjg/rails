@@ -2295,12 +2295,13 @@ module ActiveRecord #:nodoc:
         # And for value objects on a composed_of relationship:
         #   { :address => Address.new("123 abc st.", "chicago") }
         #     # => "address_street='123 abc st.' and address_city='chicago'"
-        def sanitize_sql_hash_for_conditions(attrs, table_name = quoted_table_name)
+        def sanitize_sql_hash_for_conditions(attrs, outer_table_name = quoted_table_name)
           attrs = expand_hash_conditions_for_aggregates(attrs)
 
           conditions = attrs.map do |attr, value|
             unless value.is_a?(Hash)
               attr = attr.to_s
+              table_name = outer_table_name
 
               # Extract table name from qualified attribute names.
               if attr.include?('.')

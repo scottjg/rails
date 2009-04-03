@@ -22,4 +22,12 @@ class SanitizeTest < ActiveRecord::TestCase
     assert_equal "name=#{quoted_bambi_and_thumper}", Binary.send(:sanitize_sql_array, ["name=?", "Bambi\nand\nThumper"])
     assert_equal "name=#{quoted_bambi_and_thumper}", Binary.send(:sanitize_sql_array, ["name=?", "Bambi\nand\nThumper".mb_chars])
   end
+
+  def test_sanitize_sql_hash_for_conditions
+    quoted_table_name = ActiveRecord::Base.connection.quote_table_name('main_table')
+    quoted_column_name = ActiveRecord::Base.connection.quote_column_name('id')
+    conditions = ActiveRecord::Base.send(:sanitize_sql_hash_for_conditions, {:id => 12, 'other_table.name' => 'Jim'}, quoted_table_name)
+    m = /#{quoted_table_name}\.#{quoted_column_name}/.match(conditions)
+    assert !m.nil?, 'id should be on main_table not other_table'
+  end
 end
