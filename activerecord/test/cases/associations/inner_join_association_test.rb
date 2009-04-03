@@ -4,9 +4,10 @@ require 'models/comment'
 require 'models/author'
 require 'models/category'
 require 'models/categorization'
+require 'models/company_in_module'
 
 class InnerJoinAssociationTest < ActiveRecord::TestCase
-  fixtures :authors, :posts, :comments, :categories, :categories_posts, :categorizations
+  fixtures :authors, :posts, :comments, :categories, :categories_posts, :categorizations, :projects, :developers
 
   def test_construct_finder_sql_creates_inner_joins
     sql = Author.send(:construct_finder_sql, :joins => :posts)
@@ -84,5 +85,9 @@ class InnerJoinAssociationTest < ActiveRecord::TestCase
     real_count = Author.find(:all).select {|a| a.posts.any? {|p| p.title =~ /^Welcome/} }.length
     authors_with_welcoming_post_titles = Author.calculate(:count, 'authors.id', :joins => :posts, :distinct => true, :conditions => "posts.title like 'Welcome%'")
     assert_equal real_count, authors_with_welcoming_post_titles, "inner join and conditions should have only returned authors posting titles starting with 'Welcome'"
+  end
+
+  def test_find_with_eager_load_resulting_in_implicit_joins_on_model_in_module
+    assert_nothing_raised { MyApplication::Business::Developer.find(:all, :order => 'projects.id', :include => {:projects => :developers}) }
   end
 end
