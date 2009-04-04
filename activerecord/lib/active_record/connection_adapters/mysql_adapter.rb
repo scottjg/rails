@@ -602,6 +602,15 @@ module ActiveRecord
           end
         end
 
+        def translate_exception(exception, message)
+          case exception.errno
+          when 1062
+            RecordNotUnique.new(message)
+          else
+            super
+          end
+        end
+
       private
         def connect
           encoding = @config[:encoding]
