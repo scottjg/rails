@@ -465,7 +465,7 @@ module ActionMailer #:nodoc:
         # "the_template_file.text.html.erb", etc.). Only do this if parts
         # have not already been specified manually.
         if @parts.empty?
-          Dir.glob("#{template_path}/#{@template}.*").each do |path|
+          Dir.glob("#{template_path}/#{@template}.*") do |path|
             template = template_root["#{mailer_name}/#{File.basename(path)}"]
 
             # Skip unless template has a multipart format
@@ -593,7 +593,7 @@ module ActionMailer #:nodoc:
       end
 
       def template_path
-        File.join(template_root, mailer_name)
+        "#{template_root.path}/#{mailer_name}"
       end
 
       def initialize_template_class(assigns)
