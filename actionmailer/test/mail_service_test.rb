@@ -891,6 +891,21 @@ EOF
     assert_equal 'iso-8859-1', mail.parts[2].sub_header("content-type", "charset")
   end
 
+  def test_implicitly_multipart_messages_are_not_broken_by_chdir
+    # use absolute path for mailer template_root
+    old_template_root, TestMailer.template_root = TestMailer.template_root, File.expand_path(TestMailer.template_root)
+    # we have to have RAILS_ROOT const set to reproduce the faulty behavior
+    old_rails_root = ::RAILS_ROOT if defined?(::RAILS_ROOT)
+    silence_warnings { Object.const_set(:RAILS_ROOT, Dir.pwd) }
+    
+    Dir.chdir('..') do
+      assert_equal 3, TestMailer.create_implicitly_multipart_example(@recipient, nil, ["text/yaml", "text/plain"]).parts.length
+    end
+  ensure
+    TestMailer.template_root = old_template_root
+    old_rails_root ? silence_warnings { Object.const_set(:RAILS_ROOT, old_rails_root) } : Object.send(:remove_const, :RAILS_ROOT)
+  end
+
   def test_html_mail
     mail = TestMailer.create_html_mail(@recipient)
     assert_equal "text/html", mail.content_type
