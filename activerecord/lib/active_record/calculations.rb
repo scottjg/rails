@@ -163,6 +163,8 @@ module ActiveRecord
           else
             raise ArgumentError, "Unexpected parameters passed to count(): #{args.inspect}"
           end
+          
+          column_name = '*' if column_name =~ /\.\*$/
 
           [column_name || :all, options]
         end
