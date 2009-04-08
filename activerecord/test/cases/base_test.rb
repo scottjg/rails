@@ -1144,6 +1144,16 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal Time.local(2004, 6, 24, 16, 24, 0), topic.written_on
   end
 
+  def test_multiparameter_attributes_on_time_with_empty_date
+    attributes = {
+      "written_on(1i)" => "", "written_on(2i)" => "", "written_on(3i)" => "",
+      "written_on(4i)" => "16", "written_on(5i)" => "24"
+    }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    assert_equal(Time.local(Date.today.year, Date.today.month, Date.today.day, 16, 24), topic.written_on)
+  end
+
   def test_multiparameter_mass_assignment_protector
     task = Task.new
     time = Time.mktime(2000, 1, 1, 1)

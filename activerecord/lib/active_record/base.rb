@@ -3024,6 +3024,13 @@ module ActiveRecord #:nodoc:
       end
 
       def instantiate_time_object(name, values)
+        if values.length == 2
+          # We only got the hour and minute, such as from
+          # ActionView::DateHelper#time_select so we'll add the missing
+          # info.
+          values = [ Date.today.year, Date.today.month, Date.today.day ] + values
+        end
+
         if self.class.send(:create_time_zone_conversion_attribute?, name, column_for_attribute(name))
           Time.zone.local(*values)
         else
@@ -3053,12 +3060,13 @@ module ActiveRecord #:nodoc:
 
               send(name + "=", value)
             rescue => ex
+              raise ex
               errors << AttributeAssignmentError.new("error on assignment #{values.inspect} to #{name}", ex, name)
             end
           end
         end
         unless errors.empty?
-          raise MultiparameterAssignmentErrors.new(errors), "#{errors.size} error(s) on assignment of multiparameter attributes"
+          raise MultiparameterAssignmentErrors.new(errors), "#{errors.size} error(s) on assignment of multiparameter attributes: #{errors.collect(&:to_s).to_sentence}"
         end
       end
 
