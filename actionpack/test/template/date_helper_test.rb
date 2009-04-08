@@ -1388,7 +1388,7 @@ class DateHelperTest < ActionView::TestCase
     start_year = Time.now.year-5
     end_year   = Time.now.year+5
 
-    expected = %{<input name="post[written_on(3i)]" type="hidden" id="post_written_on_3i" value="#{Date.today.day}"/>\n}
+    expected = '<input name="post[written_on(3i)]" type="hidden" id="post_written_on_3i"/>' + "\n"
     expected <<   %{<select id="post_written_on_1i" name="post[written_on(1i)]">\n}
     expected << "<option value=\"\"></option>\n"
     start_year.upto(end_year) { |i| expected << %(<option value="#{i}">#{i}</option>\n) }
@@ -1546,47 +1546,6 @@ class DateHelperTest < ActionView::TestCase
     expected << "</select>\n"
 
     assert_dom_equal expected, time_select("post", "written_on")
-  end
-
-  def test_time_select_with_include_blank
-    @post = Post.new
-    @post.written_on = Time.local(2004, 6, 15, 15, 16, 35)
-
-    expected = %{<input type="hidden" id="post_written_on_1i" name="post[written_on(1i)]" value="2004" />\n}
-    expected << %{<input type="hidden" id="post_written_on_2i" name="post[written_on(2i)]" value="6" />\n}
-    expected << %{<input type="hidden" id="post_written_on_3i" name="post[written_on(3i)]" value="15" />\n}
-
-    expected << %(<select id="post_written_on_4i" name="post[written_on(4i)]">\n)
-    expected << %(<option value=""></option>\n)
-    0.upto(23) { |i| expected << %(<option value="#{sprintf("%02d", i)}"#{' selected="selected"' if i == 15}>#{sprintf("%02d", i)}</option>\n) }
-    expected << "</select>\n"
-    expected << " : "
-    expected << %(<select id="post_written_on_5i" name="post[written_on(5i)]">\n)
-    expected << %(<option value=""></option>\n)
-    0.upto(59) { |i| expected << %(<option value="#{sprintf("%02d", i)}"#{' selected="selected"' if i == 16}>#{sprintf("%02d", i)}</option>\n) }
-    expected << "</select>\n"
-
-    assert_dom_equal expected, time_select("post", "written_on", :include_blank => true)
-  end
-
-  def test_time_select_with_include_blank_and_nil_time
-    @post = Post.new
-
-    expected = %{<input type="hidden" id="post_written_on_1i" name="post[written_on(1i)]" value="#{Date.today.year}" />\n}
-    expected << %{<input type="hidden" id="post_written_on_2i" name="post[written_on(2i)]" value="#{Date.today.month}" />\n}
-    expected << %{<input type="hidden" id="post_written_on_3i" name="post[written_on(3i)]" value="#{Date.today.day}" />\n}
-
-    expected << %(<select id="post_written_on_4i" name="post[written_on(4i)]">\n)
-    expected << %(<option value=""></option>\n)
-    0.upto(23) { |i| expected << %(<option value="#{sprintf("%02d", i)}">#{sprintf("%02d", i)}</option>\n) }
-    expected << "</select>\n"
-    expected << " : "
-    expected << %(<select id="post_written_on_5i" name="post[written_on(5i)]">\n)
-    expected << %(<option value=""></option>\n)
-    0.upto(59) { |i| expected << %(<option value="#{sprintf("%02d", i)}">#{sprintf("%02d", i)}</option>\n) }
-    expected << "</select>\n"
-
-    assert_dom_equal expected, time_select("post", "written_on", :include_blank => true)
   end
 
   def test_time_select_without_date_hidden_fields

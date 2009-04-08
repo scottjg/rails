@@ -678,9 +678,7 @@ module ActionView
 
       def select_day
         if @options[:use_hidden] || @options[:discard_day]
-          val = day
-          val ||= Date.today.day if @options[:include_blank]
-          build_hidden(:day, val)
+          build_hidden(:day, day)
         else
           build_options_and_select(:day, day, :start => 1, :end => 31, :leading_zeros => false)
         end
@@ -688,9 +686,7 @@ module ActionView
 
       def select_month
         if @options[:use_hidden] || @options[:discard_month]
-          val = month
-          val ||= Date.today.month if @options[:include_blank]
-          build_hidden(:month, val)
+          build_hidden(:month, month)
         else
           month_options = []
           1.upto(12) do |month_number|
@@ -711,7 +707,6 @@ module ActionView
         end
 
         if @options[:use_hidden] || @options[:discard_year]
-          val = middle_year if @options[:include_blank] && (!@date_time || @datetime == 0)
           build_hidden(:year, val)
         else
           options                 = {}
