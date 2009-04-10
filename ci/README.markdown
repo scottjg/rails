@@ -28,4 +28,4 @@ Download and run the 'setup\_rails\_ci.sh' script
 * Log on to your server (you can use the root user or a local user)
 * Download the setup\_rails\_ci.sh script:
 
-    wget -O /tmp/setup\_rails\_ci.sh http://github.com/rails/rails/raw/master/ci/setup\_rails\_ci.sh
+        wget -O /tmp/setup_rails_ci.sh http://github.com/rails/rails/raw/master/ci/setup_rails_ci.sh
