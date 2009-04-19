@@ -17,7 +17,7 @@ if [ ! $? = 0 ]; then echo "error editing sudoers file, run 'visudo -q -c -s -f 
 sudo cp /tmp/sudoers.tmp /etc/sudoers
 
 echo "  Downloading setup scripts..."
-sudo su - -c 'mkdir ~/cinabox' ci 
-sudo su - -c 'wget -O ~/cinabox/cinabox.tar.gz http://github.com/thewoolleyman/cinabox/blob/master/setup_rails_dependencies.rb?raw=true' ci
-sudo su - -c 'mkdir ~/railsci' ci 
+sudo su - -c 'mkdir ~/cinabox' ci
+sudo su - -c 'wget -O ~/cinabox/cinabox.tar.gz wget http://github.com/thewoolleyman/cinabox/tarball/master' ci
+sudo su - -c 'mkdir ~/railsci' ci
 sudo su - -c 'wget -O ~/railsci/setup_rails_dependencies.rb http://github.com/rails/rails/blob/master/ci/setup_rails_ci.rb?raw=true' ci
