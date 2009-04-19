@@ -48,6 +48,7 @@ class CookieTest < ActionController::TestCase
   tests TestController
 
   def setup
+    super
     @request.host = "www.nextangle.com"
   end
 
