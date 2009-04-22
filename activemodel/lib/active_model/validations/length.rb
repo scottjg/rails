@@ -37,7 +37,7 @@ module ActiveModel
       def validates_length_of(*attrs)
         # Merge given options with defaults.
         options = {
-          :too_long     => ActiveRecord::Errors.default_error_messages[:too_long],
+          :too_long     => _("%{attribute} is too long (maximum is %{maximum} characters)"),
           :too_short    => ActiveRecord::Errors.default_error_messages[:too_short],
           :wrong_length => ActiveRecord::Errors.default_error_messages[:wrong_length]
         }.merge(DEFAULT_VALIDATION_OPTIONS)
@@ -62,15 +62,12 @@ module ActiveModel
           when :within, :in
             raise ArgumentError, ":#{option} must be a Range" unless option_value.is_a?(Range)
 
-            too_short = options[:too_short] % option_value.begin
-            too_long  = options[:too_long]  % option_value.end
-
             validates_each(attrs, options) do |record, attr, value|
               value = value.split(//) if value.kind_of?(String)
               if value.nil? or value.size < option_value.begin
-                record.errors.add(attr, too_short)
+                record.errors.add(attr, options[:too_short], :minimum => option_value.begin)
               elsif value.size > option_value.end
-                record.errors.add(attr, too_long)
+		record.errors.add(attr, options[:too_long], :maximum => option_value.end)
               end
             end
           when :is, :minimum, :maximum

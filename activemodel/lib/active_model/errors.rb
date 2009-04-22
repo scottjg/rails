@@ -32,6 +32,32 @@ module ActiveModel
     alias_method :get, :[]
     alias_method :set, :[]=
 
+    # * <tt>attribute</tt> - symbol or string representing the name of the attribute
+    # * <tt>message</tt> - can be 
+    #          * string
+    #          * symbol 
+    #          * proc
+    # * <tt>params</tt> - data, that will be interpolated into the message; 
+    #          attribute name will be automatically reverse merged into the params hash
+    # 
+    # example errors.add(:name, _("%{attribute} is too long (maximum is %{maximum} characters)"), :maximum => 30)
+    # 
+    # Note: parameter interpolation logic placed here to avoid the repetion 
+    # of the attribute name in particular validators (validates_length_of etc.). Compare to
+    # errors[:name] = _("%{attribute} is too long (maximum is %{maximum} characters)") % 
+    #   {:attribute => :name, :maximum => 30}
+    def add(attribute, message, params={})
+      params2 = {:attribute => attribute.to_s.humanize}.merge(params)
+      if message.is_a?(Proc)
+	s = message.call(params2)
+      else
+	# TODO: decide what to do (differently?) to symbols and strings
+	# TODO: needs the improved percent method (e.g. as implemented by Masao)
+	s = message % params
+      end
+      self[attribute] = s
+    end
+
     def [](attribute)
       if errors = get(attribute.to_sym)
         errors.size == 1 ? errors.first : errors
@@ -40,6 +66,9 @@ module ActiveModel
       end
     end
 
+    # IMHO the name is pretty unfortunate.
+    # '[]=' suggests overwriting while in this case it is appending a message to the list.
+    # String interpolation needs more than two parameters anyway.
     def []=(attribute, error)
       self[attribute.to_sym] << error
     end
@@ -55,16 +84,9 @@ module ActiveModel
     end
 
     def to_a
+      # some sort of flattening for the hash of arrays
       inject([]) do |errors_with_attributes, (attribute, errors)|
-        if error.blank?
-          errors_with_attributes
-        else
-          if attr == :base
-            errors_with_attributes << error
-          else
-            errors_with_attributes << (attribute.to_s.humanize + " " + error)
-          end
-        end
+        errors_with_attributes + error
       end
     end
 
