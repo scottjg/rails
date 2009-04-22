@@ -129,13 +129,13 @@ but it has to be executed before all other before_filters.
     class ApplicationController
       def compute_effective_locale
         # application specific implementation, that uses
-	#
-	# params[:lang]
-	# cookies[:lang]
-	# request.headers['Accept-language']
-	# default_locale
-	#
-	# to compute the effective locale
+        #
+        # params[:lang]
+        # cookies[:lang]
+        # request.headers['Accept-language']
+        # default_locale
+        #
+        # to compute the effective locale
       end
     end
 
