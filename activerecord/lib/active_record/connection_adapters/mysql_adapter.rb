@@ -71,6 +71,9 @@ module ActiveRecord
       MysqlCompat.define_all_hashes_method!
 
       mysql = Mysql.init
+      mysql.options(Mysql::OPT_CONNECT_TIMEOUT, config[:connect_timeout]) if config[:connect_timeout]
+      mysql.options(Mysql::OPT_READ_TIMEOUT, config[:read_timeout]) if config[:read_timeout]
+      mysql.options(Mysql::OPT_WRITE_TIMEOUT, config[:write_timeout]) if config[:write_timeout]
       mysql.ssl_set(config[:sslkey], config[:sslcert], config[:sslca], config[:sslcapath], config[:sslcipher]) if config[:sslca] || config[:sslkey]
 
       ConnectionAdapters::MysqlAdapter.new(mysql, logger, [host, username, password, database, port, socket], config)
