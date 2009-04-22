@@ -54,7 +54,7 @@ are both easier to write and easier to translate.
 
 With command line tools such as [msgfmt -cv][msgfmt] you can also check the
 well-formnedess and completeness of your transaltions as part of the
-*continuous build process*.
+**continuous build process**.
 
 A reliable, high-quality, feature rich parsing tool for Ruby and for Rails
 still needs to be implemented, but [ruby-gettext][] is a good starting point.
@@ -91,9 +91,9 @@ Usage of string concatenation for building error messages in the framework
 makes it [extremely complicated][remove-prefix] to avoid the corruption of
 error messages with a prefix derived from attribute/relation names.
 
-*String concatenation should never be used to create human-readable messages.
+**String concatenation should never be used to create human-readable messages.
 Use string interpolation instead (as it has been used in other frameworks and
-platforms for decades).*
+platforms for decades).**
 
 In addition, ActiveRecord should allow for proc-based validation messages:
 
@@ -181,11 +181,11 @@ would be gettext, then.
 Conclusion
 ----------
 
-*It is not possible to implement a sustainable internationalization solution as
+**It is not possible to implement a sustainable internationalization solution as
 a gem, as a plugin, or as a collection of monkey patches. Important principles
 must be considered in the Rails core, especially in ActiveRecord/ActiveModel,
 to make applications fully internationalizable. This would be an important 
-step to make Rails enterprise-ready.*
+step to make Rails enterprise-ready.**
 
 We offer an industrial-strength internationalization implementation for Rails3
 and all the needed refactoring of validation code. But we wanted to check
@@ -193,10 +193,10 @@ upfront, if the community is interested in such an implementation and if
 there's a chance that these changes would be integrated into the Rails trunk.
 
 Vladimir Dobriakov (vladimir.dobriakov@innoq.com)
-http://blog.geekq.net
+<http://blog.geekq.net>
 
 Maik Schmidt (maik.schmidt@vodafone.com)
-http://maik-schmidt.de
+<http://maik-schmidt.de>
  
 
 [gnome-roles]: http://live.gnome.org/TranslationProject/LocalisationGuide#head-99ad8844377d7c12dcff787e4701d6109bdce69b 
