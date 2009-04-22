@@ -580,7 +580,7 @@ module ActionMailer #:nodoc:
           
           if file
             prefix = mailer_name unless file =~ /\//
-            template = view_paths.find_by_parts(file, formats, prefix)
+            template = view_paths.find_by_parts(file, {:formats => formats}, prefix)
           end
 
           layout = _pick_layout(layout, 
