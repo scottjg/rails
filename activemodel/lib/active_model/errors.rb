@@ -53,11 +53,11 @@ module ActiveModel
     def add(attribute, message, params={})
       params2 = {:attribute => _(attribute.to_s.humanize)}.merge(params)
       if message.is_a?(Proc)
-	s = message.call(params2)
+        s = message.call(params2)
       else
-	# TODO: decide what to do (differently?) to symbols and strings
-	# TODO: needs the improved percent method (e.g. as implemented by Masao)
-	s = message % params2
+        # TODO: decide what to do (differently?) to symbols and strings
+        # TODO: needs the improved percent method (e.g. as implemented by Masao)
+        s = message % params2
       end
       self[attribute] = s
     end
