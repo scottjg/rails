@@ -1,6 +1,8 @@
 module ActiveModel
   module Validations
     module ClassMethods
+      include FastGettext::Translation
+      FastGettext::text_domain = 'ActiveRecord'
       ALL_RANGE_OPTIONS = [ :is, :within, :in, :minimum, :maximum ].freeze
     
       # Validates that the specified attribute matches the length restrictions supplied. Only one option can be used at a time:
@@ -38,8 +40,9 @@ module ActiveModel
         # Merge given options with defaults.
         options = {
           :too_long     => _("%{attribute} is too long (maximum is %{maximum} characters)"),
-          :too_short    => ActiveRecord::Errors.default_error_messages[:too_short],
-          :wrong_length => ActiveRecord::Errors.default_error_messages[:wrong_length]
+          :too_short    => _("%{attribute} is too short (minimum is %{maximum} characters)"),
+          :wrong_length => _("%{attribute} is the wrong length (should be %{desired_length} characters)")
+
         }.merge(DEFAULT_VALIDATION_OPTIONS)
         options.update(attrs.extract_options!.symbolize_keys)
 
@@ -77,11 +80,11 @@ module ActiveModel
             validity_checks = { :is => "==", :minimum => ">=", :maximum => "<=" }
             message_options = { :is => :wrong_length, :minimum => :too_short, :maximum => :too_long }
 
-            message = (options[:message] || options[message_options[option]]) % option_value
-
             validates_each(attrs, options) do |record, attr, value|
               value = value.split(//) if value.kind_of?(String)
-              record.errors.add(attr, message) unless !value.nil? and value.size.method(validity_checks[option])[option_value]
+              record.errors.add(attr, (options[:message] || options[message_options[option]]), 
+		:desired_length => option_value) unless 
+	          !value.nil? and value.size.method(validity_checks[option])[option_value]
             end
         end
       end

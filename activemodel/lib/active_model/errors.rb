@@ -2,6 +2,10 @@ module ActiveModel
   class Errors < Hash
     include DeprecatedErrorMethods
     
+    # note by geekQ: not really needed, you can put the message near the code,
+    # which produces them, just prefix with underscore like _("%{attr} is invalid")
+    # Makes coding easier, there is no need to stop every time and spread messages  
+    # and code to different files.
     @@default_error_messages = {
       :inclusion                => "is not included in the list",
       :exclusion                => "is reserved",
@@ -47,13 +51,13 @@ module ActiveModel
     # errors[:name] = _("%{attribute} is too long (maximum is %{maximum} characters)") % 
     #   {:attribute => :name, :maximum => 30}
     def add(attribute, message, params={})
-      params2 = {:attribute => attribute.to_s.humanize}.merge(params)
+      params2 = {:attribute => _(attribute.to_s.humanize)}.merge(params)
       if message.is_a?(Proc)
 	s = message.call(params2)
       else
 	# TODO: decide what to do (differently?) to symbols and strings
 	# TODO: needs the improved percent method (e.g. as implemented by Masao)
-	s = message % params
+	s = message % params2
       end
       self[attribute] = s
     end
