@@ -70,7 +70,7 @@ module ActiveModel
               if value.nil? or value.size < option_value.begin
                 record.errors.add(attr, options[:too_short], :minimum => option_value.begin)
               elsif value.size > option_value.end
-		record.errors.add(attr, options[:too_long], :maximum => option_value.end)
+                record.errors.add(attr, options[:too_long], :maximum => option_value.end)
               end
             end
           when :is, :minimum, :maximum
@@ -80,11 +80,11 @@ module ActiveModel
             validity_checks = { :is => "==", :minimum => ">=", :maximum => "<=" }
             message_options = { :is => :wrong_length, :minimum => :too_short, :maximum => :too_long }
 
-            validates_each(attrs, options) do |record, attr, value|
+           validates_each(attrs, options) do |record, attr, value|
               value = value.split(//) if value.kind_of?(String)
               record.errors.add(attr, (options[:message] || options[message_options[option]]), 
-		:desired_length => option_value) unless 
-	          !value.nil? and value.size.method(validity_checks[option])[option_value]
+                :desired_length => option_value) unless 
+                  !value.nil? and value.size.method(validity_checks[option])[option_value]
             end
         end
       end
