@@ -8,5 +8,13 @@ module ActionView #:nodoc:
         super(CGI.escapeHTML(value))
       end
     end
+
+    def html_safe?
+      true
+    end
+
+    def html_safe!
+      self
+    end
   end
 end
