@@ -274,3 +274,22 @@ class CoreExtStringMultibyteTest < ActiveSupport::TestCase
     end
   end
 end
+
+class OutputSafetyTest < ActiveSupport::TestCase
+  def setup
+    @string = "hello"
+  end
+
+  test "A string is unsafe by default" do
+    assert !@string.html_safe?
+  end
+
+  test "A string can be marked safe" do
+    @string.mark_html_safe
+    assert @string.html_safe?
+  end
+
+  test "Marking a string safe returns the string" do
+    assert_equal @string, @string.mark_html_safe
+  end
+end
