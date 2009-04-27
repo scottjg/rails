@@ -9,7 +9,13 @@ class CGI #:nodoc:
     alias :escapeHTML_fail_on_nil :escapeHTML
 
     def escapeHTML(string)
-      escapeHTML_fail_on_nil(string) unless string.nil?
+      if string.nil?
+        nil
+      elsif string.html_safe?
+        string
+      else
+        escapeHTML_fail_on_nil(string).mark_html_safe
+      end
     end
   end
 end
