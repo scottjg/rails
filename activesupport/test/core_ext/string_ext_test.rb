@@ -285,11 +285,11 @@ class OutputSafetyTest < ActiveSupport::TestCase
   end
 
   test "A string can be marked safe" do
-    @string.mark_html_safe
+    @string.html_safe!
     assert @string.html_safe?
   end
 
   test "Marking a string safe returns the string" do
-    assert_equal @string, @string.mark_html_safe
+    assert_equal @string, @string.html_safe!
   end
 end

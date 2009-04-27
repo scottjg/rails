@@ -38,7 +38,7 @@ module ActionView
       #   tag("img", { :src => "open &amp; shut.png" }, false, false)
       #   # => <img src="open &amp; shut.png" />
       def tag(name, options = nil, open = false, escape = true)
-        "<#{name}#{tag_options(options, escape) if options}#{open ? ">" : " />"}"
+        "<#{name}#{tag_options(options, escape) if options}#{open ? ">" : " />"}".html_safe!
       end
 
       # Returns an HTML block tag of type +name+ surrounding the +content+. Add

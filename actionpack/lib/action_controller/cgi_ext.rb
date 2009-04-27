@@ -14,7 +14,7 @@ class CGI #:nodoc:
       elsif string.html_safe?
         string
       else
-        escapeHTML_fail_on_nil(string).mark_html_safe
+        escapeHTML_fail_on_nil(string).html_safe!
       end
     end
   end
