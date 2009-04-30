@@ -45,7 +45,7 @@ module HTML
     self.included_tags = Set.new(%w(a href))
 
     def sanitizeable?(text)
-      !(text.nil? || text.empty? || !((text.index("<a") || text.index("<href")) && text.index(">")))
+      !(text.nil? || text.empty? || !((text.index(/<a[^a-zA-Z]/) || text.index("<href")) && text.index(">")))
     end
     
   protected
