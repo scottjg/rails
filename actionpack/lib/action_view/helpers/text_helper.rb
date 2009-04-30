@@ -536,9 +536,15 @@ module ActionView
           text.gsub(AUTO_LINK_RE) do
             href = $&
             punctuation = ''
-            left, right = $`, $'
+            before_text = $`
             # detect already linked URLs and URLs in the middle of a tag
-            if left =~ /<[^>]+$/ && right =~ /^[^>]*>/
+            if before_text =~ /<[^>]*\Z/i ||
+               before_text.scan(/<a\s[^>]*href=[^>]*>/i).size > before_text.scan(/<\s*\/\s*a\s*>/).size ||
+               before_text.scan(/<pre[^>]*>/i).size > before_text.scan(/<\s*\/\s*pre\s*>/).size ||
+               before_text.scan(/<textarea[^>]*>/i).size > before_text.scan(/<\s*\/\s*textarea\s*>/).size ||
+               before_text.scan(/<style[^>]*>/i).size > before_text.scan(/<\s*\/\s*style\s*>/).size ||
+               before_text.scan(/<script[^>]*>/i).size > before_text.scan(/<\s*\/\s*script\s*>/).size ||
+               before_text.scan(/<noscript[^>]*>/i).size > before_text.scan(/<\s*\/\s*noscript\s*>/).size
               # do not change string; URL is alreay linked
               href
             else
@@ -561,11 +567,17 @@ module ActionView
         # Turns all email addresses into clickable links.  If a block is given,
         # each email is yielded and the result is used as the link text.
         def auto_link_email_addresses(text, html_options = {})
-          body = text.dup
           text.gsub(/([\w\.!#\$%\-+.]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)+)/) do
             text = $1
-
-            if body.match(/<a\b[^>]*>(.*)(#{Regexp.escape(text)})(.*)<\/a>/)
+            before_text = $`
+            
+            if before_text =~ /<[^>]*\Z/i ||
+               before_text.scan(/<a\s[^>]*href=[^>]*>/i).size > before_text.scan(/<\s*\/\s*a\s*>/).size ||
+               before_text.scan(/<pre[^>]*>/i).size > before_text.scan(/<\s*\/\s*pre\s*>/).size ||
+               before_text.scan(/<textarea[^>]*>/i).size > before_text.scan(/<\s*\/\s*textarea\s*>/).size ||
+               before_text.scan(/<style[^>]*>/i).size > before_text.scan(/<\s*\/\s*style\s*>/).size ||
+               before_text.scan(/<script[^>]*>/i).size > before_text.scan(/<\s*\/\s*script\s*>/).size ||
+               before_text.scan(/<noscript[^>]*>/i).size > before_text.scan(/<\s*\/\s*noscript\s*>/).size
               text
             else
               display_text = (block_given?) ? yield(text) : text
