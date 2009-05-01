@@ -32,6 +32,10 @@ module ActionController
         def named_route(name, path, options = {}) #:nodoc:
           @set.add_named_route(name, path, options)
         end
+        
+        def bundle(name, options={})
+          @set.install_bundle_placeholder(name, options)
+        end
 
         # Enables the use of resources in a module by setting the name_prefix, path_prefix, and namespace for the model.
         # Example:
@@ -55,6 +59,14 @@ module ActionController
         def method_missing(route_name, *args, &proc) #:nodoc:
           super unless args.length >= 1 && proc.nil?
           @set.add_named_route(route_name, *args)
+        end
+      end
+
+      class BundlePlaceholder
+        attr_reader :name, :options
+        def initialize(name, options)
+          @name = name
+          @options = options
         end
       end
 
@@ -205,11 +217,12 @@ module ActionController
           end
       end
 
-      attr_accessor :routes, :named_routes, :configuration_files
+      attr_accessor :routes, :named_routes, :configuration_files, :bundles
 
       def initialize
         self.configuration_files = []
-
+        self.bundles = {}
+        
         self.routes = []
         self.named_routes = NamedRouteCollection.new
 
@@ -225,6 +238,10 @@ module ActionController
       def draw
         yield Mapper.new(self)
         install_helpers
+      end
+      
+      def bundle(name, &block)
+        @bundles[name] = block
       end
 
       def clear!
@@ -288,6 +305,7 @@ module ActionController
       def load_routes!
         if configuration_files.any?
           configuration_files.each { |config| load(config) }
+          load_bundles
           @routes_last_modified = routes_changed_at
         else
           add_route ":controller/:action/:id"
@@ -318,6 +336,33 @@ module ActionController
         # TODO - is options EVER used?
         name = options[:name_prefix] + name.to_s if options[:name_prefix]
         named_routes[name.to_sym] = add_route(path, options)
+      end
+      
+      def install_bundle_placeholder(name, options)
+        routes << BundlePlaceholder.new(name, options)
+      end
+      
+      def load_bundles
+        unreferenced_bundles = @bundles.values.dup
+        routes.map! do |route|
+          if route.is_a?(BundlePlaceholder)
+            # this is a little bit hacky. there's no clean way to generate
+            # route so we can place them in here, so instead we have to
+            # scoop newly generated ones off the bottom of the set, and
+            # replace the bundle with them.
+            current_last_route = routes.last
+            unreferenced_bundles.delete(route)
+            @bundles[route.name].call(Mapper.new(self))
+            index = routes.index(current_last_route)
+            routes.slice!(index+1, routes.length) # map! replaces the bundle with these
+          else
+            route
+          end
+        end
+        unreferenced_bundles.each do |bundle|
+          bundle.call(Mapper.new(self))
+        end
+        routes.flatten!
       end
 
       def options_as_params(options)

@@ -2569,3 +2569,94 @@ class RouteLoadingTest < Test::Unit::TestCase
       ActionController::Routing::Routes
     end
 end
+
+class RouteBundleTest < Test::Unit::TestCase
+  def setup
+    routes.instance_variable_set '@routes_last_modified', nil
+    silence_warnings { Object.const_set :RAILS_ROOT, '.' }
+    routes.add_configuration_file(File.join(RAILS_ROOT, 'config', 'routes.rb'))
+    routes.stubs(:load) # don't load any files
+    File.stubs(:stat).returns(stub_everything)
+    routes.clear!
+  end
+
+  def teardown
+    ActionController::Routing::Routes.configuration_files.clear
+    Object.send :remove_const, :RAILS_ROOT
+  end
+  
+  def test_should_recognise_bundled_routes
+    routes.bundle :bundle_name do |map|
+      map.connect "/bundled", :controller => "example"
+    end
+    routes.draw do |map|
+      map.bundle :bundle_name
+    end
+
+    routes.load_routes!
+
+    assert_equal({:controller => 'example', :action => 'index'}, routes.recognize_path('/bundled'))
+  end
+  
+  def test_should_ensure_prior_routes_take_precidence_over_bundled_routes
+    routes.bundle :bundle_name do |map|
+      map.connect "/bundled", :controller => "plugin"
+    end
+    routes.draw do |map|
+      map.connect "/bundled", :controller => "application"
+      map.bundle :bundle_name
+    end
+
+    routes.load_routes!
+
+    assert_equal({:controller => 'application', :action => 'index'}, routes.recognize_path('/bundled'))
+  end
+  
+  def test_should_allow_mixing_of_bundles_and_appliation_routes
+    routes.bundle :bundle_name do |map|
+      map.connect "/bundled", :controller => "plugin"
+    end
+    routes.draw do |map|
+      map.connect "/app", :controller => "application"
+      map.bundle :bundle_name
+      map.connect "/other_app", :controller => "other_application"
+    end
+
+    routes.load_routes!
+
+    assert_equal({:controller => 'application', :action => 'index'}, routes.recognize_path('/app'))
+    assert_equal({:controller => 'plugin', :action => 'index'}, routes.recognize_path('/bundled'))
+    assert_equal({:controller => 'other_application', :action => 'index'}, routes.recognize_path('/other_app'))
+  end
+  
+  def test_should_add_unreferenced_bundles
+    routes.bundle :unreferenced do |map|
+      map.connect "/forgotten", :controller => "another_plugin"
+    end
+    routes.draw do |map|
+      map.connect "/app", :controller => "application"
+    end
+
+    routes.load_routes!
+
+    assert_equal({:controller => 'application', :action => 'index'}, routes.recognize_path('/app'))
+    assert_equal({:controller => 'another_plugin', :action => 'index'}, routes.recognize_path('/forgotten'))
+  end
+  
+  def test_should_add_unreferenced_bundles_below_application_routes
+    routes.bundle :unreferenced do |map|
+      map.connect "/forgotten", :controller => "another_plugin"
+    end
+    routes.draw do |map|
+      map.connect "/forgotten", :controller => "application"
+    end
+
+    routes.load_routes!
+
+    assert_equal({:controller => 'application', :action => 'index'}, routes.recognize_path('/forgotten'))
+  end
+  private
+    def routes
+      ActionController::Routing::Routes
+    end
+end
