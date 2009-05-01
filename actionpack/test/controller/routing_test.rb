@@ -2549,7 +2549,21 @@ class RouteLoadingTest < Test::Unit::TestCase
 
     routes.reload
   end
+  
+  def test_prepending_configurations
+    routes.configuration_files.clear
+    File.stubs(:stat).returns(@stat)
+    routing = states(:route_load_order).starts_as('empty')
+    
+    routes.add_configuration_file('engines.rb')
+    routes.prepend_configuration_file('./config/routes.rb')
 
+    routes.expects(:load).with('./config/routes.rb').when(routing.is('empty')).then(routing.is('app-loaded'))
+    routes.expects(:load).with('engines.rb').when(routing.is('app-loaded')).then(routing.is('engine-loaded'))
+
+    routes.reload
+  end
+  
   private
     def routes
       ActionController::Routing::Routes

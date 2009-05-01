@@ -532,7 +532,7 @@ Run `rake gems:install` to install the missing gems.
       return unless configuration.frameworks.include?(:action_controller)
 
       ActionController::Routing.controller_paths += configuration.controller_paths
-      ActionController::Routing::Routes.add_configuration_file(configuration.routes_configuration_file)
+      ActionController::Routing::Routes.prepend_configuration_file(configuration.routes_configuration_file)
       ActionController::Routing::Routes.reload!
     end
 

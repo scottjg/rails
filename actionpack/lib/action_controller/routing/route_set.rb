@@ -249,6 +249,10 @@ module ActionController
       def add_configuration_file(path)
         self.configuration_files << path
       end
+      
+      def prepend_configuration_file(path)
+        self.configuration_files.unshift(path)
+      end
 
       # Deprecated accessor
       def configuration_file=(path)
