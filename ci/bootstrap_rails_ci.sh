@@ -18,7 +18,7 @@ visudo -q -c -s -f /tmp/sudoers.tmp
 if [ ! $? = 0 ]; then echo "error editing sudoers file" && exit; fi
 sudo cp /tmp/sudoers.tmp /etc/sudoers
 
-if [ -z $RAILS_GIT_URL ]; then RAILS_GIT_URL='http://github.com/thewoolleyman/rails'; fi
+if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/rails/raw/master'; fi
 
 echo "  Downloading cinabox..."
 sudo su - -c "mkdir ~/cinabox" ci
@@ -29,4 +29,4 @@ echo "  Running cinabox bootstrap_ruby.sh..."
 sudo su - -c "echo 'TODO: run boostrap_ruby.sh" ci
 
 sudo su - -c "mkdir ~/railsci" ci
-sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb {$RAILS_GIT_URL}/raw/master/ci/setup_rails_dependencies.rb" ci
+sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb {$RAILS_GIT_DOWNLOAD_URL}/ci/setup_rails_dependencies.rb" ci
