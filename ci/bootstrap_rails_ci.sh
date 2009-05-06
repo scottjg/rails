@@ -5,6 +5,7 @@ echo "Setting up Rails Continuous Integration server..."
 wget -O ~/create_ci_user.sh http://github.com/thewoolleyman/cinabox/raw/master/create_ci_user.sh
 chmod a+x ~/create_ci_user.sh
 ~/create_ci_user.sh
+if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
 
 if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/rails/raw/master'; fi
 
