@@ -2,7 +2,7 @@
 
 echo "Setting up Rails Continuous Integration server..."
 
-wget -O ~/create_ci_user.sh http://github.com/thewoolleyman/rails/raw/master/create_ci_user.sh
+wget -O ~/create_ci_user.sh http://github.com/thewoolleyman/cinabox/raw/master/create_ci_user.sh
 chmod a+x ~/create_ci_user.sh
 ~/create_ci_user.sh
 
