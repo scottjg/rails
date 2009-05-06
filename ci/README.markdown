@@ -28,7 +28,7 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
 * Log on to your server (you can use the root user or a local user)
 * Download the bootstrap\_rails\_ci.sh script:
 
-        wget -O /tmp/bootstrap_rails_ci.sh http://github.com/rails/rails/blob/master/ci/bootstrap_rails_ci.sh?raw=true
+        wget -O /tmp/bootstrap_rails_ci.sh http://github.com/thewoolleyman/rails/raw/master/ci/bootstrap_rails_ci.sh
 
 * Make the script executable:
 
