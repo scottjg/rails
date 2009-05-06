@@ -6,7 +6,7 @@ echo "Setting up Rails Continuous Integration server..."
 if [ -e /home/ci ]; then echo "ci user already exists.  To delete the ci user and start from scratch, type 'sudo deluser --remove-home ci'" && exit; fi
 
 echo "  Creating ci user..."
-if [ -z $CI_PASSWORD ]; read -p "    Please type password for ci user and press enter:" -s -a CI_PASSWORD; fi
+if [ -z $CI_PASSWORD ]; then read -p "    Please type password for ci user and press enter:" -s -a CI_PASSWORD; fi
 sudo useradd -s /bin/bash -m -p `mkpasswd -H md5 $CI_PASSWORD` ci
 
 echo "  Giving ci user no-password sudo privileges"
