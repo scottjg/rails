@@ -9,12 +9,12 @@ if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
 
 if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/rails/raw/master'; fi
 
-echo "  Downloading cinabox..."
+echo "  Downloading cinabox.tar.gz to /home/ci/cinabox..."
 sudo su - -c "mkdir ~/cinabox" ci
 sudo su - -c "wget -O ~/cinabox/cinabox.tar.gz http://github.com/thewoolleyman/cinabox/tarball/master" ci
-echo "  Unzipping cinabox..."
+echo "  Unzipping cinabox.tar.gz to /home/ci/cinabox..."
 sudo su - -c "tar --directory=/home/ci/cinabox --overwrite --strip-components=1 -zxvf ~/cinabox/cinabox.tar.gz" ci
 
-echo "  Downloading cinabox..."
+echo "  Downloading setup_rails_dependencies to /home/ci/railsci..."
 sudo su - -c "mkdir ~/railsci" ci
-sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb {$RAILS_GIT_DOWNLOAD_URL}/ci/setup_rails_dependencies.rb" ci
+sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_dependencies.rb" ci
