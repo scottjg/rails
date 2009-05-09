@@ -2,8 +2,8 @@
 
 echo "Setting up Rails Continuous Integration server..."
 
-wget -O ~/create_ci_user.sh http://github.com/thewoolleyman/cinabox/raw/master/create_ci_user.sh
-chmod a+x ~/create_ci_user.sh
+wget -O /tmp/create_ci_user.sh http://github.com/thewoolleyman/cinabox/raw/master/create_ci_user.sh
+chmod a+x /tmp/create_ci_user.sh
 ~/create_ci_user.sh
 if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
 
