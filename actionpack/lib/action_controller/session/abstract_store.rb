@@ -161,10 +161,11 @@ module ActionController
 
         def load_session(env)
           request = Rack::Request.new(env)
-          sid = request.cookies[@key]
           unless @cookie_only
-            sid ||= request.params[@key]
+            sid = request.params[@key]
           end
+          sid ||= request.cookies[@key]
+
           sid, session = get_session(env, sid)
           [sid, session]
         end
