@@ -59,7 +59,7 @@ class UrlHelperTest < ActionView::TestCase
 
   def test_button_to_with_javascript_confirm
     assert_dom_equal(
-      "<form method=\"post\" action=\"http://www.example.com\" class=\"button-to\"><div><input onclick=\"return confirm('Are you sure?');\" type=\"submit\" value=\"Hello\" /></div></form>",
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"button-to\"><div><input data-confirm=\"Are you sure?\" type=\"submit\" value=\"Hello\" /></div></form>",
       button_to("Hello", "http://www.example.com", :confirm => "Are you sure?")
     )
   end

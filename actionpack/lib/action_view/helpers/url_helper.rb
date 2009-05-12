@@ -298,9 +298,7 @@ module ActionView
           request_token_tag = tag(:input, :type => "hidden", :name => request_forgery_protection_token.to_s, :value => form_authenticity_token)
         end
 
-        if confirm = html_options.delete("confirm")
-          html_options["onclick"] = "return #{confirm_javascript_function(confirm)};"
-        end
+        convert_html_data_options!(html_options, 'confirm')
 
         url = options.is_a?(String) ? options : self.url_for(options)
         name ||= url
@@ -571,27 +569,11 @@ module ActionView
           method, href = html_options.delete("method"), html_options['href']
 
           html_options["onclick"] = case
-            when confirm && popup
-              "if (#{confirm_javascript_function(confirm)}) { #{popup_javascript_function(popup)} };return false;"
-            when confirm && method
-              "if (#{confirm_javascript_function(confirm)}) { #{method_javascript_function(method)} };return false;"
-            when confirm
-              "return #{confirm_javascript_function(confirm)};"
             when method
               "#{method_javascript_function(method, url, href)}return false;"
-            when popup
-              "#{popup_javascript_function(popup)}return false;"
             else
               html_options["onclick"]
           end
-        end
-
-        def confirm_javascript_function(confirm)
-          "confirm('#{escape_javascript(confirm)}')"
-        end
-
-        def popup_javascript_function(popup)
-          popup.is_a?(Array) ? "window.open(this.href,'#{popup.first}','#{popup.last}');" : "window.open(this.href);"
         end
 
         def method_javascript_function(method, url = '', href = nil)
