@@ -408,8 +408,8 @@ module ActiveRecord #:nodoc:
           nonreloadables << klass
           next
         end
-        klass.instance_variables.each { |var| klass.send(:remove_instance_variable, var) }
-        klass.instance_methods(false).each { |m| klass.send :undef_method, m }
+        #klass.instance_variables.each { |var| klass.send(:remove_instance_variable, var) }
+        #klass.instance_methods(false).each { |m| klass.send :undef_method, m }
       end
       @@subclasses = {}
       nonreloadables.each { |klass| (@@subclasses[klass.superclass] ||= []) << klass }
