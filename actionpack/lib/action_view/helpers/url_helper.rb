@@ -227,15 +227,13 @@ module ActionView
 
           if html_options
             html_options = html_options.stringify_keys
-            href = html_options['href']
-            convert_html_data_options!(html_options, 'confirm', 'popup', 'popup_args')
-            convert_options_to_javascript!(html_options, url)
+            convert_html_data_options!(html_options, 'confirm', 'popup', 'popup_args', 'method')
             tag_options = tag_options(html_options)
           else
             tag_options = nil
           end
 
-          href_attr = "href=\"#{url}\"" unless href
+          href_attr = "href=\"#{url}\"" 
           "<a #{href_attr}#{tag_options}>#{name || url}</a>"
         end
       end
@@ -561,37 +559,6 @@ module ActionView
               html_options.delete(key)
             end
           end
-        end
-
-        def convert_options_to_javascript!(html_options, url = '')
-          confirm, popup = html_options.delete("confirm"), html_options.delete("popup")
-
-          method, href = html_options.delete("method"), html_options['href']
-
-          html_options["onclick"] = case
-            when method
-              "#{method_javascript_function(method, url, href)}return false;"
-            else
-              html_options["onclick"]
-          end
-        end
-
-        def method_javascript_function(method, url = '', href = nil)
-          action = (href && url.size > 0) ? "'#{url}'" : 'this.href'
-          submit_function =
-            "var f = document.createElement('form'); f.style.display = 'none'; " +
-            "this.parentNode.appendChild(f); f.method = 'POST'; f.action = #{action};"
-
-          unless method == :post
-            submit_function << "var m = document.createElement('input'); m.setAttribute('type', 'hidden'); "
-            submit_function << "m.setAttribute('name', '_method'); m.setAttribute('value', '#{method}'); f.appendChild(m);"
-          end
-
-          if protect_against_forgery?
-            submit_function << "var s = document.createElement('input'); s.setAttribute('type', 'hidden'); "
-            submit_function << "s.setAttribute('name', '#{request_forgery_protection_token}'); s.setAttribute('value', '#{escape_javascript form_authenticity_token}'); f.appendChild(s);"
-          end
-          submit_function << "f.submit();"
         end
 
         # Processes the _html_options_ hash, converting the boolean

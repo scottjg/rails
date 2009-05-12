@@ -194,28 +194,21 @@ class UrlHelperTest < ActionView::TestCase
 
   def test_link_tag_using_post_javascript
     assert_dom_equal(
-      "<a href='http://www.example.com' onclick=\"var f = document.createElement('form'); f.style.display = 'none'; this.parentNode.appendChild(f); f.method = 'POST'; f.action = this.href;f.submit();return false;\">Hello</a>",
+      "<a href='http://www.example.com' data-method=\"post\">Hello</a>",
       link_to("Hello", "http://www.example.com", :method => :post)
     )
   end
 
   def test_link_tag_using_delete_javascript
     assert_dom_equal(
-      "<a href='http://www.example.com' onclick=\"var f = document.createElement('form'); f.style.display = 'none'; this.parentNode.appendChild(f); f.method = 'POST'; f.action = this.href;var m = document.createElement('input'); m.setAttribute('type', 'hidden'); m.setAttribute('name', '_method'); m.setAttribute('value', 'delete'); f.appendChild(m);f.submit();return false;\">Destroy</a>",
+      "<a href='http://www.example.com' data-method=\"delete\">Destroy</a>",
       link_to("Destroy", "http://www.example.com", :method => :delete)
-    )
-  end
-
-  def test_link_tag_using_delete_javascript_and_href
-    assert_dom_equal(
-      "<a href='\#' onclick=\"var f = document.createElement('form'); f.style.display = 'none'; this.parentNode.appendChild(f); f.method = 'POST'; f.action = 'http://www.example.com';var m = document.createElement('input'); m.setAttribute('type', 'hidden'); m.setAttribute('name', '_method'); m.setAttribute('value', 'delete'); f.appendChild(m);f.submit();return false;\">Destroy</a>",
-      link_to("Destroy", "http://www.example.com", :method => :delete, :href => '#')
     )
   end
 
   def test_link_tag_using_post_javascript_and_confirm
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" data-confirm=\"Are you serious?\" onclick=\"var f = document.createElement('form'); f.style.display = 'none'; this.parentNode.appendChild(f); f.method = 'POST'; f.action = this.href;f.submit();return false;\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-confirm=\"Are you serious?\" data-method=\"post\">Hello</a>",
       link_to("Hello", "http://www.example.com", :method => :post, :confirm => "Are you serious?")
     )
   end
