@@ -134,9 +134,7 @@ module ActionView
       # behavior, your should check for it in your controller's action by using the
       # request object's methods for <tt>post?</tt>, <tt>delete?</tt> or <tt>put?</tt>.
       #
-      # You can mix and match the +html_options+ with the exception of
-      # <tt>:popup</tt> and <tt>:method</tt> which will raise an ActionView::ActionViewError
-      # exception.
+      # You can mix and match the +html_options+.
       #
       # ==== Examples
       # Because it relies on +url_for+, +link_to+ supports both older-style controller/action/id arguments
@@ -230,6 +228,7 @@ module ActionView
           if html_options
             html_options = html_options.stringify_keys
             href = html_options['href']
+            convert_html_data_options!(html_options, 'confirm', 'popup', 'popup_args')
             convert_options_to_javascript!(html_options, url)
             tag_options = tag_options(html_options)
           else
@@ -557,14 +556,21 @@ module ActionView
       end
 
       private
+        def convert_html_data_options!(html_options, *keys)
+          keys.each do |key|
+            if val = html_options[key]
+              html_options["data-#{key}"] = val
+              html_options.delete(key)
+            end
+          end
+        end
+
         def convert_options_to_javascript!(html_options, url = '')
           confirm, popup = html_options.delete("confirm"), html_options.delete("popup")
 
           method, href = html_options.delete("method"), html_options['href']
 
           html_options["onclick"] = case
-            when popup && method
-              raise ActionView::ActionViewError, "You can't use :popup and :method in the same link"
             when confirm && popup
               "if (#{confirm_javascript_function(confirm)}) { #{popup_javascript_function(popup)} };return false;"
             when confirm && method

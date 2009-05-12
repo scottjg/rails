@@ -151,44 +151,44 @@ class UrlHelperTest < ActionView::TestCase
     assert_dom_equal "<a href=\"http://www.example.com\" onclick=\"alert('yay!')\">Hello</a>", link_to("Hello", "http://www.example.com", :onclick => "alert('yay!')")
   end
 
-  def test_link_tag_with_javascript_confirm
+  def test_link_tag_with_confirmation
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"return confirm('Are you sure?');\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-confirm=\"Are you sure?\">Hello</a>",
       link_to("Hello", "http://www.example.com", :confirm => "Are you sure?")
     )
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"return confirm('You can\\'t possibly be sure, can you?');\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-confirm=\"You can't possibly be sure, can you?\">Hello</a>",
       link_to("Hello", "http://www.example.com", :confirm => "You can't possibly be sure, can you?")
     )
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"return confirm('You can\\'t possibly be sure,\\n can you?');\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-confirm=\"You can't possibly be sure,\n can you?\">Hello</a>",
       link_to("Hello", "http://www.example.com", :confirm => "You can't possibly be sure,\n can you?")
     )
   end
 
   def test_link_tag_with_popup
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"window.open(this.href);return false;\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-popup=\"true\">Hello</a>",
       link_to("Hello", "http://www.example.com", :popup => true)
     )
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"window.open(this.href);return false;\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-popup=\"true\">Hello</a>",
       link_to("Hello", "http://www.example.com", :popup => 'true')
     )
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"window.open(this.href,'window_name','width=300,height=300');return false;\">Hello</a>",
-      link_to("Hello", "http://www.example.com", :popup => ['window_name', 'width=300,height=300'])
+      "<a href=\"http://www.example.com\" data-popup=\"window_name\" data-popup_args=\"width=300,height=300\">Hello</a>",
+      link_to("Hello", "http://www.example.com", :popup => 'window_name', :popup_args => 'width=300,height=300')
     )
   end
 
-  def test_link_tag_with_popup_and_javascript_confirm
+  def test_link_tag_with_popup_and_confirmation
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"if (confirm('Fo\\' sho\\'?')) { window.open(this.href); };return false;\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-popup=\"true\" data-confirm=\"Fo' sho'?\">Hello</a>",
       link_to("Hello", "http://www.example.com", { :popup => true, :confirm => "Fo' sho'?" })
     )
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"if (confirm('Are you serious?')) { window.open(this.href,'window_name','width=300,height=300'); };return false;\">Hello</a>",
-      link_to("Hello", "http://www.example.com", { :popup => ['window_name', 'width=300,height=300'], :confirm => "Are you serious?" })
+      "<a href=\"http://www.example.com\" data-confirm=\"Are you serious?\" data-popup=\"window_name\" data-popup_args=\"width=300,height=300\">Hello</a>",
+      link_to("Hello", "http://www.example.com", { :popup => 'window_name', :popup_args => 'width=300,height=300', :confirm => "Are you serious?" })
     )
   end
 
@@ -215,13 +215,9 @@ class UrlHelperTest < ActionView::TestCase
 
   def test_link_tag_using_post_javascript_and_confirm
     assert_dom_equal(
-      "<a href=\"http://www.example.com\" onclick=\"if (confirm('Are you serious?')) { var f = document.createElement('form'); f.style.display = 'none'; this.parentNode.appendChild(f); f.method = 'POST'; f.action = this.href;f.submit(); };return false;\">Hello</a>",
+      "<a href=\"http://www.example.com\" data-confirm=\"Are you serious?\" onclick=\"var f = document.createElement('form'); f.style.display = 'none'; this.parentNode.appendChild(f); f.method = 'POST'; f.action = this.href;f.submit();return false;\">Hello</a>",
       link_to("Hello", "http://www.example.com", :method => :post, :confirm => "Are you serious?")
     )
-  end
-
-  def test_link_tag_using_post_javascript_and_popup
-    assert_raise(ActionView::ActionViewError) { link_to("Hello", "http://www.example.com", :popup => true, :method => :post, :confirm => "Are you serious?") }
   end
 
   def test_link_tag_using_block_in_erb
