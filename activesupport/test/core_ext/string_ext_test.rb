@@ -292,4 +292,25 @@ class OutputSafetyTest < ActiveSupport::TestCase
   test "Marking a string safe returns the string" do
     assert_equal @string, @string.html_safe!
   end
+
+  test "Adding a safe string to another safe string returns a safe string" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+    @combination = @other_string + @string
+
+    assert_equal "otherhello", @combination
+    assert @combination.html_safe?
+  end
+
+  test "Adding an unsafe string to a safe string returns an unsafe string" do
+    @other_string = "other".html_safe!
+    @combination = @other_string + @string
+    @other_combination = @string + @other_string
+
+    assert_equal "otherhello", @combination
+    assert_equal "helloother", @other_combination
+
+    assert !@combination.html_safe?
+    assert !@other_combination.html_safe?
+  end
 end
