@@ -313,4 +313,50 @@ class OutputSafetyTest < ActiveSupport::TestCase
     assert !@combination.html_safe?
     assert !@other_combination.html_safe?
   end
+
+  test "Concatting safe onto unsafe yields unsafe" do
+    @other_string = "other"
+    @string.html_safe!
+
+    @other_string.concat(@string)
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting unsafe onto safe yields unsafe" do
+    @other_string = "other".html_safe!
+
+    @other_string.concat(@string)
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting safe onto safe yields safe" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+
+    @other_string.concat(@string)
+    assert @other_string.html_safe?
+  end
+
+  test "Concatting safe onto unsafe with << yields unsafe" do
+    @other_string = "other"
+    @string.html_safe!
+
+    @other_string << @string
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting unsafe onto safe with << yields unsafe" do
+    @other_string = "other".html_safe!
+
+    @other_string << @string
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting safe onto safe with << yields safe" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+
+    @other_string << @string
+    assert @other_string.html_safe?
+  end
 end
