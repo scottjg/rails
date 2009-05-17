@@ -1,9 +1,9 @@
 require "cases/helper"
+require 'models/post'
 require 'models/author'
 require 'models/developer'
 require 'models/project'
 require 'models/comment'
-require 'models/post'
 require 'models/category'
 
 class MethodScopingTest < ActiveRecord::TestCase
@@ -628,9 +628,9 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal expected, received
   end
 
-  def test_named_scope
-    expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.salary }
-    received = DeveloperOrderedBySalary.by_name.find(:all).collect { |dev| dev.salary }
+  def test_named_scope_overwrites_default
+    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.name }
+    received = DeveloperOrderedBySalary.by_name.find(:all).collect { |dev| dev.name }
     assert_equal expected, received
   end
 

@@ -57,6 +57,7 @@ ActiveRecord::Schema.define do
 
   create_table :birds, :force => true do |t|
     t.string :name
+    t.string :color
     t.integer :pirate_id
   end
 
@@ -66,6 +67,10 @@ ActiveRecord::Schema.define do
 
   create_table :booleantests, :force => true do |t|
     t.boolean :value
+  end
+
+  create_table "CamelCase", :force => true do |t|
+    t.string :name
   end
 
   create_table :categories, :force => true do |t|
@@ -113,6 +118,8 @@ ActiveRecord::Schema.define do
     t.integer :client_of
     t.integer :rating, :default => 1
   end
+
+  add_index :companies, [:firm_id, :type, :rating, :ruby_type], :name => "company_index"
 
   create_table :computers, :force => true do |t|
     t.integer :developer, :null => false
@@ -459,6 +466,26 @@ ActiveRecord::Schema.define do
     (1..8).each do |i|
       t.integer :"c_int_#{i}", :limit => i
     end
+  end
+
+  # NOTE - the following 4 tables are used by models that have :inverse_of options on the associations
+  create_table :men, :force => true do |t|
+    t.string  :name
+  end
+
+  create_table :faces, :force => true do |t|
+    t.string  :description
+    t.integer :man_id
+  end
+
+  create_table :interests, :force => true do |t|
+    t.string :topic
+    t.integer :man_id
+    t.integer :zine_id
+  end
+
+  create_table :zines, :force => true do |t|
+    t.string :title
   end
 
   except 'SQLite' do

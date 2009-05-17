@@ -1,4 +1,5 @@
 require "cases/helper"
+require 'models/post'
 require 'models/author'
 require 'models/topic'
 require 'models/reply'
@@ -12,12 +13,12 @@ require 'models/auto_id'
 require 'models/column_name'
 require 'models/subscriber'
 require 'models/keyboard'
-require 'models/post'
 require 'models/comment'
 require 'models/minimalistic'
 require 'models/warehouse_thing'
 require 'models/parrot'
 require 'rexml/document'
+require 'active_support/core_ext/exception'
 
 class Category < ActiveRecord::Base; end
 class Categorization < ActiveRecord::Base; end
@@ -456,7 +457,7 @@ class BasicsTest < ActiveRecord::TestCase
     )
 
     # For adapters which support microsecond resolution.
-    if current_adapter?(:PostgreSQLAdapter)
+    if current_adapter?(:PostgreSQLAdapter) || current_adapter?(:SQLiteAdapter)
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
@@ -1115,7 +1116,7 @@ class BasicsTest < ActiveRecord::TestCase
     Time.zone = nil
     Topic.skip_time_zone_conversion_for_attributes = []
   end
-  
+
   def test_multiparameter_attributes_on_time_only_column_with_time_zone_aware_attributes_does_not_do_time_zone_conversion
     ActiveRecord::Base.time_zone_aware_attributes = true
     ActiveRecord::Base.default_timezone = :utc
@@ -1439,7 +1440,7 @@ class BasicsTest < ActiveRecord::TestCase
     topic = Topic.create("content" => myobj).reload
     assert_equal(myobj, topic.content)
   end
-  
+
   def test_serialized_string_attribute
     myobj = "Yes"
     topic = Topic.create("content" => myobj).reload
@@ -1756,7 +1757,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_scoped_find_with_group_and_having
-    developers = Developer.with_scope(:find => { :group => 'salary', :having => "SUM(salary) > 10000", :select => "SUM(salary) as salary" }) do
+    developers = Developer.with_scope(:find => { :group => 'developers.salary', :having => "SUM(salary) > 10000", :select => "SUM(salary) as salary" }) do
       Developer.find(:all)
     end
     assert_equal 3, developers.size

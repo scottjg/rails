@@ -1,3 +1,6 @@
+require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/class/inheritable_attributes'
+
 module ActiveSupport
   # Callbacks are hooks into the lifecycle of an object that allow you to trigger logic
   # before or after an alteration of the object state.
@@ -116,12 +119,12 @@ module ActiveSupport
       end
       
       def normalize_options!(options)
-        options[:if] = Array(options[:if])
-        options[:unless] = Array(options[:unless])
+        options[:if] = Array.wrap(options[:if])
+        options[:unless] = Array.wrap(options[:unless])
 
         options[:per_key] ||= {}
-        options[:per_key][:if] = Array(options[:per_key][:if])
-        options[:per_key][:unless] = Array(options[:per_key][:unless])
+        options[:per_key][:if] = Array.wrap(options[:per_key][:if])
+        options[:per_key][:unless] = Array.wrap(options[:per_key][:unless])
       end
       
       def next_id
@@ -246,11 +249,11 @@ module ActiveSupport
         conditions = []
         
         unless options[:if].empty?
-          conditions << Array(_compile_filter(options[:if]))
+          conditions << Array.wrap(_compile_filter(options[:if]))
         end
         
         unless options[:unless].empty?
-          conditions << Array(_compile_filter(options[:unless])).map {|f| "!#{f}"}
+          conditions << Array.wrap(_compile_filter(options[:unless])).map {|f| "!#{f}"}
         end
         
         ["if #{conditions.flatten.join(" && ")}", "end"]
@@ -301,15 +304,6 @@ module ActiveSupport
       end
     end
 
-    # This method_missing is supplied to catch callbacks with keys and create
-    # the appropriate callback for future use.
-    def method_missing(meth, *args, &blk)
-      if meth.to_s =~ /_run__([\w:]+)__(\w+)__(\w+)__callbacks/
-        return self.class._create_and_run_keyed_callback($1, $2.to_sym, $3.to_sym, self, &blk)
-      end
-      super
-    end
-    
     # An Array with a compile method
     class CallbackChain < Array
       def initialize(symbol)
@@ -322,7 +316,7 @@ module ActiveSupport
         each do |callback|
           method << callback.start(key, options)
         end
-        method << "yield self if block_given?"
+        method << "yield self if block_given? && !halted"
         reverse_each do |callback|
           method << callback.end(key, options)
         end
@@ -353,6 +347,7 @@ module ActiveSupport
         str = <<-RUBY_EVAL
           def _run_#{symbol}_callbacks(key = nil)
             if key
+              key = key.hash.to_s.gsub(/-/, '_')
               name = "_run__\#{self.class.name.split("::").last}__#{symbol}__\#{key}__callbacks"
               
               if respond_to?(name)

@@ -1,4 +1,5 @@
 require 'active_record/connection_adapters/abstract_adapter'
+require 'active_support/core_ext/kernel/requires'
 
 module ActiveRecord
   class Base
@@ -148,6 +149,16 @@ module ActiveRecord
 
       def quote_column_name(name) #:nodoc:
         %Q("#{name}")
+      end
+
+      # Quote date/time values for use in SQL input. Includes microseconds
+      # if the value is a Time responding to usec.
+      def quoted_date(value) #:nodoc:
+        if value.acts_like?(:time) && value.respond_to?(:usec)
+          "#{super}.#{sprintf("%06d", value.usec)}"
+        else
+          super
+        end
       end
 
 

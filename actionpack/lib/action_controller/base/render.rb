@@ -1,3 +1,5 @@
+require 'action_controller/abstract/renderer'
+
 module ActionController
   DEFAULT_RENDER_STATUS_CODE = "200 OK"
   
@@ -251,8 +253,9 @@ module ActionController
         response.content_type ||= Mime::JS
         render_for_text(js)
 
-      elsif json = options[:json]
-        json = json.to_json unless json.is_a?(String)
+      elsif options.include?(:json)
+        json = options[:json]
+        json = ActiveSupport::JSON.encode(json) unless json.respond_to?(:to_str)
         json = "#{options[:callback]}(#{json})" unless options[:callback].blank?
         response.content_type ||= Mime::JSON
         render_for_text(json)
@@ -306,9 +309,9 @@ module ActionController
       (name.is_a?(String) ? name.sub(/^#{controller_path}\//, '') : name).to_s
     end
 
-    # Renders according to the same rules as <tt>render</tt>, but returns the result in a string instead
-    # of sending it as the response body to the browser.
-    def render_to_string(options = nil, &block) #:doc:
+    # Same rules as <tt>render</tt>, but returns a Rack-compatible body
+    # instead of sending the response.
+    def render_to_body(options = nil, &block) #:doc:
       render(options, &block)
       response.body
     ensure
@@ -316,7 +319,11 @@ module ActionController
       erase_render_results
       reset_variables_added_to_assigns
     end
-    
+
+    def render_to_string(options = {})
+      AbstractController::Renderer.body_to_s(render_to_body(options))
+    end
+
     # Clears the rendered results, allowing for another render to be performed.
     def erase_render_results #:nodoc:
       response.body = []
@@ -368,12 +375,18 @@ module ActionController
         render_for_file(name.sub(/^\//, ''), [layout, true], options)
       end
     end
-  
-    def render_for_parts(parts, layout, options = {})
+
+    # ==== Arguments
+    # parts<Array[String, Array[Symbol*], String, Boolean]>::
+    #     Example: ["show", [:html, :xml], "users", false]
+    def render_for_parts(parts, layout_details, options = {})
+      parts[1] = {:formats => parts[1], :locales => [I18n.locale]}
+      
       tmp = view_paths.find_by_parts(*parts)
       
-      layout = _pick_layout(*layout) unless tmp.exempt_from_layout?
-            
+      layout = _pick_layout(*layout_details) unless 
+        self.class.exempt_from_layout.include?(tmp.handler)
+      
       render_for_text(
         @template._render_template_with_layout(tmp, layout, options, parts[3]))
     end

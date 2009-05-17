@@ -1,5 +1,15 @@
 require 'yaml'
 require 'set'
+require 'active_support/dependencies'
+require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/class/delegating_attributes'
+require 'active_support/core_ext/class/inheritable_attributes'
+require 'active_support/core_ext/array/extract_options'
+require 'active_support/core_ext/hash/deep_merge'
+require 'active_support/core_ext/hash/indifferent_access'
+require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/string/behavior'
+require 'active_support/core/time'
 
 module ActiveRecord #:nodoc:
   # Generic Active Record exception class.
@@ -687,14 +697,9 @@ module ActiveRecord #:nodoc:
       #   Person.exists?(['name LIKE ?', "%#{query}%"])
       #   Person.exists?
       def exists?(id_or_conditions = {})
-        connection.select_all(
-          construct_finder_sql(
-            :select     => "#{quoted_table_name}.#{primary_key}",
-            :conditions => expand_id_conditions(id_or_conditions),
-            :limit      => 1
-          ),
-          "#{name} Exists"
-        ).size > 0
+        find_initial(
+          :select => "#{quoted_table_name}.#{primary_key}",
+          :conditions => expand_id_conditions(id_or_conditions)) ? true : false
       end
 
       # Creates an object (or multiple objects) and saves it to the database, if validations pass.
@@ -1030,7 +1035,7 @@ module ActiveRecord #:nodoc:
       # To start from an all-closed default and enable attributes as needed,
       # have a look at +attr_accessible+.
       def attr_protected(*attributes)
-        write_inheritable_attribute(:attr_protected, Set.new(attributes.map(&:to_s)) + (protected_attributes || []))
+        write_inheritable_attribute(:attr_protected, Set.new(attributes.map {|a| a.to_s}) + (protected_attributes || []))
       end
 
       # Returns an array of all the attributes that have been protected from mass-assignment.
@@ -1887,7 +1892,7 @@ module ActiveRecord #:nodoc:
                   else
                     find(:#{finder}, options.merge(finder_options))
                   end
-                  #{'result || raise(RecordNotFound, "Couldn\'t find #{name} with #{attributes.to_a.collect {|pair| "#{pair.first} = #{pair.second}"}.join(\', \')}")' if bang}
+                  #{'result || raise(RecordNotFound, "Couldn\'t find #{name} with #{attributes.to_a.collect { |pair| pair.join(\' = \') }.join(\', \')}")' if bang}
                 end
               }, __FILE__, __LINE__
               send(method_id, *arguments)
@@ -2231,12 +2236,12 @@ module ActiveRecord #:nodoc:
         #   ["name='%s' and group_id='%s'", "foo'bar", 4]  returns  "name='foo''bar' and group_id='4'"
         #   { :name => "foo'bar", :group_id => 4 }  returns "name='foo''bar' and group_id='4'"
         #   "name='foo''bar' and group_id='4'" returns "name='foo''bar' and group_id='4'"
-        def sanitize_sql_for_conditions(condition)
+        def sanitize_sql_for_conditions(condition, table_name = quoted_table_name)
           return nil if condition.blank?
 
           case condition
             when Array; sanitize_sql_array(condition)
-            when Hash;  sanitize_sql_hash_for_conditions(condition)
+            when Hash;  sanitize_sql_hash_for_conditions(condition, table_name)
             else        condition
           end
         end
@@ -2609,11 +2614,11 @@ module ActiveRecord #:nodoc:
       # Note: The new instance will share a link to the same attributes as the original class. So any change to the attributes in either
       # instance will affect the other.
       def becomes(klass)
-        returning klass.new do |became|
-          became.instance_variable_set("@attributes", @attributes)
-          became.instance_variable_set("@attributes_cache", @attributes_cache)
-          became.instance_variable_set("@new_record", new_record?)
-        end
+        became = klass.new
+        became.instance_variable_set("@attributes", @attributes)
+        became.instance_variable_set("@attributes_cache", @attributes_cache)
+        became.instance_variable_set("@new_record", new_record?)
+        became
       end
 
       # Updates a single attribute and saves the record without going through the normal validation procedure.
