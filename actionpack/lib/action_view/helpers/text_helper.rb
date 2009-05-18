@@ -529,23 +529,36 @@ module ActionView
 
         BRACKETS = { ']' => '[', ')' => '(', '}' => '{' }
 
+        # Analyzes the given text and finds relevant tags that are not closed yet
+        def find_open_tags(text)
+          open_tags = []
+
+          text.scan(/<(a|pre|textarea|style|script|noscript)[^>]*>|<\s*\/\s*(a|pre|textarea|style|script|noscript)\s*>/) do |match|
+            if match[0]
+              open_tags << match[0]
+            elsif match[1]
+              index = open_tags.index(match[1])
+              open_tags.delete_at(index) if index
+            end
+          end
+
+          open_tags
+        end
+
         # Turns all urls into clickable links.  If a block is given, each url
         # is yielded and the result is used as the link text.
-        def auto_link_urls(text, html_options = {})
+        def auto_link_urls(text, html_options = {}, limit = 20)
           link_attributes = html_options.stringify_keys
           text.gsub(AUTO_LINK_RE) do
+            # Limit the amount of matches to a sane amount
+            return text if (limit -= 1) <= 0
+
+            before_text = $`
             href = $&
             punctuation = ''
-            before_text = $`
-            # detect already linked URLs and URLs in the middle of a tag
-            if before_text =~ /<[^>]*\Z/i ||
-               before_text.scan(/<a\s[^>]*href=[^>]*>/i).size > before_text.scan(/<\s*\/\s*a\s*>/).size ||
-               before_text.scan(/<pre[^>]*>/i).size > before_text.scan(/<\s*\/\s*pre\s*>/).size ||
-               before_text.scan(/<textarea[^>]*>/i).size > before_text.scan(/<\s*\/\s*textarea\s*>/).size ||
-               before_text.scan(/<style[^>]*>/i).size > before_text.scan(/<\s*\/\s*style\s*>/).size ||
-               before_text.scan(/<script[^>]*>/i).size > before_text.scan(/<\s*\/\s*script\s*>/).size ||
-               before_text.scan(/<noscript[^>]*>/i).size > before_text.scan(/<\s*\/\s*noscript\s*>/).size
-              # do not change string; URL is alreay linked
+
+            if before_text =~ /<[^>]*\Z/i || !find_open_tags(before_text).empty?
+              # do not change string; URL is already linked
               href
             else
               # don't include trailing punctuation character as part of the URL
@@ -568,16 +581,10 @@ module ActionView
         # each email is yielded and the result is used as the link text.
         def auto_link_email_addresses(text, html_options = {})
           text.gsub(/([\w\.!#\$%\-+.]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)+)/) do
-            text = $1
             before_text = $`
-            
-            if before_text =~ /<[^>]*\Z/i ||
-               before_text.scan(/<a\s[^>]*href=[^>]*>/i).size > before_text.scan(/<\s*\/\s*a\s*>/).size ||
-               before_text.scan(/<pre[^>]*>/i).size > before_text.scan(/<\s*\/\s*pre\s*>/).size ||
-               before_text.scan(/<textarea[^>]*>/i).size > before_text.scan(/<\s*\/\s*textarea\s*>/).size ||
-               before_text.scan(/<style[^>]*>/i).size > before_text.scan(/<\s*\/\s*style\s*>/).size ||
-               before_text.scan(/<script[^>]*>/i).size > before_text.scan(/<\s*\/\s*script\s*>/).size ||
-               before_text.scan(/<noscript[^>]*>/i).size > before_text.scan(/<\s*\/\s*noscript\s*>/).size
+            text = $1
+
+            if before_text =~ /<[^>]*\Z/i || !find_open_tags(before_text).empty?
               text
             else
               display_text = (block_given?) ? yield(text) : text
