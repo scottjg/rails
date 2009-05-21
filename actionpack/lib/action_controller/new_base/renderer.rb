@@ -4,16 +4,21 @@ module ActionController
 
     depends_on AbstractController::Renderer
     
-    def initialize(*)
-      self.formats = [:html]
+    def process_action(*)
+      self.formats = request.formats.map {|x| x.to_sym}
       super
     end
     
+    def response_body=(body)
+      response.body = body if response
+      super
+    end
+
     def render_to_body(options)
       _process_options(options)
       
       if options.key?(:text)
-        options[:_template] = ActionView::TextTemplate.new(_text(options))
+        options[:_template] = ActionView::TextTemplate.new(_text(options), formats.first)
         template = nil
       elsif options.key?(:inline)
         handler = ActionView::Template.handler_class_for_extension(options[:type] || "erb")
@@ -33,7 +38,11 @@ module ActionController
       ret = super(options)
       
       options[:_template] ||= _action_view._partial
-      response.content_type ||= options[:_template].mime_type
+      response.content_type ||= begin
+        mime = options[:_template].mime_type
+        mime &&= mime.to_sym
+        formats.include?(mime) ? mime : formats.first
+      end
       ret
     end
     

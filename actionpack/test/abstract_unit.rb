@@ -1,6 +1,3 @@
-if ENV["new_base"]
-  require "abstract_unit2"
-else
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 $:.unshift(File.dirname(__FILE__) + '/../../activesupport/lib')
 $:.unshift(File.dirname(__FILE__) + '/fixtures/helpers')
@@ -26,6 +23,8 @@ require 'action_controller'
 require 'action_controller/testing/process'
 require 'action_view/test_case'
 
+$tags[:old_base] = true
+
 # Show backtraces for deprecated behavior for quicker cleanup.
 ActiveSupport::Deprecation.debug = true
 
@@ -41,4 +40,3 @@ ORIGINAL_LOCALES = I18n.available_locales.map {|locale| locale.to_s }.sort
 
 FIXTURE_LOAD_PATH = File.join(File.dirname(__FILE__), 'fixtures')
 ActionController::Base.view_paths = FIXTURE_LOAD_PATH
-end

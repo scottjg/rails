@@ -10,10 +10,13 @@ module ActionController
   autoload :Rescue,               "action_controller/new_base/rescuable"
   autoload :Testing,              "action_controller/new_base/testing"
   autoload :UrlFor,               "action_controller/new_base/url_for"
-  
+  autoload :Session,              "action_controller/new_base/session"
+
   # Ported modules
   # require 'action_controller/routing'
+  autoload :Caching,           'action_controller/caching'
   autoload :Dispatcher,        'action_controller/dispatch/dispatcher'
+  autoload :MimeResponds,      'action_controller/base/mime_responds'
   autoload :PolymorphicRoutes, 'action_controller/routing/generation/polymorphic_routes'
   autoload :RecordIdentifier,  'action_controller/record_identifier'
   autoload :Resources,         'action_controller/routing/resources'
@@ -21,7 +24,10 @@ module ActionController
   autoload :TestCase,          'action_controller/testing/test_case'
   autoload :UrlRewriter,       'action_controller/routing/generation/url_rewriter'
   autoload :UrlWriter,         'action_controller/routing/generation/url_rewriter'
-  
+
+  autoload :Verification, 'action_controller/base/verification'
+  autoload :Flash,        'action_controller/base/chained/flash'
+
   require 'action_controller/routing'
 end
 

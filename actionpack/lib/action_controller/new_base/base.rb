@@ -2,6 +2,7 @@ module ActionController
   class Base < Http
     abstract!
     
+    include AbstractController::Benchmarker
     include AbstractController::Callbacks
     include AbstractController::Helpers
     include AbstractController::Logger
@@ -13,9 +14,15 @@ module ActionController
     include ActionController::Layouts
     include ActionController::ConditionalGet
 
+    include ActionController::Session
+    include ActionController::Flash
+    include ActionController::Verification
+
     # Legacy modules
     include SessionManagement
     include ActionDispatch::StatusCodes
+    include ActionController::Caching
+    include ActionController::MimeResponds
 
     # Rails 2.x compatibility
     include ActionController::Rails2Compatibility
