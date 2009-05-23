@@ -7,10 +7,13 @@ module ActionController
   autoload :Rails2Compatibility,  "action_controller/new_base/compatibility"
   autoload :Redirector,           "action_controller/new_base/redirector"
   autoload :Renderer,             "action_controller/new_base/renderer"
+  autoload :RenderOptions,        "action_controller/new_base/render_options"
+  autoload :Renderers,            "action_controller/new_base/render_options"
   autoload :Rescue,               "action_controller/new_base/rescuable"
   autoload :Testing,              "action_controller/new_base/testing"
   autoload :UrlFor,               "action_controller/new_base/url_for"
   autoload :Session,              "action_controller/new_base/session"
+  autoload :Helpers,              "action_controller/new_base/helpers"
 
   # Ported modules
   # require 'action_controller/routing'
@@ -25,8 +28,14 @@ module ActionController
   autoload :UrlRewriter,       'action_controller/routing/generation/url_rewriter'
   autoload :UrlWriter,         'action_controller/routing/generation/url_rewriter'
 
-  autoload :Verification, 'action_controller/base/verification'
-  autoload :Flash,        'action_controller/base/chained/flash'
+  autoload :Verification,             'action_controller/base/verification'
+  autoload :Flash,                    'action_controller/base/chained/flash'
+  autoload :RequestForgeryProtection, 'action_controller/base/request_forgery_protection'
+  autoload :Streaming,                'action_controller/base/streaming'
+  autoload :HttpAuthentication,       'action_controller/base/http_authentication'
+  autoload :FilterParameterLogging,   'action_controller/base/filter_parameter_logging'
+  autoload :Translation,              'action_controller/translation'
+  autoload :Cookies,                  'action_controller/base/cookies'
 
   require 'action_controller/routing'
 end

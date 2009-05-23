@@ -2,8 +2,12 @@ module ActionView #:nodoc:
   class TextTemplate < String #:nodoc:
 
     def initialize(string, content_type = Mime[:html])
-      super(string)
+      super(string.to_s)
       @content_type = Mime[content_type]
+    end
+
+    def details
+      {:formats => [@content_type.to_sym]}
     end
 
     def identifier() self end
