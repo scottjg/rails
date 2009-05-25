@@ -52,8 +52,7 @@ module ActionView
   autoload :SafeBuffer, 'action_view/safe_buffer'
 end
 
-class ERB
-  autoload :Util, 'action_view/erb/util'
-end
+require 'action_view/erb/util'
+
 
 I18n.load_path << "#{File.dirname(__FILE__)}/action_view/locale/en.yml"
