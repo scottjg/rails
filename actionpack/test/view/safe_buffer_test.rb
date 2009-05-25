@@ -33,4 +33,9 @@ class SafeBufferTest < ActionView::TestCase
   test "Should be considered safe" do
     assert @buffer.html_safe?
   end
+
+  test "Should return a safe buffer when calling to_s" do
+    new_buffer = @buffer.to_s
+    assert_equal ActionView::SafeBuffer, new_buffer.class
+  end
 end

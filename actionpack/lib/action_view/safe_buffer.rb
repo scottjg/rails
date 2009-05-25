@@ -16,5 +16,9 @@ module ActionView #:nodoc:
     def html_safe!
       self
     end
+
+    def to_s
+      self
+    end
   end
 end
