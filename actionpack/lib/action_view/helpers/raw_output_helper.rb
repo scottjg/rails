@@ -1,8 +1,8 @@
 module ActionView #:nodoc:
   module Helpers #:nodoc:
     module RawOutputHelper
-      def raw(string)
-        string.html_safe!
+      def raw(stringish)
+        stringish.to_s.html_safe!
       end
     end
   end
