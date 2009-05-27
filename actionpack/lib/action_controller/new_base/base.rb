@@ -14,6 +14,7 @@ module ActionController
     include ActionController::Renderers::All
     include ActionController::Layouts
     include ActionController::ConditionalGet
+    include ActionController::RackConvenience
 
     # Legacy modules
     include SessionManagement
@@ -40,7 +41,7 @@ module ActionController
     module ImplicitRender
       def process_action(method_name)
         ret = super
-        default_render if response_body.nil?
+        default_render unless performed?
         ret
       end
 

@@ -1,5 +1,8 @@
 module ActionController
   module Testing
+    extend ActiveSupport::DependencyModule
+
+    depends_on RackConvenience
 
     # OMG MEGA HAX
     def process_with_new_base_test(request, response)
@@ -26,5 +29,12 @@ module ActionController
       @_response ||= ActionDispatch::Response.new
       @_response.headers.replace(new_headers)
     end
+
+    module ClassMethods
+      def before_filters
+        _process_action_callbacks.find_all{|x| x.kind == :before}.map{|x| x.name}
+      end
+    end
+
   end
 end

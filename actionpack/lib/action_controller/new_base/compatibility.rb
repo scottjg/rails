@@ -56,6 +56,14 @@ module ActionController
 
       cattr_accessor :consider_all_requests_local
       self.consider_all_requests_local = true
+
+      # Prepends all the URL-generating helpers from AssetHelper. This makes it possible to easily move javascripts, stylesheets,
+      # and images to a dedicated asset server away from the main web server. Example:
+      #   ActionController::Base.asset_host = "http://assets.example.com"
+      cattr_accessor :asset_host
+
+      cattr_accessor :ip_spoofing_check
+      self.ip_spoofing_check = true
     end
     
     # For old tests
@@ -64,7 +72,12 @@ module ActionController
 
     # TODO: Remove this after we flip
     def template
-      _action_view
+      @template ||= _action_view
+    end
+
+    def process_action(*)
+      template
+      super
     end
 
     module ClassMethods
@@ -77,11 +90,6 @@ module ActionController
       def cache_store=(store_option)
         @@cache_store = ActiveSupport::Cache.lookup_store(store_option)
       end
-    end
-    
-    def initialize(*)
-      super
-      @template = _action_view
     end
     
     def render_to_body(options)
@@ -110,6 +118,19 @@ module ActionController
 
     def performed?
       response_body
+    end
+
+    # ==== Request only view path switching ====
+    def append_view_path(path)
+      view_paths.push(*path)
+    end
+
+    def prepend_view_path(path)
+      view_paths.unshift(*path)
+    end
+
+    def view_paths
+      _action_view.view_paths
     end
   end
 end
