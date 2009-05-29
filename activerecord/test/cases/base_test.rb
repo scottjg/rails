@@ -1273,7 +1273,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal 2147483647, company.rating
   end
 
-  # TODO: extend defaults tests to other databases!
+  # TODO: extend defaults tests to other databases! 
   if current_adapter?(:PostgreSQLAdapter)
     def test_default
       default = Default.new
@@ -1433,6 +1433,59 @@ class BasicsTest < ActiveRecord::TestCase
     topic = Topic.create("content" => myobj)
     Topic.serialize("content", MyObject)
     assert_equal(myobj, topic.content)
+  end
+
+  def test_serialized_attribute_supports_partial_update
+    Topic.serialize("content")
+
+    # test with and without the content_changed? before save, could affect internal state
+    call, dont_call = lambda {|l| l.call }, lambda {}
+    [call, dont_call].each do |p|
+      topic1 = Topic.create(:content => [1,2,3])
+
+      Topic.find(topic1.id).update_attribute :content, [1,2,4]
+      p.call lambda { assert ! topic1.content_changed? }
+      topic1.save! # no change, dont update
+      assert_equal [1,2,4], Topic.find(topic1.id).content
+
+      topic1.content[2] = 5
+      p.call lambda { assert topic1.content_changed? }
+      topic1.save! # change, update
+      assert_equal [1,2,5], Topic.find(topic1.id).content
+
+      topic1.content[2] = 6
+      p.call lambda { assert topic1.content_changed? }
+      p.call lambda { assert_equal [1,2,5], topic1.content_was }
+      topic1.save! # change again, update
+      assert_equal [1,2,6], Topic.find(topic1.id).content
+
+      topic2 = Topic.create
+      Topic.find(topic2.id).update_attribute :content, [1]
+      p.call lambda { assert ! topic2.content_changed? }
+      p.call lambda { assert_equal [1,2,6], topic1.content_was }
+      topic2.save! # no change, dont update
+      assert_equal [1], Topic.find(topic2.id).content
+
+      topic3 = Topic.new
+      topic3.content = [1,2,3]
+      p.call lambda { assert topic3.content_changed? }
+      p.call lambda { assert_equal nil, topic3.content_was }
+      topic3.save!
+      assert_equal [1,2,3], Topic.find(topic3.id).content
+
+      Topic.find(topic3.id).update_attribute :content, {45=>32}
+      p.call lambda { assert ! topic3.content_changed? }
+      p.call lambda { assert_equal [1,2,3], topic3.content_was }
+      topic3.save!
+      assert_equal({45=>32}, Topic.find(topic3.id).content)
+
+      topic3.reload
+      Topic.find(topic3.id).update_attribute :content, :hello
+      p.call lambda { assert ! topic3.content_changed? }
+      p.call lambda { assert_equal({45=>32}, topic3.content_was) }
+      topic3.save!
+      assert_equal :hello, Topic.find(topic3.id).content
+    end
   end
 
   def test_serialized_time_attribute

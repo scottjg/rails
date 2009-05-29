@@ -64,6 +64,7 @@ module ActiveRecord
     #   person.name = 'bob'
     #   person.changed # => ['name']
     def changed
+      check_serialized_for_dirt
       changed_attributes.keys
     end
 
@@ -79,6 +80,7 @@ module ActiveRecord
     def save_with_dirty(*args) #:nodoc:
       if status = save_without_dirty(*args)
         changed_attributes.clear
+        update_serialized_attributes
       end
       status
     end
@@ -87,6 +89,7 @@ module ActiveRecord
     def save_with_dirty!(*args) #:nodoc:
       status = save_without_dirty!(*args)
       changed_attributes.clear
+      update_serialized_attributes
       status
     end
 
@@ -94,6 +97,7 @@ module ActiveRecord
     def reload_with_dirty(*args) #:nodoc:
       record = reload_without_dirty(*args)
       changed_attributes.clear
+      update_serialized_attributes
       record
     end
 
@@ -103,8 +107,20 @@ module ActiveRecord
         @changed_attributes ||= {}
       end
 
+      def update_serialized_attributes
+        @serialized_attributes_were ||= {}
+        self.class.serialized_attributes.keys.each do |attr|
+          @serialized_attributes_were[attr] = object_to_yaml(@attributes[attr])
+        end
+      end
+
       # Handle <tt>*_changed?</tt> for +method_missing+.
       def attribute_changed?(attr)
+        if self.class.serialized_attributes.keys.include? attr
+          changed = @serialized_attributes_were[attr] != object_to_yaml(@attributes[attr])
+          changed_attributes[attr] = @serialized_attributes_were[attr]  if changed
+        end
+
         changed_attributes.include?(attr)
       end
 
@@ -115,7 +131,8 @@ module ActiveRecord
 
       # Handle <tt>*_was</tt> for +method_missing+.
       def attribute_was(attr)
-        attribute_changed?(attr) ? changed_attributes[attr] : __send__(attr)
+        val = attribute_changed?(attr) ? changed_attributes[attr] : __send__(attr)
+        self.class.serialized_attributes.include?(attr) ? object_from_yaml(val) : val
       end
 
       # Handle <tt>*_will_change!</tt> for +method_missing+.
@@ -142,12 +159,14 @@ module ActiveRecord
 
       def update_with_dirty
         if partial_updates?
-          # Serialized attributes should always be written in case they've been
-          # changed in place.
-          update_without_dirty(changed | self.class.serialized_attributes.keys)
+          update_without_dirty(changed)
         else
           update_without_dirty
         end
+      end
+
+      def check_serialized_for_dirt
+        self.class.serialized_attributes.keys.each {|attr| attribute_changed?(attr) }
       end
 
       def field_changed?(attr, old, value)

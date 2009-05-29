@@ -1662,6 +1662,7 @@ module ActiveRecord #:nodoc:
 
           object.instance_variable_set("@attributes", record)
           object.instance_variable_set("@attributes_cache", Hash.new)
+          object.send(:update_serialized_attributes)
 
           if object.respond_to_without_attributes?(:after_find)
             object.send(:callback, :after_find)
@@ -2443,6 +2444,7 @@ module ActiveRecord #:nodoc:
       def initialize(attributes = nil)
         @attributes = attributes_from_column_definition
         @attributes_cache = {}
+        @serialized_attributes_were = {}
         @new_record = true
         ensure_proper_type
         self.attributes = attributes unless attributes.nil?
@@ -3126,6 +3128,11 @@ module ActiveRecord #:nodoc:
       def object_from_yaml(string)
         return string unless string.is_a?(String) && string =~ /^---/
         YAML::load(string) rescue string
+      end
+
+      def object_to_yaml(val)
+        return val if val.is_a? String and val =~ /^---/
+        val.to_yaml rescue val
       end
 
       def clone_attributes(reader_method = :read_attribute, attributes = {})
