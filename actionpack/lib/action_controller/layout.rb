@@ -221,9 +221,8 @@ module ActionController #:nodoc:
       end
 
       # Rails 2.3 a higher don't let you have layout which hash "layouts/" in path.
-      # If you need this feature, you must use find_layout(layout, formats, :skip_layouts_prefix => true)
-      def find_layout(layout, format, html_fallback = false, options = Hash.new) #:nodoc:
-        layout = "/layouts/#{layout}" if ! layout.to_s =~ /layouts\// && ! options[:skip_layouts_prefix]
+      def find_layout(layout, format, html_fallback = false) #:nodoc:
+        # view_paths.find_template(layout.to_s =~ /layouts\// ? layout : "layouts/#{layout}", format, html_fallback)
         view_paths.find_template(layout, format, html_fallback)
       rescue ActionView::MissingTemplate
         raise if Mime::Type.lookup_by_extension(format.to_s).html?
