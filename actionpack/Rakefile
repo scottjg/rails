@@ -42,6 +42,13 @@ task :isolated_test do
   end or raise "Failures"
 end
 
+desc "Test text helper"
+task :test_text_helper do
+  ruby = File.join(*RbConfig::CONFIG.values_at('bindir', 'RUBY_INSTALL_NAME'))
+  file = "test/template/text_helper_test.rb"
+  system(ruby, "-Ilib:#{test_lib_dirs * ':'}", file) or raise "Failures"
+end
+
 desc 'ActiveRecord Integration Tests'
 Rake::TestTask.new(:test_active_record_integration) do |t|
   t.libs.concat test_lib_dirs
