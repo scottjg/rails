@@ -29,6 +29,7 @@ module ActionView
           ActiveSupport::Deprecation.warn("The binding argument of #concat is no longer needed.  Please remove it from your views and helpers.", caller)
         end
 
+        self.output_buffer ||= Array.new
         output_buffer << string
       end
 
