@@ -311,6 +311,11 @@ module ActiveSupport
               def #{method_name}(&blk)
                 if :#{kind} == :around && #{method_name}_object.respond_to?(:filter)
                   #{method_name}_object.send("filter", self, &blk)
+                # TODO: Deprecate this
+                elsif #{method_name}_object.respond_to?(:before) && #{method_name}_object.respond_to?(:after)
+                  should_continue = #{method_name}_object.before(self)
+                  yield if should_continue
+                  #{method_name}_object.after(self)
                 else
                   #{method_name}_object.send("#{kind}_#{name}", self, &blk)
                 end
@@ -319,7 +324,13 @@ module ActiveSupport
           else
             @klass.class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
               def #{method_name}(&blk)
-                #{method_name}_object.send("#{kind}_#{name}", self, &blk)
+                if #{method_name}_object.respond_to?(:#{kind})
+                  #{method_name}_object.#{kind}(self, &blk)
+                elsif #{method_name}_object.respond_to?(:filter)
+                  #{method_name}_object.send("filter", self, &blk)
+                else
+                  #{method_name}_object.send("#{kind}_#{name}", self, &blk)
+                end
               end
             RUBY_EVAL
           end
@@ -464,7 +475,9 @@ module ActiveSupport
                 self._#{symbol}_callbacks.delete_if {|c| c.matches?(type, :#{symbol}, filter)}
                 Callback.new(filter, type, options.dup, self, :#{symbol})
               end
-              self._#{symbol}_callbacks.push(*filters)
+              options[:prepend] ?
+                self._#{symbol}_callbacks.unshift(*filters) :
+                self._#{symbol}_callbacks.push(*filters)
               _define_runner(:#{symbol}, 
                 self._#{symbol}_callbacks.compile(nil, :terminator => _#{symbol}_terminator), 
                 options)
