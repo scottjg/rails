@@ -20,3 +20,4 @@ railties/guides/output
 *.rbc
 *.swp
 *.swo
+*~
