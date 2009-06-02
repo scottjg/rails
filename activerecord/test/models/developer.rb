@@ -11,6 +11,8 @@ module DeveloperProjectsAssociationExtension2
 end
 
 class Developer < ActiveRecord::Base
+  attr_accessible :name, :salary, :log
+
   has_and_belongs_to_many :projects do
     def find_most_recent
       find(:first, :order => "id DESC")

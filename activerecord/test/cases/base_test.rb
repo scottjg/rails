@@ -1161,14 +1161,11 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_assignment_of_aggregation
-    # TODO re-enable when association support is being re-enabled
-    pending do
-      customer = Customer.new
-      address = Address.new("The Street", "The City", "The Country")
-      attributes = { "address(1)" => address.street, "address(2)" => address.city, "address(3)" => address.country }
-      customer.attributes = attributes
-      assert_equal address, customer.address
-    end
+    customer = Customer.new
+    address = Address.new("The Street", "The City", "The Country")
+    attributes = { "address(1)" => address.street, "address(2)" => address.city, "address(3)" => address.country }
+    customer.attributes = attributes
+    assert_equal address, customer.address
   end
 
   def test_attributes_on_dummy_time
