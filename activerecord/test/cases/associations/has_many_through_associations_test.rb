@@ -271,14 +271,12 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_many_association_through_a_belongs_to_association
-    pending do
-      author = authors(:mary)
-      post = Post.create!(:author => author, :title => "TITLE", :body => "BODY")
-      author.author_favorites.create(:favorite_author_id => 1)
-      author.author_favorites.create(:favorite_author_id => 2)
-      author.author_favorites.create(:favorite_author_id => 3)
-      assert_equal post.author.author_favorites, post.author_favorites
-    end
+    author = authors(:mary)
+    post = Post.create!(:author => author, :title => "TITLE", :body => "BODY")
+    author.author_favorites.create(:favorite_author_id => 1)
+    author.author_favorites.create(:favorite_author_id => 2)
+    author.author_favorites.create(:favorite_author_id => 3)
+    assert_equal post.author.author_favorites, post.author_favorites
   end
 
   def test_has_many_association_through_a_has_many_association_with_nonstandard_primary_keys

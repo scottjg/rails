@@ -41,13 +41,11 @@ class AssociationsTest < ActiveRecord::TestCase
   end
 
   def test_should_construct_new_finder_sql_after_create
-    pending do
-      person = Person.new :first_name => 'clark'
-      assert_equal [], person.readers.find(:all)
-      person.save!
-      reader = Reader.create! :person => person, :post => Post.new(:title => "foo", :body => "bar")
-      assert person.readers.find(reader.id)
-    end
+    person = Person.new :first_name => 'clark'
+    assert_equal [], person.readers.find(:all)
+    person.save!
+    reader = Reader.create! :person => person, :post => Post.new(:title => "foo", :body => "bar")
+    assert person.readers.find(reader.id)
   end
 
   def test_force_reload
@@ -177,17 +175,13 @@ class AssociationProxyTest < ActiveRecord::TestCase
   end
 
   def test_failed_reload_returns_nil
-    pending do
-      p = setup_dangling_association
-      assert_nil p.author.reload
-    end
+    p = setup_dangling_association
+    assert_nil p.author.reload
   end
 
   def test_failed_reset_returns_nil
-    pending do
-      p = setup_dangling_association
-      assert_nil p.author.reset
-    end
+    p = setup_dangling_association
+    assert_nil p.author.reset
   end
 
   def test_reload_returns_assocition

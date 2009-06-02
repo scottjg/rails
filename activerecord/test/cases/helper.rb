@@ -54,7 +54,7 @@ end
 # Avoid to setup attr_accessible macro for test cases
 ActiveRecord::Base.class_eval do
   def self.accessible_attributes
-    inheritable_attributes[:attr_accessible] ||= Set.new(column_names - attributes_protected_by_default)
+    inheritable_attributes[:attr_accessible] ||= Set.new((column_names - attributes_protected_by_default) + reflect_on_all_associations.map { |association| association.name.to_s })
   end
 end
 

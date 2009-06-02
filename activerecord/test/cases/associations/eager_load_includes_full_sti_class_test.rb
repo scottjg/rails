@@ -21,18 +21,16 @@ class EagerLoadIncludeFullStiClassNamesTest < ActiveRecord::TestCase
   end
 
   def test_class_names
-    pending do
-      old = ActiveRecord::Base.store_full_sti_class
+    old = ActiveRecord::Base.store_full_sti_class
 
-      ActiveRecord::Base.store_full_sti_class = false
-      post = Namespaced::Post.find_by_title( 'Great stuff', :include => :tagging )
-      assert_nil post.tagging
+    ActiveRecord::Base.store_full_sti_class = false
+    post = Namespaced::Post.find_by_title( 'Great stuff', :include => :tagging )
+    assert_nil post.tagging
 
-      ActiveRecord::Base.store_full_sti_class = true
-      post = Namespaced::Post.find_by_title( 'Great stuff', :include => :tagging )
-      assert_equal 'Tagging', post.tagging.class.name
-    # ensure
-    #   ActiveRecord::Base.store_full_sti_class = old
-    end
+    ActiveRecord::Base.store_full_sti_class = true
+    post = Namespaced::Post.find_by_title( 'Great stuff', :include => :tagging )
+    assert_equal 'Tagging', post.tagging.class.name
+  ensure
+    ActiveRecord::Base.store_full_sti_class = old
   end
 end
