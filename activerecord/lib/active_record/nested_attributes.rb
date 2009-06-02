@@ -170,7 +170,6 @@ module ActiveRecord
     # by the parents save method. See ActiveRecord::AutosaveAssociation.
     module ClassMethods
       # Defines an attributes writer for the specified association(s).
-      # You will need to add the attribute writer to the <tt>attr_accessible</tt> list.
       #
       # Supported options:
       # [:allow_destroy]
@@ -223,6 +222,8 @@ module ActiveRecord
                 assign_nested_attributes_for_#{type}_association(:#{association_name}, attributes, #{options[:allow_destroy]})
               end
             }, __FILE__, __LINE__
+
+            add_accessible_attribute("#{association_name}_attributes")
           else
             raise ArgumentError, "No association found for name `#{association_name}'. Has it been defined yet?"
           end

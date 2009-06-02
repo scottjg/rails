@@ -1625,6 +1625,12 @@ module ActiveRecord #:nodoc:
           end
         end
 
+        def add_accessible_attribute(attribute_name)
+          accessible_attributes = (self.accessible_attributes || Set.new).dup
+          accessible_attributes << attribute_name.to_s
+          write_inheritable_attribute(:attr_accessible, accessible_attributes)
+        end
+
         # Finder methods must instantiate through this method to work with the
         # single-table inheritance model that makes it possible to create
         # objects of different types from the same table.

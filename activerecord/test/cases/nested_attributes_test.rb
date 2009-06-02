@@ -190,13 +190,11 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
   end
 
   def test_should_not_destroy_the_associated_model_until_the_parent_is_saved
-    pending do
-      assert_no_difference('Ship.count') do
-        @pirate.attributes = { :ship_attributes => { :id => @ship.id, :_delete => '1' } }
-      end
-      assert_difference('Ship.count', -1) do
-        @pirate.save
-      end
+    assert_no_difference('Ship.count') do
+      @pirate.attributes = { :ship_attributes => { :id => @ship.id, :_delete => '1' } }
+    end
+    assert_difference('Ship.count', -1) do
+      @pirate.save
     end
   end
 
@@ -303,13 +301,11 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
   end
 
   def test_should_work_with_update_attributes_as_well
-    pending do
-      @ship.update_attributes({ :name => 'Mister Pablo', :pirate_attributes => { :catchphrase => 'Arr' } })
-      @ship.reload
+    @ship.update_attributes({ :name => 'Mister Pablo', :pirate_attributes => { :catchphrase => 'Arr' } })
+    @ship.reload
 
-      assert_equal 'Mister Pablo', @ship.name
-      assert_equal 'Arr', @ship.pirate.catchphrase
-    end
+    assert_equal 'Mister Pablo', @ship.name
+    assert_equal 'Arr', @ship.pirate.catchphrase
   end
 
   def test_should_not_destroy_the_associated_model_until_the_parent_is_saved
@@ -332,11 +328,9 @@ module NestedAttributesOnACollectionAssociationTests
   end
 
   def test_should_take_a_hash_with_string_keys_and_assign_the_attributes_to_the_associated_models
-    pending do
-      @alternate_params[association_getter].stringify_keys!
-      @pirate.update_attributes @alternate_params
-      assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.reload.name, @child_2.reload.name]
-    end
+    @alternate_params[association_getter].stringify_keys!
+    @pirate.update_attributes @alternate_params
+    assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.reload.name, @child_2.reload.name]
   end
 
   def test_should_take_an_array_and_assign_the_attributes_to_the_associated_models
@@ -352,42 +346,36 @@ module NestedAttributesOnACollectionAssociationTests
   end
 
   def test_should_take_a_hash_and_assign_the_attributes_to_the_associated_models
-    pending do
-      @pirate.attributes = @alternate_params
-      assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
-      assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
-    end
+    @pirate.attributes = @alternate_params
+    assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
+    assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
   end
 
   def test_should_take_a_hash_with_composite_id_keys_and_assign_the_attributes_to_the_associated_models
-    pending do
-      @child_1.stubs(:id).returns('ABC1X')
-      @child_2.stubs(:id).returns('ABC2X')
+    @child_1.stubs(:id).returns('ABC1X')
+    @child_2.stubs(:id).returns('ABC2X')
 
-      @pirate.attributes = {
-        association_getter => [
-          { :id => @child_1.id, :name => 'Grace OMalley' },
-          { :id => @child_2.id, :name => 'Privateers Greed' }
-        ]
-      }
+    @pirate.attributes = {
+      association_getter => [
+        { :id => @child_1.id, :name => 'Grace OMalley' },
+        { :id => @child_2.id, :name => 'Privateers Greed' }
+      ]
+    }
 
-      assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.name, @child_2.name]
-    end
+    assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.name, @child_2.name]
   end
 
   def test_should_automatically_build_new_associated_models_for_each_entry_in_a_hash_where_the_id_is_missing
-    pending do
-      @pirate.send(@association_name).destroy_all
-      @pirate.reload.attributes = {
-        association_getter => { 'foo' => { :name => 'Grace OMalley' }, 'bar' => { :name => 'Privateers Greed' }}
-      }
+    @pirate.send(@association_name).destroy_all
+    @pirate.reload.attributes = {
+      association_getter => { 'foo' => { :name => 'Grace OMalley' }, 'bar' => { :name => 'Privateers Greed' }}
+    }
 
-      assert @pirate.send(@association_name).first.new_record?
-      assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
+    assert @pirate.send(@association_name).first.new_record?
+    assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
 
-      assert @pirate.send(@association_name).last.new_record?
-      assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
-    end
+    assert @pirate.send(@association_name).last.new_record?
+    assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
   end
 
   def test_should_not_assign_delete_key_to_a_record
@@ -397,18 +385,16 @@ module NestedAttributesOnACollectionAssociationTests
   end
 
   def test_should_ignore_new_associated_records_with_truthy_delete_attribute
-    pending do
-      @pirate.send(@association_name).destroy_all
-      @pirate.reload.attributes = {
-        association_getter => {
-          'foo' => { :name => 'Grace OMalley' },
-          'bar' => { :name => 'Privateers Greed', '_delete' => '1' }
-        }
+    @pirate.send(@association_name).destroy_all
+    @pirate.reload.attributes = {
+      association_getter => {
+        'foo' => { :name => 'Grace OMalley' },
+        'bar' => { :name => 'Privateers Greed', '_delete' => '1' }
       }
+    }
 
-      assert_equal 1, @pirate.send(@association_name).length
-      assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
-    end
+    assert_equal 1, @pirate.send(@association_name).length
+    assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
   end
 
   def test_should_ignore_new_associated_records_if_a_reject_if_proc_returns_false
@@ -444,13 +430,11 @@ module NestedAttributesOnACollectionAssociationTests
   end
 
   def test_should_update_existing_records_and_add_new_ones_that_have_no_id
-    pending do
-      @alternate_params[association_getter]['baz'] = { :name => 'Buccaneers Servant' }
-      assert_difference('@pirate.send(@association_name).count', +1) do
-        @pirate.update_attributes @alternate_params
-      end
-      assert_equal ['Grace OMalley', 'Privateers Greed', 'Buccaneers Servant'].to_set, @pirate.reload.send(@association_name).map(&:name).to_set
+    @alternate_params[association_getter]['baz'] = { :name => 'Buccaneers Servant' }
+    assert_difference('@pirate.send(@association_name).count', +1) do
+      @pirate.update_attributes @alternate_params
     end
+    assert_equal ['Grace OMalley', 'Privateers Greed', 'Buccaneers Servant'].to_set, @pirate.reload.send(@association_name).map(&:name).to_set
   end
 
   def test_should_be_possible_to_destroy_a_record
