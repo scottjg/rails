@@ -127,8 +127,8 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_read_attributes_before_type_cast
-    category = Category.new({:name=>"Test categoty", :type => nil})
-    category_attrs = {"name"=>"Test categoty", "type" => nil, "categorizations_count" => nil}
+    category = Category.new({:name=>"Test category"})
+    category_attrs = {"name"=>"Test category", "type" => nil, "categorizations_count" => nil}
     assert_equal category_attrs , category.attributes_before_type_cast
   end
 
@@ -217,8 +217,8 @@ class BasicsTest < ActiveRecord::TestCase
     assert_nothing_raised { minimalistic.save }
   end
 
-  def test_save_for_record_with_only_primary_key_that_is_provided
-    assert_nothing_raised { Minimalistic.create!(:id => 2) }
+  def test_raise_exception_when_save_for_record_with_only_primary_key_that_is_provided
+    assert_raise(ActiveRecord::MassAssigmentError) { Minimalistic.create!(:id => 2) }
   end
 
   def test_hashes_not_mangled
@@ -906,8 +906,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_attributes_are_inaccessible_by_default
     Firm.stubs(:accessible_attributes).returns Set.new
-    firm = Firm.new :name => "Next Angle"
-    assert_nil firm.name
+    assert_raise(ActiveRecord::MassAssigmentError) { Firm.new :name => "Next Angle" }
   end
 
   def test_disable_mass_assignment_protection_at_class_level
@@ -919,9 +918,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_mass_assignment_protection
-    firm = Firm.new
-    firm.attributes = { "name" => "Next Angle", "rating" => 5 }
-    assert_equal 1, firm.rating
+    assert_raise(ActiveRecord::MassAssigmentError) { Firm.new :name => "Next Angle", :rating => 5 }
   end
 
   def test_mass_assignment_protection_against_class_attribute_writers
@@ -935,41 +932,31 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_customized_primary_key_remains_protected
-    subscriber = Subscriber.new(:nick => 'webster123', :name => 'nice try')
-    assert_nil subscriber.id
-
-    keyboard = Keyboard.new(:key_number => 9, :name => 'nice try')
-    assert_nil keyboard.id
+    assert_raise(ActiveRecord::MassAssigmentError) { Subscriber.new(:nick => 'webster123') }
+    assert_raise(ActiveRecord::MassAssigmentError) { Keyboard.new(:key_number => 9) }
   end
 
   def test_customized_primary_key_remains_protected_when_referred_to_as_id
-    subscriber = Subscriber.new(:id => 'webster123', :name => 'nice try')
-    assert_nil subscriber.id
-
-    keyboard = Keyboard.new(:id => 9, :name => 'nice try')
-    assert_nil keyboard.id
+    assert_raise(ActiveRecord::MassAssigmentError) { Subscriber.new(:id => 'webster123') }
+    assert_raise(ActiveRecord::MassAssigmentError) { Keyboard.new(:id => 9) }
   end
 
   def test_mass_assigning_invalid_attribute
-    # TODO re-enable when #remove_attributes_protected_from_mass_assignment will raise an exception
-    pending do
-      firm = Firm.new
+    assert_raise(ActiveRecord::MassAssigmentError) { Firm.new :i_dont_even_exist => 20 }
+  end
 
-      assert_raise(ActiveRecord::UnknownAttributeError) do
-        firm.attributes = { "id" => 5, "type" => "Client", "i_dont_even_exist" => 20 }
-      end
+  def test_mass_assigning_invalid_attribute_without_mass_assignment_protection
+    without_mass_assigment_protection Firm do
+      assert_raise(ActiveRecord::UnknownAttributeError) { Firm.new :i_dont_even_exist => 20 }
     end
   end
 
   def test_mass_assignment_protection_on_defaults
-    firm = Firm.new
-    firm.attributes = { "id" => 5, "type" => "Client" }
-    assert_nil firm.id
-    assert_equal "Firm", firm[:type]
+    assert_raise(ActiveRecord::MassAssigmentError) { Firm.new :id => 5, :type => "Client" }
   end
 
   def test_mass_assignment_accessible
-    reply = Reply.new("title" => "hello", "content" => "world", "approved" => true)
+    reply = Reply.new("title" => "hello", "content" => "world")
     reply.save
 
     assert reply.approved?
@@ -977,13 +964,6 @@ class BasicsTest < ActiveRecord::TestCase
     reply.approved = false
     reply.save
 
-    assert !reply.approved?
-
-    remarkable_reply = RemarkableReply.new("id" => 23, "type" => "Reply", "approved" => false)
-    remarkable_reply.save
-
-    assert_nil remarkable_reply.id
-    assert_equal "RemarkableReply", remarkable_reply.type
     assert !reply.approved?
   end
 
@@ -1152,12 +1132,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_mass_assignment_protector
-    task = Task.new
-    time = Time.mktime(2000, 1, 1, 1)
-    task.starting = time
-    attributes = { "starting(1i)" => "2004", "starting(2i)" => "6", "starting(3i)" => "24" }
-    task.attributes = attributes
-    assert_equal time, task.starting
+    assert_raise(ActiveRecord::MassAssigmentError) do
+      task = Task.new
+      time = Time.mktime(2000, 1, 1, 1)
+      task.starting = time
+      attributes = { "starting(1i)" => "2004", "starting(2i)" => "6", "starting(3i)" => "24" }
+      task.attributes = attributes
+    end
   end
 
   def test_multiparameter_assignment_of_aggregation
@@ -2111,12 +2092,4 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal custom_datetime, parrot[attribute]
     end
   end
-
-  private
-    def without_mass_assigment_protection(klass)
-      Firm.protect_from_mass_assignment = false
-      yield
-    ensure
-      Firm.protect_from_mass_assignment = true
-    end
 end

@@ -732,9 +732,11 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
   def test_select_limited_ids_list
     # Set timestamps
-    Developer.transaction do
-      Developer.find(:all, :order => 'id').each_with_index do |record, i|
-        record.update_attributes(:created_at => 5.years.ago + (i * 5.minutes))
+    without_mass_assigment_protection Developer do
+      Developer.transaction do
+        Developer.find(:all, :order => 'id').each_with_index do |record, i|
+          record.update_attributes(:created_at => 5.years.ago + (i * 5.minutes))
+        end
       end
     end
 

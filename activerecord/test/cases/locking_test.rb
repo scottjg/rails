@@ -118,13 +118,17 @@ class OptimisticLockingTest < ActiveRecord::TestCase
 
   def test_lock_column_is_mass_assignable
     p1 = Person.create(:first_name => 'bianca')
+    attributes = p1.attributes
+    attributes.delete(Person.primary_key)
     assert_equal 0, p1.lock_version
-    assert_equal p1.lock_version, Person.new(p1.attributes).lock_version
+    assert_equal p1.lock_version, Person.new(attributes).lock_version
 
     p1.first_name = 'bianca2'
     p1.save!
+    attributes = p1.attributes
+    attributes.delete(Person.primary_key)
     assert_equal 1, p1.lock_version
-    assert_equal p1.lock_version, Person.new(p1.attributes).lock_version
+    assert_equal p1.lock_version, Person.new(attributes).lock_version
   end
 
   def test_lock_without_default_sets_version_to_zero

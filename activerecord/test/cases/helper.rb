@@ -86,6 +86,13 @@ class ActiveSupport::TestCase
   def create_fixtures(*table_names, &block)
     Fixtures.create_fixtures(ActiveSupport::TestCase.fixture_path, table_names, {}, &block)
   end
+  
+  def without_mass_assigment_protection(klass)
+    klass.protect_from_mass_assignment = false
+    yield
+  ensure
+    klass.protect_from_mass_assignment = true
+  end
 end
 
 # silence verbose schema loading

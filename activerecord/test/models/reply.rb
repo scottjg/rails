@@ -39,14 +39,11 @@ class Reply < Topic
 end
 
 class SillyReply < Reply
+  attr_accessible :all
   belongs_to :reply, :foreign_key => "parent_id", :counter_cache => :replies_count
 end
 
-class RemarkableReply < Reply
-  attr_accessible :all
-end
-
-class RestrictedReply < RemarkableReply
+class RestrictedReply < Reply
   attr_accessible :title
 end
 

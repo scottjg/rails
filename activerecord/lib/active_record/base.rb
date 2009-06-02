@@ -137,6 +137,10 @@ module ActiveRecord #:nodoc:
   class UnknownAttributeError < NoMethodError
   end
 
+  # Raised when you've tried to mass-assign inaccessible attributes.
+  class MassAssigmentError < ActiveRecordError
+  end
+
   # Raised when an error occurred while doing a mass assignment to an attribute through the
   # <tt>attributes=</tt> method. The exception has an +attribute+ property that is the name of the
   # offending attribute.
@@ -2950,7 +2954,7 @@ module ActiveRecord #:nodoc:
         removed_attributes = attributes.keys - safe_attributes.keys
 
         if removed_attributes.any?
-          log_protected_attribute_removal(removed_attributes)
+          raise MassAssigmentError, "Can't mass-assign these inaccessible attributes: #{removed_attributes.join(', ')}"
         end
 
         safe_attributes
@@ -2963,10 +2967,6 @@ module ActiveRecord #:nodoc:
         else
           attributes
         end
-      end
-
-      def log_protected_attribute_removal(*attributes)
-        logger.debug "WARNING: Can't mass-assign these protected attributes: #{attributes.join(', ')}"
       end
 
       # Returns a copy of the attributes hash where all the values have been safely quoted for use in

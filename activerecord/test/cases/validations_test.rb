@@ -13,11 +13,13 @@ require 'models/event'
 class ProtectedPerson < ActiveRecord::Base
   set_table_name 'people'
   attr_accessor :addon
+  attr_accessible :addon
   # attr_protected :first_name
 end
 
 class DeprecatedPerson < ActiveRecord::Base
   set_table_name 'people'
+  attr_accessible :all
 
   protected
 
@@ -170,7 +172,7 @@ class ValidationsTest < ActiveRecord::TestCase
   end
 
   def test_deprecated_validation_instance_methods
-    tom = DeprecatedPerson.new
+    tom = DeprecatedPerson.new :first_name => "Tom"
 
     assert_deprecated do
       assert tom.invalid?
