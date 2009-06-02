@@ -112,8 +112,12 @@ module ActionController #:nodoc:
           @session = Hash.new
         else
           stale_session_check! do
-            if cookie_only? && query_parameters[session_options_with_string_keys['session_key']]
+            query_sess_key = query_parameters[session_options_with_string_keys['session_key']]
+            
+            if cookie_only? && query_sess_key
               raise SessionFixationAttempt
+            elsif !@cgi.key?(session_options_with_string_keys['session_key']) && query_sess_key
+              session_options_with_string_keys['session_id'] = query_sess_key
             end
             case value = session_options_with_string_keys['new_session']
               when true
