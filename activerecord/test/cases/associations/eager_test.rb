@@ -589,6 +589,11 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal posts(:sti_post_and_comments, :sti_comments), Post.find(:all, :include => [:author, :comments], :conditions => "authors.name = 'David'", :order => 'UPPER(posts.title) DESC, posts.id', :limit => 2, :offset => 1)
   end
 
+  def test_limited_eager_with_complex_multiple_order_columns
+    assert_equal posts(:thinking, :sti_comments), Post.find(:all, :include => [:author, :comments], :conditions => "authors.name = 'David'", :order => 'COALESCE(UPPER(posts.title), \'Untitled\'), posts.id', :limit => 2, :offset => 1)
+    assert_equal posts(:sti_post_and_comments, :sti_comments), Post.find(:all, :include => [:author, :comments], :conditions => "authors.name = 'David'", :order => 'COALESCE(UPPER(posts.title), \'Untitled\') DESC, posts.id', :limit => 2, :offset => 1)
+  end
+
   def test_limited_eager_with_numeric_in_association
     assert_equal people(:david, :susan), Person.find(:all, :include => [:readers, :primary_contact, :number1_fan], :conditions => "number1_fans_people.first_name like 'M%'", :order => 'people.id', :limit => 2, :offset => 0)
   end
