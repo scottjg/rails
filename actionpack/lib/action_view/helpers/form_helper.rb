@@ -1072,7 +1072,12 @@ module ActionView
         else
           add_default_name_and_id(options)
         end
-        hidden = tag("input", "name" => options["name"], "type" => "hidden", "value" => options['disabled'] && checked ? checked_value : unchecked_value)
+        hidden =
+          if options.delete("nohidden")
+            ""
+          else
+            tag("input", "name" => options["name"], "type" => "hidden", "value" => options["disabled"] && checked ? checked_value : unchecked_value)
+          end
         checkbox = tag("input", options)
         (hidden + checkbox).html_safe
       end
