@@ -783,10 +783,17 @@ module ActionView
         else
           checked = self.class.check_box_checked?(value(object), checked_value)
         end
+        if options.has_key?("nohidden")
+          nohidden = options.delete "nohidden"
+        end
         options["checked"] = "checked" if checked
         add_default_name_and_id(options)
-        hidden = tag("input", "name" => options["name"], "type" => "hidden", "value" => options['disabled'] && checked ? checked_value : unchecked_value)
         checkbox = tag("input", options)
+        if nohidden
+          hidden = ''
+        else
+          hidden = tag("input", "name" => options["name"], "type" => "hidden", "value" => options['disabled'] && checked ? checked_value : unchecked_value)
+        end
         hidden + checkbox
       end
 
