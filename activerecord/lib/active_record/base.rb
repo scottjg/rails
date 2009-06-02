@@ -530,6 +530,12 @@ module ActiveRecord #:nodoc:
     class_inheritable_accessor :default_scoping, :instance_writer => false
     self.default_scoping = []
 
+    ##
+    # :singleton-method:
+    # Specifies whether or not to protect attributes from mass-assignment
+    cattr_accessor :protect_from_mass_assignment, :instance_writer => false
+    @@protect_from_mass_assignment = true
+
     class << self # Class methods
       # Find operates with four different retrieval approaches:
       #
@@ -2735,7 +2741,7 @@ module ActiveRecord #:nodoc:
         attributes.stringify_keys!
 
         multi_parameter_attributes = []
-        attributes = remove_attributes_protected_from_mass_assignment(attributes) if guard_protected_attributes
+        attributes = remove_attributes_protected_from_mass_assignment(attributes) if guard_protected_attributes && self.class.protect_from_mass_assignment
 
         attributes.each do |k, v|
           if k.include?("(")

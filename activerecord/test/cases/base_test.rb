@@ -910,6 +910,14 @@ class BasicsTest < ActiveRecord::TestCase
     assert_nil firm.name
   end
 
+  def test_disable_mass_assignment_protection_at_class_level
+    Firm.stubs(:accessible_attributes).returns Set.new
+    without_mass_assigment_protection(Firm) do
+      firm = Firm.new :name => "Next Angle"
+      assert_equal "Next Angle", firm.name
+    end
+  end
+
   def test_mass_assignment_protection
     firm = Firm.new
     firm.attributes = { "name" => "Next Angle", "rating" => 5 }
@@ -2106,4 +2114,12 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal custom_datetime, parrot[attribute]
     end
   end
+
+  private
+    def without_mass_assigment_protection(klass)
+      Firm.protect_from_mass_assignment = false
+      yield
+    ensure
+      Firm.protect_from_mass_assignment = true
+    end
 end
