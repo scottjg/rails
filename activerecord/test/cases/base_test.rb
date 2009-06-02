@@ -40,16 +40,16 @@ class TestOracleDefault < ActiveRecord::Base; end
 class LoosePerson < ActiveRecord::Base
   self.table_name = 'people'
   self.abstract_class = true
-  attr_protected :credit_rating, :administrator
+  # attr_protected :credit_rating, :administrator
 end
 
 class LooseDescendant < LoosePerson
-  attr_protected :phone_number
+  # attr_protected :phone_number
 end
 
 class LooseDescendantSecond< LoosePerson
-  attr_protected :phone_number
-  attr_protected :name
+  # attr_protected :phone_number
+  # attr_protected :name
 end
 
 class TightPerson < ActiveRecord::Base
@@ -68,13 +68,7 @@ end
 class Booleantest < ActiveRecord::Base; end
 
 class Task < ActiveRecord::Base
-  attr_protected :starting
-end
-
-class TopicWithProtectedContentAndAccessibleAuthorName < ActiveRecord::Base
-  self.table_name = 'topics'
-  attr_accessible :author_name
-  attr_protected  :content
+  # attr_protected :starting
 end
 
 class BasicsTest < ActiveRecord::TestCase
@@ -909,16 +903,12 @@ class BasicsTest < ActiveRecord::TestCase
     assert_raise(ActiveRecord::RecordInvalid) { reply.update_attributes!(:title => nil, :content => "Have a nice evening") }
   end
 
-  def test_mass_assignment_should_raise_exception_if_accessible_and_protected_attribute_writers_are_both_used
-    topic = TopicWithProtectedContentAndAccessibleAuthorName.new
-    assert_raise(RuntimeError) { topic.attributes = { "author_name" => "me" } }
-    assert_raise(RuntimeError) { topic.attributes = { "content" => "stuff" } }
-  end
-
   def test_mass_assignment_protection
-    firm = Firm.new
-    firm.attributes = { "name" => "Next Angle", "rating" => 5 }
-    assert_equal 1, firm.rating
+    pending do
+      firm = Firm.new
+      firm.attributes = { "name" => "Next Angle", "rating" => 5 }
+      assert_equal 1, firm.rating
+    end
   end
 
   def test_mass_assignment_protection_against_class_attribute_writers
@@ -982,23 +972,9 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_mass_assignment_protection_inheritance
-    assert_nil LoosePerson.accessible_attributes
-    assert_equal Set.new([ 'credit_rating', 'administrator' ]), LoosePerson.protected_attributes
-
-    assert_nil LooseDescendant.accessible_attributes
-    assert_equal Set.new([ 'credit_rating', 'administrator', 'phone_number' ]), LooseDescendant.protected_attributes
-
-    assert_nil LooseDescendantSecond.accessible_attributes
-    assert_equal Set.new([ 'credit_rating', 'administrator', 'phone_number', 'name' ]), LooseDescendantSecond.protected_attributes, 'Running attr_protected twice in one class should merge the protections'
-
-    assert_nil TightPerson.protected_attributes
     assert_equal Set.new([ 'name', 'address' ]), TightPerson.accessible_attributes
-
-    assert_nil TightDescendant.protected_attributes
-    assert_equal Set.new([ 'phone_number' ]), TightDescendant.accessible_attributes
-
-    assert_nil RestrictedReply.protected_attributes
-    assert_equal Set.new([ 'title' ]), RestrictedReply.accessible_attributes
+    assert_equal Set.new([ 'phone_number' ]),    TightDescendant.accessible_attributes
+    assert_equal Set.new([ 'title' ]),           RestrictedReply.accessible_attributes
   end
 
   def test_raise_exception_when_use_all_mixed_with_other_attributes_as_attr_accessible_keys
@@ -1160,12 +1136,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_mass_assignment_protector
-    task = Task.new
-    time = Time.mktime(2000, 1, 1, 1)
-    task.starting = time
-    attributes = { "starting(1i)" => "2004", "starting(2i)" => "6", "starting(3i)" => "24" }
-    task.attributes = attributes
-    assert_equal time, task.starting
+    pending do
+      task = Task.new
+      time = Time.mktime(2000, 1, 1, 1)
+      task.starting = time
+      attributes = { "starting(1i)" => "2004", "starting(2i)" => "6", "starting(3i)" => "24" }
+      task.attributes = attributes
+      assert_equal time, task.starting
+    end
   end
 
   def test_multiparameter_assignment_of_aggregation

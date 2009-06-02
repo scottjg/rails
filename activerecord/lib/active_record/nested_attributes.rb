@@ -169,9 +169,8 @@ module ActiveRecord
     # the parent model is saved. This happens inside the transaction initiated
     # by the parents save method. See ActiveRecord::AutosaveAssociation.
     module ClassMethods
-      # Defines an attributes writer for the specified association(s). If you
-      # are using <tt>attr_protected</tt> or <tt>attr_accessible</tt>, then you
-      # will need to add the attribute writer to the allowed list.
+      # Defines an attributes writer for the specified association(s).
+      # You will need to add the attribute writer to the <tt>attr_accessible</tt> list.
       #
       # Supported options:
       # [:allow_destroy]

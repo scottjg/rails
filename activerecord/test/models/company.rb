@@ -3,7 +3,7 @@ class AbstractCompany < ActiveRecord::Base
 end
 
 class Company < AbstractCompany
-  attr_protected :rating
+  # attr_protected :rating
   set_sequence_name :companies_nonstd_seq
 
   validates_presence_of :name

@@ -13,7 +13,7 @@ require 'models/event'
 class ProtectedPerson < ActiveRecord::Base
   set_table_name 'people'
   attr_accessor :addon
-  attr_protected :first_name
+  # attr_protected :first_name
 end
 
 class DeprecatedPerson < ActiveRecord::Base

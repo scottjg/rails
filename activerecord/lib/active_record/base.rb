@@ -1011,51 +1011,17 @@ module ActiveRecord #:nodoc:
         update_counters(id, counter_name => -1)
       end
 
-      # Attributes named in this macro are protected from mass-assignment,
-      # such as <tt>new(attributes)</tt>,
-      # <tt>update_attributes(attributes)</tt>, or
-      # <tt>attributes=(attributes)</tt>.
-      #
-      # Mass-assignment to these attributes will simply be ignored, to assign
-      # to them you can use direct writer methods. This is meant to protect
-      # sensitive attributes from being overwritten by malicious users
-      # tampering with URLs or forms.
-      #
-      #   class Customer < ActiveRecord::Base
-      #     attr_protected :credit_rating
-      #   end
-      #
-      #   customer = Customer.new("name" => David, "credit_rating" => "Excellent")
-      #   customer.credit_rating # => nil
-      #   customer.attributes = { "description" => "Jolly fellow", "credit_rating" => "Superb" }
-      #   customer.credit_rating # => nil
-      #
-      #   customer.credit_rating = "Average"
-      #   customer.credit_rating # => "Average"
-      #
-      # To start from an all-closed default and enable attributes as needed,
-      # have a look at +attr_accessible+.
-      def attr_protected(*attributes)
-        write_inheritable_attribute(:attr_protected, Set.new(attributes.map {|a| a.to_s}) + (protected_attributes || []))
-      end
-
-      # Returns an array of all the attributes that have been protected from mass-assignment.
-      def protected_attributes # :nodoc:
-        read_inheritable_attribute(:attr_protected)
-      end
-
       # Specifies a white list of model attributes that can be set via
       # mass-assignment, such as <tt>new(attributes)</tt>,
       # <tt>update_attributes(attributes)</tt>, or
       # <tt>attributes=(attributes)</tt>
       #
-      # This is the opposite of the +attr_protected+ macro: Mass-assignment
-      # will only set attributes in this list, to assign to the rest of
+      # Mass-assignment will only set attributes in this list, to assign to the rest of
       # attributes you can use direct writer methods. This is meant to protect
       # sensitive attributes from being overwritten by malicious users
-      # tampering with URLs or forms. If you'd rather start from an all-open
-      # default and restrict attributes as needed, have a look at
-      # +attr_protected+.
+      # tampering with URLs or forms.
+      #
+      # All the attributes are inaccessible by default.
       #
       #   class Customer < ActiveRecord::Base
       #     attr_accessible :name, :nickname
@@ -2747,14 +2713,13 @@ module ActiveRecord #:nodoc:
       # Allows you to set all the attributes at once by passing in a hash with keys
       # matching the attribute names (which again matches the column names).
       #
-      # If +guard_protected_attributes+ is true (the default), then sensitive
-      # attributes can be protected from this form of mass-assignment by using
-      # the +attr_protected+ macro. Or you can alternatively specify which
+      # If +guard_protected_attributes+ is true (the default), you should specify which
       # attributes *can* be accessed with the +attr_accessible+ macro. Then all the
       # attributes not included in that won't be allowed to be mass-assigned.
+      # All the attributes are inaccessible by default.
       #
       #   class User < ActiveRecord::Base
-      #     attr_protected :is_admin
+      #     attr_accessible :username
       #   end
       #   
       #   user = User.new
@@ -2964,14 +2929,10 @@ module ActiveRecord #:nodoc:
 
       def remove_attributes_protected_from_mass_assignment(attributes)
         safe_attributes =
-          if self.class.accessible_attributes.nil? && self.class.protected_attributes.nil?
+          if self.class.accessible_attributes.nil?
             attributes.reject { |key, value| self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
-          elsif self.class.protected_attributes.nil?
-            attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
-          elsif self.class.accessible_attributes.nil?
-            attributes.reject { |key, value| self.class.protected_attributes.include?(key.gsub(/\(.+/,"")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
           else
-            raise "Declare either attr_protected or attr_accessible for #{self.class}, but not both."
+            attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
           end
 
         removed_attributes = attributes.keys - safe_attributes.keys
@@ -2982,6 +2943,23 @@ module ActiveRecord #:nodoc:
 
         safe_attributes
       end
+
+      # def remove_attributes_protected_from_mass_assignment(attributes)
+      #   safe_attributes =
+      #     if self.class.accessible_attributes.nil?
+      #       {}
+      #     else
+      #       attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
+      #     end
+      # 
+      #     removed_attributes = attributes.keys - safe_attributes.keys
+      # 
+      #     if removed_attributes.any?
+      #       log_protected_attribute_removal(removed_attributes)
+      #     end
+      # 
+      #     safe_attributes
+      # end
 
       # Removes attributes which have been marked as readonly.
       def remove_readonly_attributes(attributes)
