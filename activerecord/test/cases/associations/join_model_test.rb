@@ -113,11 +113,13 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_polymorphic_has_many_create_model_with_inheritance_and_custom_base_class
-    post = SubStiPost.create :title => 'SubStiPost', :body => 'SubStiPost body'
-    assert_instance_of SubStiPost, post
+    pending do
+      post = SubStiPost.create :title => 'SubStiPost', :body => 'SubStiPost body'
+      assert_instance_of SubStiPost, post
 
-    tagging = tags(:misc).taggings.create(:taggable => post)
-    assert_equal "SubStiPost", tagging.taggable_type
+      tagging = tags(:misc).taggings.create(:taggable => post)
+      assert_equal "SubStiPost", tagging.taggable_type
+    end
   end
 
   def test_polymorphic_has_many_going_through_join_model_with_inheritance
@@ -129,16 +131,20 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_polymorphic_has_many_create_model_with_inheritance
-    post = posts(:thinking)
-    assert_instance_of SpecialPost, post
+    pending do
+      post = posts(:thinking)
+      assert_instance_of SpecialPost, post
 
-    tagging = tags(:misc).taggings.create(:taggable => post)
-    assert_equal "Post", tagging.taggable_type
+      tagging = tags(:misc).taggings.create(:taggable => post)
+      assert_equal "Post", tagging.taggable_type
+    end
   end
 
   def test_polymorphic_has_one_create_model_with_inheritance
-    tagging = tags(:misc).create_tagging(:taggable => posts(:thinking))
-    assert_equal "Post", tagging.taggable_type
+    pending do
+      tagging = tags(:misc).create_tagging(:taggable => posts(:thinking))
+      assert_equal "Post", tagging.taggable_type
+    end
   end
 
   def test_set_polymorphic_has_many
@@ -428,9 +434,11 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_add_to_self_referential_has_many_through
-    new_author = Author.create(:name => "Bob")
-    authors(:david).author_favorites.create :favorite_author => new_author
-    assert_equal new_author, authors(:david).reload.favorite_authors.first
+    pending do
+      new_author = Author.create(:name => "Bob")
+      authors(:david).author_favorites.create :favorite_author => new_author
+      assert_equal new_author, authors(:david).reload.favorite_authors.first
+    end
   end
 
   def test_has_many_through_uses_conditions_specified_on_the_has_many_association

@@ -833,23 +833,19 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_find_or_initialize_from_one_attribute_should_not_set_attribute_even_when_protected
-    pending do
-      c = Company.find_or_initialize_by_name({:name => "Fortune 1000", :rating => 1000})
-      assert_equal "Fortune 1000", c.name
-      assert_not_equal 1000, c.rating
-      assert c.valid?
-      assert c.new_record?
-    end
+    c = Company.find_or_initialize_by_name({:name => "Fortune 1000", :rating => 1000})
+    assert_equal "Fortune 1000", c.name
+    assert_not_equal 1000, c.rating
+    assert c.valid?
+    assert c.new_record?
   end
 
   def test_find_or_create_from_one_attribute_should_set_not_attribute_even_when_protected
-    pending do
-      c = Company.find_or_create_by_name({:name => "Fortune 1000", :rating => 1000})
-      assert_equal "Fortune 1000", c.name
-      assert_not_equal 1000, c.rating
-      assert c.valid?
-      assert !c.new_record?
-    end
+    c = Company.find_or_create_by_name({:name => "Fortune 1000", :rating => 1000})
+    assert_equal "Fortune 1000", c.name
+    assert_not_equal 1000, c.rating
+    assert c.valid?
+    assert !c.new_record?
   end
 
   def test_find_or_initialize_from_one_attribute_should_set_attribute_even_when_protected

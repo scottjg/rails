@@ -2930,7 +2930,7 @@ module ActiveRecord #:nodoc:
       def remove_attributes_protected_from_mass_assignment(attributes)
         safe_attributes =
           if self.class.accessible_attributes.nil?
-            attributes.reject { |key, value| self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
+            {}
           else
             attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
           end
@@ -2943,23 +2943,6 @@ module ActiveRecord #:nodoc:
 
         safe_attributes
       end
-
-      # def remove_attributes_protected_from_mass_assignment(attributes)
-      #   safe_attributes =
-      #     if self.class.accessible_attributes.nil?
-      #       {}
-      #     else
-      #       attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
-      #     end
-      # 
-      #     removed_attributes = attributes.keys - safe_attributes.keys
-      # 
-      #     if removed_attributes.any?
-      #       log_protected_attribute_removal(removed_attributes)
-      #     end
-      # 
-      #     safe_attributes
-      # end
 
       # Removes attributes which have been marked as readonly.
       def remove_readonly_attributes(attributes)

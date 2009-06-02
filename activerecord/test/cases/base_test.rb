@@ -69,6 +69,7 @@ class Booleantest < ActiveRecord::Base; end
 
 class Task < ActiveRecord::Base
   # attr_protected :starting
+  attr_accessible :ending
 end
 
 class BasicsTest < ActiveRecord::TestCase
@@ -903,12 +904,16 @@ class BasicsTest < ActiveRecord::TestCase
     assert_raise(ActiveRecord::RecordInvalid) { reply.update_attributes!(:title => nil, :content => "Have a nice evening") }
   end
 
+  def test_attributes_are_inaccessible_by_default
+    Firm.stubs(:accessible_attributes).returns Set.new
+    firm = Firm.new :name => "Next Angle"
+    assert_nil firm.name
+  end
+
   def test_mass_assignment_protection
-    pending do
-      firm = Firm.new
-      firm.attributes = { "name" => "Next Angle", "rating" => 5 }
-      assert_equal 1, firm.rating
-    end
+    firm = Firm.new
+    firm.attributes = { "name" => "Next Angle", "rating" => 5 }
+    assert_equal 1, firm.rating
   end
 
   def test_mass_assignment_protection_against_class_attribute_writers
@@ -938,10 +943,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_mass_assigning_invalid_attribute
-    firm = Firm.new
+    # TODO re-enable when #remove_attributes_protected_from_mass_assignment will raise an exception
+    pending do
+      firm = Firm.new
 
-    assert_raise(ActiveRecord::UnknownAttributeError) do
-      firm.attributes = { "id" => 5, "type" => "Client", "i_dont_even_exist" => 20 }
+      assert_raise(ActiveRecord::UnknownAttributeError) do
+        firm.attributes = { "id" => 5, "type" => "Client", "i_dont_even_exist" => 20 }
+      end
     end
   end
 
@@ -1136,22 +1144,23 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_mass_assignment_protector
-    pending do
-      task = Task.new
-      time = Time.mktime(2000, 1, 1, 1)
-      task.starting = time
-      attributes = { "starting(1i)" => "2004", "starting(2i)" => "6", "starting(3i)" => "24" }
-      task.attributes = attributes
-      assert_equal time, task.starting
-    end
+    task = Task.new
+    time = Time.mktime(2000, 1, 1, 1)
+    task.starting = time
+    attributes = { "starting(1i)" => "2004", "starting(2i)" => "6", "starting(3i)" => "24" }
+    task.attributes = attributes
+    assert_equal time, task.starting
   end
 
   def test_multiparameter_assignment_of_aggregation
-    customer = Customer.new
-    address = Address.new("The Street", "The City", "The Country")
-    attributes = { "address(1)" => address.street, "address(2)" => address.city, "address(3)" => address.country }
-    customer.attributes = attributes
-    assert_equal address, customer.address
+    # TODO re-enable when association support is being re-enabled
+    pending do
+      customer = Customer.new
+      address = Address.new("The Street", "The City", "The Country")
+      attributes = { "address(1)" => address.street, "address(2)" => address.city, "address(3)" => address.country }
+      customer.attributes = attributes
+      assert_equal address, customer.address
+    end
   end
 
   def test_attributes_on_dummy_time

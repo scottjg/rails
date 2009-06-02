@@ -131,41 +131,44 @@ class ReflectionTest < ActiveRecord::TestCase
   end
 
   def test_association_reflection_in_modules
-    assert_reflection MyApplication::Business::Firm,
-      :clients_of_firm,
-      :klass      => MyApplication::Business::Client,
-      :class_name => 'Client',
-      :table_name => 'companies'
+    # TODO re-enable when association support is being re-enabled
+    pending do
+      assert_reflection MyApplication::Business::Firm,
+        :clients_of_firm,
+        :klass      => MyApplication::Business::Client,
+        :class_name => 'Client',
+        :table_name => 'companies'
 
-    assert_reflection MyApplication::Billing::Account,
-      :firm,
-      :klass      => MyApplication::Business::Firm,
-      :class_name => 'MyApplication::Business::Firm',
-      :table_name => 'companies'
+      assert_reflection MyApplication::Billing::Account,
+        :firm,
+        :klass      => MyApplication::Business::Firm,
+        :class_name => 'MyApplication::Business::Firm',
+        :table_name => 'companies'
 
-    assert_reflection MyApplication::Billing::Account,
-      :qualified_billing_firm,
-      :klass      => MyApplication::Billing::Firm,
-      :class_name => 'MyApplication::Billing::Firm',
-      :table_name => 'companies'
+      assert_reflection MyApplication::Billing::Account,
+        :qualified_billing_firm,
+        :klass      => MyApplication::Billing::Firm,
+        :class_name => 'MyApplication::Billing::Firm',
+        :table_name => 'companies'
 
-    assert_reflection MyApplication::Billing::Account,
-      :unqualified_billing_firm,
-      :klass      => MyApplication::Billing::Firm,
-      :class_name => 'Firm',
-      :table_name => 'companies'
+      assert_reflection MyApplication::Billing::Account,
+        :unqualified_billing_firm,
+        :klass      => MyApplication::Billing::Firm,
+        :class_name => 'Firm',
+        :table_name => 'companies'
 
-    assert_reflection MyApplication::Billing::Account,
-      :nested_qualified_billing_firm,
-      :klass      => MyApplication::Billing::Nested::Firm,
-      :class_name => 'MyApplication::Billing::Nested::Firm',
-      :table_name => 'companies'
+      assert_reflection MyApplication::Billing::Account,
+        :nested_qualified_billing_firm,
+        :klass      => MyApplication::Billing::Nested::Firm,
+        :class_name => 'MyApplication::Billing::Nested::Firm',
+        :table_name => 'companies'
 
-    assert_reflection MyApplication::Billing::Account,
-      :nested_unqualified_billing_firm,
-      :klass      => MyApplication::Billing::Nested::Firm,
-      :class_name => 'Nested::Firm',
-      :table_name => 'companies'
+      assert_reflection MyApplication::Billing::Account,
+        :nested_unqualified_billing_firm,
+        :klass      => MyApplication::Billing::Nested::Firm,
+        :class_name => 'Nested::Firm',
+        :table_name => 'companies'
+    end
   end
 
   def test_reflection_of_all_associations

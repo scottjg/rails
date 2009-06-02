@@ -51,6 +51,13 @@ class << ActiveRecord::Base
   public :with_scope, :with_exclusive_scope
 end
 
+# Avoid to setup attr_accessible macro for test cases
+ActiveRecord::Base.class_eval do
+  def self.accessible_attributes
+    inheritable_attributes[:attr_accessible] ||= Set.new(column_names - attributes_protected_by_default)
+  end
+end
+
 unless ENV['FIXTURE_DEBUG']
   module ActiveRecord::TestFixtures::ClassMethods
     def try_to_load_dependency_with_silence(*args)
