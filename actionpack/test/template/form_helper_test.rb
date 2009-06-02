@@ -381,6 +381,13 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
+  def test_check_box_with_no_hidden_field
+    assert_dom_equal(
+      '<input checked="checked" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
+      check_box("post", "secret", { :nohidden => true })
+    )
+  end
+
   def test_check_box_with_multiple_behavior
     @post.comment_ids = [2,3]
     assert_dom_equal(
