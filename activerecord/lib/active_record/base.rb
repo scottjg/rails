@@ -1068,8 +1068,26 @@ module ActiveRecord #:nodoc:
       #
       #   customer.credit_rating = "Average"
       #   customer.credit_rating # => "Average"
+      #
+      #
+      #
+      #   class Customer < ActiveRecord::Base
+      #     attr_accessible :all
+      #   end
+      #
+      #   customer = Customer.new(:id => 1, :name => "David", :nickname => "Dave", :credit_rating => "Excellent")
+      #   customer.id # => nil
+      #   customer.name # => "David"
+      #   customer.nickname # => "Dave"
+      #   customer.credit_rating # => "Excellent"
       def attr_accessible(*attributes)
-        write_inheritable_attribute(:attr_accessible, Set.new(attributes.map(&:to_s)) + (accessible_attributes || []))
+        if attributes == [ :all ]
+          attributes = column_names - attributes_protected_by_default
+        elsif attributes.delete(:all)
+          raise "Can't use :all with #{attributes.join(', ')} as attr_accessible keys."
+        end
+
+        write_inheritable_attribute(:attr_accessible, Set.new(attributes.map(&:to_s)))
       end
 
       # Returns an array of all the attributes that have been made accessible to mass-assignment.
@@ -1085,6 +1103,13 @@ module ActiveRecord #:nodoc:
        # Returns an array of all the attributes that have been specified as readonly.
        def readonly_attributes
          read_inheritable_attribute(:attr_readonly)
+       end
+
+       # The primary key and inheritance column can never be set by mass-assignment for security reasons.
+       def attributes_protected_by_default
+         default = [ primary_key, inheritance_column ]
+         default << 'id' unless primary_key.eql? 'id'
+         default
        end
 
       # If you have an attribute that needs to be saved to the database as an object, and retrieved as the same object,
@@ -2940,11 +2965,11 @@ module ActiveRecord #:nodoc:
       def remove_attributes_protected_from_mass_assignment(attributes)
         safe_attributes =
           if self.class.accessible_attributes.nil? && self.class.protected_attributes.nil?
-            attributes.reject { |key, value| attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
+            attributes.reject { |key, value| self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
           elsif self.class.protected_attributes.nil?
-            attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
+            attributes.reject { |key, value| !self.class.accessible_attributes.include?(key.gsub(/\(.+/, "")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
           elsif self.class.accessible_attributes.nil?
-            attributes.reject { |key, value| self.class.protected_attributes.include?(key.gsub(/\(.+/,"")) || attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
+            attributes.reject { |key, value| self.class.protected_attributes.include?(key.gsub(/\(.+/,"")) || self.class.attributes_protected_by_default.include?(key.gsub(/\(.+/, "")) }
           else
             raise "Declare either attr_protected or attr_accessible for #{self.class}, but not both."
           end
@@ -2969,13 +2994,6 @@ module ActiveRecord #:nodoc:
 
       def log_protected_attribute_removal(*attributes)
         logger.debug "WARNING: Can't mass-assign these protected attributes: #{attributes.join(', ')}"
-      end
-
-      # The primary key and inheritance column can never be set by mass-assignment for security reasons.
-      def attributes_protected_by_default
-        default = [ self.class.primary_key, self.class.inheritance_column ]
-        default << 'id' unless self.class.primary_key.eql? 'id'
-        default
       end
 
       # Returns a copy of the attributes hash where all the values have been safely quoted for use in

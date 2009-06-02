@@ -972,6 +972,13 @@ class BasicsTest < ActiveRecord::TestCase
     reply.save
 
     assert !reply.approved?
+
+    remarkable_reply = RemarkableReply.new("id" => 23, "type" => "Reply", "approved" => false)
+    remarkable_reply.save
+
+    assert_nil remarkable_reply.id
+    assert_equal "RemarkableReply", remarkable_reply.type
+    assert !reply.approved?
   end
 
   def test_mass_assignment_protection_inheritance
@@ -988,7 +995,14 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal Set.new([ 'name', 'address' ]), TightPerson.accessible_attributes
 
     assert_nil TightDescendant.protected_attributes
-    assert_equal Set.new([ 'name', 'address', 'phone_number' ]), TightDescendant.accessible_attributes
+    assert_equal Set.new([ 'phone_number' ]), TightDescendant.accessible_attributes
+
+    assert_nil RestrictedReply.protected_attributes
+    assert_equal Set.new([ 'title' ]), RestrictedReply.accessible_attributes
+  end
+
+  def test_raise_exception_when_use_all_mixed_with_other_attributes_as_attr_accessible_keys
+    assert_raise(RuntimeError) { require 'models/exceptional_reply' }
   end
 
   def test_readonly_attributes
