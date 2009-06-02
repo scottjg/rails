@@ -14,7 +14,6 @@ class ProtectedPerson < ActiveRecord::Base
   set_table_name 'people'
   attr_accessor :addon
   attr_accessible :addon
-  # attr_protected :first_name
 end
 
 class DeprecatedPerson < ActiveRecord::Base
@@ -105,11 +104,11 @@ class ValidationsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_create_with_exceptions_using_scope_for_protected_attributes
+  def test_create_with_exceptions_using_scope_for_mass_assignment_protection
     assert_nothing_raised do
       ProtectedPerson.with_scope( :create => { :first_name => "Mary" } ) do
         person = ProtectedPerson.create! :addon => "Addon"
-        assert_equal person.first_name, "Mary", "scope should ignore attr_protected"
+        assert_equal person.first_name, "Mary", "scope should ignore mass-assignment protection"
       end
     end
   end

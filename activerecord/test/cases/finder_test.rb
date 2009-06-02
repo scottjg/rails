@@ -862,7 +862,7 @@ class FinderTest < ActiveRecord::TestCase
     assert !c.new_record?
   end
 
-  def test_find_or_initialize_should_set_protected_attributes_if_given_as_block
+  def test_find_or_initialize_should_set_mass_assignment_protected_attributes_if_given_as_block
     c = Company.find_or_initialize_by_name(:name => "Fortune 1000") { |f| f.rating = 1000 }
     assert_equal "Fortune 1000", c.name
     assert_equal 1000.to_f, c.rating.to_f
@@ -870,7 +870,7 @@ class FinderTest < ActiveRecord::TestCase
     assert c.new_record?
   end
 
-  def test_find_or_create_should_set_protected_attributes_if_given_as_block
+  def test_find_or_create_should_set_mass_assignment_protected_attributes_if_given_as_block
     c = Company.find_or_create_by_name(:name => "Fortune 1000") { |f| f.rating = 1000 }
     assert_equal "Fortune 1000", c.name
     assert_equal 1000.to_f, c.rating.to_f

@@ -3,7 +3,6 @@ class AbstractCompany < ActiveRecord::Base
 end
 
 class Company < AbstractCompany
-  # attr_protected :rating
   attr_accessible :name, :firm_id, :client_of, :ruby_type
   set_sequence_name :companies_nonstd_seq
 

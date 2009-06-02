@@ -40,16 +40,9 @@ class TestOracleDefault < ActiveRecord::Base; end
 class LoosePerson < ActiveRecord::Base
   self.table_name = 'people'
   self.abstract_class = true
-  # attr_protected :credit_rating, :administrator
 end
 
 class LooseDescendant < LoosePerson
-  # attr_protected :phone_number
-end
-
-class LooseDescendantSecond< LoosePerson
-  # attr_protected :phone_number
-  # attr_protected :name
 end
 
 class TightPerson < ActiveRecord::Base
@@ -68,7 +61,6 @@ end
 class Booleantest < ActiveRecord::Base; end
 
 class Task < ActiveRecord::Base
-  # attr_protected :starting
   attr_accessible :ending
 end
 
