@@ -500,6 +500,7 @@ module ActiveRecord
           ary << []
           for j in 0...res.nfields do
             data = res.getvalue(i,j)
+            data.force_encoding "UTF-8" if data.is_a?(String)
             data = unescape_bytea(data) if unescape_col[j] and data.is_a?(String)
             ary[i] << data
           end
