@@ -60,7 +60,11 @@ module Enumerable
     if block_given?
       map(&block).sum
     else
-      inject { |sum, element| sum + element }
+      if RUBY_VERSION >= '1.9'
+        map.reduce(:+)
+      else
+        inject { |sum, element| sum + element }
+      end
     end
   end
 

@@ -56,6 +56,10 @@ class EnumerableTests < Test::Unit::TestCase
     assert_equal 0, [].sum
     assert_equal 0, [].sum { |i| i }
     assert_equal Payment.new(0), [].sum(Payment.new(0))
+
+    assert_equal ["a","b"], [["a","b"],[]].sum
+    ab = ["strings", "empty"].sum { |s| s=="strings" ? ["a","b"] : [] }
+    assert_equal ["a","b"], ab
   end
 
   def test_each_with_object
