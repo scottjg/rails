@@ -1078,6 +1078,10 @@ module ActiveRecord
 
         # Parses column expressions out of an "order by" clause
         def parse_columns(order_by)
+          if order_by !~ /[()"'\[\]]/
+            return order_by.split(',').map {|c| c.strip }.reject(&:blank?)
+          end
+
           columns = []
           token = ''
           stack = []
