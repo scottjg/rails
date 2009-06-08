@@ -886,10 +886,9 @@ module ActiveRecord
         return "DISTINCT #{columns}" if order_by.blank?
 
         # Construct a clean list of column names from the ORDER BY clause, removing
-        # any ASC/DESC modifiers
-        order_columns = order_by.split(',').collect { |s| s.split.first }
-        order_columns.delete_if &:blank?
-        order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
+        # any ASC/DESC modifiers and adding enumerated aliases
+        order_columns = parse_columns(order_by)
+        order_columns = order_columns.zip((0...order_columns.size).to_a).map { |c,i| "#{c.sub(/\b(?:asc|desc)$/i, '')} AS alias_#{i}" }
 
         # Return a DISTINCT ON() clause that's distinct on the columns we want but includes
         # all the required columns for the ORDER BY to work properly.
@@ -904,8 +903,7 @@ module ActiveRecord
       def add_order_by_for_association_limiting!(sql, options) #:nodoc:
         return sql if options[:order].blank?
         
-        order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
-        order.map! { |s| 'DESC' if s =~ /\bdesc$/i }
+        order = parse_columns(options[:order]).map { |s| m = s.match(/(?:\b(?:asc|desc))?$/i)[0]; (m=='') ? ' ASC' : m.upcase }
         order = order.zip((0...order.size).to_a).map { |s,i| "id_list.alias_#{i} #{s}" }.join(', ')
         
         sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
@@ -1077,6 +1075,61 @@ module ActiveRecord
             [match_data[1], (rest.length > 0 ? rest : nil)]
           end
         end
+
+        # Parses column expressions out of an "order by" clause
+        def parse_columns(order_by)
+          columns = []
+          token = ''
+          stack = []
+          last_char = nil
+
+          escape_always_enabled = (quoted_string_prefix != 'E')
+          escape_enabled = escape_always_enabled
+
+          within_quotes = {:single => false, :double => false}
+
+          order_by.each_byte do |byte|
+            char = byte.chr
+
+            case char
+            when '('
+              stack.push('(') unless within_quotes[:single] || within_quotes[:double]
+            when ')'
+              (stack.pop if stack.last == '(') unless within_quotes[:single] || within_quotes[:double]
+            when '['
+              stack.push('[') unless within_quotes[:single] || within_quotes[:double]
+            when ']'
+              (stack.pop if stack.last == '[') unless within_quotes[:single] || within_quotes[:double]
+            when "'", '"'
+              escaped = last_char == '\\' && escape_enabled && within_quotes[:single]
+              kind, other_kind = (char == "'") ? [:single, :double] : [:double, :single]
+
+              unless escaped || within_quotes[other_kind]
+                if stack.last == char
+                  stack.pop
+                  within_quotes[kind] = false
+                  escape_enabled = escape_always_enabled if char == "'"
+                elsif !within_quotes[kind]
+                  within_quotes[kind] = true
+                  escape_enabled = escape_always_enabled || (last_char == 'E') if char == "'"
+                  stack.push(char)
+                end
+              end
+            when ','
+              if stack.empty?
+                columns << token.strip
+                token = ''
+                last_char = char
+                next
+              end
+            end
+
+            token << char
+            last_char = char
+          end
+          columns << token.strip
+        end
+
     end
   end
 end

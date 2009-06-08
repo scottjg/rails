@@ -589,6 +589,11 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal posts(:sti_post_and_comments, :sti_comments), Post.find(:all, :include => [:author, :comments], :conditions => "authors.name = 'David'", :order => 'UPPER(posts.title) DESC, posts.id', :limit => 2, :offset => 1)
   end
 
+  def test_limited_eager_with_complex_multiple_order_columns
+    assert_equal posts(:thinking, :sti_comments), Post.find(:all, :include => [:author, :comments], :conditions => "authors.name = 'David'", :order => 'COALESCE(UPPER(posts.title), \'Untitled\'), posts.id', :limit => 2, :offset => 1)
+    assert_equal posts(:sti_post_and_comments, :sti_comments), Post.find(:all, :include => [:author, :comments], :conditions => "authors.name = 'David'", :order => 'COALESCE(UPPER(posts.title), \'Untitled\') DESC, posts.id', :limit => 2, :offset => 1)
+  end
+
   def test_preload_with_interpolation
     assert_equal [comments(:greetings)], Post.find(posts(:welcome).id, :include => :comments_with_interpolated_conditions).comments_with_interpolated_conditions
   end
