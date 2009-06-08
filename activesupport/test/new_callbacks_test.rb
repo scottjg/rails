@@ -478,5 +478,19 @@ module NewCallbacksTest
       obj.save
       assert_equal obj.stuff, "OMG"
     end    
-  end  
+  end
+  
+  class WithConflicts
+    include ActiveSupport::NewCallbacks
+  end
+  
+  class WithConflictsTest < Test::Unit::TestCase
+    def test_for_conflicting_method_names
+      [:create, :update, :save, :destroy, :delete].each do |name|
+        assert_nothing_raised "There was an error creating callback named #{name}." do
+          WithConflicts.define_callbacks name
+        end
+      end
+    end
+  end
 end

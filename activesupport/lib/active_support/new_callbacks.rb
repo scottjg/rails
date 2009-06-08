@@ -440,7 +440,7 @@ module ActiveSupport
       # In that case, each action_name would get its own compiled callback
       # method that took into consideration the per_key conditions. This
       # is a speed improvement for ActionPack.
-      def _update_callbacks(name, filters = CallbackChain.new(name), block = nil)
+      def update_callbacks(name, filters = CallbackChain.new(name), block = nil)
         type = [:before, :after, :around].include?(filters.first) ? filters.shift : :before
         options = filters.last.is_a?(Hash) ? filters.pop : {}
         filters.unshift(block) if block
@@ -452,7 +452,7 @@ module ActiveSupport
       end
 
       def set_callback(name, *filters, &block)
-        _update_callbacks(name, filters, block) do |callbacks, type, filters, options|        
+        update_callbacks(name, filters, block) do |callbacks, type, filters, options|        
           filters.map! do |filter|
             # overrides parent class
             callbacks.delete_if {|c| c.matches?(type, filter) }
@@ -464,7 +464,7 @@ module ActiveSupport
       end
 
       def skip_callback(name, *filters, &block)
-        _update_callbacks(name, filters, block) do |callbacks, type, filters, options|
+        update_callbacks(name, filters, block) do |callbacks, type, filters, options|
           filters.each do |filter|
             callbacks = send("_#{name}_callbacks=", callbacks.clone(self))
 
@@ -490,7 +490,7 @@ module ActiveSupport
 
           self.class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
             def self.reset_#{symbol}_callbacks
-              _update_callbacks(:#{symbol})
+              update_callbacks(:#{symbol})
             end
             
             self.set_callback(:#{symbol}, :before)
