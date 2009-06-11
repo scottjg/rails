@@ -54,16 +54,28 @@ module Enumerable
   #
   #  [].sum(Payment.new(0)) { |i| i.amount } # => Payment.new(0)
   #
-  def sum(identity = 0, &block)
-    return identity unless size > 0
+  if RUBY_VERSION >= '1.9'
+    def sum(identity = 0, &block)
+      return identity unless size > 0
 
-    if block_given?
-      map(&block).sum
-    else
-      inject { |sum, element| sum + element }
+      if block_given?
+        map(&block).sum
+      else
+        map.reduce(:+)
+      end
+    end
+  else
+    def sum(identity = 0, &block)
+      return identity unless size > 0
+
+      if block_given?
+        map(&block).sum
+      else
+        inject { |sum, element| sum + element }
+      end
     end
   end
-
+  
   # Iterates over a collection, passing the current element *and* the
   # +memo+ to the block. Handy for building up hashes or
   # reducing collections down to one object. Examples:
