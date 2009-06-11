@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'yaml'
+require 'active_support/core_ext/enumerable'
 
 module Rails
 
@@ -12,8 +13,10 @@ module Rails
 
     attr_reader :installed_source_index
     attr_reader :vendor_source_index
+    attr_reader :gem_paths
 
     @@silence_spec_warnings = false
+    # @@silence_spec_warnings = true
 
     def self.silence_spec_warnings
       @@silence_spec_warnings
@@ -23,9 +26,9 @@ module Rails
       @@silence_spec_warnings = v
     end
 
-    def initialize(installed_index, vendor_dir=Rails::GemDependency.unpacked_path)
+    def initialize(installed_index, gem_paths)
       @installed_source_index = installed_index
-      @vendor_dir = vendor_dir
+      @gem_paths = gem_paths
       refresh!
     end
 
@@ -42,7 +45,8 @@ module Rails
       end
 
       # load specifications from vendor/gems
-      Dir[File.join(Rails::GemDependency.unpacked_path, '*')].each do |d|
+      gem_unpacked_paths = gem_paths.sum { |path| Dir["#{path}/**"] }
+      Dir.glob( gem_unpacked_paths ).each do |d|
         dir_name = File.basename(d)
         dir_version = version_for_dir(dir_name)
         spec = load_specification(d)

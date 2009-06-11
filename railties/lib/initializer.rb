@@ -235,6 +235,10 @@ module Rails
       end
     end
 
+    def add_frozen_gem_paths
+      Rails::GemDependency.add_frozen_gem_paths(configuration.gem_paths)
+    end
+
     # Set the <tt>$LOAD_PATH</tt> based on the value of
     # Configuration#load_paths. Duplicates are removed.
     def set_load_path
@@ -295,13 +299,16 @@ module Rails
     end
 
     def add_gem_load_paths
-      Rails::GemDependency.add_frozen_gem_path
+      Rails::GemDependency.add_frozen_gem_paths(configuration.gem_paths)
       unless @configuration.gems.empty?
         require "rubygems"
-        @configuration.gems.each { |gem| gem.add_load_paths }
+        @configuration.gems.each { |gem| gem.add_load_paths(configuration.gem_paths) }
       end
     end
 
+    # Loads all gems in <tt>config.gem_paths</tt>.  <tt>gem_paths</tt> defaults 
+    # to <tt>vendor/gems</tt> but may also be set to a list of paths, such as
+    #   config.gem_paths = ["#{RAILS_ROOT}/lib/gems", "#{RAILS_ROOT}/vendor/gems"]
     def load_gems
       unless $gems_rake_task
         @configuration.gems.each { |gem| gem.load }
@@ -797,6 +804,11 @@ Run `rake gems:install` to install the missing gems.
     # You can add gems with the #gem method.
     attr_accessor :gems
 
+    # The path to the root of the gems directory. By default, it is <tt>vendor/gems</tt>.
+    # May also be set to a list of paths, in the enrivonment.rb, do |config| block:
+    #   config.gem_paths = ["#{RAILS_ROOT}/lib/gems", "#{RAILS_ROOT}/vendor/gems"]
+    attr_accessor :gem_paths
+
     # Adds a single Gem dependency to the rails application. By default, it will require
     # the library with the same name as the gem. Use :lib to specify a different name.
     #
@@ -854,6 +866,7 @@ Run `rake gems:install` to install the missing gems.
       self.database_configuration_file  = default_database_configuration_file
       self.routes_configuration_file    = default_routes_configuration_file
       self.gems                         = default_gems
+      self.gem_paths                    = default_gem_paths
       self.i18n                         = default_i18n
 
       for framework in default_frameworks
@@ -1075,6 +1088,10 @@ Run `rake gems:install` to install the missing gems.
 
       def default_gems
         []
+      end
+
+      def default_gem_paths
+        [Rails::GemDependency.default_gem_path]
       end
 
       def default_i18n

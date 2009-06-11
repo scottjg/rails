@@ -10,22 +10,29 @@ module Rails
   class GemDependency < Gem::Dependency
     attr_accessor :lib, :source, :dep
 
-    def self.unpacked_path
-      @unpacked_path ||= File.join(RAILS_ROOT, 'vendor', 'gems')
+    def self.default_gem_path
+      @default_gem_path ||= File.join(RAILS_ROOT, 'vendor', 'gems')
     end
 
     @@framework_gems = {}
+    @@loaded_paths = []
 
     def self.add_frozen_gem_path
-      @@paths_loaded ||= begin
-        source_index = Rails::VendorGemSourceIndex.new(Gem.source_index)
+      add_frozen_gem_paths([default_gem_path])
+    end
+
+    def self.add_frozen_gem_paths(gem_paths)
+      gem_paths = gem_paths - [default_gem_path] unless gem_paths == [default_gem_path]
+      new_paths = gem_paths - ( @@loaded_paths & gem_paths )
+      unless new_paths.empty?
+        source_index = Rails::VendorGemSourceIndex.new(Gem.source_index, gem_paths)
         Gem.clear_paths
         Gem.source_index = source_index
         # loaded before us - we can't change them, so mark them
         Gem.loaded_specs.each do |name, spec|
           @@framework_gems[name] = spec
         end
-        true
+        @@loaded_paths = @@loaded_paths + new_paths
       end
     end
 
@@ -56,8 +63,8 @@ module Rails
       super(name, req)
     end
 
-    def add_load_paths
-      self.class.add_frozen_gem_path
+    def add_load_paths(gem_paths)
+      self.class.add_frozen_gem_paths(gem_paths)
       return if @loaded || @load_paths_added
       if framework_gem?
         @load_paths_added = @loaded = @frozen = true
@@ -65,7 +72,7 @@ module Rails
       end
       gem self
       @spec = Gem.loaded_specs[name]
-      @frozen = @spec.loaded_from.include?(self.class.unpacked_path) if @spec
+      @frozen = @spec.loaded_from.include?(self.class.default_gem_path) if @spec
       @load_paths_added = true
     rescue Gem::LoadError
     end
@@ -280,7 +287,7 @@ module Rails
       end
 
       def unpack_base
-        Rails::GemDependency.unpacked_path
+        Rails::GemDependency.default_gem_path
       end
 
       def unpacked_gem_directory

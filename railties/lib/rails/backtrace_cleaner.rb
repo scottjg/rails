@@ -34,7 +34,7 @@ module Rails
           add_filter { |line| line.sub(/(#{path})\/gems\/([a-z]+)-([0-9.]+)\/(.*)/, '\2 (\3) \4')}
         end
 
-        vendor_gems_path = Rails::GemDependency.unpacked_path.sub("#{RAILS_ROOT}/",'')
+        vendor_gems_path = Rails::GemDependency.default_gem_path.sub("#{RAILS_ROOT}/",'')
         add_filter { |line| line.sub(/(#{vendor_gems_path})\/([a-z]+)-([0-9.]+)\/(.*)/, '\2 (\3) [v] \4')}
       end
   end
