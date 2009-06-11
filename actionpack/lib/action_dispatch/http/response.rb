@@ -67,12 +67,7 @@ module ActionDispatch # :nodoc:
     end
 
     def body=(body)
-      @body =
-        if body.respond_to?(:to_str)
-          [body]
-        else
-          body
-        end
+      @body = body.respond_to?(:to_str) ? [body] : body
     end
 
     def body_parts
@@ -96,35 +91,39 @@ module ActionDispatch # :nodoc:
     # If a character set has been defined for this response (see charset=) then
     # the character set information will also be included in the content type
     # information.
-    def content_type=(mime_type)
-      self.headers["Content-Type"] =
-        if mime_type =~ /charset/ || (c = charset).nil?
-          mime_type.to_s
-        else
-          "#{mime_type}; charset=#{c}"
-        end
+    attr_writer :charset
+    # def content_type=(mime_type)
+    #   type = mime_type.to_s
+    #   if type !~ /charset/ && (c = charset)
+    #     type << "; charset=#{c}"
+    #   end
+    #   headers["Content-Type"] = type
+    # end
+
+    def content_type=(type)
+      @content_type = type
     end
 
     # Returns the response's content MIME type, or nil if content type has been set.
     def content_type
-      content_type = String(headers["Content-Type"] || headers["type"]).split(";")[0]
-      content_type.blank? ? nil : content_type
+      @content_type
+      # content_type = @content_type.split(";")[0]
+      # content_type = nil if content_type.blank?
+      # content_type && Mime::Type.lookup(content_type)
     end
 
     # Set the charset of the Content-Type header. Set to nil to remove it.
     # If no content type is set, it defaults to HTML.
-    def charset=(charset)
-      headers["Content-Type"] =
-        if charset
-          "#{content_type || Mime::HTML}; charset=#{charset}"
-        else
-          content_type || Mime::HTML.to_s
-        end
-    end
+    # def charset=(charset)
+    #   header_type = (content_type || Mime::HTML).to_s.dup
+    #   header_type << "; charset=#{charset}" if charset
+    #   headers["Content-Type"] = header_type
+    # end
 
     def charset
-      charset = String(headers["Content-Type"] || headers["type"]).split(";")[1]
-      charset.blank? ? nil : charset.strip.split("=")[1]
+      @charset
+      # charset = String(headers["Content-Type"] || headers["type"]).split(";")[1]
+      # charset.blank? ? nil : charset.strip.split("=")[1]
     end
 
     def last_modified
@@ -162,15 +161,25 @@ module ActionDispatch # :nodoc:
     end
 
     def assign_default_content_type_and_charset!
-      if type = headers['Content-Type'] || headers['type']
-        unless type =~ /charset=/ || sending_file?
-          headers['Content-Type'] = "#{type}; charset=#{default_charset}"
-        end
-      else
-        type = Mime::HTML.to_s
-        type += "; charset=#{default_charset}" unless sending_file?
-        headers['Content-Type'] = type
-      end
+      return if !headers["Content-Type"].blank?
+      
+      @content_type ||= Mime::HTML
+      @charset      ||= default_charset
+      
+      type = @content_type.to_s
+      type << "; charset=#{@charset}" unless sending_file?
+      
+      headers["Content-Type"] = type
+      # 
+      # if type = headers['Content-Type']
+      #   unless type =~ /charset=/ || sending_file?
+      #     headers['Content-Type'] = "#{type}; charset=#{default_charset}"
+      #   end
+      # else
+      #   type = Mime::HTML.to_s
+      #   type += "; charset=#{default_charset}" unless sending_file?
+      #   headers['Content-Type'] = type
+      # end
     end
 
     def prepare!

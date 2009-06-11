@@ -68,7 +68,7 @@ module Mime
 
     class << self
       def lookup(string)
-        LOOKUP[string]
+        LOOKUP[string.split(";").first]
       end
 
       def lookup_by_extension(extension)
