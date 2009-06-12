@@ -174,6 +174,11 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal expected_proxy_options, Topic.approved.proxy_options
   end
 
+  def test_proxy_find_options
+    expected_proxy_find_options = { :conditions => { 'topics' => { :approved => true } } }
+    assert_equal expected_proxy_find_options, Topic.approved.proxy_find_options
+  end
+
   def test_first_and_last_should_support_find_options
     assert_equal Topic.base.first(:order => 'title'), Topic.base.find(:first, :order => 'title')
     assert_equal Topic.base.last(:order => 'title'), Topic.base.find(:last, :order => 'title')

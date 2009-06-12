@@ -84,6 +84,10 @@ module ActiveRecord
       #   assert_equal expected_options, Shirt.colored('red').proxy_options
       def named_scope(name, options = {}, &block)
         name = name.to_sym
+
+        # Need to check because ActiveRecord::Base raises an exception if you call table_name on it.
+        base_table_name = (self == ActiveRecord::Base) ? nil : table_name
+
         scopes[name] = lambda do |parent_scope, *args|
           Scope.new(parent_scope, case options
             when Hash
@@ -95,7 +99,7 @@ module ActiveRecord
               else
                 options.call(*args)
               end
-          end, &block)
+          end, base_table_name, &block)
         end
         (class << self; self end).instance_eval do
           define_method name do |*args|
@@ -106,7 +110,7 @@ module ActiveRecord
     end
 
     class Scope
-      attr_reader :proxy_scope, :proxy_options, :current_scoped_methods_when_defined
+      attr_reader :proxy_scope, :proxy_options, :proxy_find_options, :current_scoped_methods_when_defined
       NON_DELEGATE_METHODS = %w(nil? send object_id class extend find size count sum average maximum minimum paginate first last empty? any? respond_to?).to_set
       [].methods.each do |m|
         unless m =~ /^__/ || NON_DELEGATE_METHODS.include?(m.to_s)
@@ -116,14 +120,14 @@ module ActiveRecord
 
       delegate :scopes, :with_scope, :scoped_methods, :to => :proxy_scope
 
-      def initialize(proxy_scope, options, &block)
+      def initialize(proxy_scope, options, base_table_name = nil, &block)
         options ||= {}
         [options[:extend]].flatten.each { |extension| extend extension } if options[:extend]
         extend Module.new(&block) if block_given?
         unless Scope === proxy_scope
           @current_scoped_methods_when_defined = proxy_scope.send(:current_scoped_methods)
         end
-        @proxy_scope, @proxy_options = proxy_scope, options.except(:extend)
+        @proxy_scope, @proxy_options, @proxy_find_options = proxy_scope, options.except(:extend), qualify_tables_names_for_find_options(base_table_name, options.except(:extend))
       end
 
       def reload
@@ -166,6 +170,33 @@ module ActiveRecord
         end
       end
 
+      # Nests any shallow key/value conditions within the table name to any
+      # scope conditions.
+      #
+      # This stops the cases where combinations of scopes result in unqualified
+      # conditions failing.
+      #
+      # These are kept separate from the options used for create because
+      # the build/create methods are broken WRT to deeply nested conditions.
+      def qualify_tables_names_for_find_options(base_table_name, options)
+        if base_table_name && options[:conditions].is_a?(Hash)
+          # Only fix where key is a symbol and it is not already deeply nested
+          normalized_options = {:conditions => {}}
+          options[:conditions].each_pair do |key, value|
+            # TODO: Could also fix where key is a string (but does not contain '.')
+            if key.is_a?(Symbol) && !value.is_a?(Hash)
+              normalized_options[:conditions][base_table_name] ||= {}
+              normalized_options[:conditions][base_table_name][key] = value
+            else
+              normalized_options[:conditions][key] = value
+            end
+          end
+          normalized_options.reverse_merge(options)
+        else
+          options
+        end
+      end
+
       protected
       def proxy_found
         @found || load_found
@@ -176,7 +207,7 @@ module ActiveRecord
         if scopes.include?(method)
           scopes[method].call(self, *args)
         else
-          with_scope({:find => proxy_options, :create => proxy_options[:conditions].is_a?(Hash) ?  proxy_options[:conditions] : {}}, :reverse_merge) do
+          with_scope({:find => proxy_find_options, :create => proxy_options[:conditions].is_a?(Hash) ? proxy_options[:conditions] : {}}, :reverse_merge) do
             method = :new if method == :build
             if current_scoped_methods_when_defined && !scoped_methods.include?(current_scoped_methods_when_defined)
               with_scope current_scoped_methods_when_defined do
