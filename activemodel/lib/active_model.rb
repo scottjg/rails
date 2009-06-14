@@ -21,20 +21,19 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
-activesupport_path = "#{File.dirname(__FILE__)}/../../../activesupport/lib"
+activesupport_path = "#{File.dirname(__FILE__)}/../../activesupport/lib"
 $:.unshift(activesupport_path) if File.directory?(activesupport_path)
 require 'active_support'
 
-require 'active_support/inflector'
-
 module ActiveModel
   autoload :Base, 'active_model/base'
-  autoload :Observing, 'active_model/observing'
-  autoload :Validations, 'active_model/validations'
-  autoload :Errors, 'active_model/errors'
   autoload :DeprecatedErrorMethods, 'active_model/deprecated_error_methods'
-  autoload :TestCase, 'active_model/test_case'
+  autoload :Errors, 'active_model/errors'
+  autoload :Observer, 'active_model/observing'
+  autoload :Observing, 'active_model/observing'
   autoload :StateMachine, 'active_model/state_machine'
+  autoload :TestCase, 'active_model/test_case'
+  autoload :Validations, 'active_model/validations'
   autoload :ValidationsRepairHelper, 'active_model/validations_repair_helper'
 end
 

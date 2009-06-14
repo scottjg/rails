@@ -283,25 +283,14 @@ module ActiveSupport
           filter.map {|f| _compile_filter(f)}
         when Symbol
           filter
+        when String
+          "(#{filter})"
         when Proc
           @klass.send(:define_method, method_name, &filter)
-          method_name << case filter.arity
-          when 1
-            "(self)"
-          when 2
-            " self, Proc.new "
-          else
-            ""
-          end          
-        when String
-          @klass.class_eval <<-RUBY_EVAL
-            def #{method_name}
-              #{filter}
-            end
-          RUBY_EVAL
-          method_name
+          return method_name if filter.arity == 0
+
+          method_name << (filter.arity == 1 ? "(self)" : " self, Proc.new ")
         else
-          kind = @kind
           @klass.send(:define_method, "#{method_name}_object") { filter }
 
           _normalize_legacy_filter(kind, filter)
@@ -318,7 +307,7 @@ module ActiveSupport
 
       def _normalize_legacy_filter(kind, filter)
         if !filter.respond_to?(kind) && filter.respond_to?(:filter)
-          filter.metaclass.class_eval(
+          filter.class_eval(
             "def #{kind}(context, &block) filter(context, &block) end",
             __FILE__, __LINE__ - 1)
         elsif filter.respond_to?(:before) && filter.respond_to?(:after) && kind == :around
@@ -371,8 +360,9 @@ module ActiveSupport
       # The _run_save_callbacks method can optionally take a key, which
       # will be used to compile an optimized callback method for each
       # key. See #define_callbacks for more information.
-      def _define_runner(symbol, callbacks)
-        body = callbacks.compile(nil, :terminator => send("_#{symbol}_terminator"))
+      def _define_runner(symbol)
+        body = send("_#{symbol}_callbacks").
+          compile(nil, :terminator => send("_#{symbol}_terminator"))
 
         body, line = <<-RUBY_EVAL, __LINE__
           def _run_#{symbol}_callbacks(key = nil, &blk)
@@ -440,7 +430,7 @@ module ActiveSupport
       # In that case, each action_name would get its own compiled callback
       # method that took into consideration the per_key conditions. This
       # is a speed improvement for ActionPack.
-      def update_callbacks(name, filters = CallbackChain.new(name), block = nil)
+      def _update_callbacks(name, filters = CallbackChain.new(name), block = nil)
         type = [:before, :after, :around].include?(filters.first) ? filters.shift : :before
         options = filters.last.is_a?(Hash) ? filters.pop : {}
         filters.unshift(block) if block
@@ -448,11 +438,13 @@ module ActiveSupport
         callbacks = send("_#{name}_callbacks")
         yield callbacks, type, filters, options if block_given?
 
-        _define_runner(name, callbacks)
+        _define_runner(name)
       end
 
+      alias_method :_reset_callbacks, :_update_callbacks
+
       def set_callback(name, *filters, &block)
-        update_callbacks(name, filters, block) do |callbacks, type, filters, options|        
+        _update_callbacks(name, filters, block) do |callbacks, type, filters, options|        
           filters.map! do |filter|
             # overrides parent class
             callbacks.delete_if {|c| c.matches?(type, filter) }
@@ -464,7 +456,7 @@ module ActiveSupport
       end
 
       def skip_callback(name, *filters, &block)
-        update_callbacks(name, filters, block) do |callbacks, type, filters, options|
+        _update_callbacks(name, filters, block) do |callbacks, type, filters, options|
           filters.each do |filter|
             callbacks = send("_#{name}_callbacks=", callbacks.clone(self))
 
@@ -488,13 +480,7 @@ module ActiveSupport
             CallbackChain.new(symbol)
           end
 
-          self.class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
-            def self.reset_#{symbol}_callbacks
-              update_callbacks(:#{symbol})
-            end
-            
-            self.set_callback(:#{symbol}, :before)
-          RUBY_EVAL
+          _define_runner(symbol)
         end
       end
     end
