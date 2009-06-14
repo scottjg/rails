@@ -361,7 +361,7 @@ module ActiveSupport
       # will be used to compile an optimized callback method for each
       # key. See #define_callbacks for more information.
       def _define_runner(symbol)
-        body = send("_#{symbol}_callbacks").
+        body = send("_#{symbol}_callback").
           compile(nil, :terminator => send("_#{symbol}_terminator"))
 
         body, line = <<-RUBY_EVAL, __LINE__
@@ -390,7 +390,7 @@ module ActiveSupport
       def _create_keyed_callback(name, kind, obj, &blk)
         @_keyed_callbacks ||= {}
         @_keyed_callbacks[name] ||= begin
-          str = send("_#{kind}_callbacks").
+          str = send("_#{kind}_callback").
             compile(name, :object => obj, :terminator => send("_#{kind}_terminator"))
 
           class_eval "def #{name}() #{str} end", __FILE__, __LINE__
@@ -435,7 +435,7 @@ module ActiveSupport
         options = filters.last.is_a?(Hash) ? filters.pop : {}
         filters.unshift(block) if block
 
-        callbacks = send("_#{name}_callbacks")
+        callbacks = send("_#{name}_callback")
         yield callbacks, type, filters, options if block_given?
 
         _define_runner(name)
@@ -458,7 +458,7 @@ module ActiveSupport
       def skip_callback(name, *filters, &block)
         _update_callbacks(name, filters, block) do |callbacks, type, filters, options|
           filters.each do |filter|
-            callbacks = send("_#{name}_callbacks=", callbacks.clone(self))
+            callbacks = send("_#{name}_callback=", callbacks.clone(self))
 
             filter = callbacks.find {|c| c.matches?(type, filter) }
 
@@ -476,7 +476,7 @@ module ActiveSupport
         symbols.each do |symbol|
           extlib_inheritable_accessor("_#{symbol}_terminator") { terminator }
 
-          extlib_inheritable_accessor("_#{symbol}_callbacks") do
+          extlib_inheritable_accessor("_#{symbol}_callback") do
             CallbackChain.new(symbol)
           end
 
