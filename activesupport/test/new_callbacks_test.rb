@@ -489,6 +489,7 @@ module NewCallbacksTest
       [:create, :update, :save, :destroy, :delete].each do |name|
         assert_nothing_raised "There was an error creating callback named #{name}." do
           WithConflicts.define_callbacks name
+          WithConflicts.set_callback name, :before, proc {}
         end
       end
     end
