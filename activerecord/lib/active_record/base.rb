@@ -2303,11 +2303,13 @@ module ActiveRecord #:nodoc:
 
               # Extract table name from qualified attribute names.
               if attr.include?('.')
-                table_name, attr = attr.split('.', 2)
-                table_name = connection.quote_table_name(table_name)
+                table_name_for_condition, attr = attr.split('.', 2)
+                table_name_for_condition = connection.quote_table_name(table_name_for_condition)
+              else
+                table_name_for_condition = table_name
               end
 
-              attribute_condition("#{table_name}.#{connection.quote_column_name(attr)}", value)
+              attribute_condition("#{table_name_for_condition}.#{connection.quote_column_name(attr)}", value)
             else
               sanitize_sql_hash_for_conditions(value, connection.quote_table_name(attr.to_s))
             end
