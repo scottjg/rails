@@ -11,6 +11,7 @@ require 'active_support/core_ext/hash/indifferent_access'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/string/behavior'
 require 'active_support/core_ext/symbol'
+require 'active_support/core_ext/object/metaclass'
 
 module ActiveRecord #:nodoc:
   # Generic Active Record exception class.
@@ -2040,7 +2041,7 @@ module ActiveRecord #:nodoc:
         #     end
         #   end
         def define_attr_method(name, value=nil, &block)
-          sing = class << self; self; end
+          sing = metaclass
           sing.send :alias_method, "original_#{name}", name
           if block_given?
             sing.send :define_method, name, &block
@@ -3043,11 +3044,11 @@ module ActiveRecord #:nodoc:
       def execute_callstack_for_multiparameter_attributes(callstack)
         errors = []
         callstack.each do |name, values|
-          klass = (self.class.reflect_on_aggregation(name.to_sym) || column_for_attribute(name)).klass
-          if values.empty?
-            send(name + "=", nil)
-          else
-            begin
+          begin
+            klass = (self.class.reflect_on_aggregation(name.to_sym) || column_for_attribute(name)).klass
+            if values.empty?
+              send(name + "=", nil)
+            else
               value = if Time == klass
                 instantiate_time_object(name, values)
               elsif Date == klass
@@ -3061,9 +3062,9 @@ module ActiveRecord #:nodoc:
               end
 
               send(name + "=", value)
-            rescue => ex
-              errors << AttributeAssignmentError.new("error on assignment #{values.inspect} to #{name}", ex, name)
             end
+          rescue => ex
+            errors << AttributeAssignmentError.new("error on assignment #{values.inspect} to #{name}", ex, name)
           end
         end
         unless errors.empty?
@@ -3089,7 +3090,7 @@ module ActiveRecord #:nodoc:
       end
 
       def type_cast_attribute_value(multiparameter_name, value)
-        multiparameter_name =~ /\([0-9]*([a-z])\)/ ? value.send("to_" + $1) : value
+        multiparameter_name =~ /\([0-9]*([if])\)/ ? value.send("to_" + $1) : value
       end
 
       def find_parameter_position(multiparameter_name)
@@ -3149,7 +3150,7 @@ module ActiveRecord #:nodoc:
     include Locking::Optimistic, Locking::Pessimistic
     include AttributeMethods
     include Dirty
-    include Callbacks, Observing, Timestamp
+    include Callbacks, ActiveModel::Observing, Timestamp
     include Associations, AssociationPreload, NamedScope
 
     # AutosaveAssociation needs to be included before Transactions, because we want
