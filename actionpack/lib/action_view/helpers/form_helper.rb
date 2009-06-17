@@ -232,30 +232,29 @@ module ActionView
       def form_for(record_or_name_or_array, *args, &proc)
         raise ArgumentError, "Missing block" unless block_given?
 
-        options = args.extract_options!
-
-        case record_or_name_or_array
-        when String, Symbol
-          object_name = record_or_name_or_array
-        when Array
-          object = record_or_name_or_array.last
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
-          apply_form_for_options!(record_or_name_or_array, options)
-          args.unshift object
-        else
-          object = record_or_name_or_array
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
-          apply_form_for_options!([object], options)
-          args.unshift object
-        end
-
+        object, object_name, options = standardize_form_invocation!(record_or_name_or_array, args)
+ 
         concat(form_tag(options.delete(:url) || {}, options.delete(:html) || {}))
         fields_for(object_name, *(args << options), &proc)
         concat('</form>')
       end
+      
+      def standardize_form_invocation!(record_or_name_or_array, args)
+        options = args.extract_options!
+
+        object      = record_or_name_or_array.as_form_object
+        object_name = object.form_object_name
+        
+        if object.acts_like_model?
+          apply_form_for_options!(record_or_name_or_array.as_array, options)
+          args.unshift object
+        end
+        
+        [object, object_name, options]
+      end
 
       def apply_form_for_options!(object_or_array, options) #:nodoc:
-        object = object_or_array.is_a?(Array) ? object_or_array.last : object_or_array
+        object = object_or_array.as_form_object
 
         html_options =
           if object.respond_to?(:new_record?) && object.new_record?
@@ -300,14 +299,8 @@ module ActionView
         raise ArgumentError, "Missing block" unless block_given?
         options = args.extract_options!
 
-        case record_or_name_or_array
-        when String, Symbol
-          object_name = record_or_name_or_array
-          object = args.first
-        else
-          object = record_or_name_or_array
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
-        end
+        object      = record_or_name_or_array.as_fields_for_form_object(args)
+        object_name = record_or_name_or_array.form_object_name
 
         builder = options[:builder] || ActionView::Base.default_form_builder
         yield builder.new(object_name, object, self, options, block)

@@ -1,3 +1,5 @@
+require 'action_view/helpers/form_helper_core_extensions'
+
 module ActionView #:nodoc:
   module Helpers #:nodoc:
     autoload :ActiveRecordHelper, 'action_view/helpers/active_record_helper'
