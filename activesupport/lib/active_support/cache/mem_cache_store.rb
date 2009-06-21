@@ -118,7 +118,15 @@ module ActiveSupport
       def stats
         @data.stats
       end
-
+      
+      # Resets the connection to the memcached server. Call this if you
+      # use Phusion Passenger's smart spawning mode and you need to 
+      # start a new connection to the server to prevent spawned processes
+      # from sharing file descriptors.
+      def reset
+        @data.reset
+      end
+      
       private
         def expires_in(options)
           (options && options[:expires_in]) || 0
