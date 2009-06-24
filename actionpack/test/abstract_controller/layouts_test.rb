@@ -9,7 +9,7 @@ module AbstractControllerTests
       include AbstractController::Renderer
       include AbstractController::Layouts
 
-      self.view_paths = [ActionView::Template::FixturePath.new(
+      self.view_paths = [ActionView::FixtureResolver.new(
         "layouts/hello.erb"                     => "With String <%= yield %>",
         "layouts/hello_override.erb"            => "With Override <%= yield %>",
         "layouts/abstract_controller_tests/layouts/with_string_implied_child.erb" =>
@@ -138,15 +138,6 @@ module AbstractControllerTests
       
       def index
         render :_template => ActionView::TextTemplate.new("Hello nil!")
-      end
-    end
-    
-    # TODO Move to bootloader
-    AbstractController::Base.descendants.each do |klass|
-      klass = klass.constantize
-      next unless klass < AbstractController::Layouts
-      klass.class_eval do
-        _write_layout_method
       end
     end
     
