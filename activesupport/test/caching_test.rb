@@ -175,6 +175,12 @@ class MemoryStoreTest < ActiveSupport::TestCase
     result = @cache.read_multi('foo', 'goo')
     assert_equal({'foo' => 1, 'goo' => 2}, result)
   end
+
+  def test_original_store_objects_should_not_be_immutable
+    bar = 'bar'
+    @cache.write('foo', bar)
+    assert_nothing_raised { bar.gsub!(/.*/, 'baz') }
+  end
 end
 
 uses_memcached 'memcached backed store' do
