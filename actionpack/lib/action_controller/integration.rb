@@ -34,6 +34,9 @@ module ActionController
 
       # The hostname used in the last request.
       attr_accessor :host
+      
+      # The port used in the last request.
+      attr_accessor :port
 
       # The remote_addr used in the last request.
       attr_accessor :remote_addr
@@ -83,6 +86,7 @@ module ActionController
         @request_count = 0
 
         self.host        = "www.example.com"
+        self.port        = nil
         self.remote_addr = "127.0.0.1"
         self.accept      = "text/xml,application/xml,application/xhtml+xml," +
                            "text/html;q=0.9,text/plain;q=0.8,image/png," +
@@ -122,6 +126,13 @@ module ActionController
       #   session.host! "www.example.com"
       def host!(name)
         @host = name
+      end
+
+      # Set the port to use in the next request.
+      #
+      #   session.port! 3000
+      def port!(port)
+        @port = port
       end
 
       # Follow a single redirect response. If the last response was not a
@@ -250,6 +261,7 @@ module ActionController
           location = URI.parse(path)
           https! URI::HTTPS === location if location.scheme
           host! location.host if location.host
+          port! location.port if location.port
           location.query ? "#{location.path}?#{location.query}" : location.path
         end
 
@@ -273,7 +285,7 @@ module ActionController
           env.update(
             "REQUEST_METHOD"  => method.to_s.upcase,
             "SERVER_NAME"     => host,
-            "SERVER_PORT"     => (https? ? "443" : "80"),
+            "SERVER_PORT"     => port.to_s || (https? ? "443" : "80"),
             "HTTPS"           => https? ? "on" : "off",
             "rack.url_scheme" => https? ? "https" : "http",
             "SCRIPT_NAME"     => "",
@@ -381,7 +393,7 @@ module ActionController
             'QUERY_STRING'   => "",
             "REQUEST_URI"    => "/",
             "HTTP_HOST"      => host,
-            "SERVER_PORT"    => https? ? "443" : "80",
+            "SERVER_PORT"    => port.to_s || (https? ? "443" : "80"),
             "HTTPS"          => https? ? "on" : "off"
           }
           UrlRewriter.new(Request.new(env), {})
