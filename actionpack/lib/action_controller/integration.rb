@@ -258,15 +258,15 @@ module ActionController
           data = requestify(parameters)
           path = interpret_uri(path) if path =~ %r{://}
           path = "/#{path}" unless path[0] == ?/
-          @path = path
+          @path, query_string = path.split("?")
+          query_string ||= ""
           env = {}
 
-          if method == :get
-            env["QUERY_STRING"] = data
+          if method == :get && data
+            query_string += "&" unless query_string.empty?
+            query_string += data
             data = nil
           end
-
-          env["QUERY_STRING"] ||= ""
 
           data = data.is_a?(IO) ? data : StringIO.new(data || '')
 
@@ -280,6 +280,7 @@ module ActionController
 
             "REQUEST_URI"    => path,
             "PATH_INFO"      => path,
+            "QUERY_STRING"   => query_string,
             "HTTP_HOST"      => host,
             "REMOTE_ADDR"    => remote_addr,
             "CONTENT_TYPE"   => "application/x-www-form-urlencoded",
