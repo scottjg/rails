@@ -44,8 +44,9 @@ module ActionController
       # The Accept header to send.
       attr_accessor :accept
 
-      # A map of the cookies returned by the last response, and which will be
-      # sent with the next request.
+      # The cookie store, structure is: {host => {key => value, ..}, ..}
+      # 
+      # The next request will automatically send cookies from previous requests on it's host.
       attr_reader :cookies
 
       # A map of the headers returned by the last response.
@@ -340,7 +341,8 @@ module ActionController
 
           (@headers['Set-Cookie'] || "").split("\n").each do |cookie|
             name, value = cookie.match(/^([^=]*)=([^;]*);/)[1,2]
-            @cookies[name] = value
+            @cookies[host] ||= {}
+            @cookies[host][name] = value
           end
 
           @body = ""
@@ -381,7 +383,7 @@ module ActionController
         # Encode the cookies hash in a format suitable for passing to a
         # request.
         def encode_cookies
-          cookies.inject("") do |string, (name, value)|
+          (cookies[host] || {}).inject("") do |string, (name, value)|
             string << "#{name}=#{value}; "
           end
         end
