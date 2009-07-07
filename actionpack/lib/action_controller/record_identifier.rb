@@ -75,7 +75,7 @@ module ActionController
     #
     #   dom_id(Post.find(45), :edit) # => "edit_post_45"
     def dom_id(record, prefix = nil) 
-      if record_id = record.id
+      if record_id = record.object_id
         "#{dom_class(record, prefix)}#{JOIN}#{record_id}"
       else
         dom_class(record, prefix || NEW)
