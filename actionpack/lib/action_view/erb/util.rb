@@ -15,12 +15,7 @@ class ERB
     #   puts html_escape("is a > 0 & a < 10?")
     #   # => is a &gt; 0 &amp; a &lt; 10?
     def html_escape(s)
-      s = s.to_s
-      if s.html_safe?
-        s
-      else
-        s.gsub(/[&"><]/) { |special| HTML_ESCAPE[special] }.html_safe!
-      end
+      s.to_s.gsub(/[&"><]/) { |special| HTML_ESCAPE[special] }
     end
 
     alias h html_escape

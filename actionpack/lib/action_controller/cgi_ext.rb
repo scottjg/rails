@@ -11,10 +11,8 @@ class CGI #:nodoc:
     def escapeHTML(string)
       if string.nil?
         nil
-      elsif string.html_safe?
-        string
       else
-        escapeHTML_fail_on_nil(string).html_safe!
+        escapeHTML_fail_on_nil(string)
       end
     end
   end
