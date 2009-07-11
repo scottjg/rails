@@ -2563,6 +2563,7 @@ module ActiveRecord #:nodoc:
       # options, use <tt>#destroy</tt>.
       def delete
         self.class.delete(id) unless new_record?
+        @destroyed = true
         freeze
       end
 
@@ -2577,6 +2578,7 @@ module ActiveRecord #:nodoc:
           )
         end
 
+        @destroyed = true
         freeze
       end
 
@@ -2834,6 +2836,11 @@ module ActiveRecord #:nodoc:
       # Returns +true+ if the attributes hash has been frozen.
       def frozen?
         @attributes.frozen?
+      end
+
+      # Returns +true+ if the record has been destroyed.
+      def destroyed?
+        @destroyed
       end
 
       # Returns +true+ if the record is read only. Records loaded through joins with piggy-back
