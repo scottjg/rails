@@ -553,7 +553,7 @@ module ActiveResource
 
       # Set headers to accept deflate encoding
       def enable_deflate
-        @headers['Accept-Encoding'] = 'deflate'
+        headers['Accept-Encoding'] = 'deflate'
       end
 
       attr_accessor_with_default(:element_name)    { model_name.element } #:nodoc:
