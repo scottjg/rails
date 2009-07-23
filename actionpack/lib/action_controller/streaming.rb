@@ -75,7 +75,7 @@ module ActionController #:nodoc:
       # http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9
       # for the Cache-Control header spec.
       def send_file(path, options = {}) #:doc:
-        raise MissingFile, "Cannot read file #{path}" unless File.file?(path) and File.readable?(path)
+        raise MissingFile, "Cannot read file #{path}" unless (File.file?(path) and File.readable?(path)) || (options[:x_sendfile] && options[:length])
 
         options[:length]   ||= File.size(path)
         options[:filename] ||= File.basename(path) unless options[:url_based_filename]
