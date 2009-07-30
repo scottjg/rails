@@ -180,8 +180,9 @@ module ActionView
       #   javascript_path "/dir/xmlhr" # => /dir/xmlhr.js
       #   javascript_path "http://www.railsapplication.com/js/xmlhr" # => http://www.railsapplication.com/js/xmlhr.js
       #   javascript_path "http://www.railsapplication.com/js/xmlhr.js" # => http://www.railsapplication.com/js/xmlhr.js
-      def javascript_path(source)
-        compute_public_path(source, 'javascripts', 'js')
+      def javascript_path(source, options={})
+        asset_type = options[:asset_type]
+        compute_public_path(source, 'javascripts', asset_type, 'js')
       end
       alias_method :path_to_javascript, :javascript_path # aliased to avoid conflicts with a javascript_path named route
 
@@ -275,13 +276,14 @@ module ActionView
         concat  = options.delete("concat")
         cache   = concat || options.delete("cache")
         recursive = options.delete("recursive")
+        asset_type = options.delete("asset_type")
 
         if concat || (ActionController::Base.perform_caching && cache)
           joined_javascript_name = (cache == true ? "all" : cache) + ".js"
           joined_javascript_path = File.join(joined_javascript_name[/^#{File::SEPARATOR}/] ? ASSETS_DIR : JAVASCRIPTS_DIR, joined_javascript_name)
 
           unless ActionController::Base.perform_caching && File.exists?(joined_javascript_path)
-            write_asset_file_contents(joined_javascript_path, compute_javascript_paths(sources, recursive))
+            write_asset_file_contents(joined_javascript_path, compute_javascript_paths(sources, recursive, asset_type))
           end
           javascript_src_tag(joined_javascript_name, options)
         else
@@ -346,8 +348,9 @@ module ActionView
       #   stylesheet_path "/dir/style.css" # => /dir/style.css
       #   stylesheet_path "http://www.railsapplication.com/css/style" # => http://www.railsapplication.com/css/style.css
       #   stylesheet_path "http://www.railsapplication.com/css/style.js" # => http://www.railsapplication.com/css/style.css
-      def stylesheet_path(source)
-        compute_public_path(source, 'stylesheets', 'css')
+      def stylesheet_path(source, options={})
+        asset_type = options.delete(:asset_type)
+        compute_public_path(source, 'stylesheets', asset_type, 'css')
       end
       alias_method :path_to_stylesheet, :stylesheet_path # aliased to avoid conflicts with a stylesheet_path named route
 
@@ -424,13 +427,14 @@ module ActionView
         concat  = options.delete("concat")
         cache   = concat || options.delete("cache")
         recursive = options.delete("recursive")
+        asset_type = options.delete("asset_type")
 
         if concat || (ActionController::Base.perform_caching && cache)
           joined_stylesheet_name = (cache == true ? "all" : cache) + ".css"
           joined_stylesheet_path = File.join(joined_stylesheet_name[/^#{File::SEPARATOR}/] ? ASSETS_DIR : STYLESHEETS_DIR, joined_stylesheet_name)
 
           unless ActionController::Base.perform_caching && File.exists?(joined_stylesheet_path)
-            write_asset_file_contents(joined_stylesheet_path, compute_stylesheet_paths(sources, recursive))
+            write_asset_file_contents(joined_stylesheet_path, compute_stylesheet_paths(sources, recursive, asset_type))
           end
           stylesheet_tag(joined_stylesheet_name, options)
         else
@@ -448,8 +452,8 @@ module ActionView
       #   image_path("icons/edit.png")                               # => /images/icons/edit.png
       #   image_path("/icons/edit.png")                              # => /icons/edit.png
       #   image_path("http://www.railsapplication.com/img/edit.png") # => http://www.railsapplication.com/img/edit.png
-      def image_path(source)
-        compute_public_path(source, 'images')
+      def image_path(source, options={})
+        compute_public_path(source, 'images', options[:asset_type])
       end
       alias_method :path_to_image, :image_path # aliased to avoid conflicts with an image_path named route
 
@@ -489,7 +493,7 @@ module ActionView
       def image_tag(source, options = {})
         options.symbolize_keys!
 
-        options[:src] = path_to_image(source)
+        options[:src] = path_to_image(source, options)
         options[:alt] ||= File.basename(options[:src], '.*').split('.').first.to_s.capitalize
 
         if size = options.delete(:size)
@@ -497,9 +501,11 @@ module ActionView
         end
 
         if mouseover = options.delete(:mouseover)
-          options[:onmouseover] = "this.src='#{image_path(mouseover)}'"
-          options[:onmouseout]  = "this.src='#{image_path(options[:src])}'"
+          options[:onmouseover] = "this.src='#{image_path(mouseover, options)}'"
+          options[:onmouseout]  = "this.src='#{image_path(options[:src], options)}'"
         end
+
+        options.delete(:asset_type)
 
         tag("img", options)
       end
@@ -525,7 +531,7 @@ module ActionView
         # Prefix with <tt>/dir/</tt> if lacking a leading +/+. Account for relative URL
         # roots. Rewrite the asset path for cache-busting asset ids. Include
         # asset host, if configured, with the correct request protocol.
-        def compute_public_path(source, dir, ext = nil, include_host = true)
+        def compute_public_path(source, dir, asset_type, ext = nil, include_host = true)
           has_request = @controller.respond_to?(:request)
 
           source_ext = File.extname(source)[1..-1]
@@ -546,7 +552,7 @@ module ActionView
           end
 
           if include_host && source !~ %r{^[-a-z]+://}
-            host = compute_asset_host(source)
+            host = compute_asset_host(source, asset_type)
 
             if has_request && !host.blank? && host !~ %r{^[-a-z]+://}
               host = "#{@controller.request.protocol}#{host}"
@@ -563,8 +569,10 @@ module ActionView
         # numbers 0-3 if it contains <tt>%d</tt> (the number is the source hash mod 4),
         # or the value returned from invoking the proc if it's a proc or the value from
         # invoking call if it's an object responding to call.
-        def compute_asset_host(source)
-          if host = ActionController::Base.asset_host
+        def compute_asset_host(source, asset_type='default')
+          asset_type ||= 'default'
+
+          if host = lookup_asset_host(asset_type)
             if host.is_a?(Proc) || host.respond_to?(:call)
               case host.is_a?(Proc) ? host.arity : host.method(:call).arity
               when 2
@@ -577,6 +585,12 @@ module ActionView
               (host =~ /%d/) ? host % (source.hash % 4) : host
             end
           end
+        end
+
+        def lookup_asset_host(asset_type='default')
+          asset_type ||= 'default'
+
+          ActionController::Base.asset_hosts[asset_type] || ActionController::Base.asset_host
         end
 
         @@asset_timestamps_cache = {}
@@ -617,19 +631,21 @@ module ActionView
         end
 
         def javascript_src_tag(source, options)
-          content_tag("script", "", { "type" => Mime::JS, "src" => path_to_javascript(source) }.merge(options))
+          content_tag("script", "", { "type" => Mime::JS, "src" => path_to_javascript(source, options) }.merge(options))
         end
 
         def stylesheet_tag(source, options)
-          tag("link", { "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen", "href" => html_escape(path_to_stylesheet(source)) }.merge(options), false, false)
+          tag("link", { "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen", "href" => html_escape(path_to_stylesheet(source, options)) }.merge(options), false, false)
         end
 
         def compute_javascript_paths(*args)
-          expand_javascript_sources(*args).collect { |source| compute_public_path(source, 'javascripts', 'js', false) }
+          asset_type = args.pop
+          expand_javascript_sources(*args).collect { |source| compute_public_path(source, 'javascripts', asset_type, 'js', false) }
         end
 
         def compute_stylesheet_paths(*args)
-          expand_stylesheet_sources(*args).collect { |source| compute_public_path(source, 'stylesheets', 'css', false) }
+          asset_type = args.pop
+          expand_stylesheet_sources(*args).collect { |source| compute_public_path(source, 'stylesheets', asset_type, 'css', false) }
         end
 
         def expand_javascript_sources(sources, recursive = false)

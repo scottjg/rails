@@ -257,6 +257,10 @@ module ActionController #:nodoc:
                                         @action_name @before_filter_chain_aborted @action_cache_path @_session @_headers @_params
                                         @_flash @_response)
 
+    # TODO Document.  See asset_host.
+    @@asset_hosts = {}
+    cattr_accessor :asset_hosts
+
     # Prepends all the URL-generating helpers from AssetHelper. This makes it possible to easily move javascripts, stylesheets,
     # and images to a dedicated asset server away from the main web server. Example:
     #   ActionController::Base.asset_host = "http://assets.example.com"

@@ -255,7 +255,7 @@ class AssetTagHelperTest < ActionView::TestCase
     ensure
       ActionController::Base.relative_url_root = ""
   end
-    
+
   def test_should_skip_asset_id_on_complete_url
     assert_equal %(<img alt="Rails" src="http://www.example.com/rails.png" />), image_tag("http://www.example.com/rails.png")
   end
@@ -286,9 +286,8 @@ class AssetTagHelperTest < ActionView::TestCase
         "#{request.protocol}assets#{source.length}.example.com"
       end
     end
-    
-    ActionController::Base.perform_caching = true
 
+    ActionController::Base.perform_caching = true
 
     @controller.request.stubs(:ssl?).returns(false)
     assert_equal "http://assets15.example.com/images/xml.png", image_path("xml.png")
@@ -696,6 +695,8 @@ class AssetTagHelperNonVhostTest < ActionView::TestCase
 
   def teardown
     ActionController::Base.relative_url_root = nil
+    ActionController::Base.asset_host = ""
+    ActionController::Base.asset_hosts = {}
   end
 
   def test_should_compute_proper_path
@@ -719,41 +720,69 @@ class AssetTagHelperNonVhostTest < ActionView::TestCase
     assert_dom_equal(%(http://assets.example.com/collaboration/hieraki/images/xml.png), image_path("xml.png"))
     assert_dom_equal(%(<img alt="Mouse" onmouseover="this.src='http://assets.example.com/collaboration/hieraki/images/mouse_over.png'" onmouseout="this.src='http://assets.example.com/collaboration/hieraki/images/mouse.png'" src="http://assets.example.com/collaboration/hieraki/images/mouse.png" />), image_tag("mouse.png", :mouseover => "/images/mouse_over.png"))
     assert_dom_equal(%(<img alt="Mouse2" onmouseover="this.src='http://assets.example.com/collaboration/hieraki/images/mouse_over2.png'" onmouseout="this.src='http://assets.example.com/collaboration/hieraki/images/mouse2.png'" src="http://assets.example.com/collaboration/hieraki/images/mouse2.png" />), image_tag("mouse2.png", :mouseover => image_path("mouse_over2.png")))
-  ensure
-    ActionController::Base.asset_host = ""
   end
 
   def test_should_ignore_asset_host_on_complete_url
     ActionController::Base.asset_host = "http://assets.example.com"
     assert_dom_equal(%(<link href="http://bar.example.com/stylesheets/style.css" media="screen" rel="stylesheet" type="text/css" />), stylesheet_link_tag("http://bar.example.com/stylesheets/style.css"))
-  ensure
-    ActionController::Base.asset_host = ""
   end
 
   def test_should_wildcard_asset_host_between_zero_and_four
     ActionController::Base.asset_host = 'http://a%d.example.com'
     assert_match %r(http://a[0123].example.com/collaboration/hieraki/images/xml.png), image_path('xml.png')
-  ensure
-    ActionController::Base.asset_host = nil
   end
 
   def test_asset_host_without_protocol_should_use_request_protocol
     ActionController::Base.asset_host = 'a.example.com'
     assert_equal 'gopher://a.example.com/collaboration/hieraki/images/xml.png', image_path('xml.png')
-  ensure
-    ActionController::Base.asset_host = nil
   end
 
   def test_asset_host_without_protocol_should_use_request_protocol_even_if_path_present
     ActionController::Base.asset_host = 'a.example.com/files/go/here'
     assert_equal 'gopher://a.example.com/files/go/here/collaboration/hieraki/images/xml.png', image_path('xml.png')
-  ensure
-    ActionController::Base.asset_host = nil
+  end
+
+  def test_should_compute_proper_path_with_asset_hosts
+    ActionController::Base.asset_hosts = {'default' => 'http://assets.example.com'}
+    assert_dom_equal(%(<link href="http://www.example.com/collaboration/hieraki" rel="alternate" title="RSS" type="application/rss+xml" />), auto_discovery_link_tag)
+    assert_dom_equal(%(http://assets.example.com/collaboration/hieraki/javascripts/xmlhr.js), javascript_path("xmlhr"))
+    assert_dom_equal(%(http://assets.example.com/collaboration/hieraki/stylesheets/style.css), stylesheet_path("style"))
+    assert_dom_equal(%(http://assets.example.com/collaboration/hieraki/images/xml.png), image_path("xml.png"))
+    assert_dom_equal(%(<img alt="Mouse" onmouseover="this.src='http://assets.example.com/collaboration/hieraki/images/mouse_over.png'" onmouseout="this.src='http://assets.example.com/collaboration/hieraki/images/mouse.png'" src="http://assets.example.com/collaboration/hieraki/images/mouse.png" />), image_tag("mouse.png", :mouseover => "/images/mouse_over.png"))
+    assert_dom_equal(%(<img alt="Mouse2" onmouseover="this.src='http://assets.example.com/collaboration/hieraki/images/mouse_over2.png'" onmouseout="this.src='http://assets.example.com/collaboration/hieraki/images/mouse2.png'" src="http://assets.example.com/collaboration/hieraki/images/mouse2.png" />), image_tag("mouse2.png", :mouseover => image_path("mouse_over2.png")))
+  end
+
+  def test_should_compute_proper_path_with_asset_type
+    ActionController::Base.asset_hosts = {'default' => 'http://assets.example.com', 'alternate' => 'http://alternate.example.com'}
+    assert_dom_equal(%(http://alternate.example.com/collaboration/hieraki/javascripts/xmlhr.js), javascript_path("xmlhr", :asset_type => 'alternate'))
+    assert_dom_equal(%(http://alternate.example.com/collaboration/hieraki/stylesheets/style.css), stylesheet_path("style", :asset_type => 'alternate'))
+    assert_dom_equal(%(http://alternate.example.com/collaboration/hieraki/images/xml.png), image_path("xml.png", :asset_type => 'alternate'))
+    assert_dom_equal(%(<img alt="Mouse" onmouseover="this.src='http://alternate.example.com/collaboration/hieraki/images/mouse_over.png'" onmouseout="this.src='http://alternate.example.com/collaboration/hieraki/images/mouse.png'" src="http://alternate.example.com/collaboration/hieraki/images/mouse.png" />), image_tag("mouse.png", :mouseover => "/images/mouse_over.png", :asset_type => 'alternate'))
+    assert_dom_equal(%(<img alt="Mouse2" onmouseover="this.src='http://alternate.example.com/collaboration/hieraki/images/mouse_over2.png'" onmouseout="this.src='http://alternate.example.com/collaboration/hieraki/images/mouse2.png'" src="http://alternate.example.com/collaboration/hieraki/images/mouse2.png" />), image_tag("mouse2.png", :mouseover => image_path("mouse_over2.png", :asset_type => 'alternate'), :asset_type => 'alternate'))
+  end
+
+  def test_should_ignore_asset_hosts_on_complete_url
+    ActionController::Base.asset_hosts = {'default' => 'http://assets.example.com'}
+    assert_dom_equal(%(<link href="http://bar.example.com/stylesheets/style.css" media="screen" rel="stylesheet" type="text/css" />), stylesheet_link_tag("http://bar.example.com/stylesheets/style.css"))
+  end
+
+  def test_should_wildcard_asset_hosts_between_zero_and_four
+    ActionController::Base.asset_hosts = {'default' => 'http://a%d.example.com'}
+    assert_match %r(http://a[0123].example.com/collaboration/hieraki/images/xml.png), image_path('xml.png')
+  end
+
+  def test_asset_hosts_without_protocol_should_use_request_protocol
+    ActionController::Base.asset_hosts = {'default' => 'a.example.com'}
+    assert_equal 'gopher://a.example.com/collaboration/hieraki/images/xml.png', image_path('xml.png')
+  end
+
+  def test_asset_hosts_without_protocol_should_use_request_protocol_even_if_path_present
+    ActionController::Base.asset_hosts = {'default' => 'a.example.com/files/go/here'}
+    assert_equal 'gopher://a.example.com/files/go/here/collaboration/hieraki/images/xml.png', image_path('xml.png')
   end
 
   def test_assert_css_and_js_of_the_same_name_return_correct_extension
     assert_dom_equal(%(/collaboration/hieraki/javascripts/foo.js), javascript_path("foo"))
     assert_dom_equal(%(/collaboration/hieraki/stylesheets/foo.css), stylesheet_path("foo"))
-
   end
 end
