@@ -2967,7 +2967,7 @@ module ActiveRecord #:nodoc:
           connection.empty_insert_statement(self.class.table_name)
         else
           "INSERT INTO #{self.class.quoted_table_name} " +
-          "(#{quoted_column_names.join(', ')}) " +
+          "(#{quoted_column_names(quoted_attributes).join(', ')}) " +
           "VALUES(#{quoted_attributes.values.join(', ')})"
         end
 
