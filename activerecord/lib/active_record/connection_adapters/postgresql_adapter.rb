@@ -588,6 +588,10 @@ module ActiveRecord
         end
 
         execute "CREATE DATABASE #{quote_table_name(name)}#{option_string}"
+
+        `createlang plpgsql #{quote_table_name(name)}`
+        `psql -d #{quote_table_name(name)} -f /opt/local/share/postgis/lwpostgis.sql`
+        `psql -d #{quote_table_name(name)} -f /opt/local/share/postgis/spatial_ref_sys.sql`
       end
 
       # Drops a PostgreSQL database
