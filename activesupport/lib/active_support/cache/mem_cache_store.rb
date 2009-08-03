@@ -23,6 +23,8 @@ module ActiveSupport
         DELETED     = "DELETED\r\n"
       end
 
+      MAXIMUM_KEY_LENGTH = 250
+
       def self.build_mem_cache(*addresses)
         addresses = addresses.flatten
         options = addresses.extract_options!
@@ -50,12 +52,15 @@ module ActiveSupport
 
       # Reads multiple keys from the cache.
       def read_multi(*keys)
-        @data.get_multi keys
+        normalized_data = @data.get_multi keys.map { |k| normalized_key(k) }
+        hash = {}
+        keys.each { |key| hash[key] = normalized_data[normalized_key(key)] }
+        hash
       end
 
       def read(key, options = nil) # :nodoc:
         super
-        @data.get(key, raw?(options))
+        @data.get(normalized_key(key), raw?(options))
       rescue MemCache::MemCacheError => e
         logger.error("MemCacheError (#{e}): #{e.message}")
         nil
@@ -74,7 +79,7 @@ module ActiveSupport
         # memcache-client will break the connection if you send it an integer
         # in raw mode, so we convert it to a string to be sure it continues working.
         value = value.to_s if raw?(options)
-        response = @data.send(method, key, value, expires_in(options), raw?(options))
+        response = @data.send(method, normalized_key(key), value, expires_in(options), raw?(options))
         response == Response::STORED
       rescue MemCache::MemCacheError => e
         logger.error("MemCacheError (#{e}): #{e.message}")
@@ -83,7 +88,7 @@ module ActiveSupport
 
       def delete(key, options = nil) # :nodoc:
         super
-        response = @data.delete(key, expires_in(options))
+        response = @data.delete(normalized_key(key), expires_in(options))
         response == Response::DELETED
       rescue MemCache::MemCacheError => e
         logger.error("MemCacheError (#{e}): #{e.message}")
@@ -94,13 +99,13 @@ module ActiveSupport
         # Doesn't call super, cause exist? in memcache is in fact a read
         # But who cares? Reading is very fast anyway
         # Local cache is checked first, if it doesn't know then memcache itself is read from
-        !read(key, options).nil?
+        !read(normalized_key(key), options).nil?
       end
 
       def increment(key, amount = 1) # :nodoc:
         log("incrementing", key, amount)
 
-        response = @data.incr(key, amount)
+        response = @data.incr(normalized_key(key), amount)
         response == Response::NOT_FOUND ? nil : response
       rescue MemCache::MemCacheError
         nil
@@ -108,7 +113,7 @@ module ActiveSupport
 
       def decrement(key, amount = 1) # :nodoc:
         log("decrement", key, amount)
-        response = @data.decr(key, amount)
+        response = @data.decr(normalized_key(key), amount)
         response == Response::NOT_FOUND ? nil : response
       rescue MemCache::MemCacheError
         nil
@@ -132,6 +137,22 @@ module ActiveSupport
       private
         def raw?(options)
           options && options[:raw]
+        end
+
+        def maximum_key_length
+          if @data.namespace.nil? then
+            MAXIMUM_KEY_LENGTH
+          else
+            MAXIMUM_KEY_LENGTH - @data.namespace.length - 1
+          end
+        end
+
+        def normalized_key(key)
+          if key.length > maximum_key_length
+            Digest::MD5.hexdigest(key)
+          else
+            key
+          end
         end
     end
   end
