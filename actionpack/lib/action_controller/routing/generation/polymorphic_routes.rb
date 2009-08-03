@@ -70,6 +70,13 @@ module ActionController
     #   record = Comment.new
     #   polymorphic_url(record)  # same as comments_url()
     #
+    #   # it supports extra flexibility for STI by walking the inheritance chain if the route is missing
+    #   # (note this only works for the last (leaf) argument in nested routes)
+    #   #
+    #   # an Editorial record, where Editorial is a subclass of Article and routes exist for article_* but not editorial_*
+    #   polymorphic_url(editorial_record) #=> article_url(editorial_record)
+    #   polymorphic_url(editorial_record, comment_record) #=> editorial_comment_url(editorial_record, comment_record) #not yet smart enough to find the article_comment_url
+    
     def polymorphic_url(record_or_hash_or_array, options = {})
       if record_or_hash_or_array.kind_of?(Array)
         record_or_hash_or_array = record_or_hash_or_array.compact
@@ -163,7 +170,7 @@ module ActionController
             if parent.is_a?(Symbol) || parent.is_a?(String)
               string << "#{parent}_"
             else
-              string << "#{RecordIdentifier.__send__("plural_class_name", parent)}".singularize
+              string << inflected_class_segment(parent, :singular)
               string << "_"
             end
           end
@@ -171,13 +178,28 @@ module ActionController
 
         if record.is_a?(Symbol) || record.is_a?(String)
           route << "#{record}_"
+          action_prefix(options) + namespace + route + routing_type(options).to_s
         else
-          route << "#{RecordIdentifier.__send__("plural_class_name", record)}"
-          route = route.singularize if inflection == :singular
-          route << "_"
+          candidate_route = assemble_route(namespace, route, inflection, record.class, options)
+          if respond_to?(candidate_route)
+            candidate_route
+          else
+            find_route_via_superclass(namespace, route, inflection, record.class.superclass, options) || candidate_route
+          end
         end
-
-        action_prefix(options) + namespace + route + routing_type(options).to_s
+      end
+      
+      def assemble_route(namespace, base_route, inflection, record_class, options)
+        base_route = base_route.dup
+        base_route << inflected_class_segment(record_class, inflection)
+        base_route << '_'
+        action_prefix(options) + namespace + base_route + routing_type(options).to_s
+      end
+      
+      def inflected_class_segment(record, inflection)
+        segment = "#{RecordIdentifier.__send__("plural_class_name", record)}"
+        segment = segment.singularize if inflection == :singular
+        segment
       end
 
       def extract_record(record_or_hash_or_array)
@@ -199,6 +221,17 @@ module ActionController
         end
 
         namespace_keys.map {|k| "#{k}_"}.join
+      end
+      
+      # Recursively walk the inheritance chain to find a route that exists
+      def find_route_via_superclass(namespace, base_route, inflection, candidate_class, options)
+        return nil if candidate_class == ActiveRecord::Base || candidate_class == Object
+        candidate_named_route_call = assemble_route(namespace, base_route, inflection, candidate_class, options)
+        if respond_to?(candidate_named_route_call)
+          return candidate_named_route_call
+        else
+          return find_route_via_superclass(namespace, base_route, inflection, candidate_class.superclass, options)
+        end
       end
   end
 end

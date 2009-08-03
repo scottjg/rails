@@ -25,6 +25,21 @@ class Series < ActiveRecord::Base
   set_table_name 'projects'
 end
 
+class SpecialProject < Project
+end
+
+class AmazingProject < SpecialProject
+end
+
+class SpecialTask < Task
+end
+
+class SpecialStep < Step
+end
+
+class SpecialTax < Tax
+end
+
 class PolymorphicRoutesTest < ActionController::TestCase
   include ActionController::UrlWriter
   self.default_url_options[:host] = 'example.com'
@@ -37,6 +52,11 @@ class PolymorphicRoutesTest < ActionController::TestCase
     @tax = Tax.new
     @fax = Fax.new
     @series = Series.new
+    @special_project = SpecialProject.new
+    @amazing_project = AmazingProject.new
+    @special_task = SpecialTask.new
+    @special_step = SpecialStep.new
+    @special_tax = SpecialTax.new
   end
 
   def test_with_record
@@ -244,11 +264,183 @@ class PolymorphicRoutesTest < ActionController::TestCase
     end
   end
   
+  # Tests for finding the right route by walking inheritance chain of leaf argument
+  def test_with_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}", polymorphic_url(@special_project)
+    end
+  end
+
+  def test_with_superclass_fallback_for_two_levels_of_inheritance
+    with_test_routes do 
+      @amazing_project.save
+      assert_equal "http://example.com/projects/#{@amazing_project.id}", polymorphic_url(@amazing_project)
+    end
+  end
+
+  def test_with_inheritance_but_no_matching_route
+    with_test_routes do
+      @special_step.save
+      assert_raises(NoMethodError) do
+        polymorphic_url(@special_step)
+      end
+    end
+  end
+
+  def test_with_new_record_and_superclass_fallback
+    with_test_routes do 
+      assert_equal "http://example.com/projects", polymorphic_url(@special_project)
+    end
+  end
+
+  def test_with_record_and_action_and_superclass_fallback
+    with_test_routes do 
+      assert_equal "http://example.com/projects/new", polymorphic_url(@special_project, :action => 'new')
+    end
+  end
+
+  def test_url_helper_prefixed_with_new_and_superclass_fallback
+    with_test_routes do 
+      assert_equal "http://example.com/projects/new", new_polymorphic_url(@special_project)
+    end
+  end
+
+  def test_url_helper_prefixed_with_edit_and_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}/edit", edit_polymorphic_url(@special_project)
+    end
+  end
+
+  def test_url_helper_prefixed_with_edit_with_url_options_and_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}/edit?param1=10", edit_polymorphic_url(@special_project, :param1 => '10')
+    end
+  end
+  
+  def test_url_helper_with_url_options_and_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}?param1=10", polymorphic_url(@special_project, :param1 => '10')
+    end
+  end
+
+  def test_format_option_with_url_options_and_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}.pdf?param1=10", polymorphic_url(@special_project, :format => :pdf, :param1 => '10')
+    end
+  end
+  def test_id_and_format_option_and_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}.pdf", polymorphic_url(:id => @special_project, :format => :pdf)
+    end
+  end
+
+  def test_with_nested_and_superclass_fallback
+    with_test_routes do
+      @project.save
+      @special_task.save
+      assert_equal "http://example.com/projects/#{@project.id}/tasks/#{@special_task.id}", polymorphic_url([@project, @special_task])
+    end
+  end
+
+  def test_with_nested_unsaved_and_superclass_fallback
+    with_test_routes do
+      @project.save
+      assert_equal "http://example.com/projects/#{@project.id}/tasks", polymorphic_url([@project, @special_task])
+    end
+  end
+  
+  def test_new_with_array_and_namespace_and_superclass_fallback
+    with_admin_test_routes do
+      assert_equal "http://example.com/admin/projects/new", polymorphic_url([:admin, @special_project], :action => 'new')
+    end
+  end
+
+  def test_unsaved_with_array_and_namespace_and_superclass_fallback
+    with_admin_test_routes do
+      assert_equal "http://example.com/admin/projects", polymorphic_url([:admin, @special_project])
+    end
+  end
+
+  def test_nested_unsaved_with_array_and_namespace_and_superclass_fallback
+    with_admin_test_routes do
+      @project.save
+      assert_equal "http://example.com/admin/projects/#{@project.id}/tasks", polymorphic_url([:admin, @project, @special_task])
+    end
+  end
+
+  def test_nested_with_array_and_namespace_and_superclass_fallback
+    with_admin_test_routes do 
+      @project.save
+      @special_task.save
+      assert_equal "http://example.com/admin/projects/#{@project.id}/tasks/#{@special_task.id}", polymorphic_url([:admin, @project, @special_task])
+    end
+  end
+  
+  def test_ordering_of_nesting_and_namespace_and_superclass_fallback
+    with_admin_and_site_test_routes do 
+      @project.save
+      @task.save
+      @special_step.save
+      assert_equal "http://example.com/admin/projects/#{@project.id}/site/tasks/#{@task.id}/steps/#{@special_step.id}", polymorphic_url([:admin, @project, :site, @task, @special_step])
+    end
+  end
+  
+  def test_nesting_with_array_containing_singleton_resource_with_superclass_fallback
+    with_test_routes do
+      @project.save
+      @special_task.save
+      assert_equal "http://example.com/projects/#{@project.id}/bid/tasks/#{@special_task.id}", polymorphic_url([@project, :bid, @special_task])
+    end
+  end
+
+  def test_nesting_with_array_containing_singleton_resource_and_format_with_superclass_fallback
+    with_test_routes do
+      @project.save
+      @special_task.save
+      assert_equal "http://example.com/projects/#{@project.id}/bid/tasks/#{@special_task.id}.pdf", polymorphic_url([@project, :bid, @special_task], :format => :pdf)
+    end
+  end
+
+  def test_nesting_with_array_containing_namespace_and_singleton_resource_with_superclass_fallback
+    with_admin_test_routes do
+      @project.save
+      @special_task.save
+      assert_equal "http://example.com/admin/projects/#{@project.id}/bid/tasks/#{@special_task.id}", polymorphic_url([:admin, @project, :bid, @special_task])
+    end
+  end
+
+  def test_with_array_containing_single_object_with_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}", polymorphic_url([nil, @special_project])
+    end
+  end
+  
+  def test_with_hash_and_superclass_fallback
+    with_test_routes do 
+      @special_project.save
+      assert_equal "http://example.com/projects/#{@special_project.id}", polymorphic_url(:id => @special_project)
+    end
+  end
+  
   # Tests for names where .plural.singular doesn't round-trip
   def test_with_irregular_plural_record
     with_test_routes do 
       @tax.save
       assert_equal "http://example.com/taxes/#{@tax.id}", polymorphic_url(@tax)
+    end
+  end
+  
+  def test_with_irregular_plural_record_and_superclass_fallback
+    with_test_routes do 
+      @special_tax.save
+      assert_equal "http://example.com/taxes/#{@special_tax.id}", polymorphic_url(@special_tax)
     end
   end
   
