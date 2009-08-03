@@ -236,6 +236,14 @@ uses_memcached 'memcached backed store' do
       end
     end
 
+    def test_local_cache_should_read_and_write_value_with_key_longer_than_250_characters
+      key = 'foo' * 100
+      @cache.with_local_cache do
+        @cache.write(key, 1)
+        assert_equal 1, @cache.read(key)
+      end
+    end
+
     def test_local_cache_of_delete
       @cache.with_local_cache do
         @cache.write('foo', 'bar')
@@ -286,6 +294,16 @@ uses_memcached 'memcached backed store' do
         @cache.write('goo', 2)
         result = @cache.read_multi('foo', 'goo')
         assert_equal({'foo' => 1, 'goo' => 2}, result)
+      end
+    end
+
+    def test_multi_get_with_keys_longer_than_250_characters
+      foo_key = 'foo' * 100
+      @cache.with_local_cache do
+        @cache.write(foo_key, 1)
+        @cache.write('goo', 2)
+        result = @cache.read_multi(foo_key, 'goo')
+        assert_equal({foo_key => 1, 'goo' => 2}, result)
       end
     end
 
