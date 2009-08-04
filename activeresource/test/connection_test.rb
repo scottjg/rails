@@ -1,4 +1,5 @@
 require 'abstract_unit'
+require 'mocha'
 
 class ConnectionTest < Test::Unit::TestCase
   ResponseCodeStub = Struct.new(:code)
