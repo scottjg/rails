@@ -18,6 +18,13 @@ class AuthorizationTest < Test::Unit::TestCase
     end
   end
 
+  def test_authorization_header_not_added_when_explicitely_turn_off_basic_authentication
+		@authenticated_conn.use_basic_authentication = false
+
+    authorization_header = @authenticated_conn.__send__(:authorization_header)
+		assert_equal Hash.new, authorization_header
+  end
+
   def test_authorization_header
     authorization_header = @authenticated_conn.__send__(:authorization_header)
     assert_equal @authorization_request_header['Authorization'], authorization_header['Authorization']
