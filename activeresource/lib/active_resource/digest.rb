@@ -1,3 +1,5 @@
+require "digest/md5"
+
 module ActiveResource
   # Written by Eric Hodel <drbrain@segment7.net>
   # Copied and adapted from http://segment7.net/projects/ruby/snippets/digest_auth.rb
