@@ -195,6 +195,19 @@ class ConnectionTest < Test::Unit::TestCase
     @conn.get("/people/1.xml")
   end
 
+  def test_when_use_basic_authentication_is_true_authorization_header_is_added
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+
+    @conn.use_basic_authentication = true
+    @conn.user = "francois"
+    @conn.password = "life is good"
+
+    @http.expects(:get).with("/people/1.xml", has_entry("Authorization", "Basic ZnJhbmNvaXM6bGlmZSBpcyBnb29k")).returns(stub_everything("HTTP response", :code => "200"))
+    @conn.get("/people/1.xml")
+
+  end
+
   protected
     def assert_response_raises(klass, code)
       assert_raise(klass, "Expected response code #{code} to raise #{klass}") do
