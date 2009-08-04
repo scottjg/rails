@@ -170,13 +170,13 @@ module ActiveResource
 
       # Builds headers for request to remote service.
       def build_request_headers(headers, http_method, uri, response_headers)
-        authorization_header(uri, response_headers).update(default_header).update(http_format_header(http_method)).update(headers)
+        authorization_header(uri, http_method, response_headers).update(default_header).update(http_format_header(http_method)).update(headers)
       end
 
       # Sets authorization header
-      def authorization_header(uri=nil, response_headers={})
+      def authorization_header(uri=nil, http_method=nil, response_headers={})
         if self.use_digest_authentication && uri && response_headers["WWW-Authenticate"].to_s =~ /Digest/ then
-          {"Authorization" => ActiveResource::Digest.authenticate(uri, @user, @password, response_headers["WWW-Authenticate"])}
+          {"Authorization" => ActiveResource::Digest.authenticate(uri, @user, @password, response_headers["WWW-Authenticate"], http_method)}
         elsif self.use_basic_authentication then
           (@user || @password ? { 'Authorization' => 'Basic ' + ["#{@user}:#{ @password}"].pack('m').delete("\r\n") } : {})
         else

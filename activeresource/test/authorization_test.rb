@@ -34,7 +34,7 @@ class AuthorizationTest < Test::Unit::TestCase
       ActiveResource::Digest.const_set("CNONCE", ::Digest::MD5.hexdigest("%x" % 0))
     end
 
-    authorization_header = @authenticated_conn.__send__(:authorization_header, "/people", "WWW-Authenticate" => %(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+    authorization_header = @authenticated_conn.__send__(:authorization_header, "/people", :get, "WWW-Authenticate" => %(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
 
     assert_equal %(Digest username="david", realm="AdGear API", qop=auth, uri="/people", nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", nc=00000000, cnonce="cfcd208495d565ef66e7dff9f98764da", opaque="a21e6002d2bd70e6dbeaca094ded4f93", response="878fe453f5e15622a0d8f3b618ed8989"), authorization_header["Authorization"]
   end

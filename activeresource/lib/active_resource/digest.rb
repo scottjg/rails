@@ -11,7 +11,7 @@ module ActiveResource
     CNONCE = ::Digest::MD5.hexdigest("%x" % (Time.now.to_i + rand(65535)))
     # CNONCE = ActiveSupport::SecureRandom.hex(32)
 
-    def self.authenticate(uri, user, password, auth_header, is_IIS = false)
+    def self.authenticate(uri, user, password, auth_header, method = :get, is_IIS = false)
       uri = URI.parse(uri) unless uri.kind_of?(URI)
       @@nonce_count += 1
 
@@ -22,7 +22,7 @@ module ActiveResource
       $2.gsub(/(\w+)="(.*?)"/) { params[$1] = $2 }
 
       a_1 = "#{user}:#{params['realm']}:#{password}"
-      a_2 = "GET:#{uri.path}"
+      a_2 = "#{method.to_s.upcase}:#{uri.path}"
       request_digest = ''
       request_digest << ::Digest::MD5.hexdigest(a_1)
       request_digest << ':' << params["nonce"]
