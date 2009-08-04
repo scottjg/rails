@@ -150,7 +150,7 @@ module ActiveResource
         raise if retried
         raise unless response["WWW-Authenticate"]
 
-        retried, authz_headers = true, {"WWW-Authenticate" => response["WWW-Authenticate"]}
+        retried, authz_headers = true, response
       end
 
       # Creates new Net::HTTP instance for communication with the
