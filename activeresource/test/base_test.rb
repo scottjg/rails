@@ -180,6 +180,27 @@ class BaseTest < Test::Unit::TestCase
     assert_equal("123", actor.password)
   end
 
+	def test_can_turn_off_basic_authentication
+		assert_nothing_raised do
+			Person.use_basic_authentication = false
+		end
+	end
+
+	def test_basic_authentication_true_by_default
+		actor = Class.new(ActiveResource::Base)
+		assert actor.use_basic_authentication
+	end
+
+	def test_digest_authentication_false_by_default
+		actor = Class.new(ActiveResource::Base)
+		assert !actor.use_digest_authentication
+	end
+
+	def test_base_subclass_without_basic_authentication_turns_off_basic_authentication_of_underlying_connection
+		Person.use_basic_authentication = false
+		assert_equal false, Person.connection.use_basic_authentication
+	end
+
   def test_site_reader_uses_superclass_site_until_written
     # Superclass is Object so returns nil.
     assert_nil ActiveResource::Base.site

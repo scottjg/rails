@@ -289,6 +289,42 @@ module ActiveResource
         @password = password
       end
 
+      # Returns the Basic authentication availability.  Defaults to +true+.
+      def use_basic_authentication
+        # Not using superclass_delegating_reader. See +site+ for explanation
+        if defined?(@use_basic_authentication)
+          @use_basic_authentication
+        elsif superclass != Object && superclass.use_basic_authentication
+          superclass.use_basic_authentication.freeze
+        else
+          true
+        end
+      end
+
+      # Denies / allows using the Basic authentication method.
+      # +true+ by default.
+      def use_basic_authentication=(use_basic_authentication)
+        @connection = nil
+        @use_basic_authentication = use_basic_authentication
+      end
+
+      # Returns the Digest authentication availability.  Defaults to +false+.
+      def use_digest_authentication
+        # Not using superclass_delegating_reader. See +site+ for explanation
+        if defined?(@use_digest_authentication)
+          @use_digest_authentication
+        elsif superclass != Object && superclass.use_digest_authentication
+          superclass.use_digest_authentication.freeze
+        end
+      end
+
+      # Denies / allows using the Digest authentication method.
+      # +false+ by default.
+      def use_digest_authentication=(use_digest_authentication)
+        @connection = nil
+        @use_digest_authentication = use_digest_authentication
+      end
+
       # Sets the format that attributes are sent and received in from a mime type reference:
       #
       #   Person.format = :json
@@ -335,6 +371,8 @@ module ActiveResource
           @connection.user = user if user
           @connection.password = password if password
           @connection.timeout = timeout if timeout
+          @connection.use_basic_authentication = use_basic_authentication
+          @connection.use_digest_authentication = use_digest_authentication
           @connection
         else
           superclass.connection
