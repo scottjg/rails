@@ -17,7 +17,7 @@ module ActiveResource
     }
 
     attr_reader :site, :user, :password, :timeout
-    attr_accessor :format, :use_basic_authentication
+    attr_accessor :format, :use_basic_authentication, :use_digest_authentication
 
     class << self
       def requests
@@ -59,32 +59,32 @@ module ActiveResource
 
     # Executes a GET request.
     # Used to get (find) resources.
-    def get(path, headers = {})
-      format.decode(request(:get, path, build_request_headers(headers, :get)).body)
+    def get(path, headers = {}, authz_headers = {}, retried = false)
+      format.decode(request(:get, path, build_request_headers(headers, :get, self.site.merge(path), authz_headers)).body)
     end
 
     # Executes a DELETE request (see HTTP protocol documentation if unfamiliar).
     # Used to delete resources.
-    def delete(path, headers = {})
-      request(:delete, path, build_request_headers(headers, :delete))
+    def delete(path, headers = {}, authz_headers = {}, retried = false)
+      request(:delete, path, build_request_headers(headers, :delete, self.site.merge(path), authz_headers))
     end
 
     # Executes a PUT request (see HTTP protocol documentation if unfamiliar).
     # Used to update resources.
-    def put(path, body = '', headers = {})
-      request(:put, path, body.to_s, build_request_headers(headers, :put))
+    def put(path, body = '', headers = {}, authz_headers = {}, retried = false)
+      request(:put, path, body.to_s, build_request_headers(headers, :put, self.site.merge(path), authz_headers))
     end
 
     # Executes a POST request.
     # Used to create new resources.
-    def post(path, body = '', headers = {})
-      request(:post, path, body.to_s, build_request_headers(headers, :post))
+    def post(path, body = '', headers = {}, authz_headers = {}, retried = false)
+      request(:post, path, body.to_s, build_request_headers(headers, :post, self.site.merge(path), authz_headers))
     end
 
     # Executes a HEAD request.
     # Used to obtain meta-information about resources, such as whether they exist and their size (via response headers).
-    def head(path, headers = {})
-      request(:head, path, build_request_headers(headers))
+    def head(path, headers = {}, authz_headers = {}, retried = false)
+      request(:head, path, build_request_headers(headers, :head, self.site.merge(path), authz_headers))
     end
 
 
@@ -145,13 +145,15 @@ module ActiveResource
       end
 
       # Builds headers for request to remote service.
-      def build_request_headers(headers, http_method=nil)
-        authorization_header.update(default_header).update(http_format_header(http_method)).update(headers)
+      def build_request_headers(headers, http_method, uri, response_headers)
+        authorization_header(uri, response_headers).update(default_header).update(http_format_header(http_method)).update(headers)
       end
 
       # Sets authorization header
-      def authorization_header
-        if self.use_basic_authentication then
+      def authorization_header(uri=nil, response_headers={})
+        if self.use_digest_authentication && uri && response_headers["WWW-Authenticate"].to_s =~ /Digest/ then
+          {"Authorization" => ActiveResource::Digest.authenticate(uri, user, password, response_headers["WWW-Authenticate"])}
+        elsif self.use_basic_authentication then
           (@user || @password ? { 'Authorization' => 'Basic ' + ["#{@user}:#{ @password}"].pack('m').delete("\r\n") } : {})
         else
           {}

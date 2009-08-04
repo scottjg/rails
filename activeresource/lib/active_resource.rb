@@ -31,6 +31,7 @@ require 'active_model'
 
 module ActiveResource
   autoload :Base, 'active_resource/base'
+  autoload :Digest, 'active_resource/digest'
   autoload :Connection, 'active_resource/connection'
   autoload :CustomMethods, 'active_resource/custom_methods'
   autoload :Formats, 'active_resource/formats'
