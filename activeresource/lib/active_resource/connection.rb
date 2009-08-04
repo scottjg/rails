@@ -34,6 +34,7 @@ module ActiveResource
       self.site = site
       self.format = format
       self.use_basic_authentication = true
+      self.use_digest_authentication = true
     end
 
     # Set URI for remote service.
@@ -72,30 +73,45 @@ module ActiveResource
     # Used to get (find) resources.
     def get(path, headers = {}, authz_headers = {}, retried = false)
       format.decode(request(:get, path, build_request_headers(headers, :get, self.site.merge(path), authz_headers)).body)
+    rescue UnauthorizedAccess => e
+      retried, authz_headers = handle_authentication_failure(retried, e.response)
+      retry
     end
 
     # Executes a DELETE request (see HTTP protocol documentation if unfamiliar).
     # Used to delete resources.
     def delete(path, headers = {}, authz_headers = {}, retried = false)
       request(:delete, path, build_request_headers(headers, :delete, self.site.merge(path), authz_headers))
+    rescue UnauthorizedAccess => e
+      retried, authz_headers = handle_authentication_failure(retried, e.response)
+      retry
     end
 
     # Executes a PUT request (see HTTP protocol documentation if unfamiliar).
     # Used to update resources.
     def put(path, body = '', headers = {}, authz_headers = {}, retried = false)
       request(:put, path, body.to_s, build_request_headers(headers, :put, self.site.merge(path), authz_headers))
+    rescue UnauthorizedAccess => e
+      retried, authz_headers = handle_authentication_failure(retried, e.response)
+      retry
     end
 
     # Executes a POST request.
     # Used to create new resources.
     def post(path, body = '', headers = {}, authz_headers = {}, retried = false)
       request(:post, path, body.to_s, build_request_headers(headers, :post, self.site.merge(path), authz_headers))
+    rescue UnauthorizedAccess => e
+      retried, authz_headers = handle_authentication_failure(retried, e.response)
+      retry
     end
 
     # Executes a HEAD request.
     # Used to obtain meta-information about resources, such as whether they exist and their size (via response headers).
     def head(path, headers = {}, authz_headers = {}, retried = false)
       request(:head, path, build_request_headers(headers, :head, self.site.merge(path), authz_headers))
+    rescue UnauthorizedAccess => e
+      retried, authz_headers = handle_authentication_failure(retried, e.response)
+      retry
     end
 
 
@@ -143,6 +159,13 @@ module ActiveResource
           else
             raise(ConnectionError.new(response, "Unknown response code: #{response.code}"))
         end
+      end
+
+      def handle_authentication_failure(retried, response)
+        raise if retried
+        raise unless response["WWW-Authenticate"]
+
+        retried, authz_headers = true, {"WWW-Authenticate" => response["WWW-Authenticate"]}
       end
 
       # Creates new Net::HTTP instance for communication with the
@@ -206,7 +229,7 @@ module ActiveResource
       # Sets authorization header
       def authorization_header(uri=nil, response_headers={})
         if self.use_digest_authentication && uri && response_headers["WWW-Authenticate"].to_s =~ /Digest/ then
-          {"Authorization" => ActiveResource::Digest.authenticate(uri, user, password, response_headers["WWW-Authenticate"])}
+          {"Authorization" => ActiveResource::Digest.authenticate(uri, @user, @password, response_headers["WWW-Authenticate"])}
         elsif self.use_basic_authentication then
           (@user || @password ? { 'Authorization' => 'Basic ' + ["#{@user}:#{ @password}"].pack('m').delete("\r\n") } : {})
         else
