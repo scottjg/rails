@@ -184,6 +184,113 @@ class ConnectionTest < Test::Unit::TestCase
     assert_nothing_raised(Mocha::ExpectationError) { @conn.get(path, {'Accept' => 'application/xhtml+xml'}) }
   end
 
+  def test_head_retries_when_unauthorized_a_first_time
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+    @conn.user = "david"
+    @conn.password = "test123"
+    @conn.use_basic_authentication = false
+    @conn.use_digest_authentication = true
+
+    @resp_unauthorized = stub_everything("HTTP Unauthorized Response", :code => "401")
+    @resp_unauthorized.stubs(:[]).with("WWW-Authenticate").returns(%(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+    @resp_ok = stub_everything("HTTP OK", :code => "200")
+
+    path = "/people/2.xml"
+    @http.expects(:head).with(path, any_parameters).returns(@resp_unauthorized)
+    @http.expects(:head).with(path, has_entry("Authorization", regexp_matches(/Digest/))).returns(@resp_ok)
+
+    assert_nothing_raised do
+      @conn.head(path)
+    end
+  end
+
+  def test_get_retries_when_unauthorized_a_first_time
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+    @conn.user = "david"
+    @conn.password = "test123"
+    @conn.use_basic_authentication = false
+    @conn.use_digest_authentication = true
+
+    @resp_unauthorized = stub_everything("HTTP Unauthorized Response", :code => "401")
+    @resp_unauthorized.stubs(:[]).with("WWW-Authenticate").returns(%(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+    @resp_ok = stub_everything("HTTP OK", :code => "200")
+
+    path = "/people/2.xml"
+    @http.expects(:get).with(path, any_parameters).returns(@resp_unauthorized)
+    @http.expects(:get).with(path, has_entry("Authorization", regexp_matches(/Digest/))).returns(@resp_ok)
+
+    assert_nothing_raised do
+      @conn.get(path)
+    end
+  end
+
+  def test_post_retries_when_unauthorized_and_response_has_www_authenticate_header_present_with_digest
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+    @conn.user = "david"
+    @conn.password = "test123"
+    @conn.use_basic_authentication = false
+    @conn.use_digest_authentication = true
+
+    @resp_unauthorized = stub_everything("HTTP Unauthorized Response", :code => "401")
+    @resp_unauthorized.stubs(:[]).with("WWW-Authenticate").returns(%(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+    @resp_ok = stub_everything("HTTP OK", :code => "200")
+
+    path = "/people/2.xml"
+    data = "<?xml?><person><name>David</name></person>"
+    @http.expects(:post).with(path, data, any_parameters).returns(@resp_unauthorized)
+    @http.expects(:post).with(path, data, has_entry("Authorization", regexp_matches(/Digest/))).returns(@resp_ok)
+
+    assert_nothing_raised do
+      @conn.post(path, data)
+    end
+  end
+
+  def test_put_retries_when_unauthorized_and_response_has_www_authenticate_header_present_with_digest
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+    @conn.user = "david"
+    @conn.password = "test123"
+    @conn.use_basic_authentication = false
+    @conn.use_digest_authentication = true
+
+    @resp_unauthorized = stub_everything("HTTP Unauthorized Response", :code => "401")
+    @resp_unauthorized.stubs(:[]).with("WWW-Authenticate").returns(%(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+    @resp_ok = stub_everything("HTTP OK", :code => "200")
+
+    path = "/people/2.xml"
+    data = "<?xml?><person><name>David</name></person>"
+    @http.expects(:put).with(path, data, any_parameters).returns(@resp_unauthorized)
+    @http.expects(:put).with(path, data, has_entry("Authorization", regexp_matches(/Digest/))).returns(@resp_ok)
+
+    assert_nothing_raised do
+      @conn.put(path, data)
+    end
+  end
+
+  def test_delete_retries_when_unauthorized_and_response_has_www_authenticate_header_present_with_digest
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+    @conn.user = "david"
+    @conn.password = "test123"
+    @conn.use_basic_authentication = false
+    @conn.use_digest_authentication = true
+
+    @resp_unauthorized = stub_everything("HTTP Unauthorized Response", :code => "401")
+    @resp_unauthorized.stubs(:[]).with("WWW-Authenticate").returns(%(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+    @resp_ok = stub_everything("HTTP OK", :code => "200")
+
+    path = "/people/2.xml"
+    @http.expects(:delete).with(path, any_parameters).returns(@resp_unauthorized)
+    @http.expects(:delete).with(path, has_entry("Authorization", regexp_matches(/Digest/))).returns(@resp_ok)
+
+    assert_nothing_raised do
+      @conn.delete(path)
+    end
+  end
+
   protected
     def assert_response_raises(klass, code)
       assert_raise(klass, "Expected response code #{code} to raise #{klass}") do
