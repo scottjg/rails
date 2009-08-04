@@ -183,6 +183,18 @@ class ConnectionTest < Test::Unit::TestCase
     assert_nothing_raised(Mocha::ExpectationError) { @conn.get(path, {'Accept' => 'application/xhtml+xml'}) }
   end
 
+  def test_when_use_basic_authentication_is_false_no_authorization_header_is_sent
+    @http = mock('new Net::HTTP')
+    @conn.stubs(:http).returns(@http)
+
+    @conn.use_basic_authentication = false
+    @conn.user = "francois"
+    @conn.password = "life is good"
+
+    @http.expects(:get).with("/people/1.xml", Not(has_key("Authorization"))).returns(stub_everything("HTTP response", :code => "200"))
+    @conn.get("/people/1.xml")
+  end
+
   protected
     def assert_response_raises(klass, code)
       assert_raise(klass, "Expected response code #{code} to raise #{klass}") do

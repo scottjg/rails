@@ -17,7 +17,7 @@ module ActiveResource
     }
 
     attr_reader :site, :user, :password, :timeout
-    attr_accessor :format
+    attr_accessor :format, :use_basic_authentication
 
     class << self
       def requests
@@ -32,6 +32,7 @@ module ActiveResource
       @user = @password = nil
       self.site = site
       self.format = format
+      self.use_basic_authentication = true
     end
 
     # Set URI for remote service.
@@ -150,7 +151,11 @@ module ActiveResource
 
       # Sets authorization header
       def authorization_header
-        (@user || @password ? { 'Authorization' => 'Basic ' + ["#{@user}:#{ @password}"].pack('m').delete("\r\n") } : {})
+        if self.use_basic_authentication then
+          (@user || @password ? { 'Authorization' => 'Basic ' + ["#{@user}:#{ @password}"].pack('m').delete("\r\n") } : {})
+        else
+          {}
+        end
       end
 
       def http_format_header(http_method)
