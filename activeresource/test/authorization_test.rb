@@ -19,10 +19,24 @@ class AuthorizationTest < Test::Unit::TestCase
   end
 
   def test_authorization_header_not_added_when_explicitely_turn_off_basic_authentication
-		@authenticated_conn.use_basic_authentication = false
+    @authenticated_conn.use_basic_authentication = false
 
     authorization_header = @authenticated_conn.__send__(:authorization_header)
-		assert_equal Hash.new, authorization_header
+    assert_equal Hash.new, authorization_header
+  end
+
+  def test_authorization_header_when_previous_www_authenticate_header_available_and_specifies_digest_authentication_accepted
+    @authenticated_conn.use_digest_authentication = true
+    @authenticated_conn.use_basic_authentication  = false
+
+    # Because ActiveResource::Digest depends on Time.now, we reassign a known cnonce to allow canned values to be used
+    silence_warnings do
+      ActiveResource::Digest.const_set("CNONCE", ::Digest::MD5.hexdigest("%x" % 0))
+    end
+
+    authorization_header = @authenticated_conn.__send__(:authorization_header, "/people", "WWW-Authenticate" => %(Digest realm="AdGear API", qop="auth", algorithm=MD5, nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", opaque="a21e6002d2bd70e6dbeaca094ded4f93"))
+
+    assert_equal %(Digest username="david", realm="AdGear API", qop=auth, uri="/people", nonce="MTI0OTQxMTQzNzplOTEwNzM1ZThiMmU3NzdiMGE4NmU2ODQ2MjI2ZjQzMA==", nc=00000000, cnonce="cfcd208495d565ef66e7dff9f98764da", opaque="a21e6002d2bd70e6dbeaca094ded4f93", response="878fe453f5e15622a0d8f3b618ed8989"), authorization_header["Authorization"]
   end
 
   def test_authorization_header
