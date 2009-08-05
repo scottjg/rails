@@ -150,7 +150,7 @@ module ActiveResource
         raise if retried
         raise unless response["WWW-Authenticate"]
 
-        logger.debug {"Retrying failed 401 request with #{response["WWW-Authenticate"].inspect}"}
+        logger.debug {"Retrying failed 401 request with #{response["WWW-Authenticate"].inspect}"} if logger
         retried, authz_headers = true, response
       end
 
