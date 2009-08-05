@@ -59,7 +59,7 @@ module ActionView
         self.class.send(:include, helper_class)
       end
 
-      self.output_buffer = ActionView::SafeBuffer.new
+      self.output_buffer = ''
     end
 
     class TestController < ActionController::Base
