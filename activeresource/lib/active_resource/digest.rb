@@ -23,6 +23,7 @@ module ActiveResource
 
       a_1 = "#{user}:#{params['realm']}:#{password}"
       a_2 = "#{method.to_s.upcase}:#{uri.path}"
+      a_2 << "?#{uri.query}" unless uri.query.blank?
       request_digest = ''
       request_digest << ::Digest::MD5.hexdigest(a_1)
       request_digest << ':' << params["nonce"]
