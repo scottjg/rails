@@ -9,6 +9,10 @@ module ActionView #:nodoc:
       end
     end
 
+    def concat(value)
+      self << value
+    end
+
     def html_safe?
       true
     end
