@@ -45,8 +45,12 @@ N = (ENV['N'] || 1000).to_i
 class BasePostController < ActionController::Base
   append_view_path "#{File.dirname(__FILE__)}/views"
 
+  def overhead
+    self.response_body = ''
+  end
+
   def index
-    render :text => 'Hello'
+    render :text => ''
   end
 
   def partial
@@ -57,8 +61,16 @@ class BasePostController < ActionController::Base
     render :partial => "/many_partials"
   end
 
+  def hundred_partials
+    render :partial => "/hundred_partials"
+  end
+
   def partial_collection
     render :partial => "/collection", :collection => [1,2,3,4,5,6,7,8,9,10]
+  end
+  
+  def large_collection
+    render :partial => "/collection", :collection => (1...100).to_a
   end
 
   def show_template
@@ -73,6 +85,8 @@ Runner.run(BasePostController, N, 'partial', "/?action=partial", false)
 Runner.run(BasePostController, N, 'many partials', "/?action=many_partials", false)
 Runner.run(BasePostController, N, 'collection', "/?action=partial_collection", false)
 Runner.run(BasePostController, N, 'template', "/?action=show_template", false)
+Runner.run(BasePostController, N, 'hundred_partials', "/?action=hundred_partials", false)
+Runner.run(BasePostController, N, 'large_collection', "/?action=large_collection", false)
 
 (ENV["M"] || 1).to_i.times do
   Runner.run(BasePostController, N, 'index', "/?action=index")
@@ -80,6 +94,8 @@ Runner.run(BasePostController, N, 'template', "/?action=show_template", false)
   Runner.run(BasePostController, N, 'many partials', "/?action=many_partials")
   Runner.run(BasePostController, N, 'collection', "/?action=partial_collection")
   Runner.run(BasePostController, N, 'template', "/?action=show_template")
+  Runner.run(BasePostController, N, 'hundred_partials', "/?action=hundred_partials")
+  Runner.run(BasePostController, N, 'large_collection', "/?action=large_collection")
 end
   # Runner.run(BasePostController.action(:many_partials), N, 'index')
   # Runner.run(BasePostController.action(:many_partials), N, 'many_partials')
