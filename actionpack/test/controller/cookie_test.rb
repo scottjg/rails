@@ -23,6 +23,10 @@ class CookieTest < ActionController::TestCase
       cookies["login"]     = "XJ-122"
     end
 
+    def count
+      render :text => cookies.size
+    end
+
     def access_frozen_cookies
       cookies["will"] = "work"
     end
@@ -117,5 +121,12 @@ class CookieTest < ActionController::TestCase
   def test_delete_cookie_with_path
     get :delete_cookie_with_path
     assert_equal ["user_name=; path=/beaten; expires=Thu, 01-Jan-1970 00:00:00 GMT"], @response.headers["Set-Cookie"]
+  end
+
+  def test_cookies_are_clearable_from_test
+    get :authenticate
+    cookies.clear
+    response = get :count
+    assert_equal "0", response.body
   end
 end
