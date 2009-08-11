@@ -45,12 +45,12 @@ N = (ENV['N'] || 1000).to_i
 class BasePostController < ActionController::Base
   append_view_path "#{File.dirname(__FILE__)}/views"
 
-  def overhead
-    self.response_body = ''
+  def index
+    render :text => 'Hello'
   end
 
-  def index
-    render :text => ''
+  def show_template
+    render :template => "template"
   end
 
   def partial
@@ -72,13 +72,7 @@ class BasePostController < ActionController::Base
   def large_collection
     render :partial => "/collection", :collection => (1...100).to_a
   end
-
-  def show_template
-    render :template => "template"
-  end
 end
-
-# p BasePostController.call(Rack::MockRequest.env_for("/?action=index").merge("REQUEST_URI" => "/")).body
 
 Runner.run(BasePostController, N, 'index', "/?action=index", false)
 Runner.run(BasePostController, N, 'partial', "/?action=partial", false)
@@ -97,7 +91,3 @@ Runner.run(BasePostController, N, 'large_collection', "/?action=large_collection
   Runner.run(BasePostController, N, 'hundred_partials', "/?action=hundred_partials")
   Runner.run(BasePostController, N, 'large_collection', "/?action=large_collection")
 end
-  # Runner.run(BasePostController.action(:many_partials), N, 'index')
-  # Runner.run(BasePostController.action(:many_partials), N, 'many_partials')
-  # Runner.run(BasePostController.action(:partial_collection), N, 'collection')
-  # Runner.run(BasePostController.action(:show_template), N, 'template')
