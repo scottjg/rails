@@ -81,13 +81,25 @@ class BasePostController < ActionController::Base
     render :partial => "/collection", :collection => [1,2,3,4,5,6,7,8,9,10]
   end
 
+  COLLECTION = []
+  1000.times do |i|
+    COLLECTION[i] = {:name => "Hello my name is omg", :address => "333 omg"}
+  end
+
   def large_collection
-    render :partial => "/collection", :collection => (1...1000).to_a
+    render :partial => "/collection", :collection => COLLECTION
   end
 
   def show_template
     render :template => "template"
   end
+  
+  module Foo
+    def omg
+      "omg"
+    end
+  end
+  helper Foo
 end
 
 OK = [200, {}, []]
@@ -102,23 +114,23 @@ end
 ActionController::Base.use_accept_header = false
 
 unless ENV["PROFILE"]
-  Runner.run(BasePostController.action(:overhead), 1, 'overhead', false)
-  Runner.run(BasePostController.action(:index), 1, 'index', false)
-  Runner.run(BasePostController.action(:show_template), 1, 'template', false)
-  Runner.run(BasePostController.action(:partial), 1, 'partial', false)
-  Runner.run(BasePostController.action(:many_partials), 1, 'many_partials', false)
-  Runner.run(BasePostController.action(:partial_collection), 1, 'collection', false)
-  Runner.run(BasePostController.action(:hundred_partials), 1, 'hundred_partials', false)
+  # Runner.run(BasePostController.action(:overhead), 1, 'overhead', false)
+  # Runner.run(BasePostController.action(:index), 1, 'index', false)
+  # Runner.run(BasePostController.action(:show_template), 1, 'template', false)
+  # Runner.run(BasePostController.action(:partial), 1, 'partial', false)
+  # Runner.run(BasePostController.action(:many_partials), 1, 'many_partials', false)
+  # Runner.run(BasePostController.action(:partial_collection), 1, 'collection', false)
+  # Runner.run(BasePostController.action(:hundred_partials), 1, 'hundred_partials', false)
   Runner.run(BasePostController.action(:large_collection), 1, 'large_collection', false)
 
   (ENV["M"] || 1).to_i.times do
-    Runner.run(BasePostController.action(:overhead), N, 'overhead')
-    Runner.run(BasePostController.action(:index), N, 'index')
-    Runner.run(BasePostController.action(:show_template), N, 'template')
-    Runner.run(BasePostController.action(:partial), N, 'partial')
-    Runner.run(BasePostController.action(:many_partials), N, 'many_partials')
-    Runner.run(BasePostController.action(:partial_collection), N, 'collection')
-    Runner.run(BasePostController.action(:hundred_partials), N, 'hundred_partials')
+    # Runner.run(BasePostController.action(:overhead), N, 'overhead')
+    # Runner.run(BasePostController.action(:index), N, 'index')
+    # Runner.run(BasePostController.action(:show_template), N, 'template')
+    # Runner.run(BasePostController.action(:partial), N, 'partial')
+    # Runner.run(BasePostController.action(:many_partials), N, 'many_partials')
+    # Runner.run(BasePostController.action(:partial_collection), N, 'collection')
+    # Runner.run(BasePostController.action(:hundred_partials), N, 'hundred_partials')
     Runner.run(BasePostController.action(:large_collection), N, 'large_collection')
   end
 else
