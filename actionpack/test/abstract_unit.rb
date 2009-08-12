@@ -13,13 +13,13 @@ require 'test/unit'
 require 'active_support'
 
 require 'active_support/test_case'
-require 'action_controller/abstract'
 require 'action_controller'
 require 'fixture_template'
 require 'action_controller/testing/process'
 require 'action_view/test_case'
 require 'action_controller/testing/integration'
 require 'active_support/dependencies'
+require 'active_model'
 
 $tags[:new_base] = true
 
@@ -77,7 +77,7 @@ module ActionController
     def assert_template(options = {}, message = nil)
       validate_request!
 
-      hax = @controller._action_view.instance_variable_get(:@_rendered)
+      hax = @controller.view_context.instance_variable_get(:@_rendered)
 
       case options
       when NilClass, String
@@ -97,7 +97,7 @@ module ActionController
           partials = hax[:partials]
           if expected_count = options[:count]
             found = partials.detect { |p, _| p.identifier.match(expected_partial) }
-            actual_count = found.nil? ? 0 : found.second
+            actual_count = found.nil? ? 0 : found[1]
             msg = build_message(message,
                     "expecting ? to be rendered ? time(s) but rendered ? time(s)",
                      expected_partial, expected_count, actual_count)

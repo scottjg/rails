@@ -154,7 +154,8 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert !authors(:david).posts.ranked_by_comments.limit(5).empty?
     assert_not_equal Post.ranked_by_comments.limit(5), authors(:david).posts.ranked_by_comments.limit(5)
     assert_not_equal Post.top(5), authors(:david).posts.top(5)
-    assert_equal authors(:david).posts.ranked_by_comments.limit(5), authors(:david).posts.top(5)
+    # Oracle sometimes sorts differently if WHERE condition is changed
+    assert_equal authors(:david).posts.ranked_by_comments.limit(5).sort_by(&:id), authors(:david).posts.top(5).sort_by(&:id)
     assert_equal Post.ranked_by_comments.limit(5), Post.top(5)
   end
 
@@ -354,10 +355,6 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal [posts(:sti_comments)], Post.with_special_comments.with_post(4).all.uniq
   end
 
-  def test_methods_invoked_within_scopes_should_respect_scope
-    assert_equal [], Topic.approved.by_rejected_ids.proxy_options[:conditions][:id]
-  end
-
   def test_named_scopes_batch_finders
     assert_equal 3, Topic.approved.count
 
@@ -369,6 +366,12 @@ class NamedScopeTest < ActiveRecord::TestCase
       Topic.approved.find_in_batches(:batch_size => 2) do |group|
         group.each {|t| assert t.approved? }
       end
+    end
+  end
+
+  def test_table_names_for_chaining_scopes_with_and_without_table_name_included
+    assert_nothing_raised do
+      Comment.for_first_post.for_first_author.all
     end
   end
 end

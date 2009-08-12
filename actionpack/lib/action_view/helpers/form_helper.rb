@@ -288,6 +288,8 @@ module ActionView
       def apply_form_for_options!(object_or_array, options) #:nodoc:
         object = object_or_array.is_a?(Array) ? object_or_array.last : object_or_array
 
+        object = convert_to_model(object)
+
         html_options =
           if object.respond_to?(:new_record?) && object.new_record?
             { :class  => dom_class(object, :new),  :id => dom_id(object), :method => :post }
@@ -488,7 +490,7 @@ module ActionView
           object_name = ActionController::RecordIdentifier.singular_class_name(object)
         end
 
-        builder = options[:builder] || ActionView::Base.default_form_builder
+        builder = options[:builder] || ActionView.default_form_builder
         yield builder.new(object_name, object, self, options, block)
       end
 
@@ -626,8 +628,8 @@ module ActionView
 
       # Returns a checkbox tag tailored for accessing a specified attribute (identified by +method+) on an object
       # assigned to the template (identified by +object+). This object must be an instance object (@object) and not a local object.
-      # It's intended that +method+ returns an integer and if that integer is above zero, then the checkbox is checked. 
-      # Additional options on the input tag can be passed as a hash with +options+. The +checked_value+ defaults to 1 
+      # It's intended that +method+ returns an integer and if that integer is above zero, then the checkbox is checked.
+      # Additional options on the input tag can be passed as a hash with +options+. The +checked_value+ defaults to 1
       # while the default +unchecked_value+ is set to 0 which is convenient for boolean values.
       #
       # ==== Gotcha
@@ -709,7 +711,8 @@ module ActionView
       end
     end
 
-    class InstanceTag #:nodoc:
+    module InstanceTagMethods #:nodoc:
+      extend ActiveSupport::Concern
       include Helpers::TagHelper, Helpers::FormTagHelper
 
       attr_reader :method_name, :object_name
@@ -735,6 +738,7 @@ module ActionView
         options = options.stringify_keys
         tag_value = options.delete("value")
         name_and_id = options.dup
+        name_and_id["id"] = name_and_id["for"]
         add_default_name_and_id_for_value(tag_value, name_and_id)
         options.delete("index")
         options["for"] ||= name_and_id["id"]
@@ -832,7 +836,7 @@ module ActionView
         self.class.value_before_type_cast(object, @method_name)
       end
 
-      class << self
+      module ClassMethods
         def value(object, method_name)
           object.send method_name unless object.nil?
         end
@@ -869,8 +873,8 @@ module ActionView
 
       private
         def add_default_name_and_id_for_value(tag_value, options)
-          if tag_value
-            pretty_tag_value    = tag_value.to_s.gsub(/\s/, "_").gsub(/\W/, "").downcase
+          unless tag_value.nil?
+            pretty_tag_value = tag_value.to_s.gsub(/\s/, "_").gsub(/\W/, "").downcase
             specified_id = options["id"]
             add_default_name_and_id(options)
             options["id"] += "_#{pretty_tag_value}" unless specified_id
@@ -918,6 +922,10 @@ module ActionView
         end
     end
 
+    class InstanceTag
+      include InstanceTagMethods
+    end
+
     class FormBuilder #:nodoc:
       # The methods which wrap a form helper call.
       class_inheritable_accessor :field_helpers
@@ -925,7 +933,16 @@ module ActionView
 
       attr_accessor :object_name, :object, :options
 
+      def self.model_name
+        @model_name ||= Struct.new(:partial_path).new(name.demodulize.underscore.sub!(/_builder$/, ''))
+      end
+
+      def to_model
+        self
+      end
+
       def initialize(object_name, object, template, options, proc)
+        @nested_child_index = {}
         @object_name, @object, @template, @options, @proc = object_name, object, template, options, proc
         @default_options = @options ? @options.slice(:index) : {}
         if @object_name.to_s.match(/\[\]$/)
@@ -1021,14 +1038,14 @@ module ActionView
         def fields_for_with_nested_attributes(association_name, args, block)
           name = "#{object_name}[#{association_name}_attributes]"
           association = @object.send(association_name)
-          explicit_object = args.first if args.first.respond_to?(:new_record?)
+          explicit_object = args.first.to_model if args.first.respond_to?(:to_model)
 
           if association.is_a?(Array)
             children = explicit_object ? [explicit_object] : association
             explicit_child_index = args.last[:child_index] if args.last.is_a?(Hash)
 
             children.map do |child|
-              fields_for_nested_model("#{name}[#{explicit_child_index || nested_child_index}]", child, args, block)
+              fields_for_nested_model("#{name}[#{explicit_child_index || nested_child_index(name)}]", child, args, block)
             end.join
           else
             fields_for_nested_model(name, explicit_object || association, args, block)
@@ -1046,15 +1063,28 @@ module ActionView
           end
         end
 
-        def nested_child_index
-          @nested_child_index ||= -1
-          @nested_child_index += 1
+        def nested_child_index(name)
+          @nested_child_index[name] ||= -1
+          @nested_child_index[name] += 1
         end
     end
   end
 
-  class << Base
+  class << ActionView
     attr_accessor :default_form_builder
   end
-  Base.default_form_builder = ::ActionView::Helpers::FormBuilder
+
+  self.default_form_builder = ::ActionView::Helpers::FormBuilder
+
+  # 2.3 compatibility
+  class << Base
+    def default_form_builder=(builder)
+      ActionView.default_form_builder = builder
+    end
+
+    def default_form_builder
+      ActionView.default_form_builder
+    end
+  end
+
 end

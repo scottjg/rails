@@ -1,10 +1,15 @@
 require 'abstract_unit'
+require 'active_model'
 
-Bunny = Struct.new(:Bunny, :id)
-Bunny.extend ActiveModel::Naming
+class Bunny < Struct.new(:Bunny, :id)
+  extend ActiveModel::Naming
+  include ActiveModel::Conversion
+end
 
 class Author
   extend ActiveModel::Naming
+  include ActiveModel::Conversion
+
   attr_reader :id
   def save; @id = 1 end
   def new_record?; @id.nil? end
@@ -15,6 +20,7 @@ end
 
 class Article
   extend ActiveModel::Naming
+  include ActiveModel::Conversion
   attr_reader :id
   attr_reader :author_id
   def save; @id = 1; @author_id = 1 end
@@ -136,7 +142,7 @@ class PrototypeHelperTest < PrototypeHelperBaseTest
   end
 
   def test_form_remote_tag_with_method
-    assert_dom_equal %(<form action=\"http://www.example.com/fast\" method=\"post\" onsubmit=\"new Ajax.Updater('glass_of_beer', 'http://www.example.com/fast', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;\"><div style='margin:0;padding:0'><input name='_method' type='hidden' value='put' /></div>),
+    assert_dom_equal %(<form action=\"http://www.example.com/fast\" method=\"post\" onsubmit=\"new Ajax.Updater('glass_of_beer', 'http://www.example.com/fast', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;\"><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div>),
       form_remote_tag(:update => "glass_of_beer", :url => { :action => :fast  }, :html => { :method => :put })
   end
 
@@ -164,7 +170,7 @@ class PrototypeHelperTest < PrototypeHelperBaseTest
     @record.save
     remote_form_for(@record) {}
 
-    expected = %(<form action='#{author_path(@record)}' id='edit_author_1' method='post' onsubmit="new Ajax.Request('#{author_path(@record)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_author'><div style='margin:0;padding:0'><input name='_method' type='hidden' value='put' /></div></form>)
+    expected = %(<form action='#{author_path(@record)}' id='edit_author_1' method='post' onsubmit="new Ajax.Request('#{author_path(@record)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_author'><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
     assert_dom_equal expected, output_buffer
   end
 
@@ -180,7 +186,7 @@ class PrototypeHelperTest < PrototypeHelperBaseTest
     @article.save
     remote_form_for([@author, @article]) {}
 
-    expected = %(<form action='#{author_article_path(@author, @article)}' id='edit_article_1' method='post' onsubmit="new Ajax.Request('#{author_article_path(@author, @article)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_article'><div style='margin:0;padding:0'><input name='_method' type='hidden' value='put' /></div></form>)
+    expected = %(<form action='#{author_article_path(@author, @article)}' id='edit_article_1' method='post' onsubmit="new Ajax.Request('#{author_article_path(@author, @article)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_article'><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
     assert_dom_equal expected, output_buffer
   end
 

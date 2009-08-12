@@ -72,6 +72,34 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal '9.9.9.9', request.remote_ip
   end
 
+  test "remote ip with user specified trusted proxies" do
+    ActionController::Base.trusted_proxies = /^67\.205\.106\.73$/i
+
+    request = stub_request 'REMOTE_ADDR' => '67.205.106.73',
+                           'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
+    assert_equal '3.4.5.6', request.remote_ip
+
+    request = stub_request 'REMOTE_ADDR' => '172.16.0.1,67.205.106.73',
+                           'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
+    assert_equal '3.4.5.6', request.remote_ip
+
+    request = stub_request 'REMOTE_ADDR' => '67.205.106.73,172.16.0.1',
+                           'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
+    assert_equal '3.4.5.6', request.remote_ip
+
+    request = stub_request 'REMOTE_ADDR' => '67.205.106.74,172.16.0.1',
+                           'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
+    assert_equal '67.205.106.74', request.remote_ip
+
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => 'unknown,67.205.106.73'
+    assert_equal 'unknown', request.remote_ip
+
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => '9.9.9.9, 3.4.5.6, 10.0.0.1, 67.205.106.73'
+    assert_equal '3.4.5.6', request.remote_ip
+
+    ActionController::Base.trusted_proxies = nil
+  end
+
   test "domains" do
     request = stub_request 'HTTP_HOST' => 'www.rubyonrails.org'
     assert_equal "rubyonrails.org", request.domain
@@ -338,16 +366,11 @@ class RequestTest < ActiveSupport::TestCase
   end
 
   test "XMLHttpRequest" do
-    begin
-      ActionController::Base.use_accept_header, old =
-        false, ActionController::Base.use_accept_header
-
+    with_accept_header false do
       request = stub_request 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest'
       request.expects(:parameters).at_least_once.returns({})
       assert request.xhr?
       assert_equal Mime::JS, request.format
-    ensure
-      ActionController::Base.use_accept_header = old
     end
   end
 
@@ -396,10 +419,54 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal({"bar" => 2}, request.query_parameters)
   end
 
+  test "formats with accept header" do
+    with_accept_header true do
+      request = stub_request 'HTTP_ACCEPT' => 'text/html'
+      request.expects(:parameters).at_least_once.returns({})
+      assert_equal [ Mime::HTML ], request.formats
+
+      request = stub_request 'CONTENT_TYPE' => 'application/xml; charset=UTF-8'
+      request.expects(:parameters).at_least_once.returns({})
+      assert_equal with_set(Mime::XML, Mime::HTML, Mime::ALL), request.formats
+    end
+
+    with_accept_header false do
+      request = stub_request
+      request.expects(:parameters).at_least_once.returns({ :format => :txt })
+      assert_equal with_set(Mime::TEXT), request.formats
+    end
+  end
+
+  test "negotiate_mime" do
+    with_accept_header true do
+      request = stub_request 'HTTP_ACCEPT' => 'text/html'
+      request.expects(:parameters).at_least_once.returns({})
+
+      assert_equal nil, request.negotiate_mime([Mime::XML, Mime::JSON])
+      assert_equal Mime::HTML, request.negotiate_mime([Mime::XML, Mime::HTML])
+      assert_equal Mime::HTML, request.negotiate_mime([Mime::XML, Mime::ALL])
+
+      request = stub_request 'CONTENT_TYPE' => 'application/xml; charset=UTF-8'
+      request.expects(:parameters).at_least_once.returns({})
+      assert_equal Mime::XML, request.negotiate_mime([Mime::XML, Mime::CSV])
+      assert_equal Mime::CSV, request.negotiate_mime([Mime::CSV, Mime::YAML])
+    end
+  end
+
 protected
 
   def stub_request(env={})
     ActionDispatch::Request.new(env)
   end
 
+  def with_set(*args)
+    args
+  end
+
+  def with_accept_header(value)
+    ActionController::Base.use_accept_header, old = value, ActionController::Base.use_accept_header
+    yield
+  ensure
+    ActionController::Base.use_accept_header = old
+  end
 end

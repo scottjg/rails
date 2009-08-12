@@ -8,17 +8,11 @@ module ActiveRecord
       alias_method :new, :build
 
       def create!(attrs = nil)
-        transaction do
-          self << (object = attrs ? @reflection.klass.send(:with_scope, :create => attrs) { @reflection.create_association! } : @reflection.create_association!)
-          object
-        end
+        create_record(attrs, true)
       end
 
       def create(attrs = nil)
-        transaction do
-          self << (object = attrs ? @reflection.klass.send(:with_scope, :create => attrs) { @reflection.create_association } : @reflection.create_association)
-          object
-        end
+        create_record(attrs, false)
       end
 
       def destroy(*records)
@@ -36,8 +30,18 @@ module ActiveRecord
         return @target.size if loaded?
         return count
       end
-      
+
       protected
+        def create_record(attrs, force = true)
+          ensure_owner_is_not_new
+
+          transaction do
+            object = @reflection.klass.new(attrs)
+            add_record_to_target_with_callbacks(object) {|r| insert_record(object, force) }
+            object
+          end
+        end
+
         def target_reflection_has_associated_record?
           if @reflection.through_reflection.macro == :belongs_to && @owner[@reflection.through_reflection.primary_key_name].blank?
             false
@@ -50,7 +54,7 @@ module ActiveRecord
           options[:select]  = construct_select(options[:select])
           options[:from]  ||= construct_from
           options[:joins]   = construct_joins(options[:joins])
-          options[:include] = @reflection.source_reflection.options[:include] if options[:include].nil?
+          options[:include] = @reflection.source_reflection.options[:include] if options[:include].nil? && @reflection.source_reflection.options[:include]
         end
         
         def insert_record(record, force = true, validate = true)
@@ -61,9 +65,10 @@ module ActiveRecord
               return false unless record.save(validate)
             end
           end
-          through_reflection = @reflection.through_reflection
-          klass = through_reflection.klass
-          @owner.send(@reflection.through_reflection.name).proxy_target << klass.send(:with_scope, :create => construct_join_attributes(record)) { through_reflection.create_association! }
+
+          through_association = @owner.send(@reflection.through_reflection.name)
+          through_record = through_association.create!(construct_join_attributes(record))
+          through_association.proxy_target << through_record
         end
 
         # TODO - add dependent option support
@@ -90,15 +95,7 @@ module ActiveRecord
               @finder_sql = construct_conditions
           end
 
-          if @reflection.options[:counter_sql]
-            @counter_sql = interpolate_sql(@reflection.options[:counter_sql])
-          elsif @reflection.options[:finder_sql]
-            # replace the SELECT clause with COUNT(*), preserving any hints within /* ... */
-            @reflection.options[:counter_sql] = @reflection.options[:finder_sql].sub(/SELECT (\/\*.*?\*\/ )?(.*)\bFROM\b/im) { "SELECT #{$1}COUNT(*) FROM" }
-            @counter_sql = interpolate_sql(@reflection.options[:counter_sql])
-          else
-            @counter_sql = @finder_sql
-          end
+          construct_counter_sql
         end
 
         def has_cached_counter?

@@ -1,22 +1,23 @@
 require 'abstract_unit'
 
 class ActiveRecordHelperTest < ActionView::TestCase
-  tests ActionView::Helpers::ActiveRecordHelper
+  tests ActionView::Helpers::ActiveModelHelper
 
   silence_warnings do
-    Post = Struct.new("Post", :title, :author_name, :body, :secret, :written_on)
-    Post.class_eval do
-      alias_method :title_before_type_cast, :title unless respond_to?(:title_before_type_cast)
-      alias_method :body_before_type_cast, :body unless respond_to?(:body_before_type_cast)
-      alias_method :author_name_before_type_cast, :author_name unless respond_to?(:author_name_before_type_cast)
+    class Post < Struct.new(:title, :author_name, :body, :secret, :written_on)
+      extend ActiveModel::Naming
+      include ActiveModel::Conversion
     end
 
-    User = Struct.new("User", :email)
-    User.class_eval do
-      alias_method :email_before_type_cast, :email unless respond_to?(:email_before_type_cast)
+    class User < Struct.new(:email)
+      extend ActiveModel::Naming
+      include ActiveModel::Conversion
     end
 
-    Column = Struct.new("Column", :type, :name, :human_name)
+    class Column < Struct.new(:type, :name, :human_name)
+      extend ActiveModel::Naming
+      include ActiveModel::Conversion
+    end
   end
 
   class DirtyPost
@@ -171,7 +172,7 @@ class ActiveRecordHelperTest < ActionView::TestCase
     @request_forgery_protection_token = 'authenticity_token'
     @form_authenticity_token = '123'
     assert_dom_equal(
-      %(<form action="create" method="post"><div style='margin:0;padding:0'><input type='hidden' name='authenticity_token' value='123' /></div><p><label for="post_title">Title</label><br /><input id="post_title" name="post[title]" size="30" type="text" value="Hello World" /></p>\n<p><label for="post_body">Body</label><br /><div class="fieldWithErrors"><textarea cols="40" id="post_body" name="post[body]" rows="20">Back to the hill and over it again!</textarea></div></p><input name="commit" type="submit" value="Create" /></form>),
+      %(<form action="create" method="post"><div style='margin:0;padding:0;display:inline'><input type='hidden' name='authenticity_token' value='123' /></div><p><label for="post_title">Title</label><br /><input id="post_title" name="post[title]" size="30" type="text" value="Hello World" /></p>\n<p><label for="post_body">Body</label><br /><div class="fieldWithErrors"><textarea cols="40" id="post_body" name="post[body]" rows="20">Back to the hill and over it again!</textarea></div></p><input name="commit" type="submit" value="Create" /></form>),
       form("post")
     )
   end
@@ -292,6 +293,16 @@ class ActiveRecordHelperTest < ActionView::TestCase
 
   #nil object
     assert_equal '', error_messages_for('user', :object => nil)
+  end
+
+  def test_error_messages_for_model_objects
+    error = error_messages_for(@post)
+    assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><h2>1 error prohibited this post from being saved</h2><p>There were problems with the following fields:</p><ul><li>Author name can't be empty</li></ul></div>),
+      error
+
+    error = error_messages_for(@user, @post)
+    assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><h2>2 errors prohibited this user from being saved</h2><p>There were problems with the following fields:</p><ul><li>User email can't be empty</li><li>Author name can't be empty</li></ul></div>),
+      error
   end
 
   def test_form_with_string_multipart

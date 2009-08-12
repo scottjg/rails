@@ -1,5 +1,13 @@
+require 'test/unit/testcase'
+require 'active_support/testing/setup_and_teardown'
+require 'active_support/testing/assertions'
+require 'active_support/testing/deprecation'
+require 'active_support/testing/declarative'
+require 'active_support/testing/pending'
+require 'active_support/testing/isolation'
+
 begin
-  gem 'mocha', '>= 0.9.3'
+  gem 'mocha', ">= 0.9.7"
   require 'mocha'
 rescue LoadError
   # Fake Mocha::ExpectationError so we can rescue it in #run. Bleh.
@@ -7,18 +15,12 @@ rescue LoadError
   Mocha.const_set :ExpectationError, Class.new(StandardError)
 end
 
-require 'test/unit/testcase'
-require 'active_support/testing/setup_and_teardown'
-require 'active_support/testing/assertions'
-require 'active_support/testing/deprecation'
-require 'active_support/testing/declarative'
-require 'active_support/testing/pending'
-
 module ActiveSupport
   class TestCase < ::Test::Unit::TestCase
     if defined? MiniTest
       Assertion = MiniTest::Assertion
-      alias_method :method_name, :name
+      alias_method :method_name, :name if method_defined? :name
+      alias_method :method_name, :__name__ if method_defined? :__name__
     else
       # TODO: Figure out how to get the Rails::BacktraceFilter into minitest/unit
       if defined?(Rails) && ENV['BACKTRACE'].nil?

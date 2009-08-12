@@ -101,8 +101,12 @@ namespace :db do
       ActiveRecord::Base.configurations.each_value do |config|
         # Skip entries that don't have a database key
         next unless config['database']
-        # Only connect to local databases
-        local_database?(config) { drop_database(config) }
+        begin
+          # Only connect to local databases
+          local_database?(config) { drop_database(config) }
+        rescue Exception => e
+          puts "Couldn't drop #{config['database']} : #{e.inspect}"
+        end
       end
     end
   end
@@ -169,6 +173,13 @@ namespace :db do
   task :rollback => :environment do
     step = ENV['STEP'] ? ENV['STEP'].to_i : 1
     ActiveRecord::Migrator.rollback('db/migrate/', step)
+    Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
+  end
+
+  desc 'Pushes the schema to the next version. Specify the number of steps with STEP=n'
+  task :forward => :environment do
+    step = ENV['STEP'] ? ENV['STEP'].to_i : 1
+    ActiveRecord::Migrator.forward('db/migrate/', step)
     Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
   end
 
@@ -281,7 +292,11 @@ namespace :db do
     desc "Load a schema.rb file into the database"
     task :load => :environment do
       file = ENV['SCHEMA'] || "#{RAILS_ROOT}/db/schema.rb"
-      load(file)
+      if File.exists?(file)
+        load(file)
+      else
+        abort %{#{file} doesn't exist yet. Run "rake db:migrate" to create it then try again. If you do not intend to use a database, you should instead alter #{RAILS_ROOT}/config/environment.rb to prevent active_record from loading: config.frameworks -= [ :active_record ]}
+      end
     end
   end
 
@@ -411,9 +426,9 @@ namespace :db do
     desc "Creates a sessions migration for use with ActiveRecord::SessionStore"
     task :create => :environment do
       raise "Task unavailable to this database (no migration support)" unless ActiveRecord::Base.connection.supports_migrations?
-      require 'rails_generator'
-      require 'rails_generator/scripts/generate'
-      Rails::Generator::Scripts::Generate.new.run(["session_migration", ENV["MIGRATION"] || "CreateSessions"])
+      require 'generators'
+      require 'generators/rails/session_migration/session_migration_generator'
+      Rails::Generators::SessionMigrationGenerator.start [ ENV["MIGRATION"] || "add_sessions_table" ]
     end
 
     desc "Clear the sessions table"
@@ -429,7 +444,11 @@ def drop_database(config)
     ActiveRecord::Base.establish_connection(config)
     ActiveRecord::Base.connection.drop_database config['database']
   when /^sqlite/
-    FileUtils.rm(File.join(RAILS_ROOT, config['database']))
+    require 'pathname'
+    path = Pathname.new(config['database'])
+    file = path.absolute? ? path.to_s : File.join(RAILS_ROOT, path)
+
+    FileUtils.rm(file)
   when 'postgresql'
     ActiveRecord::Base.establish_connection(config.merge('database' => 'postgres', 'schema_search_path' => 'public'))
     ActiveRecord::Base.connection.drop_database config['database']
@@ -437,7 +456,7 @@ def drop_database(config)
 end
 
 def session_table_name
-  ActiveRecord::Base.pluralize_table_names ? :sessions : :session
+  ActiveRecord::SessionStore::Session.table_name
 end
 
 def set_firebird_env(config)

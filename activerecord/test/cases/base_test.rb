@@ -422,11 +422,6 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
 
-  def test_reader_for_invalid_column_names
-    Topic.send(:define_read_method, "mumub-jumbo".to_sym, "mumub-jumbo", nil)
-    assert !Topic.generated_methods.include?("mumub-jumbo")
-  end
-
   def test_non_attribute_access_and_assignment
     topic = Topic.new
     assert !topic.respond_to?("mumbo")
@@ -466,6 +461,60 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
+    end
+  end
+
+  def test_preserving_time_objects_with_local_time_conversion_to_default_timezone_utc
+    with_env_tz 'America/New_York' do
+      with_active_record_default_timezone :utc do
+        time = Time.local(2000)
+        topic = Topic.create('written_on' => time)
+        saved_time = Topic.find(topic.id).written_on
+        assert_equal time, saved_time
+        assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, "EST"], time.to_a
+        assert_equal [0, 0, 5, 1, 1, 2000, 6, 1, false, "UTC"], saved_time.to_a
+      end
+    end
+  end
+
+  def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_utc
+    with_env_tz 'America/New_York' do
+      with_active_record_default_timezone :utc do
+        Time.use_zone 'Central Time (US & Canada)' do
+          time = Time.zone.local(2000)
+          topic = Topic.create('written_on' => time)
+          saved_time = Topic.find(topic.id).written_on
+          assert_equal time, saved_time
+          assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, "CST"], time.to_a
+          assert_equal [0, 0, 6, 1, 1, 2000, 6, 1, false, "UTC"], saved_time.to_a
+        end
+      end
+    end
+  end
+
+  def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
+    with_env_tz 'America/New_York' do
+      time = Time.utc(2000)
+      topic = Topic.create('written_on' => time)
+      saved_time = Topic.find(topic.id).written_on
+      assert_equal time, saved_time
+      assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, "UTC"], time.to_a
+      assert_equal [0, 0, 19, 31, 12, 1999, 5, 365, false, "EST"], saved_time.to_a
+    end
+  end
+
+  def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local
+    with_env_tz 'America/New_York' do
+      with_active_record_default_timezone :local do
+        Time.use_zone 'Central Time (US & Canada)' do
+          time = Time.zone.local(2000)
+          topic = Topic.create('written_on' => time)
+          saved_time = Topic.find(topic.id).written_on
+          assert_equal time, saved_time
+          assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, "CST"], time.to_a
+          assert_equal [0, 0, 1, 1, 1, 2000, 6, 1, false, "EST"], saved_time.to_a
+        end
+      end
     end
   end
 
@@ -599,9 +648,9 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_destroy_many
-    assert_equal 3, Client.count
-    Client.destroy([2, 3])
-    assert_equal 1, Client.count
+    assert_difference('Client.count', -2) do
+      Client.destroy([2, 3])
+    end
   end
 
   def test_delete_many
@@ -1021,13 +1070,58 @@ class BasicsTest < ActiveRecord::TestCase
     assert_date_from_db Date.new(2004, 6, 24), topic.last_read.to_date
   end
 
-  def test_multiparameter_attributes_on_date_with_empty_date
+  def test_multiparameter_attributes_on_date_with_empty_year
+    attributes = { "last_read(1i)" => "", "last_read(2i)" => "6", "last_read(3i)" => "24" }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    # note that extra #to_date call allows test to pass for Oracle, which
+    # treats dates/times the same
+    assert_date_from_db Date.new(1, 6, 24), topic.last_read.to_date
+  end
+
+  def test_multiparameter_attributes_on_date_with_empty_month
+    attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "", "last_read(3i)" => "24" }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    # note that extra #to_date call allows test to pass for Oracle, which
+    # treats dates/times the same
+    assert_date_from_db Date.new(2004, 1, 24), topic.last_read.to_date
+  end
+
+  def test_multiparameter_attributes_on_date_with_empty_day
     attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "6", "last_read(3i)" => "" }
     topic = Topic.find(1)
     topic.attributes = attributes
     # note that extra #to_date call allows test to pass for Oracle, which
     # treats dates/times the same
     assert_date_from_db Date.new(2004, 6, 1), topic.last_read.to_date
+  end
+
+  def test_multiparameter_attributes_on_date_with_empty_day_and_year
+    attributes = { "last_read(1i)" => "", "last_read(2i)" => "6", "last_read(3i)" => "" }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    # note that extra #to_date call allows test to pass for Oracle, which
+    # treats dates/times the same
+    assert_date_from_db Date.new(1, 6, 1), topic.last_read.to_date
+  end
+
+  def test_multiparameter_attributes_on_date_with_empty_day_and_month
+    attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "", "last_read(3i)" => "" }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    # note that extra #to_date call allows test to pass for Oracle, which
+    # treats dates/times the same
+    assert_date_from_db Date.new(2004, 1, 1), topic.last_read.to_date
+  end
+
+  def test_multiparameter_attributes_on_date_with_empty_year_and_month
+    attributes = { "last_read(1i)" => "", "last_read(2i)" => "", "last_read(3i)" => "24" }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    # note that extra #to_date call allows test to pass for Oracle, which
+    # treats dates/times the same
+    assert_date_from_db Date.new(1, 1, 24), topic.last_read.to_date
   end
 
   def test_multiparameter_attributes_on_date_with_all_empty
@@ -1220,6 +1314,23 @@ class BasicsTest < ActiveRecord::TestCase
   def test_new_record_returns_boolean
     assert_equal Topic.new.new_record?, true
     assert_equal Topic.find(1).new_record?, false
+  end
+
+  def test_destroyed_returns_boolean
+    developer = Developer.new
+    assert_equal developer.destroyed?, false
+    developer.destroy
+    assert_equal developer.destroyed?, true
+
+    developer = Developer.first
+    assert_equal developer.destroyed?, false
+    developer.destroy
+    assert_equal developer.destroyed?, true
+
+    developer = Developer.last
+    assert_equal developer.destroyed?, false
+    developer.delete
+    assert_equal developer.destroyed?, true
   end
 
   def test_clone
@@ -2026,7 +2137,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_inspect_instance
     topic = topics(:first)
-    assert_equal %(#<Topic id: 1, title: "The First Topic", author_name: "David", author_email_address: "david@loudthinking.com", written_on: "#{topic.written_on.to_s(:db)}", bonus_time: "#{topic.bonus_time.to_s(:db)}", last_read: "#{topic.last_read.to_s(:db)}", content: "Have a nice day", approved: false, replies_count: 1, parent_id: nil, type: nil>), topic.inspect
+    assert_equal %(#<Topic id: 1, title: "The First Topic", author_name: "David", author_email_address: "david@loudthinking.com", written_on: "#{topic.written_on.to_s(:db)}", bonus_time: "#{topic.bonus_time.to_s(:db)}", last_read: "#{topic.last_read.to_s(:db)}", content: "Have a nice day", approved: false, replies_count: 1, parent_id: nil, parent_title: nil, type: nil>), topic.inspect
   end
 
   def test_inspect_new_instance
@@ -2116,4 +2227,23 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal custom_datetime, parrot[attribute]
     end
   end
+
+  def test_dup
+    assert !Minimalistic.new.freeze.dup.frozen?
+  end
+
+  protected
+    def with_env_tz(new_tz = 'US/Eastern')
+      old_tz, ENV['TZ'] = ENV['TZ'], new_tz
+      yield
+    ensure
+      old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
+    end
+
+    def with_active_record_default_timezone(zone)
+      old_zone, ActiveRecord::Base.default_timezone = ActiveRecord::Base.default_timezone, zone
+      yield
+    ensure
+      ActiveRecord::Base.default_timezone = old_zone
+    end
 end

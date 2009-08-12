@@ -56,6 +56,13 @@ module ActiveRecord
         false
       end
 
+      # Can this adapter determine the primary key for tables not attached
+      # to an ActiveRecord class, such as join tables?  Backend specific, as
+      # the abstract adapter always returns +false+.
+      def supports_primary_key?
+        false
+      end
+
       # Does this adapter support using DISTINCT within COUNT?  This is +true+
       # for all adapters except sqlite.
       def supports_count_distinct?
@@ -211,8 +218,13 @@ module ActiveRecord
           @last_verification = 0
           message = "#{e.class.name}: #{e.message}: #{sql}"
           log_info(message, name, 0)
-          raise ActiveRecord::StatementInvalid, message
+          raise translate_exception(e, message)
         end
+
+      def translate_exception(e, message)
+        # override in derived class
+        ActiveRecord::StatementInvalid.new(message)
+      end
 
         def format_log_entry(message, dump = nil)
           if ActiveRecord::Base.colorize_logging

@@ -161,7 +161,7 @@ module ActionDispatch
     #   GET /posts/5.xml   | request.format => Mime::XML
     #   GET /posts/5.xhtml | request.format => Mime::HTML
     #   GET /posts/5       | request.format => Mime::HTML or MIME::JS, or request.accepts.first depending on the value of <tt>ActionController::Base.use_accept_header</tt>
-
+    #
     def format(view_path = [])
       @env["action_dispatch.request.format"] ||=
         if parameters[:format]
@@ -179,15 +179,9 @@ module ActionDispatch
           Array.wrap(Mime[param])
         else
           accepts.dup
-        end.tap do |ret|
-          if ret == ONLY_ALL
-            ret.replace Mime::SET
-          elsif all = ret.index(Mime::ALL)
-            ret.delete_at(all) && ret.insert(all, *Mime::SET)
-          end
         end
       else
-        [format] + Mime::SET
+        [format]
       end
     end
 
@@ -232,7 +226,7 @@ module ActionDispatch
     def xml_http_request?
       !(@env['HTTP_X_REQUESTED_WITH'] !~ /XMLHttpRequest/i)
     end
-    alias xhr? :xml_http_request?
+    alias :xhr? :xml_http_request?
 
     # Which IP addresses are "trusted proxies" that can be stripped from
     # the right-hand-side of X-Forwarded-For
@@ -248,7 +242,7 @@ module ActionDispatch
       remote_addr_list = @env['REMOTE_ADDR'] && @env['REMOTE_ADDR'].scan(/[^,\s]+/)
 
       unless remote_addr_list.blank?
-        not_trusted_addrs = remote_addr_list.reject {|addr| addr =~ TRUSTED_PROXIES}
+        not_trusted_addrs = remote_addr_list.reject {|addr| addr =~ TRUSTED_PROXIES || addr =~ ActionController::Base.trusted_proxies}
         return not_trusted_addrs.first unless not_trusted_addrs.empty?
       end
       remote_ips = @env['HTTP_X_FORWARDED_FOR'] && @env['HTTP_X_FORWARDED_FOR'].split(',')
@@ -267,7 +261,7 @@ EOM
       end
 
       if remote_ips
-        while remote_ips.size > 1 && TRUSTED_PROXIES =~ remote_ips.last.strip
+        while remote_ips.size > 1 && (TRUSTED_PROXIES =~ remote_ips.last.strip || ActionController::Base.trusted_proxies =~ remote_ips.last.strip)
           remote_ips.pop
         end
 
@@ -485,7 +479,23 @@ EOM
       session['flash'] || {}
     end
 
+    # Receives an array of mimes and return the first user sent mime that
+    # matches the order array.
+    #
+    def negotiate_mime(order)
+      formats.each do |priority|
+        if priority == Mime::ALL
+          return order.first
+        elsif order.include?(priority)
+          return priority
+        end
+      end
+
+      order.include?(Mime::ALL) ? formats.first : nil
+    end
+
     private
+
       def named_host?(host)
         !(host.nil? || /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.match(host))
       end

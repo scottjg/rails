@@ -2,7 +2,12 @@ require 'benchmark'
 require 'active_support/core_ext/benchmark'
 require 'active_support/core_ext/exception'
 require 'active_support/core_ext/class/attribute_accessors'
-require 'active_support/core_ext' # FIXME: pulling in all to_param extensions
+
+%w(hash nil string time date date_time array big_decimal range object boolean).each do |library|
+  require "active_support/core_ext/#{library}/conversions"
+end
+
+# require 'active_support/core_ext' # FIXME: pulling in all to_param extensions
 
 module ActiveSupport
   # See ActiveSupport::Cache::Store for documentation.
@@ -57,19 +62,27 @@ module ActiveSupport
       end
     end
 
+    RAILS_CACHE_ID   = ENV["RAILS_CACHE_ID"]
+    RAILS_APP_VERION = ENV["RAILS_APP_VERION"]
+    EXPANDED_CACHE   = RAILS_CACHE_ID || RAILS_APP_VERION
+
     def self.expand_cache_key(key, namespace = nil)
       expanded_cache_key = namespace ? "#{namespace}/" : ""
 
-      if ENV["RAILS_CACHE_ID"] || ENV["RAILS_APP_VERSION"]
-        expanded_cache_key << "#{ENV["RAILS_CACHE_ID"] || ENV["RAILS_APP_VERSION"]}/"
+      if EXPANDED_CACHE
+        expanded_cache_key << "#{RAILS_CACHE_ID || RAILS_APP_VERION}/"
       end
 
-      expanded_cache_key << case
-        when key.respond_to?(:cache_key)
+      expanded_cache_key <<
+        if key.respond_to?(:cache_key)
           key.cache_key
-        when key.is_a?(Array)
-          key.collect { |element| expand_cache_key(element) }.to_param
-        when key
+        elsif key.is_a?(Array)
+          if key.size > 1
+            key.collect { |element| expand_cache_key(element) }.to_param
+          else
+            key.first.to_param
+          end
+        elsif key
           key.to_param
         end.to_s
 
@@ -94,10 +107,15 @@ module ActiveSupport
     class Store
       cattr_accessor :logger
 
+      attr_reader :silence, :logger_off
+
       def silence!
         @silence = true
         self
       end
+
+      alias silence? silence
+      alias logger_off? logger_off
 
       # Fetches data from the cache, using the given key. If there is data in
       # the cache with the given key, then that data is returned.
@@ -228,11 +246,15 @@ module ActiveSupport
 
       private
         def expires_in(options)
-          (options && options[:expires_in]) || 0
+          expires_in = options && options[:expires_in]
+
+          raise ":expires_in must be a number" if expires_in && !expires_in.is_a?(Numeric)
+
+          expires_in || 0
         end
 
         def log(operation, key, options)
-          logger.debug("Cache #{operation}: #{key}#{options ? " (#{options.inspect})" : ""}") if logger && !@silence && !@logger_off
+          logger.debug("Cache #{operation}: #{key}#{options ? " (#{options.inspect})" : ""}") if logger && !silence? && !logger_off?
         end
     end
   end

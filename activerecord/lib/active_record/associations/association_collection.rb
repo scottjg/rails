@@ -11,7 +11,7 @@ module ActiveRecord
     # ones created with +build+ are added to the target. So, the target may be
     # non-empty and still lack children waiting to be read from the database.
     # If you look directly to the database you cannot assume that's the entire
-    # collection because new records may have beed added to the target, etc.
+    # collection because new records may have been added to the target, etc.
     #
     # If you need to work on all current children, new and existing records,
     # +load_target+ and the +loaded+ flag are your friends.
@@ -208,6 +208,7 @@ module ActiveRecord
       # Note that this method will _always_ remove records from the database
       # ignoring the +:dependent+ option.
       def destroy(*records)
+        records = find(records) if records.any? {|record| record.kind_of?(Fixnum) || record.kind_of?(String)}
         remove_records(records) do |records, old_records|
           old_records.each { |record| record.destroy }
         end
@@ -228,7 +229,7 @@ module ActiveRecord
         self
       end
 
-      # Destory all the records from this association.
+      # Destroy all the records from this association.
       #
       # See destroy for more info.
       def destroy_all
@@ -351,7 +352,19 @@ module ActiveRecord
       protected
         def construct_find_options!(options)
         end
-        
+
+        def construct_counter_sql
+          if @reflection.options[:counter_sql]
+            @counter_sql = interpolate_sql(@reflection.options[:counter_sql])
+          elsif @reflection.options[:finder_sql]
+            # replace the SELECT clause with COUNT(*), preserving any hints within /* ... */
+            @reflection.options[:counter_sql] = @reflection.options[:finder_sql].sub(/SELECT\b(\/\*.*?\*\/ )?(.*)\bFROM\b/im) { "SELECT #{$1}COUNT(*) FROM" }
+            @counter_sql = interpolate_sql(@reflection.options[:counter_sql])
+          else
+            @counter_sql = @finder_sql
+          end
+        end
+
         def load_target
           if !@owner.new_record? || foreign_key_present
             begin

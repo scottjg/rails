@@ -27,7 +27,6 @@ module ActiveRecord
 
       private
         def parse_sqlite_config!(config)
-          config[:database] ||= config[:dbfile]
           # Require database.
           unless config[:database]
             raise ArgumentError, "No database file specified. Missing argument: database"
@@ -99,6 +98,10 @@ module ActiveRecord
       end
 
       def supports_migrations? #:nodoc:
+        true
+      end
+
+      def supports_primary_key? #:nodoc:
         true
       end
 
@@ -431,6 +434,16 @@ module ActiveRecord
             'INTEGER PRIMARY KEY NOT NULL'.freeze
           end
         end
+
+        def translate_exception(exception, message)
+          case exception.message
+          when /column(s)? .* (is|are) not unique/
+            RecordNotUnique.new(message, exception)
+          else
+            super
+          end
+        end
+
     end
 
     class SQLite2Adapter < SQLiteAdapter # :nodoc:

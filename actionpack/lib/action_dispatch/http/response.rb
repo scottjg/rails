@@ -32,31 +32,53 @@ module ActionDispatch # :nodoc:
   #    end
   #  end
   class Response < Rack::Response
-    DEFAULT_HEADERS = { "Cache-Control" => "no-cache" }
-    attr_accessor :request
+    attr_accessor :request, :blank
+    attr_reader :cache_control
 
-    attr_writer :header
+    attr_writer :header, :sending_file
     alias_method :headers=, :header=
 
-    delegate :default_charset, :to => 'ActionController::Base'
-
     def initialize
-      super
-      @header = Rack::Utils::HeaderHash.new(DEFAULT_HEADERS)
+      @status = 200
+      @header = {}
+      @cache_control = {}
+
+      @writer = lambda { |x| @body << x }
+      @block = nil
+      @length = 0
+
+      @body, @cookie = [], []
+      @sending_file = false
+
+      yield self if block_given?
+    end
+
+    def cache_control
+      @cache_control ||= {}
+    end
+
+    def write(str)
+      s = str.to_s
+      @writer.call s
+      str
+    end
+
+    def status=(status)
+      @status = status.to_i
     end
 
     # The response code of the request
     def response_code
-      status.to_s[0,3].to_i rescue 0
+      @status
     end
 
     # Returns a String to ensure compatibility with Net::HTTPResponse
     def code
-      status.to_s.split(' ')[0]
+      @status.to_s
     end
 
     def message
-      status.to_s.split(' ',2)[1] || StatusCodes::STATUS_CODES[response_code]
+      StatusCodes::STATUS_CODES[@status]
     end
     alias_method :status_message, :message
 
@@ -66,7 +88,10 @@ module ActionDispatch # :nodoc:
       str
     end
 
+    EMPTY = " "
+
     def body=(body)
+      @blank = true if body == EMPTY
       @body = body.respond_to?(:to_str) ? [body] : body
     end
 
@@ -108,44 +133,39 @@ module ActionDispatch # :nodoc:
     end
 
     def etag
-      headers['ETag']
+      @etag
     end
 
     def etag?
-      headers.include?('ETag')
+      @etag
     end
 
     def etag=(etag)
-      if etag.blank?
-        headers.delete('ETag')
-      else
-        headers['ETag'] = %("#{Digest::MD5.hexdigest(ActiveSupport::Cache.expand_cache_key(etag))}")
-      end
+      key = ActiveSupport::Cache.expand_cache_key(etag)
+      @etag = %("#{Digest::MD5.hexdigest(key)}")
     end
 
-    def sending_file?
-      headers["Content-Transfer-Encoding"] == "binary"
-    end
+    CONTENT_TYPE    = "Content-Type"
+
+    cattr_accessor(:default_charset) { "utf-8" }
 
     def assign_default_content_type_and_charset!
-      return if !headers["Content-Type"].blank?
+      return if headers[CONTENT_TYPE].present?
 
       @content_type ||= Mime::HTML
-      @charset      ||= default_charset
+      @charset      ||= self.class.default_charset
 
       type = @content_type.to_s.dup
-      type << "; charset=#{@charset}" unless sending_file?
+      type << "; charset=#{@charset}" unless @sending_file
 
-      headers["Content-Type"] = type
+      headers[CONTENT_TYPE] = type
     end
 
     def prepare!
       assign_default_content_type_and_charset!
       handle_conditional_get!
-      set_content_length!
-      convert_content_type!
-      convert_language!
-      convert_cookies!
+      self["Set-Cookie"] = @cookie.join("\n")
+      self["ETag"]       = @etag if @etag
     end
 
     def each(&callback)
@@ -166,23 +186,12 @@ module ActionDispatch # :nodoc:
       str
     end
 
-    def set_cookie(key, value)
-      if value.has_key?(:http_only)
-        ActiveSupport::Deprecation.warn(
-          "The :http_only option in ActionController::Response#set_cookie " +
-          "has been renamed. Please use :httponly instead.", caller)
-        value[:httponly] ||= value.delete(:http_only)
-      end
-
-      super(key, value)
-    end
-
     # Returns the response cookies, converted to a Hash of (name => value) pairs
     #
     #   assert_equal 'AuthorOfNewPage', r.cookies['author']
     def cookies
       cookies = {}
-      if header = headers['Set-Cookie']
+      if header = @cookie
         header = header.split("\n") if header.respond_to?(:to_str)
         header.each do |cookie|
           if pair = cookie.split(';').first
@@ -194,66 +203,83 @@ module ActionDispatch # :nodoc:
       cookies
     end
 
+    def set_cookie(key, value)
+      case value
+      when Hash
+        domain  = "; domain="  + value[:domain]    if value[:domain]
+        path    = "; path="    + value[:path]      if value[:path]
+        # According to RFC 2109, we need dashes here.
+        # N.B.: cgi.rb uses spaces...
+        expires = "; expires=" + value[:expires].clone.gmtime.
+          strftime("%a, %d-%b-%Y %H:%M:%S GMT")    if value[:expires]
+        secure = "; secure"  if value[:secure]
+        httponly = "; HttpOnly" if value[:httponly]
+        value = value[:value]
+      end
+      value = [value]  unless Array === value
+      cookie = Rack::Utils.escape(key) + "=" +
+        value.map { |v| Rack::Utils.escape v }.join("&") +
+        "#{domain}#{path}#{expires}#{secure}#{httponly}"
+
+      @cookie << cookie
+    end
+
+    def delete_cookie(key, value={})
+      @cookie.reject! { |cookie|
+        cookie =~ /\A#{Rack::Utils.escape(key)}=/
+      }
+
+      set_cookie(key,
+                 {:value => '', :path => nil, :domain => nil,
+                   :expires => Time.at(0) }.merge(value))
+    end
+
     private
       def handle_conditional_get!
-        if etag? || last_modified?
+        if etag? || last_modified? || !@cache_control.empty?
           set_conditional_cache_control!
         elsif nonempty_ok_response?
-          self.etag = body
+          self.etag = @body
 
           if request && request.etag_matches?(etag)
-            self.status = '304 Not Modified'
+            self.status = 304
             self.body = []
           end
 
           set_conditional_cache_control!
+        else
+          headers["Cache-Control"] = "no-cache"
         end
       end
 
       def nonempty_ok_response?
-        ok = !status || status.to_s[0..2] == '200'
-        ok && string_body?
+        @status == 200 && string_body?
       end
 
       def string_body?
-        !body_parts.respond_to?(:call) && body_parts.any? && body_parts.all? { |part| part.is_a?(String) }
+        !@blank && @body.respond_to?(:all?) && @body.all? { |part| part.is_a?(String) }
       end
+
+      DEFAULT_CACHE_CONTROL = "max-age=0, private, must-revalidate"
 
       def set_conditional_cache_control!
-        if headers['Cache-Control'] == DEFAULT_HEADERS['Cache-Control']
-          headers['Cache-Control'] = 'private, max-age=0, must-revalidate'
+        control = @cache_control
+
+        if control.empty?
+          headers["Cache-Control"] = DEFAULT_CACHE_CONTROL
+        else
+          extras  = control[:extras]
+          max_age = control[:max_age]
+
+          options = []
+          options << "max-age=#{max_age}" if max_age
+          options << (control[:public] ? "public" : "private")
+          options << "must-revalidate" if control[:must_revalidate]
+          options.concat(extras) if extras
+
+          headers["Cache-Control"] = options.join(", ")
         end
-      end
 
-      def convert_content_type!
-        headers['Content-Type'] ||= "text/html"
-        headers['Content-Type'] += "; charset=" + headers.delete('charset') if headers['charset']
-      end
-
-      # Don't set the Content-Length for block-based bodies as that would mean
-      # reading it all into memory. Not nice for, say, a 2GB streaming file.
-      def set_content_length!
-        if status && status.to_s[0..2] == '204'
-          headers.delete('Content-Length')
-        elsif length = headers['Content-Length']
-          headers['Content-Length'] = length.to_s
-        elsif string_body? && (!status || status.to_s[0..2] != '304')
-          headers["Content-Length"] = Rack::Utils.bytesize(body).to_s
-        end
-      end
-
-      def convert_language!
-        headers["Content-Language"] = headers.delete("language") if headers["language"]
-      end
-
-      def convert_cookies!
-        headers['Set-Cookie'] =
-          if header = headers['Set-Cookie']
-            header = header.split("\n") if header.respond_to?(:to_str)
-            header.compact
-          else
-            []
-          end
       end
   end
 end

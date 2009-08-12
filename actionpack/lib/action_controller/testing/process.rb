@@ -1,3 +1,4 @@
+require 'action_dispatch'
 require 'rack/session/abstract/id'
 require 'active_support/core_ext/object/conversions'
 
@@ -51,7 +52,7 @@ module ActionController #:nodoc:
   class TestResponse < ActionDispatch::TestResponse
     def recycle!
       @status = 200
-      @header = Rack::Utils::HeaderHash.new(DEFAULT_HEADERS)
+      @header = {}
       @writer = lambda { |x| @body << x }
       @block = nil
       @length = 0
