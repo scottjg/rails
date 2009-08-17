@@ -809,11 +809,17 @@ module ActiveRecord
         default = options[:default]
         notnull = options[:null] == false
 
-        # Add the column.
-        execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
+        # changed by ono : postgresql 8.2 will be OK at least
+        sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+        sql += " DEFAULT #{quote(default)}" if options_include_default?(options)
+        sql += " NOT NULL" if notnull
+        execute sql
 
-        change_column_default(table_name, column_name, default) if options_include_default?(options)
-        change_column_null(table_name, column_name, false, default) if notnull
+        # Add the column.
+        # execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
+        # 
+        # change_column_default(table_name, column_name, default) if options_include_default?(options)
+        # change_column_null(table_name, column_name, false, default) if notnull
       end
 
       # Changes the column of a table.
