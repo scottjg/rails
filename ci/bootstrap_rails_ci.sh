@@ -7,22 +7,24 @@ chmod a+x /tmp/create_ci_user.sh
 /tmp/create_ci_user.sh
 if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
 
-if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/rails/raw/master'; fi
+if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/rails/rails/raw/master'; fi
+if [ -z $CINABOX_GIT_DOWNLOAD_URL ]; then CINABOX_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/cinabox/tarball/master'; fi
 
 echo "  Downloading cinabox.tar.gz to /home/ci/cinabox..."
 sudo su - -c "mkdir ~/cinabox" ci
-sudo su - -c "wget -O ~/cinabox/cinabox.tar.gz http://github.com/thewoolleyman/cinabox/tarball/master" ci
+sudo su - -c "wget -O ~/cinabox/cinabox.tar.gz $CINABOX_GIT_DOWNLOAD_URL" ci
 echo "  Unzipping cinabox.tar.gz to /home/ci/cinabox..."
 sudo su - -c "tar --directory=/home/ci/cinabox --overwrite --strip-components=1 -zxvf ~/cinabox/cinabox.tar.gz" ci
+if [ ! $? = 0 ]; then echo "Unable to download and unzip cinabox" && exit; fi
 
 echo "  Running cinabox to bootstrap ruby..."
 DEFAULT_RUBY_VERSION=1.8.6-p287
 if [ -z $RUBY_VERSION ]; then RUBY_VERSION=$DEFAULT_RUBY_VERSION; fi
-sudo su - ci -c "RUBY_VERSION=$RUBY_VERSION ~/cinabox/bootstrap_ruby.sh"
+sudo su - -c "RUBY_VERSION=$RUBY_VERSION ~/cinabox/bootstrap_ruby.sh" ci
 if [ ! $? = 0 ]; then echo "Unable to bootstrap ruby" && exit; fi
 
 echo "  Running cinabox to setup ci..."
-sudo su - ci -c "ruby ~/cinabox/setup_ci.rb"
+sudo su - -c "CCRB_USER=ci ruby ~/cinabox/setup_ci.rb --force" ci
 if [ ! $? = 0 ]; then echo "Unable to setup ci" && exit; fi
 
 echo "  Downloading setup_rails_dependencies to /home/ci/railsci..."
