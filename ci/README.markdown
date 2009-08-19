@@ -30,13 +30,9 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
 
         wget -O /tmp/bootstrap_rails_ci.sh http://github.com/rails/rails/raw/master/ci/bootstrap_rails_ci.sh
 
-* Make the script executable:
-
-        chmod a+x /tmp/bootstrap_rails_ci.sh
-
 * Run the script.  If you are not running as root, you may need to type your sudo password:
 
-        /tmp/bootstrap_rails_ci.sh
+        sh /tmp/bootstrap_rails_ci.sh
 
 * This will create a 'ci' user with the password 'password', download the scripts for the next steps, and automatically reboot.
 
