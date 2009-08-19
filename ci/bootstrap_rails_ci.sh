@@ -30,6 +30,7 @@ if [ ! $? = 0 ]; then echo "Unable to setup ci" && exit; fi
 echo "  Downloading setup_rails_dependencies to /home/ci/railsci..."
 sudo su - -c "mkdir ~/railsci" ci
 sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_dependencies.rb" ci
+chmod a+x ~/railsci/setup_rails_dependencies.rb
 
 echo "  Download complete!  Please complete the remaining steps:"
 echo "  1. Log in as ci user: 'sudo su - ci'"

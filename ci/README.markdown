@@ -30,28 +30,14 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
 
         wget -O /tmp/bootstrap_rails_ci.sh http://github.com/rails/rails/raw/master/ci/bootstrap_rails_ci.sh
 
-* Run the script.  If you are not running as root, you may need to type your sudo password:
+* Run the script, this will also create a 'ci' user and prompt you for a password for the new user.  If you are not running as root, you may need to type your sudo password.  You can optionally specify a ruby interpreter:
 
-        sh /tmp/bootstrap_rails_ci.sh
+        RUBY_VERSION=1.8.6-p287 sh /tmp/bootstrap_rails_ci.sh
 
-* This will create a 'ci' user with the password 'password', download the scripts for the next steps, and automatically reboot.
-
-Step 2: Run [Cinabox](http://github.com/thewoolleyman/cinabox) to set up Ruby and CruiseControl.rb
--------------------------------------------------------
-
-* When the server reboots, log in as the 'ci' user, password 'password'
-* Run the Cinabox 'bootstrap_ruby.sh' script to set up the desired ruby interpreter:
-
-        RUBY_VERSION=1.8.6-p287 ~/cinabox/bootstrap_ruby.sh
-
-* Run the Cinabox 'setup_ci.sh' script to set up the CruiseControl.rb:
-
-        ~/cinabox/setup_ci.rb
-
-Step 3: Run the 'setup\_rails\_dependencies.rb' script
-----------------------------------------------------
+Step 2: Run the 'setup\_rails\_dependencies.rb' script
+------------------------------------------------------
 
 * Make sure you are logged in as the ci user
-* Run the 'setup\_rails\_dependencies.rb' script to install and configure all dependencies of the Rails test suite:
+* Run the 'setup\_rails\_dependencies.rb' script to install and configure all dependencies of the Rails test suite (Leave the MySQL root password blank when prompted).
 
         ~/railsci/setup_rails_dependencies.sh
