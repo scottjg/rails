@@ -177,7 +177,7 @@ class ValidationsTest < ActiveRecord::TestCase
     r.save
 
     errors = []
-    r.errors.each { |attr, msg| errors << [attr, msg] }
+    r.errors.each { |attr, error| errors << [attr, error.message] }
 
     assert errors.include?(["title", "Empty"])
     assert errors.include?(["content", "Empty"])
