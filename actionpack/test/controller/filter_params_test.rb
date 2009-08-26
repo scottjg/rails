@@ -41,7 +41,10 @@ class FilterParamTest < ActionController::TestCase
     [{'foo'=>'bar', 'baz'=>'foo'},{'foo'=>'[FILTERED]', 'baz'=>'[FILTERED]'},%w'foo baz'],
     [{'bar'=>{'foo'=>'bar','bar'=>'foo'}},{'bar'=>{'foo'=>'[FILTERED]','bar'=>'foo'}},%w'fo'],
     [{'foo'=>{'foo'=>'bar','bar'=>'foo'}},{'foo'=>'[FILTERED]'},%w'f banana'],
-    [{'baz'=>[{'foo'=>'baz'}]}, {'baz'=>[{'foo'=>'[FILTERED]'}]}, %w(foo)]]
+    [{'baz'=>[{'foo'=>'baz'}]}, {'baz'=>[{'foo'=>'[FILTERED]'}]}, %w(foo)]],
+    [{'foo'=>['foo','bar','baz']}]]
+
+# last entry in hash = select_tag 'schedule[days][]', options_for_select([['Sunday',0],['Monday',1],['Tuesday',2],['Wednesday',3],['Thursday',4],['Friday',5],['Saturday',6]]), {:multiple => true, :size =>7, :id => "schedule_days" }
 
     test_hashes.each do |before_filter, after_filter, filter_words|
       FilterParamController.filter_parameter_logging(*filter_words)
