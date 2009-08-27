@@ -10,7 +10,9 @@ class SetupRailsCiProject
     puts "Creating CruiseControl.rb project for #{ccrb_project}..."
 
     # Create the project in CruiseControl.rb
-    run "~/ccrb/cruise add #{ccrb_project} -s git -r #{rails_github_url}"
+    if !File.exist?(rails_working_copy_dir)
+      run "#{ENV['HOME']}/ccrb/cruise add #{ccrb_project} -s git -r #{rails_github_url}"
+    end
 
     # Copy the site config and project configs
     FileUtils.cp(
