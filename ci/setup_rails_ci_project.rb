@@ -15,7 +15,7 @@ class SetupRailsCiProject
     # Copy the site config and project configs
     FileUtils.cp(
       ["#{rails_working_copy_dir}/ci/site_config.rb","#{rails_working_copy_dir}/ci/site.css"],
-      "#{ENV['HOME']}/.cruise/site_config.rb"
+      "#{ENV['HOME']}/.cruise/"
     )
   end
 
