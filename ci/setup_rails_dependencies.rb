@@ -31,7 +31,7 @@ class SetupRailsDependencies
     print "\n\nRails build setup script completed.\n"
   end
 
-  def run(cmd)
+  def self.run(cmd)
     puts "Running command: #{cmd}"
     unless system(cmd)
       print "\n\nCommand failed: #{cmd}\n"
