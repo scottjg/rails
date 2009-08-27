@@ -19,12 +19,15 @@ class SetupRailsCiProject
     )
   end
 
-  def run(cmd)
+  def self.run(cmd, fail_on_error = true)
     puts "Running command: #{cmd}"
-    unless system(cmd)
+    output = `#{cmd}`
+    puts output
+    if !$?.success? and fail_on_error
       print "\n\nCommand failed: #{cmd}\n"
       exit $?.to_i
     end
+    output
   end
 end
  
