@@ -14,11 +14,14 @@ class SetupRailsCiProject
       run "#{ENV['HOME']}/ccrb/cruise add #{ccrb_project} -s git -r #{rails_github_url}"
     end
 
-    # Copy the site config and project configs
+    # Copy the site config and css
     FileUtils.cp(
       ["#{rails_working_copy_dir}/ci/site_config.rb","#{rails_working_copy_dir}/ci/site.css"],
       "#{ENV['HOME']}/.cruise/"
     )
+
+    # Symlink the cruise config file
+    FileUtils.ln_s("#{rails_working_copy_dir}/ci/cruise_config.rb","#{rails_working_copy_dir}/cruise_config.rb")
     
     # Start cruise
     run "/etc/init.d/cruise start"    
