@@ -27,9 +27,8 @@ class SetupRailsDependencies
     run "mysql -uroot -e 'grant all on *.* to rails@localhost;'"
     run "sudo su - postgres -c 'createuser -s ci'"
 
-    # Install and run GemInstaller to get all dependency gems
+    # Install GemInstaller
     run "sudo gem install geminstaller"
-    run "sudo geminstaller --config=#{ccrb_project_work}/ci/geminstaller.yml"
 
     print "\n\nRails build setup script completed.\n"
   end
