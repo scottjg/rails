@@ -20,8 +20,8 @@ class SetupRailsCiProject
       "#{ENV['HOME']}/.cruise/"
     )
     
-    # Start the builder
-    run "#{ENV['HOME']}/ccrb/cruise build #{ccrb_project}"    
+    # Start cruise
+    run "/etc/init.d/cruise start"    
   end
 
   def self.run(cmd, fail_on_error = true)

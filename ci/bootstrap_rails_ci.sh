@@ -24,7 +24,7 @@ sudo su - -c "RUBY_VERSION=$RUBY_VERSION ~/cinabox/bootstrap_ruby.sh" ci
 if [ ! $? = 0 ]; then echo "Unable to bootstrap ruby" && exit; fi
 
 echo "  Running cinabox to setup ci..."
-sudo su - -c "CRUISE_USER=ci ruby ~/cinabox/setup_ci.rb --force" ci
+sudo su - -c "CRUISE_USER=ci NO_DAEMON_START=true ruby ~/cinabox/setup_ci.rb --force" ci
 if [ ! $? = 0 ]; then echo "Unable to setup ci" && exit; fi
 
 echo "  Downloading setup_rails_dependencies to /home/ci/railsci..."
