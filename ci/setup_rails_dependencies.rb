@@ -20,6 +20,9 @@ class SetupRailsDependencies
     # Install packages using aptitude
     run "sudo aptitude -y install #{packages.join(" ")}"
 
+    # start services
+    run "sudo /etc/init.d/mysql start"
+
     # Setup database users for MySQL and PostgreSQL
     run "mysql -uroot -e 'grant all on *.* to rails@localhost;'"
     run "sudo su - postgres -c 'createuser -s ci'"
