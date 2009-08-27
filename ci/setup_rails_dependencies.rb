@@ -6,15 +6,15 @@ class SetupRailsDependencies
     puts "Setting up Rails build dependencies..."
 
     packages = %w{
-      sqlite,
-      libsqlite-dev,
-      sqlite3,
-      libsqlite3-dev,
-      mysql-server-5.0,
-      libmysqlclient-dev,
-      postgresql,
-      postgresql-server-dev-8.3,
-      libfcgi-dev,
+      sqlite
+      libsqlite-dev
+      sqlite3
+      libsqlite3-dev
+      mysql-server-5.0
+      libmysqlclient-dev
+      postgresql
+      postgresql-server-dev-8.3
+      libfcgi-dev
       memcached
     }
     # Install packages using aptitude
