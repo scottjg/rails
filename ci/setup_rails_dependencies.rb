@@ -25,7 +25,7 @@ class SetupRailsDependencies
 
     # Setup database users for MySQL and PostgreSQL
     run "mysql -uroot -e 'grant all on *.* to rails@localhost;'"
-    run "sudo su - postgres -c 'createuser -s ci'"
+    run "sudo su - postgres -c 'createuser -s ci'", false
 
     # Install GemInstaller
     run "sudo gem install geminstaller"
@@ -33,12 +33,15 @@ class SetupRailsDependencies
     print "\n\nRails build setup script completed.\n"
   end
 
-  def self.run(cmd)
+  def self.run(cmd, fail_on_error = true)
     puts "Running command: #{cmd}"
-    unless system(cmd)
+    output = `#{cmd}`
+    puts output
+    if !$?.success? and fail_on_error
       print "\n\nCommand failed: #{cmd}\n"
       exit $?.to_i
     end
+    output
   end
 end
  
