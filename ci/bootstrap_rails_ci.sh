@@ -29,9 +29,13 @@ if [ ! $? = 0 ]; then echo "Unable to setup ci" && exit; fi
 
 echo "  Downloading setup_rails_dependencies to /home/ci/railsci..."
 sudo su - -c "mkdir ~/railsci" ci
-sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_dependencies.rb" ci
-chmod a+x ~/railsci/setup_rails_dependencies.rb
 
-echo "  Download complete!  Please complete the remaining steps:"
-echo "  1. Log in as ci user: 'sudo su - ci'"
-echo "  2. Run setup_rails_dependencies.rb: 'ruby ~/railsci/setup_rails_dependencies.rb'"
+sudo su - -c "wget -O ~/railsci/setup_rails_dependencies.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_dependencies.rb" ci
+sudo su - -c "ruby ~/railsci/setup_rails_dependencies.rb" ci
+if [ ! $? = 0 ]; then echo "Unable to setup rails dependencies" && exit; fi
+
+sudo su - -c "wget -O ~/railsci/setup_rails_ci_project.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_ci_project.rb" ci
+sudo su - -c "ruby ~/railsci/setup_rails_ci_project.rb" ci
+if [ ! $? = 0 ]; then echo "Unable to setup rails ci project" && exit; fi
+
+echo "  Rails Continuous Integration server setup complete!"
