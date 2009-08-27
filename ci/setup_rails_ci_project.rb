@@ -19,6 +19,9 @@ class SetupRailsCiProject
       ["#{rails_working_copy_dir}/ci/site_config.rb","#{rails_working_copy_dir}/ci/site.css"],
       "#{ENV['HOME']}/.cruise/"
     )
+    
+    # Start the builder
+    run "#{ENV['HOME']}/ccrb/cruise build #{ccrb_project}"    
   end
 
   def self.run(cmd, fail_on_error = true)
