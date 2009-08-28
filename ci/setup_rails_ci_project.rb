@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-require 'fileutils'
 
 class SetupRailsCiProject
   def self.setup
@@ -16,13 +15,11 @@ class SetupRailsCiProject
     end
 
     # Copy the site config and css
-    FileUtils.cp(
-      ["#{rails_working_copy_dir}/ci/site_config.rb","#{rails_working_copy_dir}/ci/site.css"],
-      "#{ENV['HOME']}/.cruise/"
-    )
+    run "cp #{rails_working_copy_dir}/ci/site_config.rb #{ENV['HOME']}/.cruise/"
+    run "cp #{rails_working_copy_dir}/ci/site.css #{ENV['HOME']}/.cruise/"
 
     # Symlink the cruise config file
-    FileUtils.ln_s("#{rails_working_copy_dir}/ci/cruise_config.rb","#{ccrb_rails_project_dir}/cruise_config.rb")
+    run "ln -s -f #{rails_working_copy_dir}/ci/cruise_config.rb #{ccrb_rails_project_dir}/cruise_config.rb"
     
     # Start cruise
     run "/etc/init.d/cruise start"    
