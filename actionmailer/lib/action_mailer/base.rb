@@ -640,7 +640,7 @@ module ActionMailer #:nodoc:
         m.cc           = quote_address_if_necessary(cc, charset) unless cc.nil?
         m.reply_to     = quote_address_if_necessary(reply_to, charset) unless reply_to.nil?
         m.mime_version = mime_version unless mime_version.nil?
-        m.date         = sent_on.to_time rescue sent_on if sent_on
+        m.date         = sent_on.to_time.dup.localtime rescue sent_on if sent_on
 
         headers.each { |k, v| m[k] = v }
 
