@@ -4,7 +4,8 @@ require 'fileutils'
 class SetupRailsCiProject
   def self.setup
     ccrb_project = ENV['CCRB_PROJECT'] || 'rails'
-    rails_working_copy_dir = "#{ENV['HOME']}/.cruise/projects/#{ccrb_project}/work"
+    ccrb_rails_project_dir = "#{ENV['HOME']}/.cruise/projects/#{ccrb_project}"
+    rails_working_copy_dir = "#{ccrb_rails_project_dir}/work"
     rails_github_url = ENV['RAILS_GITHUB_URL'] || 'git://github.com/rails/rails.git'
 
     puts "Creating CruiseControl.rb project for #{ccrb_project}..."
@@ -21,7 +22,7 @@ class SetupRailsCiProject
     )
 
     # Symlink the cruise config file
-    FileUtils.ln_s("#{rails_working_copy_dir}/ci/cruise_config.rb","#{rails_working_copy_dir}/cruise_config.rb")
+    FileUtils.ln_s("#{rails_working_copy_dir}/ci/cruise_config.rb","#{ccrb_rails_project_dir}/cruise_config.rb")
     
     # Start cruise
     run "/etc/init.d/cruise start"    
