@@ -279,6 +279,14 @@ class TestMailer < ActionMailer::Base
     body         :body => "foo", :bar => "baz"
   end
 
+  def sent_on_not_in_local_timezone(recipient)
+    recipients   recipient
+    subject      "testing sent on not in local timezone"
+    sent_on      Time.local(2004, 6, 6).utc
+    from         "system@loudthinking.com"
+    body         "nothing to see here"
+  end
+
   class <<self
     attr_accessor :received_body
   end
@@ -523,6 +531,28 @@ class ActionMailerTest < Test::Unit::TestCase
 
     assert_nothing_raised do
       TestMailer.deliver_unencoded_subject @recipient
+    end
+
+    assert_not_nil ActionMailer::Base.deliveries.first
+    assert_equal expected.encoded, ActionMailer::Base.deliveries.first.encoded
+  end
+
+  def test_sent_on_not_in_local_timezone
+    expected = new_mail
+    expected.to      = @recipient
+    expected.subject = "testing sent on not in local timezone"
+    expected.date    = Time.local 2004, 6, 6
+    expected.from    = "system@loudthinking.com"
+    expected.body    = "nothing to see here"
+
+    created = nil
+    assert_nothing_raised do
+      created = TestMailer.create_sent_on_not_in_local_timezone @recipient
+    end
+    assert_not_nil created
+
+    assert_nothing_raised do
+      TestMailer.deliver_sent_on_not_in_local_timezone @recipient
     end
 
     assert_not_nil ActionMailer::Base.deliveries.first
