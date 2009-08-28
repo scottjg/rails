@@ -8,6 +8,7 @@ chmod a+x /tmp/create_ci_user.sh
 if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
 
 if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/rails/rails/raw/master'; fi
+if [ -z $RAILS_GIT_REPO_URL ]; then RAILS_GIT_REPO_URL='git://github.com/rails/rails.git'; fi
 if [ -z $CINABOX_GIT_DOWNLOAD_URL ]; then CINABOX_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/cinabox/tarball/master'; fi
 
 echo "  Downloading cinabox.tar.gz to /home/ci/cinabox..."
@@ -35,7 +36,7 @@ sudo su - -c "ruby ~/railsci/setup_rails_dependencies.rb" ci
 if [ ! $? = 0 ]; then echo "Unable to setup rails dependencies" && exit; fi
 
 sudo su - -c "wget -O ~/railsci/setup_rails_ci_project.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_ci_project.rb" ci
-sudo su - -c "ruby ~/railsci/setup_rails_ci_project.rb" ci
+sudo su - -c "RAILS_GIT_REPO_URL=$RAILS_GIT_REPO_URL ruby ~/railsci/setup_rails_ci_project.rb" ci
 if [ ! $? = 0 ]; then echo "Unable to setup rails ci project" && exit; fi
 
 echo "  Rails Continuous Integration server setup complete!"

@@ -5,13 +5,13 @@ class SetupRailsCiProject
     ccrb_project = ENV['CCRB_PROJECT'] || 'rails'
     ccrb_rails_project_dir = "#{ENV['HOME']}/.cruise/projects/#{ccrb_project}"
     rails_working_copy_dir = "#{ccrb_rails_project_dir}/work"
-    rails_github_url = ENV['RAILS_GITHUB_URL'] || 'git://github.com/rails/rails.git'
+    rails_git_repo_url = ENV['RAILS_GIT_REPO_URL'] || 'git://github.com/rails/rails.git'
 
     puts "Creating CruiseControl.rb project for #{ccrb_project}..."
 
     # Create the project in CruiseControl.rb
     if !File.exist?(rails_working_copy_dir)
-      run "#{ENV['HOME']}/ccrb/cruise add #{ccrb_project} -s git -r #{rails_github_url}"
+      run "#{ENV['HOME']}/ccrb/cruise add #{ccrb_project} -s git -r #{rails_git_repo_url}"
     end
 
     # Copy the site config and css

@@ -30,9 +30,9 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
 
         wget -O /tmp/bootstrap_rails_ci.sh http://github.com/rails/rails/raw/master/ci/bootstrap_rails_ci.sh
 
-* Run the script, this will also create a 'ci' user and prompt you for a password for the new user.  If you are not running as root, you may need to type your sudo password.  You can optionally specify a ruby interpreter:
+* Run the script, this will also create a 'ci' user and prompt you for a password for the new user.  If you are not running as root, you may need to type your sudo password.  You can optionally specify a ruby interpreter and override the git repo:
 
-        RUBY_VERSION=1.8.6-p287 sh /tmp/bootstrap_rails_ci.sh
+        RUBY_VERSION=1.8.6-p287 RAILS_GIT_REPO_URL=git://github.com/rails/rails.git sh /tmp/bootstrap_rails_ci.sh
 
 Step 2: Run the 'setup\_rails\_dependencies.rb' script
 ------------------------------------------------------
