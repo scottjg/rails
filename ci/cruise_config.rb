@@ -1,7 +1,8 @@
 Project.configure do |project|
   # Send email notifications about broken and fixed builds to core mailing list
   if Socket.gethostname =~ /ci.rubyonrails.org/
-    project.email_notifier.emails = ['rubyonrails-core@googlegroups.com']
+    #project.email_notifier.emails = ['rubyonrails-core@googlegroups.com']
+    project.email_notifier.emails = ['thewoolleyman+railsci@gmail.com']
   end
 
   project.build_command = 'sudo update_rubygems && ruby ci/ci_build.rb'
