@@ -9,7 +9,7 @@ if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
 
 if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/rails/rails/raw/master'; fi
 if [ -z $RAILS_GIT_REPO_URL ]; then RAILS_GIT_REPO_URL='git://github.com/rails/rails.git'; fi
-if [ -z $RAILS_GIT_BRANCHES ]; then RAILS_GIT_BRANCHES='master'; fi
+if [ -z $RAILS_GIT_BRANCHES ]; then RAILS_GIT_BRANCHES='master,2-3-stable'; fi
 if [ -z $CINABOX_GIT_DOWNLOAD_URL ]; then CINABOX_GIT_DOWNLOAD_URL='http://github.com/thewoolleyman/cinabox/tarball/master'; fi
 
 echo "  Downloading cinabox.tar.gz to /home/ci/cinabox..."
