@@ -13,6 +13,8 @@ actionmailer/pkg
 activesupport/pkg
 activesupport/test/fixtures/isolation_test
 railties/pkg
+actionmailer/vendor
+actionmailer/bin
 activerecord/vendor
 activerecord/bin
 railties/test/500.html

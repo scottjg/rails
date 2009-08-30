@@ -1,9 +1,12 @@
+require File.expand_path(File.join(File.dirname(__FILE__), '..', 'vendor', 'gems', 'environment'))
+
 require 'rubygems'
 require 'test/unit'
 
 $:.unshift "#{File.dirname(__FILE__)}/../lib"
 $:.unshift "#{File.dirname(__FILE__)}/../../activesupport/lib"
 $:.unshift "#{File.dirname(__FILE__)}/../../actionpack/lib"
+
 require 'action_mailer'
 require 'action_mailer/test_case'
 
