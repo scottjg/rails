@@ -1,0 +1,2 @@
+gem "arel", "0.2pre", :git => "git://github.com/miloops/arel.git"
+gem "mocha"
