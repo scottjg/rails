@@ -19,6 +19,8 @@ activerecord/vendor
 activerecord/bin
 activemodel/vendor
 activemodel/bin
+activeresource/vendor
+activeresource/bin
 railties/test/500.html
 railties/test/fixtures/tmp
 railties/test/initializer/root/log

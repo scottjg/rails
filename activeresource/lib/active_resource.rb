@@ -21,12 +21,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
-activesupport_path = "#{File.dirname(__FILE__)}/../../activesupport/lib"
-$:.unshift(activesupport_path) if File.directory?(activesupport_path)
 require 'active_support'
-
-activemodel_path = "#{File.dirname(__FILE__)}/../../activemodel/lib"
-$:.unshift(activemodel_path) if File.directory?(activemodel_path)
 require 'active_model'
 
 module ActiveResource
