@@ -17,6 +17,8 @@ actionmailer/vendor
 actionmailer/bin
 activerecord/vendor
 activerecord/bin
+activemodel/vendor
+activemodel/bin
 railties/test/500.html
 railties/test/fixtures/tmp
 railties/test/initializer/root/log
