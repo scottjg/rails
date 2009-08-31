@@ -16,7 +16,7 @@ require 'active_record'
 
 conn = { :adapter => 'mysql',
   :database => 'activerecord_unittest',
-  :username => 'rails', :password => '',
+  :username => 'root', :password => '',
   :encoding => 'utf8' }
 
 conn[:socket] = Pathname.glob(%w[
