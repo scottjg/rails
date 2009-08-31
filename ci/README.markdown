@@ -36,10 +36,7 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
 
         RUBY_VERSION=1.8.6-p287 RAILS_GIT_REPO_URL=git://github.com/rails/rails.git RAILS_GIT_BRANCHES=master,2-3-stable sh /tmp/bootstrap_rails_ci.sh
 
-Step 2: Run the 'setup\_rails\_dependencies.rb' script
+Step 2: 
 ------------------------------------------------------
 
-* Make sure you are logged in as the ci user
-* Run the 'setup\_rails\_dependencies.rb' script to install and configure all dependencies of the Rails test suite (Leave the MySQL root password blank when prompted).
-
-        ~/railsci/setup_rails_dependencies.sh
+* Browse to the server at port 3333, and the builds should be running!
