@@ -34,7 +34,7 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
   not running as root, you may need to type your sudo password.  You can optionally specify a ruby interpreter,
   which rails branches to build, and an override url for the git repo:
 
-        RUBY_VERSION=1.8.6-p287 RAILS_GIT_REPO_URL=git://github.com/rails/rails.git sh RAILS_GIT_BRANCHES=master,2-3-stable /tmp/bootstrap_rails_ci.sh
+        RUBY_VERSION=1.8.6-p287 RAILS_GIT_REPO_URL=git://github.com/rails/rails.git RAILS_GIT_BRANCHES=master,2-3-stable sh /tmp/bootstrap_rails_ci.sh
 
 Step 2: Run the 'setup\_rails\_dependencies.rb' script
 ------------------------------------------------------
