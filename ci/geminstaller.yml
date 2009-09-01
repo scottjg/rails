@@ -1,7 +1,7 @@
 ---
 gems:
 - name: geminstaller
-  version: >= 0.4.3
+  version: >= 0.5.3
 - name: fcgi
   version: >= 0.8.7
 - name: memcache-client
