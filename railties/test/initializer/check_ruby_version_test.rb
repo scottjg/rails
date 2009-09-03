@@ -4,28 +4,14 @@ module InitializerTests
   class PathsTest < Test::Unit::TestCase
     include ActiveSupport::Testing::Isolation
 
-    test "rails does not initialize with ruby version 1.8.1" do
-      assert_rails_does_not_boot "1.8.1"
+    1.upto(6).each do |i|
+      test "rails does not initialize with ruby version 1.8.#{i}" do
+        assert_rails_does_not_boot "1.8.#{i}"
+      end
     end
 
-    test "rails initializes with ruby version 1.8.2" do
-      assert_rails_boots "1.8.2"
-    end
-
-    test "rails does not initialize with ruby version 1.8.3" do
-      assert_rails_does_not_boot "1.8.3"
-    end
-
-    test "rails initializes with ruby version 1.8.4" do
-      assert_rails_boots "1.8.4"
-    end
-
-    test "rails initializes with ruby version 1.8.5" do
-      assert_rails_boots "1.8.5"
-    end
-
-    test "rails initializes with ruby version 1.8.6" do
-      assert_rails_boots "1.8.6"
+    test "rails initializes with ruby version 1.8.7" do
+      assert_rails_boots "1.8.7"
     end
 
     def set_ruby_version(version)
