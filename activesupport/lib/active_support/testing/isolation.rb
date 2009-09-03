@@ -1,6 +1,7 @@
 module ActiveSupport
   module Testing
     class ProxyTestResult
+
       def initialize
         @calls = []
       end
@@ -9,6 +10,10 @@ module ActiveSupport
         @calls.each do |name, args|
           result.send(name, *args)
         end
+      end
+
+      def proxy_raise(*args)
+       @calls << [:raise, args]
       end
 
       def method_missing(name, *args)
@@ -32,7 +37,11 @@ module ActiveSupport
         @_result = result
 
         proxy = run_in_isolation do |proxy|
-          super(proxy) { }
+          begin
+            super(proxy) { }
+          rescue SystemExit => e
+            proxy.proxy_raise e
+          end
         end
 
         proxy.__replay__(@_result)

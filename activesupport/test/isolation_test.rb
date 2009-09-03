@@ -68,6 +68,12 @@ elsif ENV['CHILD']
       assert_equal 0, $LOADED_FEATURES.grep(/fixtures\/omgomg/).size
       require File.expand_path(File.join(File.dirname(__FILE__), "fixtures", "omgomg"))
     end
+
+    if ENV['WITH_SYSTEM_EXIT']
+      test "system exit" do
+        exit 127
+      end
+    end
   end
 else
   class ParentIsolationTest < ActiveSupport::TestCase
@@ -152,6 +158,18 @@ else
     test "self.setup is run only once" do
       text = File.read(File.join(File.dirname(__FILE__), "fixtures", "isolation_test"))
       assert_equal "hello\n", text
+    end
+
+    test "system exits bubble through" do
+      ENV["CHILD"] = "1"
+      ENV["WITH_SYSTEM_EXIT"] = "1"
+      begin
+        `#{Gem.ruby} -I#{File.dirname(__FILE__)} "#{File.expand_path(__FILE__)}" -v`
+        assert_equal 127, $?.exitstatus
+      ensure
+        ENV.delete("CHILD")
+        ENV.delete("WITH_SYSTEM_EXIT")
+      end
     end
 
   end
