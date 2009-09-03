@@ -1,0 +1,1 @@
+gem "rails", :vendored_at => '.'
