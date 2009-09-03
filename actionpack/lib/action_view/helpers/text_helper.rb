@@ -537,7 +537,10 @@ module ActionView
             href = $&
             punctuation = ''
             # detect already linked URLs
-            if $` =~ /<a\s[^>]*href="$|<img\s[^>]*src="$/
+            part = $`
+            require 'ruby-debug'
+            # debugger if text =~ /embed/
+            if part =~ /<a\s[^>]*href="$|<img\s[^>]*src="$|<param\s[^>]*value="$|<embed\s[^>]*src="$/
               # do not change string; URL is alreay linked
               href
             else

@@ -362,6 +362,11 @@ class TextHelperTest < ActionView::TestCase
     image = %(<img src="http://www.nu.nl/images/logo_nu_nl.gif" />)
     assert_equal image, auto_link(image)
   end
+  
+  def test_auto_link_embedded_object
+    html = %(<object width="425" height="344"><param name="movie" value="http://www.youtube.com/v/GZTj1nReJcI&hl=en&fs=1&"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed src="http://www.youtube.com/v/GZTj1nReJcI&hl=en&fs=1&" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="425" height="344"></embed></object>)
+    assert_equal html, auto_link(html)
+  end
 
   def test_auto_link_with_brackets
     link1_raw = 'http://en.wikipedia.org/wiki/Sprite_(computer_graphics)'
