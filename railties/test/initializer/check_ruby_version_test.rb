@@ -4,7 +4,11 @@ module InitializerTests
   class PathsTest < Test::Unit::TestCase
     include ActiveSupport::Testing::Isolation
 
-    1.upto(6).each do |i|
+    def setup
+      Rails.boot!
+    end
+
+    1.upto(6) do |i|
       test "rails does not initialize with ruby version 1.8.#{i}" do
         assert_rails_does_not_boot "1.8.#{i}"
       end

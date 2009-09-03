@@ -4,6 +4,7 @@ class PathsTest < Test::Unit::TestCase
   include ActiveSupport::Testing::Isolation
 
   def self.setup
+    Rails.boot!
     Rails::Initializer.run do |config|
       config.frameworks = [:action_controller, :action_view, :action_mailer, :active_record]
     end

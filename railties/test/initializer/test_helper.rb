@@ -30,13 +30,10 @@ end
 # Fake boot.rb
 module Rails
   class << self
-    attr_accessor :vendor_rails
-
-    def vendor_rails?
-      @vendor_rails
-    end
-
     def boot!
+      require File.expand_path(File.join(File.dirname(__FILE__), "../../../vendor/gems/environment"))
+
+      # w0t is this?
       # Require the initializer
       require File.join(RAILS_FRAMEWORK_ROOT, 'railties', 'lib', 'initializer')
       # Run the initializer the same way boot.rb does it
@@ -46,6 +43,3 @@ module Rails
     end
   end
 end
-
-# All that for this:
-Rails.boot!
