@@ -237,7 +237,7 @@ module Rails
     #
     #   config.gem 'qrp', :version => '0.4.1', :lib => false
     def gem(name, options = {})
-      @gems << Rails::GemDependency.new(name, options)
+      warn "config.gem has been replaced by Rails' gem bundler. Please specify your gem dependencies in Gemfile."
     end
 
     def default_gems

@@ -36,10 +36,6 @@ module Rails
       # w0t is this?
       # Require the initializer
       require File.join(RAILS_FRAMEWORK_ROOT, 'railties', 'lib', 'initializer')
-      # Run the initializer the same way boot.rb does it
-      Rails::Initializer.run(:install_gem_spec_stubs)
-      Rails::GemDependency.add_frozen_gem_path
-      Rails::Initializer.run(:set_load_path)
     end
   end
 end

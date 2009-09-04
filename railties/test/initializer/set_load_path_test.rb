@@ -7,7 +7,7 @@ module InitializerTests
     def assert_in_load_path(root, *paths)
       paths.flatten.each do |path|
         path = File.expand_path(File.join(root, path))
-        assert $LOAD_PATH.include?(path), "#{path.inspect} should be in load path, but was: #{$LOAD_PATH.inspect}"
+        assert $LOAD_PATH.include?(path), "#{path.inspect} should be in load path, but was:\n#{$LOAD_PATH.join("\n")}"
       end
     end
 
@@ -21,6 +21,7 @@ module InitializerTests
     def setup
       @root = File.join(File.dirname(__FILE__), 'root')
       Rails.boot!
+      Rails::Initializer.run { |c|  }
     end
 
     test "adds relevant application structure to the load path" do

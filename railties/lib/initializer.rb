@@ -3,7 +3,6 @@ require "pathname"
 $LOAD_PATH.unshift File.dirname(__FILE__)
 require 'railties_path'
 require 'rails/version'
-require 'rails/gem_dependency'
 require 'rails/rack'
 require 'rails/paths'
 require 'rails/core'
@@ -122,15 +121,6 @@ module Rails
   Initializer.default.add :set_load_path do
     configuration.paths.add_to_load_path
     $LOAD_PATH.uniq!
-  end
-
-  Initializer.default.add :add_gem_load_paths do
-    require 'rails/gem_dependency'
-    Rails::GemDependency.add_frozen_gem_path
-    unless config.gems.empty?
-      require "rubygems"
-      config.gems.each { |gem| gem.add_load_paths }
-    end
   end
 
   # Requires all frameworks specified by the Configuration#frameworks
@@ -422,17 +412,6 @@ Run `rake gems:build` to build the unbuilt gems.
     plugin_loader.load_plugins
   end
 
-  #
-  # # pick up any gems that plugins depend on
-  Initializer.default.add :add_gem_load_paths do
-    require 'rails/gem_dependency'
-    # TODO: This seems extraneous
-    Rails::GemDependency.add_frozen_gem_path
-    unless config.gems.empty?
-      require "rubygems"
-      config.gems.each { |gem| gem.add_load_paths }
-    end
-  end
 
   # TODO: Figure out if this needs to run a second time
   # load_gems
