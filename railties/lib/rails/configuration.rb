@@ -109,7 +109,6 @@ module Rails
 
     # TODO: Fix this when there is an application object
     def middleware
-      require 'action_controller'
       ActionController::Dispatcher.middleware
     end
 
@@ -194,7 +193,7 @@ module Rails
     end
 
     def default_frameworks
-      [ :active_record, :action_controller, :action_view, :action_mailer, :active_resource ]
+      [ :active_record, :action_controller, :action_view, :action_mailer, :active_resource, :active_support ]
     end
 
     def default_plugin_paths

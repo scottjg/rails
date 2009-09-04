@@ -129,14 +129,14 @@ module Rails
   Initializer.default.add :require_frameworks do
     begin
       require 'active_support'
-      require 'active_support/core_ext/kernel/reporting'
-      require 'active_support/core_ext/logger'
 
-      # TODO: This is here to make Sam Ruby's tests pass. Needs discussion.
-      require 'active_support/core_ext/numeric/bytes'
+      # If users don't want the entire ActiveSupport loaded, they can remove it
+      # via config.frameworks -= [:active_support]
+      require "active_support/all" if config.frameworks.include?(:active_support)
       configuration.frameworks.each { |framework| require(framework.to_s) }
     rescue LoadError => e
       # Re-raise as RuntimeError because Mongrel would swallow LoadError.
+      # TODO: Determine if this is still an issue
       raise e.to_s
     end
   end
@@ -170,6 +170,7 @@ module Rails
   # Loads the environment specified by Configuration#environment_path, which
   # is typically one of development, test, or production.
   Initializer.default.add :load_environment do
+    require 'active_support/core_ext/kernel/reporting'
     silence_warnings do
       next if @environment_loaded
       next unless File.file?(configuration.environment_path)
@@ -331,7 +332,7 @@ module Rails
   # (Configuration#frameworks). The available settings map to the accessors
   # on each of the corresponding Base classes.
   Initializer.default.add :initialize_framework_settings do
-    configuration.frameworks.each do |framework|
+    (configuration.frameworks - [:active_support]).each do |framework|
       base_class = framework.to_s.camelize.constantize.const_get("Base")
 
       configuration.send(framework).each do |setting, value|
@@ -462,13 +463,14 @@ Run `rake gems:install` to install the missing gems.
   # # Setup database middleware after initializers have run
   Initializer.default.add :initialize_database_middleware do
     if configuration.frameworks.include?(:active_record)
-      if configuration.frameworks.include?(:action_controller) &&
-          ActionController::Base.session_store.name == 'ActiveRecord::SessionStore'
-        configuration.middleware.insert_before :"ActiveRecord::SessionStore", ActiveRecord::ConnectionAdapters::ConnectionManagement
-        configuration.middleware.insert_before :"ActiveRecord::SessionStore", ActiveRecord::QueryCache
-      else
-        configuration.middleware.use ActiveRecord::ConnectionAdapters::ConnectionManagement
-        configuration.middleware.use ActiveRecord::QueryCache
+      if configuration.frameworks.include?(:action_controller)
+        if ActionController::Base.session_store.name == 'ActiveRecord::SessionStore'
+          configuration.middleware.insert_before :"ActiveRecord::SessionStore", ActiveRecord::ConnectionAdapters::ConnectionManagement
+          configuration.middleware.insert_before :"ActiveRecord::SessionStore", ActiveRecord::QueryCache
+        else
+          configuration.middleware.use ActiveRecord::ConnectionAdapters::ConnectionManagement
+          configuration.middleware.use ActiveRecord::QueryCache
+        end
       end
     end
   end

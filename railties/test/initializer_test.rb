@@ -457,20 +457,6 @@ class InitializerDatabaseMiddlewareTest < Test::Unit::TestCase
   ensure
     ActionController::Base.session_store = store
   end
-
-  def test_ensure_database_middleware_doesnt_use_action_controller_on_initializing
-    @config.frameworks -= [:action_controller]
-    store = ActionController::Base.session_store
-    ActionController::Base.session_store = ActiveRecord::SessionStore
-
-    @config.middleware.expects(:use).with(ActiveRecord::ConnectionAdapters::ConnectionManagement)
-    @config.middleware.expects(:use).with(ActiveRecord::QueryCache)
-
-    Rails::Initializer.run(:initialize_database_middleware, @config)
-  ensure
-    ActionController::Base.session_store = store
-    @config.frameworks += [:action_controller]
-  end
 end
 
 class InitializerViewPathsTest  < Test::Unit::TestCase
