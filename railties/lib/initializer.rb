@@ -120,8 +120,6 @@ module Rails
   # Set the <tt>$LOAD_PATH</tt> based on the value of
   # Configuration#load_paths. Duplicates are removed.
   Initializer.default.add :set_load_path do
-    # TODO: Think about unifying this with the general Rails paths
-    configuration.framework_paths.reverse_each { |dir| $LOAD_PATH.unshift(dir) if File.directory?(dir) }
     configuration.paths.add_to_load_path
     $LOAD_PATH.uniq!
   end

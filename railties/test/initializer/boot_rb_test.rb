@@ -8,6 +8,14 @@ module InitializerTests
       # Nothing here yet
     end
 
+    test "activates all needed gems / sets load path" do
+      # Rails::Initializer.run { }
+      # # railties
+      # %w(railties activesupport actionpack activerecord actionmailer activeresource).each do |framework|
+      #   assert $LOAD_PATH.grep(%r'#{framework}/lib').first, "has #{framework} in load path"
+      # end
+    end
+
     test "user has an old boot.rb" do
       # "Figure out how to detect old boot.rb"
     end
