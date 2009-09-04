@@ -170,21 +170,18 @@ module Rails
   # Loads the environment specified by Configuration#environment_path, which
   # is typically one of development, test, or production.
   Initializer.default.add :load_environment do
-    require 'active_support/core_ext/kernel/reporting'
-    silence_warnings do
-      next if @environment_loaded
-      next unless File.file?(configuration.environment_path)
+    next if @environment_loaded
+    next unless File.file?(configuration.environment_path)
 
-      @environment_loaded = true
+    @environment_loaded = true
 
-      config = configuration
-      constants = self.class.constants
+    config = configuration
+    constants = self.class.constants
 
-      eval(IO.read(configuration.environment_path), binding, configuration.environment_path)
+    eval(IO.read(configuration.environment_path), binding, configuration.environment_path)
 
-      (self.class.constants - constants).each do |const|
-        Object.const_set(const, self.class.const_get(const))
-      end
+    (self.class.constants - constants).each do |const|
+      Object.const_set(const, self.class.const_get(const))
     end
   end
 
@@ -228,7 +225,7 @@ module Rails
 
   Initializer.default.add :initialize_cache do
     unless defined?(RAILS_CACHE)
-      silence_warnings { Object.const_set "RAILS_CACHE", ActiveSupport::Cache.lookup_store(configuration.cache_store) }
+      Object.const_set "RAILS_CACHE", ActiveSupport::Cache.lookup_store(configuration.cache_store)
 
       if RAILS_CACHE.respond_to?(:middleware)
         # Insert middleware to setup and teardown local cache for each request
@@ -264,8 +261,7 @@ module Rails
       end
     end
 
-    # TODO: Why are we silencing warning here?
-    silence_warnings { Object.const_set "RAILS_DEFAULT_LOGGER", logger }
+    Object.const_set "RAILS_DEFAULT_LOGGER", logger
   end
 
   # Sets the logger for Active Record, Action Controller, and Action Mailer
