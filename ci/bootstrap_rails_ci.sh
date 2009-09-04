@@ -22,7 +22,7 @@ if [ ! $? = 0 ]; then echo "Unable to download and unzip cinabox" && exit; fi
 echo "  Running cinabox to bootstrap ruby..."
 DEFAULT_RUBY_VERSION=1.8.6-p287
 if [ -z $RUBY_VERSION ]; then RUBY_VERSION=$DEFAULT_RUBY_VERSION; fi
-sudo su - -c "RUBY_VERSION=$RUBY_VERSION FORCE_APTITUDE_RUBY_UNINSTALL=true ~/cinabox/bootstrap_ruby.sh" ci
+sudo su - -c "RUBY_VERSION=$RUBY_VERSION FORCE_RUBY_UNINSTALL=true ~/cinabox/bootstrap_ruby.sh" ci
 if [ ! $? = 0 ]; then echo "Unable to bootstrap ruby" && exit; fi
 
 echo "  Running cinabox to setup ci..."
