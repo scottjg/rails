@@ -2,10 +2,12 @@
 
 echo "Setting up Rails Continuous Integration server..."
 
-wget -O /tmp/create_ci_user.sh http://github.com/thewoolleyman/cinabox/raw/master/create_ci_user.sh
-chmod a+x /tmp/create_ci_user.sh
-/tmp/create_ci_user.sh
-if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
+if [ ! `whoami` = 'ci' ]; then
+  wget -O /tmp/create_ci_user.sh http://github.com/thewoolleyman/cinabox/raw/master/create_ci_user.sh
+  chmod a+x /tmp/create_ci_user.sh
+  /tmp/create_ci_user.sh
+  if [ ! $? = 0 ]; then echo "Unable to create ci user" && exit; fi
+fi
 
 if [ -z $RAILS_GIT_DOWNLOAD_URL ]; then RAILS_GIT_DOWNLOAD_URL='http://github.com/rails/rails/raw/master'; fi
 if [ -z $RAILS_GIT_REPO_URL ]; then RAILS_GIT_REPO_URL='git://github.com/rails/rails.git'; fi
