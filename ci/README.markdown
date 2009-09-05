@@ -1,8 +1,6 @@
 Instructions for setting up a Rails CI Server
 =============================================
 
-Many thanks to [RimuHosting.com](http://rimuhosting.com) for hosting the Official Rails CI Server Farm!
-
 These are the instructions for setting up an environment to run a [Continuous Integration](http://martinfowler.com/articles/continuousIntegration.html) environment for Rails.  If you want to hack on the Rails source code, you can use these instructions to reliably set up an environment which will automatically run all of the Rails unit tests on your branch, and let you know if you have broken anything.
 
 
@@ -13,8 +11,8 @@ These instructions and scripts are designed and tested to be run on a minimal Ub
 
 Here are virtual machine solutions you can try:
 
-* Hosted VPS
-  * [RimuHosting.com](http://rimuhosting.com) has affordable Virtual Private Servers (VPSs)
+* Hosted
+  * [EngineYard Cloud](http://www.engineyard.com/cloud-services) runs the [official Rails CI servers](http://ci.rubyonrails.org)
 * Virtual Machine Setup
   * [VMWare Player (win)](http://www.vmware.com/products/player/)
   * [VMWare Fusion (mac)](http://www.vmware.com/download/fusion/)
