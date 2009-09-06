@@ -41,7 +41,7 @@ class Hash
   end
 
   def as_json(options = nil) #:nodoc:
-    if options
+    if options && options.is_a?(Hash)
       if attrs = options[:except]
         except(*Array.wrap(attrs))
       elsif attrs = options[:only]
