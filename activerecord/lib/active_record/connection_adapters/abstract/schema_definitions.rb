@@ -35,7 +35,7 @@ module ActiveRecord
 
       # Returns +true+ if the column is either of type string or text.
       def text?
-        type == :string || type == :text
+        type == :string || type == :text || type == :citext
       end
 
       # Returns +true+ if the column is either of type integer, float or decimal.
@@ -50,16 +50,16 @@ module ActiveRecord
       # Returns the Ruby class that corresponds to the abstract data type.
       def klass
         case type
-          when :integer       then Fixnum
-          when :float         then Float
-          when :decimal       then BigDecimal
-          when :datetime      then Time
-          when :date          then Date
-          when :timestamp     then Time
-          when :time          then Time
-          when :text, :string then String
-          when :binary        then String
-          when :boolean       then Object
+          when :integer                then Fixnum
+          when :float                  then Float
+          when :decimal                then BigDecimal
+          when :datetime               then Time
+          when :date                   then Date
+          when :timestamp              then Time
+          when :time                   then Time
+          when :text, :string, :citext then String
+          when :binary                 then String
+          when :boolean                then Object
         end
       end
 
@@ -69,6 +69,7 @@ module ActiveRecord
         case type
           when :string    then value
           when :text      then value
+          when :citext    then value
           when :integer   then value.to_i rescue value ? 1 : 0
           when :float     then value.to_f
           when :decimal   then self.class.value_to_decimal(value)
@@ -86,6 +87,7 @@ module ActiveRecord
         case type
           when :string    then nil
           when :text      then nil
+          when :citext    then nil
           when :integer   then "(#{var_name}.to_i rescue #{var_name} ? 1 : 0)"
           when :float     then "#{var_name}.to_f"
           when :decimal   then "#{self.class.name}.value_to_decimal(#{var_name})"
@@ -244,6 +246,8 @@ module ActiveRecord
               :time
             when /date/i
               :date
+            when /citext/i
+              :citext
             when /clob/i, /text/i
               :text
             when /blob/i, /binary/i
@@ -488,7 +492,7 @@ module ActiveRecord
         self
       end
 
-      %w( string text integer float decimal datetime timestamp time date binary boolean ).each do |column_type|
+      %w( string text citext integer float decimal datetime timestamp time date binary boolean ).each do |column_type|
         class_eval <<-EOV
           def #{column_type}(*args)                                               # def string(*args)
             options = args.extract_options!                                       #   options = args.extract_options!
@@ -688,7 +692,7 @@ module ActiveRecord
       # ===== Examples
       #  t.string(:goat)
       #  t.string(:goat, :sheep)
-      %w( string text integer float decimal datetime timestamp time date binary boolean ).each do |column_type|
+      %w( string text citext integer float decimal datetime timestamp time date binary boolean ).each do |column_type|
         class_eval <<-EOV
           def #{column_type}(*args)                                          # def string(*args)
             options = args.extract_options!                                  #   options = args.extract_options!

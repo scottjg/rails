@@ -125,10 +125,10 @@ module ActiveRecord
             when /\A\(?(-?\d+(\.\d*)?\)?)\z/
               $1
             # Character types
-            when /\A'(.*)'::(?:character varying|bpchar|text)\z/m
+            when /\A'(.*)'::(?:character varying|bpchar|text|citext)\z/m
               $1
             # Character types (8.1 formatting)
-            when /\AE'(.*)'::(?:character varying|bpchar|text)\z/m
+            when /\AE'(.*)'::(?:character varying|bpchar|text|citext)\z/m
               $1.gsub(/\\(\d\d\d)/) { $1.oct.chr }
             # Binary data types
             when /\A'(.*)'::bytea\z/m
@@ -192,6 +192,7 @@ module ActiveRecord
         :primary_key => "serial primary key".freeze,
         :string      => { :name => "character varying", :limit => 255 },
         :text        => { :name => "text" },
+        :citext      => { :name => "citext" },
         :integer     => { :name => "integer" },
         :float       => { :name => "float" },
         :decimal     => { :name => "decimal" },
