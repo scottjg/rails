@@ -33,10 +33,12 @@ class SetupRailsDependencies
     
     # Install packages
     
-    if distro = 'gentoo'
-      run "sudo emerge #{packages.join(" ")}"
-    else
-      run "sudo aptitude -y install #{packages.join(" ")}"
+    packages.each do |package|
+      if distro = 'gentoo'
+        run "sudo emerge #{package}" unless system("qlist -I | grep #{package}")
+      else
+        run "sudo aptitude -y install #{package}" unless ((run "dpkg -l subversion", false) =~ /ii  #{package}/)
+      end
     end
 
     # start services
