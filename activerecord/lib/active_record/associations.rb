@@ -1656,7 +1656,7 @@ module ActiveRecord
           options[:extend] = create_extension_modules(association_id, extension, options[:extend])
 
           reflection = create_reflection(:has_and_belongs_to_many, association_id, options, self)
-          
+
           if reflection.association_foreign_key == reflection.primary_key_name
             raise HasAndBelongsToManyAssociationForeignKeyNeeded.new(reflection)
           end
