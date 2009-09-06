@@ -44,7 +44,7 @@ class SetupRailsDependencies
 
     # Setup database users for MySQL and PostgreSQL
     run "mysql -uroot -e 'grant all on *.* to rails@localhost;'"
-    run "sudo su - postgres -c 'createuser -s ci'", false
+    run "sudo su -l postgres -c 'createuser -s ci'", false
 
     # Install GemInstaller
     run "sudo gem install geminstaller"
