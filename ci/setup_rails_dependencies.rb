@@ -8,11 +8,11 @@ class SetupRailsDependencies
     # Detect distro, only Gentoo and Debian currently supported
     distro = system('which emerge') ? 'gentoo' : 'debian'
 
-    if distro = 'gentoo'
+    if distro == 'gentoo'
       packages = %w{
         sqlite
         mysql
-        sudo emerge postgresql-server
+        postgresql-server
         fcgi
         memcached
       }
