@@ -13,10 +13,11 @@ Here are virtual machine solutions you can try:
 
 * Hosted
   * [EngineYard Cloud](http://www.engineyard.com/cloud-services) runs the [official Rails CI servers](http://ci.rubyonrails.org)
-* Virtual Machine Setup
+  * Any Ubuntu 9 AMI on Amazon EC2.  Search for 'ubuntu.*9.*base' in the ElasticFox 'Images' tab.
+* Local Virtual Machine Setup
   * [VMWare Player (win)](http://www.vmware.com/products/player/)
   * [VMWare Fusion (mac)](http://www.vmware.com/download/fusion/)
-  * [VMWare image](http://www.vmware.com/appliances/directory/cat/45)
+  * [VMWare Ubuntu base image](http://www.vmware.com/appliances/directory/)
     * [7-Zip archiver to extract images](http://www.7-zip.org/) ('7za x <file>' to extract)
 
 

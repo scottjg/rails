@@ -34,11 +34,17 @@ class SetupRailsDependencies
     # Install packages
     
     packages.each do |package|
-      if distro = 'gentoo'
+      if distro == 'gentoo'
         run "sudo emerge #{package}" unless system("qlist -I | grep #{package}")
       else
         run "sudo aptitude -y install #{package}" unless ((run "dpkg -l subversion", false) =~ /ii  #{package}/)
       end
+    end
+    
+    # custom package installation
+    if distro == 'gentoo'
+      run "echo 'Y' | sudo emerge postgresql-server --config"
+      run "sudo /etc/init.d/postgresql-8.3 start"
     end
 
     # start services
@@ -46,6 +52,7 @@ class SetupRailsDependencies
 
     # Setup database users for MySQL and PostgreSQL
     run "mysql -uroot -e 'grant all on *.* to rails@localhost;'"
+    run "mysql -e 'grant all on *.* to rails@localhost;'" if m
     run "sudo su -l postgres -c 'createuser -s ci'", false
 
     # Install GemInstaller
