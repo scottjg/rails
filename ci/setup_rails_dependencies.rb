@@ -31,8 +31,26 @@ class SetupRailsDependencies
       }
     end
     
-    # Install packages
-    
+    # custom pre-package installation
+    if distro == 'debian'
+      pw_file = <<-eos
+Name: mysql-server/root_password
+Template: mysql-server/root_password
+Value: 
+Owners: mysql-server-5.0
+Flags: seen
+
+Name: mysql-server/root_password_again
+Template: mysql-server/root_password_again
+Value: 
+Owners: mysql-server-5.0
+Flags: seen
+      eos
+
+      run "sudo echo \"#{pw_file}\" > /var/cache/debconf/passwords.dat"
+    end
+        
+    # Install packages    
     packages.each do |package|
       if distro == 'gentoo'
         run "sudo emerge #{package}" unless system("qlist -I | grep #{package}")
@@ -41,7 +59,7 @@ class SetupRailsDependencies
       end
     end
     
-    # custom package installation
+    # custom post-package installation
     if distro == 'gentoo'
       run "echo 'Y' | sudo emerge postgresql-server --config"
       run "sudo /etc/init.d/postgresql-8.3 start"
