@@ -1104,3 +1104,39 @@ class TestAutosaveAssociationValidationsOnAHABTMAssocication < ActiveRecord::Tes
     assert @pirate.valid?
   end
 end
+
+class TestAutosaveAssociationValidationMethodsGeneration < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @pirate = Pirate.new
+  end
+
+  test "should generate validation methods for has_many associations" do
+    assert @pirate.respond_to?(:validate_associated_records_for_birds)
+  end
+
+  test "should generate validation methods for has_one associations with :validate => true" do
+    assert @pirate.respond_to?(:validate_associated_records_for_ship)
+  end
+
+  test "should not generate validation methods for has_one associations without :validate => true" do
+    assert !@pirate.respond_to?(:validate_associated_records_for_non_validated_ship)
+  end
+
+  test "should generate validation methods for belongs_to associations with :validate => true" do
+    assert @pirate.respond_to?(:validate_associated_records_for_parrot)
+  end
+
+  test "should not generate validation methods for belongs_to associations without :validate => true" do
+    assert !@pirate.respond_to?(:validate_associated_records_for_non_validated_parrot)
+  end
+
+  test "should generate validation methods for HABTM associations with :validate => true" do
+    assert @pirate.respond_to?(:validate_associated_records_for_parrots)
+  end
+
+  test "should not generate validation methods for HABTM associations without :validate => true" do
+    assert !@pirate.respond_to?(:validate_associated_records_for_non_validated_parrots)
+  end
+end
