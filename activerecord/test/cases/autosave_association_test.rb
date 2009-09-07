@@ -1025,3 +1025,82 @@ class TestAutosaveAssociationOnAHasAndBelongsToManyAssociation < ActiveRecord::T
 
   include AutosaveAssociationOnACollectionAssociationTests
 end
+
+class TestAutosaveAssociationValidationsOnAHasManyAssocication < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+    @pirate.birds.create(:name => 'cookoo')
+  end
+
+  test "should automatically validate associations" do
+    assert @pirate.valid?
+    @pirate.birds.each { |bird| bird.name = '' }
+
+    assert !@pirate.valid?
+  end
+end
+
+class TestAutosaveAssociationValidationsOnAHasOneAssocication < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+    @pirate.create_ship(:name => 'titanic')
+  end
+
+  test "should automatically validate associations with :validate => true" do
+    assert @pirate.valid?
+    @pirate.ship.name = ''
+    assert !@pirate.valid?
+  end
+
+  test "should not automatically validate associations without :validate => true" do
+    assert @pirate.valid?
+    @pirate.non_validated_ship.name = ''
+    assert @pirate.valid?
+  end
+end
+
+class TestAutosaveAssociationValidationsOnABelongsToAssocication < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+  end
+
+  test "should automatically validate associations with :validate => true" do
+    assert @pirate.valid?
+    @pirate.parrot = Parrot.new(:name => '')
+    assert !@pirate.valid?
+  end
+
+  test "should not automatically validate associations without :validate => true" do
+    assert @pirate.valid?
+    @pirate.non_validated_parrot = Parrot.new(:name => '')
+    assert @pirate.valid?
+  end
+end
+
+class TestAutosaveAssociationValidationsOnAHABTMAssocication < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+  end
+
+  test "should automatically validate associations with :validate => true" do
+    assert @pirate.valid?
+    @pirate.parrots = [ Parrot.new(:name => 'popuga') ]
+    @pirate.parrots.each { |parrot| parrot.name = '' }
+    assert !@pirate.valid?
+  end
+
+  test "should not automatically validate associations without :validate => true" do
+    assert @pirate.valid?
+    @pirate.non_validated_parrots = [ Parrot.new(:name => 'popuga') ]
+    @pirate.non_validated_parrots.each { |parrot| parrot.name = '' }
+    assert @pirate.valid?
+  end
+end
