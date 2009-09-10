@@ -70,7 +70,6 @@ Flags: seen
 
     # Setup database users for MySQL and PostgreSQL
     run "mysql -uroot -e 'grant all on *.* to rails@localhost;'"
-    run "mysql -e 'grant all on *.* to rails@localhost;'" if m
     run "sudo su -l postgres -c 'createuser -s ci'", false
 
     # Install GemInstaller
