@@ -47,7 +47,7 @@ Owners: mysql-server-5.0
 Flags: seen
       eos
 
-      run "sudo echo \"#{pw_file}\" > /var/cache/debconf/passwords.dat"
+      run "sudo su -c 'echo \"#{pw_file}\" > /var/cache/debconf/passwords.dat'"
     end
         
     # Install packages    
