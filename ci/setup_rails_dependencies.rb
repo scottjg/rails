@@ -55,7 +55,7 @@ Flags: seen
       if distro == 'gentoo'
         run "sudo emerge #{package}" unless system("qlist -I | grep #{package}")
       else
-        run "sudo aptitude -y install #{package}" unless ((run "dpkg -l subversion", false) =~ /ii  #{package}/)
+        run "sudo aptitude -y install #{package}" unless ((run "dpkg -l #{package}", false) =~ /ii  #{package}/)
       end
     end
     
