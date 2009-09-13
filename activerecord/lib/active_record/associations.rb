@@ -1723,6 +1723,11 @@ module ActiveRecord
           string.scan(/([\.a-zA-Z_]+).?\./).flatten
         end
 
+        def joined_tables_in_string(string)
+          return [] if string.blank?
+          string.scan(/\bJOIN\s+["`]?([\.a-zA-Z_]+)["`]?\s/i).flatten
+        end
+
         def tables_in_hash(hash)
           return [] if hash.blank?
           tables = hash.map do |key, value|
@@ -1767,13 +1772,13 @@ module ActiveRecord
           [table_name] + case merged_joins
           when Symbol, Hash, Array
             if array_of_strings?(merged_joins)
-              tables_in_string(merged_joins.join(' '))
+              joined_tables_in_string(merged_joins.join(' '))
             else
               join_dependency = ActiveRecord::Associations::ClassMethods::InnerJoinDependency.new(self, merged_joins, nil)
               join_dependency.join_associations.collect {|join_association| [join_association.aliased_join_table_name, join_association.aliased_table_name]}.flatten.compact
             end
           else
-            tables_in_string(merged_joins)
+            joined_tables_in_string(merged_joins)
           end
         end
 
