@@ -65,6 +65,7 @@ require 'action_view'
 # Common ActiveSupport usage in ActionController
 require "active_support/concern"
 require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/class/inheritable_attributes'
 require 'active_support/core_ext/load_error'
 require 'active_support/core_ext/module/attr_internal'
 require 'active_support/core_ext/module/delegation'
