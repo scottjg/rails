@@ -1,3 +1,5 @@
+require 'socket'
+
 # site_config.rb contains examples of various configuration options for the local installation
 # of CruiseControl.rb.
 
@@ -12,7 +14,7 @@
 # 
 ActionMailer::Base.smtp_settings = {
   :address =>        "localhost",
-  :domain =>         "ci.rubyonrails.org",
+  :domain =>         Socket.gethostname,
 }
 #
 # If you have no SMTP server at hand, you can configure email notification to use GMail SMTP server, as follows
