@@ -6,11 +6,11 @@ class SetupRailsDependencies
     puts "Setting up Rails build dependencies..."
 
     packages = %w{
+      mysql-server-5.0
       sqlite
       libsqlite-dev
       sqlite3
       libsqlite3-dev
-      mysql-server-5.0
       libmysqlclient-dev
       postgresql
       postgresql-server-dev-8.3

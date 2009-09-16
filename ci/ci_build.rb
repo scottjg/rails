@@ -5,8 +5,8 @@ include FileUtils
 
 puts "[CruiseControl] Rails build"
 
-if ENV['CI_PROJECTS']
-  puts "[CruiseControl] Building projects: #{ENV['CI_PROJECTS']}"
+if ENV['RAILS_CI_PROJECTS']
+  puts "[CruiseControl] Building projects: #{ENV['RAILS_CI_PROJECTS']}"
 else
   puts "[CruiseControl] Building all projects"
 end
@@ -22,7 +22,7 @@ root_dir = File.expand_path(File.dirname(__FILE__) + "/..")
 # A security hole, but there is nothing valuable on rails CI box anyway.
 build_results[:geminstaller] = system "sudo geminstaller --config=#{root_dir}/ci/geminstaller.yml --exceptions"
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activesupport/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /activesupport/ 
   cd "#{root_dir}/activesupport" do
     puts
     puts "[CruiseControl] Building ActiveSupport"
@@ -32,7 +32,7 @@ if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activesupport/
   end
 end
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activerecord/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /activerecord/ 
   rm_f "#{root_dir}/activerecord/debug.log"
   cd "#{root_dir}/activerecord" do
     puts
@@ -56,7 +56,7 @@ if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activerecord/
   end
 end
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activemodel/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /activemodel/ 
   cd "#{root_dir}/activemodel" do
     puts
     puts "[CruiseControl] Building ActiveModel"
@@ -66,7 +66,7 @@ if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activemodel/
 end
 
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activeresource/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /activeresource/ 
   rm_f "#{root_dir}/activeresource/debug.log"
   cd "#{root_dir}/activeresource" do
     puts
@@ -76,7 +76,7 @@ if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /activeresource/
   end
 end
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /actionpack/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /actionpack/ 
   cd "#{root_dir}/actionpack" do
     puts
     puts "[CruiseControl] Building ActionPack"
@@ -85,7 +85,7 @@ if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /actionpack/
   end
 end
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /actionmailer/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /actionmailer/ 
   cd "#{root_dir}/actionmailer" do
     puts
     puts "[CruiseControl] Building ActionMailer"
@@ -94,7 +94,7 @@ if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /actionmailer/
   end
 end
 
-if ENV['CI_PROJECTS'].nil? || ENV['CI_PROJECTS'] =~ /railties/ 
+if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /railties/ 
   cd "#{root_dir}/railties" do
     puts
     puts "[CruiseControl] Building RailTies"
