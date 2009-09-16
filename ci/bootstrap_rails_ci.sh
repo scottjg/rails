@@ -42,7 +42,7 @@ sudo su -l -c "ruby ~/railsci/setup_rails_dependencies.rb" ci
 if [ ! $? = 0 ]; then echo "Unable to setup rails dependencies" && exit; fi
 
 sudo su -l -c "wget -O ~/railsci/setup_rails_ci_project.rb $RAILS_GIT_DOWNLOAD_URL/ci/setup_rails_ci_project.rb" ci
-sudo su -l -c "RAILS_GIT_REPO_URL=$RAILS_GIT_REPO_URL RAILS_GIT_BRANCHES=$RAILS_GIT_BRANCHES ruby ~/railsci/setup_rails_ci_project.rb" ci
+sudo su -l -c "RAILS_GIT_REPO_URL=$RAILS_GIT_REPO_URL RAILS_GIT_BRANCHES=$RAILS_GIT_BRANCHES RAILS_CI_PROJECTS=$RAILS_CI_PROJECTS ruby ~/railsci/setup_rails_ci_project.rb" ci
 if [ ! $? = 0 ]; then echo "Unable to setup rails ci project" && exit; fi
 
 echo "  Rails Continuous Integration server setup complete!"
