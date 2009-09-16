@@ -75,6 +75,9 @@ Flags: seen
     # Install GemInstaller
     run "sudo gem install geminstaller"
 
+    # Install GemInstaller
+    run "sudo gem install bundler"
+
     print "\n\nRails build setup script completed.\n"
   end
 
