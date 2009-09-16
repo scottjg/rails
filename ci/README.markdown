@@ -31,9 +31,10 @@ Step 1: Download and run the 'bootstrap\_rails\_ci.sh' script
 
 * Run the script, this will also create a 'ci' user and prompt you for a password for the new user.  If you are 
   not running as root, you may need to type your sudo password.  You can optionally specify a ruby interpreter,
-  which rails branches to build, and an override url for the git repo:
+  which rails branches to build, an override url for the git repo, and which ci sub-projects to set up (e.g.
+  'activesupport,actionpack,rails', 'rails' means all):
 
-        RUBY_VERSION=1.8.6-p287 RAILS_GIT_REPO_URL=git://github.com/rails/rails.git RAILS_GIT_BRANCHES=master,2-3-stable sh /tmp/bootstrap_rails_ci.sh
+        RUBY_VERSION=1.8.6-p287 RAILS_GIT_REPO_URL=git://github.com/rails/rails.git RAILS_GIT_BRANCHES=master,2-3-stable RAILS_CI_PROJECTS=rails sh /tmp/bootstrap_rails_ci.sh
 
 Step 2: 
 ------------------------------------------------------
