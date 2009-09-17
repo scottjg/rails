@@ -8,6 +8,10 @@ FILE_STORE_PATH = File.join(File.dirname(__FILE__), '/../temp/', CACHE_DIR)
 ActionController::Base.page_cache_directory = FILE_STORE_PATH
 ActionController::Base.cache_store = :file_store, FILE_STORE_PATH
 
+# Force sweeper classes to load
+ActionController::Caching::Sweeper
+ActionController::Caching::Sweeping
+
 class PageCachingTestController < ActionController::Base
   caches_page :ok, :no_content, :if => Proc.new { |c| !c.request.format.json? }
   caches_page :found, :not_found
@@ -48,7 +52,7 @@ class PageCachingTest < ActionController::TestCase
     ActionController::Base.perform_caching = true
 
     ActionController::Routing::Routes.draw do |map|
-      map.main '', :controller => 'posts'
+      map.main '', :controller => 'posts', :format => nil
       map.formatted_posts 'posts.:format', :controller => 'posts'
       map.resources :posts
       map.connect ':controller/:action/:id'
