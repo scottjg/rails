@@ -184,9 +184,13 @@ module ActiveResource
       # Makes request to remote service.
       def request(method, path, *arguments)
         logger.info "#{method.to_s.upcase} #{site.scheme}://#{site.host}:#{site.port}#{path}" if logger
+        if logger && logger.debug? && arguments.first && arguments.first.respond_to?(:length) && arguments.first.length < 1024 then
+          logger.debug { arguments.inspect }
+        end
         result = nil
         ms = Benchmark.ms { result = http.send(method, path, *arguments) }
         logger.info "--> %d %s (%d %.0fms)" % [result.code, result.message, result.body ? result.body.length : 0, ms] if logger
+        logger.debug result.body if logger && logger.debug? && result.body
         handle_response(result)
       rescue Timeout::Error => e
         raise TimeoutError.new(e.message)
@@ -196,6 +200,10 @@ module ActiveResource
 
       # Handles response and error codes from remote service.
       def handle_response(response)
+        if logger && logger.debug? && response.body && response.body.length < 1024 && response["Content-Type"] =~ /text|xml/ then
+          logger.debug { response.body }
+        end
+
         case response.code.to_i
           when 301,302
             raise(Redirection.new(response))
