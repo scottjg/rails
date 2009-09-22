@@ -1,4 +1,5 @@
 require 'active_resource/connection'
+require 'active_resource/digest'
 require 'cgi'
 require 'set'
 
