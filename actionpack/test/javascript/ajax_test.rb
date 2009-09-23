@@ -28,11 +28,11 @@ class LinkToRemoteTest < AjaxTestCase
   end
 
   def link(options = {})
-    link_to_remote("Delete this post", "/blog/destroy/3", options)
+    link_to_remote("Delete this post", "/blog/destroy/4", options)
   end
 
   test "with no update" do
-    assert_html link, %w(href="/blog/destroy/3" Delete\ this\ post data-remote="true")
+    assert_html link, %w(href="/blog/destroy/4" Delete\ this\ post data-remote="true")
   end
 
   test "basic" do
@@ -46,14 +46,13 @@ class LinkToRemoteTest < AjaxTestCase
   end
 
   test "with :html options" do
-    expected = %{<a href="/blog/destroy/3" data-custom="me" data-update-success="#posts">Delete this post</a>}
+    expected = %{<a href="/blog/destroy/4" data-custom="me" data-remote="true" data-update-success="#posts">Delete this post</a>}
     assert_equal expected, link(:update => "#posts", :html => {"data-custom" => "me"})
   end
 
   test "with a hash for :update" do
     link = link(:update => {:success => "#posts", :failure => "#error"})
-    assert_match /data-update-success="#posts"/, link
-    assert_match /data-update-failure="#error"/, link
+    assert_html link, %w(data-remote="true" data-update-success="#posts" data-update-failure="#error")
   end
 
   test "with positional parameters" do
@@ -70,13 +69,13 @@ class LinkToRemoteTest < AjaxTestCase
     include ActionView::Helpers::AjaxHelper::Rails2Compatibility
 
     def link(options)
-      link_to_remote("Delete this post", "/blog/destroy/3", options)
+      link_to_remote("Delete this post", "/blog/destroy/4", options)
     end
 
     test "basic link_to_remote with :url =>" do
-      expected = %{<a href="/blog/destroy/3" data-update-success="#posts">Delete this post</a>}
+      expected = %{<a href="/blog/destroy/4" data-remote="true" data-update-success="#posts">Delete this post</a>}
       assert_equal expected,
-        link_to_remote("Delete this post", :url => "/blog/destroy/3", :update => "#posts")
+        link_to_remote("Delete this post", :url => "/blog/destroy/4", :update => "#posts")
     end
 
     assert_callbacks_work do |callback|
