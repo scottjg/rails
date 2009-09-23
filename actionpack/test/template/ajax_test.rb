@@ -167,4 +167,3 @@ class ObserveFieldTest < AjaxTestCase
 #      observe_field("glass", :frequency => 5.minutes, :function => "alert('Element changed')")
 #  end
 end
->>>>>>> bd4f9d3... Added the beginnings of the observe_field helper:actionpack/test/javascript/ajax_test.rb
