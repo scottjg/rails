@@ -102,7 +102,9 @@ class MemCacheStoreTest < ActionController::IntegrationTest
         assert_equal nil, cookies['_session_id']
       end
     end
-  rescue LoadError, RuntimeError
+  rescue LoadError => e
+    $stderr.puts "Skipping MemCacheStoreTest tests because of a LoadError: " + e.message + ".  Run 'gem bundle' and try again."
+  rescue RuntimeError => e
     $stderr.puts "Skipping MemCacheStoreTest tests. Start memcached and try again."
   end
 

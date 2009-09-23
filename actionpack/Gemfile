@@ -9,6 +9,7 @@ only :test do
   gem "mocha"
   gem "sqlite3-ruby"
   gem "RedCloth"
+  gem "memcache", "1.7.5", :vendored_at => rails_root.join("activesupport/lib/active_support/vendor/memcache-client-1.7.5")
 end
 
 disable_system_gems
