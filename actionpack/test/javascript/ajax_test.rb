@@ -119,10 +119,6 @@ class ButtonToRemoteTest < AjaxTestCase
 end
 
 class ObserveFieldTest < AjaxTestCase
-  def url_for(hash)
-    "/blog/update"
-  end
-
   def protect_against_forgery?
     false
   end
@@ -148,7 +144,7 @@ class ObserveFieldTest < AjaxTestCase
 
   test "using a url hash" do
     assert_html field(:url => {:controller => :blog, :action => :update}),
-      %w(data-observe="true" data-url="/blog/update")
+      %w(data-observe="true" data-url="/url/hash")
   end
 
 #  def test_observe_field
