@@ -4,6 +4,17 @@ class AjaxTestCase < ActiveSupport::TestCase
   include ActionView::Helpers::AjaxHelper
   include ActionView::Helpers::TagHelper
 
+  def url_for(url)
+    case url
+      when Hash
+        "/url/hash"
+      when String
+        url
+      else
+        raise TypeError.new("Unsupported url type (#{url.class}) for this test helper")
+    end
+  end
+
   def assert_html(html, matches)
     matches.each do |match|
       assert_match Regexp.new(Regexp.escape(match)), html
@@ -23,16 +34,8 @@ class AjaxTestCase < ActiveSupport::TestCase
 end
 
 class LinkToRemoteTest < AjaxTestCase
-  def url_for(hash)
-    "/blog/destroy/4"
-  end
-
   def link(options = {})
     link_to_remote("Delete this post", "/blog/destroy/4", options)
-  end
-
-  test "with no update" do
-    assert_html link, %w(href="/blog/destroy/4" Delete\ this\ post data-remote="true")
   end
 
   test "basic" do
@@ -40,9 +43,18 @@ class LinkToRemoteTest < AjaxTestCase
       %w(data-update-success="#posts")
   end
 
+  test "using a url string" do
+    assert_html link_to_remote("Test", "/blog/update/1"),
+      %w(href="/blog/update/1")
+  end
+
   test "using a url hash" do
     link = link_to_remote("Delete this post", {:controller => :blog}, :update => "#posts")
-    assert_html link, %w(href="/blog/destroy/4" data-update-success="#posts")
+    assert_html link, %w(href="/url/hash" data-update-success="#posts")
+  end
+
+  test "with no update" do
+    assert_html link, %w(href="/blog/destroy/4" Delete\ this\ post data-remote="true")
   end
 
   test "with :html options" do
@@ -89,17 +101,10 @@ class ButtonToRemoteTest < AjaxTestCase
     button_to_remote("Remote outpost", options, html)
   end
 
-  def url_for(*)
-    "/whatnot"
-  end
-  
   class StandardTest < ButtonToRemoteTest
     test "basic" do
-      button = button({:url => {:action => "whatnot"}}, {:class => "fine"})
-      [/input/, /class="fine"/, /type="button"/, /value="Remote outpost"/,
-       /data-url="\/whatnot"/].each do |match|
-         assert_match match, button
-      end
+      assert_html button({:url => {:action => "whatnot"}}, {:class => "fine"}),
+        %w(input class="fine" type="button" value="Remote outpost" data-url="/url/hash")
     end
   end
   
