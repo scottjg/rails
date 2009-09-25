@@ -32,4 +32,6 @@ railties/guides/output
 *.iws
 *.rakeTasks
 actionpack/bin
-*/vendor/gems
+vendor/gems/
+*/vendor/gems/
+bin/
