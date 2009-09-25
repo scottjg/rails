@@ -2,8 +2,12 @@ require "abstract_unit"
 
 class AjaxTestCase < ActiveSupport::TestCase
   include ActionView::Helpers::AjaxHelper
-  include ActionView::Helpers::TagHelper
 
+  # TODO: Ask Katz: Should these be included by the AjaxHelper? - BR
+  include ActionView::Helpers::TagHelper
+  include ActionView::Helpers::FormTagHelper
+
+  # TODO: Replace with the real url_for method - BR
   def url_for(url)
     case url
       when Hash
@@ -18,6 +22,12 @@ class AjaxTestCase < ActiveSupport::TestCase
   def assert_html(html, matches)
     matches.each do |match|
       assert_match Regexp.new(Regexp.escape(match)), html
+    end
+  end
+
+  def assert_html_not_present(html, matches)
+    matches.each do |match|
+      assert_no_match Regexp.new(Regexp.escape(match)), html
     end
   end
 
@@ -48,8 +58,16 @@ class AjaxTestCase < ActiveSupport::TestCase
 end
 
 class LinkToRemoteTest < AjaxTestCase
+  def url_for(hash)
+    "/blog/destroy/4"
+  end
+
   def link(options = {})
     link_to_remote("Delete this post", "/blog/destroy/4", options)
+  end
+
+  test "with no update" do
+    assert_html link, %w(href="/blog/destroy/4" Delete\ this\ post data-remote="true")
   end
 
   test "basic" do
@@ -57,18 +75,9 @@ class LinkToRemoteTest < AjaxTestCase
       %w(data-update-success="#posts")
   end
 
-  test "using a url string" do
-    assert_html link_to_remote("Test", "/blog/update/1"),
-      %w(href="/blog/update/1")
-  end
-
   test "using a url hash" do
     link = link_to_remote("Delete this post", {:controller => :blog}, :update => "#posts")
-    assert_html link, %w(href="/url/hash" data-update-success="#posts")
-  end
-
-  test "with no update" do
-    assert_html link, %w(href="/blog/destroy/4" Delete\ this\ post data-remote="true")
+    assert_html link, %w(href="/blog/destroy/4" data-update-success="#posts")
   end
 
   test "with :html options" do
@@ -110,15 +119,124 @@ class LinkToRemoteTest < AjaxTestCase
   end
 end
 
+class FormRemoteTagTest < AjaxTestCase
+
+  def protect_against_forgery?
+    false
+  end
+
+  def request_forgery_protection_token
+    "token_name"
+  end
+
+  def form_authenticity_token
+    "t0k3n"
+  end
+
+  def authenticity_input_attributes
+    %w(input type="hidden" name="token_name" value="t0k3n")
+  end
+
+  # TODO: Play with using assert_dom_equal
+  test "basic" do
+    assert_html form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }),
+      %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer")
+  end
+
+  test "when protect_against_forgery? is true" do
+    def protect_against_forgery?
+      true
+    end
+
+    expected_form_attributes = %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer")
+    expected_patterns = expected_form_attributes + authenticity_input_attributes
+
+    assert_equal true, protect_against_forgery?    
+    assert_html form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }), expected_patterns
+  end
+
+  test ":action is used when it is present" do
+    html = form_remote_tag(:update => "#glass_of_beer", :action => "foo")
+
+    assert_html html, %w(form action="foo" method="post" data-remote="true" data-update-success="#glass_of_beer")
+    assert_no_match /url="foo"/, html
+  end
+
+  test ":url is used when :action is not present" do
+    html = form_remote_tag(:update => "#glass_of_beer", :url => "bar")
+
+    assert_html html, %w(form action="bar" method="post" data-remote="true" data-update-success="#glass_of_beer")
+    assert_no_match /url="bar"/, html
+  end
+
+  test "when protect_against_forgery? is false" do
+    assert_equal false, protect_against_forgery?
+    assert_html_not_present form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }),
+      authenticity_input_attributes
+  end
+
+  test "update callbacks" do
+    assert_html form_remote_tag(:update => { :success => "#glass_of_beer" }, :url => { :action => :fast  }),
+      %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer")
+
+    assert_html form_remote_tag(:update => { :failure => "#glass_of_water" }, :url => { :action => :fast  }),
+      %w(form action="/url/hash" method="post" data-remote="true" data-update-failure="#glass_of_water")
+
+    assert_html form_remote_tag(:update => { :success => "#glass_of_beer", :failure => "#glass_of_water" }, :url => { :action => :fast  }),
+      %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer" data-update-failure="#glass_of_water")
+  end
+
+  test "using a :method option" do
+    expected_form_attributes = %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer")
+    # TODO: Ask Katz: Why does rails do this?  Some web servers don't allow PUT or DELETE from what I remember... - BR
+    expected_input_attributes = %w(input name="_method" type="hidden" value="put")
+
+    assert_html form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }, :html => { :method => :put }),
+      expected_form_attributes + expected_input_attributes
+  end
+
+
+  # FIXME: This test is janky as hell.  We are essentially rewriting capture and concat and they don't really work right
+  # because output is out of order.  This test passes because it's only doing a regex match on the buffer, but this really
+  # needs to be fixed by using the real helper methods that rails provides.  capture, concat, url_for etc. should be
+  # implemented by their *real* methods or we need to find a better workaround so that our tests aren't written so
+  # poorly.  - BR
+  test "form_remote_tag with block in erb" do
+    def capture(*args, &block)
+      @buffer = []
+      block.call(*args) if block_given?
+    end
+    def concat(str)
+      @buffer << str
+    end
+
+    expected_form_attributes = %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer" /form)
+    expected_inner_html = %w(w00t!)
+
+    form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }) { concat expected_inner_html }
+    assert_html @buffer.to_s,
+      expected_form_attributes + expected_inner_html
+  end
+
+
+end
+
 class ButtonToRemoteTest < AjaxTestCase
   def button(options, html = {})
     button_to_remote("Remote outpost", options, html)
   end
 
+  def url_for(*)
+    "/whatnot"
+  end
+  
   class StandardTest < ButtonToRemoteTest
     test "basic" do
-      assert_html button({:url => {:action => "whatnot"}}, {:class => "fine"}),
-        %w(input class="fine" type="button" value="Remote outpost" data-url="/url/hash")
+      button = button({:url => {:action => "whatnot"}}, {:class => "fine"})
+      [/input/, /class="fine"/, /type="button"/, /value="Remote outpost"/,
+       /data-url="\/whatnot"/].each do |match|
+         assert_match match, button
+      end
     end
   end
   
@@ -129,7 +247,6 @@ class ButtonToRemoteTest < AjaxTestCase
       button(callback => "undoRequestCompleted(request)")
     end
   end
-
 end
 
 class ObserveFieldTest < AjaxTestCase
