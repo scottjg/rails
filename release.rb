@@ -12,7 +12,7 @@ end
 # Create Rails packages
 `cd release/railties && rake template=jamis package`
 
-# Upload documentation
+# Upload documentation (can you give me more details? sucker)
 `cd release/rails/doc/api && scp -r * davidhh@wrath.rubyonrails.com:public_html/api`
 
 # Upload packages

@@ -12,3 +12,5 @@ end
     `cd #{pkg} && rm -rf pkg && rake pgem && cd ..`
   end
 end
+
+# This is an idiot comment.
