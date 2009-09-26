@@ -1,7 +1,7 @@
 Project.configure do |project|
   # Send email notifications about broken and fixed builds to core mailing list
   if Socket.gethostname =~ /ci.rubyonrails.org/ && ENV['ENABLE_RAILS_CI_EMAILS'] == 'true'
-    project.email_notifier.emails = ['thewoolleyman+railsci@gmail.com']
+    project.email_notifier.emails = ['rubyonrails-core@googlegroups.com']
   end
 
   if project.name =~ /^(activesupport|actionpack|actionmailer|activeresource|activerecord|activemodel|railties)(-|_)/
