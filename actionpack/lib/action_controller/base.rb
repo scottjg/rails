@@ -2,7 +2,6 @@ module ActionController
   class Base < Metal
     abstract!
 
-    include AbstractController::Benchmarker
     include AbstractController::Callbacks
     include AbstractController::Logger
 
@@ -15,6 +14,7 @@ module ActionController
     include ActionController::Layouts
     include ActionController::ConditionalGet
     include ActionController::RackConvenience
+    include ActionController::Benchmarking
 
     # Legacy modules
     include SessionManagement

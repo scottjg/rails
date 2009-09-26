@@ -28,7 +28,7 @@ if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /activesupport/
     puts "[CruiseControl] Building ActiveSupport"
     puts
     build_results[:activesupport] = system 'rake'
-    build_results[:activesupport_isolated] = system 'rake isolated_test'
+    build_results[:activesupport_isolated] = system 'rake test:isolated'
   end
 end
 
