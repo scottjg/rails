@@ -15,9 +15,9 @@ These instructions and scripts are designed and tested to be run on a minimal Ub
 Here are virtual machine solutions you can try:
 
 * Hosted
-  * [EngineYard Cloud](http://www.engineyard.com/cloud-services) runs the [official Rails CI servers](http://ci.rubyonrails.org)
+  * [EngineYard Cloud](http://www.engineyard.com/cloud-services) donates EC2 instances for the [official Rails CI servers](http://ci.rubyonrails.org)
   * Any Ubuntu 9 AMI on Amazon EC2.  Search for 'ubuntu.*9.*base' in the ElasticFox 'Images' tab.
-* Local Virtual Machine Setup
+* Local Virtual Machine Setup.  The current boxes are using `ami-0d729464 - alestic/ubuntu-9.04-jaunty-base-20090614.manifest.xml`
   * [VMWare Player (win)](http://www.vmware.com/products/player/)
   * [VMWare Fusion (mac)](http://www.vmware.com/download/fusion/)
   * [VMWare Ubuntu base image](http://www.vmware.com/appliances/directory/)
@@ -43,3 +43,9 @@ Step 2:
 ------------------------------------------------------
 
 * Browse to the server at port 3333, and the builds should be running!
+
+Known Problems:
+---------------
+
+* Aptitude pops up a prompt during mysql-server-5.0 installation and hangs install.  Even though a workaround is in `setup_rails_dependencies.rb`, it doesn't work when run as part of the script.  You may have to install this manually
+* `bootstrap_rails_ci.sh` doesn't properly fail and exit if a sub-script fails.
