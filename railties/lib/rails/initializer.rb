@@ -195,6 +195,13 @@ module Rails
     plugin_loader.add_plugin_load_paths
   end
 
+  # Create tmp directories
+  Initializer.default.add :ensure_tmp_directories_exist do
+    %w(cache pids sessions sockets).each do |dir_to_make|
+      FileUtils.mkdir_p(File.join(configuration.root_path, 'tmp', dir_to_make))
+    end
+  end
+
   # Loads the environment specified by Configuration#environment_path, which
   # is typically one of development, test, or production.
   Initializer.default.add :load_environment do
@@ -259,6 +266,13 @@ module Rails
     if configuration.frameworks.include?(:active_record)
       ActiveRecord::Base.configurations = configuration.database_configuration
       ActiveRecord::Base.establish_connection
+    end
+  end
+
+  # Include middleware to serve up static assets
+  Initializer.default.add :initialize_static_server do
+    if configuration.frameworks.include?(:action_controller) && configuration.serve_static_assets
+      configuration.middleware.insert(0, ActionDispatch::Static, Rails.public_path)
     end
   end
 

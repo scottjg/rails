@@ -44,10 +44,6 @@ end
 puts "=> Booting #{ActiveSupport::Inflector.demodulize(server)}"
 puts "=> Rails #{Rails.version} application starting on http://#{options[:Host]}:#{options[:Port]}}"
 
-%w(cache pids sessions sockets).each do |dir_to_make|
-  FileUtils.mkdir_p(File.join(RAILS_ROOT, 'tmp', dir_to_make))
-end
-
 if options[:detach]
   Process.daemon
   pid = "#{RAILS_ROOT}/tmp/pids/server.pid"
@@ -61,7 +57,6 @@ RAILS_ENV.replace(options[:environment]) if defined?(RAILS_ENV)
 app = Rack::Builder.new {
   use Rails::Rack::LogTailer unless options[:detach]
   use Rails::Rack::Debugger if options[:debugger]
-  use Rails::Rack::Static
   run ActionDispatch::Utils.parse_config(options[:config])
 }.to_app
 
