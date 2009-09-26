@@ -19,6 +19,8 @@ class SetupRailsDependencies
     }
     
     # custom pre-package installation
+    # FIXME: mysql-server-5.0 still hangs on an interactive prompt on the first script run, even though the
+    # /var/cache/debconf/passwords.dat 'Flags: seen' hack below works during manual testing.
     pw_file = <<-eos
 Name: mysql-server/root_password
 Template: mysql-server/root_password

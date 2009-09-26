@@ -5,9 +5,9 @@ class SetupRailsCiProject
     
     puts "Setting up Rails CI project(s) in CruiseControl.rb..."
 
-    rails_git_branches = (ENV['RAILS_GIT_BRANCHES'] || 'master').split(',')
-    rails_ci_projects = (ENV['RAILS_CI_PROJECTS'] || 'rails').split(',')
-    rails_git_repo_url = ENV['RAILS_GIT_REPO_URL'] || 'git://github.com/rails/rails.git'
+    rails_git_branches = (ENV['RAILS_GIT_BRANCHES'].to_s == '' ? 'master' : ENV['RAILS_GIT_BRANCHES']).split(',')
+    rails_ci_projects = (ENV['RAILS_CI_PROJECTS'].to_s == '' ? 'rails' : ENV['RAILS_CI_PROJECTS']).split(',')
+    rails_git_repo_url = ENV['RAILS_GIT_REPO_URL'].to_s == '' ? 'git://github.com/rails/rails.git' : ENV['RAILS_GIT_REPO_URL'] 
     ccrb_data_dir = "#{ENV['HOME']}/.cruise"
     ccrb_projects_dir = "#{ccrb_data_dir}/projects"
 

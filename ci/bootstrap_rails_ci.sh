@@ -22,6 +22,7 @@ sudo su -l -c "mkdir ~/cinabox" ci
 sudo su -l -c "wget -O ~/cinabox/cinabox.tar.gz $CINABOX_GIT_DOWNLOAD_URL" ci
 echo "  Unzipping cinabox.tar.gz to /home/ci/cinabox..."
 sudo su -l -c "tar --directory=/home/ci/cinabox --overwrite --strip-components=1 -zxvf ~/cinabox/cinabox.tar.gz" ci
+# FIXME: this abort-on-error-and-exit checking isn't working...
 if [ ! $? = 0 ]; then echo "Unable to download and unzip cinabox" && exit; fi
 
 echo "  Running cinabox to bootstrap ruby..."
