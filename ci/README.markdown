@@ -3,6 +3,9 @@ Instructions for setting up a Rails CI Server
 
 These are the instructions for setting up an environment to run a [Continuous Integration](http://martinfowler.com/articles/continuousIntegration.html) environment for Rails.  If you want to hack on the Rails source code, you can use these instructions to reliably set up an environment which will automatically run all of the Rails unit tests on your branch, and let you know if you have broken anything.
 
+NOTE: We'd like to rewrite these scripts use Chef, but that will take some work.  Please contact 
+thewoolleyman+railsci@gmail.com if you'd like to help.
+
 
 Start with a clean server
 -------------------------
