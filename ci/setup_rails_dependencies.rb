@@ -16,10 +16,10 @@ class SetupRailsDependencies
       postgresql-server-dev-8.3
       libfcgi-dev
       memcached
-      libxml
-      libxml-dev
-      libxslt
-      libxslt-dev
+      libxml2
+      libxml2-dev
+      libxslt1
+      libxslt1-dev
     }
     
     # custom pre-package installation
