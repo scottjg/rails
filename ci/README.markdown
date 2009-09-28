@@ -49,3 +49,4 @@ Known Problems:
 
 * Aptitude pops up a prompt during mysql-server-5.0 installation and hangs install.  Even though a workaround is in `setup_rails_dependencies.rb`, it doesn't work when run as part of the script.  You may have to install this manually
 * `bootstrap_rails_ci.sh` doesn't properly fail and exit if a sub-script fails.
+* Hostname is not set
