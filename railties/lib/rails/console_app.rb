@@ -17,7 +17,8 @@ end
 # create a new session. If a block is given, the new session will be yielded
 # to the block before being returned.
 def new_session
-  session = ActionController::Integration::Session.new
+  app = ActionController::Dispatcher.new
+  session = ActionController::Integration::Session.new(app)
   yield session if block_given?
   session
 end
@@ -25,7 +26,7 @@ end
 #reloads the environment
 def reload!
   puts "Reloading..."
-  ActionController::Dispatcher.new
-  ActionController::Dispatcher.router.reload
+  ActionDispatch::Callbacks.new(lambda {}, true)
+  ActionController::Routing::Routes.reload
   true
 end

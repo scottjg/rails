@@ -56,6 +56,7 @@ module Rails::Generators
     def create_root_files
       copy_file "Rakefile"
       copy_file "README"
+      copy_file "config.ru"
     end
 
     def create_app_files
@@ -114,7 +115,6 @@ module Rails::Generators
 
     def create_dispatch_files
       return unless options[:with_dispatchers]
-      copy_file "dispatchers/config.ru", "config.ru"
 
       template "dispatchers/dispatch.rb", "public/dispatch.rb"
       chmod "public/dispatch.rb", 0755, :verbose => false

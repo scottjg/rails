@@ -168,8 +168,8 @@ module ActionDispatch
       attr_accessor :request_count
 
       # Create and initialize a new Session instance.
-      def initialize(app = nil)
-        @app = app || ActionController::Dispatcher.new
+      def initialize(app)
+        @app = app
         reset!
       end
 
@@ -325,6 +325,10 @@ module ActionDispatch
     end
 
     module Runner
+      def app
+        @app
+      end
+
       # Reset the current session. This is useful for testing multiple sessions
       # in a single test case.
       def reset!
@@ -354,7 +358,7 @@ module ActionDispatch
       # can use this method to open multiple sessions that ought to be tested
       # simultaneously.
       def open_session(app = nil)
-        session = Integration::Session.new(app)
+        session = Integration::Session.new(app || self.app)
 
         # delegate the fixture accessors back to the test instance
         extras = Module.new { attr_accessor :delegate, :test_result }
@@ -476,5 +480,21 @@ module ActionDispatch
   #   end
   class IntegrationTest < ActiveSupport::TestCase
     include Integration::Runner
+
+    @@app = nil
+
+    def self.app
+      # DEPRECATE Rails application fallback
+      # This should be set by the initializer
+      @@app || (defined?(Rails.application) && Rails.application) || nil
+    end
+
+    def self.app=(app)
+      @@app = app
+    end
+
+    def app
+      super || self.class.app
+    end
   end
 end

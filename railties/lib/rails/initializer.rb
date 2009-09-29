@@ -1,5 +1,6 @@
 require "pathname"
 
+require 'rails/application'
 require 'rails/railties_path'
 require 'rails/version'
 require 'rails/gem_dependency'
@@ -94,6 +95,15 @@ module Rails
           run_initializer(initializer)
         else
           @initializers.each {|block| run_initializer(block) }
+        end
+
+        # HAX
+        # TODO: remove hax
+        unless initializer
+          app = Rails::Application.new
+          app.config = @config
+
+          Rails.application = app
         end
       end
     end
@@ -191,6 +201,13 @@ module Rails
     plugin_loader.add_plugin_load_paths
   end
 
+  # Create tmp directories
+  Initializer.default.add :ensure_tmp_directories_exist do
+    %w(cache pids sessions sockets).each do |dir_to_make|
+      FileUtils.mkdir_p(File.join(configuration.root_path, 'tmp', dir_to_make))
+    end
+  end
+
   # Loads the environment specified by Configuration#environment_path, which
   # is typically one of development, test, or production.
   Initializer.default.add :load_environment do
@@ -255,6 +272,25 @@ module Rails
     if configuration.frameworks.include?(:active_record)
       ActiveRecord::Base.configurations = configuration.database_configuration
       ActiveRecord::Base.establish_connection
+    end
+  end
+
+  # Include middleware to serve up static assets
+  Initializer.default.add :initialize_static_server do
+    if configuration.frameworks.include?(:action_controller) && configuration.serve_static_assets
+      configuration.middleware.use(ActionDispatch::Static, Rails.public_path)
+    end
+  end
+
+  Initializer.default.add :initialize_middleware_stack do
+    if configuration.frameworks.include?(:action_controller)
+      configuration.middleware.use(::Rack::Lock) unless ActionController::Base.allow_concurrency
+      configuration.middleware.use(ActionDispatch::ShowExceptions, ActionController::Base.consider_all_requests_local)
+      configuration.middleware.use(ActionDispatch::Callbacks, ActionController::Dispatcher.prepare_each_request)
+      configuration.middleware.use(lambda { ActionController::Base.session_store }, lambda { ActionController::Base.session_options })
+      configuration.middleware.use(ActionDispatch::ParamsParser)
+      configuration.middleware.use(::Rack::MethodOverride)
+      configuration.middleware.use(::Rack::Head)
     end
   end
 
@@ -506,7 +542,7 @@ Run `rake gems:install` to install the missing gems.
   # # Setup database middleware after initializers have run
   Initializer.default.add :initialize_database_middleware do
     if configuration.frameworks.include?(:active_record)
-      if configuration.frameworks.include?(:action_controller) &&
+      if configuration.frameworks.include?(:action_controller) && ActionController::Base.session_store &&
           ActionController::Base.session_store.name == 'ActiveRecord::SessionStore'
         configuration.middleware.insert_before :"ActiveRecord::SessionStore", ActiveRecord::ConnectionAdapters::ConnectionManagement
         configuration.middleware.insert_before :"ActiveRecord::SessionStore", ActiveRecord::QueryCache
