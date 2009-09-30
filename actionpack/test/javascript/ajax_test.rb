@@ -1,30 +1,18 @@
 require "abstract_unit"
 
-class Author
-  extend ActiveModel::Naming
-  include ActiveModel::Conversion
-
-  attr_reader :id
-
-  def save; @id = 1 end
-  def new_record?; @id.nil? end
-  def name
-    @id.nil? ? 'new author' : "author ##{@id}"
-  end
-end
+#TODO: Switch to assert_dom_equal where appropriate.  assert_html is not robust enough for all tests - BR
 
 class AjaxTestCase < ActionView::TestCase
   include ActionView::Helpers::AjaxHelper
 
-  # TODO: Replace with the real url_for method - BR
-  def url_for(url)
-    case url
+  def url_for(options)
+    case options
       when Hash
         "/url/hash"
       when String
-        url
+        options
       else
-        raise TypeError.new("Unsupported url type (#{url.class}) for this test helper")
+        raise TypeError.new("Unsupported url type (#{options.class}) for this test helper")
     end
   end
 
@@ -231,48 +219,76 @@ class FormRemoteTagTest < AjaxTestCase
   end
 end
 
+class Author
+  extend ActiveModel::Naming
+  include ActiveModel::Conversion
+
+  attr_reader :id
+
+  def save; @id = 1 end
+  def new_record?; @id.nil? end
+  def name
+    @id.nil? ? 'new author' : "author ##{@id}"
+  end
+end
+
+class Article
+  extend ActiveModel::Naming
+  include ActiveModel::Conversion
+  attr_reader :id
+  attr_reader :author_id
+  def save; @id = 1; @author_id = 1 end
+  def new_record?; @id.nil? end
+  def name
+    @id.nil? ? 'new article' : "article ##{@id}"
+  end
+end
+
 class RemoteFormForTest < AjaxTestCase
 
   def setup
     super
-    @record = Author.new
+    @record = @author = Author.new
+    @article = Article.new
   end
 
-  test "remote_form_for_with_record_identification_with_new_record" do
+  test "remote_form_for with record identification with new record" do
     remote_form_for(@record, {:html => { :id => 'create-author' }}) {}
-    assert_html output_buffer, %w(action="/authors" data-remote="true" class="new_author" id="create-author" method="post" /form)
+
+    expected = %(<form action="/authors" data-remote="true" class="new_author" id="create-author" method="post"></form>)
+    assert_dom_equal expected, output_buffer
   end
 
-#  test "remote_form_for_with_record_identification_without_html_options" do
-#    remote_form_for(@record) {}
-#
-#    expected = %(<form action='#{authors_path}' onsubmit="new Ajax.Request('#{authors_path}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_author' method='post' id='new_author'></form>)
-#    assert_dom_equal expected, output_buffer
-#  end
-#
-#  test "remote_form_for_with_record_identification_with_existing_record" do
-#    @record.save
-#    remote_form_for(@record) {}
-#
-#    expected = %(<form action='#{author_path(@record)}' id='edit_author_1' method='post' onsubmit="new Ajax.Request('#{author_path(@record)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_author'><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
-#    assert_dom_equal expected, output_buffer
-#  end
-#
-#  test "remote_form_for_with_new_object_in_list" do
-#    remote_form_for([@author, @article]) {}
-#
-#    expected = %(<form action='#{author_articles_path(@author)}' onsubmit="new Ajax.Request('#{author_articles_path(@author)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_article' method='post' id='new_article'></form>)
-#    assert_dom_equal expected, output_buffer
-#  end
-#
-#  test "remote_form_for_with_existing_object_in_list" do
-#    @author.save
-#    @article.save
-#    remote_form_for([@author, @article]) {}
-#
-#    expected = %(<form action='#{author_article_path(@author, @article)}' id='edit_article_1' method='post' onsubmit="new Ajax.Request('#{author_article_path(@author, @article)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_article'><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
-#    assert_dom_equal expected, output_buffer
-#  end
+  test "remote_form_for with record identification without html options" do
+    remote_form_for(@record) {}
+
+    expected = %(<form action="/authors" data-remote="true" class="new_author" id="new_author" method="post"></form>)
+    assert_dom_equal expected, output_buffer
+  end
+
+  test "remote_form_for with record identification with existing record" do
+    @record.save
+    remote_form_for(@record) {}
+
+    expected = %(<form action="/authors/1" data-remote="true" class="edit_author" id="edit_author_1" method="post"><div style="margin:0;padding:0;display:inline"><input name="_method" type="hidden" value="put" /></div></form>)
+    assert_dom_equal expected, output_buffer
+  end
+
+  test "remote_form_for with new object in list" do
+    remote_form_for([@author, @article]) {}
+
+    expected = %(<form action="#{author_articles_path(@author)}" class="new_article" method="post" id="new_article" data-remote="true"></form>)
+    assert_dom_equal expected, output_buffer
+  end
+
+  test "remote_form_for with existing object in list" do
+    @author.save
+    @article.save
+    remote_form_for([@author, @article]) {}
+
+    expected = %(<form action='#{author_article_path(@author, @article)}' id='edit_article_1' method='post' class='edit_article' data-remote="true"><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
+    assert_dom_equal expected, output_buffer
+  end
 
   protected
     def author_path(record)
