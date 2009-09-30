@@ -14,10 +14,6 @@ require 'test/unit'
 # TODO: Remove setting this magic constant
 RAILS_FRAMEWORK_ROOT = File.expand_path("#{File.dirname(__FILE__)}/../../..")
 
-# These load paths usually get set inside of boot.rb
-$:.unshift "#{RAILS_FRAMEWORK_ROOT}/railties/lib"
-$:.unshift "#{RAILS_FRAMEWORK_ROOT}/actionpack/lib"
-
 # These files do not require any others and are needed
 # to run the tests
 require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/testing/isolation"
@@ -71,8 +67,23 @@ module TestHelpers
   end
 
   module Generation
-    def build_app
+    def build_app(options = {})
+      FileUtils.rm_rf(app_path)
       FileUtils.cp_r(tmp_path('app_template'), app_path)
+
+      # Delete the initializers unless requested
+      unless options[:initializers]
+        Dir["#{app_path}/config/initializers/*.rb"].each do |initializer|
+          File.delete(initializer)
+        end
+      end
+
+      environment = File.read("#{app_path}/config/environment.rb")
+      if environment =~ /(\n\s*end\s*)\Z/
+        File.open("#{app_path}/config/environment.rb", 'w') do |f|
+          f.puts $` + %'\nconfig.action_controller.session = { :key => "_myapp_session", :secret => "bac838a849c1d5c4de2e6a50af826079" }\n' + $1
+        end
+      end
     end
 
     def app_file(path, contents)
@@ -83,6 +94,19 @@ module TestHelpers
 
     def controller(name, contents)
       app_file("app/controllers/#{name}_controller.rb", contents)
+    end
+
+    def boot_rails
+      # TMP mega hax to prevent boot.rb from actually booting
+      Object.class_eval <<-RUBY, __FILE__, __LINE__+1
+        module Rails
+          Initializer = 'lol'
+          require "#{app_path}/config/boot"
+          remove_const(:Initializer)
+          booter = VendorBoot.new
+          booter.run
+        end
+      RUBY
     end
   end
 end

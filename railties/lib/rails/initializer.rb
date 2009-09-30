@@ -30,7 +30,7 @@ module Rails
         end
 
         def config
-          @@config
+          @@config || Configuration.new
         end
         alias configuration config
 
@@ -96,15 +96,6 @@ module Rails
         else
           @initializers.each {|block| run_initializer(block) }
         end
-
-        # HAX
-        # TODO: remove hax
-        unless initializer
-          app = Rails::Application.new
-          app.config = @config
-
-          Rails.application = app
-        end
       end
     end
 
@@ -113,10 +104,16 @@ module Rails
     end
 
     def self.run(initializer = nil, config = nil)
-      default.config = config if config
-      default.config ||= Configuration.new
-      yield default.config if block_given?
-      default.run(initializer)
+      # TODO: Clean this all up
+      if initializer
+        default.config = config
+        default.run(initializer)
+      else
+        Rails.application = Class.new(Application)
+        yield Rails.application.config if block_given?
+        default.config = Rails.application.config
+        default.run
+      end
     end
   end
 
@@ -126,33 +123,16 @@ module Rails
     require 'rails/ruby_version_check'
   end
 
-  # If Rails is vendored and RubyGems is available, install stub GemSpecs
-  # for Rails, Active Support, Active Record, Action Pack, Action Mailer, and
-  # Active Resource. This allows Gem plugins to depend on Rails even when
-  # the Gem version of Rails shouldn't be loaded.
-  Initializer.default.add :install_gem_spec_stubs do
-    unless Rails.respond_to?(:vendor_rails?)
+  # Bail if boot.rb is outdated
+  Initializer.default.add :freak_out_if_boot_rb_is_outdated do
+    unless defined?(Rails::BOOTSTRAP_VERSION)
       abort %{Your config/boot.rb is outdated: Run "rake rails:update".}
-    end
-
-    if Rails.vendor_rails?
-      begin; require "rubygems"; rescue LoadError; return; end
-
-      %w(rails activesupport activerecord actionpack actionmailer activeresource).each do |stub|
-        Gem.loaded_specs[stub] ||= Gem::Specification.new do |s|
-          s.name = stub
-          s.version = Rails::VERSION::STRING
-          s.loaded_from = ""
-        end
-      end
     end
   end
 
   # Set the <tt>$LOAD_PATH</tt> based on the value of
   # Configuration#load_paths. Duplicates are removed.
   Initializer.default.add :set_load_path do
-    # TODO: Think about unifying this with the general Rails paths
-    configuration.framework_paths.reverse_each { |dir| $LOAD_PATH.unshift(dir) if File.directory?(dir) }
     configuration.paths.add_to_load_path
     $LOAD_PATH.uniq!
   end
@@ -479,18 +459,6 @@ Run `rake gems:build` to build the unbuilt gems.
   # plugins will be loaded in alphabetical order
   Initializer.default.add :load_plugins do
     plugin_loader.load_plugins
-  end
-
-  #
-  # # pick up any gems that plugins depend on
-  Initializer.default.add :add_gem_load_paths do
-    require 'rails/gem_dependency'
-    # TODO: This seems extraneous
-    Rails::GemDependency.add_frozen_gem_path
-    unless config.gems.empty?
-      require "rubygems"
-      config.gems.each { |gem| gem.add_load_paths }
-    end
   end
 
   # TODO: Figure out if this needs to run a second time
