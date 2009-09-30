@@ -23,8 +23,6 @@ module ActiveSupport
         DELETED     = "DELETED\r\n"
       end
 
-      MAXIMUM_KEY_LENGTH = 250
-
       def self.build_mem_cache(*addresses)
         addresses = addresses.flatten
         options = addresses.extract_options!
@@ -104,7 +102,7 @@ module ActiveSupport
         # Doesn't call super, cause exist? in memcache is in fact a read
         # But who cares? Reading is very fast anyway
         # Local cache is checked first, if it doesn't know then memcache itself is read from
-        !read(normalized_key(key), options).nil?
+        !read(key, options).nil?
       end
 
       def increment(key, amount = 1) # :nodoc:
@@ -144,20 +142,8 @@ module ActiveSupport
           options && options[:raw]
         end
 
-        def maximum_key_length
-          if @data.namespace.nil? then
-            MAXIMUM_KEY_LENGTH
-          else
-            MAXIMUM_KEY_LENGTH - @data.namespace.length - 1
-          end
-        end
-
         def normalized_key(key)
-          if key.length > maximum_key_length
-            Digest::MD5.hexdigest(key)
-          else
-            key
-          end
+          Digest::MD5.hexdigest(key)
         end
     end
   end
