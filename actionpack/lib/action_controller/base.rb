@@ -502,7 +502,7 @@ module ActionController #:nodoc:
               end
             elsif block_given?
               key = key.dup
-              value = value.dup if value
+              value = value.dup if value.duplicable?
               yield key, value
               filtered_parameters[key] = value
             else
@@ -819,7 +819,6 @@ module ActionController #:nodoc:
       #   render :text => proc { |response, output|
       #     10_000_000.times do |i|
       #       output.write("This is line #{i}\n")
-      #       output.flush
       #     end
       #   }
       #
