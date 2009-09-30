@@ -1,11 +1,20 @@
 require "abstract_unit"
 
-class AjaxTestCase < ActiveSupport::TestCase
-  include ActionView::Helpers::AjaxHelper
+class Author
+  extend ActiveModel::Naming
+  include ActiveModel::Conversion
 
-  # TODO: Ask Katz: Should these be included by the AjaxHelper? - BR
-  include ActionView::Helpers::TagHelper
-  include ActionView::Helpers::FormTagHelper
+  attr_reader :id
+
+  def save; @id = 1 end
+  def new_record?; @id.nil? end
+  def name
+    @id.nil? ? 'new author' : "author ##{@id}"
+  end
+end
+
+class AjaxTestCase < ActionView::TestCase
+  include ActionView::Helpers::AjaxHelper
 
   # TODO: Replace with the real url_for method - BR
   def url_for(url)
@@ -189,7 +198,9 @@ class FormRemoteTagTest < AjaxTestCase
 
   test "using a :method option" do
     expected_form_attributes = %w(form action="/url/hash" method="post" data-remote="true" data-update-success="#glass_of_beer")
-    # TODO: Ask Katz: Why does rails do this?  Some web servers don't allow PUT or DELETE from what I remember... - BR
+    # TODO: Experiment with not using this _method param.  Apparently this is done to address browser incompatibilities, but since
+    # we have a layer between the HTML and the JS libs now, we can probably get away with letting JS the JS libs handle the requirement
+    # for an extra field if needed.
     expected_input_attributes = %w(input name="_method" type="hidden" value="put")
 
     assert_html form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }, :html => { :method => :put }),
@@ -218,8 +229,67 @@ class FormRemoteTagTest < AjaxTestCase
     assert_html @buffer.to_s,
       expected_form_attributes + expected_inner_html
   end
+end
 
+class RemoteFormForTest < AjaxTestCase
 
+  def setup
+    super
+    @record = Author.new
+  end
+
+  test "remote_form_for_with_record_identification_with_new_record" do
+    remote_form_for(@record, {:html => { :id => 'create-author' }}) {}
+    assert_html output_buffer, %w(action="/authors" data-remote="true" class="new_author" id="create-author" method="post" /form)
+  end
+
+#  test "remote_form_for_with_record_identification_without_html_options" do
+#    remote_form_for(@record) {}
+#
+#    expected = %(<form action='#{authors_path}' onsubmit="new Ajax.Request('#{authors_path}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_author' method='post' id='new_author'></form>)
+#    assert_dom_equal expected, output_buffer
+#  end
+#
+#  test "remote_form_for_with_record_identification_with_existing_record" do
+#    @record.save
+#    remote_form_for(@record) {}
+#
+#    expected = %(<form action='#{author_path(@record)}' id='edit_author_1' method='post' onsubmit="new Ajax.Request('#{author_path(@record)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_author'><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
+#    assert_dom_equal expected, output_buffer
+#  end
+#
+#  test "remote_form_for_with_new_object_in_list" do
+#    remote_form_for([@author, @article]) {}
+#
+#    expected = %(<form action='#{author_articles_path(@author)}' onsubmit="new Ajax.Request('#{author_articles_path(@author)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='new_article' method='post' id='new_article'></form>)
+#    assert_dom_equal expected, output_buffer
+#  end
+#
+#  test "remote_form_for_with_existing_object_in_list" do
+#    @author.save
+#    @article.save
+#    remote_form_for([@author, @article]) {}
+#
+#    expected = %(<form action='#{author_article_path(@author, @article)}' id='edit_article_1' method='post' onsubmit="new Ajax.Request('#{author_article_path(@author, @article)}', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;" class='edit_article'><div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div></form>)
+#    assert_dom_equal expected, output_buffer
+#  end
+
+  protected
+    def author_path(record)
+      "/authors/#{record.id}"
+    end
+
+    def authors_path
+      "/authors"
+    end
+
+    def author_articles_path(author)
+      "/authors/#{author.id}/articles"
+    end
+
+    def author_article_path(author, article)
+      "/authors/#{author.id}/articles/#{article.id}"
+    end
 end
 
 class ButtonToRemoteTest < AjaxTestCase
