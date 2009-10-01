@@ -240,6 +240,14 @@ module Rails
       @time_zone ||= "UTC"
     end
 
+    def default_js_frameworks
+      [ :prototype ]
+    end
+
+    def default_plugin_paths
+      ["#{root_path}/vendor/plugins"]
+    end
+
     def i18n
       @i18n ||= begin
         i18n = ActiveSupport::OrderedOptions.new
