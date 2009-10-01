@@ -1,61 +1,51 @@
 require "isolation/abstract_unit"
-require "rails"
-require 'action_dispatch'
+# require "rails"
+# require 'action_dispatch'
 
 module ApplicationTests
   class LoadTest < Test::Unit::TestCase
     include ActiveSupport::Testing::Isolation
 
+    def rackup
+      config = "#{app_path}/config.ru"
+      # Copied from ActionDispatch::Utils.parse_config
+      # ActionDispatch is not necessarily available at this point.
+      require 'rack'
+      if config =~ /\.ru$/
+        cfgfile = ::File.read(config)
+        if cfgfile[/^#\\(.*)/]
+          opts.parse! $1.split(/\s+/)
+        end
+        inner_app = eval "Rack::Builder.new {( " + cfgfile + "\n )}.to_app",
+                         nil, config
+      else
+        require config
+        inner_app = Object.const_get(::File.basename(config, '.rb').capitalize)
+      end
+    end
+
     def setup
       build_app
+      boot_rails
     end
 
     test "rails app is present" do
       assert File.exist?(app_path("config"))
     end
 
-    test "running Rails::Application.load on the path returns a (vaguely) useful application" do
-      app_file "config.ru", <<-CONFIG
-        require File.dirname(__FILE__) + '/config/environment'
-        run ActionController::Dispatcher.new
-      CONFIG
-
-      @app = ActionDispatch::Utils.parse_config("#{app_path}/config.ru")
+    test "config.ru can be racked up" do
+      @app = rackup
       assert_welcome get("/")
     end
 
-    test "config.ru is used" do
-      app_file "config.ru", <<-CONFIG
-        class MyMiddleware
-          def initialize(app)
-            @app = app
-          end
-
-          def call(env)
-            status, headers, body = @app.call(env)
-            headers["Config-Ru-Test"] = "TESTING"
-            [status, headers, body]
-          end
-        end
-
-        use MyMiddleware
-        run proc {|env| [200, {"Content-Type" => "text/html"}, ["VICTORY"]] }
-      CONFIG
-
-      @app = ActionDispatch::Utils.parse_config("#{app_path}/config.ru")
-
-      assert_body    "VICTORY", get("/omg")
-      assert_header  "Config-Ru-Test", "TESTING", get("/omg")
+    test "Rails.application is available after config.ru has been racked up" do
+      rackup
+      assert Rails.application.new.is_a?(Rails::Application)
     end
 
-    test "arbitrary.rb can be used as a config" do
-      app_file "myapp.rb", <<-CONFIG
-        Myapp = proc {|env| [200, {"Content-Type" => "text/html"}, ["OMG ROBOTS"]] }
-      CONFIG
-
-      @app = ActionDispatch::Utils.parse_config("#{app_path}/myapp.rb")
-
-      assert_body "OMG ROBOTS", get("/omg")
+    test "the config object is available on the application object" do
+      rackup
+      assert_equal 'UTC', Rails.application.config.time_zone
     end
   end
 end

@@ -30,7 +30,7 @@ module Rails
         end
 
         def config
-          @@config
+          @@config || Configuration.new
         end
         alias configuration config
 
@@ -90,15 +90,12 @@ module Rails
 
       def run(initializer = nil)
         Rails.configuration = Base.config = @config
-        Rails.application = nil
 
         if initializer
           run_initializer(initializer)
         else
           @initializers.each {|block| run_initializer(block) }
         end
-
-        Rails.application
       end
     end
 
@@ -107,10 +104,16 @@ module Rails
     end
 
     def self.run(initializer = nil, config = nil)
-      default.config = config if config
-      default.config ||= Configuration.new
-      yield default.config if block_given?
-      default.run(initializer)
+      # TODO: Clean this all up
+      if initializer
+        default.config = config
+        default.run(initializer)
+      else
+        Rails.application = Class.new(Application)
+        yield Rails.application.config if block_given?
+        default.config = Rails.application.config
+        default.run
+      end
     end
   end
 
@@ -120,33 +123,16 @@ module Rails
     require 'rails/ruby_version_check'
   end
 
-  # If Rails is vendored and RubyGems is available, install stub GemSpecs
-  # for Rails, Active Support, Active Record, Action Pack, Action Mailer, and
-  # Active Resource. This allows Gem plugins to depend on Rails even when
-  # the Gem version of Rails shouldn't be loaded.
-  Initializer.default.add :install_gem_spec_stubs do
-    unless Rails.respond_to?(:vendor_rails?)
+  # Bail if boot.rb is outdated
+  Initializer.default.add :freak_out_if_boot_rb_is_outdated do
+    unless defined?(Rails::BOOTSTRAP_VERSION)
       abort %{Your config/boot.rb is outdated: Run "rake rails:update".}
-    end
-
-    if Rails.vendor_rails?
-      begin; require "rubygems"; rescue LoadError; return; end
-
-      %w(rails activesupport activerecord actionpack actionmailer activeresource).each do |stub|
-        Gem.loaded_specs[stub] ||= Gem::Specification.new do |s|
-          s.name = stub
-          s.version = Rails::VERSION::STRING
-          s.loaded_from = ""
-        end
-      end
     end
   end
 
   # Set the <tt>$LOAD_PATH</tt> based on the value of
   # Configuration#load_paths. Duplicates are removed.
   Initializer.default.add :set_load_path do
-    # TODO: Think about unifying this with the general Rails paths
-    configuration.framework_paths.reverse_each { |dir| $LOAD_PATH.unshift(dir) if File.directory?(dir) }
     configuration.paths.add_to_load_path
     $LOAD_PATH.uniq!
   end
@@ -272,7 +258,19 @@ module Rails
   # Include middleware to serve up static assets
   Initializer.default.add :initialize_static_server do
     if configuration.frameworks.include?(:action_controller) && configuration.serve_static_assets
-      configuration.middleware.insert(0, ActionDispatch::Static, Rails.public_path)
+      configuration.middleware.use(ActionDispatch::Static, Rails.public_path)
+    end
+  end
+
+  Initializer.default.add :initialize_middleware_stack do
+    if configuration.frameworks.include?(:action_controller)
+      configuration.middleware.use(::Rack::Lock) unless ActionController::Base.allow_concurrency
+      configuration.middleware.use(ActionDispatch::ShowExceptions, ActionController::Base.consider_all_requests_local)
+      configuration.middleware.use(ActionDispatch::Callbacks, ActionController::Dispatcher.prepare_each_request)
+      configuration.middleware.use(lambda { ActionController::Base.session_store }, lambda { ActionController::Base.session_options })
+      configuration.middleware.use(ActionDispatch::ParamsParser)
+      configuration.middleware.use(::Rack::MethodOverride)
+      configuration.middleware.use(::Rack::Head)
     end
   end
 
@@ -463,18 +461,6 @@ Run `rake gems:build` to build the unbuilt gems.
     plugin_loader.load_plugins
   end
 
-  #
-  # # pick up any gems that plugins depend on
-  Initializer.default.add :add_gem_load_paths do
-    require 'rails/gem_dependency'
-    # TODO: This seems extraneous
-    Rails::GemDependency.add_frozen_gem_path
-    unless config.gems.empty?
-      require "rubygems"
-      config.gems.each { |gem| gem.add_load_paths }
-    end
-  end
-
   # TODO: Figure out if this needs to run a second time
   # load_gems
 
@@ -591,12 +577,6 @@ Run `rake gems:install` to install the missing gems.
       Rails::Generators.no_color! unless config.generators.colorize_logging
       Rails::Generators.aliases.deep_merge! config.generators.aliases
       Rails::Generators.options.deep_merge! config.generators.options
-    end
-  end
-
-  Initializer.default.add :build_application do
-    if configuration.frameworks.include?(:action_controller)
-      Rails.application = Rails::Application.new
     end
   end
 end
