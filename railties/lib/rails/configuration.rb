@@ -24,6 +24,7 @@ module Rails
       @load_paths                   = default_load_paths
       @plugin_paths                 = default_plugin_paths
       @frameworks                   = default_frameworks
+      @js_frameworks                = default_js_frameworks
       @plugin_loader                = default_plugin_loader
       @plugin_locators              = default_plugin_locators
       @gems                         = default_gems
@@ -195,6 +196,10 @@ module Rails
 
     def default_frameworks
       [ :active_record, :action_controller, :action_view, :action_mailer, :active_resource ]
+    end
+
+    def default_js_frameworks
+      [ :prototype ]
     end
 
     def default_plugin_paths
