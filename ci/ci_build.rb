@@ -82,6 +82,7 @@ if ENV['RAILS_CI_PROJECTS'].nil? || ENV['RAILS_CI_PROJECTS'] =~ /actionpack/
     puts "[CruiseControl] Building ActionPack"
     puts
     build_results[:actionpack] = system 'gem bundle && rake'
+    build_results[:actionpack_isolated] = system 'rake test:isolated'
   end
 end
 
