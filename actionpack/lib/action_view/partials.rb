@@ -228,7 +228,9 @@ module ActionView
         if partial_path.include?('/')
           path = File.join(File.dirname(partial_path), "_#{File.basename(partial_path)}")
         elsif controller
-          path = "#{controller.class.controller_path}/_#{partial_path}"
+          return controller.find_template_inheritable do |cc|
+            self.view_paths.find_template("#{cc.controller_path}/_#{partial_path}", self.template_format)
+          end
         else
           path = "_#{partial_path}"
         end

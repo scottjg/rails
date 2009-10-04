@@ -687,6 +687,27 @@ module ActionController #:nodoc:
         @template.view_paths.push(*path)
       end
 
+      def find_template_inheritable
+        klass = self.class
+        parent_controllers_classes = []
+        until klass == ActionController::Base
+          parent_controllers_classes << klass
+          klass = klass.superclass
+        end
+
+        template = nil
+        last_exc = nil
+        [self.class, parent_controllers_classes].flatten.each do |cc|
+          begin
+            template = yield cc
+            return template if template
+          rescue ActionView::MissingTemplate
+            last_exc = $!
+          end
+        end
+        raise last_exc #FIXME this exception should contain all path sets, not only the last one
+      end
+
     protected
       # Renders the content that will be returned to the browser as the response body.
       #
@@ -1386,17 +1407,18 @@ module ActionController #:nodoc:
       end
 
       def default_template(action_name = self.action_name)
-        self.view_paths.find_template(default_template_name(action_name), default_template_format)
+        find_template_inheritable do |cc|
+          self.view_paths.find_template(default_template_name(action_name, cc), default_template_format)
+        end
       end
 
-      def default_template_name(action_name = self.action_name)
-        if action_name
-          action_name = action_name.to_s
-          if action_name.include?('/') && template_path_includes_controller?(action_name)
-            action_name = strip_out_controller(action_name)
-          end
+      def default_template_name(action_name = self.action_name, klass = self.class)
+        action_name = action_name.to_s
+        if action_name.include?('/') && template_path_includes_controller?(action_name)
+          action_name = strip_out_controller(action_name)
         end
-        "#{self.controller_path}/#{action_name}"
+
+        "#{klass.controller_path}/#{action_name}"
       end
 
       def strip_out_controller(path)
