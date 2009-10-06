@@ -51,7 +51,7 @@ module ActionView
       def sanitize(html, options = {})
         returning self.class.white_list_sanitizer.sanitize(html, options) do |sanitized|
           if sanitized
-            sanitized.mark_html_safe
+            sanitized.html_safe!
           end
         end
       end
@@ -78,7 +78,7 @@ module ActionView
       def strip_tags(html)
         returning self.class.full_sanitizer.sanitize(html) do |sanitized|
           if sanitized
-            sanitized.mark_html_safe
+            sanitized.html_safe!
           end
         end
       end

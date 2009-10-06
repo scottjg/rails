@@ -13,7 +13,7 @@ class OutputEscapingTest < ActiveSupport::TestCase
   test "escapeHTML shouldn't touch explicitly safe strings" do
     # TODO this seems easier to compose and reason about, but
     # this should be verified
-    assert_equal "<", CGI.escapeHTML("<".mark_html_safe)
+    assert_equal "<", CGI.escapeHTML("<".html_safe!)
   end
 
 end
