@@ -44,6 +44,7 @@ module ActionView
   autoload :TextTemplate,      'action_view/template/text'
   autoload :Helpers,           'action_view/helpers'
   autoload :FileSystemResolverWithFallback, 'action_view/template/resolver'
+  autoload :SafeBuffer,        'action_view/safe_buffer'
 end
 
 class ERB
