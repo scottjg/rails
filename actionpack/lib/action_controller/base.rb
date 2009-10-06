@@ -687,27 +687,6 @@ module ActionController #:nodoc:
         @template.view_paths.push(*path)
       end
 
-      def find_template_inheritable
-        klass = self.class
-        parent_controllers_classes = []
-        until klass == ActionController::Base
-          parent_controllers_classes << klass
-          klass = klass.superclass
-        end
-
-        template = nil
-        last_exc = nil
-        [self.class, parent_controllers_classes].flatten.each do |cc|
-          begin
-            template = yield cc
-            return template if template
-          rescue ActionView::MissingTemplate
-            last_exc = $!
-          end
-        end
-        raise last_exc #FIXME this exception should contain all path sets, not only the last one
-      end
-
     protected
       # Renders the content that will be returned to the browser as the response body.
       #
@@ -1407,7 +1386,7 @@ module ActionController #:nodoc:
       end
 
       def default_template(action_name = self.action_name)
-        find_template_inheritable do |cc|
+        find_template_inheritable(self) do |cc|
           self.view_paths.find_template(default_template_name(action_name, cc), default_template_format)
         end
       end
@@ -1437,7 +1416,7 @@ module ActionController #:nodoc:
     [ Filters, Layout, Benchmarking, Rescue, Flash, MimeResponds, Helpers,
       Cookies, Caching, Verification, Streaming, SessionManagement,
       HttpAuthentication::Basic::ControllerMethods, HttpAuthentication::Digest::ControllerMethods,
-      RecordIdentifier, RequestForgeryProtection, Translation
+      RecordIdentifier, RequestForgeryProtection, Translation, Inheritable
     ].each do |mod|
       include mod
     end

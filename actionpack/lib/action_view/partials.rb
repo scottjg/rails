@@ -1,3 +1,5 @@
+require 'action_controller/inheritable'
+
 module ActionView
   # There's also a convenience method for rendering sub templates within the current controller that depends on a
   # single object (we call this kind of sub templates for partials). It relies on the fact that partials should
@@ -171,6 +173,7 @@ module ActionView
   #   <% end %>
   module Partials
     extend ActiveSupport::Memoizable
+    include ActionController::Inheritable
 
     private
       def render_partial(options = {}) #:nodoc:
@@ -228,7 +231,7 @@ module ActionView
         if partial_path.include?('/')
           path = File.join(File.dirname(partial_path), "_#{File.basename(partial_path)}")
         elsif controller
-          return controller.find_template_inheritable do |cc|
+          return find_template_inheritable(controller) do |cc|
             self.view_paths.find_template("#{cc.controller_path}/_#{partial_path}", self.template_format)
           end
         else
