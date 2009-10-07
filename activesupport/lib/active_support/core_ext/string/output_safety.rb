@@ -1,16 +1,7 @@
-module ActiveSupport #:nodoc:
-  module CoreExtensions #:nodoc:
-    module String #:nodoc:
-      module OutputSafety
-        def self.included(base)
-          base.class_eval do
-            alias_method :add_without_safety, :+
-            alias_method :+, :add_with_safety
-            alias_method_chain :concat, :safety
-            undef_method :<<
-            alias_method :<<, :concat_with_safety
-          end
-        end
+class String
+  def html_safe?
+    defined?(@_rails_html_safe) && @_rails_html_safe
+  end
 
   def html_safe!
     @_rails_html_safe = true
