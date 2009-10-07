@@ -238,7 +238,7 @@ module ActionView
           end
 
           href_attr = "href=\"#{url}\"" unless href
-          "<a #{href_attr}#{tag_options}>#{name || url}</a>".html_safe!
+          "<a #{href_attr}#{tag_options}>#{ERB::Util.h(name || url)}</a>".html_safe!
         end
       end
 
@@ -309,8 +309,8 @@ module ActionView
 
         html_options.merge!("type" => "submit", "value" => name)
 
-        "<form method=\"#{form_method}\" action=\"#{escape_once url}\" class=\"button-to\"><div>" +
-          method_tag + tag("input", html_options) + request_token_tag + "</div></form>".html_safe!
+        ("<form method=\"#{form_method}\" action=\"#{escape_once url}\" class=\"button-to\"><div>" +
+          method_tag + tag("input", html_options) + request_token_tag + "</div></form>").html_safe!
       end
 
 
