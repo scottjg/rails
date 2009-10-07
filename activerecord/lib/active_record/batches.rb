@@ -35,14 +35,13 @@ module ActiveRecord
       # supplying the <tt>:start</tt> option. This is especially useful if you
       # want multiple workers dealing with the same processing queue. You can
       # make worker 1 handle all the records between id 0 and 10,000 and
-      # worker 2 handle from 10,000 and beyond (by setting the <tt>:start</tt>
-      # option on that worker).
+      # worker 2 handle from 10,000, etc (by setting the <tt>:start</tt>
+      # and <tt>:limit</tt> options on those workers).
       #
       # It's not possible to set the order. That is automatically set to
       # ascending on the primary key ("id ASC") to make the batch ordering
       # work. This also mean that this method only works with integer-based
-      # primary keys. You can't set the limit either, that's used to control
-      # the the batch sizes.
+      # primary keys.
       #
       # Example:
       #
@@ -52,27 +51,39 @@ module ActiveRecord
       #   end
       def find_in_batches(options = {})
         raise "You can't specify an order, it's forced to be #{batch_order}" if options[:order]
-        raise "You can't specify a limit, it's forced to be the batch_size"  if options[:limit]
 
-        start = options.delete(:start).to_i
+        start_id = options.delete(:start) || 1
         batch_size = options.delete(:batch_size) || 1000
+        limit = options.delete(:limit)
+        count = 0
 
-        with_scope(:find => options.merge(:order => batch_order, :limit => batch_size)) do
-          records = find(:all, :conditions => [ "#{table_name}.#{primary_key} >= ?", start ])
+        last_id = find(:first, options.merge(:order => batch_order('DESC'))).try(:id)
+        return unless last_id
 
-          while records.any?
-            yield records
-
-            break if records.size < batch_size
-            records = find(:all, :conditions => [ "#{table_name}.#{primary_key} > ?", records.last.id ])
+        with_scope(:find => options.merge(:order => batch_order)) do
+          records = nil
+          loop do
+            records = find(:all, :conditions => [ "#{table_name}.#{primary_key} >= ? AND #{table_name}.#{primary_key} < ?",
+                                                  start_id, start_id + batch_size])
+            count += records.size
+            if records.any?
+              if limit && count >= limit
+                yield records[0..(records.size - (count - limit) - 1)]
+                break
+              else
+                yield records
+              end
+            end
+            break if records.last.try(:id) == last_id
+            start_id = start_id + batch_size
           end
         end
       end
       
       
       private
-        def batch_order
-          "#{table_name}.#{primary_key} ASC"
+        def batch_order(order = 'ASC')
+          "#{table_name}.#{primary_key} #{order}"
         end
     end
   end

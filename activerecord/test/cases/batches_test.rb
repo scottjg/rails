@@ -23,12 +23,17 @@ class EachTest < ActiveRecord::TestCase
     end
   end
 
-  def test_each_should_raise_if_the_limit_is_set
-    assert_raise(RuntimeError) do
-      Post.find_each(:limit => 1) { |post| post }
+  def test_batches_should_stop_when_limit_is_reached
+    assert_queries(4) do
+      found = 0
+      Post.find_in_batches(:batch_size => 1, :limit=>3) do |batch|
+        assert_kind_of Array, batch
+        found += batch.size
+        assert_kind_of Post, batch.first
+      end
+      assert_equal found, 3
     end
   end
-  
   def test_find_in_batches_should_return_batches
     assert_queries(Post.count + 1) do
       Post.find_in_batches(:batch_size => 1) do |batch|
@@ -54,7 +59,7 @@ class EachTest < ActiveRecord::TestCase
       Post.find_in_batches(:batch_size => post_count) {|batch| assert_kind_of Array, batch }
     end
 
-    assert_queries(1) do
+    assert_queries(2) do
       Post.find_in_batches(:batch_size => post_count + 1) {|batch| assert_kind_of Array, batch }
     end
   end
