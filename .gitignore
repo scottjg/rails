@@ -34,5 +34,4 @@ railties/guides/output
 actionpack/bin
 vendor/gems/
 */vendor/gems/
-bin/
 railties/tmp
