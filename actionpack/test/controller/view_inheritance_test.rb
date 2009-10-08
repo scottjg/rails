@@ -43,4 +43,9 @@ class ViewInheritanceTest < ActionController::TestCase
     get :overridden
     assert_template "test/inheritance/overridden"
   end
+
+  def test_format_aware_view_inheritance
+    get :html_action
+    assert_template "test/html_action"
+  end
 end
