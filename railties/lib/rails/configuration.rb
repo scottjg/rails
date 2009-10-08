@@ -10,8 +10,7 @@ module Rails
                   :log_path, :log_level, :logger, :preload_frameworks,
                   :database_configuration_file, :cache_store, :time_zone,
                   :view_path, :metals, :controller_paths, :routes_configuration_file,
-                  :eager_load_paths, :dependency_loading, :paths, :serve_static_assets,
-                  :js_frameworks
+                  :eager_load_paths, :dependency_loading, :paths, :serve_static_assets
 
     def initialize
       set_root_path!
