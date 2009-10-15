@@ -167,7 +167,7 @@ module ActionView #:nodoc:
     module Subclasses
     end
 
-    include Helpers, Rendering, Partials, ::ERB::Util
+    include Helpers, Rendering, Partials, ::ERB::Util, ActiveSupport::Configurable
 
     extend ActiveSupport::Memoizable
 
@@ -202,6 +202,11 @@ module ActionView #:nodoc:
     # Automatically reloading templates are not thread safe and should only be used in development mode.
     @@cache_template_loading = nil
     cattr_accessor :cache_template_loading
+
+    # :nodoc:
+    def self.xss_safe?
+      true
+    end
 
     def self.cache_template_loading?
       ActionController::Base.allow_concurrency || (cache_template_loading.nil? ? !ActiveSupport::Dependencies.load? : cache_template_loading)

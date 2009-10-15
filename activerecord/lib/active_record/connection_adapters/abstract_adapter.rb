@@ -32,7 +32,7 @@ module ActiveRecord
     class AbstractAdapter
       include Quoting, DatabaseStatements, SchemaStatements
       include QueryCache
-      include ActiveSupport::DeprecatedCallbacks
+      include ActiveSupport::Callbacks
       define_callbacks :checkout, :checkin
 
       @@row_even = true
@@ -201,7 +201,7 @@ module ActiveRecord
 
       protected
         def log(sql, name)
-          event = ActiveSupport::Orchestra.instrument(:sql, :sql => sql, :name => name) do
+          event = ActiveSupport::Notifications.instrument(:sql, :sql => sql, :name => name) do
             yield if block_given?
           end
           @runtime += event.duration
