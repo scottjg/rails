@@ -40,7 +40,7 @@ class PeopleHelperTest < ActionView::TestCase
 
   def test_link_to_person
     person = mock(:name => "David")
-    expects(:mocha_mock_path).with(person).returns("/people/1")
+    expects(:mocha_mock_path).with(:id => person).returns("/people/1")
     assert_equal '<a href="/people/1">David</a>', link_to_person(person)
   end
 end

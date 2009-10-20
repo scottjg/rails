@@ -47,7 +47,7 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   def test_with_record
     @article.save
-    expects(:article_url).with(@article)
+    expects(:article_url).with(:id => @article)
     polymorphic_url(@article)
   end
 
@@ -70,19 +70,19 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   def test_url_helper_prefixed_with_edit
     @article.save
-    expects(:edit_article_url).with(@article)
+    expects(:edit_article_url).with(:id => @article)
     edit_polymorphic_url(@article)
   end
 
   def test_url_helper_prefixed_with_edit_with_url_options
     @article.save
-    expects(:edit_article_url).with(@article, :param1 => '10')
+    expects(:edit_article_url).with(:id => @article, :param1 => '10')
     edit_polymorphic_url(@article, :param1 => '10')
   end
 
   def test_url_helper_with_url_options
     @article.save
-    expects(:article_url).with(@article, :param1 => '10')
+    expects(:article_url).with(:id => @article, :param1 => '10')
     polymorphic_url(@article, :param1 => '10')
   end
 
@@ -95,13 +95,13 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   def test_format_option
     @article.save
-    expects(:article_url).with(@article, :format => :pdf)
+    expects(:article_url).with(:id => @article, :format => :pdf)
     polymorphic_url(@article, :format => :pdf)
   end
 
   def test_format_option_with_url_options
     @article.save
-    expects(:article_url).with(@article, :format => :pdf, :param1 => '10')
+    expects(:article_url).with(:id => @article, :format => :pdf, :param1 => '10')
     polymorphic_url(@article, :format => :pdf, :param1 => '10')
   end
 
@@ -113,12 +113,12 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   def test_with_nested
     @response.save
-    expects(:article_response_url).with(@article, @response)
+    expects(:article_response_url).with(:article_id => @article, :id => @response)
     polymorphic_url([@article, @response])
   end
 
   def test_with_nested_unsaved
-    expects(:article_responses_url).with(@article)
+    expects(:article_responses_url).with(:article_id => @article)
     polymorphic_url([@article, @response])
   end
 
@@ -134,65 +134,65 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   def test_nested_unsaved_with_array_and_namespace
     @article.save
-    expects(:admin_article_url).with(@article)
+    expects(:admin_article_url).with(:id => @article)
     polymorphic_url([:admin, @article])
-    expects(:admin_article_responses_url).with(@article)
+    expects(:admin_article_responses_url).with(:article_id => @article)
     polymorphic_url([:admin, @article, @response])
   end
 
   def test_nested_with_array_and_namespace
     @response.save
-    expects(:admin_article_response_url).with(@article, @response)
+    expects(:admin_article_response_url).with(:article_id => @article, :id => @response)
     polymorphic_url([:admin, @article, @response])
 
     # a ridiculously long named route tests correct ordering of namespaces and nesting:
     @tag = Tag.new
     @tag.save
-    expects(:site_admin_article_response_tag_url).with(@article, @response, @tag)
+    expects(:site_admin_article_response_tag_url).with(:article_id => @article, :response_id => @response, :id => @tag)
     polymorphic_url([:site, :admin, @article, @response, @tag])
   end
 
   def test_nesting_with_array_ending_in_singleton_resource
-    expects(:article_response_url).with(@article)
+    expects(:article_response_url).with(:article_id => @article)
     polymorphic_url([@article, :response])
   end
 
   def test_nesting_with_array_containing_singleton_resource
     @tag = Tag.new
     @tag.save
-    expects(:article_response_tag_url).with(@article, @tag)
+    expects(:article_response_tag_url).with(:article_id => @article, :id => @tag)
     polymorphic_url([@article, :response, @tag])
   end
 
   def test_nesting_with_array_containing_namespace_and_singleton_resource
     @tag = Tag.new
     @tag.save
-    expects(:admin_article_response_tag_url).with(@article, @tag)
+    expects(:admin_article_response_tag_url).with(:article_id => @article, :id => @tag)
     polymorphic_url([:admin, @article, :response, @tag])
   end
 
   def test_nesting_with_array_containing_singleton_resource_and_format
     @tag = Tag.new
     @tag.save
-    expects(:article_response_tag_url).with(@article, @tag, :format => :pdf)
+    expects(:article_response_tag_url).with(:article_id => @article, :id => @tag, :format => :pdf)
     polymorphic_url([@article, :response, @tag], :format => :pdf)
   end
 
   def test_nesting_with_array_containing_singleton_resource_and_format_option
     @tag = Tag.new
     @tag.save
-    expects(:article_response_tag_url).with(@article, @tag, :format => :pdf)
+    expects(:article_response_tag_url).with(:article_id => @article, :id => @tag, :format => :pdf)
     polymorphic_url([@article, :response, @tag], :format => :pdf)
   end
 
   def test_nesting_with_array_containing_nil
-    expects(:article_response_url).with(@article)
+    expects(:article_response_url).with(:article_id => @article)
     polymorphic_url([@article, nil, :response])
   end
 
   def test_with_array_containing_single_object
     @article.save
-    expects(:article_url).with(@article)
+    expects(:article_url).with(:id => @article)
     polymorphic_url([nil, @article])
   end
 
@@ -204,7 +204,7 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   # TODO: Needs to be updated to correctly know about whether the object is in a hash or not
   def xtest_with_hash
-    expects(:article_url).with(@article)
+    expects(:article_url).with(:id => @article)
     @article.save
     polymorphic_url(:id => @article)
   end
@@ -215,7 +215,7 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
   end
 
   def test_polymorphic_path_does_not_modify_arguments
-    expects(:admin_article_responses_url).with(@article)
+    expects(:admin_article_responses_url).with(:article_id => @article)
     path = [:admin, @article, @response]
     assert_no_difference 'path.size' do
       polymorphic_url(path)
@@ -225,7 +225,7 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
   # Tests for names where .plural.singular doesn't round-trip
   def test_with_irregular_plural_record
     @tax.save
-    expects(:taxis_url).with(@tax)
+    expects(:taxis_url).with(:id => @tax)
     polymorphic_url(@tax)
   end
 
@@ -248,18 +248,18 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
 
   def test_irregular_plural_url_helper_prefixed_with_edit
     @tax.save
-    expects(:edit_taxis_url).with(@tax)
+    expects(:edit_taxis_url).with(:id => @tax)
     edit_polymorphic_url(@tax)
   end
 
   def test_with_nested_irregular_plurals
     @fax.save
-    expects(:taxis_faxis_url).with(@tax, @fax)
+    expects(:taxis_faxis_url).with(:taxis_id => @tax, :id => @fax)
     polymorphic_url([@tax, @fax])
   end
 
   def test_with_nested_unsaved_irregular_plurals
-    expects(:taxis_faxes_url).with(@tax)
+    expects(:taxis_faxes_url).with(:taxis_id => @tax)
     polymorphic_url([@tax, @fax])
   end
 
@@ -274,13 +274,13 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
   end
 
   def test_nesting_with_irregular_plurals_and_array_ending_in_singleton_resource
-    expects(:taxis_faxis_url).with(@tax)
+    expects(:taxis_faxis_url).with(:taxis_id => @tax)
     polymorphic_url([@tax, :faxis])
   end
 
   def test_with_array_containing_single_irregular_plural_object
     @tax.save
-    expects(:taxis_url).with(@tax)
+    expects(:taxis_url).with(:id => @tax)
     polymorphic_url([nil, @tax])
   end
 
@@ -290,4 +290,9 @@ class PolymorphicRoutesTest < ActiveSupport::TestCase
     polymorphic_url([:taxes])
   end
 
+  def test_with_path_prefix
+    @article.save
+    expects(:article_url).with(:id => @article, :locale => "de")
+    polymorphic_url(@article, :locale => "de")
+  end
 end

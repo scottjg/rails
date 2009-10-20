@@ -106,7 +106,15 @@ module ActionController
         args.last.kind_of?(Hash) ? args.last.merge!(url_options) : args << url_options
       end
 
-      __send__(named_route, *args)
+      hsh = args.last.is_a?(Hash) ? args.pop : {}
+      args.each do |itm|
+        if itm == record
+          hsh[:id] = itm
+        else
+          hsh[(itm.class.to_s.underscore.pluralize.singularize + "_id").gsub("/", "_").to_sym] = itm
+        end
+      end
+      hsh.empty? ? __send__(named_route) : __send__(named_route, hsh)
     end
 
     # Returns the path component of a URL for the given record. It uses

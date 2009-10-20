@@ -1280,21 +1280,31 @@ class FormHelperTest < ActionView::TestCase
 
   protected
     def comments_path(post)
+      post = post[:post_id] if post.is_a?(Hash)
       "/posts/#{post.id}/comments"
     end
     alias_method :post_comments_path, :comments_path
 
-    def comment_path(post, comment)
+    def comment_path(post, comment = nil)
+      if post.is_a?(Hash)
+        comment = post[:id]
+        post = post[:post_id]
+      end
       "/posts/#{post.id}/comments/#{comment.id}"
     end
     alias_method :post_comment_path, :comment_path
 
     def admin_comments_path(post)
+      post = post[:post_id] if post.is_a?(Hash)
       "/admin/posts/#{post.id}/comments"
     end
     alias_method :admin_post_comments_path, :admin_comments_path
 
-    def admin_comment_path(post, comment)
+    def admin_comment_path(post, comment = nil)
+      if post.is_a?(Hash)
+        comment = post[:id]
+        post = post[:post_id]
+      end
       "/admin/posts/#{post.id}/comments/#{comment.id}"
     end
     alias_method :admin_post_comment_path, :admin_comment_path
@@ -1304,6 +1314,7 @@ class FormHelperTest < ActionView::TestCase
     end
 
     def post_path(post)
+      post = post[:id] if post.is_a?(Hash)
       "/posts/#{post.id}"
     end
 
