@@ -268,38 +268,20 @@ module ActionMailer #:nodoc:
 
     cattr_accessor :logger
 
-    def self.smtp_settings=(settings)
-      ActionMailer::DeliveryMethod::Smtp.settings = settings
-    end
-    def self.smtp_settings
-      ActionMailer::DeliveryMethod::Smtp.settings
-    end
-
-    def self.sendmail_settings=(settings)
-      ActionMailer::DeliveryMethod::Sendmail.settings = settings
-    end
-    def self.sendmail_settings
-      ActionMailer::DeliveryMethod::Sendmail.settings
-    end
-
-    def self.file_settings=(settings)
-      ActionMailer::DeliveryMethod::File.settings = settings
-    end
-    def self.file_settings
-      ActionMailer::DeliveryMethod::File.settings
-    end
-
-    @@raise_delivery_errors = true
-    cattr_accessor :raise_delivery_errors
-
-    superclass_delegating_accessor :delivery_method
-
     class << self
+      delegate :settings, :settings=, :to => ActionMailer::DeliveryMethod::File, :prefix => :file
+      delegate :settings, :settings=, :to => ActionMailer::DeliveryMethod::Sendmail, :prefix => :sendmail
+      delegate :settings, :settings=, :to => ActionMailer::DeliveryMethod::Smtp, :prefix => :smtp
+
       def delivery_method=(method_name)
         @delivery_method = ActionMailer::DeliveryMethod.lookup_method(method_name)
       end
     end
     self.delivery_method = :smtp
+    superclass_delegating_reader :delivery_method
+
+    @@raise_delivery_errors = true
+    cattr_accessor :raise_delivery_errors
 
     @@perform_deliveries = true
     cattr_accessor :perform_deliveries
