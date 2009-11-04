@@ -328,7 +328,17 @@ class ButtonToRemoteTest < AjaxTestCase
       button(callback => "undoRequestCompleted(request)")
     end
   end
+end
 
+class ScriptDecoratorTest < AjaxTestCase
+  def decorator()
+    script_decorator("foo_type", :foo => "bar", :baz => "bang")
+  end
+
+  test "basic" do
+    expected = %(<script type="application/json" data-js-type="foo_type" data-foo="bar" data-baz="bang"></script>)
+    assert_dom_equal expected, decorator
+  end
 end
 
 class ObserveFieldTest < AjaxTestCase
@@ -346,18 +356,18 @@ class ObserveFieldTest < AjaxTestCase
   end
 
   test "using a url string" do
-    assert_data_element_json field(:url => "/some/other/url"),
-      "url" => "/some/other/url", "name" => "title"
+    assert_html field(:url => "/some/other/url"),
+      %w(script data-url="/some/other/url" data-name="title")
   end
 
   test "using a url hash" do
-    assert_data_element_json field(:url => {:controller => :blog, :action => :update}),
-      "url" => "/url/hash", "name" => "title"
+    assert_html field(:url => {:controller => :blog, :action => :update}),
+      %w(script data-url="/url/hash" data-name="title")
   end
 
   test "using a :frequency option" do
-    assert_data_element_json field(:url => { :controller => :blog }, :frequency => 5.minutes),
-      "url" => "/url/hash", "name" => "title", "frequency" => 300
+    assert_html field(:url => { :controller => :blog }, :frequency => 5.minutes),
+      %w(script data-url="/url/hash" data-name="title" data-frequency="300")
   end
 
   test "using a :frequency option of 0" do
@@ -372,19 +382,22 @@ class ObserveFieldTest < AjaxTestCase
 
   # TODO: Consider using JSON instead of strings.  Is using 'value' as a magical reference to the value of the observed field weird? (Rails2 does this) - BR
   test "using a :with option" do
-    assert_data_element_json field(:with => "foo"),
-      "name" => "title", "with" => "'foo=' + encodeURIComponent(value)"
-    assert_data_element_json field(:with => "'foo=' + encodeURIComponent(value)"),
-      "name" => "title", "with" => "'foo=' + encodeURIComponent(value)"
+    assert_html field(:with => "foo"),
+      %w(script data-name="title" data-with="'foo=' + encodeURIComponent(value)")
+
+    assert_html field(:with => "'foo=' + encodeURIComponent(value)"),
+      %w(script data-name="title" data-with="'foo=' + encodeURIComponent(value)")
+
   end
 
   test "using json in a :with option" do
-    assert_data_element_json field(:with => "{'id':value}"),
-      "name" => "title", "with" => "{'id':value}"
+    assert_html field(:with => "{'id':value}"),
+      %w(script data-name="title" data-with="{'id':value}")
   end
 
   test "using :function for callback" do
-    assert_data_element_json field(:function => "alert('Element changed')"),
-      "name" => "title", "function" => "function(element, value) {alert('Element changed')}"
+    assert_html field(:function => "alert('Element changed')"),
+      %w(script data-function="function(element, value) {alert('Element changed')}")
+
   end
 end
