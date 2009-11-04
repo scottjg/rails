@@ -1,4 +1,4 @@
-require 'digest/md5' 
+require 'digest/md5'
 require 'active_support/secure_random'
 require 'rails/version' unless defined?(Rails::VERSION)
 
@@ -11,9 +11,6 @@ module Rails::Generators
 
     class_option :database, :type => :string, :aliases => "-d", :default => "sqlite3",
                             :desc => "Preconfigure for selected database (options: #{DATABASES.join('/')})"
-
-    class_option :freeze, :type => :boolean, :aliases => "-F", :default => false,
-                          :desc => "Freeze Rails in vendor/rails from the gems"
 
     class_option :template, :type => :string, :aliases => "-m",
                             :desc => "Path to an application template (can be a filesystem path or URL)."
@@ -66,6 +63,7 @@ module Rails::Generators
 
       inside "config" do
         copy_file "routes.rb"
+        template  "application.rb"
         template  "environment.rb"
 
         directory "environments"
@@ -152,10 +150,6 @@ module Rails::Generators
       apply rails_template if rails_template
     rescue Thor::Error, LoadError, Errno::ENOENT => e
       raise Error, "The template [#{rails_template}] could not be loaded. Error: #{e}"
-    end
-
-    def freeze?
-      freeze! if options[:freeze]
     end
 
     protected

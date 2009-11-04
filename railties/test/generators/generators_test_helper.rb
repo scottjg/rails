@@ -1,36 +1,27 @@
-require 'test/unit'
-require 'fileutils'
-
-fixtures = File.expand_path(File.join(File.dirname(__FILE__), '..', 'fixtures'))
-if defined?(RAILS_ROOT)
-  RAILS_ROOT.replace fixtures
-else
-  RAILS_ROOT = fixtures
-end
-
-$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../../../activemodel/lib"
-$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../../../activerecord/lib"
-$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../../../actionpack/lib"
-$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../../lib"
 # TODO: Fix this RAILS_ENV stuff
-RAILS_ENV = 'test'
-require "rails/core"
+RAILS_ENV = 'test' unless defined?(RAILS_ENV)
+require 'abstract_unit'
+
+module Rails
+  def self.root
+    @root ||= File.expand_path(File.join(File.dirname(__FILE__), '..', 'fixtures'))
+  end
+end
+Rails.application.config.root = Rails.root
+
 require 'rails/generators'
-
 require 'rubygems'
-
 require 'active_record'
 require 'action_dispatch'
 
 CURRENT_PATH = File.expand_path(Dir.pwd)
 Rails::Generators.no_color!
 
-class GeneratorsTestCase < Test::Unit::TestCase
+class GeneratorsTestCase < ActiveSupport::TestCase
   include FileUtils
 
   def destination_root
-    @destination_root ||= File.expand_path(File.join(File.dirname(__FILE__),
-                                            '..', 'fixtures', 'tmp'))
+    File.join(Rails.root, "tmp")
   end
 
   def setup
