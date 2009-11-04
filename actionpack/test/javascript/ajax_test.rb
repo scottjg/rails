@@ -1,7 +1,5 @@
 require "abstract_unit"
 
-#TODO: Switch to assert_dom_equal where appropriate.  assert_html is not robust enough for all tests - BR
-
 class AjaxTestCase < ActionView::TestCase
   include ActionView::Helpers::AjaxHelper
   include ActionDispatch::Assertions::DomAssertions
@@ -27,20 +25,6 @@ class AjaxTestCase < ActionView::TestCase
     matches.each do |match|
       assert_no_match Regexp.new(Regexp.escape(match)), html
     end
-  end
-
-  def extract_json_from_data_element(data_element)
-    root = HTML::Document.new(data_element).root
-    script = root.find(:tag => "script")
-    cdata = script.children.detect {|child| child.to_s =~ /<!\[CDATA\[/ }
-    js = cdata.content.split("\n").map {|line| line.gsub(Regexp.new("//.*"), "")}.join("\n").strip!
-
-    ActiveSupport::JSON.decode(js)
-  end
-
-  def assert_data_element_json(actual, expected)
-    json = extract_json_from_data_element(actual)
-    assert_equal expected, json
   end
 
   def self.assert_callbacks_work(&blk)
@@ -138,8 +122,8 @@ class FormRemoteTagTest < AjaxTestCase
 
   # TODO: Play with using assert_dom_equal
   test "basic" do
-    assert_html form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  }),
-      %w(form action="/url/hash" method="post" data-js-type="remote" data-update-success="#glass_of_beer")
+    assert_dom_equal %(<form action="/url/hash" method="post" data-js-type="remote" data-update-success="#glass_of_beer">),
+      form_remote_tag(:update => "#glass_of_beer", :url => { :action => :fast  })
   end
 
   test "when protect_against_forgery? is true" do
@@ -245,6 +229,42 @@ class Article
   end
 end
 
+class ExtractRemoteAttributesTest < AjaxTestCase
+  attr_reader :attributes
+
+  test "extract_remote_attributes! html" do
+    attributes = extract_remote_attributes!(:html => { :class => "css_klass", :style => "border:1px solid"})
+    assert_equal "css_klass", attributes[:class]
+    assert_equal "border:1px solid", attributes[:style]
+  end
+
+  test "extract_remote_attributes! update options when :update is a hash" do
+    attributes = extract_remote_attributes!(:update => { :success => "foo", :failure => "bar" })
+    assert_equal "foo", attributes["data-update-success"]
+    assert_equal "bar", attributes["data-update-failure"]
+  end
+
+  test "extract_remote_attributes! update options when :update is string" do
+    attributes = extract_remote_attributes!(:update => "baz")
+    assert_equal "baz", attributes["data-update-success"]
+  end
+
+  test "extract_remote_attributes! position" do
+    attributes = extract_remote_attributes!(:position => "before")
+    assert_equal "before", attributes["data-update-position"]
+  end
+
+  test "extract_remote_attributes! data-js-type when it is NOT passed" do
+    attributes = extract_remote_attributes!({})
+    assert_equal "remote", attributes["data-js-type"]
+  end
+
+  test "extract_remote_attributes! data-js-type when it passed" do
+    attributes = extract_remote_attributes!(:js_type => "some_type")
+    assert_equal "some_type", attributes["data-js-type"]
+  end
+end
+
 class RemoteFormForTest < AjaxTestCase
 
   def setup
@@ -316,8 +336,8 @@ class ButtonToRemoteTest < AjaxTestCase
 
   class StandardTest < ButtonToRemoteTest
     test "basic" do
-      assert_html button({:url => {:action => "whatnot"}}, {:class => "fine"}),
-        %w(input class="fine" type="button" value="Remote outpost" data-url="/url/hash")
+      assert_html button({:url => {:action => "whatnot"}}, {:class => "fine", :value => "RemoteOutpost"}),
+        %w(input class="fine" type="button" value="RemoteOutpost" data-url="/url/hash")
     end
   end
   
@@ -328,7 +348,17 @@ class ButtonToRemoteTest < AjaxTestCase
       button(callback => "undoRequestCompleted(request)")
     end
   end
+end
 
+class ScriptDecoratorTest < AjaxTestCase
+  def decorator()
+    script_decorator("data-js-type" => "foo_type", "data-foo" => "bar", "data-baz" => "bang")
+  end
+
+  test "basic" do
+    expected = %(<script type="application/json" data-js-type="foo_type" data-foo="bar" data-baz="bang"></script>)
+    assert_dom_equal expected, decorator
+  end
 end
 
 class ObserveFieldTest < AjaxTestCase
@@ -346,45 +376,45 @@ class ObserveFieldTest < AjaxTestCase
   end
 
   test "using a url string" do
-    assert_data_element_json field(:url => "/some/other/url"),
-      "url" => "/some/other/url", "name" => "title"
+    assert_html field(:url => "/some/other/url"),
+      %w(script data-url="/some/other/url" data-name="title")
   end
 
   test "using a url hash" do
-    assert_data_element_json field(:url => {:controller => :blog, :action => :update}),
-      "url" => "/url/hash", "name" => "title"
+    assert_html field(:url => {:controller => :blog, :action => :update}),
+      %w(script data-url="/url/hash" data-name="title")
   end
 
   test "using a :frequency option" do
-    assert_data_element_json field(:url => { :controller => :blog }, :frequency => 5.minutes),
-      "url" => "/url/hash", "name" => "title", "frequency" => 300
+    assert_html field(:url => { :controller => :blog }, :frequency => 5.minutes),
+      %w(script data-url="/url/hash" data-name="title" data-frequency="300")
   end
 
   test "using a :frequency option of 0" do
     assert_no_match /frequency/, field(:frequency => 0)
   end
 
-  # TODO: Finish when remote_function or some equivilent is finished -BR
-#  def test_observe_field
-#    assert_dom_equal %(<script type=\"text/javascript\">\n//<![CDATA[\nnew Form.Element.Observer('glass', 300, function(element, value) {new Ajax.Request('http://www.example.com/reorder_if_empty', {asynchronous:true, evalScripts:true, parameters:value})})\n//]]>\n</script>),
-#      observe_field("glass", :frequency => 5.minutes, :url => { :action => "reorder_if_empty" })
-#  end
+  test "observe field with common options" do
+    assert_html observe_field("glass", :frequency => 5.minutes, :url => { :action => "reorder_if_empty" }),
+      %w(script data-name="glass" data-frequency="300" data-url="/url/hash")
+  end
 
   # TODO: Consider using JSON instead of strings.  Is using 'value' as a magical reference to the value of the observed field weird? (Rails2 does this) - BR
   test "using a :with option" do
-    assert_data_element_json field(:with => "foo"),
-      "name" => "title", "with" => "'foo=' + encodeURIComponent(value)"
-    assert_data_element_json field(:with => "'foo=' + encodeURIComponent(value)"),
-      "name" => "title", "with" => "'foo=' + encodeURIComponent(value)"
+    assert_html field(:with => "foo"),
+      %w(script data-name="title" data-with="'foo=' + encodeURIComponent(value)")
+
+    assert_html field(:with => "'foo=' + encodeURIComponent(value)"),
+      %w(script data-name="title" data-with="'foo=' + encodeURIComponent(value)")
   end
 
   test "using json in a :with option" do
-    assert_data_element_json field(:with => "{'id':value}"),
-      "name" => "title", "with" => "{'id':value}"
+    assert_html field(:with => "{'id':value}"),
+      %w(script data-name="title" data-with="{'id':value}")
   end
 
   test "using :function for callback" do
-    assert_data_element_json field(:function => "alert('Element changed')"),
-      "name" => "title", "function" => "function(element, value) {alert('Element changed')}"
+    assert_html field(:function => "alert('Element changed')"),
+      %w(script data-observer-code="function(element, value) {alert('Element changed')}")
   end
 end
