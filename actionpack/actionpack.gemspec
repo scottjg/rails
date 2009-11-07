@@ -15,7 +15,6 @@ Gem::Specification.new do |s|
   s.requirements << 'none'
 
   s.add_dependency('activesupport', '= 3.0.pre')
-  s.add_dependency('activemodel',   '= 3.0.pre')
   s.add_dependency('rack', '~> 1.0.0')
   s.add_dependency('rack-test', '~> 0.5.0')
 
