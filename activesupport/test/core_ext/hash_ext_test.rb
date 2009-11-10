@@ -65,7 +65,7 @@ class HashExtTest < Test::Unit::TestCase
     @symbols = @symbols.with_indifferent_access
     @mixed   = @mixed.with_indifferent_access
 
-    assert_equal 'a', @strings.__send__(:convert_key, :a)
+    assert_equal 'a', @strings.__send__(:key_filter, :a)
 
     assert_equal 1, @strings.fetch('a')
     assert_equal 1, @strings.fetch(:a.to_s)
@@ -212,10 +212,6 @@ class HashExtTest < Test::Unit::TestCase
 
   def test_stringify_and_symbolize_keys_on_indifferent_preserves_hash
     h = HashWithIndifferentAccess.new
-    h[:first] = 1
-    h.stringify_keys!
-    assert_equal 1, h['first']
-    h = HashWithIndifferentAccess.new
     h['first'] = 1
     h.symbolize_keys!
     assert_equal 1, h[:first]
@@ -225,7 +221,7 @@ class HashExtTest < Test::Unit::TestCase
     h = HashWithIndifferentAccess.new
     h['first'] = 1
     h.to_options!
-    assert_equal 1, h['first']
+    assert_equal 1, h[:first]
   end
 
 
