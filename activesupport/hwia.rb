@@ -1,7 +1,8 @@
 require 'benchmark'
 
 $:.unshift "#{File.dirname(__FILE__)}/lib"
-require 'active_support/hash_with_indifferent_access'
+require 'active_support/hash_with_indifferent_access/ruby'
+require 'active_support/hash_with_indifferent_access/nobu'
 
 begin
   require 'hwia'
