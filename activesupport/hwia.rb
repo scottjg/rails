@@ -17,6 +17,7 @@ class HwiaBench
     @fixtures = {}
     @fixtures[:naude] = @hash.strhash if @hash.respond_to?(:strhash)
     @fixtures[:'nobu '] = ActiveSupport::Hwia::Nobu.new.update(@hash) if Hash.method_defined?(:customize)
+    @fixtures[:sntra] = Hash.new {|hash,key| hash[key.to_s] if Symbol === key }
     @fixtures[:rails] = ActiveSupport::Hwia::Ruby.new.update(@hash)
   end
 
