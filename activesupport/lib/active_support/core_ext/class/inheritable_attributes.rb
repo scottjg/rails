@@ -8,16 +8,19 @@ end
 # children, which is unlike the regular class-level attributes that are shared across the entire hierarchy.
 class Class # :nodoc:
   def class_inheritable_reader(*syms)
+    options = syms.extract_options!
     syms.each do |sym|
       next if sym.is_a?(Hash)
       class_eval <<-EOS
-        def self.#{sym}                        # def self.before_add_for_comments
-          read_inheritable_attribute(:#{sym})  #   read_inheritable_attribute(:before_add_for_comments)
-        end                                    # end
-                                               #
-        def #{sym}                             # def before_add_for_comments
-          self.class.#{sym}                    #   self.class.before_add_for_comments
-        end                                    # end
+        def self.#{sym}                               # def self.before_add_for_comments
+          read_inheritable_attribute(:#{sym})         #   read_inheritable_attribute(:before_add_for_comments)
+        end                                           # end
+                                                      #
+        #{"                                           #
+        def #{sym}                                    # def before_add_for_comments
+          self.class.#{sym}                           #   self.class.before_add_for_comments
+        end                                           # end
+        " unless options[:instance_reader] == false } # # the reader above is generated unless options[:instance_reader] == false
       EOS
     end
   end
