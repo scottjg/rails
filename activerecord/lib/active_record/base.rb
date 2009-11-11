@@ -3230,6 +3230,7 @@ module ActiveRecord #:nodoc:
     include AutosaveAssociation, NestedAttributes
 
     include Aggregations, Transactions, Reflection, Batches, Calculations, Serialization
+    include UniqueConstraints
   end
 end
 

@@ -669,6 +669,12 @@ module ActiveRecord
         indexes
       end
 
+      # postgres doesn't let us query this in the middle of an aborted transaction so caching can come in handy
+      def cached_indexes(table_name)
+        @cached_indexes ||= {}
+        @cached_indexes[table_name] ||= indexes(table_name)
+      end
+
       # Returns the list of all column definitions for a table.
       def columns(table_name, name = nil)
         # Limit, precision, and scale are all handled by the superclass.
@@ -912,6 +918,13 @@ module ActiveRecord
         order = order.zip((0...order.size).to_a).map { |s,i| "id_list.alias_#{i} #{s}" }.join(', ')
 
         sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
+      end
+
+      def index_for_record_not_unique(exception, table_name) #:nodoc:
+        if match = exception.message.match(/unique constraint "(\w+)"/)
+          index_name = match[1]
+          cached_indexes(table_name).detect { |i| i.name == index_name }
+        end
       end
 
       protected
