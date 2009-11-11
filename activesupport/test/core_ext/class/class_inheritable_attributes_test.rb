@@ -13,6 +13,14 @@ class ClassInheritableAttributesTest < Test::Unit::TestCase
     end
   end
 
+  def test_writer_declaration_without_instance_reader
+    assert_nothing_raised do
+      @klass.class_inheritable_reader :a, :instance_reader => false
+      assert_respond_to @klass, :a
+      assert !@klass.new.respond_to?(:a)
+    end
+  end
+
   def test_writer_declaration
     assert_nothing_raised do
       @klass.class_inheritable_writer :a
@@ -38,7 +46,17 @@ class ClassInheritableAttributesTest < Test::Unit::TestCase
       assert_respond_to @klass.new, :a=
     end
   end
-  
+
+  def test_accessor_declaration_without_instance_reader
+    assert_nothing_raised do
+      @klass.class_inheritable_accessor :a, :instance_reader => false
+      assert_respond_to @klass, :a
+      assert !@klass.new.respond_to?(:a)
+      assert_respond_to @klass, :a=
+      assert_respond_to @klass.new, :a=
+    end
+  end
+
   def test_accessor_declaration_without_instance_writer
     assert_nothing_raised do
       @klass.class_inheritable_accessor :a, :instance_writer => false
