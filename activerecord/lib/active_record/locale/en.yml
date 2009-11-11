@@ -15,6 +15,8 @@ en:
         too_short: "is too short (minimum is {{count}} characters)"
         wrong_length: "is the wrong length (should be {{count}} characters)"
         taken: "has already been taken"
+        taken_multiple: "has already been taken for {{context}}"
+        taken_generic: "Unique requirement not met"
         not_a_number: "is not a number"
         greater_than: "must be greater than {{count}}"
         greater_than_or_equal_to: "must be greater than or equal to {{count}}"

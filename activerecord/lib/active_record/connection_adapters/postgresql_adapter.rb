@@ -941,6 +941,13 @@ module ActiveRecord
         sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
       end
 
+      def index_for_record_not_unique(exception, table_name) #:nodoc:
+        if match = exception.message.match(/unique constraint "(\w+)"/)
+          index_name = match[1]
+          indexes(table_name).detect { |i| i.name == index_name }
+        end
+      end
+
       protected
         # Returns the version of the connected PostgreSQL version.
         def postgresql_version

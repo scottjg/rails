@@ -3177,6 +3177,10 @@ module ActiveRecord #:nodoc:
     include AutosaveAssociation, NestedAttributes
 
     include Aggregations, Transactions, Reflection, Batches, Calculations, Serialization
+
+    # UniqueConstraints needs to be included after Transactions, because we need #save_with_unique_constraints
+    # to rescue after the transaction has been resolved for postgres.
+    include UniqueConstraints
   end
 end
 
