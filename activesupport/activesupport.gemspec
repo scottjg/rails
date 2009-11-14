@@ -10,6 +10,8 @@ Gem::Specification.new do |s|
   s.require_path = 'lib'
   s.has_rdoc = true
 
+  s.add_dependency('i18n', '~> 0.2.0')
+
   s.author = "David Heinemeier Hansson"
   s.email = "david@loudthinking.com"
   s.homepage = "http://www.rubyonrails.org"
