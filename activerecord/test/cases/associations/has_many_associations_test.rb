@@ -374,6 +374,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_equal "Another Client", new_client.name
     assert new_client.new_record?
+    assert_equal company, new_client.firm
     assert_equal new_client, company.clients_of_firm.last
   end
 
