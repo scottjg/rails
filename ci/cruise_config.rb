@@ -1,3 +1,4 @@
+# encoding: utf-8
 Project.configure do |project|
   # Send email notifications about broken and fixed builds to core mailing list
   if Socket.gethostname =~ /ci.rubyonrails.org/ && ENV['ENABLE_RAILS_CI_EMAILS'] == 'true'

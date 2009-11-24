@@ -1,3 +1,4 @@
+# encoding: utf-8
 class Time
   # Coerces the time to a string for JSON encoding.
   #

@@ -1,4 +1,5 @@
 # encoding: utf-8
+# encoding: utf-8
 
 require 'abstract_unit'
 require 'multibyte_test_helpers'

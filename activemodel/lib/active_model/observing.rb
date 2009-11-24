@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'observer'
 require 'singleton'
 require 'active_model/core'

@@ -1,3 +1,4 @@
+# encoding: utf-8
 # encoding: binary
 require 'active_record/connection_adapters/abstract_adapter'
 

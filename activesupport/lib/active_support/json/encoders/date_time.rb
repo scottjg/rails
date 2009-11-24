@@ -1,3 +1,4 @@
+# encoding: utf-8
 class DateTime
   # Coerces the datetime to a string for JSON encoding.
   #

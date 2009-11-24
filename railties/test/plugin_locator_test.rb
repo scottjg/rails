@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'plugin_test_helper'
 
 class PluginLocatorTest < Test::Unit::TestCase

@@ -1,3 +1,4 @@
+# encoding: utf-8
 # Horo RDoc template
 # Author: Hongli Lai - http://izumi.plan99.net/blog/
 #

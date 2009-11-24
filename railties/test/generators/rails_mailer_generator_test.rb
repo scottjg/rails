@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'generators/generator_test_helper'
 
 class RailsMailerGeneratorTest < GeneratorTestCase

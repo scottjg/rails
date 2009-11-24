@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'rack/session/abstract/id'
 module ActionController #:nodoc:
   class TestRequest < Request #:nodoc:

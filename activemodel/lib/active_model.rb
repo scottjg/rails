@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'active_model/observing'
 # disabled until they're tested
 # require 'active_model/callbacks'

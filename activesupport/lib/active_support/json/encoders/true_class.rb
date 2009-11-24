@@ -1,3 +1,4 @@
+# encoding: utf-8
 class TrueClass
   AS_JSON = ActiveSupport::JSON::Variable.new('true').freeze
 

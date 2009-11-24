@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 
 uses_gem "fcgi", "0.8.7" do

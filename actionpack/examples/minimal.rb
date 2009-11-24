@@ -1,3 +1,4 @@
+# encoding: utf-8
 $:.push File.join(File.dirname(__FILE__), "..", "lib")
 $:.push File.join(File.dirname(__FILE__), "..", "..", "activesupport", "lib")
 require "action_controller"

@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Folder
   class MetalA < Rails::Rack::Metal
     def self.call(env)

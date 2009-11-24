@@ -1,3 +1,4 @@
+# encoding: utf-8
 # For forward compatibility with Rails 3.
 #
 # require 'active_support' loads a very bare minumum in Rails 3.

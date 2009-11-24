@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 
 class TimeExtCalculationsTest < Test::Unit::TestCase

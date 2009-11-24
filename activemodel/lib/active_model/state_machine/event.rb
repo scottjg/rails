@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'active_model/state_machine/state_transition'
 
 module ActiveModel

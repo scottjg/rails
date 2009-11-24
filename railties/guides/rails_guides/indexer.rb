@@ -1,3 +1,4 @@
+# encoding: utf-8
 module RailsGuides
   class Indexer
     attr_reader :body, :result, :level_hash

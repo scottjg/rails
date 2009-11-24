@@ -1,4 +1,5 @@
 # encoding: utf-8
+# encoding: utf-8
 
 require 'active_support/core_ext/string/inflections'
 require 'active_support/core_ext/string/bytesize'
