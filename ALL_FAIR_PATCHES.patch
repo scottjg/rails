@@ -1,0 +1,163 @@
+commit 7b4410dab6f5c40f228d2d5315b3c45f53d1b4ea
+Author: Saimon Moore <saimon@saimonmoore.net>
+Date:   Tue Nov 24 14:58:06 2009 +0100
+
+    * Make partial rendering from within a content_for capture work with ruby 1.9 encodings
+    * Use ActiveSupport::Multibyte::Chars#downcase for strings in ruby 1.9.1. Added test to check the correct encoding of attributes values.
+    * Make partial rendering from within a content_for capture work with ruby 1.9 encodings
+    * Make sure that TextHelper #concat always deals with UTF8 content in Ruby 1.9
+    * Adding missing template from ruby 1.9 erb workaround patch
+    * Applying patch to force utf-8 encoding on rendered content in erb
+    * Patch for issue #3144 (undefined method `^' for String - RoR 2.3.4 under ruby 1.9)
+
+diff --git a/actionpack/lib/action_view/helpers/text_helper.rb b/actionpack/lib/action_view/helpers/text_helper.rb
+index de6a2dd..a2c5c91 100644
+--- a/actionpack/lib/action_view/helpers/text_helper.rb
++++ b/actionpack/lib/action_view/helpers/text_helper.rb
+@@ -29,7 +29,11 @@ module ActionView
+           ActiveSupport::Deprecation.warn("The binding argument of #concat is no longer needed.  Please remove it from your views and helpers.", caller)
+         end
+ 
+-        output_buffer << string
++        if string.respond_to?(:force_encoding)
++          output_buffer << string.force_encoding(Encoding::UTF_8)
++        else
++          output_buffer << string
++        end
+       end
+ 
+       # Truncates a given +text+ after a given <tt>:length</tt> if +text+ is longer than <tt>:length</tt>
+diff --git a/actionpack/lib/action_view/renderable.rb b/actionpack/lib/action_view/renderable.rb
+index ff7bc7d..58448fb 100644
+--- a/actionpack/lib/action_view/renderable.rb
++++ b/actionpack/lib/action_view/renderable.rb
+@@ -36,7 +36,8 @@ module ActionView
+           if !view.instance_variable_defined?(:"@content_for_#{names.first}") && view.instance_variable_defined?(ivar) && (proc = view.instance_variable_get(ivar))
+             view.capture(*names, &proc)
+           elsif view.instance_variable_defined?(ivar = :"@content_for_#{names.first || :layout}")
+-            view.instance_variable_get(ivar)
++            res = view.instance_variable_get(ivar)
++            res.respond_to?(:force_encoding) ? res.force_encoding(Encoding::UTF_8) : res
+           end
+         end
+       end
+@@ -67,12 +68,14 @@ module ActionView
+ 
+         source = <<-end_src
+           def #{render_symbol}(local_assigns)
+-            old_output_buffer = output_buffer;#{locals_code};#{compiled_source}
++            old_output_buffer = output_buffer;#{locals_code};#{compiled_source.respond_to?(:force_encoding) ? compiled_source.force_encoding(Encoding::UTF_8) : compiled_source}
+           ensure
+             self.output_buffer = old_output_buffer
+           end
+         end_src
+ 
++        # Workaround for erb
++        source.force_encoding('utf-8') if '1.9'.respond_to?(:force_encoding)
+         begin
+           ActionView::Base::CompiledTemplates.module_eval(source, filename, 0)
+         rescue Errno::ENOENT => e
+diff --git a/actionpack/test/fixtures/test/utf8_mixed.html.erb b/actionpack/test/fixtures/test/utf8_mixed.html.erb
+new file mode 100644
+index 0000000..d964cfe
+--- /dev/null
++++ b/actionpack/test/fixtures/test/utf8_mixed.html.erb
+@@ -0,0 +1 @@
++å<%= 'å'.force_encoding('utf-8') %>
+\ No newline at end of file
+diff --git a/actionpack/test/template/render_test.rb b/actionpack/test/template/render_test.rb
+index 9adf053..713116b 100644
+--- a/actionpack/test/template/render_test.rb
++++ b/actionpack/test/template/render_test.rb
+@@ -254,6 +254,12 @@ module RenderTestCases
+       assert_equal "Русский текст\n日本語のテキスト", result
+       assert_equal Encoding::UTF_8, result.encoding
+     end
++
++    def test_render_utf8_mixed_template
++      result = @view.render(:file => "test/utf8_mixed.html.erb", :layouts => "layouts/yield")
++      assert_equal "åå", result
++      assert_equal Encoding::UTF_8, result.encoding
++    end
+   end
+ end
+ 
+diff --git a/activerecord/lib/active_record/validations.rb b/activerecord/lib/active_record/validations.rb
+index b339f0c..b40c464 100644
+--- a/activerecord/lib/active_record/validations.rb
++++ b/activerecord/lib/active_record/validations.rb
+@@ -805,6 +805,10 @@ module ActiveRecord
+           if value.nil? || (configuration[:case_sensitive] || !column.text?)
+             condition_sql = "#{sql_attribute} #{comparison_operator}"
+             condition_params = [value]
++          elsif '1.9'.respond_to?(:encoding)
++            condition_sql = "LOWER(#{sql_attribute}) #{comparison_operator}"
++            nvalue = ActiveSupport::Multibyte::Chars.new(value)
++            condition_params = [nvalue.downcase]
+           else
+             condition_sql = "LOWER(#{sql_attribute}) #{comparison_operator}"
+             condition_params = [value.mb_chars.downcase]
+diff --git a/activerecord/test/cases/encoding_test.rb b/activerecord/test/cases/encoding_test.rb
+new file mode 100644
+index 0000000..6d4d5c3
+--- /dev/null
++++ b/activerecord/test/cases/encoding_test.rb
+@@ -0,0 +1,20 @@
++require 'cases/helper'
++require 'models/topic'
++
++class EncodingUTF8Test < ActiveRecord::TestCase
++  fixtures :topics
++
++  if '1.9'.respond_to?(:encoding)
++
++    def setup
++      @first = Topic.find(1)
++      @utf8_encoding = Encoding.find('utf-8')
++    end
++
++    def test_attribute_value_is_utf8
++      assert_equal @utf8_encoding, @first.title.encoding
++    end
++
++  end
++
++end
+diff --git a/activesupport/lib/active_support/message_verifier.rb b/activesupport/lib/active_support/message_verifier.rb
+index aae5a34..3127c80 100644
+--- a/activesupport/lib/active_support/message_verifier.rb
++++ b/activesupport/lib/active_support/message_verifier.rb
+@@ -40,14 +40,27 @@ module ActiveSupport
+     private
+       # constant-time comparison algorithm to prevent timing attacks
+       def secure_compare(a, b)
+-        if a.length == b.length
+-          result = 0
+-          for i in 0..(a.length - 1)
+-            result |= a[i] ^ b[i]
++        if a.respond_to?(:bytesize)
++          # > 1.8.6 friendly version
++          if a.bytesize == b.bytesize
++            result = 0
++            j = b.each_byte
++            a.each_byte { |i| result |= i ^ j.next }
++            result == 0
++          else
++            false
+           end
+-          result == 0
+         else
+-          false
++          # <= 1.8.6 friendly version
++          if a.size == b.size
++            result = 0
++            for i in 0..(a.length - 1)
++              result |= a[i] ^ b[i]
++            end
++            result == 0
++          else
++            false
++          end
+         end
+       end
+ 
