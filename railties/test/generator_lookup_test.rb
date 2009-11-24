@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'plugin_test_helper'
 
 class GeneratorLookupTest < Test::Unit::TestCase

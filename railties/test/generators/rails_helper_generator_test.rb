@@ -1,3 +1,4 @@
+# encoding: utf-8
 require File.dirname(__FILE__) + '/generator_test_helper'
 
 class RailsHelperGeneratorTest < GeneratorTestCase

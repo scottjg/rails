@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'fileutils'
 require 'abstract_unit'
 require 'active_record_unit'

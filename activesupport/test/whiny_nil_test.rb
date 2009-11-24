@@ -1,3 +1,4 @@
+# encoding: utf-8
 # Stub to enable testing without Active Record
 module ActiveRecord
   class Base

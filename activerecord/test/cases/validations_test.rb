@@ -1,4 +1,5 @@
 # encoding: utf-8
+# encoding: utf-8
 require "cases/helper"
 require 'models/topic'
 require 'models/reply'

@@ -1,3 +1,4 @@
+# encoding: utf-8
 # site_config.rb contains examples of various configuration options for the local installation
 # of CruiseControl.rb.
 

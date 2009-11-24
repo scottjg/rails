@@ -1,4 +1,5 @@
 # encoding: utf-8
+# encoding: utf-8
 
 module ActionView
   # NOTE: The template that this mixin is being included into is frozen

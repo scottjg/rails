@@ -1,3 +1,4 @@
+# encoding: utf-8
 class ProxyResource < ActiveResource::Base
   self.site = "http://localhost"
   self.proxy = "http://user:password@proxy.local:3000"

@@ -1,3 +1,4 @@
+# encoding: utf-8
 class Author < ActiveRecord::Base
   has_many :posts
   has_many :very_special_comments, :through => :posts

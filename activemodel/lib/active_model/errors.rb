@@ -1,3 +1,4 @@
+# encoding: utf-8
 module ActiveModel
   class Errors < Hash
     include DeprecatedErrorMethods

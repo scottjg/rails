@@ -1,3 +1,4 @@
+# encoding: utf-8
 module ActiveRecord
   module NestedAttributes #:nodoc:
     class TooManyRecords < ActiveRecordError

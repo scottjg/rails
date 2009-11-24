@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Enumerable
   # Coerces the enumerable to an array for JSON encoding.
   def as_json(options = nil) #:nodoc:

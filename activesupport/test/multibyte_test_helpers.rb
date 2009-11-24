@@ -1,4 +1,5 @@
 # encoding: utf-8
+# encoding: utf-8
 
 module MultibyteTestHelpers
   UNICODE_STRING = 'こにちわ'

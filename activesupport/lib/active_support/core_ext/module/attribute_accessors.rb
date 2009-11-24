@@ -1,3 +1,4 @@
+# encoding: utf-8
 require "active_support/core_ext/array"
 
 # Extends the module object with module and instance accessors for class attributes, 

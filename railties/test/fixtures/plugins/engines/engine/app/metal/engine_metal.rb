@@ -1,3 +1,4 @@
+# encoding: utf-8
 class EngineMetal
   def self.call(env)
     if env["PATH_INFO"] =~ /^\/metal/

@@ -1,3 +1,4 @@
+# encoding: utf-8
 # I have access to my directory and the Rails config.
 raise 'directory expected but undefined in init.rb' unless defined? directory
 raise 'config expected but undefined in init.rb' unless defined? config

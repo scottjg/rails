@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 
 class OptionMergerTest < Test::Unit::TestCase

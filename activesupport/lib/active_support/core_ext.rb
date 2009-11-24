@@ -1,3 +1,4 @@
+# encoding: utf-8
 filenames = Dir["#{File.dirname(__FILE__)}/core_ext/*.rb"].sort.map do |path|
   File.basename(path, '.rb')
 end

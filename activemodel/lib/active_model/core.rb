@@ -1,3 +1,4 @@
+# encoding: utf-8
 # This file is required by each major ActiveModel component for the core requirements.  This allows you to
 # load individual pieces of ActiveModel as needed.
 $LOAD_PATH << File.join(File.dirname(__FILE__), '..', '..', '..', 'activesupport', 'lib')

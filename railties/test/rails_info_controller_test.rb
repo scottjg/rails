@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 require 'action_controller'
 require 'action_controller/test_process'

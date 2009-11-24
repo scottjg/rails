@@ -1,3 +1,4 @@
+# encoding: utf-8
 class String
   def to_json(options = nil) #:nodoc:
     ActiveSupport::JSON::Encoding.escape(self)
