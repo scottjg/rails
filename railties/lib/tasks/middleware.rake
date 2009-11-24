@@ -1,3 +1,4 @@
+# encoding: utf-8
 desc 'Prints out your Rack middleware stack'
 task :middleware => :environment do
   ActionController::Dispatcher.middleware.active.each do |middleware|

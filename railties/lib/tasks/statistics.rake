@@ -1,3 +1,4 @@
+# encoding: utf-8
 STATS_DIRECTORIES = [
   %w(Controllers        app/controllers),
   %w(Helpers            app/helpers), 

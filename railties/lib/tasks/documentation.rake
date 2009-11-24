@@ -1,3 +1,4 @@
+# encoding: utf-8
 namespace :doc do
   desc "Generate documentation for the application. Set custom template with TEMPLATE=/path/to/rdoc/template.rb or title with TITLE=\"Custom Title\""
   Rake::RDocTask.new("app") { |rdoc|

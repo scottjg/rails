@@ -1,3 +1,4 @@
+# encoding: utf-8
 namespace :rails do
   namespace :freeze do
     desc "Lock this application to the current gems (by unpacking them into vendor/rails)"
