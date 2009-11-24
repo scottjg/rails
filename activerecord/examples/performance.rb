@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby -KU
+# encoding: utf-8
 
 TIMES = (ENV['N'] || 10000).to_i
 

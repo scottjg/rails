@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 
 # The XChar library is provided courtesy of Sam Ruby (See
 # http://intertwingly.net/stories/2005/09/28/xchar.rb)

@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 
 unless ARGV.first == "no_build"
   build_number = Time.now.strftime("%Y%m%d%H%M%S").to_i

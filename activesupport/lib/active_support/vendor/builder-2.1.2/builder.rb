@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 
 #--
 # Copyright 2004 by Jim Weirich (jim@weirichhouse.org).
