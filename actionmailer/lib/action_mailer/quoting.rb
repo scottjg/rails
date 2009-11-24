@@ -1,4 +1,3 @@
-# encoding: utf-8
 module ActionMailer
   module Quoting #:nodoc:
     # Convert the given text into quoted printable format, with an instruction

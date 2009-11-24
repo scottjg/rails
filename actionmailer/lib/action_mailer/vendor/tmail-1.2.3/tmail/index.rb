@@ -1,4 +1,3 @@
-# encoding: utf-8
 #:stopdoc:
 # This is here for Rolls. 
 # Rolls uses this instead of lib/tmail.rb.
