@@ -805,6 +805,10 @@ module ActiveRecord
           if value.nil? || (configuration[:case_sensitive] || !column.text?)
             condition_sql = "#{sql_attribute} #{comparison_operator}"
             condition_params = [value]
+          elsif '1.9'.respond_to?(:encoding)
+            condition_sql = "LOWER(#{sql_attribute}) #{comparison_operator}"
+            nvalue = ActiveSupport::Multibyte::Chars.new(value)
+            condition_params = [nvalue.downcase]
           else
             condition_sql = "LOWER(#{sql_attribute}) #{comparison_operator}"
             condition_params = [value.mb_chars.downcase]

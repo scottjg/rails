@@ -254,6 +254,12 @@ module RenderTestCases
       assert_equal "Русский текст\n日本語のテキスト", result
       assert_equal Encoding::UTF_8, result.encoding
     end
+
+    def test_render_utf8_mixed_template
+      result = @view.render(:file => "test/utf8_mixed.html.erb", :layouts => "layouts/yield")
+      assert_equal "åå", result
+      assert_equal Encoding::UTF_8, result.encoding
+    end
   end
 end
 
