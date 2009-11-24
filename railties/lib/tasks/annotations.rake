@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'source_annotation_extractor'
 
 desc "Enumerate all annotations"

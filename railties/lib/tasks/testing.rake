@@ -1,3 +1,4 @@
+# encoding: utf-8
 TEST_CHANGES_SINCE = Time.now - 600
 
 # Look up tests for recently modified sources.

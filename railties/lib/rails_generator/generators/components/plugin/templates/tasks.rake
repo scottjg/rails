@@ -1,3 +1,4 @@
+# encoding: utf-8
 # desc "Explaining what the task does"
 # task :<%= file_name %> do
 #   # Task goes here

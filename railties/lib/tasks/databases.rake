@@ -1,3 +1,4 @@
+# encoding: utf-8
 namespace :db do
   task :load_config => :rails_env do
     require 'active_record'

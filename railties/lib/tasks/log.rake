@@ -1,3 +1,4 @@
+# encoding: utf-8
 namespace :log do
   desc "Truncates all *.log files in log/ to zero bytes"
   task :clear do

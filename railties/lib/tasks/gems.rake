@@ -1,3 +1,4 @@
+# encoding: utf-8
 desc "List the gems that this rails application depends on"
 task :gems => 'gems:base' do
   Rails.configuration.gems.each do |gem|

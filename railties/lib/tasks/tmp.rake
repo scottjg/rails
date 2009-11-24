@@ -1,3 +1,4 @@
+# encoding: utf-8
 namespace :tmp do
   desc "Clear session, cache, and socket files from tmp/"
   task :clear => [ "tmp:sessions:clear",  "tmp:cache:clear", "tmp:sockets:clear"]

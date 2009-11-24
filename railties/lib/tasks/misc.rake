@@ -1,3 +1,4 @@
+# encoding: utf-8
 task :default => :test
 task :environment do
   $rails_rake_task = true
