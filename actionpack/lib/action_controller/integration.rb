@@ -271,6 +271,9 @@ module ActionController
 
           data = data.is_a?(IO) ? data : StringIO.new(data || '')
 
+          # rack requires binary encoded rack.input
+          data.set_encoding(Encoding::ASCII_8BIT) if data.respond_to?(:set_encoding)
+
           env.update(
             "REQUEST_METHOD"  => method.to_s.upcase,
             "SERVER_NAME"     => host,
