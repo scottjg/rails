@@ -1,4 +1,3 @@
-# encoding: utf-8
 =begin rdoc
 
 = Obsolete methods that are depriciated

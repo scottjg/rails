@@ -1,4 +1,3 @@
-# encoding: utf-8
 #:stopdoc:
 unless Enumerable.method_defined?(:map) 
   module Enumerable #:nodoc:

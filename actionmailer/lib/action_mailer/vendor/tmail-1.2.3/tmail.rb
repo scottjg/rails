@@ -1,4 +1,3 @@
-# encoding: utf-8
 require 'tmail/version'
 require 'tmail/mail'
 require 'tmail/mailbox'

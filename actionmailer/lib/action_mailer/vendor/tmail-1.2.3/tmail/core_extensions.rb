@@ -1,4 +1,3 @@
-# encoding: utf-8
 #:stopdoc:
 unless Object.respond_to?(:blank?)
   class Object
