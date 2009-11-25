@@ -96,6 +96,10 @@ module ActiveRecord
       end unless self.new_record?
     end
 
+    def building_from_owner
+      @building_from_owner
+    end
+
     private
       # Gets the specified association instance if it responds to :loaded?, nil otherwise.
       def association_instance_get(name)

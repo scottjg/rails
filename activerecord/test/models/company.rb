@@ -121,6 +121,12 @@ class Client < Company
     query_attribute :rating
   end
 
+  attr_reader :parent_instance_found_during_build
+  # This method is used to check that during build phase the parent instance is available.
+  def trigger_parent_instance_lookup=(whatever)
+    @parent_instance_found_during_build = building_from_owner
+  end
+
   class << self
     private
 

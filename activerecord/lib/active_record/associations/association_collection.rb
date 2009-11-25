@@ -409,7 +409,7 @@ module ActiveRecord
           attrs.update(@reflection.options[:conditions]) if @reflection.options[:conditions].is_a?(Hash)
           ensure_owner_is_not_new
           record = @reflection.klass.send(:with_scope, :create => construct_scope[:create]) do
-            @reflection.build_association(attrs)
+            build_associated_record(attrs)
           end
           if block_given?
             add_record_to_target_with_callbacks(record) { |*block_args| yield(*block_args) }
@@ -420,12 +420,19 @@ module ActiveRecord
 
         def build_record(attrs)
           attrs.update(@reflection.options[:conditions]) if @reflection.options[:conditions].is_a?(Hash)
-          record = @reflection.build_association(attrs)
+          record = build_associated_record(attrs)
           if block_given?
             add_record_to_target_with_callbacks(record) { |*block_args| yield(*block_args) }
           else
             add_record_to_target_with_callbacks(record)
           end
+        end
+        
+        def build_associated_record(attrs)
+          record = @reflection.build_association
+          record.instance_variable_set(:@building_from_owner, @owner)
+          record.attributes = attrs
+          record
         end
 
         def add_record_to_target_with_callbacks(record)

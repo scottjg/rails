@@ -480,6 +480,55 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert !companies(:first_firm).clients_of_firm.loaded?
   end
 
+  def test_parent_instance_available_when_building
+    company = companies(:first_firm)
+
+    client = company.clients_of_firm.build("trigger_parent_instance_lookup" => "whatever")
+    assert_equal company, client.parent_instance_found_during_build
+
+    company.clients_of_firm.build do |client|
+      assert client.new_record?
+      assert_equal company, client.building_from_owner
+    end
+  end
+
+  def test_parent_instance_available_when_creating
+    firm = companies(:first_firm)
+
+    client = firm.clients_of_firm.create!("name" => "Another Client", "trigger_parent_instance_lookup" => "whatever")
+    assert_equal firm, client.parent_instance_found_during_build
+
+    firm.clients_of_firm.create! "name" => "Another Client" do |client|
+      assert client.new_record?
+      assert_equal firm, client.building_from_owner
+    end
+  end
+
+  def test_new_parent_instance_available_when_building
+    firm = Firm.new
+
+    client = firm.clients_of_firm.build("trigger_parent_instance_lookup" => "whatever")
+    assert_equal firm, client.parent_instance_found_during_build
+
+    firm.clients_of_firm.build do |client|
+      assert client.new_record?
+      assert_equal firm, client.building_from_owner
+    end
+  end
+
+  def test_new_parent_instance_available_when_building_a_polymorphic_association
+    post = Post.new
+
+    tagging = post.taggings.build("trigger_parent_instance_lookup" => "whatever")
+    assert_equal post, tagging.parent_instance_found_during_build
+
+    post.taggings.build do |tagging|
+      assert tagging.new_record?
+      assert_equal post, tagging.taggable
+      assert_equal post, tagging.building_from_owner
+    end
+  end
+
   def test_find_or_initialize
     the_client = companies(:first_firm).clients.find_or_initialize_by_name("Yet another client")
     assert_equal companies(:first_firm).id, the_client.firm_id
