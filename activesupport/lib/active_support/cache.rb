@@ -169,12 +169,16 @@ module ActiveSupport
       #   sleep(6)
       #   cache.fetch("foo")  # => nil
       def fetch(key, options = {}, &block)
-        if !options[:force] && value = read(key, options)
-          value
-        elsif block_given?
+        value = if !options[:force]
+          read(key, options)
+        end
+
+        if value.nil? && block_given?
           result = instrument(:generate, key, options, &block)
           write(key, result, options)
           result
+        else
+          value
         end
       end
 

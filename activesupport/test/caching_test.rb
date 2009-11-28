@@ -101,9 +101,24 @@ module CacheStoreBehavior
     assert_equal nil, @cache.read('foo')
   end
 
+  def test_should_read_and_write_false
+    @cache.write('foo', false)
+    assert_equal false, @cache.read('foo')
+  end
+
+  def test_should_read_and_write_true
+    @cache.write('foo', true)
+    assert_equal true, @cache.read('foo')
+  end
+
   def test_fetch_without_cache_miss
     @cache.write('foo', 'bar')
     assert_equal 'bar', @cache.fetch('foo') { 'baz' }
+  end
+
+  def test_fetch_false_without_cache_miss
+    @cache.write('foo', false)
+    assert_equal false, @cache.fetch('foo') { 'baz' }
   end
 
   def test_fetch_with_cache_miss
