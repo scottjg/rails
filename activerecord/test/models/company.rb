@@ -64,6 +64,8 @@ class Firm < Company
   has_many :readonly_clients, :class_name => 'Client', :readonly => true
   has_many :clients_using_primary_key, :class_name => 'Client',
            :primary_key => 'name', :foreign_key => 'firm_name'
+  has_many :clients_using_primary_key_with_delete_all, :class_name => 'Client',
+           :primary_key => 'name', :foreign_key => 'firm_name', :dependent => :delete_all
   has_many :clients_grouped_by_firm_id, :class_name => "Client", :group => "firm_id", :select => "firm_id"
   has_many :clients_grouped_by_name, :class_name => "Client", :group => "name", :select => "name"
 
@@ -74,6 +76,8 @@ class Firm < Company
   has_one :account_using_primary_key, :primary_key => "firm_id", :class_name => "Account"
   has_one :account_using_foreign_and_primary_keys, :foreign_key => "firm_name", :primary_key => "name", :class_name => "Account"
   has_one :deletable_account, :foreign_key => "firm_id", :class_name => "Account", :dependent => :delete
+
+  has_one :account_limit_500_with_hash_conditions, :foreign_key => "firm_id", :class_name => "Account", :conditions => { :credit_limit => 500 }
 
   has_one :unautosaved_account, :foreign_key => "firm_id", :class_name => 'Account', :autosave => false
   has_many :accounts

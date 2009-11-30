@@ -44,6 +44,13 @@ class FreeCookieController < RequestForgeryProtectionController
   end
 end
 
+class CustomAuthenticityParamController < RequestForgeryProtectionController
+  def form_authenticity_param
+    'foobar'
+  end
+end
+
+
 # common test methods
 
 module RequestForgeryProtectionTests
@@ -243,5 +250,16 @@ class FreeCookieControllerTest < ActionController::TestCase
     [:post, :put, :delete].each do |method|
       assert_nothing_raised { send(method, :index)}
     end
+  end
+end
+
+class CustomAuthenticityParamControllerTest < ActionController::TestCase
+  def setup
+    ActionController::Base.request_forgery_protection_token = :authenticity_token
+  end
+
+  def test_should_allow_custom_token
+    post :index, :authenticity_token => 'foobar'
+    assert_response :ok
   end
 end
