@@ -1,6 +1,7 @@
 require "cases/helper"
 require 'models/post'
 require 'models/author'
+require 'models/latin_author'
 require 'models/topic'
 require 'models/reply'
 require 'models/category'
@@ -2149,6 +2150,34 @@ class BasicsTest < ActiveRecord::TestCase
     %w(created_at created_on updated_at updated_on).each do |attribute|
       parrot = LiveParrot.create(:name => "colombian", attribute => custom_datetime)
       assert_equal custom_datetime, parrot[attribute]
+    end
+  end
+end
+
+# ensure results from the database are sensibly encoded
+#
+class EncodingsTest < ActiveRecord::TestCase
+  fixtures :authors
+
+  if current_adapter?(:MysqlAdapter)
+    if "test".respond_to?(:encoding)
+      def test_string_encoding_after_type_cast
+        assert_equal Encoding.find("UTF-8"), Author.first.name.encoding
+        assert_equal Encoding.find("UTF-8"), Author.first.read_attribute("name").encoding
+      end
+
+      def test_string_encoding_before_type_cast
+        assert_equal Encoding.find("BINARY"), Author.first.read_attribute_before_type_cast("name").encoding
+      end
+
+      def test_nonutf8_string_encoding_after_type_cast
+        assert_equal Encoding.find("ISO-8859-1"), LatinAuthor.first.name.encoding
+        assert_equal Encoding.find("ISO-8859-1"), LatinAuthor.first.read_attribute("name").encoding
+      end
+
+      def test_nonutf8_string_encoding_before_type_cast
+        assert_equal Encoding.find("BINARY"), Author.first.read_attribute_before_type_cast("name").encoding
+      end
     end
   end
 end

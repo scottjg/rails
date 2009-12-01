@@ -54,6 +54,12 @@ class AdapterTest < ActiveRecord::TestCase
       assert_equal @connection.show_variable('character_set_database'), @connection.charset
     end
 
+    def test_results_charset
+      assert_not_nil @connection.results_charset
+      assert_not_equal 'character_set_results', @connection.results_charset
+      assert_equal @connection.show_variable('character_set_results'), @connection.results_charset
+    end
+
     def test_collation
       assert_not_nil @connection.collation
       assert_not_equal 'collation_database', @connection.collation
@@ -81,6 +87,19 @@ class AdapterTest < ActiveRecord::TestCase
     def test_encoding
       assert_not_nil @connection.encoding
     end
+  end
+
+  if current_adapter?(:MysqlAdapter)
+    fixtures :authors
+
+    def test_string_encodings_from_select_all
+      result = @connection.select_all("SELECT * FROM authors").first["name"]
+
+      if result.respond_to?(:encoding)
+        assert_equal Encoding.find("binary"), result.encoding
+      end
+    end
+
   end
 
   def test_table_alias

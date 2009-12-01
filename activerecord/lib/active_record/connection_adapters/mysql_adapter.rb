@@ -78,6 +78,21 @@ module ActiveRecord
 
   module ConnectionAdapters
     class MysqlColumn < Column #:nodoc:
+
+      class << self
+
+        def string_with_encoding(value, db_enc)
+          return value unless value.respond_to?(:encoding)
+
+          enc = case db_enc
+            when "utf8"   then Encoding.find("UTF-8")
+            when "latin1" then Encoding.find("ISO-8859-1")
+          end
+
+          enc ? value.force_encoding(enc) : value
+        end
+      end
+
       def extract_default(default)
         if sql_type =~ /blob/i || type == :text
           if default.blank?
@@ -95,6 +110,22 @@ module ActiveRecord
       def has_default?
         return false if sql_type =~ /blob/i || type == :text #mysql forbids defaults on blob and text columns
         super
+      end
+
+      def type_cast(value)
+        if value && text?
+          self.class.string_with_encoding(value, charset)
+        else
+          super
+        end
+      end
+
+      def type_cast_code(var_name)
+        if text?
+          "#{self.class.name}.string_with_encoding(#{var_name}, \"#{charset}\")"
+        else
+          super
+        end
       end
 
       private
@@ -429,6 +460,11 @@ module ActiveRecord
         show_variable 'character_set_database'
       end
 
+      # Returns the character set results will be returned in.
+      def results_charset
+        show_variable 'character_set_results'
+      end
+
       # Returns the database collation strategy.
       def collation
         show_variable 'collation_database'
@@ -466,8 +502,9 @@ module ActiveRecord
       def columns(table_name, name = nil)#:nodoc:
         sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
         columns = []
+        charset = results_charset
         result = execute(sql, name)
-        result.each { |field| columns << MysqlColumn.new(field[0], field[4], field[1], field[2] == "YES") }
+        result.each { |field| columns << MysqlColumn.new(field[0], field[4], field[1], field[2] == "YES", charset) }
         result.free
         columns
       end

@@ -1,5 +1,8 @@
 print "Using native MySQL\n"
 require_dependency 'models/course'
+require_dependency 'models/latin_author'
+require_dependency 'models/course'
+
 require 'logger'
 
 ActiveRecord::Base.logger = Logger.new("debug.log")
@@ -18,8 +21,15 @@ ActiveRecord::Base.configurations = {
     :adapter  => 'mysql',
     :username => 'rails',
     :database => 'activerecord_unittest2'
-  }
+  },
+  'arunit-latin1' => {
+    :adapter  => 'mysql',
+    :username => 'rails',
+    :encoding => 'latin1',
+    :database => 'activerecord_unittest',
+  },
 }
 
 ActiveRecord::Base.establish_connection 'arunit'
 Course.establish_connection 'arunit2'
+LatinAuthor.establish_connection 'arunit-latin1'

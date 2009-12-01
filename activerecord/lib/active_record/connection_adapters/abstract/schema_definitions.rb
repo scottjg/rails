@@ -15,7 +15,7 @@ module ActiveRecord
         ISO_DATETIME = /\A(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(\.\d+)?\z/
       end
 
-      attr_reader :name, :default, :type, :limit, :null, :sql_type, :precision, :scale
+      attr_reader :name, :default, :type, :limit, :null, :sql_type, :precision, :scale, :charset
       attr_accessor :primary
 
       # Instantiates a new column in the table.
@@ -24,11 +24,14 @@ module ActiveRecord
       # +default+ is the type-casted default value, such as +new+ in <tt>sales_stage varchar(20) default 'new'</tt>.
       # +sql_type+ is only used to extract the column's length, if necessary. For example +60+ in <tt>company_name varchar(60)</tt>.
       # +null+ determines if this column allows +NULL+ values.
-      def initialize(name, default, sql_type = nil, null = true)
+      # +charset+ is the encoding the database will provide results for this column in
+      #
+      def initialize(name, default, sql_type = nil, null = true, charset = nil)
         @name, @sql_type, @null = name, sql_type, null
         @limit, @precision, @scale = extract_limit(sql_type), extract_precision(sql_type), extract_scale(sql_type)
         @type = simplified_type(sql_type)
         @default = extract_default(default)
+        @charset = charset
 
         @primary = nil
       end
