@@ -73,6 +73,8 @@ module ActionView
           end
         end_src
 
+        # Workaround for erb
+        source.force_encoding('utf-8') if '1.9'.respond_to?(:force_encoding)
         begin
           ActionView::Base::CompiledTemplates.module_eval(source, filename, 0)
         rescue Errno::ENOENT => e
