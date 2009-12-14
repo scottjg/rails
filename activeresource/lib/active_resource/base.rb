@@ -1084,7 +1084,7 @@ module ActiveResource
       end
 
       def load_attributes_from_response(response)
-        if response['Content-Length'] != "0" && response.body.strip.size > 0
+        if response['Content-Length'] != "0" && response.body.to_s.strip.size > 0
           load(self.class.format.decode(response.body))
         end
       end
