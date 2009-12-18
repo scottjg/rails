@@ -6,13 +6,16 @@ class PathsTest < Test::Unit::TestCase
   def setup
     build_app
     boot_rails
+    require "rails"
     Rails::Initializer.run do |config|
+      config.root = app_path
       config.frameworks = [:action_controller, :action_view, :action_mailer, :active_record]
       config.after_initialize do
         ActionController::Base.session_store = nil
       end
     end
-    @paths = Rails::Initializer.default.config.paths
+    Rails.initialize!
+    @paths = Rails.application.config.paths
   end
 
   def root(*path)

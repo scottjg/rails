@@ -1,5 +1,5 @@
 module ActionController
-  module Rails2Compatibility
+  module Compatibility
     extend ActiveSupport::Concern
 
     class ::ActionController::ActionControllerError < StandardError #:nodoc:
@@ -25,9 +25,11 @@ module ActionController
 
       # cattr_reader :protected_instance_variables
       cattr_accessor :protected_instance_variables
-      self.protected_instance_variables = %w(@assigns @performed_redirect @performed_render @variables_added @request_origin @url @parent_controller
-                                          @action_name @before_filter_chain_aborted @action_cache_path @_headers @_params
-                                          @_flash @_response)
+      self.protected_instance_variables = %w(@assigns @performed_redirect @performed_render
+                                             @variables_added @request_origin @url
+                                             @parent_controller @action_name
+                                             @before_filter_chain_aborted @_headers @_params
+                                             @_flash @_response)
 
       # Indicates whether or not optimise the generated named
       # route helper methods
@@ -44,10 +46,7 @@ module ActionController
       cattr_accessor :use_accept_header
       self.use_accept_header = true
 
-      cattr_accessor :page_cache_directory
       self.page_cache_directory = defined?(Rails.public_path) ? Rails.public_path : ""
-
-      cattr_reader :cache_store
 
       cattr_accessor :consider_all_requests_local
       self.consider_all_requests_local = true
@@ -114,7 +113,7 @@ module ActionController
       details[:prefix] = nil if name =~ /\blayouts/
       super
     end
-    
+
     # Move this into a "don't run in production" module
     def _default_layout(details, require_layout = false)
       super

@@ -1,9 +1,11 @@
 require 'abstract_unit'
 
+class WelcomeController < ActionController::Base
+end
+
 class TestMailer < ActionMailer::Base
-  
   default_url_options[:host] = 'www.basecamphq.com'
-  
+
   def signed_up_with_url(recipient)
     @recipients   = recipient
     @subject      = "[Signed up] Welcome #{recipient}"
@@ -52,8 +54,8 @@ class ActionMailerUrlTest < Test::Unit::TestCase
   end
 
   def test_signed_up_with_url
-    ActionController::Routing::Routes.draw do |map| 
-      map.connect ':controller/:action/:id' 
+    ActionController::Routing::Routes.draw do |map|
+      map.connect ':controller/:action/:id'
       map.welcome 'welcome', :controller=>"foo", :action=>"bar"
     end
 

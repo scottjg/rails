@@ -62,7 +62,7 @@ class ResourceGeneratorTest < GeneratorsTestCase
     run_generator
 
     assert_file "config/routes.rb" do |route|
-      assert_match /map\.resources :accounts$/, route
+      assert_match /resources :accounts$/, route
     end
   end
 
@@ -70,12 +70,12 @@ class ResourceGeneratorTest < GeneratorsTestCase
     run_generator ["account", "--singleton"]
 
     assert_file "config/routes.rb" do |route|
-      assert_match /map\.resource :account$/, route
+      assert_match /resource :account$/, route
     end
   end
 
   def test_plural_names_are_singularized
-    content = run_generator ["accounts"]
+    content = run_generator ["accounts".freeze]
     assert_file "app/models/account.rb", /class Account < ActiveRecord::Base/
     assert_file "test/unit/account_test.rb", /class AccountTest/
     assert_match /Plural version of the model detected, using singularized version. Override with --force-plural./, content
@@ -93,7 +93,7 @@ class ResourceGeneratorTest < GeneratorsTestCase
     run_generator ["account"], :behavior => :revoke
 
     assert_file "config/routes.rb" do |route|
-      assert_no_match /map\.resources :accounts$/, route
+      assert_no_match /resources :accounts$/, route
     end
   end
 

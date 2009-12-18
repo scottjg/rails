@@ -1,6 +1,15 @@
+require "abstract_controller/base"
 require "abstract_controller/logger"
 
 module AbstractController
+  class DoubleRenderError < Error
+    DEFAULT_MESSAGE = "Render and/or redirect were called multiple times in this action. Please note that you may only call render OR redirect, and at most once per action. Also note that neither redirect nor render terminate execution of the action, so if you want to exit an action after redirecting, you need to do something like \"redirect_to(...) and return\"."
+
+    def initialize(message = nil)
+      super(message || DEFAULT_MESSAGE)
+    end
+  end
+
   module RenderingController
     extend ActiveSupport::Concern
 
@@ -8,16 +17,20 @@ module AbstractController
 
     included do
       attr_internal :formats
-
       extlib_inheritable_accessor :_view_paths
-
       self._view_paths ||= ActionView::PathSet.new
+    end
+
+    # Initialize controller with nil formats.
+    def initialize(*) #:nodoc:
+      @_formats = nil
+      super
     end
 
     # An instance of a view class. The default view class is ActionView::Base
     #
     # The view class must have the following methods:
-    # View.for_controller[controller] Create a new ActionView instance for a 
+    # View.for_controller[controller] Create a new ActionView instance for a
     #   controller
     # View#render_partial[options]
     #   - responsible for setting options[:_template]
@@ -99,6 +112,7 @@ module AbstractController
     end
 
   private
+
     # Take in a set of options and determine the template to render
     #
     # ==== Options
@@ -109,6 +123,18 @@ module AbstractController
     #   to a directory.
     # _partial<TrueClass, FalseClass>:: Whether or not the file to look up is a partial
     def _determine_template(options)
+      if options.key?(:text)
+        options[:_template] = ActionView::Template::Text.new(options[:text], format_for_text)
+      elsif options.key?(:inline)
+        handler = ActionView::Template.handler_class_for_extension(options[:type] || "erb")
+        template = ActionView::Template.new(options[:inline], "inline #{options[:inline].inspect}", handler, {})
+        options[:_template] = template
+      elsif options.key?(:template)
+        options[:_template_name] = options[:template]
+      elsif options.key?(:file)
+        options[:_template_name] = options[:file]
+      end
+
       name = (options[:_template_name] || action_name).to_s
 
       options[:_template] ||= with_template_cache(name) do
@@ -128,15 +154,19 @@ module AbstractController
       yield
     end
 
+    def format_for_text
+      Mime[:text]
+    end
+
     module ClassMethods
       def clear_template_caches!
       end
-      
+
       # Append a path to the list of view paths for this controller.
       #
       # ==== Parameters
-      # path<String, ViewPath>:: If a String is provided, it gets converted into 
-      # the default view path. You may also provide a custom view path 
+      # path<String, ViewPath>:: If a String is provided, it gets converted into
+      # the default view path. You may also provide a custom view path
       # (see ActionView::ViewPathSet for more information)
       def append_view_path(path)
         self.view_paths << path
@@ -145,8 +175,8 @@ module AbstractController
       # Prepend a path to the list of view paths for this controller.
       #
       # ==== Parameters
-      # path<String, ViewPath>:: If a String is provided, it gets converted into 
-      # the default view path. You may also provide a custom view path 
+      # path<String, ViewPath>:: If a String is provided, it gets converted into
+      # the default view path. You may also provide a custom view path
       # (see ActionView::ViewPathSet for more information)
       def prepend_view_path(path)
         clear_template_caches!

@@ -6,7 +6,6 @@ $VERBOSE = nil
   databases
   documentation
   framework
-  gems
   log
   middleware
   misc
@@ -17,8 +16,3 @@ $VERBOSE = nil
 ).each do |task|
   load "rails/tasks/#{task}.rake"
 end
-
-# Load any custom rakefile extensions
-# TODO: Don't hardcode these paths.
-Dir["#{RAILS_ROOT}/vendor/plugins/*/**/tasks/**/*.rake"].sort.each { |ext| load ext }
-Dir["#{RAILS_ROOT}/lib/tasks/**/*.rake"].sort.each { |ext| load ext }

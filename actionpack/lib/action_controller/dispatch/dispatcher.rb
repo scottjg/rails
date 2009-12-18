@@ -13,11 +13,6 @@ module ActionController
           # Run prepare callbacks before every request in development mode
           self.prepare_each_request = true
 
-          # Development mode callbacks
-          ActionDispatch::Callbacks.before_dispatch do |app|
-            ActionController::Routing::Routes.reload
-          end
-
           ActionDispatch::Callbacks.after_dispatch do
             # Cleanup the application before processing the current request.
             ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
@@ -50,7 +45,7 @@ module ActionController
 
       def new
         # DEPRECATE Rails application fallback
-        Rails.application.new
+        Rails.application
       end
     end
   end

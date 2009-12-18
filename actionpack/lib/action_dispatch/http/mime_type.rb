@@ -10,7 +10,12 @@ module Mime
     %w(<< concat shift unshift push pop []= clear compact! collect!
     delete delete_at delete_if flatten! map! insert reject! reverse!
     replace slice! sort! uniq!).each do |method|
-      define_method(method) {|*args| @symbols = nil; super(*args) }
+      module_eval <<-CODE
+        def #{method}(*args)
+          @symbols = nil
+          super
+        end
+      CODE
     end
   end
 
@@ -19,6 +24,7 @@ module Mime
   LOOKUP           = Hash.new { |h, k| h[k] = Type.new(k) unless k.blank? }
 
   def self.[](type)
+    return type if type.is_a?(Type)
     Type.lookup_by_extension(type.to_s)
   end
 

@@ -30,6 +30,10 @@ module ActionController #:nodoc:
 
     include Session
 
+    included do
+      helper_method :alert, :notice
+    end
+
     class FlashNow #:nodoc:
       def initialize(flash)
         @flash = flash
@@ -49,7 +53,7 @@ module ActionController #:nodoc:
     class FlashHash < Hash
       def initialize #:nodoc:
         super
-        @used = {}
+        @used = Set.new
       end
 
       def []=(k, v) #:nodoc:
@@ -65,7 +69,7 @@ module ActionController #:nodoc:
       alias :merge! :update
 
       def replace(h) #:nodoc:
-        @used = {}
+        @used = Set.new
         super
       end
 
@@ -104,8 +108,8 @@ module ActionController #:nodoc:
       # This method is called automatically by filters, so you generally don't need to care about it.
       def sweep #:nodoc:
         keys.each do |k|
-          unless @used[k]
-            use(k)
+          unless @used.include?(k)
+            @used << k
           else
             delete(k)
             @used.delete(k)
@@ -113,52 +117,88 @@ module ActionController #:nodoc:
         end
 
         # clean up after keys that could have been left over by calling reject! or shift on the flash
-        (@used.keys - keys).each{ |k| @used.delete(k) }
+        (@used - keys).each{ |k| @used.delete(k) }
       end
 
-      def store(session, key = "flash")
+      def store(session)
         return if self.empty?
-        session[key] = self
+        session["flash"] = self
       end
 
-      private
-        # Used internally by the <tt>keep</tt> and <tt>discard</tt> methods
-        #     use()               # marks the entire flash as used
-        #     use('msg')          # marks the "msg" entry as used
-        #     use(nil, false)     # marks the entire flash as unused (keeps it around for one more action)
-        #     use('msg', false)   # marks the "msg" entry as unused (keeps it around for one more action)
-        # Returns the single value for the key you asked to be marked (un)used or the FlashHash itself
-        # if no key is passed.
-        def use(key = nil, used = true)
-          Array(key || keys).each { |k| @used[k] = used }
-          return key ? self[key] : self
-        end
+    private
+      # Used internally by the <tt>keep</tt> and <tt>discard</tt> methods
+      #     use()               # marks the entire flash as used
+      #     use('msg')          # marks the "msg" entry as used
+      #     use(nil, false)     # marks the entire flash as unused (keeps it around for one more action)
+      #     use('msg', false)   # marks the "msg" entry as unused (keeps it around for one more action)
+      # Returns the single value for the key you asked to be marked (un)used or the FlashHash itself
+      # if no key is passed.
+      def use(key = nil, used = true)
+        Array(key || keys).each { |k| used ? @used << k : @used.delete(k) }
+        return key ? self[key] : self
+      end
+  end
+
+  # Access the contents of the flash. Use <tt>flash["notice"]</tt> to
+  # read a notice you put there or <tt>flash["notice"] = "hello"</tt>
+  # to put a new one.
+  def flash #:doc:
+    unless @_flash
+      @_flash = session["flash"] || FlashHash.new
+      @_flash.sweep
     end
+
+    @_flash
+  end
+
+  # Convenience accessor for flash[:alert]
+  def alert
+    flash[:alert]
+  end
+  
+  # Convenience accessor for flash[:alert]=
+  def alert=(message)
+    flash[:alert] = message
+  end
+
+  # Convenience accessor for flash[:notice]
+  def notice
+    flash[:notice]
+  end
+  
+  # Convenience accessor for flash[:notice]=
+  def notice=(message)
+    flash[:notice] = message
+  end
+
 
   protected
     def process_action(method_name)
+      @_flash = nil
       super
-      if defined? @_flash
-        @_flash.store(session)
-        remove_instance_variable(:@_flash)
-      end
+      @_flash.store(session) if @_flash
+      @_flash = nil
     end
 
     def reset_session
       super
-      remove_instance_variable(:@_flash) if defined?(@_flash)
+      @_flash = nil
     end
 
-    # Access the contents of the flash. Use <tt>flash["notice"]</tt> to
-    # read a notice you put there or <tt>flash["notice"] = "hello"</tt>
-    # to put a new one.
-    def flash #:doc:
-      if !defined?(@_flash)
-        @_flash = session["flash"] || FlashHash.new
-        @_flash.sweep
+    def redirect_to(options = {}, response_status_and_flash = {}) #:doc:
+      if alert = response_status_and_flash.delete(:alert)
+        flash[:alert] = alert
       end
 
-      @_flash
+      if notice = response_status_and_flash.delete(:notice)
+        flash[:notice] = notice
+      end
+    
+      if other_flashes = response_status_and_flash.delete(:flash)
+        flash.update(other_flashes)
+      end
+      
+      super(options, response_status_and_flash)
     end
   end
 end

@@ -1,5 +1,3 @@
-require 'active_support/core_ext/string/bytesize'
-
 module ActiveSupport
   # MessageVerifier makes it easy to generate and verify messages which are signed
   # to prevent tampering.
@@ -29,7 +27,7 @@ module ActiveSupport
       raise InvalidSignature if signed_message.blank?
 
       data, digest = signed_message.split("--")
-      if secure_compare(digest, generate_digest(data))
+      if data.present? && digest.present? && secure_compare(digest, generate_digest(data))
         Marshal.load(ActiveSupport::Base64.decode64(data))
       else
         raise InvalidSignature

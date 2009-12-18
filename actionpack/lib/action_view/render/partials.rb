@@ -181,20 +181,20 @@ module ActionView
       def initialize(view_context, options, block)
         @view           = view_context
         @partial_names  = PARTIAL_NAMES[@view.controller.class]
-        
+
         key = Thread.current[:format_locale_key]
         @templates      = TEMPLATES[key] if key
-        
+
         setup(options, block)
       end
-      
+
       def setup(options, block)
         partial = options[:partial]
-        
+
         @options    = options
         @locals     = options[:locals] || {}
         @block      = block
-        
+
         if String === partial
           @object = options[:object]
           @path   = partial
@@ -223,7 +223,7 @@ module ActionView
         end
 
         result = template ? collection_with_template(template) : collection_without_template
-        result.join(spacer)
+        result.join(spacer).html_safe!
       end
 
       def collection_with_template(template)
@@ -240,7 +240,7 @@ module ActionView
 
           segments << template.render(@view, locals)
         end
-        
+
         @template = template
         segments
       end
@@ -294,9 +294,12 @@ module ActionView
           path && @templates[path] ||= _find_template(path)
         end
       end
-      
+
       def _find_template(path)
-        prefix = @view.controller.controller_path unless path.include?(?/)
+        if controller = @view.controller
+          prefix = controller.controller_path unless path.include?(?/)
+        end
+
         @view.find(path, {:formats => @view.formats}, prefix, true)
       end
 
@@ -316,7 +319,7 @@ module ActionView
       _evaluate_assigns_and_ivars
 
       details = options[:_details]
-      
+
       # Is this needed
       self.formats = details[:formats] if details
       renderer = PartialRenderer.new(self, options, nil)
@@ -326,12 +329,12 @@ module ActionView
     end
 
     def _render_partial(options, &block) #:nodoc:
-      if @renderer
+      if defined? @renderer
         @renderer.setup(options, block)
       else
         @renderer = PartialRenderer.new(self, options, block)
       end
-      
+
       @renderer.render
     end
 

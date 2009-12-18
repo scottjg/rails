@@ -8,8 +8,13 @@ gem "rack-test", "~> 0.5.0"
 
 require 'test/unit'
 require 'active_support/core_ext/kernel/requires'
+
+# AP is always present
+require 'action_controller/test_case'
 require 'action_view/test_case'
+
 require 'action_mailer/test_case' if defined?(ActionMailer)
+require 'active_model/test_case'  if defined?(ActiveModel)
 
 if defined?(ActiveRecord)
   require 'active_record/test_case'
@@ -17,7 +22,7 @@ if defined?(ActiveRecord)
 
   class ActiveSupport::TestCase
     include ActiveRecord::TestFixtures
-    self.fixture_path = "#{RAILS_ROOT}/test/fixtures/"
+    self.fixture_path = "#{Rails.root}/test/fixtures/"
     self.use_instantiated_fixtures  = false
     self.use_transactional_fixtures = true
   end

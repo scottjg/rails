@@ -1,10 +1,8 @@
 module ActionController #:nodoc:
   module SessionManagement #:nodoc:
-    def self.included(base)
-      base.class_eval do
-        extend ClassMethods
-      end
-    end
+    extend ActiveSupport::Concern
+
+    include ActionController::Configuration
 
     module ClassMethods
       # Set the session store to be used for keeping the session data between requests.
@@ -16,7 +14,7 @@ module ActionController #:nodoc:
           self.session_store = ActiveRecord::SessionStore
         else
           @@session_store = store.is_a?(Symbol) ?
-            Session.const_get(store.to_s.camelize) :
+            ActionDispatch::Session.const_get(store.to_s.camelize) :
             store
         end
       end
@@ -33,13 +31,6 @@ module ActionController #:nodoc:
       def session=(options = {})
         self.session_store = nil if options.delete(:disabled)
         session_options.merge!(options)
-      end
-
-      # Returns the hash used to configure the session. Example use:
-      #
-      #   ActionController::Base.session_options[:secure] = true # session only available over HTTPS
-      def session_options
-        @session_options ||= {}
       end
 
       def session(*args)

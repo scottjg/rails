@@ -169,6 +169,15 @@ module ActionView #:nodoc:
 
     include Helpers, Rendering, Partials, ::ERB::Util
 
+    def config
+      self.config = DEFAULT_CONFIG unless @config
+      @config
+    end
+
+    def config=(config)
+      @config = ActiveSupport::OrderedOptions.new.merge(config)
+    end
+
     extend ActiveSupport::Memoizable
 
     attr_accessor :base_path, :assigns, :template_extension, :formats
@@ -178,16 +187,16 @@ module ActionView #:nodoc:
     def reset_formats(formats)
       @formats = formats
 
-      if defined?(ActionController)
+      if defined?(AbstractController::HashKey)
         # This is expensive, but we need to reset this when the format is updated,
         # which currently only happens
         Thread.current[:format_locale_key] =
-          ActionController::HashKey.get(self.class, formats, I18n.locale)
+          AbstractController::HashKey.get(self.class, formats, I18n.locale)
       end
     end
 
     class << self
-      delegate :erb_trim_mode=, :to => 'ActionView::TemplateHandlers::ERB'
+      delegate :erb_trim_mode=, :to => 'ActionView::Template::Handlers::ERB'
       delegate :logger, :to => 'ActionController::Base', :allow_nil => true
     end
 
@@ -202,6 +211,11 @@ module ActionView #:nodoc:
     # Automatically reloading templates are not thread safe and should only be used in development mode.
     @@cache_template_loading = nil
     cattr_accessor :cache_template_loading
+
+    # :nodoc:
+    def self.xss_safe?
+      true
+    end
 
     def self.cache_template_loading?
       ActionController::Base.allow_concurrency || (cache_template_loading.nil? ? !ActiveSupport::Dependencies.load? : cache_template_loading)
@@ -236,12 +250,16 @@ module ActionView #:nodoc:
       # they are in AC.
       if controller.class.respond_to?(:_helper_serial)
         klass = @views[controller.class._helper_serial] ||= Class.new(self) do
-          name = controller.class.name.gsub(/::/, '__')
+          # Try to make stack traces clearer
+          class_eval <<-ruby_eval, __FILE__, __LINE__ + 1
+            def self.name
+              "ActionView for #{controller.class}"
+            end
 
-          Subclasses.class_eval do
-            remove_const(name) if const_defined?(name)
-            const_set(name, self)
-          end
+            def inspect
+              "#<#{self.class.name}>"
+            end
+          ruby_eval
 
           if controller.respond_to?(:_helpers)
             include controller._helpers
@@ -260,7 +278,7 @@ module ActionView #:nodoc:
       @assigns = assigns_for_first_render.each { |key, value| instance_variable_set("@#{key}", value) }
       @controller = controller
       @helpers = self.class.helpers || Module.new
-      @_content_for = Hash.new {|h,k| h[k] = "" }
+      @_content_for = Hash.new {|h,k| h[k] = ActionView::SafeBuffer.new }
       self.view_paths = view_paths
     end
 

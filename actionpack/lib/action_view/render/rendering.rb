@@ -14,6 +14,7 @@ module ActionView
       case options
       when Hash
         layout = options[:layout]
+        options[:locals] ||= {}
 
         if block_given?
           return concat(_render_partial(options.merge(:partial => layout), &block))
@@ -25,11 +26,11 @@ module ActionView
 
         if file = options[:file]
           template = find(file, {:formats => formats})
-          _render_template(template, layout, :locals => options[:locals] || {})
+          _render_template(template, layout, :locals => options[:locals])
         elsif inline = options[:inline]
           _render_inline(inline, layout, options)
         elsif text = options[:text]
-          _render_text(text, layout, options)
+          _render_text(text, layout, options[:locals])
         end
       when :update
         update_page(&block)
@@ -70,26 +71,27 @@ module ActionView
     # In this case, the layout would receive the block passed into <tt>render :layout</tt>,
     # and the Struct specified in the layout would be passed into the block. The result
     # would be <html>Hello David</html>.
-    def _layout_for(name = nil)
+    def _layout_for(name = nil, &block)
       return @_content_for[name || :layout] if !block_given? || name
 
-      with_output_buffer do
-        return yield
-      end
+      capture(&block)
     end
 
     def _render_inline(inline, layout, options)
       handler = Template.handler_class_for_extension(options[:type] || "erb")
-      template = Template.new(options[:inline], "inline #{options[:inline].inspect}", handler, {})
-      locals = options[:locals] || {}
+      template = Template.new(options[:inline],
+        "inline #{options[:inline].inspect}", handler, {})
+
+      locals = options[:locals]
       content = template.render(self, locals)
-      content = layout.render(self, locals) {|*name| _layout_for(*name) { content } } if layout
-      content
+      _render_text(content, layout, locals)
     end
 
-    def _render_text(text, layout, options)
-      text = layout.render(self, options[:locals]) { text } if layout
-      text
+    def _render_text(content, layout, locals)
+      content = layout.render(self, locals) do |*name|
+        _layout_for(*name) { content }
+      end if layout
+      content
     end
 
     # This is the API to render a ViewContext's template from a controller.
@@ -119,7 +121,6 @@ module ActionView
         template.render(self, locals)
       end
 
-      @cached_content_for_layout = content
       @_content_for[:layout] = content
 
       if layout

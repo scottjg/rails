@@ -2,9 +2,7 @@ require 'stringio'
 require 'uri'
 require 'active_support/test_case'
 require 'active_support/core_ext/object/metaclass'
-
-# TODO: Remove circular dependency on ActionController
-require 'action_controller/testing/process'
+require 'rack/test'
 
 module ActionDispatch
   module Integration #:nodoc:
@@ -128,9 +126,7 @@ module ActionDispatch
       DEFAULT_HOST = "www.example.com"
 
       include Test::Unit::Assertions
-      include ActionDispatch::Assertions
-      include ActionController::TestProcess
-      include RequestHelpers
+      include TestProcess, RequestHelpers, Assertions
 
       %w( status status_message headers body redirect? ).each do |method|
         delegate method, :to => :response, :allow_nil => true
@@ -396,8 +392,12 @@ module ActionDispatch
       # Delegate unhandled messages to the current session instance.
       def method_missing(sym, *args, &block)
         reset! unless @integration_session
-        returning @integration_session.__send__(sym, *args, &block) do
-          copy_session_variables!
+        if @integration_session.respond_to?(sym)
+          returning @integration_session.__send__(sym, *args, &block) do
+            copy_session_variables!
+          end
+        else
+          super
         end
       end
     end
@@ -486,7 +486,7 @@ module ActionDispatch
     def self.app
       # DEPRECATE Rails application fallback
       # This should be set by the initializer
-      @@app || (defined?(Rails.application) && Rails.application.new) || nil
+      @@app || (defined?(Rails.application) && Rails.application) || nil
     end
 
     def self.app=(app)

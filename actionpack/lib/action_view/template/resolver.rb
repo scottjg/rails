@@ -1,6 +1,6 @@
 require "pathname"
 require "active_support/core_ext/class"
-require "action_view/template/template"
+require "action_view/template"
 
 module ActionView
   # Abstract superclass
@@ -20,7 +20,7 @@ module ActionView
     register_detail(:locale)  { [I18n.locale] }
     register_detail(:formats) { Mime::SET.symbols }
     register_detail(:handlers, :allow_nil => false) do
-      TemplateHandlers.extensions
+      Template::Handlers.extensions
     end
 
     def initialize(options = {})
@@ -65,7 +65,7 @@ module ActionView
     # as well as incorrectly putting part of the path in the template
     # name instead of the prefix.
     def normalize_name(name, prefix)
-      handlers = TemplateHandlers.extensions.join('|')
+      handlers = Template::Handlers.extensions.join('|')
       name = name.to_s.gsub(/\.(?:#{handlers})$/, '')
 
       parts = name.split('/')
@@ -121,7 +121,7 @@ module ActionView
     # # :api: plugin
     def path_to_details(path)
       # [:erb, :format => :html, :locale => :en, :partial => true/false]
-      if m = path.match(%r'(?:^|/)(_)?[\w-]+(\.[\w-]+)*\.(\w+)$')
+      if m = path.match(%r'(?:^|/)(_)?[\w-]+((?:\.[\w-]+)*)\.(\w+)$')
         partial = m[1] == '_'
         details = (m[2]||"").split('.').reject { |e| e.empty? }
         handler = Template.handler_class_for_extension(m[3])

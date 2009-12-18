@@ -3,6 +3,13 @@ require 'abstract_unit'
 class AssetTagHelperTest < ActionView::TestCase
   tests ActionView::Helpers::AssetTagHelper
 
+  DEFAULT_CONFIG = ActionView::DEFAULT_CONFIG.merge(
+    :assets_dir => File.dirname(__FILE__) + "/../fixtures/public",
+    :javascripts_dir => File.dirname(__FILE__) + "/../fixtures/public/javascripts",
+    :stylesheets_dir => File.dirname(__FILE__) + "/../fixtures/public/stylesheets")
+
+  include ActiveSupport::Configurable
+
   def setup
     super
     silence_warnings do
@@ -231,6 +238,11 @@ class AssetTagHelperTest < ActionView::TestCase
     assert_dom_equal(%(<script src="/javascripts/prototype.js?1" type="text/javascript"></script>\n<script src="/javascripts/effects.js?1" type="text/javascript"></script>\n<script src="/javascripts/dragdrop.js?1" type="text/javascript"></script>\n<script src="/javascripts/controls.js?1" type="text/javascript"></script>\n<script src="/javascripts/application.js?1" type="text/javascript"></script>), javascript_include_tag(:defaults))
   end
 
+  def test_javascript_include_tag_is_html_safe
+    assert javascript_include_tag(:defaults).html_safe?
+    assert javascript_include_tag("prototype").html_safe?
+  end
+
   def test_register_javascript_include_default
     ENV["RAILS_ASSET_ID"] = ""
     ActionView::Helpers::AssetTagHelper::register_javascript_include_default 'bank'
@@ -283,6 +295,13 @@ class AssetTagHelperTest < ActionView::TestCase
     assert_nothing_raised {
       stylesheet_link_tag('http://example.com/css/missing_security_guard')
     }
+  end
+
+  def test_stylesheet_link_tag_is_html_safe
+    ENV["RAILS_ASSET_ID"] = ""
+    assert stylesheet_link_tag('dir/file').html_safe?
+    assert stylesheet_link_tag('dir/other/file', 'dir/file2').html_safe?
+    assert stylesheet_tag('dir/file', {}).html_safe?
   end
 
   def test_custom_stylesheet_expansions
@@ -859,6 +878,9 @@ end
 
 class AssetTagHelperNonVhostTest < ActionView::TestCase
   tests ActionView::Helpers::AssetTagHelper
+
+  DEFAULT_CONFIG = ActionView::DEFAULT_CONFIG
+  include ActiveSupport::Configurable
 
   def setup
     super

@@ -4,7 +4,8 @@ require 'abstract_unit'
 require 'inflector_test_cases'
 
 require 'active_support/core_ext/string'
-require 'active_support/core_ext/time'
+require 'active_support/time'
+require 'active_support/core_ext/kernel/reporting'
 
 class StringInflectionsTest < Test::Unit::TestCase
   include InflectorTestCases
@@ -185,17 +186,9 @@ class StringInflectionsTest < Test::Unit::TestCase
     assert s.starts_with?('hel')
     assert !s.starts_with?('el')
 
-    assert s.start_with?('h')
-    assert s.start_with?('hel')
-    assert !s.start_with?('el')
-
     assert s.ends_with?('o')
     assert s.ends_with?('lo')
     assert !s.ends_with?('el')
-
-    assert s.end_with?('o')
-    assert s.end_with?('lo')
-    assert !s.end_with?('el')
   end
 
   def test_string_squish
@@ -213,17 +206,6 @@ class StringInflectionsTest < Test::Unit::TestCase
     assert_equal original.squish!, expected
     # And changes the original string:
     assert_equal original, expected
-  end
-
-  if RUBY_VERSION < '1.9'
-    def test_each_char_with_utf8_string_when_kcode_is_utf8
-      with_kcode('UTF8') do
-        '€2.99'.each_char do |char|
-          assert_not_equal 1, char.length
-          break
-        end
-      end
-    end
   end
 end
 
@@ -350,9 +332,88 @@ class TestGetTextString < Test::Unit::TestCase
   end
 end
 
-class StringBytesizeTest < Test::Unit::TestCase
-  def test_bytesize
-    assert_respond_to 'foo', :bytesize
-    assert_equal 3, 'foo'.bytesize
+class OutputSafetyTest < ActiveSupport::TestCase
+  def setup
+    @string = "hello"
+  end
+
+  test "A string is unsafe by default" do
+    assert !@string.html_safe?
+  end
+
+  test "A string can be marked safe" do
+    @string.html_safe!
+    assert @string.html_safe?
+  end
+
+  test "Marking a string safe returns the string" do
+    assert_equal @string, @string.html_safe!
+  end
+
+  test "Adding a safe string to another safe string returns a safe string" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+    @combination = @other_string + @string
+
+    assert_equal "otherhello", @combination
+    assert @combination.html_safe?
+  end
+
+  test "Adding an unsafe string to a safe string returns an unsafe string" do
+    @other_string = "other".html_safe!
+    @combination = @other_string + @string
+    @other_combination = @string + @other_string
+
+    assert_equal "otherhello", @combination
+    assert_equal "helloother", @other_combination
+
+    assert !@combination.html_safe?
+    assert !@other_combination.html_safe?
+  end
+
+  test "Concatting safe onto unsafe yields unsafe" do
+    @other_string = "other"
+    @string.html_safe!
+
+    @other_string.concat(@string)
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting unsafe onto safe yields unsafe" do
+    @other_string = "other".html_safe!
+
+    @other_string.concat(@string)
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting safe onto safe yields safe" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+
+    @other_string.concat(@string)
+    assert @other_string.html_safe?
+  end
+
+  test "Concatting safe onto unsafe with << yields unsafe" do
+    @other_string = "other"
+    @string.html_safe!
+
+    @other_string << @string
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting unsafe onto safe with << yields unsafe" do
+    @other_string = "other".html_safe!
+
+    @other_string << @string
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting safe onto safe with << yields safe" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+
+    @other_string << @string
+    assert @other_string.html_safe?
   end
 end

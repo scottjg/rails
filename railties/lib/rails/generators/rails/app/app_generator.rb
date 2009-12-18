@@ -1,4 +1,4 @@
-require 'digest/md5' 
+require 'digest/md5'
 require 'active_support/secure_random'
 require 'rails/version' unless defined?(Rails::VERSION)
 
@@ -11,9 +11,6 @@ module Rails::Generators
 
     class_option :database, :type => :string, :aliases => "-d", :default => "sqlite3",
                             :desc => "Preconfigure for selected database (options: #{DATABASES.join('/')})"
-
-    class_option :freeze, :type => :boolean, :aliases => "-F", :default => false,
-                          :desc => "Freeze Rails in vendor/rails from the gems"
 
     class_option :template, :type => :string, :aliases => "-m",
                             :desc => "Path to an application template (can be a filesystem path or URL)."
@@ -51,9 +48,10 @@ module Rails::Generators
     end
 
     def create_root_files
-      copy_file "Rakefile"
       copy_file "README"
-      copy_file "config.ru"
+      template "Rakefile"
+      template "config.ru"
+      template "Gemfile"
     end
 
     def create_app_files
@@ -65,6 +63,7 @@ module Rails::Generators
 
       inside "config" do
         copy_file "routes.rb"
+        template  "application.rb"
         template  "environment.rb"
 
         directory "environments"
@@ -124,7 +123,9 @@ module Rails::Generators
     end
 
     def create_script_files
-      directory "script"
+      directory "script" do |content|
+        "#{shebang}\n" + content
+      end
       chmod "script", 0755, :verbose => false
     end
 
@@ -153,10 +154,6 @@ module Rails::Generators
       raise Error, "The template [#{rails_template}] could not be loaded. Error: #{e}"
     end
 
-    def freeze?
-      freeze! if options[:freeze]
-    end
-
     protected
 
       attr_accessor :rails_template
@@ -182,6 +179,10 @@ module Rails::Generators
 
       def app_name
         @app_name ||= File.basename(destination_root)
+      end
+
+      def app_const
+        @app_const ||= app_name.classify
       end
 
       def app_secret

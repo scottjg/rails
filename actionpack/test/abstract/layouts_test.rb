@@ -17,24 +17,13 @@ module AbstractControllerTests
         "layouts/omg.erb"                       => "OMGHI2U <%= yield %>",
         "layouts/with_false_layout.erb"         => "False Layout <%= yield %>"
       )]
-
-      def self.controller_path
-        @controller_path ||= self.name.sub(/Controller$/, '').underscore
-      end
-      
-      def controller_path() self.class.controller_path end
-      
-      def render_to_body(options)
-        options[:_layout] = _default_layout({})
-        super
-      end
     end
     
     class Blank < Base
       self.view_paths = []
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello blank!")
+        render :_template => ActionView::Template::Text.new("Hello blank!")
       end
     end
     
@@ -42,7 +31,23 @@ module AbstractControllerTests
       layout "hello"
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello string!")
+        render :_template => ActionView::Template::Text.new("Hello string!")
+      end
+
+      def overwrite_default
+        render :_template => ActionView::Template::Text.new("Hello string!"), :layout => :default
+      end
+
+      def overwrite_false
+        render :_template => ActionView::Template::Text.new("Hello string!"), :layout => false
+      end
+
+      def overwrite_string
+        render :_template => ActionView::Template::Text.new("Hello string!"), :layout => "omg"
+      end
+
+      def overwrite_skip
+        render :text => "Hello text!"
       end
     end
     
@@ -67,7 +72,7 @@ module AbstractControllerTests
       layout :hello
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello symbol!")
+        render :_template => ActionView::Template::Text.new("Hello symbol!")
       end
     private  
       def hello
@@ -79,7 +84,7 @@ module AbstractControllerTests
       layout :no_hello
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello missing symbol!")
+        render :_template => ActionView::Template::Text.new("Hello missing symbol!")
       end
     private  
       def no_hello
@@ -91,7 +96,7 @@ module AbstractControllerTests
       layout :nilz
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello nilz!")
+        render :_template => ActionView::Template::Text.new("Hello nilz!")
       end
       
       def nilz() end
@@ -101,7 +106,7 @@ module AbstractControllerTests
       layout :objekt
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello nilz!")
+        render :_template => ActionView::Template::Text.new("Hello nilz!")
       end
       
       def objekt
@@ -113,7 +118,7 @@ module AbstractControllerTests
       layout :omg_no_method
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello boom!")
+        render :_template => ActionView::Template::Text.new("Hello boom!")
       end
     end
     
@@ -121,7 +126,7 @@ module AbstractControllerTests
       layout "missing"
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello missing!")
+        render :_template => ActionView::Template::Text.new("Hello missing!")
       end
     end
     
@@ -129,7 +134,7 @@ module AbstractControllerTests
       layout false
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello false!")
+        render :_template => ActionView::Template::Text.new("Hello false!")
       end
     end
     
@@ -137,7 +142,7 @@ module AbstractControllerTests
       layout nil
       
       def index
-        render :_template => ActionView::TextTemplate.new("Hello nil!")
+        render :_template => ActionView::Template::Text.new("Hello nil!")
       end
     end
     
@@ -153,7 +158,31 @@ module AbstractControllerTests
         controller.process(:index)
         assert_equal "With String Hello string!", controller.response_body
       end
-      
+
+      test "when layout is overwriten by :default in render, render default layout" do
+        controller = WithString.new
+        controller.process(:overwrite_default)
+        assert_equal "With String Hello string!", controller.response_body
+      end
+
+      test "when layout is overwriten by string in render, render new layout" do
+        controller = WithString.new
+        controller.process(:overwrite_string)
+        assert_equal "OMGHI2U Hello string!", controller.response_body
+      end
+
+      test "when layout is overwriten by false in render, render no layout" do
+        controller = WithString.new
+        controller.process(:overwrite_false)
+        assert_equal "Hello string!", controller.response_body
+      end
+
+      test "when text is rendered, render no layout" do
+        controller = WithString.new
+        controller.process(:overwrite_skip)
+        assert_equal "Hello text!", controller.response_body
+      end
+
       test "when layout is specified as a string, but the layout is missing, raise an exception" do
         assert_raises(ActionView::MissingTemplate) { WithMissingLayout.new.process(:index) }
       end
@@ -183,7 +212,7 @@ module AbstractControllerTests
       end
       
       test "when the layout is specified as a symbol and the method doesn't exist, raise an exception" do
-        assert_raises(NoMethodError, /:nilz/) { WithSymbolAndNoMethod.new.process(:index) }
+        assert_raises(NoMethodError) { WithSymbolAndNoMethod.new.process(:index) }
       end
       
       test "when the layout is specified as a symbol and the method returns something besides a string/false/nil, raise an exception" do
