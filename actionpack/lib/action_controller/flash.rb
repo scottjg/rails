@@ -107,6 +107,7 @@ module ActionController #:nodoc:
       #
       # This method is called automatically by filters, so you generally don't need to care about it.
       def sweep #:nodoc:
+        @used ||= {}
         keys.each do |k|
           unless @used[k]
             use(k)
