@@ -143,16 +143,21 @@ module ActionController
           request = Rack::Request.new(env)
           session_data = request.cookies[@key]
           data = unmarshal(session_data) || persistent_session_id!({})
+          require 'ruby-debug'; debugger
           [data[:session_id], data]
         end
 
         # Marshal a session hash into safe cookie data. Include an integrity hash.
         def marshal(session)
-          @verifier.generate(persistent_session_id!(session))
+          result = @verifier.generate(persistent_session_id!(session))
+          require 'ruby-debug'; debugger
+          pp result
+          result
         end
 
         # Unmarshal cookie data to a hash and verify its integrity.
         def unmarshal(cookie)
+          require 'ruby-debug'; debugger
           persistent_session_id!(@verifier.verify(cookie)) if cookie
         rescue ActiveSupport::MessageVerifier::InvalidSignature
           nil

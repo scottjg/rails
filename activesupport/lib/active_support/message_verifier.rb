@@ -28,6 +28,8 @@ module ActiveSupport
 
       data, digest = signed_message.split("--")
       if data.present? && digest.present? && secure_compare(digest, generate_digest(data))
+        pp ActiveSupport::Base64.decode64(data)
+        require 'ruby-debug'; debugger
         Marshal.load(ActiveSupport::Base64.decode64(data))
       else
         raise InvalidSignature
@@ -35,6 +37,9 @@ module ActiveSupport
     end
     
     def generate(value)
+      puts value.inspect
+      pp value
+      pp Marshal.dump(value)
       data = ActiveSupport::Base64.encode64s(Marshal.dump(value))
       "#{data}--#{generate_digest(data)}"
     end
