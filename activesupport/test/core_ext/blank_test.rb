@@ -22,4 +22,9 @@ class BlankTest < Test::Unit::TestCase
     BLANK.each { |v| assert !v.present?, "#{v.inspect} should not be present" }
     NOT.each   { |v| assert v.present?, "#{v.inspect} should be present" }
   end
+
+  def test_nonblank
+    BLANK.each { |v| assert_equal nil, v.nonblank?, "#{v.inspect}.nonblank? should return nil" }
+    NOT.each   { |v| assert_equal v,   v.nonblank?, "#{v.inspect}.nonblank? should return self" }
+  end
 end
