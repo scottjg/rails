@@ -340,6 +340,10 @@ module ActiveRecord
         super || @reflection.klass.respond_to?(method, include_private)
       end
 
+      def quote_value(value, column=nil)
+        @reflection.klass.quote_value(value, column)
+      end
+
       protected
         def construct_find_options!(options)
         end

@@ -12,6 +12,15 @@ class Company < AbstractCompany
   has_many :contracts
   has_many :developers, :through => :contracts
 
+  has_many :contracts_with_nonstandard_keys, 
+           :primary_key => :name, :foreign_key => :company_name,
+           :class_name => 'Contract'
+  has_many :developers_with_nonstandard_keys, 
+           :through => :contracts_with_nonstandard_keys, 
+           :source => :developer,
+           :primary_key => :name, :foreign_key => :company_name,
+           :class_name => 'Developer'
+
   def arbitrary_method
     "I am Jack's profound disappointment"
   end
