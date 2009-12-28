@@ -177,7 +177,10 @@ module ActiveSupport
     #   "active_record/errors".camelize(:lower) # => "activeRecord::Errors"
     def camelize(lower_case_and_underscored_word, first_letter_in_uppercase = true)
       if first_letter_in_uppercase
-        lower_case_and_underscored_word.to_s.gsub(/\/(.?)/) { "::#{$1.upcase}" }.gsub(/(?:^|_)(.)/) { $1.upcase }
+        word = lower_case_and_underscored_word.to_s.dup
+        word.gsub!(/\/(.?)/) { "::#{$1.upcase}" }
+        word.gsub!(/(?:^|_)(.)/) { $1.upcase }
+        word
       else
         lower_case_and_underscored_word.first.downcase + camelize(lower_case_and_underscored_word)[1..-1]
       end
@@ -229,7 +232,9 @@ module ActiveSupport
       result = lower_case_and_underscored_word.to_s.dup
 
       inflections.humans.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
-      result.gsub(/_id$/, "").gsub(/_/, " ").capitalize
+      result.gsub!(/_id$/, "")
+      result.gsub!(/_/, " ")
+      result.capitalize
     end
 
     # Removes the module part from the expression in the string.
