@@ -479,6 +479,30 @@ ActiveRecord::Schema.define do
     end
   end
 
+  # NOTE - the following 4 tables are used by models that have :inverse_of options on the associations
+  create_table :men, :force => true do |t|
+    t.string  :name
+  end
+
+  create_table :faces, :force => true do |t|
+    t.string  :description
+    t.integer :man_id
+    t.integer :polymorphic_man_id
+    t.string :polymorphic_man_type
+  end
+
+  create_table :interests, :force => true do |t|
+    t.string :topic
+    t.integer :man_id
+    t.integer :polymorphic_man_id
+    t.string :polymorphic_man_type
+    t.integer :zine_id
+  end
+
+  create_table :zines, :force => true do |t|
+    t.string :title
+  end
+
   except 'SQLite' do
     # fk_test_has_fk should be before fk_test_has_pk
     create_table :fk_test_has_fk, :force => true do |t|

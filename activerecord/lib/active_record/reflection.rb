@@ -212,6 +212,15 @@ module ActiveRecord
       end
 
       def check_validity!
+        check_validity_of_inverse!
+      end
+
+      def check_validity_of_inverse!
+        unless options[:polymorphic]
+          if has_inverse? && inverse_of.nil?
+            raise InverseOfAssociationNotFoundError.new(self)
+          end
+        end
       end
 
       def through_reflection
@@ -223,6 +232,26 @@ module ActiveRecord
 
       def source_reflection
         nil
+      end
+
+      def has_inverse?
+        !@options[:inverse_of].nil?
+      end
+
+      def inverse_of
+        if has_inverse?
+          @inverse_of ||= klass.reflect_on_association(options[:inverse_of])
+        end
+      end
+
+      def polymorphic_inverse_of(associated_class)
+        if has_inverse?
+          if inverse_relationship = associated_class.reflect_on_association(options[:inverse_of])
+            inverse_relationship
+          else
+            raise InverseOfAssociationNotFoundError.new(self, associated_class)
+          end
+        end
       end
 
       private
@@ -300,6 +329,8 @@ module ActiveRecord
         unless [:belongs_to, :has_many, :has_one].include?(source_reflection.macro) && source_reflection.options[:through].nil?
           raise HasManyThroughSourceAssociationMacroError.new(self)
         end
+
+        check_validity_of_inverse!
       end
 
       def through_reflection_primary_key
