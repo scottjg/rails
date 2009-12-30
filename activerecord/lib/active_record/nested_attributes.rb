@@ -195,26 +195,32 @@ module ActiveRecord
       #   If true, destroys any members from the attributes hash with a
       #   <tt>_destroy</tt> key and a value that evaluates to +true+
       #   (eg. 1, '1', true, or 'true'). This option is off by default.
+      # [:destroy_missing]
+      #   If true, destroys any members from the association collection for
+      #   which _no_ +ID+ is available in the attributes hash. Note that this
+      #   option is only applicable to collection associations. This option is
+      #   off by default.
       # [:reject_if]
-      #   Allows you to specify a Proc or a Symbol pointing to a method
-      #   that checks whether a record should be built for a certain attribute
-      #   hash. The hash is passed to the supplied Proc or the method
-      #   and it should return either +true+ or +false+. When no :reject_if
-      #   is specified, a record will be built for all attribute hashes that
-      #   do not have a <tt>_destroy</tt> value that evaluates to true.
-      #   Passing <tt>:all_blank</tt> instead of a Proc will create a proc
-      #   that will reject a record where all the attributes are blank.
+      #   Allows you to specify a Proc or a Symbol pointing to a method that
+      #   checks whether a record should be built for a certain attribute hash.
+      #   The hash is passed to the supplied Proc or the method and it should
+      #   return either +true+ or +false+. When no :reject_if is specified, a
+      #   record will be built for all attribute hashes that do not have a
+      #   <tt>_destroy</tt> value that evaluates to true. Passing
+      #   <tt>:all_blank</tt> instead of a Proc will create a proc that will
+      #   reject a record where all the attributes are blank.
       # [:limit]
-      #   Allows you to specify the maximum number of the associated records that
-      #   can be processes with the nested attributes. If the size of the
-      #   nested attributes array exceeds the specified limit, NestedAttributes::TooManyRecords
-      #   exception is raised. If omitted, any number associations can be processed.
-      #   Note that the :limit option is only applicable to one-to-many associations.
+      #   Allows you to specify the maximum number of the associated records
+      #   that can be processes with the nested attributes. If the size of the
+      #   nested attributes array exceeds the specified limit,
+      #   NestedAttributes::TooManyRecords exception is raised. If omitted, any
+      #   number of members can be processed. Note that this option is only
+      #   applicable to collection associations.
       # [:update_only]
-      #   Allows you to specify that an existing record may only be updated.
-      #   A new record may only be created when there is no existing record.
-      #   This option only works for one-to-one associations and is ignored for
-      #   collection associations. This option is off by default.
+      #   Allows you to specify that an existing record may only be updated. A
+      #   new record may only be created when there is no existing record. Note
+      #   that this option is only applicable to one-to-one associations. This
+      #   option is off by default.
       #
       # Examples:
       #   # creates avatar_attributes=
@@ -222,11 +228,12 @@ module ActiveRecord
       #   # creates avatar_attributes=
       #   accepts_nested_attributes_for :avatar, :reject_if => :all_blank
       #   # creates avatar_attributes= and posts_attributes=
-      #   accepts_nested_attributes_for :avatar, :posts, :allow_destroy => true
+      #   accepts_nested_attributes_for :avatar, :allow_destroy => true
+      #   accepts_nested_attributes_for :posts, :destroy_missing => true
       def accepts_nested_attributes_for(*attr_names)
         options = { :allow_destroy => false, :update_only => false }
         options.update(attr_names.extract_options!)
-        options.assert_valid_keys(:allow_destroy, :reject_if, :limit, :update_only)
+        options.assert_valid_keys(:allow_destroy, :destroy_missing, :reject_if, :limit, :update_only)
         options[:reject_if] = REJECT_ALL_BLANK_PROC if options[:reject_if] == :all_blank
 
         attr_names.each do |association_name|
@@ -340,6 +347,9 @@ module ActiveRecord
         attributes_collection = attributes_collection.sort_by { |index, _| index.to_i }.map { |_, attributes| attributes }
       end
 
+      # This list is to keep track of the records which are _not_ missing from the attributes.
+      records_to_keep = []
+
       attributes_collection.each do |attributes|
         attributes = attributes.with_indifferent_access
 
@@ -348,11 +358,14 @@ module ActiveRecord
             send(association_name).build(attributes.except(*UNASSIGNABLE_KEYS))
           end
         elsif existing_record = send(association_name).detect { |record| record.id.to_s == attributes['id'].to_s }
+          records_to_keep << existing_record
           assign_to_or_mark_for_destruction(existing_record, attributes, options[:allow_destroy])
         else
           raise_nested_attributes_record_not_found(association_name, attributes['id'])
         end
       end
+
+      send(association_name).mark_missing_records_for_destruction(records_to_keep) if options[:destroy_missing]
     end
 
     # Updates a record with the +attributes+ or marks it for destruction if

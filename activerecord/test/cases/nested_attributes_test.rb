@@ -573,6 +573,27 @@ module NestedAttributesOnACollectionAssociationTests
     assert_difference('@pirate.send(@association_name).count', -1) { @pirate.save }
   end
 
+  def test_should_not_destroy_missing_records_by_default
+    assert_no_difference('@pirate.send(@association_name).count') do
+      @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
+    end
+  end
+
+  def test_should_destroy_missing_records
+    options = Pirate.nested_attributes_options[@association_name]
+    options[:destroy_missing] = true
+
+    assert_difference('@pirate.send(@association_name).count', -1) do
+      @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
+    end
+
+    remaining_child = @pirate.reload.send(@association_name).last
+    assert_equal @child_1.id, remaining_child.id
+    assert_equal 'Changed', remaining_child.name
+  ensure
+    options[:destroy_missing] = nil
+  end
+
   def test_should_automatically_enable_autosave_on_the_association
     assert Pirate.reflect_on_association(@association_name).options[:autosave]
   end
