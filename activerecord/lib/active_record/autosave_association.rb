@@ -363,5 +363,42 @@ module ActiveRecord
         end
       end
     end
+
+    module AssociationCollectionExtension
+      # Iterates over the association collection and marks the records for
+      # destruction which _not_ included in the +records_or_ids+ array. Instead
+      # of the records themselves, you can also pass the IDs of the records to
+      # keep.
+      #
+      # Note that this will always load the association target.
+      #
+      #   member.posts.map(&:id) # => [1, 2, 3, 4]
+      #   member.posts.mark_missing_records_for_destruction([2, 3])
+      #   member.posts[0].marked_for_destruction? # => true
+      #   member.posts[1].marked_for_destruction? # => false
+      #   member.posts[2].marked_for_destruction? # => false
+      #   member.posts[3].marked_for_destruction? # => true
+      #
+      # Or with an array of records instead of their ids:
+      #
+      #   member.posts.mark_missing_records_for_destruction([member.posts[1], member.posts[2]])
+      #   member.posts[0].marked_for_destruction? # => true
+      #   member.posts[1].marked_for_destruction? # => false
+      #   member.posts[2].marked_for_destruction? # => false
+      #   member.posts[3].marked_for_destruction? # => true
+      def mark_missing_records_for_destruction(records_or_ids)
+        ids = if records_or_ids.first.respond_to?(:new_record?)
+          records_or_ids.map(&:id)
+        else
+          records_or_ids.map(&:to_i)
+        end
+
+        each do |record|
+          record.mark_for_destruction unless record.new_record? || ids.include?(record.id)
+        end
+      end
+    end
   end
 end
+
+ActiveRecord::Associations::AssociationCollection.send(:include, ActiveRecord::AutosaveAssociation::AssociationCollectionExtension)

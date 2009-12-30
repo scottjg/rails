@@ -645,6 +645,29 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
 
   # has_many & has_and_belongs_to
   %w{ parrots birds }.each do |association_name|
+    define_method("test_should_mark_existing_records_in_a_collection_for_destruction_for_which_their_ids_are_missing") do
+      2.times { |i| @pirate.send(association_name).create!(:name => "#{association_name}_#{i}") }
+      child_1 = @pirate.send(association_name).first
+
+      [child_1, child_1.id, child_1.id.to_s].each do |keep|
+        child_1, child_2 = @pirate.reload.send(association_name)
+        child_3 = @pirate.send(association_name).build
+
+        @pirate.send(association_name).mark_missing_records_for_destruction([keep])
+        assert !child_1.marked_for_destruction?
+        assert child_2.marked_for_destruction?
+        assert !child_3.marked_for_destruction?
+      end
+
+      child_1, child_2 = @pirate.reload.send(association_name)
+      child_3 = @pirate.send(association_name).build
+      @pirate.send(association_name).mark_missing_records_for_destruction([])
+
+      assert child_1.marked_for_destruction?
+      assert child_2.marked_for_destruction?
+      assert !child_3.marked_for_destruction?
+    end
+
     define_method("test_should_destroy_#{association_name}_as_part_of_the_save_transaction_if_they_were_marked_for_destroyal") do
       2.times { |i| @pirate.send(association_name).create!(:name => "#{association_name}_#{i}") }
 
