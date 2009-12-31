@@ -16,9 +16,11 @@ require 'models/tag'
 require 'models/tagging'
 require 'models/person'
 require 'models/reader'
+require 'models/bird'
 require 'models/parrot'
 require 'models/pirate'
 require 'models/treasure'
+require 'models/ship'
 require 'models/price_estimate'
 require 'models/club'
 require 'models/member'
@@ -64,7 +66,7 @@ class AssociationsTest < ActiveRecord::TestCase
     assert !firm.clients(true).empty?, "New firm should have reloaded client objects"
     assert_equal 1, firm.clients(true).size, "New firm should have reloaded clients count"
   end
-  
+
   def test_force_reload_is_uncached
     firm = Firm.create!("name" => "A New Firm, Inc")
     client = Client.create!("name" => "TheClient.com", :firm => firm)
@@ -75,6 +77,33 @@ class AssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_simple_association_build_for_collection_associations
+    pirate = Pirate.create!(:catchphrase => 'Yarr!')
+    existing_bird = pirate.birds.create!(:name => 'Killer bandita Dionne')
+    existing_parrot = pirate.parrots.create!(:name => 'Posideons Killer')
+
+    new_bird = pirate.build_association(:birds)
+    assert new_bird.new_record?
+    assert_equal [existing_bird, new_bird], pirate.birds
+    assert_equal [existing_bird], pirate.reload.birds
+
+    new_parrot = pirate.build_association('parrots')
+    assert new_parrot.new_record?
+    assert_equal [existing_parrot, new_parrot], pirate.parrots
+    assert_equal [existing_parrot], pirate.reload.parrots
+  end
+
+  def test_simple_association_build_for_to_one_associations
+    pirate = Pirate.create!(:catchphrase => 'Yarr!')
+    ship = pirate.build_association(:ship)
+    assert ship.new_record?
+    assert_equal ship, pirate.ship
+
+    ship = Ship.create!(:name => 'Nights Dirty Lightning')
+    pirate = ship.build_association('pirate')
+    assert pirate.new_record?
+    assert_equal pirate, ship.pirate
+  end
 end
 
 class AssociationProxyTest < ActiveRecord::TestCase
