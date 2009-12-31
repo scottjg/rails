@@ -407,6 +407,16 @@ module ActionView
       #     <% end %>
       #   <% end %>
       #
+      # If you would like to build an associated model in case there is none,
+      # then you can use the <tt>:build_if_blank</tt> option:
+      #
+      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #     ...
+      #     <% person_form.fields_for :address, :build_if_blank => true do |address_fields| %>
+      #       ...
+      #     <% end %>
+      #   <% end %>
+      #
       # ==== One-to-many
       #
       # Consider a Person class which returns an _array_ of Project instances
@@ -484,6 +494,17 @@ module ActionView
       #     ...
       #     <% person_form.fields_for :projects do |project_fields| %>
       #       Delete: <%= project_fields.check_box :_delete %>
+      #     <% end %>
+      #   <% end %>
+      #
+      # If you would like to build associated models in case there are none,
+      # then you can use the <tt>:build_if_blank</tt> option with the amount of
+      # models that are to be instantiated:
+      #
+      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #     ...
+      #     <% person_form.fields_for :projects, :build_if_blank => 3 do |project_fields| %>
+      #       ...
       #     <% end %>
       #   <% end %>
       def fields_for(record_or_name_or_array, *args, &block)
@@ -1091,31 +1112,44 @@ module ActionView
 
         def fields_for_with_nested_attributes(association_name, args, block)
           name = "#{object_name}[#{association_name}_attributes]"
-          association = args.first.to_model if args.first.respond_to?(:to_model)
-
-          if association.respond_to?(:new_record?)
-            association = [association] if @object.send(association_name).is_a?(Array)
-          elsif !association.is_a?(Array)
-            association = @object.send(association_name)
-          end
-
-          if association.blank? && args.last.is_a?(Hash) && (times = args.last[:build_if_blank])
-            association = build_associated_models(association_name, times)
-          end
+          options = args.last.is_a?(Hash) ? args.last : {}
+          association = get_nested_association(association_name, args.first, options)
 
           if association.is_a?(Array)
-            explicit_child_index = args.last[:child_index] if args.last.is_a?(Hash)
             association.map do |child|
-              fields_for_nested_model("#{name}[#{explicit_child_index || nested_child_index(name)}]", child, args, block)
+              index = options[:child_index] || nested_child_index(name)
+              fields_for_nested_model("#{name}[#{index}]", child, args, block)
             end.join
           elsif association
             fields_for_nested_model(name, association, args, block)
           end
         end
 
-        def build_associated_models(association_name, times)
+        def nested_association_is_collection?(association_name)
+          @object.send(association_name).is_a?(Array)
+        end
+
+        def get_nested_association(association_name, explicit_association, options)
+          if explicit_association.respond_to?(:to_model)
+            association = explicit_association.to_model
+          end
+
+          if association.respond_to?(:new_record?)
+            association = [association] if nested_association_is_collection?(association_name)
+          elsif !association.is_a?(Array)
+            association = @object.send(association_name)
+          end
+
+          if association.blank? && (times = options[:build_if_blank])
+            association = build_nested_models(association_name, times)
+          end
+
+          association
+        end
+
+        def build_nested_models(association_name, times)
           if @object.respond_to?(:build_association)
-            if @object.send(association_name).is_a?(Array)
+            if nested_association_is_collection?(association_name)
               Array.new(times.is_a?(Numeric) ? times : 1) do
                 @object.build_association(association_name)
               end
