@@ -572,7 +572,7 @@ class FormHelperTest < ActionView::TestCase
 
     assert_dom_equal expected, output_buffer
   end
-
+  
   def test_nested_fields_for_with_nested_collections
     form_for('post[]', @post) do |f|
       concat f.text_field(:title)
@@ -716,6 +716,65 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_nested_fields_for_with_build_if_blank_option_raises_if_object_is_not_compatible
+    assert_raises(NoMethodError) do
+      form_for(:post, @post) do |f|
+        f.fields_for(:author, :build_if_blank => true) {}
+      end
+    end
+
+    assert_raises(NoMethodError) do
+      @post.comments = []
+      form_for(:post, @post) do |f|
+        f.fields_for(:comments, :build_if_blank => 3) {}
+      end
+    end
+  end
+
+  def test_nested_fields_for_one_to_one_association_with_build_if_blank_option
+    def @post.build_association(name)
+      Author.new if name == :author
+    end
+
+    form_for(:post, @post) do |f|
+      concat f.text_field(:title)
+      f.fields_for(:author, :build_if_blank => true) do |af|
+        concat af.text_field(:name)
+      end
+    end
+
+    expected = '<form action="http://www.example.com" method="post">' +
+               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' + 
+               '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="new author" />' +
+               '</form>'
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_nested_fields_for_with_build_if_blank_option_for_collection_association
+    @post.comments = []
+
+    def @post.build_association(name)
+      Comment.new if name == :comments
+    end
+
+    form_for(:post, @post) do |f|
+      concat f.text_field(:title)
+      f.fields_for(:comments, :build_if_blank => 3) do |cf|
+        concat cf.text_field(:name)
+      end
+    end
+
+    expected = '<form action="http://www.example.com" method="post">' +
+               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="new comment" />' +
+               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />' +
+               '<input id="post_comments_attributes_2_name" name="post[comments_attributes][2][name]" size="30" type="text" value="new comment" />' +
+               '</form>'
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_nested_fields_for_with_explicitly_passed_object_on_a_nested_attributes_one_to_one_association
     form_for(:post, @post) do |f|
       f.fields_for(:author, Author.new(123)) do |af|
@@ -730,7 +789,7 @@ class FormHelperTest < ActionView::TestCase
 
     form_for(:post, @post) do |f|
       concat f.text_field(:title)
-      f.fields_for(:author) do |af|
+      f.fields_for(:author, :build_if_blank => true) do |af|
         concat af.text_field(:name)
       end
     end
@@ -749,7 +808,7 @@ class FormHelperTest < ActionView::TestCase
 
     form_for(:post, @post) do |f|
       concat f.text_field(:title)
-      f.fields_for(:author) do |af|
+      f.fields_for(:author, :build_if_blank => 3) do |af|
         concat af.hidden_field(:id)
         concat af.text_field(:name)
       end

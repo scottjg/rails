@@ -1076,6 +1076,10 @@ module ActionView
             association = @object.send(association_name)
           end
 
+          if association.blank? && args.last.is_a?(Hash) && (times = args.last[:build_if_blank])
+            association = build_associated_models(association_name, times)
+          end
+
           if association.is_a?(Array)
             explicit_child_index = args.last[:child_index] if args.last.is_a?(Hash)
             association.map do |child|
@@ -1083,6 +1087,20 @@ module ActionView
             end.join
           elsif association
             fields_for_nested_model(name, association, args, block)
+          end
+        end
+
+        def build_associated_models(association_name, times)
+          if @object.respond_to?(:build_association)
+            if @object.send(association_name).is_a?(Array)
+              Array.new(times.is_a?(Numeric) ? times : 1) do
+                @object.build_association(association_name)
+              end
+            else
+              @object.build_association(association_name)
+            end
+          else
+            raise NoMethodError, "Unable to build a nested model, because the object does not respond to `build_association'."
           end
         end
 
