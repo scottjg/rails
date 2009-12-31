@@ -102,6 +102,36 @@ module ActiveRecord
       end unless self.new_record?
     end
 
+    # Naively builds a new record for the given +association_name+. It does
+    # nothing more than calling the correct builder method:
+    #
+    # For a has_one or belongs_to association:
+    #
+    #   parent.build_association(:child)
+    #
+    # Is the equivalent of:
+    #
+    #   parent.build_child
+    #
+    # For a has_many or has_and_belongs_to_many association:
+    #
+    #   parent.build_association(:children)
+    #
+    # Is the equivalent of:
+    #
+    #   parent.children.build
+    #
+    # Note that this method is used as a, for now, unofficial ActiveModel API
+    # to build new records from the view. For instance, in +fields_for+.
+    def build_association(association_name)
+      reflection = self.class.reflect_on_association(association_name.to_sym)
+      if reflection.collection_association?
+        send(association_name).build
+      else
+        send("build_#{association_name}")
+      end
+    end
+
     private
       # Gets the specified association instance if it responds to :loaded?, nil otherwise.
       def association_instance_get(name)
