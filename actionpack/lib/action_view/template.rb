@@ -7,12 +7,14 @@ require "action_view/template/resolver"
 module ActionView
   class Template
     extend ActiveSupport::Autoload
-    
-    autoload :Error
-    autoload :Handler
-    autoload :Handlers
-    autoload :Text
-    
+
+    eager_autoload do
+      autoload :Error
+      autoload :Handler
+      autoload :Handlers
+      autoload :Text
+    end
+
     extend Template::Handlers
     attr_reader :source, :identifier, :handler, :mime_type, :formats, :details
 
@@ -34,10 +36,8 @@ module ActionView
     end
 
     def render(view, locals, &block)
-      ActiveSupport::Notifications.instrument(:render_template, :identifier => identifier) do
-        method_name = compile(locals, view)
-        view.send(method_name, locals, &block)
-      end
+      method_name = compile(locals, view)
+      view.send(method_name, locals, &block)
     rescue Exception => e
       if e.is_a?(Template::Error)
         e.sub_template_of(self)
@@ -112,21 +112,6 @@ module ActionView
 
           raise ActionView::Template::Error.new(self, {}, e)
         end
-      end
-
-      class LocalsKey
-        @hash_keys = Hash.new {|h,k| h[k] = Hash.new {|h,k| h[k] = {} } }
-
-        def self.get(*locals)
-          @hash_keys[*locals] ||= new(klass, format, locale)
-        end
-
-        attr_accessor :hash
-        def initialize(klass, format, locale)
-          @hash = locals.hash
-        end
-
-        alias_method :eql?, :equal?
       end
 
       def build_method_name(locals)

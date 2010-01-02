@@ -10,19 +10,6 @@ module Fun
   end
 end
 
-class MockLogger
-  attr_reader :logged
-
-  def initialize
-    @logged = []
-  end
-
-  def method_missing(method, *args, &blk)
-    @logged << args.first
-    @logged << blk.call if block_given?
-  end
-end
-
 class TestController < ActionController::Base
   protect_from_forgery
 
@@ -1125,7 +1112,7 @@ class RenderTest < ActionController::TestCase
     assert !@response.headers.include?('Content-Length')
     assert_response :no_content
 
-    ActionDispatch::StatusCodes::SYMBOL_TO_STATUS_CODE.each do |status, code|
+    Rack::Utils::SYMBOL_TO_STATUS_CODE.each do |status, code|
       get :head_with_symbolic_status, :status => status.to_s
       assert_equal code, @response.response_code
       assert_response status
@@ -1133,7 +1120,7 @@ class RenderTest < ActionController::TestCase
   end
 
   def test_head_with_integer_status
-    ActionDispatch::StatusCodes::STATUS_CODES.each do |code, message|
+    Rack::Utils::HTTP_STATUS_CODES.each do |code, message|
       get :head_with_integer_status, :status => code.to_s
       assert_equal message, @response.message
     end
@@ -1499,22 +1486,5 @@ class LastModifiedRenderTest < ActionController::TestCase
     @request.if_modified_since = 5.years.ago.httpdate
     get :conditional_hello_with_bangs
     assert_response :success
-  end
-end
-
-class RenderingLoggingTest < ActionController::TestCase
-  tests TestController
-
-  def setup
-    super
-    @request.host = "www.nextangle.com"
-  end
-
-  def test_logger_prints_layout_and_template_rendering_info
-    @controller.logger = MockLogger.new
-    get :layout_test
-    logged = @controller.logger.logged.find_all {|l| l =~ /render/i }
-    assert logged[0] =~ %r{Rendering.*test/hello_world}
-    assert logged[1] =~ %r{Rendering template within.*layouts/standard}
   end
 end

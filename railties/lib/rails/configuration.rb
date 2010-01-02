@@ -3,22 +3,26 @@ require 'active_support/ordered_options'
 module Rails
   # Temporarily separate the plugin configuration class from the main
   # configuration class while this bit is being cleaned up.
-  class Plugin::Configuration
+  class Railtie::Configuration
 
-    def initialize
-      @options = Hash.new { |h,k| h[k] = ActiveSupport::OrderedOptions.new }
+    def self.default
+      @default ||= new
     end
 
-    def middleware
-      @middleware ||= ActionDispatch::MiddlewareStack.new
+    attr_reader :middleware
+
+    def initialize(base = nil)
+      if base
+        @options    = base.options.dup
+        @middleware = base.middleware.dup
+      else
+        @options    = Hash.new { |h,k| h[k] = ActiveSupport::OrderedOptions.new }
+        @middleware = ActionDispatch::MiddlewareStack.new
+      end
     end
 
     def respond_to?(name)
       super || name.to_s =~ config_key_regexp
-    end
-
-    def merge(config)
-      @options = config.options.merge(@options)
     end
 
   protected
@@ -41,13 +45,12 @@ module Rails
     end
 
     def config_keys
-      ([ :active_support, :active_record, :action_controller,
-         :action_view, :action_mailer, :active_resource ] +
-        Plugin.plugin_names).map { |n| n.to_s }.uniq
+      ([ :active_support, :action_view ] +
+        Railtie.plugin_names).map { |n| n.to_s }.uniq
     end
   end
 
-  class Configuration < Plugin::Configuration
+  class Configuration < Railtie::Configuration
     attr_accessor :after_initialize_blocks, :cache_classes,
                   :consider_all_requests_local, :dependency_loading, :gems,
                   :load_once_paths, :logger, :metals, :plugins,
@@ -56,11 +59,11 @@ module Rails
 
     attr_writer :cache_store, :controller_paths,
                 :database_configuration_file, :eager_load_paths,
-                :frameworks, :framework_root_path, :i18n, :load_paths,
+                :i18n, :load_paths,
                 :log_level, :log_path, :paths, :routes_configuration_file,
                 :view_path
 
-    def initialize
+    def initialize(base = nil)
       super
       @load_once_paths              = []
       @after_initialize_blocks      = []
@@ -116,6 +119,13 @@ module Rails
       end
     end
 
+    def frameworks(*args)
+      raise "config.frameworks in no longer supported. See the generated" \
+            "config/boot.rb for steps on how to limit the frameworks that" \
+            "will be loaded"
+    end
+    alias frameworks= frameworks
+
     # Enable threaded mode. Allows concurrent requests to controller actions and
     # multiple database connections. Also disables automatic dependency loading
     # after boot, and disables reloading code on every request, as these are
@@ -131,21 +141,6 @@ module Rails
       self
     end
 
-    def framework_paths
-      paths = %w(railties railties/lib activesupport/lib)
-      paths << 'actionpack/lib' if frameworks.include?(:action_controller) || frameworks.include?(:action_view)
-
-      [:active_record, :action_mailer, :active_resource, :action_web_service].each do |framework|
-        paths << "#{framework.to_s.gsub('_', '')}/lib" if frameworks.include?(framework)
-      end
-
-      paths.map { |dir| "#{framework_root_path}/#{dir}" }.select { |dir| File.directory?(dir) }
-    end
-
-    def framework_root_path
-      defined?(::RAILS_FRAMEWORK_ROOT) ? ::RAILS_FRAMEWORK_ROOT : "#{root}/vendor/rails"
-    end
-
     # Loads and returns the contents of the #database_configuration_file. The
     # contents of the file are processed via ERB before being sent through
     # YAML::load.
@@ -156,6 +151,10 @@ module Rails
 
     def routes_configuration_file
       @routes_configuration_file ||= File.join(root, 'config', 'routes.rb')
+    end
+
+    def builtin_routes_configuration_file
+      @builtin_routes_configuration_file ||= File.join(RAILTIES_PATH, 'builtin', 'routes.rb')
     end
 
     def controller_paths
@@ -230,10 +229,6 @@ module Rails
 
     def log_level
       @log_level ||= RAILS_ENV == 'production' ? :info : :debug
-    end
-
-    def frameworks
-      @frameworks ||= [ :active_record, :action_controller, :action_view, :action_mailer, :active_resource ]
     end
 
     def i18n

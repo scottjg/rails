@@ -30,21 +30,23 @@ module ActiveModel
   extend ActiveSupport::Autoload
 
   autoload :AttributeMethods
+  autoload :Callbacks
   autoload :Conversion
   autoload :DeprecatedErrorMethods
   autoload :Dirty
   autoload :Errors
   autoload :Lint
-  autoload :Name,         'active_model/naming'
+  autoload :Name, 'active_model/naming'
   autoload :Naming
-  autoload :Observer,     'active_model/observing'
+  autoload :Observer, 'active_model/observing'
   autoload :Observing
   autoload :Serialization
   autoload :StateMachine
   autoload :Translation
   autoload :Validations
-  autoload :ValidationsRepairHelper
   autoload :Validator
+  autoload :EachValidator, 'active_model/validator'
+  autoload :BlockValidator, 'active_model/validator'
   autoload :VERSION
 
   module Serializers
@@ -55,4 +57,5 @@ module ActiveModel
   end
 end
 
+require 'active_support/i18n'
 I18n.load_path << File.dirname(__FILE__) + '/active_model/locale/en.yml'

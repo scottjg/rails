@@ -31,15 +31,13 @@ module ActionMailer
   extend ::ActiveSupport::Autoload
 
   autoload :AdvAttrAccessor
-  autoload :DeprecatedBody
   autoload :Base
   autoload :DeliveryMethod
+  autoload :DeprecatedBody
   autoload :MailHelper
-  autoload :Part
-  autoload :PartContainer
   autoload :Quoting
+  autoload :TestCase
   autoload :TestHelper
-  autoload :Utils
 end
 
 module Text
@@ -47,12 +45,3 @@ module Text
 
   autoload :Format, 'action_mailer/vendor/text_format'
 end
-
-module Net
-  extend ActiveSupport::Autoload
-
-  autoload :SMTP
-end
-
-
-require 'action_mailer/vendor/tmail'

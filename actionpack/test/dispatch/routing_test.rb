@@ -16,29 +16,35 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     Routes = routes
     Routes.draw do
       controller :sessions do
-        get  'login', :to => :new, :as => :login
-        post 'login', :to => :create
+        get  'login' => :new, :as => :login
+        post 'login' => :create
 
-        delete 'logout', :to => :destroy, :as => :logout
+        delete 'logout' => :destroy, :as => :logout
       end
 
+      match 'account/logout' => redirect("/logout"), :as => :logout_redirect
       match 'account/login', :to => redirect("/login")
+
+      match 'account/overview'
+
+      match 'account/modulo/:name', :to => redirect("/%{name}s")
+      match 'account/proc/:name', :to => redirect {|params| "/#{params[:name].pluralize}" }
 
       match 'openid/login', :via => [:get, :post], :to => "openid#login"
 
       controller(:global) do
-        match 'global/:action'
+        get   'global/hide_notice'
         match 'global/export',      :to => :export, :as => :export_request
-        match 'global/hide_notice', :to => :hide_notice, :as => :hide_notice
         match '/export/:id/:file',  :to => :export, :as => :export_download, :constraints => { :file => /.*/ }
+        match 'global/:action'
       end
 
       constraints(:ip => /192\.168\.1\.\d\d\d/) do
-        get 'admin', :to => "queenbee#index"
+        get 'admin' => "queenbee#index"
       end
 
       constraints ::TestRoutingMapper::IpRestrictor do
-        get 'admin/accounts', :to => "queenbee#accounts"
+        get 'admin/accounts' => "queenbee#accounts"
       end
 
       resources :projects, :controller => :project do
@@ -82,7 +88,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         end
       end
 
-      match 'sprockets.js', :to => ::TestRoutingMapper::SprocketsApp
+      match 'sprockets.js' => ::TestRoutingMapper::SprocketsApp
 
       match 'people/:id/update', :to => 'people#update', :as => :update_person
       match '/projects/:project_id/people/:id/update', :to => 'people#update', :as => :update_project_person
@@ -105,6 +111,10 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       scope ':access_token', :constraints => { :access_token => /\w{5,5}/ } do
         resources :rooms
       end
+
+      match '/info' => 'projects#info', :as => 'info'
+
+      root :to => 'projects#index'
     end
   end
 
@@ -141,6 +151,34 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/account/login'
       assert_equal 301, @response.status
       assert_equal 'http://www.example.com/login', @response.headers['Location']
+      assert_equal 'Moved Permanently', @response.body
+    end
+  end
+
+  def test_logout_redirect_without_to
+    with_test_routes do
+      assert_equal '/account/logout', logout_redirect_path
+      get '/account/logout'
+      assert_equal 301, @response.status
+      assert_equal 'http://www.example.com/logout', @response.headers['Location']
+      assert_equal 'Moved Permanently', @response.body
+    end
+  end
+
+  def test_redirect_modulo
+    with_test_routes do
+      get '/account/modulo/name'
+      assert_equal 301, @response.status
+      assert_equal 'http://www.example.com/names', @response.headers['Location']
+      assert_equal 'Moved Permanently', @response.body
+    end
+  end
+
+  def test_redirect_proc
+    with_test_routes do
+      get '/account/proc/person'
+      assert_equal 301, @response.status
+      assert_equal 'http://www.example.com/people', @response.headers['Location']
       assert_equal 'Moved Permanently', @response.body
     end
   end
@@ -185,7 +223,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal 'global#export', @response.body
 
       assert_equal '/global/export', export_request_path
-      assert_equal '/global/hide_notice', hide_notice_path
+      assert_equal '/global/hide_notice', global_hide_notice_path
       assert_equal '/export/123/foo.txt', export_download_path(:id => 123, :file => 'foo.txt')
     end
   end
@@ -424,6 +462,38 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       get '/12345/rooms/1/edit'
       assert_equal 'rooms#edit', @response.body
+    end
+  end
+
+  def test_root
+    with_test_routes do
+      assert_equal '/', root_path
+      get '/'
+      assert_equal 'projects#index', @response.body
+    end
+  end
+  
+  def test_index
+    with_test_routes do
+      assert_equal '/info', info_path
+      get '/info'
+      assert_equal 'projects#info', @response.body
+    end
+  end
+
+  def test_index
+    with_test_routes do
+      assert_equal '/info', info_path
+      get '/info'
+      assert_equal 'projects#info', @response.body
+    end
+  end
+  
+  def test_convention_match_with_no_scope
+    with_test_routes do
+      assert_equal '/account/overview', account_overview_path
+      get '/account/overview'
+      assert_equal 'account#overview', @response.body
     end
   end
 
