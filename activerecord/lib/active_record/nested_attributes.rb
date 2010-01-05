@@ -73,7 +73,7 @@ module ActiveRecord
     # value that evaluates to +true+, you will destroy the associated model:
     #
     #   member.avatar_attributes = { :id => '2', :_destroy => '1' }
-    #   member.avatar.marked_for_destruction? # => true
+    #   member.avatar.marked_for_removal? # => true
     #   member.save
     #   member.avatar #=> nil
     #
@@ -176,7 +176,7 @@ module ActiveRecord
     #   }}
     #
     #   member.attributes = params['member']
-    #   member.posts.detect { |p| p.id == 2 }.marked_for_destruction? # => true
+    #   member.posts.detect { |p| p.id == 2 }.marked_for_removal? # => true
     #   member.posts.length #=> 2
     #   member.save
     #   member.posts.length # => 1
@@ -184,9 +184,9 @@ module ActiveRecord
     # === Saving
     #
     # All changes to models, including the destruction of those marked for
-    # destruction, are saved and destroyed automatically and atomically when
-    # the parent model is saved. This happens inside the transaction initiated
-    # by the parents save method. See ActiveRecord::AutosaveAssociation.
+    # removal, are saved and removed automatically and atomically when the
+    # parent model is saved. This happens inside the transaction initiated by
+    # the parents save method. See ActiveRecord::AutosaveAssociation.
     module ClassMethods
       REJECT_ALL_BLANK_PROC = proc { |attributes| attributes.all? { |_, value| value.blank? } }
 
@@ -262,13 +262,13 @@ module ActiveRecord
       end
     end
 
-    # Returns ActiveRecord::AutosaveAssociation::marked_for_destruction? It's
+    # Returns ActiveRecord::AutosaveAssociation::marked_for_removal? It's
     # used in conjunction with fields_for to build a form element for the
     # destruction of this association.
     #
     # See ActionView::Helpers::FormHelper::fields_for for more info.
     def _destroy
-      marked_for_destruction?
+      marked_for_removal?
     end
 
     private
@@ -286,7 +286,7 @@ module ActiveRecord
     #
     # If the given attributes include a matching <tt>:id</tt> attribute, or
     # update_only is true, and a <tt>:_destroy</tt> key set to a truthy value,
-    # then the existing record will be marked for destruction.
+    # then the existing record will be marked for removal.
     def assign_nested_attributes_for_one_to_one_association(association_name, attributes)
       options = nested_attributes_options[association_name]
       attributes = attributes.with_indifferent_access
@@ -315,7 +315,7 @@ module ActiveRecord
     # will update that record. Hashes without an <tt>:id</tt> value will build
     # a new record for the association. Hashes with a matching <tt>:id</tt>
     # value and a <tt>:_destroy</tt> key set to a truthy value will mark the
-    # matched record for destruction.
+    # matched record for removal.
     #
     # For example:
     #
@@ -327,7 +327,7 @@ module ActiveRecord
     #
     # Will update the name of the Person with ID 1, build a new associated
     # person with the name `John', and mark the associated Person with ID 2
-    # for destruction.
+    # for removal.
     #
     # Also accepts an Array of attribute hashes:
     #
@@ -369,14 +369,14 @@ module ActiveRecord
         end
       end
 
-      send(association_name).mark_missing_records_for_destruction(records_to_keep) if options[:destroy_missing]
+      send(association_name).mark_missing_records_for_removal!(records_to_keep) if options[:destroy_missing]
     end
 
-    # Updates a record with the +attributes+ or marks it for destruction if
+    # Updates a record with the +attributes+ or marks it for removal if
     # +allow_destroy+ is +true+ and has_destroy_flag? returns +true+.
     def assign_to_or_mark_for_destruction(record, attributes, allow_destroy)
       if has_destroy_flag?(attributes) && allow_destroy
-        record.mark_for_destruction
+        record.mark_for_removal!
       else
         record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
       end

@@ -69,13 +69,17 @@ module ActiveRecord
             when :delete_all
               @reflection.klass.delete(records.map { |record| record.id })
             else
-              relation = Arel::Table.new(@reflection.table_name)
-              relation.where(relation[@reflection.primary_key_name].eq(@owner.id).
-                  and(Arel::Predicates::In.new(relation[@reflection.klass.primary_key], records.map(&:id)))
-              ).update(relation[@reflection.primary_key_name] => nil)
-
-              @owner.class.update_counters(@owner.id, cached_counter_attribute_name => -records.size) if has_cached_counter?
+              nullify_records(records)
           end
+        end
+
+        def nullify_records(records)
+          relation = Arel::Table.new(@reflection.table_name)
+          relation.where(relation[@reflection.primary_key_name].eq(@owner.id).
+              and(Arel::Predicates::In.new(relation[@reflection.klass.primary_key], records.map(&:id)))
+          ).update(relation[@reflection.primary_key_name] => nil)
+
+          @owner.class.update_counters(@owner.id, cached_counter_attribute_name => -records.size) if has_cached_counter?
         end
 
         def target_obsolete?

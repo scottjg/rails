@@ -78,7 +78,7 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
   def test_a_model_should_respond_to_underscore_destroy_and_return_if_it_is_marked_for_destruction
     ship = Ship.create!(:name => 'Nights Dirty Lightning')
     assert !ship._destroy
-    ship.mark_for_destruction
+    ship.mark_for_removal!
     assert ship._destroy
   end
 
