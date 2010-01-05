@@ -69,13 +69,17 @@ module ActiveRecord
             when :delete_all
               @reflection.klass.delete(records.map { |record| record.id })
             else
-              ids = quoted_record_ids(records)
-              @reflection.klass.update_all(
-                "#{@reflection.primary_key_name} = NULL", 
-                "#{@reflection.primary_key_name} = #{owner_quoted_id} AND #{@reflection.klass.primary_key} IN (#{ids})"
-              )
-              @owner.class.update_counters(@owner.id, cached_counter_attribute_name => -records.size) if has_cached_counter?
+              nullify_records(records)
           end
+        end
+
+        def nullify_records(records)
+          ids = quoted_record_ids(records)
+          @reflection.klass.update_all(
+            "#{@reflection.primary_key_name} = NULL", 
+            "#{@reflection.primary_key_name} = #{owner_quoted_id} AND #{@reflection.klass.primary_key} IN (#{ids})"
+          )
+          @owner.class.update_counters(@owner.id, cached_counter_attribute_name => -records.size) if has_cached_counter?
         end
 
         def target_obsolete?

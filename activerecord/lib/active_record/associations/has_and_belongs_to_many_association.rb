@@ -90,6 +90,7 @@ module ActiveRecord
             @owner.connection.delete(sql)
           end
         end
+        alias_method :nullify_records, :delete_records
 
         def construct_sql
           if @reflection.options[:finder_sql]
