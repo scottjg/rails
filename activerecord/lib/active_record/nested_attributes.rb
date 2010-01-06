@@ -208,8 +208,9 @@ module ActiveRecord
       #   If set to a valid #mark_for_removal! type (<tt>:destroy</tt>,
       #   <tt>:delete</tt>, or <tt>:nullify</tt>), removes any members from the
       #   association collection for which _no_ +ID+ is available in the
-      #   attributes hash. Note that this option is only applicable to
-      #   collection associations. This option is off by default.
+      #   attributes hash. Or in case of a to-one association, removes the
+      #   existing record before building a new one. This option is off by
+      #   default.
       # [:reject_if]
       #   Allows you to specify a Proc or a Symbol pointing to a method that
       #   checks whether a record should be built for a certain attribute hash.
@@ -313,10 +314,12 @@ module ActiveRecord
     def assign_nested_attributes_for_one_to_one_association(association_name, attributes)
       options = nested_attributes_options[association_name]
       attributes = attributes.with_indifferent_access
-      check_existing_record = (options[:update_only] || !attributes['id'].blank?)
 
-      if check_existing_record && (record = send(association_name)) &&
-          (options[:update_only] || record.id.to_s == attributes['id'].to_s)
+      if options[:update_only] || options[:missing] || !attributes['id'].blank?
+        record = send(association_name)
+      end
+
+      if record && (options[:update_only] || record.id.to_s == attributes['id'].to_s)
         assign_to_or_mark_for_removal(record, attributes, options[:allow])
 
       elsif attributes['id']
@@ -325,6 +328,7 @@ module ActiveRecord
       elsif !reject_new_record?(association_name, attributes)
         method = "build_#{association_name}"
         if respond_to?(method)
+          record.mark_for_removal!(options[:missing]) if record && options[:missing]
           send(method, attributes.except(*UNASSIGNABLE_KEYS))
         else
           raise ArgumentError, "Cannot build association #{association_name}. Are you trying to build a polymorphic one-to-one association?"
