@@ -226,12 +226,29 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
     assert_nil @pirate.ship
   end
 
-  def test_should_replace_an_existing_record_if_there_is_no_id
+  def test_should_replace_an_existing_record_if_there_is_no_id_but_leave_the_existing_record_in_tact
     @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger' }
 
     assert @pirate.ship.new_record?
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
     assert_equal 'Nights Dirty Lightning', @ship.name
+    assert_difference("Ship.count", +1) { @pirate.save! }
+  end
+
+  [:destroy, :delete, :nullify].each do |type|
+    test "replaces an existing record if there is no ID and marks the existing for removal with `#{type}'" do
+      repair_nested_attributes Pirate, :ship do
+        Pirate.accepts_nested_attributes_for :ship, :missing => type
+        @pirate.ship_attributes = { :name => 'Davy Jones Gold Dagger' }
+
+        assert @pirate.ship.new_record?
+        assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
+        assert_equal 'Nights Dirty Lightning', @ship.name
+
+        assert @ship.marked_for_removal?
+        assert_equal type, @ship.mark_for_removal_type
+      end
+    end
   end
 
   def test_should_not_replace_an_existing_record_if_there_is_no_id_and_mark_for_removal_is_truthy
@@ -395,12 +412,29 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     assert_nil @ship.pirate
   end
 
-  def test_should_replace_an_existing_record_if_there_is_no_id
+  def test_should_replace_an_existing_record_if_there_is_no_id_but_leave_the_existing_record_in_tact
     @ship.reload.pirate_attributes = { :catchphrase => 'Arr' }
 
     assert @ship.pirate.new_record?
     assert_equal 'Arr', @ship.pirate.catchphrase
     assert_equal 'Aye', @pirate.catchphrase
+    assert_difference("Pirate.count", +1) { @ship.save! }
+  end
+
+  [:destroy, :delete, :nullify].each do |type|
+    test "replaces an existing record if there is no ID and marks the existing for removal with `#{type}'" do
+      repair_nested_attributes Ship, :pirate do
+        Ship.accepts_nested_attributes_for :pirate, :missing => type
+        @ship.pirate_attributes = { :catchphrase => 'Arr' }
+
+        assert @ship.pirate.new_record?
+        assert_equal 'Arr', @ship.pirate.catchphrase
+        assert_equal 'Aye', @pirate.catchphrase
+
+        assert @pirate.marked_for_removal?
+        assert_equal type, @pirate.mark_for_removal_type
+      end
+    end
   end
 
   def test_should_not_replace_an_existing_record_if_there_is_no_id_and_mark_for_removal_is_truthy
