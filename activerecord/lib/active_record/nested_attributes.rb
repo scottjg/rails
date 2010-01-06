@@ -60,7 +60,7 @@ module ActiveRecord
     #   member.avatar.icon # => 'sad'
     #
     # By default you will only be able to set and update attributes on the
-    # associated model. If you want to destroy the associated model through the
+    # associated model. If you want to remove the associated model through the
     # attributes hash, you have to enable it first by setting the
     # <tt>:allow</tt> option to one of <tt>:destroy</tt>, <tt>:delete</tt>, or
     # <tt>:nullify</tt>:
@@ -79,7 +79,7 @@ module ActiveRecord
     #   member.save
     #   member.avatar #=> nil
     #
-    # Note that the model will _not_ be destroyed until the parent is saved.
+    # Note that the model will _not_ be removed until the parent is saved.
     #
     # === One-to-many
     #
@@ -162,8 +162,8 @@ module ActiveRecord
     #   member.posts.first.title # => '[UPDATED] An, as of yet, undisclosed awesome Ruby documentation browser!'
     #   member.posts.second.title # => '[UPDATED] other post'
     #
-    # By default the associated records are protected from being destroyed. If
-    # you want to destroy any of the associated records through the attributes
+    # By default the associated records are protected from being removed. If
+    # you want to remove any of the associated records through the attributes
     # hash, you have to enable it first by setting the <tt>:allow</tt> option
     # to one of <tt>:destroy</tt>, <tt>:delete</tt>, or <tt>:nullify</tt>:
     #
@@ -186,7 +186,7 @@ module ActiveRecord
     #   member.save
     #   member.posts.length # => 1
     #
-    # Note that the member will _not_ be destroyed until the parent is saved.
+    # Note that the member will _not_ be removed until the parent is saved.
     #
     # === Saving
     #
@@ -208,11 +208,12 @@ module ActiveRecord
       #   attributes hash with a <tt>mark_for_removal</tt> key and a value that
       #   evaluates to +true+ (eg. 1, '1', true, or 'true'). This option is off
       #   by default.
-      # [:destroy_missing]
-      #   If true, destroys any members from the association collection for
-      #   which _no_ +ID+ is available in the attributes hash. Note that this
-      #   option is only applicable to collection associations. This option is
-      #   off by default.
+      # [:missing]
+      #   If set to a valid #mark_for_removal! type (<tt>:destroy</tt>,
+      #   <tt>:delete</tt>, or <tt>:nullify</tt>), removes any members from the
+      #   association collection for which _no_ +ID+ is available in the
+      #   attributes hash. Note that this option is only applicable to
+      #   collection associations. This option is off by default.
       # [:reject_if]
       #   Allows you to specify a Proc or a Symbol pointing to a method that
       #   checks whether a record should be built for a certain attribute hash.
@@ -242,11 +243,11 @@ module ActiveRecord
       #   accepts_nested_attributes_for :avatar, :reject_if => :all_blank
       #   # creates avatar_attributes= and posts_attributes=
       #   accepts_nested_attributes_for :avatar, :allow => :destroy
-      #   accepts_nested_attributes_for :posts, :destroy_missing => true
+      #   accepts_nested_attributes_for :posts, :missing => :nullify
       def accepts_nested_attributes_for(*attr_names)
         options = { :update_only => false }
         options.update(attr_names.extract_options!)
-        options.assert_valid_keys(:allow, :allow_destroy, :destroy_missing, :reject_if, :limit, :update_only)
+        options.assert_valid_keys(:allow, :allow_destroy, :missing, :reject_if, :limit, :update_only)
         options[:reject_if] = REJECT_ALL_BLANK_PROC if options[:reject_if] == :all_blank
 
         if allow_destroy = options.delete(:allow_destroy)
@@ -395,7 +396,7 @@ module ActiveRecord
         end
       end
 
-      send(association_name).mark_missing_records_for_removal!(records_to_keep) if options[:destroy_missing]
+      send(association_name).mark_missing_records_for_removal!(records_to_keep, options[:missing]) if options[:missing]
     end
 
     # Updates a record with the +attributes+ or marks it for removal if

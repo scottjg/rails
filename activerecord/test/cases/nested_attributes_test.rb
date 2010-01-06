@@ -657,6 +657,16 @@ module NestedAttributesOnACollectionAssociationTests
         end
       end
     end
+
+    define_method "test_marks_an_existing_record_for_removal_with_#{type}_if_the_record_is_missing_from_the_attributes_hash" do
+      repair_nested_attributes Pirate, @association_name do
+        Pirate.accepts_nested_attributes_for @association_name, :missing => type
+        @pirate.send(association_setter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
+
+        assert @child_2.marked_for_removal?
+        assert_equal type, @child_2.mark_for_removal_type
+      end
+    end
   end
 
   def test_should_not_remove_the_associated_model_with_a_non_truthy_mark_for_removal_argument
@@ -677,20 +687,6 @@ module NestedAttributesOnACollectionAssociationTests
   def test_should_not_remove_missing_records_by_default
     assert_no_difference('@pirate.send(@association_name).count') do
       @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
-    end
-  end
-
-  def test_should_remove_missing_records
-    repair_nested_attributes Pirate, @association_name do
-      Pirate.accepts_nested_attributes_for @association_name, :destroy_missing => true
-
-      assert_difference('@pirate.send(@association_name).count', -1) do
-        @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
-      end
-
-      remaining_child = @pirate.reload.send(@association_name).last
-      assert_equal @child_1.id, remaining_child.id
-      assert_equal 'Changed', remaining_child.name
     end
   end
 
