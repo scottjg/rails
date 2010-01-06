@@ -239,18 +239,6 @@ module ActiveRecord
       !@mark_for_removal_type.nil?
     end
 
-    # Returns whether or not this record will be removed as part of the parents
-    # save transaction.
-    #
-    # Only useful if the <tt>:autosave</tt> option on the parent is enabled for
-    # this associated model.
-    #
-    # Note that this alias of #marked_for_removal? exists mainly to use from a
-    # form builder.
-    #
-    # TODO: Move to nested attributes.
-    alias_method :mark_for_removal, :marked_for_removal?
-
     # Marks this record to be destroyed as part of the parents save
     # transaction. This does _not_ actually destroy the record yet, rather it
     # will be destroyed when <tt>parent.save</tt> is called.

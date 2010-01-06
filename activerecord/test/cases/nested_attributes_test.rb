@@ -7,7 +7,7 @@ require "models/treasure"
 require "models/man"
 require "models/interest"
 
-module AssertRaiseWithMessage
+module NestedAttributesTestHelper
   def assert_raise_with_message(expected_exception, expected_message)
     begin
       error_raised = false
@@ -19,14 +19,18 @@ module AssertRaiseWithMessage
     assert error_raised
     assert_equal expected_message, actual_message
   end
+
+  def repair_nested_attributes(model, name)
+    before = model.nested_attributes_options[name]
+    model.nested_attributes_options[name] = nil
+    yield
+  ensure
+    model.nested_attributes_options[name] = before
+  end
 end
 
 class TestNestedAttributesInGeneral < ActiveRecord::TestCase
-  include AssertRaiseWithMessage
-
-  def teardown
-    Pirate.accepts_nested_attributes_for :ship, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
-  end
+  include NestedAttributesTestHelper
 
   def test_base_should_have_an_empty_nested_attributes_options
     assert_equal Hash.new, ActiveRecord::Base.nested_attributes_options
@@ -63,55 +67,119 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
     end
   end
 
-  def test_should_disable_allow_destroy_by_default
-    Pirate.accepts_nested_attributes_for :ship
-
-    pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
-    ship = pirate.create_ship(:name => 'Nights Dirty Lightning')
-
-    assert_no_difference('Ship.count') do
-      pirate.update_attributes(:ship_attributes => { '_destroy' => true })
+  def test_allow_destroy_is_deprecated_in_favor_of_allow
+    repair_nested_attributes Pirate, :ship do
+      assert_deprecated ":allow_destroy is deprecated for accepts_nested_attributes_for. Use `:allow => :destroy' instead." do
+        Pirate.accepts_nested_attributes_for :ship, :allow_destroy => true
+        options = Pirate.nested_attributes_options[:ship]
+        assert_nil options[:allow_destroy]
+        assert_equal :destroy, options[:allow]
+      end
     end
   end
 
-  def test_a_model_should_respond_to_underscore_destroy_and_return_if_it_is_marked_for_destruction
+  def test_underscore_destroy_is_deprecated_in_favor_of_mark_for_removal
+    pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+
+    assert_deprecated '#_destroy is deprecated in nested attributes. Use #mark_for_removal instead.' do
+      assert !pirate._destroy
+      pirate.mark_for_removal!
+      assert pirate._destroy
+    end
+  end
+
+  def test_should_disable_allow_by_default
+    repair_nested_attributes Pirate, :ship do
+      Pirate.accepts_nested_attributes_for :ship
+
+      pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+      ship = pirate.create_ship(:name => 'Nights Dirty Lightning')
+
+      assert_no_difference('Ship.count') do
+        pirate.update_attributes(:ship_attributes => { :mark_for_removal => true })
+      end
+    end
+  end
+
+  def test_a_model_should_respond_to_mark_for_removal_and_return_if_it_is_marked_for_removal
     ship = Ship.create!(:name => 'Nights Dirty Lightning')
-    assert !ship._destroy
+    assert !ship.mark_for_removal
     ship.mark_for_removal!
-    assert ship._destroy
+    assert ship.mark_for_removal
   end
 
   def test_reject_if_method_without_arguments
-    Pirate.accepts_nested_attributes_for :ship, :reject_if => :new_record?
+    repair_nested_attributes Pirate, :ship do
+      Pirate.accepts_nested_attributes_for :ship, :reject_if => :new_record?
 
-    pirate = Pirate.new(:catchphrase => "Stop wastin' me time")
-    pirate.ship_attributes = { :name => 'Black Pearl' }
-    assert_no_difference('Ship.count') { pirate.save! }
+      pirate = Pirate.new(:catchphrase => "Stop wastin' me time")
+      pirate.ship_attributes = { :name => 'Black Pearl' }
+      assert_no_difference('Ship.count') { pirate.save! }
+    end
   end
 
   def test_reject_if_method_with_arguments
-    Pirate.accepts_nested_attributes_for :ship, :reject_if => :reject_empty_ships_on_create
+    repair_nested_attributes Pirate, :ship do
+      Pirate.accepts_nested_attributes_for :ship, :reject_if => :reject_empty_ships_on_create
 
-    pirate = Pirate.new(:catchphrase => "Stop wastin' me time")
-    pirate.ship_attributes = { :name => 'Red Pearl', :_reject_me_if_new => true }
-    assert_no_difference('Ship.count') { pirate.save! }
+      pirate = Pirate.new(:catchphrase => "Stop wastin' me time")
+      pirate.ship_attributes = { :name => 'Red Pearl', :_reject_me_if_new => true }
+      assert_no_difference('Ship.count') { pirate.save! }
 
-    # pirate.reject_empty_ships_on_create returns false for saved records
-    pirate.ship_attributes = { :name => 'Red Pearl', :_reject_me_if_new => true }
-    assert_difference('Ship.count') { pirate.save! }
+      # pirate.reject_empty_ships_on_create returns false for saved records
+      pirate.ship_attributes = { :name => 'Red Pearl', :_reject_me_if_new => true }
+      assert_difference('Ship.count') { pirate.save! }
+    end
   end
 
   def test_reject_if_with_indifferent_keys
-    Pirate.accepts_nested_attributes_for :ship, :reject_if => proc {|attributes| attributes[:name].blank? }
+    repair_nested_attributes Pirate, :ship do
+      Pirate.accepts_nested_attributes_for :ship, :reject_if => proc {|attributes| attributes[:name].blank? }
 
-    pirate = Pirate.new(:catchphrase => "Stop wastin' me time")
-    pirate.ship_attributes = { :name => 'Hello Pearl' }
-    assert_difference('Ship.count') { pirate.save! }
+      pirate = Pirate.new(:catchphrase => "Stop wastin' me time")
+      pirate.ship_attributes = { :name => 'Hello Pearl' }
+      assert_difference('Ship.count') { pirate.save! }
+    end
+  end
+
+  def test_validate_presence_of_parent_works_with_inverse_of
+    Man.accepts_nested_attributes_for(:interests)
+    assert_equal :man, Man.reflect_on_association(:interests).options[:inverse_of]
+    assert_equal :interests, Interest.reflect_on_association(:man).options[:inverse_of]
+
+    repair_validations(Interest) do
+      Interest.validates_presence_of(:man)
+      assert_difference 'Man.count' do
+        assert_difference 'Interest.count', 2 do
+          man = Man.create!(:name => 'John',
+                            :interests_attributes => [{:topic=>'Cars'}, {:topic=>'Sports'}])
+          assert_equal 2, man.interests.count
+        end
+      end
+    end
+  end
+
+  def test_validate_presence_of_parent_fails_without_inverse_of
+    Man.accepts_nested_attributes_for(:interests)
+    Man.reflect_on_association(:interests).options.delete(:inverse_of)
+    Interest.reflect_on_association(:man).options.delete(:inverse_of)
+
+    repair_validations(Interest) do
+      Interest.validates_presence_of(:man)
+      assert_no_difference ['Man.count', 'Interest.count'] do
+        man = Man.create(:name => 'John',
+                         :interests_attributes => [{:topic=>'Cars'}, {:topic=>'Sports'}])
+        assert !man.errors[:'interests.man'].empty?
+      end
+    end
+    # restore :inverse_of
+    Man.reflect_on_association(:interests).options[:inverse_of] = :man
+    Interest.reflect_on_association(:man).options[:inverse_of] = :interests
   end
 end
 
 class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
-  include AssertRaiseWithMessage
+  include NestedAttributesTestHelper
 
   def setup
     @pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
@@ -120,7 +188,7 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
 
   def test_should_raise_argument_error_if_trying_to_build_polymorphic_belongs_to
     assert_raise_with_message ArgumentError, "Cannot build association looter. Are you trying to build a polymorphic one-to-one association?" do
-      Treasure.new(:name => 'pearl', :looter_attributes => {:catchphrase => "Arrr"})
+      Treasure.new(:name => 'pearl', :looter_attributes => { :catchphrase => "Arrr" })
     end
   end
 
@@ -136,9 +204,16 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
   end
 
-  def test_should_not_build_a_new_record_if_there_is_no_id_and_destroy_is_truthy
+  def test_underscore_destroy_is_deprecated_in_favor_of_mark_for_removal
+    assert_deprecated '#_destroy is deprecated in nested attributes. Use #mark_for_removal instead.' do
+      @pirate.ship_attributes = { :id => @ship.id, :_destroy => '1' }
+      assert @pirate.ship.marked_for_removal?
+    end
+  end
+
+  def test_should_not_build_a_new_record_if_there_is_no_id_and_mark_for_removal_is_truthy
     @ship.destroy
-    @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger', :_destroy => '1' }
+    @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger', :mark_for_removal => '1' }
 
     assert_nil @pirate.ship
   end
@@ -158,8 +233,8 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
     assert_equal 'Nights Dirty Lightning', @ship.name
   end
 
-  def test_should_not_replace_an_existing_record_if_there_is_no_id_and_destroy_is_truthy
-    @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger', :_destroy => '1' }
+  def test_should_not_replace_an_existing_record_if_there_is_no_id_and_mark_for_removal_is_truthy
+    @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger', :mark_for_removal => '1' }
 
     assert_equal @ship, @pirate.ship
     assert_equal 'Nights Dirty Lightning', @pirate.ship.name
@@ -192,32 +267,39 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
   end
 
-  def test_should_destroy_an_existing_record_if_there_is_a_matching_id_and_destroy_is_truthy
-    @pirate.ship.destroy
-    [1, '1', true, 'true'].each do |truth|
-      @pirate.reload.create_ship(:name => 'Mister Pablo')
-      assert_difference('Ship.count', -1) do
-        @pirate.update_attribute(:ship_attributes, { :id => @pirate.ship.id, :_destroy => truth })
+  [:destroy, :delete, :nullify].each do |type|
+    test "marks an existing record for removal with `#{type}', if there is a matching id and mark_for_removal is truthy" do
+      @pirate.ship.destroy
+
+      repair_nested_attributes Pirate, :ship do
+        Pirate.accepts_nested_attributes_for :ship, :allow => type
+
+        [1, '1', true, 'true'].each do |truth|
+          @pirate.reload.create_ship(:name => 'Mister Pablo')
+          @pirate.ship_attributes = { :id => @pirate.ship.id, :mark_for_removal => truth }
+
+          assert @pirate.ship.marked_for_removal?
+          assert_equal type, @pirate.ship.mark_for_removal_type
+        end
       end
     end
   end
 
-  def test_should_not_destroy_an_existing_record_if_destroy_is_not_truthy
+  test "does not mark an existing record for removal if mark_for_removal is not truthy" do
     [nil, '0', 0, 'false', false].each do |not_truth|
-      assert_no_difference('Ship.count') do
-        @pirate.update_attribute(:ship_attributes, { :id => @pirate.ship.id, :_destroy => not_truth })
-      end
+      @pirate.ship_attributes = { :id => @pirate.ship.id, :mark_for_removal => not_truth }
+      assert !@pirate.ship.marked_for_removal?
     end
   end
 
-  def test_should_not_destroy_an_existing_record_if_allow_destroy_is_false
-    Pirate.accepts_nested_attributes_for :ship, :allow_destroy => false, :reject_if => proc { |attributes| attributes.empty? }
+  def test_should_not_remove_an_existing_record_if_allow_is_nil
+    repair_nested_attributes Pirate, :ship do
+      Pirate.accepts_nested_attributes_for :ship, :allow => nil
 
-    assert_no_difference('Ship.count') do
-      @pirate.update_attribute(:ship_attributes, { :id => @pirate.ship.id, :_destroy => '1' })
+      assert_no_difference('Ship.count') do
+        @pirate.update_attribute(:ship_attributes, { :id => @pirate.ship.id, :mark_for_removal => true })
+      end
     end
-
-    Pirate.accepts_nested_attributes_for :ship, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
   end
 
   def test_should_also_work_with_a_HashWithIndifferentAccess
@@ -235,9 +317,9 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
     assert_equal 'Mister Pablo', @pirate.ship.name
   end
 
-  def test_should_not_destroy_the_associated_model_until_the_parent_is_saved
+  def test_should_not_remove_the_associated_model_until_the_parent_is_saved
     assert_no_difference('Ship.count') do
-      @pirate.attributes = { :ship_attributes => { :id => @ship.id, :_destroy => '1' } }
+      @pirate.attributes = { :ship_attributes => { :id => @ship.id, :mark_for_removal => true } }
     end
     assert_difference('Ship.count', -1) do
       @pirate.save
@@ -271,7 +353,7 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
 end
 
 class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
-  include AssertRaiseWithMessage
+  include NestedAttributesTestHelper
 
   def setup
     @ship = Ship.new(:name => 'Nights Dirty Lightning')
@@ -291,9 +373,16 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     assert_equal 'Arr', @ship.pirate.catchphrase
   end
 
-  def test_should_not_build_a_new_record_if_there_is_no_id_and_destroy_is_truthy
+  def test_underscore_destroy_is_deprecated_in_favor_of_mark_for_removal
+    assert_deprecated '#_destroy is deprecated in nested attributes. Use #mark_for_removal instead.' do
+      @ship.pirate_attributes = { :id => @pirate.id, :_destroy => '1' }
+      assert @ship.pirate.marked_for_removal?
+    end
+  end
+
+  def test_should_not_build_a_new_record_if_there_is_no_id_and_mark_for_removal_is_truthy
     @pirate.destroy
-    @ship.reload.pirate_attributes = { :catchphrase => 'Arr', :_destroy => '1' }
+    @ship.reload.pirate_attributes = { :catchphrase => 'Arr', :mark_for_removal => '1' }
 
     assert_nil @ship.pirate
   end
@@ -313,8 +402,8 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     assert_equal 'Aye', @pirate.catchphrase
   end
 
-  def test_should_not_replace_an_existing_record_if_there_is_no_id_and_destroy_is_truthy
-    @ship.reload.pirate_attributes = { :catchphrase => 'Arr', :_destroy => '1' }
+  def test_should_not_replace_an_existing_record_if_there_is_no_id_and_mark_for_removal_is_truthy
+    @ship.reload.pirate_attributes = { :catchphrase => 'Arr', :mark_for_removal => '1' }
 
     assert_equal @pirate, @ship.pirate
     assert_equal 'Aye', @ship.pirate.catchphrase
@@ -347,32 +436,39 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     assert_equal 'Arr', @ship.pirate.catchphrase
   end
 
-  def test_should_destroy_an_existing_record_if_there_is_a_matching_id_and_destroy_is_truthy
-    @ship.pirate.destroy
-    [1, '1', true, 'true'].each do |truth|
-      @ship.reload.create_pirate(:catchphrase => 'Arr')
-      assert_difference('Pirate.count', -1) do
-        @ship.update_attribute(:pirate_attributes, { :id => @ship.pirate.id, :_destroy => truth })
+  [:destroy, :delete, :nullify].each do |type|
+    test "marks an existing record for removal with `#{type}', if there is a matching id and mark_for_removal is truthy" do
+      @ship.pirate.destroy
+
+      repair_nested_attributes Ship, :pirate do
+        Ship.accepts_nested_attributes_for :pirate, :allow => type
+
+        [1, '1', true, 'true'].each do |truth|
+          @ship.reload.create_pirate(:catchphrase => 'Arr')
+          @ship.pirate_attributes = { :id => @ship.pirate.id, :mark_for_removal => truth }
+
+          assert @ship.pirate.marked_for_removal?
+          assert_equal type, @ship.pirate.mark_for_removal_type
+        end
       end
     end
   end
 
-  def test_should_not_destroy_an_existing_record_if_destroy_is_not_truthy
+  test "does not mark an existing record for removal if mark_for_removal is not truthy" do
     [nil, '0', 0, 'false', false].each do |not_truth|
-      assert_no_difference('Pirate.count') do
-        @ship.update_attribute(:pirate_attributes, { :id => @ship.pirate.id, :_destroy => not_truth })
-      end
+      @ship.pirate_attributes = { :id => @ship.pirate.id, :mark_for_removal => not_truth }
+      assert !@ship.pirate.marked_for_removal?
     end
   end
 
-  def test_should_not_destroy_an_existing_record_if_allow_destroy_is_false
-    Ship.accepts_nested_attributes_for :pirate, :allow_destroy => false, :reject_if => proc { |attributes| attributes.empty? }
+  def test_should_not_remove_an_existing_record_if_allow_is_nil
+    repair_nested_attributes Ship, :pirate do
+      Ship.accepts_nested_attributes_for :pirate, :allow => nil
 
-    assert_no_difference('Pirate.count') do
-      @ship.update_attribute(:pirate_attributes, { :id => @ship.pirate.id, :_destroy => '1' })
+      assert_no_difference('Pirate.count') do
+        @ship.update_attribute(:pirate_attributes, { :id => @ship.pirate.id, :mark_for_removal => true })
+      end
     end
-
-    Ship.accepts_nested_attributes_for :pirate, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
   end
 
   def test_should_work_with_update_attributes_as_well
@@ -383,9 +479,9 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     assert_equal 'Arr', @ship.pirate.catchphrase
   end
 
-  def test_should_not_destroy_the_associated_model_until_the_parent_is_saved
+  def test_should_not_remove_the_associated_model_until_the_parent_is_saved
     assert_no_difference('Pirate.count') do
-      @ship.attributes = { :pirate_attributes => { :id => @ship.pirate.id, '_destroy' => true } }
+      @ship.attributes = { :pirate_attributes => { :id => @ship.pirate.id, :mark_for_removal => true } }
     end
     assert_difference('Pirate.count', -1) { @ship.save }
   end
@@ -413,7 +509,7 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
 end
 
 module NestedAttributesOnACollectionAssociationTests
-  include AssertRaiseWithMessage
+  include NestedAttributesTestHelper
 
   def test_should_define_an_attribute_writer_method_for_the_association
     assert_respond_to @pirate, association_setter
@@ -485,18 +581,18 @@ module NestedAttributesOnACollectionAssociationTests
     assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
   end
 
-  def test_should_not_assign_destroy_key_to_a_record
+  def test_should_not_assign_mark_for_removal_key_to_a_record
     assert_nothing_raised ActiveRecord::UnknownAttributeError do
-      @pirate.send(association_setter, { 'foo' => { '_destroy' => '0' }})
+      @pirate.send(association_setter, { 'foo' => { 'mark_for_removal' => '0' }})
     end
   end
 
-  def test_should_ignore_new_associated_records_with_truthy_destroy_attribute
+  def test_should_ignore_new_associated_records_with_truthy_mark_for_removal_attribute
     @pirate.send(@association_name).destroy_all
     @pirate.reload.attributes = {
       association_getter => {
         'foo' => { :name => 'Grace OMalley' },
-        'bar' => { :name => 'Privateers Greed', '_destroy' => '1' }
+        'bar' => { :name => 'Privateers Greed', 'mark_for_removal' => '1' }
       }
     }
 
@@ -544,93 +640,61 @@ module NestedAttributesOnACollectionAssociationTests
     assert_equal ['Grace OMalley', 'Privateers Greed', 'Buccaneers Servant'].to_set, @pirate.reload.send(@association_name).map(&:name).to_set
   end
 
-  def test_should_be_possible_to_destroy_a_record
-    ['1', 1, 'true', true].each do |true_variable|
-      record = @pirate.reload.send(@association_name).create!(:name => 'Grace OMalley')
-      @pirate.send(association_setter,
-        @alternate_params[association_getter].merge('baz' => { :id => record.id, '_destroy' => true_variable })
-      )
+  [:destroy, :delete, :nullify].each do |type|
+    define_method "test_marks_an_existing_record_for_removal_with_#{type}_if_there_is_a_matching_id_and_mark_for_removal_is_truthy" do
+      repair_nested_attributes Pirate, @association_name do
+        Pirate.accepts_nested_attributes_for @association_name, :allow => type
 
-      assert_difference('@pirate.send(@association_name).count', -1) do
-        @pirate.save
-      end
-    end
-  end
+        [1, '1', true, 'true'].each do |truth|
+          record = @pirate.reload.send(@association_name)[0]
+          @pirate.send(association_setter,
+            @alternate_params[association_getter].merge('baz' => { :id => record.id, :mark_for_removal => truth })
+          )
 
-  def test_should_not_destroy_the_associated_model_with_a_non_truthy_argument
-    [nil, '', '0', 0, 'false', false].each do |false_variable|
-      @alternate_params[association_getter]['foo']['_destroy'] = false_variable
-      assert_no_difference('@pirate.send(@association_name).count') do
-        @pirate.update_attributes(@alternate_params)
-      end
-    end
-  end
-
-  def test_should_not_destroy_the_associated_model_until_the_parent_is_saved
-    assert_no_difference('@pirate.send(@association_name).count') do
-      @pirate.send(association_setter, @alternate_params[association_getter].merge('baz' => { :id => @child_1.id, '_destroy' => true }))
-    end
-    assert_difference('@pirate.send(@association_name).count', -1) { @pirate.save }
-  end
-
-  def test_should_not_destroy_missing_records_by_default
-    assert_no_difference('@pirate.send(@association_name).count') do
-      @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
-    end
-  end
-
-  def test_should_destroy_missing_records
-    options = Pirate.nested_attributes_options[@association_name]
-    options[:destroy_missing] = true
-
-    assert_difference('@pirate.send(@association_name).count', -1) do
-      @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
-    end
-
-    remaining_child = @pirate.reload.send(@association_name).last
-    assert_equal @child_1.id, remaining_child.id
-    assert_equal 'Changed', remaining_child.name
-  ensure
-    options[:destroy_missing] = nil
-  end
-
-  def test_should_automatically_enable_autosave_on_the_association
-    assert Pirate.reflect_on_association(@association_name).options[:autosave]
-  end
-
-  def test_validate_presence_of_parent_works_with_inverse_of
-    Man.accepts_nested_attributes_for(:interests)
-    assert_equal :man, Man.reflect_on_association(:interests).options[:inverse_of]
-    assert_equal :interests, Interest.reflect_on_association(:man).options[:inverse_of]
-
-    repair_validations(Interest) do
-      Interest.validates_presence_of(:man)
-      assert_difference 'Man.count' do
-        assert_difference 'Interest.count', 2 do
-          man = Man.create!(:name => 'John',
-                            :interests_attributes => [{:topic=>'Cars'}, {:topic=>'Sports'}])
-          assert_equal 2, man.interests.count
+          assert record.marked_for_removal?
+          assert_equal type, record.mark_for_removal_type
         end
       end
     end
   end
 
-  def test_validate_presence_of_parent_fails_without_inverse_of
-    Man.accepts_nested_attributes_for(:interests)
-    Man.reflect_on_association(:interests).options.delete(:inverse_of)
-    Interest.reflect_on_association(:man).options.delete(:inverse_of)
-
-    repair_validations(Interest) do
-      Interest.validates_presence_of(:man)
-      assert_no_difference ['Man.count', 'Interest.count'] do
-        man = Man.create(:name => 'John',
-                         :interests_attributes => [{:topic=>'Cars'}, {:topic=>'Sports'}])
-        assert !man.errors[:'interests.man'].empty?
-      end
+  def test_should_not_remove_the_associated_model_with_a_non_truthy_mark_for_removal_argument
+    [nil, '', '0', 0, 'false', false].each do |false_variable|
+      @alternate_params[association_getter]['foo'][:mark_for_removal] = false_variable
+      @pirate.attributes = @alternate_params
+      assert !@child_1.marked_for_removal?
     end
-    # restore :inverse_of
-    Man.reflect_on_association(:interests).options[:inverse_of] = :man
-    Interest.reflect_on_association(:man).options[:inverse_of] = :interests
+  end
+
+  def test_should_not_remove_the_associated_model_until_the_parent_is_saved
+    assert_no_difference('@pirate.send(@association_name).count') do
+      @pirate.send(association_setter, @alternate_params[association_getter].merge('baz' => { :id => @child_1.id, :mark_for_removal => true }))
+    end
+    assert_difference('@pirate.send(@association_name).count', -1) { @pirate.save }
+  end
+
+  def test_should_not_remove_missing_records_by_default
+    assert_no_difference('@pirate.send(@association_name).count') do
+      @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
+    end
+  end
+
+  def test_should_remove_missing_records
+    repair_nested_attributes Pirate, @association_name do
+      Pirate.accepts_nested_attributes_for @association_name, :destroy_missing => true
+
+      assert_difference('@pirate.send(@association_name).count', -1) do
+        @pirate.update_attribute(association_getter, 'foo' => { :id => @child_1.id, :name => 'Changed' })
+      end
+
+      remaining_child = @pirate.reload.send(@association_name).last
+      assert_equal @child_1.id, remaining_child.id
+      assert_equal 'Changed', remaining_child.name
+    end
+  end
+
+  def test_should_automatically_enable_autosave_on_the_association
+    assert Pirate.reflect_on_association(@association_name).options[:autosave]
   end
 
   private
@@ -689,31 +753,38 @@ class TestNestedAttributesOnAHasAndBelongsToManyAssociation < ActiveRecord::Test
 end
 
 class TestNestedAttributesLimit < ActiveRecord::TestCase
-  def setup
-    Pirate.accepts_nested_attributes_for :parrots, :limit => 2
+  include NestedAttributesTestHelper
 
+  def with_setup
     @pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
-  end
 
-  def teardown
-    Pirate.accepts_nested_attributes_for :parrots, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
+    repair_nested_attributes Pirate, :parrots do
+      Pirate.accepts_nested_attributes_for :parrots, :limit => 2
+      yield
+    end
   end
 
   def test_limit_with_less_records
-    @pirate.attributes = { :parrots_attributes => { 'foo' => { :name => 'Big Big Love' } } }
-    assert_difference('Parrot.count') { @pirate.save! }
+    with_setup do
+      @pirate.attributes = { :parrots_attributes => { 'foo' => { :name => 'Big Big Love' } } }
+      assert_difference('Parrot.count') { @pirate.save! }
+    end
   end
 
   def test_limit_with_number_exact_records
-    @pirate.attributes = { :parrots_attributes => { 'foo' => { :name => 'Lovely Day' }, 'bar' => { :name => 'Blown Away' } } }
-    assert_difference('Parrot.count', 2) { @pirate.save! }
+    with_setup do
+      @pirate.attributes = { :parrots_attributes => { 'foo' => { :name => 'Lovely Day' }, 'bar' => { :name => 'Blown Away' } } }
+      assert_difference('Parrot.count', 2) { @pirate.save! }
+    end
   end
 
   def test_limit_with_exceeding_records
-    assert_raises(ActiveRecord::NestedAttributes::TooManyRecords) do
-      @pirate.attributes = { :parrots_attributes => { 'foo' => { :name => 'Lovely Day' },
-                                                      'bar' => { :name => 'Blown Away' },
-                                                      'car' => { :name => 'The Happening' }} }
+    with_setup do
+      assert_raises(ActiveRecord::NestedAttributes::TooManyRecords) do
+        @pirate.attributes = { :parrots_attributes => { 'foo' => { :name => 'Lovely Day' },
+                                                        'bar' => { :name => 'Blown Away' },
+                                                        'car' => { :name => 'The Happening' }} }
+      end
     end
   end
 end

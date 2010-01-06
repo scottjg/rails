@@ -57,18 +57,20 @@ module ActiveRecord
     #
     # By default you will only be able to set and update attributes on the
     # associated model. If you want to destroy the associated model through the
-    # attributes hash, you have to enable it first using the
-    # <tt>:allow_destroy</tt> option.
+    # attributes hash, you have to enable it first by setting the
+    # <tt>:allow</tt> option to one of <tt>:destroy</tt>, <tt>:delete</tt>, or
+    # <tt>:nullify</tt>:
     #
     #   class Member < ActiveRecord::Base
     #     has_one :avatar
-    #     accepts_nested_attributes_for :avatar, :allow_destroy => true
+    #     accepts_nested_attributes_for :avatar, :allow => :destroy
     #   end
     #
-    # Now, when you add the <tt>_destroy</tt> key to the attributes hash, with a
-    # value that evaluates to +true+, you will destroy the associated model:
+    # Now, when you add the <tt>mark_for_removal</tt> key to the attributes
+    # hash, with a value that evaluates to +true+, you will destroy the
+    # associated model:
     #
-    #   member.avatar_attributes = { :id => '2', :_destroy => '1' }
+    #   member.avatar_attributes = { :id => '2', :mark_for_removal => '1' }
     #   member.avatar.marked_for_removal? # => true
     #   member.save
     #   member.avatar #=> nil
@@ -88,14 +90,14 @@ module ActiveRecord
     # the attribute hash.
     #
     # For each hash that does _not_ have an <tt>id</tt> key a new record will
-    # be instantiated, unless the hash also contains a <tt>_destroy</tt> key
+    # be instantiated, unless the hash also contains a <tt>mark_for_removal</tt> key
     # that evaluates to +true+.
     #
     #   params = { :member => {
     #     :name => 'joe', :posts_attributes => [
     #       { :title => 'Kari, the awesome Ruby documentation browser!' },
     #       { :title => 'The egalitarian assumption of the modern citizen' },
-    #       { :title => '', :_destroy => '1' } # this will be ignored
+    #       { :title => '', :mark_for_removal => '1' } # this will be ignored
     #     ]
     #   }}
     #
@@ -158,17 +160,20 @@ module ActiveRecord
     #
     # By default the associated records are protected from being destroyed. If
     # you want to destroy any of the associated records through the attributes
-    # hash, you have to enable it first using the <tt>:allow_destroy</tt>
-    # option. This will allow you to also use the <tt>_destroy</tt> key to
-    # destroy existing records:
+    # hash, you have to enable it first by setting the <tt>:allow</tt> option
+    # to one of <tt>:destroy</tt>, <tt>:delete</tt>, or <tt>:nullify</tt>:
     #
     #   class Member < ActiveRecord::Base
     #     has_many :posts
-    #     accepts_nested_attributes_for :posts, :allow_destroy => true
+    #     accepts_nested_attributes_for :posts, :allow => :destroy
     #   end
     #
+    # Now, when you add the <tt>mark_for_removal</tt> key to the attributes
+    # hash, with a value that evaluates to +true+, you will destroy the
+    # associated model:
+    #
     #   params = { :member => {
-    #     :posts_attributes => [{ :id => '2', :_destroy => '1' }]
+    #     :posts_attributes => [{ :id => '2', :mark_for_removal => '1' }]
     #   }}
     #
     #   member.attributes = params['member']
@@ -177,12 +182,14 @@ module ActiveRecord
     #   member.save
     #   member.posts.length # => 1
     #
+    # Note that the member will _not_ be destroyed until the parent is saved.
+    #
     # === Saving
     #
-    # All changes to models, including the destruction of those marked for
-    # removal, are saved and removed automatically and atomically when the
-    # parent model is saved. This happens inside the transaction initiated by
-    # the parents save method. See ActiveRecord::AutosaveAssociation.
+    # All changes to models, including the removal of those marked for removal,
+    # are saved and removed automatically and atomically when the parent model
+    # is saved. This happens inside the transaction initiated by the parents
+    # save method. See ActiveRecord::AutosaveAssociation.
     module ClassMethods
       REJECT_ALL_BLANK_PROC = proc { |attributes| attributes.all? { |_, value| value.blank? } }
 
@@ -191,10 +198,12 @@ module ActiveRecord
       # will need to add the attribute writer to the allowed list.
       #
       # Supported options:
-      # [:allow_destroy]
-      #   If true, destroys any members from the attributes hash with a
-      #   <tt>_destroy</tt> key and a value that evaluates to +true+
-      #   (eg. 1, '1', true, or 'true'). This option is off by default.
+      # [:allow]
+      #   If set to a valid #mark_for_removal! type (<tt>:destroy</tt>,
+      #   <tt>:delete</tt>, or <tt>:nullify</tt>), removes any members from the
+      #   attributes hash with a <tt>mark_for_removal</tt> key and a value that
+      #   evaluates to +true+ (eg. 1, '1', true, or 'true'). This option is off
+      #   by default.
       # [:destroy_missing]
       #   If true, destroys any members from the association collection for
       #   which _no_ +ID+ is available in the attributes hash. Note that this
@@ -206,7 +215,7 @@ module ActiveRecord
       #   The hash is passed to the supplied Proc or the method and it should
       #   return either +true+ or +false+. When no :reject_if is specified, a
       #   record will be built for all attribute hashes that do not have a
-      #   <tt>_destroy</tt> value that evaluates to true. Passing
+      #   <tt>mark_for_removal</tt> value that evaluates to true. Passing
       #   <tt>:all_blank</tt> instead of a Proc will create a proc that will
       #   reject a record where all the attributes are blank.
       # [:limit]
@@ -228,13 +237,18 @@ module ActiveRecord
       #   # creates avatar_attributes=
       #   accepts_nested_attributes_for :avatar, :reject_if => :all_blank
       #   # creates avatar_attributes= and posts_attributes=
-      #   accepts_nested_attributes_for :avatar, :allow_destroy => true
+      #   accepts_nested_attributes_for :avatar, :allow => :destroy
       #   accepts_nested_attributes_for :posts, :destroy_missing => true
       def accepts_nested_attributes_for(*attr_names)
-        options = { :allow_destroy => false, :update_only => false }
+        options = { :update_only => false }
         options.update(attr_names.extract_options!)
-        options.assert_valid_keys(:allow_destroy, :destroy_missing, :reject_if, :limit, :update_only)
+        options.assert_valid_keys(:allow, :allow_destroy, :destroy_missing, :reject_if, :limit, :update_only)
         options[:reject_if] = REJECT_ALL_BLANK_PROC if options[:reject_if] == :all_blank
+
+        if allow_destroy = options.delete(:allow_destroy)
+          ActiveSupport::Deprecation.warn ":allow_destroy is deprecated for accepts_nested_attributes_for. Use `:allow => :destroy' instead."
+          options[:allow] = :destroy if allow_destroy
+        end
 
         attr_names.each do |association_name|
           if reflection = reflect_on_association(association_name)
@@ -263,7 +277,19 @@ module ActiveRecord
     # destruction of this association.
     #
     # See ActionView::Helpers::FormHelper::fields_for for more info.
+    def mark_for_removal
+      marked_for_removal?
+    end
+
+    # Returns ActiveRecord::AutosaveAssociation::marked_for_removal? It's
+    # used in conjunction with fields_for to build a form element for the
+    # destruction of this association.
+    #
+    # See ActionView::Helpers::FormHelper::fields_for for more info.
+    #
+    # Deprecated: Use #mark_for_removal instead.
     def _destroy
+      ActiveSupport::Deprecation.warn "#_destroy is deprecated in nested attributes. Use #mark_for_removal instead."
       marked_for_removal?
     end
 
@@ -271,7 +297,7 @@ module ActiveRecord
 
     # Attribute hash keys that should not be assigned as normal attributes.
     # These hash keys are nested attributes implementation details.
-    UNASSIGNABLE_KEYS = %w( id _destroy )
+    UNASSIGNABLE_KEYS = %w( id mark_for_removal _destroy )
 
     # Assigns the given attributes to the association.
     #
@@ -281,8 +307,8 @@ module ActiveRecord
     # object exists. Otherwise a new record will be built.
     #
     # If the given attributes include a matching <tt>:id</tt> attribute, or
-    # update_only is true, and a <tt>:_destroy</tt> key set to a truthy value,
-    # then the existing record will be marked for removal.
+    # update_only is true, and a <tt>:mark_for_removal</tt> key set to a truthy
+    # value, then the existing record will be marked for removal.
     def assign_nested_attributes_for_one_to_one_association(association_name, attributes)
       options = nested_attributes_options[association_name]
       attributes = attributes.with_indifferent_access
@@ -290,7 +316,7 @@ module ActiveRecord
 
       if check_existing_record && (record = send(association_name)) &&
           (options[:update_only] || record.id.to_s == attributes['id'].to_s)
-        assign_to_or_mark_for_destruction(record, attributes, options[:allow_destroy])
+        assign_to_or_mark_for_removal(record, attributes, options[:allow])
 
       elsif attributes['id']
         raise_nested_attributes_record_not_found(association_name, attributes['id'])
@@ -310,7 +336,7 @@ module ActiveRecord
     # Hashes with an <tt>:id</tt> value matching an existing associated record
     # will update that record. Hashes without an <tt>:id</tt> value will build
     # a new record for the association. Hashes with a matching <tt>:id</tt>
-    # value and a <tt>:_destroy</tt> key set to a truthy value will mark the
+    # value and a <tt>:mark_for_removal</tt> key set to a truthy value will mark the
     # matched record for removal.
     #
     # For example:
@@ -318,7 +344,7 @@ module ActiveRecord
     #   assign_nested_attributes_for_collection_association(:people, {
     #     '1' => { :id => '1', :name => 'Peter' },
     #     '2' => { :name => 'John' },
-    #     '3' => { :id => '2', :_destroy => true }
+    #     '3' => { :id => '2', :mark_for_removal => true }
     #   })
     #
     # Will update the name of the Person with ID 1, build a new associated
@@ -330,7 +356,7 @@ module ActiveRecord
     #   assign_nested_attributes_for_collection_association(:people, [
     #     { :id => '1', :name => 'Peter' },
     #     { :name => 'John' },
-    #     { :id => '2', :_destroy => true }
+    #     { :id => '2', :mark_for_removal => true }
     #   ])
     def assign_nested_attributes_for_collection_association(association_name, attributes_collection)
       options = nested_attributes_options[association_name]
@@ -359,7 +385,7 @@ module ActiveRecord
           end
         elsif existing_record = send(association_name).detect { |record| record.id.to_s == attributes['id'].to_s }
           records_to_keep << existing_record
-          assign_to_or_mark_for_destruction(existing_record, attributes, options[:allow_destroy])
+          assign_to_or_mark_for_removal(existing_record, attributes, options[:allow])
         else
           raise_nested_attributes_record_not_found(association_name, attributes['id'])
         end
@@ -369,25 +395,28 @@ module ActiveRecord
     end
 
     # Updates a record with the +attributes+ or marks it for removal if
-    # +allow_destroy+ is +true+ and has_destroy_flag? returns +true+.
-    def assign_to_or_mark_for_destruction(record, attributes, allow_destroy)
-      if has_destroy_flag?(attributes) && allow_destroy
-        record.mark_for_removal!
+    # +removal_type+ is not +nil+ and has_removal_flag? returns +true+.
+    def assign_to_or_mark_for_removal(record, attributes, removal_type)
+      if removal_type && has_removal_flag?(attributes)
+        record.mark_for_removal!(removal_type)
       else
         record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
       end
     end
 
-    # Determines if a hash contains a truthy _destroy key.
-    def has_destroy_flag?(hash)
-      ConnectionAdapters::Column.value_to_boolean(hash['_destroy'])
+    # Determines if a hash contains a truthy `mark_for_removal' key.
+    def has_removal_flag?(hash)
+      if ConnectionAdapters::Column.value_to_boolean(hash['_destroy'])
+        ActiveSupport::Deprecation.warn "#_destroy is deprecated in nested attributes. Use #mark_for_removal instead."
+        true
+      end || ConnectionAdapters::Column.value_to_boolean(hash['mark_for_removal'])
     end
 
     # Determines if a new record should be build by checking for
-    # has_destroy_flag? or if a <tt>:reject_if</tt> proc exists for this
+    # has_removal_flag? or if a <tt>:reject_if</tt> proc exists for this
     # association and evaluates to +true+.
     def reject_new_record?(association_name, attributes)
-      has_destroy_flag?(attributes) || call_reject_if(association_name, attributes)
+      has_removal_flag?(attributes) || call_reject_if(association_name, attributes)
     end
 
     def call_reject_if(association_name, attributes)
