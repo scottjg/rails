@@ -1059,6 +1059,23 @@ class FinderTest < ActiveRecord::TestCase
     end
   end
 
+  def test_finder_with_association
+    comments_on_thinking = Post.find(2).comments.count
+
+    comments = Comment.find :all, :conditions=>["posts.title = ?", "So I was thinking"], :joins=>[:post]
+
+    assert_equal comments_on_thinking, comments.size
+  end
+
+  def test_finder_with_association_through
+    david = Author.find 1
+    comments_on_david = david.posts.inject(0) {|sum, post| sum += post.comments.count }
+
+    comments = Comment.find :all, :conditions=>["authors.name = ?", "David"], :joins=>[:post_author]
+
+    assert_equal comments_on_david, comments.size
+  end
+
   protected
     def bind(statement, *vars)
       if vars.first.is_a?(Hash)
