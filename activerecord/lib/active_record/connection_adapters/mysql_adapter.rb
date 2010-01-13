@@ -469,7 +469,19 @@ module ActiveRecord
         sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
         columns = []
         result = execute(sql, name)
-        result.each { |field| columns << MysqlColumn.new(field[0], field[4], field[1], field[2] == "YES") }
+        # use in fix for determining default values in mysql due mysql's SHOW FIELDS output (rails misreads some
+        # non-existent defaults as an empty string and some info is ambiguous in SHOW FIELDS so use SHOW CREATE TABLE.
+        # see also +missing_default_forged_as_empty_string?+, http://dev.rubyonrails.org/ticket/6156) and
+        # the tip at the end of http://dev.mysql.com/doc/refman/5.0/en/data-type-defaults.html
+        create_table_sql = select_one("SHOW CREATE TABLE #{quote_table_name(table_name)}")["Create Table"]
+        result.each do |field|
+          column_name, default, sql_type, null = field[0], field[4], field[1], field[2] == "YES"
+          # the fix for determining defaults: if there isn't a default in 'CREATE TABLE' for this field then override the default as nil
+          if create_table_sql !~ /^\s*#{quote_column_name(column_name)}.*\bdefault\b/i
+            default = nil
+          end
+          columns << MysqlColumn.new(column_name, default, sql_type, null)
+        end
         result.free
         columns
       end
