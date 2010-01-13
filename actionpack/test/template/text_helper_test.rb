@@ -295,6 +295,10 @@ class TextHelperTest < ActionView::TestCase
     assert_equal email3_result, auto_link(email3_raw, :all, :encode => :hex)
     assert_equal email3_result, auto_link(email3_raw, :email_addresses, :encode => :hex)
 
+    email4_raw    = "foo'bar@baz.com"
+    email4_result = %(<a href="mailto:#{email4_raw}">#{email4_raw}</a>)
+    assert_equal email4_result, auto_link(email4_raw)
+
     link2_raw    = 'www.rubyonrails.com'
     link2_result = generate_result(link2_raw, "http://#{link2_raw}")
     assert_equal %(Go to #{link2_result}), auto_link("Go to #{link2_raw}", :urls)
