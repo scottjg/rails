@@ -333,6 +333,7 @@ module ActionView
         text.gsub!(/([^\n]\n)(?=[^\n])/, '\1<br />') # 1 newline   -> br
         text.insert 0, start_tag
         text << "</p>"
+        raw(text)
       end
 
       # Turns all URLs and e-mail addresses into clickable links. The <tt>:link</tt> option
