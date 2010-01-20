@@ -44,6 +44,10 @@ class TextHelperTest < ActionView::TestCase
     assert simple_format("A String").html_safe?
   end
 
+  def test_simple_format_should_escape_its_input
+    assert_equal "<p>&lt;b&gt; String with html &lt;/b&gt;</p>", simple_format("<b> String with html </b>")
+  end
+
   def test_truncate
     assert_equal "Hello World!", truncate("Hello World!", :length => 12)
     assert_equal "Hello Wor...", truncate("Hello World!!", :length => 12)
