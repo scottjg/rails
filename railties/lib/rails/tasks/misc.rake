@@ -1,10 +1,7 @@
 task :default => :test
-task :environment do
-  $rails_rake_task = true
-  require(File.join(Rails.root, 'config', 'environment'))
-end
 
 task :rails_env do
+  # TODO Do we really need this?
   unless defined? RAILS_ENV
     RAILS_ENV = ENV['RAILS_ENV'] ||= 'development'
   end

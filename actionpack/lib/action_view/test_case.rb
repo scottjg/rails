@@ -1,6 +1,3 @@
-require 'active_support/test_case'
-require 'action_controller/testing/test_case'
-
 module ActionView
   class Base
     alias_method :initialize_without_template_tracking, :initialize
@@ -39,8 +36,7 @@ module ActionView
       end
     end
 
-    include ActionDispatch::Assertions
-    include ActionController::TestProcess
+    include ActionDispatch::Assertions, ActionDispatch::TestProcess
     include ActionView::Context
 
     include ActionController::PolymorphicRoutes
@@ -120,6 +116,7 @@ module ActionView
       def _view
         view = ActionView::Base.new(ActionController::Base.view_paths, _assigns, @controller)
         view.class.send :include, _helpers
+        view.output_buffer = self.output_buffer
         view
       end
 

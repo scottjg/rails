@@ -1,3 +1,5 @@
+require "active_support/inflector/methods"
+
 module ActionDispatch
   class MiddlewareStack < Array
     class Middleware
@@ -32,7 +34,7 @@ module ActionDispatch
         elsif @klass.respond_to?(:call)
           @klass.call
         else
-          @klass.to_s.constantize
+          ActiveSupport::Inflector.constantize(@klass.to_s)
         end
       end
 
@@ -53,14 +55,12 @@ module ActionDispatch
         when Class
           klass == middleware
         else
-          klass == middleware.to_s.constantize
+          klass == ActiveSupport::Inflector.constantize(middleware.to_s)
         end
       end
 
       def inspect
-        str = klass.to_s
-        args.each { |arg| str += ", #{build_args.inspect}" }
-        str
+        klass.to_s
       end
 
       def build(app)
@@ -91,8 +91,9 @@ module ActionDispatch
     alias_method :insert_before, :insert
 
     def insert_after(index, *args, &block)
-      index = self.index(index) unless index.is_a?(Integer)
-      insert(index + 1, *args, &block)
+      i = index.is_a?(Integer) ? index : self.index(index)
+      raise "No such middleware to insert after: #{index.inspect}" unless i
+      insert(i + 1, *args, &block)
     end
 
     def swap(target, *args, &block)

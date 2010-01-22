@@ -1,3 +1,5 @@
+require "active_support/multibyte"
+
 class String
   unless '1.9'.respond_to?(:force_encoding)
     # Returns the character at the +position+ treating the string as an array (where 0 is the first character).
@@ -5,7 +7,7 @@ class String
     # Examples: 
     #   "hello".at(0)  # => "h"
     #   "hello".at(4)  # => "o"
-    #   "hello".at(10) # => nil
+    #   "hello".at(10) # => ERROR if < 1.9, nil in 1.9
     def at(position)
       mb_chars[position, 1].to_s
     end
@@ -15,7 +17,7 @@ class String
     # Examples: 
     #   "hello".from(0)  # => "hello"
     #   "hello".from(2)  # => "llo"
-    #   "hello".from(10) # => nil
+    #   "hello".from(10) # => "" if < 1.9, nil in 1.9
     def from(position)
       mb_chars[position..-1].to_s
     end

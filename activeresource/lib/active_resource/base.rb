@@ -13,6 +13,9 @@ require 'set'
 require 'uri'
 
 require 'active_resource/exceptions'
+require 'active_resource/connection'
+require 'active_resource/formats'
+require 'active_resource/schema'
 
 module ActiveResource
   # ActiveResource::Base is the main class for mapping RESTful resources as models in a Rails application.
@@ -37,6 +40,13 @@ module ActiveResource
   #   class PersonResource < ActiveResource::Base
   #     self.site = "http://api.people.com:3000/"
   #     self.element_name = "person"
+  #   end
+  #
+  # If your Active Resource object is required to use an HTTP proxy you can set the +proxy+ value which holds a URI.
+  #
+  #   class PersonResource < ActiveResource::Base
+  #     self.site = "http://api.people.com:3000/"
+  #     self.proxy = "http://user:password@proxy.people.com:8080"
   #   end
   #
   #
@@ -241,6 +251,124 @@ module ActiveResource
     cattr_accessor :logger
 
     class << self
+      # Creates a schema for this resource - setting the attributes that are
+      # known prior to fetching an instance from the remote system.
+      #
+      # The schema helps define the set of <tt>known_attributes</tt> of the
+      # current resource.
+      #
+      # There is no need to specify a schema for your Active Resource. If
+      # you do not, the <tt>known_attributes</tt> will be guessed from the
+      # instance attributes returned when an instance is fetched from the
+      # remote system.
+      #
+      # example:
+      # class Person < ActiveResource::Base
+      #   schema do
+      #     # define each attribute separately
+      #     attribute 'name', :string
+      #
+      #     # or use the convenience methods and pass >=1 attribute names
+      #     string  'eye_colour', 'hair_colour'
+      #     integer 'age'
+      #     float   'height', 'weight'
+      #
+      #     # unsupported types should be left as strings
+      #     # overload the accessor methods if you need to convert them
+      #     attribute 'created_at', 'string'
+      #   end
+      # end
+      #
+      # p = Person.new
+      # p.respond_to? :name   # => true
+      # p.respond_to? :age    # => true
+      # p.name                # => nil
+      # p.age                 # => nil
+      #
+      # j = Person.find_by_name('John') # <person><name>John</name><age>34</age><num_children>3</num_children></person>
+      # j.respond_to? :name   # => true
+      # j.respond_to? :age    # => true
+      # j.name                # => 'John'
+      # j.age                 # => '34'  # note this is a string!
+      # j.num_children        # => '3'  # note this is a string!
+      #
+      # p.num_children        # => NoMethodError
+      #
+      # Attribute-types must be one of:
+      #  string, integer, float
+      #
+      # Note: at present the attribute-type doesn't do anything, but stay
+      # tuned...
+      # Shortly it will also *cast* the value of the returned attribute.
+      # ie:
+      # j.age                 # => 34   # cast to an integer
+      # j.weight              # => '65' # still a string!
+      #
+      def schema(&block)
+        if block_given?
+          schema_definition = Schema.new
+          schema_definition.instance_eval(&block)
+
+          # skip out if we didn't define anything
+          return unless schema_definition.attrs.present?
+
+          @schema ||= {}.with_indifferent_access
+          @known_attributes ||= []
+
+          schema_definition.attrs.each do |k,v|
+            @schema[k] = v
+            @known_attributes << k
+          end
+
+          schema
+        else
+          @schema ||= nil
+        end
+      end
+
+      # Alternative, direct way to specify a <tt>schema</tt> for this
+      # Resource. <tt>schema</tt> is more flexible, but this is quick
+      # for a very simple schema.
+      #
+      # Pass the schema as a hash with the keys being the attribute-names
+      # and the value being one of the accepted attribute types (as defined
+      # in <tt>schema</tt>)
+      #
+      # example:
+      #
+      # class Person < ActiveResource::Base
+      #   schema = {'name' => :string, 'age' => :integer }
+      # end
+      #
+      # The keys/values can be strings or symbols. They will be converted to
+      # strings.
+      #
+      def schema=(the_schema)
+        unless the_schema.present?
+          # purposefully nulling out the schema
+          @schema = nil
+          @known_attributes = []
+          return
+        end
+
+        raise ArgumentError, "Expected a hash" unless the_schema.kind_of? Hash
+
+        schema do
+          the_schema.each {|k,v| attribute(k,v) }
+        end
+      end
+
+      # Returns the list of known attributes for this resource, gathered
+      # from the provided <tt>schema</tt>
+      # Attributes that are known will cause your resource to return 'true'
+      # when <tt>respond_to?</tt> is called on them. A known attribute will
+      # return nil if not set (rather than <t>MethodNotFound</tt>); thus
+      # known attributes can be used with <tt>validates_presence_of</tt>
+      # without a getter-method.
+      def known_attributes
+        @known_attributes ||= []
+      end
+
       # Gets the URI of the REST resources to map for this class.  The site variable is required for
       # Active Resource's mapping to work.
       def site
@@ -274,8 +402,8 @@ module ActiveResource
           @site = nil
         else
           @site = create_site_uri_from(site)
-          @user = URI.decode(@site.user) if @site.user
-          @password = URI.decode(@site.password) if @site.password
+          @user = uri_parser.unescape(@site.user) if @site.user
+          @password = uri_parser.unescape(@site.password) if @site.password
         end
       end
 
@@ -737,12 +865,12 @@ module ActiveResource
 
         # Accepts a URI and creates the site URI from that.
         def create_site_uri_from(site)
-          site.is_a?(URI) ? site.dup : URI.parse(site)
+          site.is_a?(URI) ? site.dup : uri_parser.parse(site)
         end
 
         # Accepts a URI and creates the proxy URI from that.
         def create_proxy_uri_from(proxy)
-          proxy.is_a?(URI) ? proxy.dup : URI.parse(proxy)
+          proxy.is_a?(URI) ? proxy.dup : uri_parser.parse(proxy)
         end
 
         # contains a set of the current prefix parameters.
@@ -767,10 +895,29 @@ module ActiveResource
 
           [ prefix_options, query_options ]
         end
+
+        def uri_parser
+          @uri_parser ||= URI.const_defined?(:Parser) ? URI::Parser.new : URI
+        end
     end
 
     attr_accessor :attributes #:nodoc:
     attr_accessor :prefix_options #:nodoc:
+
+    # If no schema has been defined for the class (see
+    # <tt>ActiveResource::schema=</tt>), the default automatic schema is
+    # generated from the current instance's attributes
+    def schema
+      self.class.schema || self.attributes
+    end
+
+    # This is a list of known attributes for this resource. Either
+    # gathered fromthe provided <tt>schema</tt>, or from the attributes
+    # set on this instance after it has been fetched from the remote system.
+    def known_attributes
+      self.class.known_attributes + self.attributes.keys.map(&:to_s)
+    end
+
 
     # Constructor method for \new resources; the optional +attributes+ parameter takes a \hash
     # of attributes for the \new resource.
@@ -1152,15 +1299,16 @@ module ActiveResource
     def respond_to?(method, include_priv = false)
       method_name = method.to_s
       if attributes.nil?
-        return super
-      elsif attributes.has_key?(method_name)
-        return true
-      elsif ['?','='].include?(method_name.last) && attributes.has_key?(method_name.first(-1))
-        return true
+        super
+      elsif known_attributes.include?(method_name)
+        true
+      elsif method_name =~ /(?:=|\?)$/ && attributes.include?($`)
+        true
+      else
+        # super must be called at the end of the method, because the inherited respond_to?
+        # would return true for generated readers, even if the attribute wasn't present
+        super
       end
-      # super must be called at the end of the method, because the inherited respond_to?
-      # would return true for generated readers, even if the attribute wasn't present
-      super
     end
 
     protected
@@ -1249,13 +1397,18 @@ module ActiveResource
       def method_missing(method_symbol, *arguments) #:nodoc:
         method_name = method_symbol.to_s
 
-        case method_name.last
+        if method_name =~ /(=|\?)$/
+          case $1
           when "="
-            attributes[method_name.first(-1)] = arguments.first
+            attributes[$`] = arguments.first
           when "?"
-            attributes[method_name.first(-1)]
-          else
-            attributes.has_key?(method_name) ? attributes[method_name] : super
+            attributes[$`]
+          end
+        else
+          return attributes[method_name] if attributes.include?(method_name)
+          # not set right now but we know about it
+          return nil if known_attributes.include?(method_name)
+          super
         end
       end
   end

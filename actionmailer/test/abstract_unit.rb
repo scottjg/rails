@@ -1,17 +1,15 @@
-root = File.expand_path('../../..', __FILE__)
 begin
-  require "#{root}/vendor/gems/environment"
+  require File.expand_path('../../../vendor/gems/environment', __FILE__)
 rescue LoadError
-  $:.unshift("#{root}/activesupport/lib")
-  $:.unshift("#{root}/actionpack/lib")
-  $:.unshift("#{root}/actionmailer/lib")
 end
+
+lib = File.expand_path('../../lib', __FILE__)
+$:.unshift(lib) unless $:.include?('lib') || $:.include?(lib)
 
 require 'rubygems'
 require 'test/unit'
 
 require 'action_mailer'
-require 'action_mailer/test_case'
 
 # Show backtraces for deprecated behavior for quicker cleanup.
 ActiveSupport::Deprecation.debug = true

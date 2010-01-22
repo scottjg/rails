@@ -2,7 +2,6 @@ require 'logger'
 
 $:.unshift(File.dirname(__FILE__) + '/../../../activerecord/lib')
 require 'active_record'
-require 'active_record/fixtures'
 
 module ActiveModel
   module TestsDatabase

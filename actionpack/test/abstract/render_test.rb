@@ -4,7 +4,7 @@ module AbstractController
   module Testing
 
     class ControllerRenderer < AbstractController::Base
-      include AbstractController::RenderingController
+      include AbstractController::Rendering
 
       self.view_paths = [ActionView::FixtureResolver.new(
         "default.erb" => "With Default",
@@ -33,12 +33,16 @@ module AbstractController
         render
       end
 
+      def shortcut
+        render "template"
+      end
+
       def template_name
         render :_template_name => :template_name
       end
 
       def object
-        render :_template => ActionView::TextTemplate.new("With Object")
+        render :_template => ActionView::Template::Text.new("With Object")
       end
     end
 
@@ -71,6 +75,11 @@ module AbstractController
       def test_render_default
         @controller.process(:default)
         assert_equal "With Default", @controller.response_body
+      end
+
+      def test_render_template_through_shortcut
+        @controller.process(:shortcut)
+        assert_equal "With Template", @controller.response_body
       end
 
       def test_render_template_name

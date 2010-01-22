@@ -52,7 +52,7 @@ module ActionController
     included do
       # Set the default directory for helpers
       extlib_inheritable_accessor(:helpers_dir) do
-        defined?(Rails) ? "#{Rails.root}/app/helpers" : "app/helpers"
+        defined?(Rails.root) ? "#{Rails.root}/app/helpers" : "app/helpers"
       end
     end
 
@@ -100,7 +100,7 @@ module ActionController
         module_path = module_name.underscore
         helper module_path
       rescue MissingSourceFile => e
-        raise e unless e.is_missing? "#{module_path}_helper"
+        raise e unless e.is_missing? "helpers/#{module_path}_helper"
       rescue NameError => e
         raise e unless e.missing_name? "#{module_name}Helper"
       end

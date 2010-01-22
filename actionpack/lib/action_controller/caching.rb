@@ -26,15 +26,19 @@ module ActionController #:nodoc:
   #   config.action_controller.cache_store = :file_store, "/path/to/cache/directory"
   #   config.action_controller.cache_store = :drb_store, "druby://localhost:9192"
   #   config.action_controller.cache_store = :mem_cache_store, "localhost"
+  #   config.action_controller.cache_store = :mem_cache_store, Memcached::Rails.new("localhost:11211")
   #   config.action_controller.cache_store = MyOwnStore.new("parameter")
   module Caching
     extend ActiveSupport::Concern
+    extend ActiveSupport::Autoload
 
-    autoload :Actions, 'action_controller/caching/actions'
-    autoload :Fragments, 'action_controller/caching/fragments'
-    autoload :Pages, 'action_controller/caching/pages'
-    autoload :Sweeper, 'action_controller/caching/sweeping'
-    autoload :Sweeping, 'action_controller/caching/sweeping'
+    eager_autoload do
+      autoload :Actions
+      autoload :Fragments
+      autoload :Pages
+      autoload :Sweeper, 'action_controller/caching/sweeping'
+      autoload :Sweeping, 'action_controller/caching/sweeping'
+    end
 
     included do
       @@cache_store = nil

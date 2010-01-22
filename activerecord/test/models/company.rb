@@ -45,7 +45,7 @@ class Firm < Company
   has_many :unvalidated_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :validate => false
   has_many :dependent_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :order => "id", :dependent => :destroy
   has_many :exclusively_dependent_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :order => "id", :dependent => :delete_all
-  has_many :limited_clients, :class_name => "Client", :order => "id", :limit => 1
+  has_many :limited_clients, :class_name => "Client", :limit => 1
   has_many :clients_like_ms, :conditions => "name = 'Microsoft'", :class_name => "Client", :order => "id"
   has_many :clients_with_interpolated_conditions, :class_name => "Client", :conditions => 'rating > #{rating}'
   has_many :clients_like_ms_with_hash_conditions, :conditions => { :name => 'Microsoft' }, :class_name => "Client", :order => "id"
@@ -68,6 +68,8 @@ class Firm < Company
   has_many :readonly_clients, :class_name => 'Client', :readonly => true
   has_many :clients_using_primary_key, :class_name => 'Client',
            :primary_key => 'name', :foreign_key => 'firm_name'
+  has_many :clients_using_primary_key_with_delete_all, :class_name => 'Client',
+           :primary_key => 'name', :foreign_key => 'firm_name', :dependent => :delete_all
   has_many :clients_grouped_by_firm_id, :class_name => "Client", :group => "firm_id", :select => "firm_id"
   has_many :clients_grouped_by_name, :class_name => "Client", :group => "name", :select => "name"
 
@@ -89,10 +91,8 @@ class Firm < Company
 end
 
 class DependentFirm < Company
-  # added order by id as in fixtures there are two accounts for Rails Core
-  # Oracle tests were failing because of that as the second fixture was selected
-  has_one :account, :foreign_key => "firm_id", :dependent => :nullify, :order => "id"
-  has_many :companies, :foreign_key => 'client_of', :order => "id", :dependent => :nullify
+  has_one :account, :foreign_key => "firm_id", :dependent => :nullify
+  has_many :companies, :foreign_key => 'client_of', :dependent => :nullify
 end
 
 class Client < Company

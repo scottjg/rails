@@ -70,8 +70,8 @@ class PageCachingTest < ActionController::TestCase
   def test_page_caching_resources_saves_to_correct_path_with_extension_even_if_default_route
     with_routing do |set|
       set.draw do |map|
-        map.main '', :controller => 'posts', :format => nil
-        map.formatted_posts 'posts.:format', :controller => 'posts'
+        match 'posts.:format', :to => 'posts#index', :as => :formatted_posts
+        match '/', :to => 'posts#index', :as => :main
       end
       @params[:format] = 'rss'
       assert_equal '/posts.rss', @rewriter.rewrite(@params)
@@ -422,8 +422,7 @@ class ActionCacheTest < ActionController::TestCase
   def test_xml_version_of_resource_is_treated_as_different_cache
     with_routing do |set|
       set.draw do |map|
-        map.connect ':controller/:action.:format'
-        map.connect ':controller/:action'
+        match ':controller(/:action(.:format))'
       end
 
       get :index, :format => 'xml'
@@ -628,17 +627,6 @@ class FragmentCachingTest < ActionController::TestCase
 
     assert !fragment_computed
     assert_equal 'generated till now -> fragment content', buffer
-  end
-
-  def test_fragment_for_logging
-    fragment_computed = false
-    ActiveSupport::Notifications.queue.expects(:publish).times(2)
-
-    buffer = 'generated till now -> '
-    @controller.fragment_for(buffer, 'expensive') { fragment_computed = true }
-
-    assert fragment_computed
-    assert_equal 'generated till now -> ', buffer
   end
 
 end

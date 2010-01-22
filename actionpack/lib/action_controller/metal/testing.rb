@@ -2,7 +2,7 @@ module ActionController
   module Testing
     extend ActiveSupport::Concern
 
-    include RackConvenience
+    include RackDelegation
 
     # OMG MEGA HAX
     def process_with_new_base_test(request, response)
@@ -10,6 +10,9 @@ module ActionController
       @_response = response
       @_response.request = request
       ret = process(request.parameters[:action])
+      if cookies = @_request.env['action_dispatch.cookies']
+        cookies.write(@_response)
+      end
       @_response.body ||= self.response_body
       @_response.prepare!
       set_test_assigns

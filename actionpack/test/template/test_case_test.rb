@@ -24,7 +24,7 @@ module ActionView
         test_case.class_eval do
           test "helpers defined on ActionView::TestCase are available" do
             assert test_case.ancestors.include?(ASharedTestHelper)
-            assert 'Holla!', from_shared_helper
+            assert_equal 'Holla!', from_shared_helper
           end
         end
       end
@@ -38,10 +38,15 @@ module ActionView
         assert_equal 'Eloy', render('developers/developer', :developer => stub(:name => 'Eloy'))
       end
 
+      test "can render a layout with block" do
+        assert_equal "Before (ChrisCruft)\n!\nAfter",
+                      render(:layout => "test/layout_for_partial", :locals => {:name => "ChrisCruft"}) {"!"}
+      end
+
       helper AnotherTestHelper
       test "additional helper classes can be specified as in a controller" do
         assert test_case.ancestors.include?(AnotherTestHelper)
-        assert 'Howdy!', from_another_helper
+        assert_equal 'Howdy!', from_another_helper
       end
     end
 
@@ -58,14 +63,14 @@ module ActionView
       helper AnotherTestHelper
       test "additional helper classes can be specified as in a controller" do
         assert test_case.ancestors.include?(AnotherTestHelper)
-        assert 'Howdy!', from_another_helper
+        assert_equal 'Howdy!', from_another_helper
 
         test_case.helper_class.module_eval do
           def render_from_helper
             from_another_helper
           end
         end
-        assert 'Howdy!', render(:partial => 'test/from_helper')
+        assert_equal 'Howdy!', render(:partial => 'test/from_helper')
       end
     end
 
@@ -109,7 +114,7 @@ module ActionView
 
       test "is able to use named routes" do
         with_routing do |set|
-          set.draw { |map| map.resources :contents }
+          set.draw { |map| resources :contents }
           assert_equal 'http://test.host/contents/new', new_content_url
           assert_equal 'http://test.host/contents/1',   content_url(:id => 1)
         end
@@ -117,7 +122,7 @@ module ActionView
 
       test "named routes can be used from helper included in view" do
         with_routing do |set|
-          set.draw { |map| map.resources :contents }
+          set.draw { |map| resources :contents }
           _helpers.module_eval do
             def render_from_helper
               new_content_url

@@ -2,7 +2,6 @@ require "abstract_unit"
 
 class AjaxTestCase < ActionView::TestCase
   include ActionView::Helpers::AjaxHelper
-  include ActionDispatch::Assertions::DomAssertions
 
   def url_for(options)
     case options
@@ -40,18 +39,21 @@ class AjaxTestCase < ActionView::TestCase
 end
 
 class LinkToRemoteTest < AjaxTestCase
+  def url_for(hash)
+    "/blog/destroy/4"
+  end
+
   def link(options = {})
     link_to_remote("Delete this post", "/blog/destroy/4", options)
+  end
+
+  test "with no update" do
+    assert_html link, %w(href="/blog/destroy/4" Delete\ this\ post data-remote="true")
   end
 
   test "basic" do
     assert_html link(:update => "#posts"),
       %w(data-update-success="#posts")
-  end
-
-  test "using a url string" do
-    assert_html link_to_remote("Test", "/blog/update/1"),
-      %w(href="/blog/update/1")
   end
 
   test "using a url hash" do
@@ -202,7 +204,6 @@ class FormRemoteTagTest < AjaxTestCase
     assert_html @buffer.to_s,
       expected_form_attributes + expected_inner_html
   end
-end
 
 class Author
   extend ActiveModel::Naming
@@ -334,6 +335,10 @@ class ButtonToRemoteTest < AjaxTestCase
     button_to_remote("RemoteOutpost", options, html)
   end
 
+  def url_for(*)
+    "/whatnot"
+  end
+  
   class StandardTest < ButtonToRemoteTest
     test "basic" do
       assert_html button({:url => {:action => "whatnot"}}, {:class => "fine", :value => "RemoteOutpost"}),

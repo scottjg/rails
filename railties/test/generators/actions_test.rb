@@ -1,12 +1,28 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
-require 'rails/generators/rails/app/app_generator'
+require 'generators/rails/app/app_generator'
 
-class ActionsTest < GeneratorsTestCase
+# TODO This line shouldn't be required
+require 'generators/rails/model/model_generator'
+
+class ActionsTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  tests Rails::Generators::AppGenerator
+  arguments [destination_root]
+
   def setup
     super
     @git_plugin_uri = 'git://github.com/technoweenie/restful-authentication.git'
     @svn_plugin_uri = 'svn://svnhub.com/technoweenie/restful-authentication/trunk'
+  end
+
+  def test_invoke_other_generator_with_shortcut
+    action :invoke, 'model', ['my_model']
+    assert_file 'app/models/my_model.rb', /MyModel/
+  end
+
+  def test_invoke_other_generator_with_full_namespace
+    action :invoke, 'rails:model', ['my_model']
+    assert_file 'app/models/my_model.rb', /MyModel/
   end
 
   def test_create_file_should_write_data_to_file_path
@@ -171,20 +187,12 @@ class ActionsTest < GeneratorsTestCase
 
   def test_route_should_add_data_to_the_routes_block_in_config_routes
     run_generator
-    route_command = "map.route '/login', :controller => 'sessions', :action => 'new'"
+    route_command = "route '/login', :controller => 'sessions', :action => 'new'"
     action :route, route_command
     assert_file 'config/routes.rb', /#{Regexp.escape(route_command)}/
   end
 
   protected
-
-    def run_generator
-      silence(:stdout) { Rails::Generators::AppGenerator.start [destination_root] }
-    end
-
-    def generator(config={})
-      @generator ||= Rails::Generators::Base.new([], {}, { :destination_root => destination_root }.merge!(config))
-    end
 
     def action(*args, &block)
       silence(:stdout){ generator.send(*args, &block) }

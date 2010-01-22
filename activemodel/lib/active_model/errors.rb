@@ -60,9 +60,11 @@ module ActiveModel
     # error can be added to the same +attribute+ in which case an array will be returned on a call to <tt>on(attribute)</tt>.
     # If no +messsage+ is supplied, :invalid is assumed.
     # If +message+ is a Symbol, it will be translated, using the appropriate scope (see translate_error).
+    # If +message+ is a Proc, it will be called, allowing for things like Time.now to be used within an error
     def add(attribute, message = nil, options = {})
       message ||= :invalid
       message = generate_message(attribute, message, options) if message.is_a?(Symbol)
+      message = message.call if message.is_a?(Proc)
       self[attribute] << message
     end
 
@@ -97,18 +99,18 @@ module ActiveModel
       full_messages = []
 
       each do |attribute, messages|
-        messages = Array.wrap(messages)
+        messages = Array(messages)
         next if messages.empty?
 
         if attribute == :base
           messages.each {|m| full_messages << m }
         else
-          attr_name = @base.class.human_attribute_name(attribute)
-          options = { :default => ' ', :scope => @base.class.i18n_scope }
-          prefix = attr_name + I18n.t(:"errors.format.separator", options)
+          attr_name = attribute.to_s.gsub('.', '_').humanize
+          attr_name = @base.class.human_attribute_name(attribute, :default => attr_name)
+          options = { :default => "{{attribute}} {{message}}", :attribute => attr_name }
 
           messages.each do |m|
-            full_messages <<  "#{prefix}#{m}"
+            full_messages << I18n.t(:"errors.format", options.merge(:message => m))
           end
         end
       end
@@ -152,7 +154,7 @@ module ActiveModel
         :model => @base.class.model_name.human,
         :attribute => @base.class.human_attribute_name(attribute),
         :value => value,
-        :scope => [@base.class.i18n_scope, :errors]
+        :scope => [:errors]
       }.merge(options)
 
       I18n.translate(key, options)

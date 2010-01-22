@@ -1,32 +1,91 @@
-require 'rails/plugin/loader'
-require 'rails/plugin/locator'
 require 'active_support/ordered_options'
 
 module Rails
-  class Configuration
-    attr_accessor :cache_classes, :load_paths,
-                  :load_once_paths, :after_initialize_blocks,
-                  :frameworks, :framework_root_path, :root, :plugin_paths, :plugins,
-                  :plugin_loader, :plugin_locators, :gems, :loaded_plugins, :reload_plugins,
-                  :i18n, :gems, :whiny_nils, :consider_all_requests_local,
-                  :action_controller, :active_record, :action_view, :active_support,
-                  :action_mailer, :active_resource,
-                  :log_path, :log_level, :logger, :preload_frameworks,
-                  :database_configuration_file, :cache_store, :time_zone,
-                  :view_path, :metals, :controller_paths, :routes_configuration_file,
-                  :eager_load_paths, :dependency_loading, :paths, :serve_static_assets
+  # Temporarily separate the plugin configuration class from the main
+  # configuration class while this bit is being cleaned up.
+  class Railtie::Configuration
+    def self.default
+      @default ||= new
+    end
 
-    def initialize
+    def self.default_middleware_stack
+      ActionDispatch::MiddlewareStack.new.tap do |middleware|
+        middleware.use('::ActionDispatch::Static', lambda { Rails.public_path }, :if => lambda { Rails.application.config.serve_static_assets })
+        middleware.use('::Rack::Lock', :if => lambda { !ActionController::Base.allow_concurrency })
+        middleware.use('::Rack::Runtime')
+        middleware.use('::Rails::Rack::Logger')
+        middleware.use('::ActionDispatch::ShowExceptions', lambda { ActionController::Base.consider_all_requests_local })
+        middleware.use('::ActionDispatch::Callbacks', lambda { !Rails.application.config.cache_classes })
+        middleware.use('::ActionDispatch::Cookies')
+        middleware.use(lambda { ActionController::Base.session_store }, lambda { ActionController::Base.session_options })
+        middleware.use('::ActionDispatch::Flash', :if => lambda { ActionController::Base.session_store })
+        middleware.use(lambda { Rails::Rack::Metal.new(Rails.application.config.paths.app.metals.to_a, Rails.application.config.metals) })
+        middleware.use('ActionDispatch::ParamsParser')
+        middleware.use('::Rack::MethodOverride')
+        middleware.use('::ActionDispatch::Head')
+      end
+    end
+
+    attr_reader :middleware
+
+    def initialize(base = nil)
+      if base
+        @options    = base.options.dup
+        @middleware = base.middleware.dup
+      else
+        @options    = Hash.new { |h,k| h[k] = ActiveSupport::OrderedOptions.new }
+        @middleware = self.class.default_middleware_stack
+      end
+    end
+
+    def respond_to?(name)
+      super || name.to_s =~ config_key_regexp
+    end
+
+  protected
+
+    attr_reader :options
+
+  private
+
+    def method_missing(name, *args, &blk)
+      if name.to_s =~ config_key_regexp
+        return $2 == '=' ? @options[$1] = args.first : @options[$1]
+      end
+
+      super
+    end
+
+    def config_key_regexp
+      bits = config_keys.map { |n| Regexp.escape(n.to_s) }.join('|')
+      /^(#{bits})(?:=)?$/
+    end
+
+    def config_keys
+      ([ :active_support, :action_view ] +
+        Railtie.plugin_names).map { |n| n.to_s }.uniq
+    end
+  end
+
+  class Configuration < Railtie::Configuration
+    attr_accessor :after_initialize_blocks, :cache_classes, :colorize_logging,
+                  :consider_all_requests_local, :dependency_loading, :filter_parameters,
+                  :load_once_paths, :logger, :metals, :plugins,
+                  :preload_frameworks, :reload_plugins, :serve_static_assets,
+                  :time_zone, :whiny_nils
+
+    attr_writer :cache_store, :controller_paths,
+                :database_configuration_file, :eager_load_paths,
+                :i18n, :load_paths, :log_level, :log_path, :paths,
+                :routes_configuration_file, :view_path
+
+    def initialize(base = nil)
+      super
       @load_once_paths              = []
       @after_initialize_blocks      = []
-      @loaded_plugins               = []
+      @filter_parameters            = []
       @dependency_loading           = true
       @serve_static_assets          = true
-
-      for framework in frameworks
-        self.send("#{framework}=", ActiveSupport::OrderedOptions.new)
-      end
-      self.active_support = ActiveSupport::OrderedOptions.new
     end
 
     def after_initialize(&blk)
@@ -36,7 +95,7 @@ module Rails
     def root
       @root ||= begin
         call_stack = caller.map { |p| p.split(':').first }
-        root_path  = call_stack.detect { |p| p !~ %r[railties/lib/rails] }
+        root_path  = call_stack.detect { |p| p !~ %r[railties/lib/rails|rack/lib/rack] }
         root_path  = File.dirname(root_path)
 
         while root_path && File.directory?(root_path) && !File.exist?("#{root_path}/config.ru")
@@ -72,10 +131,17 @@ module Rails
         paths.tmp.cache           "tmp/cache"
         paths.config              "config"
         paths.config.locales      "config/locales"
-        paths.config.environments "config/environments", :glob => "#{RAILS_ENV}.rb"
+        paths.config.environments "config/environments", :glob => "#{Rails.env}.rb"
         paths
       end
     end
+
+    def frameworks(*args)
+      raise "config.frameworks in no longer supported. See the generated " \
+            "config/boot.rb for steps on how to limit the frameworks that " \
+            "will be loaded"
+    end
+    alias frameworks= frameworks
 
     # Enable threaded mode. Allows concurrent requests to controller actions and
     # multiple database connections. Also disables automatic dependency loading
@@ -85,28 +151,11 @@ module Rails
       self.preload_frameworks = true
       self.cache_classes = true
       self.dependency_loading = false
-      self.action_controller.allow_concurrency = true
-      self
-    end
 
-    def framework_paths
-      paths = %w(railties railties/lib activesupport/lib)
-      paths << 'actionpack/lib' if frameworks.include?(:action_controller) || frameworks.include?(:action_view)
-
-      [:active_record, :action_mailer, :active_resource, :action_web_service].each do |framework|
-        paths << "#{framework.to_s.gsub('_', '')}/lib" if frameworks.include?(framework)
+      if respond_to?(:action_controller)
+        action_controller.allow_concurrency = true
       end
-
-      paths.map { |dir| "#{framework_root_path}/#{dir}" }.select { |dir| File.directory?(dir) }
-    end
-
-    def framework_root_path
-      defined?(::RAILS_FRAMEWORK_ROOT) ? ::RAILS_FRAMEWORK_ROOT : "#{root}/vendor/rails"
-    end
-
-    def middleware
-      require 'action_dispatch'
-      @middleware ||= ActionDispatch::MiddlewareStack.new
+      self
     end
 
     # Loads and returns the contents of the #database_configuration_file. The
@@ -119,6 +168,10 @@ module Rails
 
     def routes_configuration_file
       @routes_configuration_file ||= File.join(root, 'config', 'routes.rb')
+    end
+
+    def builtin_routes_configuration_file
+      @builtin_routes_configuration_file ||= File.join(RAILTIES_PATH, 'builtin', 'routes.rb')
     end
 
     def controller_paths
@@ -148,12 +201,7 @@ module Rails
     end
 
     def eager_load_paths
-      @eager_load_paths ||= %w(
-        app/metal
-        app/models
-        app/controllers
-        app/helpers
-      ).map { |dir| "#{root}/#{dir}" }.select { |dir| File.directory?(dir) }
+      @eager_load_paths ||= ["#{root}/app/*"]
     end
 
     def load_paths
@@ -161,22 +209,15 @@ module Rails
         paths = []
 
         # Add the old mock paths only if the directories exists
-        paths.concat(Dir["#{root}/test/mocks/#{RAILS_ENV}"]) if File.exists?("#{root}/test/mocks/#{RAILS_ENV}")
-
-        # Add the app's controller directory
-        paths.concat(Dir["#{root}/app/controllers/"])
+        paths.concat(Dir["#{root}/test/mocks/#{Rails.env}"]) if File.exists?("#{root}/test/mocks/#{Rails.env}")
 
         # Followed by the standard includes.
         paths.concat %w(
           app
-          app/metal
-          app/models
-          app/controllers
-          app/helpers
-          app/services
+          app/*
           lib
           vendor
-        ).map { |dir| "#{root}/#{dir}" }.select { |dir| File.directory?(dir) }
+        ).map { |dir| "#{root}/#{dir}" }
 
         paths.concat builtin_directories
       end
@@ -184,37 +225,27 @@ module Rails
 
     def builtin_directories
       # Include builtins only in the development environment.
-      (RAILS_ENV == 'development') ? Dir["#{RAILTIES_PATH}/builtin/*/"] : []
+      Rails.env.development? ? Dir["#{RAILTIES_PATH}/builtin/*/"] : []
     end
 
     def log_path
-      @log_path ||= File.join(root, 'log', "#{RAILS_ENV}.log")
+      @log_path ||= File.join(root, 'log', "#{Rails.env}.log")
     end
 
     def log_level
-      @log_level ||= RAILS_ENV == 'production' ? :info : :debug
+      @log_level ||= Rails.env.production? ? :info : :debug
     end
 
-    def frameworks
-      @frameworks ||= [ :active_record, :action_controller, :action_view, :action_mailer, :active_resource ]
+    def time_zone
+      @time_zone ||= "UTC"
     end
 
-    def plugin_paths
-      @plugin_paths ||= ["#{root}/vendor/plugins"]
+    def default_js_frameworks
+      [ :prototype ]
     end
 
-    def plugin_loader
-      @plugin_loader ||= begin
-        Plugin::Loader
-      end
-    end
-
-    def plugin_locators
-      @plugin_locators ||= begin
-        locators = []
-        locators << Plugin::GemLocator if defined? Gem
-        locators << Plugin::FileSystemLocator
-      end
+    def default_plugin_paths
+      ["#{root_path}/vendor/plugins"]
     end
 
     def i18n
@@ -232,11 +263,7 @@ module Rails
     end
 
     def environment_path
-      "#{root}/config/environments/#{RAILS_ENV}.rb"
-    end
-
-    def reload_plugins?
-      @reload_plugins
+      "#{root}/config/environments/#{Rails.env}.rb"
     end
 
     # Holds generators configuration:
@@ -260,9 +287,13 @@ module Rails
       end
     end
 
-    # Allows Notifications queue to be modified.
+    # Allow Notifications queue to be modified or add subscriptions:
     #
     #   config.notifications.queue = MyNewQueue.new
+    #
+    #   config.notifications.subscribe /action_dispatch.show_exception/ do |*args|
+    #     ExceptionDeliver.deliver_exception(args)
+    #   end
     #
     def notifications
       ActiveSupport::Notifications

@@ -14,7 +14,7 @@ module ActiveRecord
           # Allow database path relative to Rails.root, but only if
           # the database path is not the special path that tells
           # Sqlite to build a database only in memory.
-          if Object.const_defined?(:Rails) && ':memory:' != config[:database]
+          if defined?(Rails.root) && ':memory:' != config[:database]
             config[:database] = File.expand_path(config[:database], Rails.root)
           end
         end
@@ -182,12 +182,6 @@ module ActiveRecord
       def rollback_db_transaction #:nodoc:
         catch_schema_changes { @connection.rollback }
       end
-
-      # SELECT ... FOR UPDATE is redundant since the table is locked.
-      def add_lock!(sql, options) #:nodoc:
-        sql
-      end
-
 
       # SCHEMA STATEMENTS ========================================
 

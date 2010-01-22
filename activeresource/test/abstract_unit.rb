@@ -1,16 +1,15 @@
-root = File.expand_path('../../..', __FILE__)
 begin
-  require "#{root}/vendor/gems/environment"
+  require File.expand_path('../../../vendor/gems/environment', __FILE__)
 rescue LoadError
-  $:.unshift("#{root}/activesupport/lib")
-  $:.unshift("#{root}/activeresource/lib")
 end
+
+lib = File.expand_path('../../lib', __FILE__)
+$:.unshift(lib) unless $:.include?('lib') || $:.include?(lib)
 
 require 'rubygems'
 require 'test/unit'
-require 'active_support'
-require 'active_support/test_case'
 require 'active_resource'
+require 'active_support'
 
 $:.unshift "#{File.dirname(__FILE__)}/../test"
 require 'setter_trap'

@@ -85,19 +85,26 @@ namespace :rails do
     template = ENV["LOCATION"]
     template = File.expand_path(template) if template !~ %r{\A[A-Za-z][A-Za-z0-9+\-\.]*://}
 
-    require 'generators'
-    generator = Rails::Generators::App.new [ Rails.root ], {}, :destination_root => Rails.root
+    require 'rails/generators'
+    require 'generators/rails/app/app_generator'
+    generator = Rails::Generators::AppGenerator.new [ Rails.root ], {}, :destination_root => Rails.root
     generator.apply template, :verbose => false
   end
 
   namespace :update do
     def invoke_from_app_generator(method)
-      require 'generators'
-      require 'rails/generators/rails/app/app_generator'
+      require 'rails/generators'
+      require 'generators/rails/app/app_generator'
 
       generator = Rails::Generators::AppGenerator.new ["rails"], { :with_dispatchers => true },
                                                       :destination_root => Rails.root
       generator.invoke(method)
+    end
+
+    desc "Update config/boot.rb from your current rails install"
+    task :configs do
+      invoke_from_app_generator :create_boot_file
+      invoke_from_app_generator :create_config_files
     end
 
     desc "Update Prototype javascripts from your current rails install"

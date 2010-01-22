@@ -1,3 +1,5 @@
+require 'active_support/core_ext/hash/reverse_merge'
+
 module ActiveModel
   module Translation
     include ActiveModel::Naming
@@ -23,40 +25,21 @@ module ActiveModel
     # Specify +options+ with additional translating options.
     def human_attribute_name(attribute, options = {})
       defaults = lookup_ancestors.map do |klass|
-        :"#{klass.model_name.underscore}.#{attribute}"
+        :"#{self.i18n_scope}.attributes.#{klass.model_name.underscore}.#{attribute}"
       end
 
+      defaults << :"attributes.#{attribute}"
       defaults << options.delete(:default) if options[:default]
       defaults << attribute.to_s.humanize
 
-      options.reverse_merge! :scope => [self.i18n_scope, :attributes], :count => 1, :default => defaults
+      options.reverse_merge! :count => 1, :default => defaults
       I18n.translate(defaults.shift, options)
     end
 
     # Model.human_name is deprecated. Use Model.model_name.human instead.
     def human_name(*args)
-      ActiveSupport::Deprecation.warn("human_name has been deprecated, please use model_name.human instead", caller[0,1])
+      ActiveSupport::Deprecation.warn("human_name has been deprecated, please use model_name.human instead", caller[0,5])
       model_name.human(*args)
-    end
-  end
-
-  class Name < String
-    # Transform the model name into a more humane format, using I18n. By default,
-    # it will underscore then humanize the class name (BlogPost.human_name #=> "Blog post").
-    # Specify +options+ with additional translating options.
-    def human(options={})
-      return @human unless @klass.respond_to?(:lookup_ancestors) &&
-                           @klass.respond_to?(:i18n_scope)
-
-      defaults = @klass.lookup_ancestors.map do |klass|
-        klass.model_name.underscore.to_sym
-      end
-
-      defaults << options.delete(:default) if options[:default]
-      defaults << @human
-
-      options.reverse_merge! :scope => [@klass.i18n_scope, :models], :count => 1, :default => defaults
-      I18n.translate(defaults.shift, options)
     end
   end
 end

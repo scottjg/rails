@@ -89,7 +89,42 @@ module TestHelpers
         end
       end
 
+      routes = File.read("#{app_path}/config/routes.rb")
+      if routes =~ /(\n\s*end\s*)\Z/
+        File.open("#{app_path}/config/routes.rb", 'w') do |f|
+          f.puts $` + "\nmatch ':controller(/:action(/:id))(.:format)'\n" + $1
+        end
+      end
+
       add_to_config 'config.action_controller.session = { :key => "_myapp_session", :secret => "bac838a849c1d5c4de2e6a50af826079" }'
+    end
+
+    class Bukkit
+      def initialize(path)
+        @path = path
+      end
+
+      def write(file, string)
+        path = "#{@path}/#{file}"
+        FileUtils.mkdir_p(File.dirname(path))
+        File.open(path, "w") {|f| f.puts string }
+      end
+
+      def delete(file)
+        File.delete("#{@path}/#{file}")
+      end
+    end
+
+    def plugin(name, string = "")
+      dir = "#{app_path}/vendor/plugins/#{name}"
+      FileUtils.mkdir_p(dir)
+      File.open("#{dir}/init.rb", 'w') do |f|
+        f.puts "::#{name.upcase} = 'loaded'"
+        f.puts string
+      end
+      Bukkit.new(dir).tap do |bukkit|
+        yield bukkit if block_given?
+      end
     end
 
     def script(script)
@@ -100,7 +135,7 @@ module TestHelpers
 
     def add_to_config(str)
       environment = File.read("#{app_path}/config/application.rb")
-      if environment =~ /(\n\s*end\s*)\Z/
+      if environment =~ /(\n\s*end\s*end\s*)\Z/
         File.open("#{app_path}/config/application.rb", 'w') do |f|
           f.puts $` + "\n#{str}\n" + $1
         end
@@ -116,6 +151,14 @@ module TestHelpers
 
     def controller(name, contents)
       app_file("app/controllers/#{name}_controller.rb", contents)
+    end
+
+    def use_frameworks(arr)
+      to_remove =  [:actionmailer,
+                    :activemodel,
+                    :activerecord,
+                    :activeresource] - arr
+      $:.reject! {|path| path =~ %r'/(#{to_remove.join('|')})/' }
     end
 
     def boot_rails
@@ -157,9 +200,13 @@ Module.new do
   FileUtils.mkdir(tmp_path)
 
   environment = File.expand_path('../../../../vendor/gems/environment', __FILE__)
+  if File.exist?("#{environment}.rb")
+    require_environment = "-r #{environment}"
+  end
 
-  `#{Gem.ruby} -r #{environment} #{RAILS_FRAMEWORK_ROOT}/railties/bin/rails #{tmp_path('app_template')}`
+  `#{Gem.ruby} #{require_environment} #{RAILS_FRAMEWORK_ROOT}/railties/bin/rails #{tmp_path('app_template')}`
   File.open("#{tmp_path}/app_template/config/boot.rb", 'w') do |f|
-    f.puts "require '#{environment}' ; require 'rails'"
+    f.puts "require '#{environment}'" if require_environment
+    f.puts "require 'rails/all'"
   end
 end

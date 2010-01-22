@@ -1,36 +1,29 @@
-root = File.expand_path('../../..', __FILE__)
 begin
-  require "#{root}/vendor/gems/environment"
+  require File.expand_path('../../../vendor/gems/environment', __FILE__)
 rescue LoadError
-  $:.unshift "#{root}/activesupport/lib"
-  $:.unshift "#{root}/activemodel/lib"
 end
 
-$:.unshift(File.dirname(__FILE__) + '/../lib')
+lib = File.expand_path('../../lib', __FILE__)
+$:.unshift(lib) unless $:.include?('lib') || $:.include?(lib)
+
 $:.unshift(File.dirname(__FILE__) + '/lib')
 $:.unshift(File.dirname(__FILE__) + '/fixtures/helpers')
 $:.unshift(File.dirname(__FILE__) + '/fixtures/alternate_helpers')
 
-begin
-  %w( rack rack/test sqlite3 ).each { |lib| require lib }
-rescue LoadError => e
-  abort e.message
-end
-
 ENV['TMPDIR'] = File.join(File.dirname(__FILE__), 'tmp')
 
 require 'test/unit'
-require 'active_support'
-require 'active_support/test_case'
 require 'abstract_controller'
 require 'action_controller'
 require 'action_view'
 require 'action_view/base'
 require 'action_dispatch'
-require 'active_model'
 require 'fixture_template'
-require 'action_view/test_case'
 require 'active_support/dependencies'
+
+activemodel_path = File.expand_path('../../../activemodel/lib', __FILE__)
+$:.unshift(activemodel_path) if File.directory?(activemodel_path) && !$:.include?(activemodel_path)
+require 'active_model'
 
 begin
   require 'ruby-debug'
@@ -87,19 +80,21 @@ class ActiveSupport::TestCase
   # have been loaded.
   setup_once do
     ActionController::Routing::Routes.draw do |map|
-      map.connect ':controller/:action/:id'
+      match ':controller(/:action(/:id))'
     end
   end
 end
 
 class ActionController::IntegrationTest < ActiveSupport::TestCase
   def self.build_app(routes = nil)
+    ActionDispatch::Flash
     ActionDispatch::MiddlewareStack.new { |middleware|
-      middleware.use "ActionDispatch::StringCoercion"
       middleware.use "ActionDispatch::ShowExceptions"
       middleware.use "ActionDispatch::Callbacks"
       middleware.use "ActionDispatch::ParamsParser"
-      middleware.use "Rack::Head"
+      middleware.use "ActionDispatch::Cookies"
+      middleware.use "ActionDispatch::Flash"
+      middleware.use "ActionDispatch::Head"
     }.build(routes || ActionController::Routing::Routes)
   end
 
@@ -195,26 +190,14 @@ class ::ApplicationController < ActionController::Base
 end
 
 module ActionController
-  module Routing
-    def self.possible_controllers
-      @@possible_controllers ||= []
-    end
-  end
-
   class Base
     include ActionController::Testing
-
-    def self.inherited(klass)
-      name = klass.name.underscore.sub(/_controller$/, '')
-      ActionController::Routing.possible_controllers << name unless name.blank?
-      super
-    end
   end
 
   Base.view_paths = FIXTURE_LOAD_PATH
 
   class TestCase
-    include TestProcess
+    include ActionDispatch::TestProcess
 
     def assert_template(options = {}, message = nil)
       validate_request!

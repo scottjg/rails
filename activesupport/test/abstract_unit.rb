@@ -1,26 +1,18 @@
 ORIG_ARGV = ARGV.dup
-root = File.expand_path('../../..', __FILE__)
+
 begin
-  require "#{root}/vendor/gems/environment"
+  require File.expand_path('../../../vendor/gems/environment', __FILE__)
 rescue LoadError
-  $:.unshift("#{root}/activesupport/lib")
-  $:.unshift("#{root}/activerecord/lib")
 end
 
+lib = File.expand_path("#{File.dirname(__FILE__)}/../lib")
+$:.unshift(lib) unless $:.include?('lib') || $:.include?(lib)
 
 require 'test/unit'
-
-begin
-  require 'mocha'
-rescue LoadError
-  $stderr.puts 'Loading rubygems'
-  require 'rubygems'
-  require 'mocha'
-end
+require 'mocha'
 
 ENV['NO_RELOAD'] = '1'
 require 'active_support'
-require 'active_support/test_case'
 
 # Include shims until we get off 1.8.6
 require 'active_support/ruby/shim'

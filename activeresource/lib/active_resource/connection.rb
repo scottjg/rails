@@ -31,20 +31,21 @@ module ActiveResource
     def initialize(site, format = ActiveResource::Formats::XmlFormat)
       raise ArgumentError, 'Missing site URI' unless site
       @user = @password = nil
+      @uri_parser = URI.const_defined?(:Parser) ? URI::Parser.new : URI
       self.site = site
       self.format = format
     end
 
     # Set URI for remote service.
     def site=(site)
-      @site = site.is_a?(URI) ? site : URI.parse(site)
-      @user = URI.decode(@site.user) if @site.user
-      @password = URI.decode(@site.password) if @site.password
+      @site = site.is_a?(URI) ? site : @uri_parser.parse(site)
+      @user = @uri_parser.unescape(@site.user) if @site.user
+      @password = @uri_parser.unescape(@site.password) if @site.password
     end
 
     # Set the proxy for remote service.
     def proxy=(proxy)
-      @proxy = proxy.is_a?(URI) ? proxy : URI.parse(proxy)
+      @proxy = proxy.is_a?(URI) ? proxy : @uri_parser.parse(proxy)
     end
 
     # Sets the user for remote service.
@@ -102,14 +103,14 @@ module ActiveResource
       with_auth { request(:head, path, build_request_headers(headers, :head, self.site.merge(path))) }
     end
 
-
     private
       # Makes a request to the remote service.
       def request(method, path, *arguments)
-        logger.info "#{method.to_s.upcase} #{site.scheme}://#{site.host}:#{site.port}#{path}" if logger
-        result = nil
-        ms = Benchmark.ms { result = http.send(method, path, *arguments) }
-        logger.info "--> %d %s (%d %.0fms)" % [result.code, result.message, result.body ? result.body.length : 0, ms] if logger
+        result = ActiveSupport::Notifications.instrument("active_resource.request") do |payload|
+          payload[:method]      = method
+          payload[:request_uri] = "#{site.scheme}://#{site.host}:#{site.port}#{path}"
+          payload[:result]      = http.send(method, path, *arguments)
+        end
         handle_response(result)
       rescue Timeout::Error => e
         raise TimeoutError.new(e.message)
@@ -271,10 +272,6 @@ module ActiveResource
 
       def http_format_header(http_method)
         {HTTP_FORMAT_HEADER_NAMES[http_method] => format.mime_type}
-      end
-
-      def logger #:nodoc:
-        Base.logger
       end
 
       def legitimize_auth_type(auth_type)
