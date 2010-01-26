@@ -304,7 +304,7 @@ module ActionView
         end
 
         attributes.merge!(html_options)
-        href = options[:href].nil? ? "#" : options[:href]
+        href = html_options[:href].nil? ? "#" : html_options[:href]
         attributes.merge!(:href => href)
 
         content_tag(:a, name, attributes)
@@ -402,7 +402,10 @@ module ActionView
         attributes = extract_observer_attributes!(options)
         attributes["data-periodical"] = true 
 
-        script_decorator(attributes)
+        # periodically_call_remote does not need data-observe=true
+        attributes.delete('data-observe')
+
+        script_decorator(attributes).html_safe!
       end
 
       # Observes the field with the DOM ID specified by +field_id+ and calls a
@@ -481,7 +484,7 @@ module ActionView
         attributes = extract_observer_attributes!(options)
         attributes.merge!(html_options) if html_options
 
-        script_decorator(attributes)
+        script_decorator(attributes).html_safe!
       end
   
       # Observes the form with the DOM ID specified by +form_id+ and calls a
@@ -493,10 +496,13 @@ module ActionView
       # +observe_field+. The JavaScript variable +value+ available to the
       # <tt>:with</tt> option is set to the serialized form by default.
       def observe_form(name, options = {})
+        html_options = options.delete(:callbacks)
+
         options[:observed] = name
         attributes = extract_observer_attributes!(options)
+        attributes.merge!(html_options) if html_options
 
-        script_decorator(attributes)
+        script_decorator(attributes).html_safe!
       end
 
       def script_decorator(options)
@@ -563,7 +569,7 @@ module ActionView
           attributes = extract_remote_attributes!(options)
           attributes["data-observe"] = true
           attributes["data-observed"] = options.delete(:observed)
-          attributes["data-onobserve"] = create_js_function(callback, "element", "value") if callback
+          attributes["data-onobserve"] = callback if callback
           attributes["data-frequency"] = frequency.to_i if frequency && frequency != 0
           attributes.delete("data-remote")
 
@@ -573,10 +579,6 @@ module ActionView
         def purge_unused_attributes!(attributes)
           attributes.delete_if {|key, value| value.nil? }
           attributes
-        end
-
-        def create_js_function(statements, *arguments)
-          "function(#{arguments.join(", ")}) {#{statements}}"
         end
     end
 
@@ -605,6 +607,13 @@ module ActionView
       end
 
       def observe_field(name, options = {})
+        html = {}
+        set_with_and_condition_attributes(options, html)
+        options.merge!(:callbacks => html)
+        super
+      end
+      
+      def observe_form(name, options = {})
         html = {}
         set_with_and_condition_attributes(options, html)
         options.merge!(:callbacks => html)

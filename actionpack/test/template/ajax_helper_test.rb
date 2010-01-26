@@ -86,6 +86,20 @@ class AjaxHelperTest < AjaxHelperBaseTest
       link_to_remote("Remote outauthor", :url => { :action => "whatnot" }, :position => :bottom)
   end
 
+  test "link_to_remote using both url and href" do
+      expected = '<a href="http://www.example.com/destroy" data-url="http://www.example.com/destroy" data-update-success="posts" data-remote="true">Delete this Post</a>'
+      assert_dom_equal expected, link_to_remote( "Delete this Post",
+                                                  { :update => "posts",   
+                                                    :url    => { :action => "destroy" } },
+                                                    :href   => url_for(:action => "destroy"))
+  end
+
+  test "link_to_remote with update-success and url" do
+    expected = '<a href="#" data-url="http://www.example.com/destroy" data-update-success="posts" data-update-failure="error" data-remote="true">Delete this Post</a>'
+    assert_dom_equal expected, link_to_remote( "Delete this Post", :url    => { :action => "destroy", :id => 5 },
+                                                                   :update => { :success => "posts", :failure => "error" })
+  end
+
   test "link_to_remote with before/after callbacks" do
     assert_dom_equal %(<a href=\"#\" data-remote=\"true\" data-url=\"http://www.example.com/whatnot\" data-onbefore=\"before();\" data-onafter=\"after();\">Remote outauthor</a>),
       link_to_remote("Remote outauthor", :url => { :action => "whatnot" }, :before => "before();", :after => "after();")
@@ -99,6 +113,11 @@ class AjaxHelperTest < AjaxHelperBaseTest
   test "link_to_remote using :condition expression" do
     expected = %(<a href=\"#\" data-remote=\"true\" data-url=\"http://www.example.com/whatnot\" data-condition=\"$('foo').val() == true\">Remote outauthor</a>)
     assert_dom_equal expected, link_to_remote("Remote outauthor", :url => { :action => "whatnot" }, :condition => '$(\'foo\').val() == true')
+  end
+
+  test "link_to_remote using explicit :href" do
+    expected = %(<a href=\"http://www.example.com/testhref\" data-remote=\"true\" data-url=\"http://www.example.com/whatnot\" data-condition=\"$('foo').val() == true\">Remote outauthor</a>)
+    assert_dom_equal expected, link_to_remote("Remote outauthor", {:url => { :action => "whatnot" }, :condition => '$(\'foo\').val() == true'}, :href => 'http://www.example.com/testhref')
   end
 
   test "link_to_remote using :submit" do
@@ -155,14 +174,21 @@ class AjaxHelperTest < AjaxHelperBaseTest
   end
 
   test "periodically_call_remote" do
-    assert_dom_equal %(<script data-url=\"http://www.example.com/mehr_bier\" data-observe=\"true\" data-update-success=\"schremser_bier\" type=\"application/json\" data-periodical=\"true\"></script>),
+    assert_dom_equal %(<script data-url=\"http://www.example.com/mehr_bier\" data-update-success=\"schremser_bier\" type=\"application/json\" data-periodical=\"true\"></script>),
       periodically_call_remote(:update => "schremser_bier", :url => { :action => "mehr_bier" })
   end
 
   test "periodically_call_remote_with_frequency" do
     assert_dom_equal(
-      "<script data-periodical=\"true\" data-url=\"http://www.example.com/\" data-observe=\"true\" type=\"application/json\" data-frequency=\"2\"></script>",
+      "<script data-periodical=\"true\" data-url=\"http://www.example.com/\" type=\"application/json\" data-frequency=\"2\"></script>",
       periodically_call_remote(:frequency => 2)
+    )
+  end
+
+  test "periodically_call_remote_with_function" do
+    assert_dom_equal(
+      "<script data-periodical=\"true\" data-url=\"http://www.example.com/\" type=\"application/json\" data-onobserve=\"alert('test')\" data-frequency=\"2\"></script>",
+      periodically_call_remote(:frequency => 2, :function => "alert('test')")
     )
   end
 
@@ -292,7 +318,7 @@ class AjaxHelperTest < AjaxHelperBaseTest
   end
 
   test "observe_field using function for callback" do
-    assert_dom_equal %(<script data-observed=\"glass\" data-url=\"http://www.example.com/\" data-onobserve=\"function(element, value) {alert('Element changed')}\" data-observe=\"true\" type=\"application/json\" data-frequency=\"300\"></script>),
+    assert_dom_equal %(<script data-observed=\"glass\" data-url=\"http://www.example.com/\" data-observe=\"true\" type=\"application/json\" data-onobserve=\"alert('Element changed')\" data-frequency=\"300\"></script>),
       observe_field("glass", :frequency => 5.minutes, :function => "alert('Element changed')")
   end
 
@@ -302,7 +328,7 @@ class AjaxHelperTest < AjaxHelperBaseTest
   end
 
   test "observe_form using function for callback" do
-    assert_dom_equal %(<script data-observed=\"cart\" data-url=\"http://www.example.com/\" data-onobserve=\"function(element, value) {alert('Form changed')}\" data-observe=\"true\" type=\"application/json\" data-frequency=\"2\"></script>),
+    assert_dom_equal %(<script data-observed=\"cart\" data-url=\"http://www.example.com/\" data-observe=\"true\" type=\"application/json\" data-onobserve=\"alert('Form changed')\" data-frequency=\"2\"></script>),
       observe_form("cart", :frequency => 2, :function => "alert('Form changed')")
   end
 
