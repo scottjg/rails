@@ -7,7 +7,7 @@ window.addEvent('domready', function($) {
 
   var hooks = {
     'form[data-remote="true"]:submit': handleRemote,
-    'a[data-remote="true"]:click': handleRemote
+    'a[data-remote="true"], input[data-remote="true"], input[data-remote-submit="true"]:click': handleRemote
   };
 
   for(var key in hooks) {
