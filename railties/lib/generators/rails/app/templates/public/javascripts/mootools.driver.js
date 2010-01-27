@@ -23,19 +23,42 @@ window.addEvent('domready', function($) {
       this.headers['Accept'] = '*/*';
 
       this.setData();
-      this.addEvent('success', this.handleSuccess.bind(this))
+      this.addRailsEvents();
     },
 
-    handleSuccess: function(responseText) {
-      if(this.options.update) {
-        if(this.options.position) {
-          new Element('div', { 
-            html: responseText
-          }).inject(this.options.update, this.options.position);
-        } else {
-          this.options.update.set('html', responseText);
+    send: function(options) {
+      this.el.fireEvent('rails:before');
+      this.parent(options);
+    },
+
+    addRailsEvents: function() {
+      this.addEvent('request', function() {
+        this.el.fireEvent('rails:after', this.xhr);
+        this.el.fireEvent('rails:loading', this.xhr);
+      });
+
+      this.addEvent('success', function(responseText) {
+        this.el.fireEvent('rails:success', this.xhr);
+
+        if(this.options.update) {
+          if(this.options.position) {
+            new Element('div', {
+              html: responseText
+            }).inject(this.options.update, this.options.position);
+          } else {
+            this.options.update.set('html', responseText);
+          }
         }
-      }
+      });
+
+      this.addEvent('complete', function() {
+        this.el.fireEvent('rails:complete', this.xhr);
+        this.el.fireEvent('rails:loaded', this.xhr);
+      });
+
+      this.addEvent('failure', function() {
+        this.el.fireEvent('rails:failure', this.xhr);
+      });
     },
 
     setData: function() {
