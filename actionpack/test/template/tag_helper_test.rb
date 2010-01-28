@@ -15,6 +15,18 @@ class TagHelperTest < ActionView::TestCase
     assert_match /class="elsewhere"/, str
   end
 
+  def test_tag_options_parses_data_attributes
+    str = tag("p", :data => { :one => 'two', 'three' => :four}, 'data-five' => 'six')
+    assert_match /data-one="two"/, str
+    assert_match /data-three="four"/, str
+    assert_match /data-five="six"/, str
+  end
+
+  def test_tag_options_handles_string_data_attribute
+    str = tag("p", :data => 'one')
+    assert_match /data="one"/, str
+  end
+
   def test_tag_options_rejects_nil_option
     assert_equal "<p />", tag("p", :ignored => nil)
   end

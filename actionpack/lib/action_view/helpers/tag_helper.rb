@@ -25,6 +25,9 @@ module ActionView
       # <tt>readonly</tt>), which you can give a value of true in the +options+ hash. You can use
       # symbols or strings for the attribute names.
       #
+      # You can also pass a hash of "data" options, which will be split into HTML5 data-* style
+      # attributes.
+      #
       # ==== Examples
       #   tag("br")
       #   # => <br />
@@ -34,6 +37,9 @@ module ActionView
       #
       #   tag("input", { :type => 'text', :disabled => true })
       #   # => <input type="text" disabled="disabled" />
+      #
+      #   tag("input", { :data => {:anything => 'goes'} })
+      #   # => <input type="text" data-anything="goes" />
       #
       #   tag("img", { :src => "open & shut.png" })
       #   # => <img src="open &amp; shut.png" />
@@ -133,6 +139,7 @@ module ActionView
 
         def tag_options(options, escape = true)
           unless options.blank?
+            options = parse_data_attrs(options)
             attrs = []
             options.each_pair do |key, value|
               if BOOLEAN_ATTRIBUTES.include?(key)
@@ -145,6 +152,18 @@ module ActionView
             end
             " #{attrs.sort * ' '}".html_safe! unless attrs.empty?
           end
+        end
+
+        def parse_data_attrs(options)
+          data_attrs = options[:data] || options['data']
+          if data_attrs && data_attrs.is_a?(Hash)
+            data_attrs.each_pair do |key, value|
+              options["data-#{key}"] = value
+            end
+            options.delete(:data)
+            options.delete('data')
+          end
+          options
         end
     end
   end
