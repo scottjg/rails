@@ -36,7 +36,7 @@ jQuery(function ($) {
                 data = $('#' + el.attr('data-submit')).serializeArray();
             } else if (el.attr('data-with')) {
 
-                if (e && e.target.tagName.toUpperCase() === 'SCRIPT' && el.attr('data-observed') !== null) {
+                if (e && e.target.tagName.toUpperCase() === 'SCRIPT' && el.attr('data-observed') !== undefined) {
                     var observed = $('#' + el.attr('data-observed'));
                     if(observed[0].tagName.toUpperCase() === 'FORM'){
                         data = el.attr('data-with') + '=' + observed.serialize();
