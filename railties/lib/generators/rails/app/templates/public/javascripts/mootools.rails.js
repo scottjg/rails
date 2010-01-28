@@ -38,7 +38,7 @@ window.addEvent('domready', function() {
           value = observesForm ? observed.toQueryString() : observed.get('value'),
           request = new Request.Rails(observed, {
             observer: this,
-            update: $(this.get('data-update-success'))
+            update: document.id(this.get('data-update-success'))
           });
 
       var observe = function() {
