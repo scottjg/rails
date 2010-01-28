@@ -104,7 +104,7 @@ window.addEvent('domready', function() {
     },
 
     setDisableWith: function() {
-      var button = this.el.get('data-disable-with') || this.el.getElement('[data-disable-with]');
+      var button = this.el.get('data-disable-with') ? this.el : this.el.getElement('[data-disable-with]');
       if(!button) return;
 
       var disableWith = button.get('data-disable-with');
