@@ -62,7 +62,7 @@ jQuery(function ($) {
                     data: data,
                     type: method.toUpperCase(),
                     beforeSend: function (xhr) {
-                        xhr.setRequestHeader("Accept", "text/javascript")
+                        xhr.setRequestHeader("Accept", "text/javascript");
                         el.trigger('rails:after', xhr);
                         el.trigger('rails:loading', xhr);
                     },
@@ -101,7 +101,7 @@ jQuery(function ($) {
             }
             e.preventDefault();
         }
-    }
+    };
 
     /**
      * observe_form, and observe_field
@@ -123,7 +123,7 @@ jQuery(function ($) {
                     $(e).trigger('rails:observe');
                     rails.remote.call(el, event);
                 }
-            }
+            };
         }(observed, frequency, value, e);
 
         setInterval(observe, frequency * 1000);
@@ -154,7 +154,7 @@ jQuery(function ($) {
                 event.target = e;
 
                 rails.remote.call(el, event);
-            }
+            };
         }(e, el), frequency * 1000);
     });
 

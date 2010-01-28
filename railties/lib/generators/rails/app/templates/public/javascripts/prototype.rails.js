@@ -220,8 +220,8 @@ Event.observe(document, 'dom:loaded', function() {
   });
 
   Event.observe(document, 'rails:popup', function(e){
-    var el = getEventProperty(e, 'element');
-    var url = el.readAttribute('href') || el.readAttribute('data-url');
+    var el = getEventProperty(e, 'element'),
+        url = el.readAttribute('href') || el.readAttribute('data-url');
     
     if(el.readAttribute('data-popup') === true){
       window.open(url);
