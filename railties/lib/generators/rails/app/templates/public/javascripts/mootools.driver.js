@@ -1,7 +1,6 @@
 /**
  * TODO: Observer
  * TODO: Periodical
- * TODO: Confirm
  * TODO: Popup
  *
  * TODO: Tests
@@ -76,6 +75,7 @@ window.addEvent('domready', function() {
     },
 
     send: function(options) {
+      if(!this.checkConfirm()) return;
       this.el.fireEvent('rails:before');
       this.parent(options);
     },
@@ -110,6 +110,12 @@ window.addEvent('domready', function() {
       });
 
       this.setDisableWith();
+    },
+
+    checkConfirm: function() {
+      var confirmMessage = this.el.get('data-confirm');
+      if(confirmMessage && !confirm(confirmMessage)) return false;
+      return true;
     },
 
     setDisableWith: function() {
