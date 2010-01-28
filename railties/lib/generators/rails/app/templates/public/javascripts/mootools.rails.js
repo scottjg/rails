@@ -26,7 +26,7 @@ window.addEvent('domready', function() {
       }
     },
     'script[data-periodical="true"]:domready': function() {
-      var frequency = this.get('data-frequency') ? this.get('data-frequency').toInt() : 10;
+      var frequency = this.get('data-frequency') ? this.get('data-frequency').toFloat() : 10;
 
       var request = new Request.Rails(this);
       request.send.periodical(frequency * 1000, request);
