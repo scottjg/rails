@@ -121,9 +121,6 @@ window.addEvent('domready', function() {
 
   });
 
-  Request.Rails.Compat = new Class({
-
-    });
 })(document.id);
 
 /**
