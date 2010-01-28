@@ -1,3 +1,12 @@
+/**
+ * TODO: Observer
+ * TODO: Periodical
+ * TODO: Confirm
+ * TODO: Popup
+ *
+ * TODO: Tests
+ */
+
 window.addEvent('domready', function() {
 
   var handleRemote = function(e) {
