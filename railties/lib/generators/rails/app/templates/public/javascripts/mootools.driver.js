@@ -99,6 +99,30 @@ window.addEvent('domready', function() {
       this.addEvent('failure', function() {
         this.el.fireEvent('rails:failure', this.xhr);
       });
+
+      this.setDisableWith();
+    },
+
+    setDisableWith: function() {
+      var button = this.el.get('data-disable-with') || this.el.getElement('[data-disable-with]');
+      if(!button) return;
+
+      var disableWith = button.get('data-disable-with');
+      if(disableWith) {
+        var enableWith = button.get('value');
+
+        this.el.addEvent('rails:before', function() {
+          button.set({
+            value: disableWith,
+            disabled: true
+          });
+        }).addEvent('rails:complete', function() {
+          button.set({
+            value: enableWith,
+            disabled: false
+          });
+        });
+      }
     },
 
     setData: function() {
