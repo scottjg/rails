@@ -8,7 +8,7 @@ window.addEvent('domready', function() {
 
   var handleRemote = function(e) {
     e.preventDefault();
-    new Request.Rails(this).send();
+    this.railsRequest = new Request.Rails(this).send();
   };
 
   var hooks = {
@@ -56,8 +56,10 @@ window.addEvent('domready', function() {
   };
 
   for(var key in hooks) {
-    var split = key.split(':');
-    $$(split[0]).addEvent(split[1], hooks[key]);
+    if(hooks.hasOwnProperty(key)) {
+      var split = key.split(':');
+      $$(split[0]).addEvent(split[1], hooks[key]);
+    }
   }
 
   /**
@@ -65,7 +67,9 @@ window.addEvent('domready', function() {
    */
   var compatEval = function(el, action) {
     var js = el.get('data-on' + action);
-    if(js) eval(js);
+    if(js) {
+      eval(js);
+    }
   };
 
   $$('form[data-remote="true"], a[data-remote="true"], input[data-remote="true"], script[data-observe="true"]').each(function(el) {
@@ -97,7 +101,9 @@ window.addEvent('domready', function() {
 
     initialize: function(element, options) {
       this.el = element;
-      if(!this.conditionMet()) return;
+      if(!this.conditionMet()) {
+        return;
+      }
 
       this.parent($merge({
         method: this.el.get('method') || this.el.get('data-method') || 'get',
@@ -106,13 +112,15 @@ window.addEvent('domready', function() {
         update: $(this.el.get('data-update-success')),
         position: this.el.get('data-update-position')
       }, options));
-      this.headers['Accept'] = '*/*';
+      this.headers.Accept = '*/*';
 
       this.addRailsEvents();
     },
 
     send: function(options) {
-      if(!this.checkConfirm()) return;
+      if(!this.checkConfirm()) {
+        return;
+      }
       this.setData();
       this.el.fireEvent('rails:before');
       this.parent(options);
@@ -152,13 +160,17 @@ window.addEvent('domready', function() {
 
     checkConfirm: function() {
       var confirmMessage = this.el.get('data-confirm');
-      if(confirmMessage && !confirm(confirmMessage)) return false;
+      if(confirmMessage && !confirm(confirmMessage)) {
+        return false;
+      }
       return true;
     },
 
     setDisableWith: function() {
       var button = this.el.get('data-disable-with') ? this.el : this.el.getElement('[data-disable-with]');
-      if(!button) return;
+      if(!button) {
+        return;
+      }
 
       var disableWith = button.get('data-disable-with');
       if(disableWith) {
@@ -202,7 +214,9 @@ window.addEvent('domready', function() {
 
     conditionMet: function() {
       var condition = this.el.get('data-condition');
-      if(condition) return eval(condition);
+      if(condition) {
+        return eval(condition);
+      }
       return true;
     }
 
