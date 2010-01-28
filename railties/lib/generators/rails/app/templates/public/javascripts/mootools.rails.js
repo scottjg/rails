@@ -1,6 +1,5 @@
 /**
  * TODO: Observer
- * TODO: Periodical
  *
  * TODO: Tests
  */
@@ -20,11 +19,17 @@ window.addEvent('domready', function() {
       var url = this.get('data-url') || this.get('href'),
           options = this.get('data-popup');
 
-      if(options === "true"){
+      if(options === 'true') {
         window.open(url);
       } else {
         window.open(url, options);
       }
+    },
+    'script[data-periodical="true"]:domready': function() {
+      var frequency = this.get('data-frequency') ? this.get('data-frequency').toInt() : 10;
+
+      var request = new Request.Rails(this);
+      request.send.periodical(frequency * 1000, request);
     }
   };
 
