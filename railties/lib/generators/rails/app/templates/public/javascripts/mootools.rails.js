@@ -1,5 +1,5 @@
 /**
- * TODO: Observer
+ * Rails unobtrusive JS proof of concept.
  *
  * TODO: Tests
  */
@@ -30,6 +30,28 @@ window.addEvent('domready', function() {
 
       var request = new Request.Rails(this);
       request.send.periodical(frequency * 1000, request);
+    },
+    'script[data-observe="true"]:domready': function() {
+      var observed = document.id(this.get('data-observed')),
+          frequency = this.get('data-frequency') ? this.get('data-frequency').toFloat() : 10,
+          observesForm = observed.get('tag') == 'form',
+          value = observesForm ? observed.toQueryString() : observed.get('value'),
+          request = new Request.Rails(observed, {
+            observer: this,
+            update: $(this.get('data-update-success'))
+          });
+
+      var observe = function() {
+        var newValue = observesForm ? observed.toQueryString() : observed.get('value');
+
+        if(newValue !== value) {
+          value = newValue;
+          this.fireEvent('rails:observe');
+          request.send();
+        }
+      };
+
+      observe.periodical(frequency * 1000, this);
     }
   };
 
@@ -69,28 +91,29 @@ window.addEvent('domready', function() {
 
     options: {
       update: null,
-      position: null
+      position: null,
+      observer: null
     },
 
-    initialize: function(element) {
+    initialize: function(element, options) {
       this.el = element;
       if(!this.conditionMet()) return;
 
-      this.parent({
+      this.parent($merge({
         method: this.el.get('method') || this.el.get('data-method') || 'get',
         url: this.el.get('action') || this.el.get('data-url') || '#',
         async: this.el.get('data-remote-type') !== 'synchronous',
         update: $(this.el.get('data-update-success')),
         position: this.el.get('data-update-position')
-      });
+      }, options));
       this.headers['Accept'] = '*/*';
 
-      this.setData();
       this.addRailsEvents();
     },
 
     send: function(options) {
       if(!this.checkConfirm()) return;
+      this.setData();
       this.el.fireEvent('rails:before');
       this.parent(options);
     },
@@ -156,13 +179,23 @@ window.addEvent('domready', function() {
     },
 
     setData: function() {
-      if (this.el.get('data-submit')) {
+      if(this.el.get('data-submit')) {
         this.options.data = $(this.el.get('data-submit'));
-      } else if (this.el.get('data-with')) {
-        this.options.data = this.el.get('data-with');
-      } else if(this.el.get('tag') == 'form') {
+      }
+      else if(this.el.get('data-with')) {
+        // Rails 2.x compat. eval (deprecated)
+        this.options.data = eval(this.el.get('data-with'));
+      }
+      else if(this.options.observer && this.options.observer.get('data-with')) {
+        var observerWith = this.options.observer.get('data-with'),
+            value = this.el.get('tag') == 'form' ? this.el.toQueryString() : this.el.get('value');
+
+        this.options.data = observerWith + '=' + value;
+      }
+      else if(this.el.get('tag') == 'form') {
         this.options.data = this.el;
-      } else if(this.el.get('tag') == 'input') {
+      }
+      else if(this.el.get('tag') == 'input') {
         this.options.data = this.el.getParent('form');
       }
     },
