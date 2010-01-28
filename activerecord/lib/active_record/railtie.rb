@@ -23,6 +23,10 @@ module ActiveRecord
       ActiveRecord::Base.default_timezone = :utc
     end
 
+    initializer "active_record.logger" do
+      ActiveRecord::Base.logger ||= ::Rails.logger
+    end
+
     initializer "active_record.set_configs" do |app|
       app.config.active_record.each do |k,v|
         ActiveRecord::Base.send "#{k}=", v
@@ -45,9 +49,9 @@ module ActiveRecord
     # Setup database middleware after initializers have run
     initializer "active_record.initialize_database_middleware" do |app|
       middleware = app.config.middleware
-      if middleware.include?(ActiveRecord::SessionStore)
-        middleware.insert_before ActiveRecord::SessionStore, ActiveRecord::ConnectionAdapters::ConnectionManagement
-        middleware.insert_before ActiveRecord::SessionStore, ActiveRecord::QueryCache
+      if middleware.include?("ActiveRecord::SessionStore")
+        middleware.insert_before "ActiveRecord::SessionStore", ActiveRecord::ConnectionAdapters::ConnectionManagement
+        middleware.insert_before "ActiveRecord::SessionStore", ActiveRecord::QueryCache
       else
         middleware.use ActiveRecord::ConnectionAdapters::ConnectionManagement
         middleware.use ActiveRecord::QueryCache
@@ -69,11 +73,6 @@ module ActiveRecord
           ActiveRecord::Base.clear_reloadable_connections!
         end
       end
-    end
-
-    # TODO: ActiveRecord::Base.logger should delegate to its own config.logger
-    initializer "active_record.logger" do
-      ActiveRecord::Base.logger ||= ::Rails.logger
     end
 
     initializer "active_record.i18n_deprecation" do
