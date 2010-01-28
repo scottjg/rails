@@ -9,7 +9,7 @@ Event.observe(document, 'dom:loaded', function() {
 
     if (el.readAttribute('data-submit')) {
       var submit_el = $(el.readAttribute('data-submit'));
-      if(submit_el !== undefined && submit_el.tagName.toUpperCase() == 'FORM'){
+      if(submit_el !== undefined && submit_el.tagName.toUpperCase() === 'FORM'){
         data = submit_el.serialize();
       }
     } else if (el.readAttribute('data-with')) {
