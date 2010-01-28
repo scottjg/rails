@@ -36,7 +36,7 @@ jQuery(function ($) {
                 data = $('#' + el.attr('data-submit')).serializeArray();
             } else if (el.attr('data-with')) {
 
-                if (e && e.target.tagName.toUpperCase() == 'SCRIPT' && el.attr('data-observed') !== null) {
+                if (e && e.target.tagName.toUpperCase() === 'SCRIPT' && el.attr('data-observed') !== null) {
                     var observed = $('#' + el.attr('data-observed'));
                     if(observed[0].tagName.toUpperCase() === 'FORM'){
                         data = el.attr('data-with') + '=' + observed.serialize();
@@ -47,9 +47,9 @@ jQuery(function ($) {
                     // TODO: remove eval when deprecated
                     data = eval(el.attr('data-with'));
                 }
-            } else if (e && e.target.tagName.toUpperCase() == 'FORM') {
+            } else if (e && e.target.tagName.toUpperCase() === 'FORM') {
                 data = el.serializeArray();
-            } else if (e && e.target.tagName.toUpperCase() == 'INPUT') {
+            } else if (e && e.target.tagName.toUpperCase() === 'INPUT') {
                 data = el.closest('form').serializeArray();
             }
 
@@ -74,7 +74,7 @@ jQuery(function ($) {
                     },
                     complete: function (xhr) {
                         // enable disabled_with buttons
-                        if (el[0].tagName.toUpperCase() == 'FORM') {
+                        if (el[0].tagName.toUpperCase() === 'FORM') {
                           el.children('input[type="button"][data-enable-with],input[type="submit"][data-enable-with]').each(function(i, button){
                             button = $(button);
                             button.attr('value', button.attr('data-enable-with'));
