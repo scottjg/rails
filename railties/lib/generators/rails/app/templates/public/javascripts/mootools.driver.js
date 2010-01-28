@@ -14,6 +14,29 @@ window.addEvent('domready', function() {
     var split = key.split(':');
     $$(split[0]).addEvent(split[1], hooks[key]);
   }
+
+  /**
+   * Rails 2.x compatibility.
+   */
+  var compatEval = function(el, action) {
+    var js = el.get('data-on' + action);
+    if(js) eval(js);
+  };
+
+  $$('form[data-remote="true"], a[data-remote="true"], input[data-remote="true"], script[data-observe="true"]').each(function(el) {
+    ['before', 'after', 'loading', 'loaded', 'complete', 'success', 'failure', 'observe'].each(function(action) {
+      el.addEvent('rails:' + action, function() {
+        compatEval(el, action);
+      });
+    });
+
+    el.addEvent('rails:complete', function(xhr) {
+      compatEval(el, xhr.status);
+      if(el.get('data-periodical') === 'true') {
+        compatEval(el, 'observe');
+      }
+    });
+  });
 });
 
 (function($) {
@@ -97,6 +120,10 @@ window.addEvent('domready', function() {
     }
 
   });
+
+  Request.Rails.Compat = new Class({
+
+    });
 })(document.id);
 
 /**
