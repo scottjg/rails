@@ -77,6 +77,7 @@ module ActiveRecord
     # Attempts to +save+ the record and clears changed attributes if successful.
     def save_with_dirty(*args) #:nodoc:
       if status = save_without_dirty(*args)
+        @previously_changed = changes
         changed_attributes.clear
       end
       status
@@ -84,22 +85,38 @@ module ActiveRecord
 
     # Attempts to <tt>save!</tt> the record and clears changed attributes if successful.
     def save_with_dirty!(*args) #:nodoc:
-      status = save_without_dirty!(*args)
-      changed_attributes.clear
-      status
+      save_without_dirty!(*args).tap do
+        @previously_changed = changes
+        changed_attributes.clear
+      end
     end
 
     # <tt>reload</tt> the record and clears changed attributes.
     def reload_with_dirty(*args) #:nodoc:
-      record = reload_without_dirty(*args)
-      changed_attributes.clear
-      record
+      reload_without_dirty(*args).tap do
+        previously_changed_attributes.clear
+        changed_attributes.clear
+      end
+    end
+
+    # Map of attributes that were changed when the model was saved.
+    #   person.name # => 'bob'
+    #   person.name = 'robert'
+    #   person.save
+    #   person.previous_changes # => {'name' => ['bob, 'robert']}
+    def previous_changes
+      previously_changed_attributes
     end
 
     private
       # Map of change <tt>attr => original value</tt>.
       def changed_attributes
         @changed_attributes ||= {}
+      end
+
+      # Map of fields that were changed when the model was saved
+      def previously_changed_attributes
+        @previously_changed || {}
       end
 
       # Handle <tt>*_changed?</tt> for +method_missing+.
