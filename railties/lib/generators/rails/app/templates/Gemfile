@@ -26,3 +26,6 @@ gem "<%= gem_for_database %>"<% if require_for_database %>, :require => "<%= req
 # group :test do
 #   gem "webrat"
 # end
+# group :console do
+#   gem "wirble"
+# end

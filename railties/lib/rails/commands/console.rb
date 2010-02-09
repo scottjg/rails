@@ -44,6 +44,9 @@ module Rails
       else
         puts "Loading #{Rails.env} environment (Rails #{Rails.version})"
       end
+
+      Bundler.require :console
+
       IRB.start
     end
   end
