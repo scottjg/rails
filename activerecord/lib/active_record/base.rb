@@ -1899,6 +1899,7 @@ MSG
     # #save_with_autosave_associations to be wrapped inside a transaction.
     include AutosaveAssociation, NestedAttributes
     include Aggregations, Transactions, Reflection, Serialization
+    include UniqueConstraints
 
     NilClass.add_whiner(self) if NilClass.respond_to?(:add_whiner)
   end

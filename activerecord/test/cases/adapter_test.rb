@@ -146,4 +146,39 @@ class AdapterTest < ActiveRecord::TestCase
       end
     end
   end
+
+  # tests for db-enforced unique constraints
+  unique_scenarios = {
+    :single         => {:sql => "INSERT INTO unique_items(uniq) VALUES('abc')",
+                        :expected => ['uniq']},
+    :single_named   => {:sql => "INSERT INTO unique_items(uniq_named) VALUES('abc')",
+                        :expected => ['uniq_named']},
+    :multiple       => {:sql => "INSERT INTO unique_items(uniq_1, uniq_2, uniq_3) VALUES('a', 'b', 'c')",
+                        :expected => ['uniq_1', 'uniq_2', 'uniq_3']},
+    :multiple_named => {:sql => "INSERT INTO unique_items(uniq_1_named, uniq_2_named, uniq_3_named) VALUES('a', 'b', 'c')",
+                        :expected => ['uniq_1_named', 'uniq_2_named', 'uniq_3_named']}
+  }
+  unique_scenarios.each do |name, data|
+    test "finds index for unique constraint #{name}" do
+      @connection.execute data[:sql]
+      exception = get_exception(ActiveRecord::RecordNotUnique) do
+        @connection.execute data[:sql]
+      end
+      # postgres can't query indexes until transaction is rolled back
+      @connection.rollback_db_transaction if current_adapter?(:PostgreSQLAdapter)
+      assert_equal data[:expected], @connection.index_for_record_not_unique(exception, 'unique_items').columns
+    end
+  end
+
+  protected
+
+  def get_exception(expected_exception)
+    begin
+      yield
+    rescue expected_exception => e
+      e
+    else
+      flunk "Expected #{expected_exception} exception"
+    end
+  end
 end
