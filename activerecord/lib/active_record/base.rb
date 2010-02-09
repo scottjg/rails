@@ -2180,6 +2180,7 @@ MSG
     # #save_with_autosave_associations to be wrapped inside a transaction.
     include AutosaveAssociation, NestedAttributes
     include Aggregations, Transactions, Reflection, Serialization
+    include UniqueConstraints
 
     # Returns the value of the attribute identified by <tt>attr_name</tt> after it has been typecast (for example,
     # "2004-12-12" in a data column is cast to a date object, like Date.new(2004, 12, 12)).

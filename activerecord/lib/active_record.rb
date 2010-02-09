@@ -70,6 +70,7 @@ module ActiveRecord
     autoload :SessionStore
     autoload :Timestamp
     autoload :Transactions
+    autoload :UniqueConstraints
     autoload :Validations
     autoload :IdentityMap
   end
