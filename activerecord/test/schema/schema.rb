@@ -656,6 +656,21 @@ ActiveRecord::Schema.define do
   end
 
 
+  create_table :unique_items, :force => true do |t|
+    t.string :uniq
+    t.string :uniq_1
+    t.string :uniq_2
+    t.string :uniq_3
+    t.string :uniq_named
+    t.string :uniq_1_named
+    t.string :uniq_2_named
+    t.string :uniq_3_named
+  end
+  add_index :unique_items, [:uniq], :unique => true
+  add_index :unique_items, [:uniq_named], :unique => true, :name => 'unique_named_single_index'
+  add_index :unique_items, [:uniq_1, :uniq_2, :uniq_3], :unique => true
+  add_index :unique_items, [:uniq_1_named, :uniq_2_named, :uniq_3_named], :unique => true, :name => 'unique_named_multiple_index'
+
   except 'SQLite' do
     # fk_test_has_fk should be before fk_test_has_pk
     create_table :fk_test_has_fk, :force => true do |t|

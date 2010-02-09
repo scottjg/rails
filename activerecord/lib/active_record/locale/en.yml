@@ -9,6 +9,8 @@ en:
     errors:
       messages:
         taken: "has already been taken"
+        taken_multiple: "has already been taken for %{context}"
+        taken_generic: "Unique requirement not met"
         record_invalid: "Validation failed: %{errors}"
         # Append your own errors here or at the model/attributes scope.
 
