@@ -9,6 +9,12 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert_equal ["has already been taken"], invalid_item.errors[:uniq]
   end
 
+  def test_validate_uniqueness_on_create!
+    valid_item = UniqueItem.create!(:uniq => 'abc')
+    e = get_unique_exception { UniqueItem.create!(:uniq => 'abc') }
+    assert_equal ["has already been taken"], e.record.errors[:uniq]
+  end
+
   def test_validate_uniqueness_on_save
     item_1 = UniqueItem.create!(:uniq => 'abc')
     item_2 = UniqueItem.create!(:uniq => 'xyz')
@@ -17,11 +23,26 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert_equal ["has already been taken"], item_2.errors[:uniq]
   end
 
+  def test_validate_uniqueness_on_save!
+    item_1 = UniqueItem.create!(:uniq => 'abc')
+    item_2 = UniqueItem.create!(:uniq => 'xyz')
+    item_2.uniq = item_1.uniq
+    e = get_unique_exception { item_2.save! }
+    assert_equal(["has already been taken"], e.record.errors[:uniq])
+  end
+
   def test_validate_uniqueness_on_update
     item_1 = UniqueItem.create!(:uniq => 'abc')
     item_2 = UniqueItem.create!(:uniq => 'xyz')
     item_2.update_attributes(:uniq => item_1.uniq)
     assert_equal ["has already been taken"], item_2.errors[:uniq]
+  end
+
+  def test_validate_uniqueness_on_update!
+    item_1 = UniqueItem.create!(:uniq => 'abc')
+    item_2 = UniqueItem.create!(:uniq => 'xyz')
+    e = get_unique_exception { item_2.update_attributes!(:uniq => item_1.uniq) }
+    assert_equal(["has already been taken"], e.record.errors[:uniq])
   end
 
   def test_validate_uniqueness_multiple
@@ -36,5 +57,14 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     invalid_item = UniqueItem.create(:uniq_1 => 'a', :uniq_2 => 'b', :uniq_3 => 'c')
     assert_equal ["Unique requirement not met"], invalid_item.errors[:base]
   end
+
+  protected
+    def get_unique_exception
+      yield
+    rescue ActiveRecord::RecordInvalid => e
+      e
+    else
+      flunk "Expected ActiveRecord::RecordInvalid exception"
+    end
 
 end
