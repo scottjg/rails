@@ -191,7 +191,12 @@ module ActionController
           rewritten_url << "://" unless rewritten_url.match("://")
           rewritten_url << rewrite_authentication(options)
           rewritten_url << (options[:host] || @request.host)
-          rewritten_url << (options.key?(:port) ? ":#{options.delete(:port)}" : @request.port_string)
+
+          if options.key?(:port)
+            rewritten_url << ":#{options.delete(:port)}"
+          elsif !options[:protocol] || options[:protocol] == @request.protocol.chomp('://')
+            rewritten_url << @request.port_string
+          end
         end
 
         path = rewrite_path(options)
