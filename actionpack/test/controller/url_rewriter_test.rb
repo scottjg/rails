@@ -15,6 +15,15 @@ class UrlRewriterTests < ActionController::TestCase
     )
   end
 
+  def test_no_double_port
+    request  = ActionController::TestRequest.new('HTTP_HOST' => 'test.host:3000')
+    rewriter = ActionController::UrlRewriter.new(request, @params)
+    
+    assert_equal('http://test.host:1271/c/a/i',
+      rewriter.rewrite(:controller => 'c', :action => 'a', :id => 'i', :port => 1271)
+    )
+  end
+
   def test_protocol_with_and_without_separator
     assert_equal('https://test.host/c/a/i',
       @rewriter.rewrite(:protocol => 'https', :controller => 'c', :action => 'a', :id => 'i')
