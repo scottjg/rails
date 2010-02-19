@@ -1242,11 +1242,12 @@ module ActiveResource
         @attributes[key.to_s] =
           case value
             when Array
-              resource = find_or_create_resource_for_collection(key)
+              resource = nil
               value.map do |attrs|
                 if attrs.is_a?(String) || attrs.is_a?(Numeric)
                   attrs.duplicable? ? attrs.dup : attrs
                 else
+                  resource ||= find_or_create_resource_for_collection(key)
                   resource.new(attrs)
                 end
               end
