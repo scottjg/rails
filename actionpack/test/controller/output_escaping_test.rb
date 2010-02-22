@@ -16,4 +16,11 @@ class OutputEscapingTest < ActiveSupport::TestCase
     assert_equal "<", SafeERB::Util.h("<".html_safe)
   end
 
+  test "Standard library's ERB should behave like Matz intended" do
+    assert_equal 'YO&', ERB.new("YO").result + "&"
+  end
+
+  test "SafeERB should behave like the Rails team intended" do
+    assert_equal 'YO&amp;', SafeERB.new("YO").result + "&"
+  end
 end
