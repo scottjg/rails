@@ -175,7 +175,9 @@ module Rails::Generators
     end
 
     def bundle_if_dev_or_edge
-      run "bundle install" if dev_or_edge?
+      require 'rbconfig'
+      bundle_bin = RbConfig::CONFIG['ruby_install_name'].sub('ruby', 'bundle')
+      run "#{bundle_bin} install" if dev_or_edge?
     end
 
     protected
