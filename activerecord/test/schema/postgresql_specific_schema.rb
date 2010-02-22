@@ -1,7 +1,7 @@
 ActiveRecord::Schema.define do
 
   %w(postgresql_arrays postgresql_moneys postgresql_numbers postgresql_times postgresql_network_addresses postgresql_bit_strings
-      postgresql_oids postgresql_xml_data_type defaults geometrics postgresql_timestamp_with_zones).each do |table_name|
+      postgresql_oids postgresql_xml_data_type defaults geometrics postgresql_timestamp_with_zones postgresql_indexes).each do |table_name|
     execute "DROP TABLE  IF EXISTS #{quote_table_name table_name}"
   end
 
@@ -117,5 +117,14 @@ _SQL
 _SQL
 rescue #This version of PostgreSQL either has no XML support or is was not compiled with XML support: skipping table
   end
+
+  execute <<_SQL
+  CREATE TABLE postgresql_indexes (
+    id SERIAL PRIMARY KEY,
+    key1 TEXT,
+    key2 TEXT
+  );
+  CREATE INDEX postgresql_index_without_columns ON postgresql_indexes ((key1<>key2));
+_SQL
 end
 

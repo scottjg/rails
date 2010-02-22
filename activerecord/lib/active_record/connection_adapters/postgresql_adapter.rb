@@ -693,10 +693,11 @@ module ActiveRecord
           AND a.attnum IN (#{indkey.join(",")})
           SQL
 
-          column_names = indkey.map {|attnum| columns[attnum] }
+          column_names = indkey.map {|attnum| columns[attnum] }.compact
+          next if column_names.empty?
           IndexDefinition.new(table_name, index_name, unique, column_names)
 
-        end
+        end.compact
 
         indexes
       end

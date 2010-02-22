@@ -203,6 +203,11 @@ class SchemaDumperTest < ActiveRecord::TestCase
         assert_match %r{t.xml "data"}, output
       end
     end
+
+    def test_schema_dump_skips_indexes_without_columns
+      output = standard_dump
+      assert_no_match %r{postgresql_index_without_columns}, output
+    end
   end
 
   def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
