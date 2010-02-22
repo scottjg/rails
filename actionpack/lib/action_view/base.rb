@@ -160,7 +160,7 @@ module ActionView #:nodoc:
   #
   # See the ActionView::Helpers::PrototypeHelper::GeneratorMethods documentation for more details.
   class Base
-    include Helpers, Partials, ::ERB::Util
+    include Helpers, Partials, ::SafeERB::Util
     extend ActiveSupport::Memoizable
 
     attr_accessor :base_path, :assigns, :template_extension

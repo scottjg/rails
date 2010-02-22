@@ -6,7 +6,7 @@ module ActionView
     # Provides methods to generate HTML tags programmatically when you can't use
     # a Builder. By default, they output XHTML compliant tags.
     module TagHelper
-      include ERB::Util
+      include SafeERB::Util
 
       BOOLEAN_ATTRIBUTES = %w(disabled readonly multiple checked).to_set
       BOOLEAN_ATTRIBUTES.merge(BOOLEAN_ATTRIBUTES.map(&:to_sym))
@@ -103,7 +103,7 @@ module ActionView
       #   escape_once("&lt;&lt; Accept & Checkout")
       #   # => "&lt;&lt; Accept &amp; Checkout"
       def escape_once(html)
-        ActiveSupport::Multibyte.clean(html.to_s).gsub(/[\"><]|&(?!([a-zA-Z]+|(#\d+));)/) { |special| ERB::Util::HTML_ESCAPE[special] }
+        ActiveSupport::Multibyte.clean(html.to_s).gsub(/[\"><]|&(?!([a-zA-Z]+|(#\d+));)/) { |special| SafeERB::Util::HTML_ESCAPE[special] }
       end
 
       private

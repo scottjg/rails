@@ -62,11 +62,11 @@ module ActionController
       
       # The default 500.html uses the h() method.
       def h(text) # :nodoc:
-        ERB::Util.h(text)
+        SafeERB::Util.h(text)
       end
       
       def render_template(filename)
-        ERB.new(File.read(filename)).result(binding)
+        SafeERB.new(File.read(filename)).result(binding)
       end
 
       def log_failsafe_exception(exception)

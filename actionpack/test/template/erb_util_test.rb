@@ -1,16 +1,16 @@
 require 'abstract_unit'
 
 class ErbUtilTest < Test::Unit::TestCase
-  include ERB::Util
+  include SafeERB::Util
 
-  ERB::Util::HTML_ESCAPE.each do |given, expected|
+  SafeERB::Util::HTML_ESCAPE.each do |given, expected|
     define_method "test_html_escape_#{expected.gsub /\W/, ''}" do
       assert_equal expected, html_escape(given)
     end
 
     unless given == '"'
       define_method "test_json_escape_#{expected.gsub /\W/, ''}" do
-        assert_equal ERB::Util::JSON_ESCAPE[given], json_escape(given)
+        assert_equal SafeERB::Util::JSON_ESCAPE[given], json_escape(given)
       end
     end
   end

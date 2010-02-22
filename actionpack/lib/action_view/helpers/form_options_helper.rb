@@ -97,7 +97,7 @@ module ActionView
     #   </select>
     #
     module FormOptionsHelper
-      include ERB::Util
+      include SafeERB::Util
 
       # Create a select tag and a series of contained option tags for the provided object and method.
       # The option currently held by the object will be selected, provided that the object is available.

@@ -1,7 +1,6 @@
 require 'erb'
 
-class ERB
-  undef :set_eoutvar
+class SafeERB < ERB
   def set_eoutvar(compiler, eoutvar = '_erbout')
     compiler.put_cmd = "#{eoutvar}.safe_concat"
     compiler.insert_cmd = "#{eoutvar}.safe_concat"
@@ -39,7 +38,6 @@ class ERB
       end
     end
 
-    undef :h
     alias h html_escape
 
     module_function :html_escape
@@ -84,7 +82,7 @@ module ActiveSupport #:nodoc:
       if value.html_safe?
         super(value)
       else
-        super(ERB::Util.h(value))
+        super(SafeERB::Util.h(value))
       end
     end
     alias << concat
