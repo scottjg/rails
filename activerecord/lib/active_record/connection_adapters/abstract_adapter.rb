@@ -222,6 +222,7 @@ module ActiveRecord
         end
 
         def format_log_entry(message, dump = nil)
+          db = "#{@config[:database]}@#{@config[:host]}" rescue "-"
           if ActiveRecord::Base.colorize_logging
             if @@row_even
               @@row_even = false
@@ -233,9 +234,10 @@ module ActiveRecord
 
             log_entry = "  \e[#{message_color}m#{message}\e[0m   "
             log_entry << "\e[#{dump_color}m%#{String === dump ? 's' : 'p'}\e[0m" % dump if dump
+            log_entry << "  <#{db}>"
             log_entry
           else
-            "%s  %s" % [message, dump]
+            "%s  %s  %s" % [message, dump, db]
           end
         end
     end
