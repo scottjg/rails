@@ -31,19 +31,25 @@ module ActiveRecord
       # See the concrete implementation for details on the expected parameter values.
       def columns(table_name, name = nil) end
 
-      # Creates a new table
+      # Creates a new table with the name +table_name+. +table_name+ may either
+      # be a String or a Symbol.
+      #
       # There are two ways to work with +create_table+.  You can use the block
       # form or the regular form, like this:
       #
       # === Block form
-      #  # create_table() yields a TableDefinition instance
+      #  # create_table() passes a TableDefinition object to the block.
+      #  # This form will not only create the table, but also columns for the
+      #  # table.
       #  create_table(:suppliers) do |t|
       #    t.column :name, :string, :limit => 60
       #    # Other fields here
       #  end
       #
       # === Regular form
+      #  # Creates a table called 'suppliers' with no columns.
       #  create_table(:suppliers)
+      #  # Add a column to 'suppliers'.
       #  add_column(:suppliers, :name, :string, {:limit => 60})
       #
       # The +options+ hash can include the following keys:
@@ -93,7 +99,7 @@ module ActiveRecord
       # See also TableDefinition#column for details on how to create columns.
       def create_table(table_name, options = {})
         table_definition = TableDefinition.new(self)
-        table_definition.primary_key(options[:primary_key] || Base.get_primary_key(table_name)) unless options[:id] == false
+        table_definition.primary_key(options[:primary_key] || Base.get_primary_key(table_name.to_s.singularize)) unless options[:id] == false
 
         yield table_definition
 
@@ -315,7 +321,7 @@ module ActiveRecord
             schema_migrations_table.column :version, :string, :null => false
           end
           add_index sm_table, :version, :unique => true,
-            :name => 'unique_schema_migrations'
+            :name => "#{Base.table_name_prefix}unique_schema_migrations#{Base.table_name_suffix}"
 
           # Backwards-compatibility: if we find schema_info, assume we've
           # migrated up to that point:

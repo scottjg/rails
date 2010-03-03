@@ -56,7 +56,7 @@ module ActionController
         result = recognize_optimized(path, environment) and return result
 
         # Route was not recognized. Try to find out why (maybe wrong verb).
-        allows = HTTP_METHODS.select { |verb| routes.find { |r| r.recognize(path, :method => verb) } }
+        allows = HTTP_METHODS.select { |verb| routes.find { |r| r.recognize(path, environment.merge(:method => verb)) } }
 
         if environment[:method] && !HTTP_METHODS.include?(environment[:method])
           raise NotImplemented.new(*allows)
@@ -98,7 +98,6 @@ module ActionController
           if Array === item
             i += 1
             start = (i == 1)
-            final = (i == list.size)
             tag, sub = item
             if tag == :dynamic
               body += padding + "#{start ? 'if' : 'elsif'} true\n"
@@ -134,6 +133,9 @@ module ActionController
         def write_recognize_optimized!
           tree = segment_tree(routes)
           body = generate_code(tree)
+
+          remove_recognize_optimized!
+
           instance_eval %{
             def recognize_optimized(path, env)
               segments = to_plain_segments(path)
@@ -145,7 +147,20 @@ module ActionController
               end
               nil
             end
-          }, __FILE__, __LINE__
+          }, '(recognize_optimized)', 1
+        end
+
+        def clear_recognize_optimized!
+          remove_recognize_optimized!
+          write_recognize_optimized!
+        end
+
+        def remove_recognize_optimized!
+          if respond_to?(:recognize_optimized)
+            class << self
+              remove_method :recognize_optimized
+            end
+          end
         end
     end
   end

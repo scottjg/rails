@@ -134,7 +134,8 @@ class RailsEnvironment
   def externals
     return [] unless use_externals?
     ext = `svn propget svn:externals "#{root}/vendor/plugins"`
-    ext.reject{ |line| line.strip == '' }.map do |line| 
+    lines = ext.respond_to?(:lines) ? ext.lines : ext
+    lines.reject{ |line| line.strip == '' }.map do |line|
       line.strip.split(/\s+/, 2) 
     end
   end
@@ -267,7 +268,7 @@ class Plugin
     
     def install_using_git(options = {})
       root = rails_env.root
-      install_path = mkdir_p "#{root}/vendor/plugins/#{name}"
+      mkdir_p(install_path = "#{root}/vendor/plugins/#{name}")
       Dir.chdir install_path do
         init_cmd = "git init"
         init_cmd += " -q" if options[:quiet] and not $verbose
@@ -278,8 +279,8 @@ class Plugin
         base_cmd += " #{options[:revision]}" if options[:revision]
         puts base_cmd if $verbose
         if system(base_cmd)
-          puts "removing: .git" if $verbose
-          rm_rf ".git"
+          puts "removing: .git .gitignore" if $verbose
+          rm_rf %w(.git .gitignore)
         else
           rm_rf install_path
         end
@@ -461,11 +462,11 @@ module Commands
         
         o.on("-r", "--root=DIR", String,
              "Set an explicit rails app directory.",
-             "Default: #{@rails_root}") { |@rails_root| self.environment = RailsEnvironment.new(@rails_root) }
+             "Default: #{@rails_root}") { |rails_root| @rails_root = rails_root; self.environment = RailsEnvironment.new(@rails_root) }
         o.on("-s", "--source=URL1,URL2", Array,
-             "Use the specified plugin repositories instead of the defaults.") { |@sources|}
+             "Use the specified plugin repositories instead of the defaults.") { |sources| @sources = sources}
         
-        o.on("-v", "--verbose", "Turn on verbose output.") { |$verbose| }
+        o.on("-v", "--verbose", "Turn on verbose output.") { |verbose| $verbose = verbose }
         o.on("-h", "--help", "Show this help message.") { puts o; exit }
         
         o.separator ""
@@ -552,12 +553,12 @@ module Commands
         o.separator   "Options:"
         o.separator   ""
         o.on(         "-s", "--source=URL1,URL2", Array,
-                      "Use the specified plugin repositories.") {|@sources|}
+                      "Use the specified plugin repositories.") {|sources| @sources = sources}
         o.on(         "--local", 
-                      "List locally installed plugins.") {|@local| @remote = false}
+                      "List locally installed plugins.") {|local| @local, @remote = local, false}
         o.on(         "--remote",
                       "List remotely available plugins. This is the default behavior",
-                      "unless --local is provided.") {|@remote|}
+                      "unless --local is provided.") {|remote| @remote = remote}
       end
     end
     
@@ -598,7 +599,7 @@ module Commands
         o.separator   "Options:"
         o.separator   ""
         o.on(         "-c", "--check", 
-                      "Report status of repository.") { |@sources|}
+                      "Report status of repository.") { |sources| @sources = sources}
       end
     end
     
@@ -689,7 +690,7 @@ module Commands
         o.separator   "Options:"
         o.separator   ""
         o.on(         "-l", "--list", 
-                      "List but don't prompt or add discovered repositories.") { |@list| @prompt = !@list }
+                      "List but don't prompt or add discovered repositories.") { |list| @list, @prompt = list, !@list }
         o.on(         "-n", "--no-prompt", 
                       "Add all new repositories without prompting.") { |v| @prompt = !v }
       end
@@ -901,7 +902,7 @@ class RecursiveHTTPFetcher
   def initialize(urls_to_fetch, level = 1, cwd = ".")
     @level = level
     @cwd = cwd
-    @urls_to_fetch = urls_to_fetch.to_a
+    @urls_to_fetch = RUBY_VERSION >= '1.9' ? urls_to_fetch.lines : urls_to_fetch.to_a
     @quiet = false
   end
 

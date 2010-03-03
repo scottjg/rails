@@ -77,6 +77,24 @@ class StringInflectionsTest < Test::Unit::TestCase
     end
   end
 
+  def test_string_parameterized_normal
+    StringToParameterized.each do |normal, slugged|
+      assert_equal(normal.parameterize, slugged)
+    end
+  end
+
+  def test_string_parameterized_no_separator
+    StringToParameterizeWithNoSeparator.each do |normal, slugged|
+      assert_equal(normal.parameterize(''), slugged)
+    end
+  end
+
+  def test_string_parameterized_underscore
+    StringToParameterizeWithUnderscore.each do |normal, slugged|
+      assert_equal(normal.parameterize('_'), slugged)
+    end
+  end
+
   def test_humanize
     UnderscoreToHuman.each do |underscore, human|
       assert_equal(human, underscore.humanize)
@@ -114,10 +132,12 @@ class StringInflectionsTest < Test::Unit::TestCase
 
     assert_equal "h", s.first
     assert_equal "he", s.first(2)
+    assert_equal "", s.first(0)
 
     assert_equal "o", s.last
     assert_equal "llo", s.last(3)
     assert_equal "hello", s.last(10)
+    assert_equal "", s.last(0)
 
     assert_equal 'x', 'x'.first
     assert_equal 'x', 'x'.first(4)
@@ -191,13 +211,159 @@ class StringInflectionsTest < Test::Unit::TestCase
 
   if RUBY_VERSION < '1.9'
     def test_each_char_with_utf8_string_when_kcode_is_utf8
-      old_kcode, $KCODE = $KCODE, 'UTF8'
-      '€2.99'.each_char do |char|
-        assert_not_equal 1, char.length
-        break
+      with_kcode('UTF8') do
+        '€2.99'.each_char do |char|
+          assert_not_equal 1, char.length
+          break
+        end
       end
-    ensure
-      $KCODE = old_kcode
     end
+  end
+end
+
+class StringBehaviourTest < Test::Unit::TestCase
+  def test_acts_like_string
+    assert 'Bambi'.acts_like_string?
+  end
+end
+
+class CoreExtStringMultibyteTest < ActiveSupport::TestCase
+  UNICODE_STRING = 'こにちわ'
+  ASCII_STRING = 'ohayo'
+  BYTE_STRING = "\270\236\010\210\245"
+
+  def test_core_ext_adds_mb_chars
+    assert UNICODE_STRING.respond_to?(:mb_chars)
+  end
+
+  def test_string_should_recognize_utf8_strings
+    assert UNICODE_STRING.is_utf8?
+    assert ASCII_STRING.is_utf8?
+    assert !BYTE_STRING.is_utf8?
+  end
+
+  if RUBY_VERSION < '1.8.7'
+    def test_core_ext_adds_chars
+      assert UNICODE_STRING.respond_to?(:chars)
+    end
+
+    def test_chars_warns_about_deprecation
+      assert_deprecated("String#chars") do
+        ''.chars
+      end
+    end
+  end
+
+  if RUBY_VERSION < '1.9'
+    def test_mb_chars_returns_self_when_kcode_not_set
+      with_kcode('none') do
+        assert UNICODE_STRING.mb_chars.kind_of?(String)
+      end
+    end
+
+    def test_mb_chars_returns_an_instance_of_the_chars_proxy_when_kcode_utf8
+      with_kcode('UTF8') do
+        assert UNICODE_STRING.mb_chars.kind_of?(ActiveSupport::Multibyte.proxy_class)
+      end
+    end
+  end
+
+  if RUBY_VERSION >= '1.9'
+    def test_mb_chars_returns_string
+      assert UNICODE_STRING.mb_chars.kind_of?(String)
+    end
+  end
+end
+
+class StringBytesizeTest < Test::Unit::TestCase
+  def test_bytesize
+    assert_respond_to 'foo', :bytesize
+    assert_equal 3, 'foo'.bytesize
+  end
+end
+
+class OutputSafetyTest < ActiveSupport::TestCase
+  def setup
+    @string = "hello"
+  end
+
+  test "A string is unsafe by default" do
+    assert !@string.html_safe?
+  end
+
+  test "A string can be marked safe" do
+    @string.html_safe!
+    assert @string.html_safe?
+  end
+
+  test "Marking a string safe returns the string" do
+    assert_equal @string, @string.html_safe!
+  end
+
+  test "Adding a safe string to another safe string returns a safe string" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+    @combination = @other_string + @string
+
+    assert_equal "otherhello", @combination
+    assert @combination.html_safe?
+  end
+
+  test "Adding an unsafe string to a safe string returns an unsafe string" do
+    @other_string = "other".html_safe!
+    @combination = @other_string + @string
+    @other_combination = @string + @other_string
+
+    assert_equal "otherhello", @combination
+    assert_equal "helloother", @other_combination
+
+    assert !@combination.html_safe?
+    assert !@other_combination.html_safe?
+  end
+
+  test "Concatting safe onto unsafe yields unsafe" do
+    @other_string = "other"
+    @string.html_safe!
+
+    @other_string.concat(@string)
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting unsafe onto safe yields unsafe" do
+    @other_string = "other".html_safe!
+
+    @other_string.concat(@string)
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting safe onto safe yields safe" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+
+    @other_string.concat(@string)
+    assert @other_string.html_safe?
+  end
+
+  test "Concatting safe onto unsafe with << yields unsafe" do
+    @other_string = "other"
+    @string.html_safe!
+
+    @other_string << @string
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting unsafe onto safe with << yields unsafe" do
+    @other_string = "other".html_safe!
+
+    @other_string << @string
+    assert !@other_string.html_safe?
+  end
+
+  test "Concatting safe onto safe with << yields safe" do
+    @other_string = "other".html_safe!
+    @string.html_safe!
+
+    @other_string << @string
+    assert @other_string.html_safe?
   end
 end

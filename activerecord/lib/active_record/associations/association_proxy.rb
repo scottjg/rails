@@ -140,6 +140,15 @@ module ActiveRecord
         @target.inspect
       end
 
+      def send(method, *args)
+        if proxy_respond_to?(method)
+          super
+        else
+          load_target
+          @target.send(method, *args)
+        end
+      end
+
       protected
         # Does the association have a <tt>:dependent</tt> option?
         def dependent?
@@ -160,8 +169,8 @@ module ActiveRecord
         end
 
         # Forwards the call to the reflection class.
-        def sanitize_sql(sql)
-          @reflection.klass.send(:sanitize_sql, sql)
+        def sanitize_sql(sql, table_name = @reflection.klass.quoted_table_name)
+          @reflection.klass.send(:sanitize_sql, sql, table_name)
         end
 
         # Assigns the ID of the owner to the corresponding foreign key in +record+.
@@ -171,7 +180,10 @@ module ActiveRecord
             record["#{@reflection.options[:as]}_id"]   = @owner.id unless @owner.new_record?
             record["#{@reflection.options[:as]}_type"] = @owner.class.base_class.name.to_s
           else
-            record[@reflection.primary_key_name] = @owner.id unless @owner.new_record?
+            unless @owner.new_record?
+              primary_key = @reflection.options[:primary_key] || :id
+              record[@reflection.primary_key_name] = @owner.send(primary_key)
+            end
           end
         end
 
@@ -179,6 +191,7 @@ module ActiveRecord
         def merge_options_from_reflection!(options)
           options.reverse_merge!(
             :group   => @reflection.options[:group],
+            :having  => @reflection.options[:having],
             :limit   => @reflection.options[:limit],
             :offset  => @reflection.options[:offset],
             :joins   => @reflection.options[:joins],
@@ -197,10 +210,14 @@ module ActiveRecord
         # Forwards any missing method call to the \target.
         def method_missing(method, *args)
           if load_target
-            if block_given?
-              @target.send(method, *args)  { |*block_args| yield(*block_args) }
+            if @target.respond_to?(method)
+              if block_given?
+                @target.send(method, *args)  { |*block_args| yield(*block_args) }
+              else
+                @target.send(method, *args)
+              end
             else
-              @target.send(method, *args)
+              super
             end
           end
         end
@@ -240,7 +257,7 @@ module ActiveRecord
         # the kind of the class of the associated objects. Meant to be used as
         # a sanity check when you are about to assign an associated record.
         def raise_on_type_mismatch(record)
-          unless record.is_a?(@reflection.klass)
+          unless record.is_a?(@reflection.klass) || record.is_a?(@reflection.class_name.constantize)
             message = "#{@reflection.class_name}(##{@reflection.klass.object_id}) expected, got #{record.class}(##{record.class.object_id})"
             raise ActiveRecord::AssociationTypeMismatch, message
           end

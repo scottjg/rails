@@ -12,10 +12,17 @@ class FormTagHelperTest < ActionView::TestCase
     @controller = @controller.new
   end
 
+  VALID_HTML_ID = /^[A-Za-z][-_:.A-Za-z0-9]*$/ # see http://www.w3.org/TR/html4/types.html#type-name
+
   def test_check_box_tag
     actual = check_box_tag "admin"
     expected = %(<input id="admin" name="admin" type="checkbox" value="1" />)
     assert_dom_equal expected, actual
+  end
+
+  def test_check_box_tag_id_sanitized
+    label_elem = root_elem(check_box_tag("project[2][admin]"))
+    assert_match VALID_HTML_ID, label_elem['id']
   end
 
   def test_form_tag
@@ -32,13 +39,13 @@ class FormTagHelperTest < ActionView::TestCase
 
   def test_form_tag_with_method_put
     actual = form_tag({}, { :method => :put })
-    expected = %(<form action="http://www.example.com" method="post"><div style='margin:0;padding:0'><input type="hidden" name="_method" value="put" /></div>)
+    expected = %(<form action="http://www.example.com" method="post"><div style='margin:0;padding:0;display:inline'><input type="hidden" name="_method" value="put" /></div>)
     assert_dom_equal expected, actual
   end
 
   def test_form_tag_with_method_delete
     actual = form_tag({}, { :method => :delete })
-    expected = %(<form action="http://www.example.com" method="post"><div style='margin:0;padding:0'><input type="hidden" name="_method" value="delete" /></div>)
+    expected = %(<form action="http://www.example.com" method="post"><div style='margin:0;padding:0;display:inline'><input type="hidden" name="_method" value="delete" /></div>)
     assert_dom_equal expected, actual
   end
 
@@ -54,7 +61,7 @@ class FormTagHelperTest < ActionView::TestCase
     __in_erb_template = ''
     form_tag("http://example.com", :method => :put) { concat "Hello world!" }
 
-    expected = %(<form action="http://example.com" method="post"><div style='margin:0;padding:0'><input type="hidden" name="_method" value="put" /></div>Hello world!</form>)
+    expected = %(<form action="http://example.com" method="post"><div style='margin:0;padding:0;display:inline'><input type="hidden" name="_method" value="put" /></div>Hello world!</form>)
     assert_dom_equal expected, output_buffer
   end
 
@@ -62,6 +69,11 @@ class FormTagHelperTest < ActionView::TestCase
     actual = hidden_field_tag "id", 3
     expected = %(<input id="id" name="id" type="hidden" value="3" />)
     assert_dom_equal expected, actual
+  end
+
+  def test_hidden_field_tag_id_sanitized
+    input_elem = root_elem(hidden_field_tag("item[][title]"))
+    assert_match VALID_HTML_ID, input_elem['id']
   end
 
   def test_file_field_tag
@@ -118,6 +130,11 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal expected, actual
   end
 
+  def test_select_tag_id_sanitized
+    input_elem = root_elem(select_tag("project[1]people", "<option>david</option>"))
+    assert_match VALID_HTML_ID, input_elem['id']
+  end
+
   def test_text_area_tag_size_string
     actual = text_area_tag "body", "hello world", "size" => "20x40"
     expected = %(<textarea cols="20" id="body" name="body" rows="40">hello world</textarea>)
@@ -133,6 +150,23 @@ class FormTagHelperTest < ActionView::TestCase
   def test_text_area_tag_should_disregard_size_if_its_given_as_an_integer
     actual = text_area_tag "body", "hello world", :size => 20
     expected = %(<textarea id="body" name="body">hello world</textarea>)
+    assert_dom_equal expected, actual
+  end
+
+  def test_text_area_tag_id_sanitized
+    input_elem = root_elem(text_area_tag("item[][description]"))
+    assert_match VALID_HTML_ID, input_elem['id']
+  end
+
+  def test_text_area_tag_escape_content
+    actual = text_area_tag "body", "<b>hello world</b>", :size => "20x40"
+    expected = %(<textarea cols="20" id="body" name="body" rows="40">&lt;b&gt;hello world&lt;/b&gt;</textarea>)
+    assert_dom_equal expected, actual
+  end
+
+  def test_text_area_tag_unescaped_content
+    actual = text_area_tag "body", "<b>hello world</b>", :size => "20x40", :escape => false
+    expected = %(<textarea cols="20" id="body" name="body" rows="40"><b>hello world</b></textarea>)
     assert_dom_equal expected, actual
   end
 
@@ -184,6 +218,11 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal expected, actual
   end
 
+  def test_text_field_tag_id_sanitized
+    input_elem = root_elem(text_field_tag("item[][title]"))
+    assert_match VALID_HTML_ID, input_elem['id']
+  end
+
   def test_label_tag_without_text
     actual = label_tag "title"
     expected = %(<label for="title">Title</label>)
@@ -208,10 +247,17 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal expected, actual
   end
 
-  def test_boolean_optios
+  def test_label_tag_id_sanitized
+    label_elem = root_elem(label_tag("item[title]"))
+    assert_match VALID_HTML_ID, label_elem['for']
+  end
+
+  def test_boolean_options
     assert_dom_equal %(<input checked="checked" disabled="disabled" id="admin" name="admin" readonly="readonly" type="checkbox" value="1" />), check_box_tag("admin", 1, true, 'disabled' => true, :readonly => "yes")
     assert_dom_equal %(<input checked="checked" id="admin" name="admin" type="checkbox" value="1" />), check_box_tag("admin", 1, true, :disabled => false, :readonly => nil)
-    assert_dom_equal %(<select id="people" multiple="multiple" name="people"><option>david</option></select>), select_tag("people", "<option>david</option>", :multiple => true)
+    assert_dom_equal %(<input type="checkbox" />), tag(:input, :type => "checkbox", :checked => false)
+    assert_dom_equal %(<select id="people" multiple="multiple" name="people[]"><option>david</option></select>), select_tag("people", "<option>david</option>", :multiple => true)
+    assert_dom_equal %(<select id="people_" multiple="multiple" name="people[]"><option>david</option></select>), select_tag("people[]", "<option>david</option>", :multiple => true)
     assert_dom_equal %(<select id="people" name="people"><option>david</option></select>), select_tag("people", "<option>david</option>", :multiple => nil)
   end
 
@@ -223,22 +269,36 @@ class FormTagHelperTest < ActionView::TestCase
 
   def test_submit_tag
     assert_dom_equal(
-      %(<input name='commit' type='submit' value='Save' onclick="this.setAttribute('originalValue', this.value);this.disabled=true;this.value='Saving...';alert('hello!');result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue'); this.disabled = false };return result;" />),
+      %(<input name='commit' onclick="if (window.hiddenCommit) { window.hiddenCommit.setAttribute('value', this.value); }else { hiddenCommit = document.createElement('input');hiddenCommit.type = 'hidden';hiddenCommit.value = this.value;hiddenCommit.name = this.name;this.form.appendChild(hiddenCommit); }this.setAttribute('originalValue', this.value);this.disabled = true;this.value='Saving...';alert('hello!');result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue');this.disabled = false; }return result;" type="submit" value="Save" />),
       submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
     )
   end
 
   def test_submit_tag_with_no_onclick_options
     assert_dom_equal(
-      %(<input name='commit' type='submit' value='Save' onclick="this.setAttribute('originalValue', this.value);this.disabled=true;this.value='Saving...';result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue'); this.disabled = false };return result;" />),
+      %(<input name='commit' onclick="if (window.hiddenCommit) { window.hiddenCommit.setAttribute('value', this.value); }else { hiddenCommit = document.createElement('input');hiddenCommit.type = 'hidden';hiddenCommit.value = this.value;hiddenCommit.name = this.name;this.form.appendChild(hiddenCommit); }this.setAttribute('originalValue', this.value);this.disabled = true;this.value='Saving...';result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue');this.disabled = false; }return result;" type="submit" value="Save" />),
       submit_tag("Save", :disable_with => "Saving...")
     )
   end
 
   def test_submit_tag_with_confirmation
     assert_dom_equal(
-      %(<input name='commit' type='submit' value='Save' onclick="return confirm('Are you sure?');"/>),
+      %(<input name='commit' type='submit' value='Save' onclick="if (!confirm('Are you sure?')) return false; return true;"/>),
       submit_tag("Save", :confirm => "Are you sure?")
+    )
+  end
+
+  def test_submit_tag_with_confirmation_and_with_disable_with
+    assert_dom_equal(
+      %(<input name="commit" onclick="if (!confirm('Are you sure?')) return false; if (window.hiddenCommit) { window.hiddenCommit.setAttribute('value', this.value); }else { hiddenCommit = document.createElement('input');hiddenCommit.type = 'hidden';hiddenCommit.value = this.value;hiddenCommit.name = this.name;this.form.appendChild(hiddenCommit); }this.setAttribute('originalValue', this.value);this.disabled = true;this.value='Saving...';result = (this.form.onsubmit ? (this.form.onsubmit() ? this.form.submit() : false) : this.form.submit());if (result == false) { this.value = this.getAttribute('originalValue');this.disabled = false; }return result;" type="submit" value="Save" />),
+      submit_tag("Save", :disable_with => "Saving...", :confirm => "Are you sure?")
+    )
+  end
+
+  def test_image_submit_tag_with_confirmation
+    assert_dom_equal(
+      %(<input type="image" src="/images/save.gif" onclick="return confirm('Are you sure?');"/>),
+      image_submit_tag("save.gif", :confirm => "Are you sure?")
     )
   end
 
@@ -264,9 +324,21 @@ class FormTagHelperTest < ActionView::TestCase
 
     expected = %(<fieldset>Hello world!</fieldset>)
     assert_dom_equal expected, output_buffer
+
+    self.output_buffer = ''
+    field_set_tag('', :class => 'format') { concat "Hello world!" }
+
+    expected = %(<fieldset class="format">Hello world!</fieldset>)
+    assert_dom_equal expected, output_buffer
   end
 
   def protect_against_forgery?
     false
+  end
+
+  private
+
+  def root_elem(rendered_content)
+    HTML::Document.new(rendered_content).root.children[0]
   end
 end

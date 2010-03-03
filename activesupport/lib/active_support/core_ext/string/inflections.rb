@@ -1,4 +1,4 @@
-require 'active_support/inflector'
+require 'active_support/inflector' unless defined?(ActiveSupport::Inflector)
 
 module ActiveSupport #:nodoc:
   module CoreExtensions #:nodoc:
@@ -85,6 +85,25 @@ module ActiveSupport #:nodoc:
         #   "Inflections".demodulize                                       # => "Inflections"
         def demodulize
           Inflector.demodulize(self)
+        end
+
+        # Replaces special characters in a string so that it may be used as part of a 'pretty' URL.
+        # 
+        # ==== Examples
+        #
+        #   class Person
+        #     def to_param
+        #       "#{id}-#{name.parameterize}"
+        #     end
+        #   end
+        # 
+        #   @person = Person.find(1)
+        #   # => #<Person id: 1, name: "Donald E. Knuth">
+        # 
+        #   <%= link_to(@person.name, person_path %>
+        #   # => <a href="/person/1-donald-e-knuth">Donald E. Knuth</a>
+        def parameterize(sep = '-')
+          Inflector.parameterize(self, sep)
         end
 
         # Creates the name of a table like Rails does for models to table names. This method

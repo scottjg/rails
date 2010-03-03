@@ -60,10 +60,10 @@ module ActiveRecord
           @reflection.klass.find(*args)
         end
       end
-      
+
       # Fetches the first one using SQL if possible.
       def first(*args)
-        if fetch_first_or_last_using_find? args
+        if fetch_first_or_last_using_find?(args)
           find(:first, *args)
         else
           load_target unless loaded?
@@ -73,7 +73,7 @@ module ActiveRecord
 
       # Fetches the last one using SQL if possible.
       def last(*args)
-        if fetch_first_or_last_using_find? args
+        if fetch_first_or_last_using_find?(args)
           find(:last, *args)
         else
           load_target unless loaded?
@@ -83,7 +83,11 @@ module ActiveRecord
 
       def to_ary
         load_target
-        @target.to_ary
+        if @target.is_a?(Array)
+          @target.to_ary
+        else
+          Array(@target)
+        end
       end
 
       def reset
@@ -108,10 +112,8 @@ module ActiveRecord
         result = true
         load_target if @owner.new_record?
 
-        @owner.transaction do
+        transaction do
           flatten_deeper(records).each do |record|
-            record = @reflection.klass.new(record) if @reflection.options[:accessible] && record.is_a?(Hash)
-
             raise_on_type_mismatch(record)
             add_record_to_target_with_callbacks(record) do |r|
               result &&= insert_record(record) unless @owner.new_record?
@@ -125,7 +127,24 @@ module ActiveRecord
       alias_method :push, :<<
       alias_method :concat, :<<
 
+      # Starts a transaction in the association class's database connection.
+      #
+      #   class Author < ActiveRecord::Base
+      #     has_many :books
+      #   end
+      #
+      #   Author.find(:first).books.transaction do
+      #     # same effect as calling Book.transaction
+      #   end
+      def transaction(*args)
+        @reflection.klass.transaction(*args) do
+          yield
+        end
+      end
+
       # Remove all records from this association
+      #
+      # See delete for more info.
       def delete_all
         load_target
         delete(@target)
@@ -169,23 +188,32 @@ module ActiveRecord
         end
       end
 
-
-      # Remove +records+ from this association.  Does not destroy +records+.
+      # Removes +records+ from this association calling +before_remove+ and
+      # +after_remove+ callbacks.
+      #
+      # This method is abstract in the sense that +delete_records+ has to be
+      # provided by descendants. Note this method does not imply the records
+      # are actually removed from the database, that depends precisely on
+      # +delete_records+. They are in any case removed from the collection.
       def delete(*records)
-        records = flatten_deeper(records)
-        records.each { |record| raise_on_type_mismatch(record) }
-        
-        @owner.transaction do
-          records.each { |record| callback(:before_remove, record) }
-          
-          old_records = records.reject {|r| r.new_record? }
+        remove_records(records) do |records, old_records|
           delete_records(old_records) if old_records.any?
-          
-          records.each do |record|
-            @target.delete(record)
-            callback(:after_remove, record)
-          end
+          records.each { |record| @target.delete(record) }
         end
+      end
+
+      # Destroy +records+ and remove them from this association calling
+      # +before_remove+ and +after_remove+ callbacks.
+      #
+      # Note that this method will _always_ remove records from the database
+      # ignoring the +:dependent+ option.
+      def destroy(*records)
+        records = find(records) if records.any? {|record| record.kind_of?(Fixnum) || record.kind_of?(String)}
+        remove_records(records) do |records, old_records|
+          old_records.each { |record| record.destroy }
+        end
+
+        load_target
       end
 
       # Removes all records from this association.  Returns +self+ so method calls may be chained.
@@ -200,15 +228,16 @@ module ActiveRecord
 
         self
       end
-      
-      def destroy_all
-        @owner.transaction do
-          each { |record| record.destroy }
-        end
 
+      # Destory all the records from this association.
+      #
+      # See destroy for more info.
+      def destroy_all
+        load_target
+        destroy(@target)
         reset_target!
       end
-      
+
       def create(attrs = {})
         if attrs.is_a?(Array)
           attrs.collect { |attr| create(attr) }
@@ -240,6 +269,8 @@ module ActiveRecord
       def size
         if @owner.new_record? || (loaded? && !@reflection.options[:uniq])
           @target.size
+        elsif !loaded? && @reflection.options[:group]
+          load_target.size
         elsif !loaded? && !@reflection.options[:uniq] && @target.is_a?(Array)
           unsaved_records = @target.select { |r| r.new_record? }
           unsaved_records.size + count_records
@@ -286,17 +317,13 @@ module ActiveRecord
       # Replace this collection with +other_array+
       # This will perform a diff and delete/add only records that have changed.
       def replace(other_array)
-        other_array.map! do |val|
-          val.is_a?(Hash) ? @reflection.klass.new(val) : val
-        end if @reflection.options[:accessible]
-
         other_array.each { |val| raise_on_type_mismatch(val) }
 
         load_target
         other   = other_array.size < 100 ? other_array : other_array.to_set
         current = @target.size < 100 ? @target : @target.to_set
 
-        @owner.transaction do
+        transaction do
           delete(@target.select { |v| !other.include?(v) })
           concat(other_array.select { |v| !current.include?(v) })
         end
@@ -307,6 +334,10 @@ module ActiveRecord
         load_target if @reflection.options[:finder_sql] && !loaded?
         return @target.include?(record) if loaded?
         exists?(record)
+      end
+
+      def proxy_respond_to?(method, include_private = false)
+        super || @reflection.klass.respond_to?(method, include_private)
       end
 
       protected
@@ -377,7 +408,9 @@ module ActiveRecord
         def create_record(attrs)
           attrs.update(@reflection.options[:conditions]) if @reflection.options[:conditions].is_a?(Hash)
           ensure_owner_is_not_new
-          record = @reflection.klass.send(:with_scope, :create => construct_scope[:create]) { @reflection.klass.new(attrs) }
+          record = @reflection.klass.send(:with_scope, :create => construct_scope[:create]) do
+            @reflection.build_association(attrs)
+          end
           if block_given?
             add_record_to_target_with_callbacks(record) { |*block_args| yield(*block_args) }
           else
@@ -387,7 +420,7 @@ module ActiveRecord
 
         def build_record(attrs)
           attrs.update(@reflection.options[:conditions]) if @reflection.options[:conditions].is_a?(Hash)
-          record = @reflection.klass.new(attrs)
+          record = @reflection.build_association(attrs)
           if block_given?
             add_record_to_target_with_callbacks(record) { |*block_args| yield(*block_args) }
           else
@@ -402,6 +435,18 @@ module ActiveRecord
           @target << record unless @reflection.options[:uniq] && @target.include?(record)
           callback(:after_add, record)
           record
+        end
+
+        def remove_records(*records)
+          records = flatten_deeper(records)
+          records.each { |record| raise_on_type_mismatch(record) }
+
+          transaction do
+            records.each { |record| callback(:before_remove, record) }
+            old_records = records.reject { |r| r.new_record? }
+            yield(records, old_records)
+            records.each { |record| callback(:after_remove, record) }
+          end
         end
 
         def callback(method, record)
@@ -422,7 +467,8 @@ module ActiveRecord
         end
 
         def fetch_first_or_last_using_find?(args)
-          args.first.kind_of?(Hash) || !(loaded? || @owner.new_record? || @reflection.options[:finder_sql] || !@target.blank? || args.first.kind_of?(Integer))
+          args.first.kind_of?(Hash) || !(loaded? || @owner.new_record? || @reflection.options[:finder_sql] ||
+                                         @target.any? { |record| record.new_record? } || args.first.kind_of?(Integer))
         end
     end
   end

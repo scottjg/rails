@@ -17,7 +17,10 @@ module ActiveRecord
         # Returns the number of records in this collection.
         #
         # If the association has a counter cache it gets that value. Otherwise
-        # a count via SQL is performed, bounded to <tt>:limit</tt> if there's one.
+        # it will attempt to do a count via SQL, bounded to <tt>:limit</tt> if
+        # there's one.  Some configuration options like :group make it impossible
+        # to do a SQL count, in those cases the array count will be used.
+        #
         # That does not depend on whether the collection has already been loaded
         # or not. The +size+ method is the one that takes the loaded flag into
         # account and delegates to +count_records+ if needed.
@@ -53,11 +56,12 @@ module ActiveRecord
           "#{@reflection.name}_count"
         end
 
-        def insert_record(record)
+        def insert_record(record, force = false, validate = true)
           set_belongs_to_association_for(record)
-          record.save
+          force ? record.save! : record.save(validate)
         end
 
+        # Deletes the records according to the <tt>:dependent</tt> option.
         def delete_records(records)
           case @reflection.options[:dependent]
             when :destroy
@@ -70,6 +74,7 @@ module ActiveRecord
                 "#{@reflection.primary_key_name} = NULL", 
                 "#{@reflection.primary_key_name} = #{owner_quoted_id} AND #{@reflection.klass.primary_key} IN (#{ids})"
               )
+              @owner.class.update_counters(@owner.id, cached_counter_attribute_name => -records.size) if has_cached_counter?
           end
         end
 

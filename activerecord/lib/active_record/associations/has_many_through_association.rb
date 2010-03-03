@@ -9,22 +9,32 @@ module ActiveRecord
       alias_method :new, :build
 
       def create!(attrs = nil)
-        @reflection.klass.transaction do
-          self << (object = attrs ? @reflection.klass.send(:with_scope, :create => attrs) { @reflection.klass.create! } : @reflection.klass.create!)
+        transaction do
+          self << (object = attrs ? @reflection.klass.send(:with_scope, :create => attrs) { @reflection.create_association! } : @reflection.create_association!)
           object
         end
       end
 
       def create(attrs = nil)
-        @reflection.klass.transaction do
-          self << (object = attrs ? @reflection.klass.send(:with_scope, :create => attrs) { @reflection.klass.create } : @reflection.klass.create)
+        transaction do
+          object = if attrs
+            @reflection.klass.send(:with_scope, :create => attrs) {
+              @reflection.create_association
+            }
+          else
+            @reflection.create_association
+          end
+          raise_on_type_mismatch(object)
+          add_record_to_target_with_callbacks(object) do |r|
+            insert_record(object, false)
+          end
           object
         end
       end
 
       # Returns the size of the collection by executing a SELECT COUNT(*) query if the collection hasn't been loaded and
-      # calling collection.size if it has. If it's more likely than not that the collection does have a size larger than zero
-      # and you need to fetch that collection afterwards, it'll take one less SELECT query if you use length.
+      # calling collection.size if it has. If it's more likely than not that the collection does have a size larger than zero,
+      # and you need to fetch that collection afterwards, it'll take one fewer SELECT query if you use #length.
       def size
         return @owner.send(:read_attribute, cached_counter_attribute_name) if has_cached_counter?
         return @target.size if loaded?
@@ -32,23 +42,32 @@ module ActiveRecord
       end
       
       protected
+        def target_reflection_has_associated_record?
+          if @reflection.through_reflection.macro == :belongs_to && @owner[@reflection.through_reflection.primary_key_name].blank?
+            false
+          else
+            true
+          end
+        end
+
         def construct_find_options!(options)
           options[:select]  = construct_select(options[:select])
           options[:from]  ||= construct_from
           options[:joins]   = construct_joins(options[:joins])
-          options[:include] = @reflection.source_reflection.options[:include] if options[:include].nil?
+          options[:include] = @reflection.source_reflection.options[:include] if options[:include].nil? && @reflection.source_reflection.options[:include]
         end
         
-        def insert_record(record, force=true)
+        def insert_record(record, force = true, validate = true)
           if record.new_record?
             if force
               record.save!
             else
-              return false unless record.save
+              return false unless record.save(validate)
             end
           end
-          klass = @reflection.through_reflection.klass
-          @owner.send(@reflection.through_reflection.name).proxy_target << klass.send(:with_scope, :create => construct_join_attributes(record)) { klass.create! }
+          through_reflection = @reflection.through_reflection
+          klass = through_reflection.klass
+          @owner.send(@reflection.through_reflection.name).proxy_target << klass.send(:with_scope, :create => construct_join_attributes(record)) { through_reflection.create_association! }
         end
 
         # TODO - add dependent option support
@@ -60,6 +79,7 @@ module ActiveRecord
         end
 
         def find_target
+          return [] unless target_reflection_has_associated_record?
           @reflection.klass.find(:all,
             :select     => construct_select,
             :conditions => construct_conditions,
@@ -86,7 +106,7 @@ module ActiveRecord
         # Construct attributes for :through pointing to owner and associate.
         def construct_join_attributes(associate)
           # TODO: revist this to allow it for deletion, supposing dependent option is supported
-          raise ActiveRecord::HasManyThroughCantAssociateThroughHasManyReflection.new(@owner, @reflection) if @reflection.source_reflection.macro == :has_many
+          raise ActiveRecord::HasManyThroughCantAssociateThroughHasOneOrManyReflection.new(@owner, @reflection) if [:has_one, :has_many].include?(@reflection.source_reflection.macro)
           join_attributes = construct_owner_attributes(@reflection.through_reflection).merge(@reflection.source_reflection.primary_key_name => associate.id)
           if @reflection.options[:source_type]
             join_attributes.merge!(@reflection.source_reflection.options[:foreign_type] => associate.class.base_class.name.to_s)
@@ -101,6 +121,8 @@ module ActiveRecord
               "#{as}_type" => reflection.klass.quote_value(
                 @owner.class.base_class.name.to_s,
                 reflection.klass.columns_hash["#{as}_type"]) }
+          elsif reflection.macro == :belongs_to
+            { reflection.klass.primary_key => @owner[reflection.primary_key_name] }
           else
             { reflection.primary_key_name => owner_quoted_id }
           end
@@ -138,7 +160,7 @@ module ActiveRecord
             end
           else
             reflection_primary_key = @reflection.source_reflection.primary_key_name
-            source_primary_key     = @reflection.klass.primary_key
+            source_primary_key     = @reflection.through_reflection.klass.primary_key
             if @reflection.source_reflection.options[:as]
               polymorphic_join = "AND %s.%s = %s" % [
                 @reflection.quoted_table_name, "#{@reflection.source_reflection.options[:as]}_type",
@@ -148,9 +170,9 @@ module ActiveRecord
           end
 
           "INNER JOIN %s ON %s.%s = %s.%s %s #{@reflection.options[:joins]} #{custom_joins}" % [
-            @reflection.through_reflection.table_name,
-            @reflection.table_name, reflection_primary_key,
-            @reflection.through_reflection.table_name, source_primary_key,
+            @reflection.through_reflection.quoted_table_name,
+            @reflection.quoted_table_name, reflection_primary_key,
+            @reflection.through_reflection.quoted_table_name, source_primary_key,
             polymorphic_join
           ]
         end
