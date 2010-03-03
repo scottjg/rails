@@ -138,6 +138,9 @@ module ActiveRecord #:nodoc:
     end
   end
 
+  class IllegalMassAssignmentError < ActiveRecordError #:nodoc:
+  end
+
   # Raised when there are multiple errors while doing a mass assignment through the +attributes+
   # method. The exception has an +errors+ property that contains an array of AttributeAssignmentError
   # objects, each corresponding to the error while assigning to an attribute.
@@ -464,6 +467,12 @@ module ActiveRecord #:nodoc:
     # Specify whether or not to use timestamps for migration numbers
     cattr_accessor :timestamped_migrations , :instance_writer => false
     @@timestamped_migrations = true
+
+    # Instead of just dropping attributes that are protected via attr_protected and
+    # attr_accessible from mass assignment, raise an IllegalMassAssignmentError
+    # false by default.
+    @@raise_on_illegal_mass_assignment = false
+    cattr_accessor :raise_on_illegal_mass_assignment
 
     # Determine whether to store the full constant name including namespace when using STI
     superclass_delegating_accessor :store_full_sti_class
@@ -2635,6 +2644,9 @@ module ActiveRecord #:nodoc:
 
         if removed_attributes.any?
           log_protected_attribute_removal(removed_attributes)
+        if raise_on_illegal_mass_assignment
+          raise IllegalMassAssignmentError.new("Illegal mass assignment of #{removed_attributes.join(", ")}")
+        end
         end
 
         safe_attributes
