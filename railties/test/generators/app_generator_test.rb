@@ -98,6 +98,19 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
   end
 
+  def test_fixtures_not_added_if_skip_activerecord_is_given
+    run_generator [destination_root, "--skip-activerecord"]
+    assert_no_file "test/fixtures"
+    assert_file "test/test_helper.rb", %Q[ENV["RAILS_ENV"] = "test"
+require File.expand_path('../../config/environment', __FILE__)
+require 'rails/test_help'
+
+class ActiveSupport::TestCase
+  # Add more helper methods to be used by all tests here...
+end
+]
+  end
+
   def test_prototype_and_test_unit_are_added_by_default
     run_generator
     assert_file "public/javascripts/prototype.js"

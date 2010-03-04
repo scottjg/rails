@@ -154,7 +154,16 @@ module Rails::Generators
 
     def create_test_files
       return if options[:skip_testunit]
-      directory "test"
+      empty_directory "test"
+
+      inside "test" do
+        template "test_helper.rb"
+        directory "fixtures" if !options[:skip_activerecord]
+        directory "functional"
+        directory "integration"
+        directory "performance"
+        directory "unit"
+      end
     end
 
     def create_tmp_files
