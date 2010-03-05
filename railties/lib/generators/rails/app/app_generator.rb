@@ -175,7 +175,7 @@ module Rails::Generators
     end
 
     def bundle_if_dev_or_edge
-      bundle_command = Thor::Util.ruby_command.sub(%r[ruby(?=[^/]*$)], 'bundle')
+      bundle_command = File.basename(Thor::Util.ruby_command).sub(/ruby/, 'bundle')
       run "#{bundle_command} install" if dev_or_edge?
     end
 
