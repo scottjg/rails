@@ -115,7 +115,7 @@ module ActionDispatch
                 raise ArgumentError, "missing :action"
               end
 
-              defaults
+              defaults.merge(@options[:defaults] || {})
             end
           end
 
