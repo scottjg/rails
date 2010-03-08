@@ -149,6 +149,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       match '/info' => 'projects#info', :as => 'info'
 
+      match '/defaults' => 'projects#info', :as => 'defaults', :defaults => { :format => 'json' }
+
       namespace :admin do
         scope '(:locale)', :locale => /en|pl/ do
           resources :descriptions
@@ -735,6 +737,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       get '/admin/descriptions/1'
       assert_equal 'admin/descriptions#show', @response.body
+    end
+  end
+
+  def test_defaults
+    with_test_routes do
+      get '/defaults'
+      assert_equal 'json', @request.env['action_dispatch.request.path_parameters'][:format]
     end
   end
 
