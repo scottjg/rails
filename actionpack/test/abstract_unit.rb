@@ -16,7 +16,6 @@ require 'test/unit'
 require 'abstract_controller'
 require 'action_controller'
 require 'action_view'
-require 'action_view/base'
 require 'action_dispatch'
 require 'fixture_template'
 require 'active_support/dependencies'
@@ -170,8 +169,7 @@ end
 # Temporary base class
 class Rack::TestCase < ActionController::IntegrationTest
   setup do
-    ActionController::Base.session_options[:key] = "abc"
-    ActionController::Base.session_options[:secret] = ("*" * 30)
+    ActionController::Base.config.secret = "abc" * 30
   end
 
   def self.testing(klass = nil)

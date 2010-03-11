@@ -29,6 +29,7 @@ module ActionController
     include ActionController::Verification
     include ActionController::RequestForgeryProtection
     include ActionController::Streaming
+    include ActionController::RecordIdentifier
     include ActionController::HttpAuthentication::Basic::ControllerMethods
     include ActionController::HttpAuthentication::Digest::ControllerMethods
 
@@ -58,5 +59,9 @@ module ActionController
       filter
     end
 
+    ActionController.run_base_hooks(self)
+
   end
 end
+
+require "action_controller/deprecated/base"

@@ -3,6 +3,7 @@ require "action_controller"
 require "action_view/railtie"
 require "active_support/core_ext/class/subclasses"
 require "active_support/deprecation/proxy_wrappers"
+require "active_support/deprecation"
 
 module ActionController
   class Railtie < Rails::Railtie
@@ -11,45 +12,63 @@ module ActionController
     require "action_controller/railties/log_subscriber"
     require "action_controller/railties/url_helpers"
 
-    log_subscriber ActionController::Railties::LogSubscriber.new
-
-    config.action_controller.session_store = :cookie_store
-    config.action_controller.session_options = {}
-
-    initializer "action_controller.logger" do
-      ActionController::Base.logger ||= Rails.logger
+    ad = config.action_dispatch
+    config.action_controller.singleton_class.send(:define_method, :session) do
+      ActiveSupport::Deprecation.warn "config.action_controller.session has been " \
+        "renamed to config.action_dispatch.session.", caller
+      ad.session
     end
 
-    # assets_dir = defined?(Rails.public_path) ? Rails.public_path : "public"
-    # ActionView::DEFAULT_CONFIG = {
-    #   :assets_dir => assets_dir,
-    #   :javascripts_dir => "#{assets_dir}/javascripts",
-    #   :stylesheets_dir => "#{assets_dir}/stylesheets",
-    # }
+    config.action_controller.singleton_class.send(:define_method, :session=) do |val|
+      ActiveSupport::Deprecation.warn "config.action_controller.session has been " \
+        "renamed to config.action_dispatch.session.", caller
+      ad.session = val
+    end
 
+    config.action_controller.singleton_class.send(:define_method, :session_store) do
+      ActiveSupport::Deprecation.warn "config.action_controller.session_store has been " \
+        "renamed to config.action_dispatch.session_store.", caller
+      ad.session_store
+    end
+
+    config.action_controller.singleton_class.send(:define_method, :session_store=) do |val|
+      ActiveSupport::Deprecation.warn "config.action_controller.session_store has been " \
+        "renamed to config.action_dispatch.session_store.", caller
+      ad.session_store = val
+    end
+
+    log_subscriber ActionController::Railties::LogSubscriber.new
+
+    initializer "action_controller.logger" do
+      ActionController.base_hook { self.logger ||= Rails.logger }
+    end
 
     initializer "action_controller.set_configs" do |app|
       paths = app.config.paths
       ac = app.config.action_controller
-      ac.assets_dir = paths.public
-      ac.javascripts_dir = paths.public.javascripts
-      ac.stylesheets_dir = paths.public.stylesheets
 
-      app.config.action_controller.each do |k,v|
-        ActionController::Base.send "#{k}=", v
-      end
+      ac.assets_dir      = paths.public.to_a.first
+      ac.javascripts_dir = paths.public.javascripts.to_a.first
+      ac.stylesheets_dir = paths.public.stylesheets.to_a.first
+      ac.secret          = app.config.cookie_secret
+
+      ActionController.base_hook { self.config.replace(ac) }
     end
 
     initializer "action_controller.initialize_framework_caches" do
-      ActionController::Base.cache_store ||= RAILS_CACHE
+      ActionController.base_hook { self.cache_store ||= RAILS_CACHE }
     end
 
     initializer "action_controller.set_helpers_path" do |app|
-      ActionController::Base.helpers_path = app.config.paths.app.helpers.to_a
+      ActionController.base_hook do
+        self.helpers_path = app.config.paths.app.helpers.to_a
+      end
     end
 
     initializer "action_controller.url_helpers" do |app|
-      ActionController::Base.extend ::ActionController::Railtie::UrlHelpers.with(app.routes)
+      ActionController.base_hook do
+        extend ::ActionController::Railtie::UrlHelpers.with(app.routes)
+      end
 
       message = "ActionController::Routing::Routes is deprecated. " \
                 "Instead, use Rails.application.routes"
