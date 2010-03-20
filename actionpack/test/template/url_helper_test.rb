@@ -201,6 +201,13 @@ class UrlHelperTest < ActionView::TestCase
     )
   end
 
+  def test_link_to_with_remote_false
+    assert_dom_equal(
+      "<a href=\"http://www.example.com\">Hello</a>",
+      link_to("Hello", "http://www.example.com", :remote => false)
+    )
+  end
+
   def test_link_tag_using_post_javascript
     assert_dom_equal(
       "<a href='http://www.example.com' data-method=\"post\" rel=\"nofollow\">Hello</a>",
