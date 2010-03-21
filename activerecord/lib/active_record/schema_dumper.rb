@@ -22,6 +22,7 @@ module ActiveRecord
 
     def dump(stream)
       header(stream)
+      migrations(stream)
       tables(stream)
       trailer(stream)
       stream
@@ -57,6 +58,15 @@ HEADER
 
       def trailer(stream)
         stream.puts "end"
+      end
+
+      def migrations(stream)
+        rows = @connection.select_all("SELECT * FROM #{@connection.quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)}")
+        rows.each do |migration|
+          line = %Q(migration "#{migration['version']}")
+          line << %Q(, "#{migration['name']}") unless migration['name'].blank?
+          stream.puts line
+        end
       end
 
       def tables(stream)
