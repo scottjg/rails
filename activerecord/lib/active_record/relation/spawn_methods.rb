@@ -4,40 +4,28 @@ module ActiveRecord
       merged_relation = clone
       return merged_relation unless r
 
-      merged_relation = merged_relation.eager_load(r.options_values[:eager_load]).preload(r.options_values[:preload]).includes(r.options_values[:includes])
+      merging_values = r.options_values.clone
+      merging_values.delete(:lock) if merged_relation.options_values[:lock]
+      wheres = merging_values.delete(:where)
 
-      merged_relation.options_values[:readonly] = r.options_values[:readonly] unless r.options_values[:readonly].nil?
-      merged_relation.options_values[:limit] = r.options_values[:limit] if r.options_values[:limit].present?
-      merged_relation.options_values[:lock] = r.options_values[:lock] unless merged_relation.options_values[:lock]
-      merged_relation.options_values[:offset] = r.options_values[:offset] if r.options_values[:offset].present?
-
-      merged_relation = merged_relation.
-        joins(r.options_values[:joins]).
-        group(r.options_values[:group]).
-        select(r.options_values[:select]).
-        from(r.options_values[:from]).
-        having(r.options_values[:having])
-
-      merged_relation.options_values[:order] = r.options_values[:order] if r.options_values[:order].present?
-
-      merged_relation.options_values[:create_with] = options_values[:create_with]
-
-      if options_values[:create_with] && r.options_values[:create_with]
-        merged_relation.options_values[:create_with] = options_values[:create_with].merge(r.options_values[:create_with])
-      else
-        merged_relation.options_values[:create_with] = r.options_values[:create_with] || options_values[:create_with]
+      merging_values.keys.each do |option|
+        if Relation::SINGLE_VALUE_METHODS.include?(option)
+          merged_relation.options_values[option] = merging_values[option].nil? ? merged_relation.options_values[option] : merging_values[option]
+        else
+          merged_relation.options_values[option] = Array.wrap(merged_relation.options_values[option]) + Array.wrap(merging_values[option])
+        end
       end
 
       merged_wheres = []
       merged_wheres += options_values[:where] if options_values[:where]
 
-      r.options_values[:where].each do |w|
+      wheres.each do |w|
         if w.is_a?(Arel::Predicates::Equality)
           merged_wheres = merged_wheres.reject {|p| p.is_a?(Arel::Predicates::Equality) && p.operand1.name == w.operand1.name }
         end
 
         merged_wheres += [w]
-      end if r.options_values[:where]
+      end if wheres
 
       merged_relation.options_values[:where] = merged_wheres
 
