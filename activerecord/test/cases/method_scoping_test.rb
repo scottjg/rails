@@ -327,7 +327,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     # :include's remain unique and don't "double up" when merging
     Developer.send(:with_scope, :find => { :include => :projects, :conditions => "projects.id = 2" }) do
       Developer.send(:with_scope, :find => { :include => :projects }) do
-        assert_equal 1, Developer.scoped.includes_values.uniq.length
+        assert_equal 1, Developer.scoped.options_values[:includes].uniq.length
         assert_equal 'David', Developer.find(:first).name
       end
     end
@@ -335,7 +335,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     # the nested scope doesn't remove the first :include
     Developer.send(:with_scope, :find => { :include => :projects, :conditions => "projects.id = 2" }) do
       Developer.send(:with_scope, :find => { :include => [] }) do
-        assert_equal 1, Developer.scoped.includes_values.uniq.length
+        assert_equal 1, Developer.scoped.options_values[:includes].uniq.length
         assert_equal('David', Developer.find(:first).name)
       end
     end
@@ -343,7 +343,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     # mixing array and symbol include's will merge correctly
     Developer.send(:with_scope, :find => { :include => [:projects], :conditions => "projects.id = 2" }) do
       Developer.send(:with_scope, :find => { :include => :projects }) do
-        assert_equal 1, Developer.scoped.includes_values.uniq.length
+        assert_equal 1, Developer.scoped.options_values[:includes].uniq.length
         assert_equal('David', Developer.find(:first).name)
       end
     end
@@ -352,7 +352,7 @@ class NestedScopingTest < ActiveRecord::TestCase
   def test_nested_scoped_find_replace_include
     Developer.send(:with_scope, :find => { :include => :projects }) do
       Developer.send(:with_exclusive_scope, :find => { :include => [] }) do
-        assert_equal 0, Developer.scoped.includes_values.length
+        assert_nil Developer.scoped.options_values[:includes]
       end
     end
   end
@@ -608,7 +608,7 @@ class DefaultScopingTest < ActiveRecord::TestCase
 
   def test_default_scoping_with_threads
     2.times do
-      Thread.new { assert_equal ['salary DESC'], DeveloperOrderedBySalary.scoped.order_values }.join
+      Thread.new { assert_equal ['salary DESC'], DeveloperOrderedBySalary.scoped.options_values[:order] }.join
     end
   end
 
@@ -618,10 +618,10 @@ class DefaultScopingTest < ActiveRecord::TestCase
     klass.send :default_scope, {}
 
     # Scopes added on children should append to parent scope
-    assert klass.scoped.order_values.blank?
+    assert klass.scoped.options_values[:order].blank?
 
     # Parent should still have the original scope
-    assert_equal ['salary DESC'], DeveloperOrderedBySalary.scoped.order_values
+    assert_equal ['salary DESC'], DeveloperOrderedBySalary.scoped.options_values[:order]
   end
 
   def test_method_scope

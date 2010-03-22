@@ -10,19 +10,13 @@ module ActiveRecord
     delegate :length, :collect, :map, :each, :all?, :include?, :to => :to_a
     delegate :insert, :to => :arel
 
-    attr_reader :table, :klass
+    attr_reader :table, :klass, :options_values
 
     def initialize(klass, table)
       @klass, @table = klass, table
-
-      @readonly_value    = nil
-      @create_with_value = nil
       @implicit_readonly = nil
-      @limit_value       = nil
-      @offset_value      = nil
       @loaded            = nil
-
-      (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
+      @options_values = {}
     end
 
     def new(*args, &block)
@@ -60,12 +54,14 @@ module ActiveRecord
 
       @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql)
 
-      preload = @preload_values
-      preload +=  @includes_values unless eager_loading?
-      preload.each {|associations| @klass.send(:preload_associations, @records, associations) } 
+      if options_values[:preload] || options_values[:includes]
+        preload = [*options_values[:preload]]
+        preload +=  options_values[:includes] if options_values[:includes] && !eager_loading?
+        preload.each {|associations| @klass.send(:preload_associations, @records, associations) }
+      end
 
-      # @readonly_value is true only if set explicity. @implicit_readonly is true if there are JOINS and no explicit SELECT.
-      readonly = @readonly_value.nil? ? @implicit_readonly : @readonly_value
+      # options_values[:readonly] is true only if set explicity. @implicit_readonly is true if there are JOINS and no explicit SELECT.
+      readonly = options_values[:readonly].nil? ? @implicit_readonly : options_values[:readonly]
       @records.each { |record| record.readonly! } if readonly
 
       @loaded = true
@@ -92,7 +88,7 @@ module ActiveRecord
       if block_given?
         to_a.many? { |*block_args| yield(*block_args) }
       else
-        @limit_value.present? ? to_a.many? : size > 1
+        options_values[:limit].present? ? to_a.many? : size > 1
       end
     end
 
@@ -125,7 +121,7 @@ module ActiveRecord
         where(conditions).apply_finder_options(options.slice(:limit, :order)).update_all(updates)
       else
         # Apply limit and order only if they're both present
-        if @limit_value.present? == @order_values.present?
+        if options_values[:limit].present? == options_values[:order].present?
           arel.update(@klass.send(:sanitize_sql_for_assignment, updates))
         else
           except(:limit, :order).update_all(updates)
@@ -154,7 +150,7 @@ module ActiveRecord
         idx = -1
         id.collect { |one_id| idx += 1; update(one_id, attributes[idx]) }
       else
-        object = find(id)
+        object = scoped.find(id)
         object.update_attributes(attributes)
         object
       end
@@ -218,7 +214,7 @@ module ActiveRecord
       if id.is_a?(Array)
         id.map { |one_id| destroy(one_id) }
       else
-        find(id).destroy
+        scoped.find(id).destroy
       end
     end
 
@@ -281,6 +277,7 @@ module ActiveRecord
       @first = @last = @to_sql = @order_clause = @scope_for_create = @arel = @loaded = nil
       @should_eager_load = @join_dependency = nil
       @records = []
+      instance_variable_set :@options_values, options_values.clone
       self
     end
 
@@ -294,7 +291,7 @@ module ActiveRecord
 
     def scope_for_create
       @scope_for_create ||= begin
-        @create_with_value || @where_values.inject({}) do |hash, where|
+        options_values[:create_with] || [*options_values[:where]].inject({}) do |hash, where|
           if where.is_a?(Arel::Predicates::Equality)
             hash[where.operand1.name] = where.operand2.respond_to?(:value) ? where.operand2.value : where.operand2
           end
@@ -305,7 +302,7 @@ module ActiveRecord
     end
 
     def eager_loading?
-      @should_eager_load ||= (@eager_load_values.any? || (@includes_values.any? && references_eager_loaded_tables?))
+      @should_eager_load ||= (options_values[:eager_load] || (options_values[:includes] && references_eager_loaded_tables?))
     end
 
     protected

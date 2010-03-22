@@ -121,7 +121,7 @@ module ActiveRecord
       if options.except(:distinct).present?
         apply_finder_options(options.except(:distinct)).calculate(operation, column_name, :distinct => options[:distinct])
       else
-        if eager_loading? || includes_values.present?
+        if eager_loading? || options_values[:includes]
           construct_relation_for_association_calculations.calculate(operation, column_name, options)
         else
           perform_calculation(operation, column_name, options)
@@ -154,7 +154,7 @@ module ActiveRecord
       distinct = options[:distinct] || distinct
       column_name = :all if column_name.blank? && operation == "count"
 
-      if @group_values.any?
+      if options_values[:group]
         return execute_grouped_calculation(operation, column_name)
       else
         return execute_simple_calculation(operation, column_name, distinct)
@@ -174,7 +174,7 @@ module ActiveRecord
     end
 
     def execute_grouped_calculation(operation, column_name) #:nodoc:
-      group_attr      = @group_values.first
+      group_attr      = options_values[:group].first
       association     = @klass.reflect_on_association(group_attr.to_sym)
       associated      = association && association.macro == :belongs_to # only count belongs_to associations
       group_field     = associated ? association.primary_key_name : group_attr
@@ -250,8 +250,8 @@ module ActiveRecord
     end
 
     def select_for_count
-      if @select_values.present?
-        select = @select_values.join(", ") 
+      if options_values[:select].present?
+        select = options_values[:select].join(", ")
         select if select !~ /(,|\*)/
       end
     end

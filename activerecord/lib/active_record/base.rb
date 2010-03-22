@@ -1247,9 +1247,9 @@ module ActiveRecord #:nodoc:
             method_scoping.assert_valid_keys([ :find, :create ])
             relation = construct_finder_arel(method_scoping[:find] || {})
 
-            if current_scoped_methods && current_scoped_methods.create_with_value && method_scoping[:create]
+            if current_scoped_methods && current_scoped_methods.options_values[:create_with] && method_scoping[:create]
               scope_for_create = if action == :merge
-                current_scoped_methods.create_with_value.merge(method_scoping[:create])
+                current_scoped_methods.options_values[:create_with].merge(method_scoping[:create])
               else
                 method_scoping[:create]
               end
@@ -1257,7 +1257,7 @@ module ActiveRecord #:nodoc:
               relation = relation.create_with(scope_for_create)
             else
               scope_for_create = method_scoping[:create]
-              scope_for_create ||= current_scoped_methods.create_with_value if current_scoped_methods
+              scope_for_create ||= current_scoped_methods.options_values[:create_with] if current_scoped_methods
               relation = relation.create_with(scope_for_create) if scope_for_create
             end
 

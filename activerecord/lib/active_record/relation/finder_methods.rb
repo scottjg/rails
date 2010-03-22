@@ -158,7 +158,7 @@ module ActiveRecord
     protected
 
     def find_with_associations
-      including = (@eager_load_values + @includes_values).uniq
+      including = ([*options_values[:eager_load]] + [*options_values[:includes]]).compact.uniq
       join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(@klass, including, nil)
       rows = construct_relation_for_association_find(join_dependency).to_a
       join_dependency.instantiate(rows)
@@ -167,7 +167,7 @@ module ActiveRecord
     end
 
     def construct_relation_for_association_calculations
-      including = (@eager_load_values + @includes_values).uniq
+      including = ([*options_values[:eager_load]] + [*options_values[:includes]]).compact.uniq
       join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(@klass, including, arel.joins(arel))
 
       relation = except(:includes, :eager_load, :preload)
@@ -186,7 +186,7 @@ module ActiveRecord
 
       limitable_reflections = @klass.send(:using_limitable_reflections?, join_dependency.reflections)
 
-      if !limitable_reflections && relation.limit_value
+      if !limitable_reflections && relation.options_values[:limit]
         limited_id_condition = construct_limited_ids_condition(relation.except(:select))
         relation = relation.where(limited_id_condition)
       end
@@ -197,7 +197,7 @@ module ActiveRecord
     end
 
     def construct_limited_ids_condition(relation)
-      orders = relation.order_values.join(", ")
+      orders = relation.options_values[:order] ? relation.options_values[:order].join(", ") : ""
       values = @klass.connection.distinct("#{@klass.connection.quote_table_name @klass.table_name}.#{@klass.primary_key}", orders)
 
       ids_array = relation.select(values).collect {|row| row[@klass.primary_key]}
@@ -272,15 +272,15 @@ module ActiveRecord
       result = where(primary_key.in(ids)).all
 
       expected_size =
-        if @limit_value && ids.size > @limit_value
-          @limit_value
+        if options_values[:limit] && ids.size > options_values[:limit]
+          options_values[:limit]
         else
           ids.size
         end
 
       # 11 ids with limit 3, offset 9 should give 2 results.
-      if @offset_value && (ids.size - @offset_value < expected_size)
-        expected_size = ids.size - @offset_value
+      if options_values[:offset] && (ids.size - options_values[:offset] < expected_size)
+        expected_size = ids.size - options_values[:offset]
       end
 
       if result.size == expected_size

@@ -4,41 +4,41 @@ module ActiveRecord
       merged_relation = clone
       return merged_relation unless r
 
-      merged_relation = merged_relation.eager_load(r.eager_load_values).preload(r.preload_values).includes(r.includes_values)
+      merged_relation = merged_relation.eager_load(r.options_values[:eager_load]).preload(r.options_values[:preload]).includes(r.options_values[:includes])
 
-      merged_relation.readonly_value = r.readonly_value unless r.readonly_value.nil?
-      merged_relation.limit_value = r.limit_value if r.limit_value.present?
-      merged_relation.lock_value = r.lock_value unless merged_relation.lock_value
-      merged_relation.offset_value = r.offset_value if r.offset_value.present?
+      merged_relation.options_values[:readonly] = r.options_values[:readonly] unless r.options_values[:readonly].nil?
+      merged_relation.options_values[:limit] = r.options_values[:limit] if r.options_values[:limit].present?
+      merged_relation.options_values[:lock] = r.options_values[:lock] unless merged_relation.options_values[:lock]
+      merged_relation.options_values[:offset] = r.options_values[:offset] if r.options_values[:offset].present?
 
       merged_relation = merged_relation.
-        joins(r.joins_values).
-        group(r.group_values).
-        select(r.select_values).
-        from(r.from_value).
-        having(r.having_values)
+        joins(r.options_values[:joins]).
+        group(r.options_values[:group]).
+        select(r.options_values[:select]).
+        from(r.options_values[:from]).
+        having(r.options_values[:having])
 
-      merged_relation.order_values = r.order_values if r.order_values.present?
+      merged_relation.options_values[:order] = r.options_values[:order] if r.options_values[:order].present?
 
-      merged_relation.create_with_value = @create_with_value
+      merged_relation.options_values[:create_with] = options_values[:create_with]
 
-      if @create_with_value && r.create_with_value
-        merged_relation.create_with_value = @create_with_value.merge(r.create_with_value)
+      if options_values[:create_with] && r.options_values[:create_with]
+        merged_relation.options_values[:create_with] = options_values[:create_with].merge(r.options_values[:create_with])
       else
-        merged_relation.create_with_value = r.create_with_value || @create_with_value
+        merged_relation.options_values[:create_with] = r.options_values[:create_with] || options_values[:create_with]
       end
 
-      merged_wheres = @where_values
+      merged_wheres = [*options_values[:where]]
 
-      r.where_values.each do |w|
+      r.options_values[:where].each do |w|
         if w.is_a?(Arel::Predicates::Equality)
           merged_wheres = merged_wheres.reject {|p| p.is_a?(Arel::Predicates::Equality) && p.operand1.name == w.operand1.name }
         end
 
         merged_wheres += [w]
-      end
+      end if r.options_values[:where]
 
-      merged_relation.where_values = merged_wheres
+      merged_relation.options_values[:where] = merged_wheres
 
       merged_relation
     end
@@ -48,28 +48,8 @@ module ActiveRecord
     def except(*skips)
       result = self.class.new(@klass, table)
 
-      (Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS).each do |method|
-        result.send(:"#{method}_values=", send(:"#{method}_values")) unless skips.include?(method)
-      end
-
-      Relation::SINGLE_VALUE_METHODS.each do |method|
-        result.send(:"#{method}_value=", send(:"#{method}_value")) unless skips.include?(method)
-      end
-
-      result
-    end
-
-    def only(*onlies)
-      result = self.class.new(@klass, table)
-
-      onlies.each do |only|
-        if (Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS).include?(only)
-          result.send(:"#{only}_values=", send(:"#{only}_values"))
-        elsif Relation::SINGLE_VALUE_METHODS.include?(only)
-          result.send(:"#{only}_value=", send(:"#{only}_value"))
-        else
-          raise "Invalid argument : #{only}"
-        end
+      options_values.each do |method, value|
+        result.options_values[method] = value unless skips.include?(method)
       end
 
       result

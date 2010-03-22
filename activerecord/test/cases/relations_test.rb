@@ -498,13 +498,13 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_many
     posts = Post.scoped
-  
+
     assert_queries(2) do
       assert posts.many? # Uses COUNT()
       assert posts.many? {|p| p.id > 0 }
       assert ! posts.many? {|p| p.id < 2 }
     end
-  
+
     assert posts.loaded?
   end
 
