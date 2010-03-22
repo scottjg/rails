@@ -55,7 +55,8 @@ module ActiveRecord
       @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql)
 
       if options_values[:preload] || options_values[:includes]
-        preload = [*options_values[:preload]]
+        preload = []
+        preload += options_values[:preload] if options_values[:preload]
         preload +=  options_values[:includes] if options_values[:includes] && !eager_loading?
         preload.each {|associations| @klass.send(:preload_associations, @records, associations) }
       end
@@ -150,7 +151,7 @@ module ActiveRecord
         idx = -1
         id.collect { |one_id| idx += 1; update(one_id, attributes[idx]) }
       else
-        object = scoped.find(id)
+        object = find(id)
         object.update_attributes(attributes)
         object
       end
@@ -291,7 +292,7 @@ module ActiveRecord
 
     def scope_for_create
       @scope_for_create ||= begin
-        options_values[:create_with] || [*options_values[:where]].inject({}) do |hash, where|
+        options_values[:create_with] || Array.wrap(options_values[:where]).inject({}) do |hash, where|
           if where.is_a?(Arel::Predicates::Equality)
             hash[where.operand1.name] = where.operand2.respond_to?(:value) ? where.operand2.value : where.operand2
           end

@@ -28,7 +28,7 @@ module ActiveRecord
             value = build_where(*args)
             if value.present?
               new_relation.options_values[:#{query_method}] ||= []
-              new_relation.options_values[:#{query_method}] += [*value]
+              new_relation.options_values[:#{query_method}] += Array.wrap(value)
             end
             new_relation
           end

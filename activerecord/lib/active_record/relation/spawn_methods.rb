@@ -28,7 +28,8 @@ module ActiveRecord
         merged_relation.options_values[:create_with] = r.options_values[:create_with] || options_values[:create_with]
       end
 
-      merged_wheres = [*options_values[:where]]
+      merged_wheres = []
+      merged_wheres += options_values[:where] if options_values[:where]
 
       r.options_values[:where].each do |w|
         if w.is_a?(Arel::Predicates::Equality)

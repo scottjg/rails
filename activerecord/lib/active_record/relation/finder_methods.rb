@@ -158,7 +158,7 @@ module ActiveRecord
     protected
 
     def find_with_associations
-      including = ([*options_values[:eager_load]] + [*options_values[:includes]]).compact.uniq
+      including = (Array.wrap(options_values[:eager_load]) + Array.wrap(options_values[:includes])).compact.uniq
       join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(@klass, including, nil)
       rows = construct_relation_for_association_find(join_dependency).to_a
       join_dependency.instantiate(rows)
@@ -167,7 +167,7 @@ module ActiveRecord
     end
 
     def construct_relation_for_association_calculations
-      including = ([*options_values[:eager_load]] + [*options_values[:includes]]).compact.uniq
+      including = (Array.wrap(options_values[:eager_load]) + Array.wrap(options_values[:includes])).compact.uniq
       join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(@klass, including, arel.joins(arel))
 
       relation = except(:includes, :eager_load, :preload)
