@@ -526,6 +526,18 @@ module ActiveRecord
           end
         end
       end
+      
+      # Override default LIMIT/OFFSET behavior because Postgres, unlike other SQL implementations,
+      # supports OFFSET without LIMIT.
+      def add_limit_offset!(sql, options)
+        if limit = options[:limit]
+          sql << " LIMIT #{sanitize_limit(limit)}"
+        end
+        if offset = options[:offset]
+          sql << " OFFSET #{offset.to_i}"
+        end
+        sql
+      end
 
       # Executes an UPDATE query and returns the number of affected tuples.
       def update_sql(sql, name = nil)
