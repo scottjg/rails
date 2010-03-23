@@ -17,7 +17,8 @@ module ActionDispatch
 
         if path = conditions[:path_info]
           @path = path
-          conditions[:path_info] = ::Rack::Mount::Strexp.compile(path, requirements, SEPARATORS, anchor)
+          # conditions[:path_info] = ::Rack::Mount::Strexp.compile(path, requirements, SEPARATORS, anchor)
+          conditions[:path_info] = ::Rack::Mount::Strexp.compile(path, requirements, SEPARATORS)
         end
 
         @conditions = conditions.inject({}) { |h, (k, v)|
