@@ -336,13 +336,20 @@ module ActiveRecord
           unless cols.include?("name")
             add_column sm_table, :name, :string, :null => false, :default => ""
           end
+          unless cols.include?("engine")
+            add_column sm_table, :engine, :string, :null => false, :default => ""
+          end
+          remove_index sm_table, :name => "#{Base.table_name_prefix}unique_schema_migrations#{Base.table_name_suffix}" rescue nil
+          add_index sm_table, [:version, :engine], :unique => true,
+            :name => "#{Base.table_name_prefix}unique_schema_migrations#{Base.table_name_suffix}"
         else
           create_table(sm_table, :id => false) do |schema_migrations_table|
             schema_migrations_table.column :version, :string, :null => false
+            schema_migrations_table.column :engine, :string, :null => false, :default => ""
             schema_migrations_table.column :name, :string, :null => false, :default => ""
             schema_migrations_table.column :migrated_at, :datetime, :null => false
           end
-          add_index sm_table, :version, :unique => true,
+          add_index sm_table, [:version, :engine], :unique => true,
             :name => "#{Base.table_name_prefix}unique_schema_migrations#{Base.table_name_suffix}"
 
           # Backwards-compatibility: if we find schema_info, assume we've

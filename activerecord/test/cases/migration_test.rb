@@ -48,10 +48,15 @@ if ActiveRecord::Base.connection.supports_migrations?
       @conn.initialize_schema_migrations_table
 
       columns =  @conn.columns(ActiveRecord::Migrator.schema_migrations_table_name).collect(&:name)
-      %w[version name migrated_at].each { |col| assert columns.include?(col) }
+      %w[version name migrated_at engine].each { |col| assert columns.include?(col) }
+
+      indexes = @conn.indexes(ActiveRecord::Migrator.schema_migrations_table_name)
+      assert_equal 1, indexes.length
+      assert_equal %w(version engine), indexes[0].columns
+      assert indexes[0].unique
     end
 
-    def test_add_name_and_migrated_at_to_exisiting_schema_migrations
+    def test_add_engine_and_name_and_migrated_at_to_exisiting_schema_migrations
       sm_table = ActiveRecord::Migrator.schema_migrations_table_name
       @conn.create_table(sm_table, :id => false) do |schema_migrations_table|
               schema_migrations_table.column :version, :string, :null => false
@@ -62,8 +67,14 @@ if ActiveRecord::Base.connection.supports_migrations?
       @conn.initialize_schema_migrations_table
 
       rows = @conn.select_all("SELECT * FROM #{@conn.quote_table_name(sm_table)}")
-      assert rows[0].has_key?("name")
-      assert rows[0].has_key?("migrated_at")
+      assert rows[0].has_key?("engine"), "missing engine column"
+      assert rows[0].has_key?("name"), "missing name column"
+      assert rows[0].has_key?("migrated_at"), "missing migrated_at column"
+
+      indexes = @conn.indexes(ActiveRecord::Migrator.schema_migrations_table_name)
+      assert_equal 1, indexes.length
+      assert_equal %w(version engine), indexes[0].columns
+      assert indexes[0].unique
     end
   end
 
