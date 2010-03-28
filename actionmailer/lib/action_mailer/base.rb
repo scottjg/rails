@@ -2,6 +2,7 @@ require 'mail'
 require 'action_mailer/tmail_compat'
 require 'action_mailer/collector'
 require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/object/blank'
 
 module ActionMailer #:nodoc:
   # Action Mailer allows you to send email from your application using a mailer model and views.
@@ -591,7 +592,7 @@ module ActionMailer #:nodoc:
       responses, parts_order = [], nil
 
       if block_given?
-        collector = ActionMailer::Collector.new(self) { render(action_name) }
+        collector = ActionMailer::Collector.new(lookup_context) { render(action_name) }
         yield(collector)
         parts_order = collector.responses.map { |r| r[:content_type] }
         responses  = collector.responses

@@ -1,3 +1,4 @@
+require 'active_support/core_ext/object/blank'
 require 'set'
 
 module ActionView
@@ -65,7 +66,7 @@ module ActionView
       #   content_tag("select", options, :multiple => true)
       #    # => <select multiple="multiple">...options...</select>
       #
-      #   <% content_tag :div, :class => "strong" do -%>
+      #   <%= content_tag :div, :class => "strong" do -%>
       #     Hello world!
       #   <% end -%>
       #    # => <div class="strong">Hello world!</div>

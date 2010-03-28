@@ -1,3 +1,5 @@
+require 'active_support/core_ext/object/blank'
+
 module ActionView
   # There's also a convenience method for rendering sub templates within the current controller that depends on a
   # single object (we call this kind of sub templates for partials). It relies on the fact that partials should
@@ -123,7 +125,7 @@ module ActionView
   # You can also apply a layout to a block within any template:
   #
   #   <%# app/views/users/_chief.html.erb &>
-  #   <% render(:layout => "administrator", :locals => { :user => chief }) do %>
+  #   <%= render(:layout => "administrator", :locals => { :user => chief }) do %>
   #     Title: <%= chief.title %>
   #   <% end %>
   #
@@ -146,7 +148,7 @@ module ActionView
   #   </div>
   #
   #   <%# app/views/users/index.html.erb &>
-  #   <% render :layout => @users do |user| %>
+  #   <%= render :layout => @users do |user| %>
   #     Title: <%= user.title %>
   #   <% end %>
   #
@@ -162,7 +164,7 @@ module ActionView
   #   </div>
   #
   #   <%# app/views/users/index.html.erb &>
-  #   <% render :layout => @users do |user, section| %>
+  #   <%= render :layout => @users do |user, section| %>
   #     <%- case section when :header -%>
   #       Title: <%= user.title %>
   #     <%- when :footer -%>

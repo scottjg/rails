@@ -1,4 +1,6 @@
+require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/string/inflections'
+require 'active_support/core_ext/object/blank'
 require 'active_support/ordered_hash'
 
 module ActiveModel
@@ -206,7 +208,7 @@ module ActiveModel
       full_messages = []
 
       each do |attribute, messages|
-        messages = Array(messages)
+        messages = Array.wrap(messages)
         next if messages.empty?
 
         if attribute == :base
