@@ -19,10 +19,11 @@ namespace :doc do
   path = ENV['RAILS_PATH']
   unless defined?(Bundler) || (path && File.directory?(path))
     task :rails do
-    if path
-      $stderr.puts "Skipping doc:rails, missing Rails directory at #{path}"
-    else
-      $stderr.puts "Skipping doc:rails, RAILS_PATH environment variable is not set"
+      if path
+        $stderr.puts "Skipping doc:rails, missing Rails directory at #{path}"
+      else
+        $stderr.puts "Skipping doc:rails, RAILS_PATH environment variable is not set"
+      end
     end
   else
     desc 'Generate documentation for the Rails framework.'
