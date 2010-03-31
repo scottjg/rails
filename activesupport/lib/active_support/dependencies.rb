@@ -416,18 +416,27 @@ module ActiveSupport #:nodoc:
 
       raise ArgumentError, "#{from_mod} is not missing constant #{const_name}!" if uninherited_const_defined?(from_mod, const_name)
 
-      qualified_name = qualified_name_for from_mod, const_name
-      path_suffix = qualified_name.underscore
-      name_error = NameError.new("uninitialized constant #{qualified_name}")
+      class_to_path_convensions = []
+      class_to_path_convensions << lambda { |c| c.underscore }
+      class_to_path_convensions << lambda { |c| c.gsub('::', '/') }
 
-      file_path = search_for_file(path_suffix)
-      if file_path && ! loaded.include?(File.expand_path(file_path)) # We found a matching file to load
-        require_or_load file_path
-        raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless uninherited_const_defined?(from_mod, const_name)
-        return from_mod.const_get(const_name)
-      elsif mod = autoload_module!(from_mod, const_name, qualified_name, path_suffix)
-        return mod
-      elsif (parent = from_mod.parent) && parent != from_mod &&
+      qualified_name = qualified_name_for(from_mod, const_name)
+      name_error = NameError.new("uninitialized constant #{qualified_name}")
+      
+      class_to_path_convensions.each do |conv|
+        path_suffix = conv.call(qualified_name)
+        file_path = search_for_file(path_suffix)
+      
+        if file_path && ! loaded.include?(File.expand_path(file_path)) # We found a matching file to load
+          require_or_load file_path
+          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless uninherited_const_defined?(from_mod, const_name)
+          return from_mod.const_get(const_name)
+        elsif mod = autoload_module!(from_mod, const_name, qualified_name, path_suffix)
+          return mod
+        end
+      end
+      
+      if (parent = from_mod.parent) && parent != from_mod &&
             ! from_mod.parents.any? { |p| uninherited_const_defined?(p, const_name) }
         # If our parents do not have a constant named +const_name+ then we are free
         # to attempt to load upwards. If they do have such a constant, then this
