@@ -246,9 +246,9 @@ class FormTagHelperTest < ActionView::TestCase
     assert_match VALID_HTML_ID, input_elem['id']
   end
 
-  def test_label_tag_without_text
-    actual = label_tag "title"
-    expected = %(<label for="title">Title</label>)
+  def test_label_tag_with_options_but_without_text
+    actual = label_tag "title", :class => "small_label"
+    expected = %(<label for="title" class="small_label">Title</label>)
     assert_dom_equal expected, actual
   end
 
