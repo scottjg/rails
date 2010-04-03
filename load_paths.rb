@@ -2,7 +2,7 @@ begin
   require File.expand_path('../.bundle/environment', __FILE__)
 rescue LoadError
   begin
-    # bust gem prelude
+    # bust gem prelude 
     if defined? Gem
       Gem.cache
       gem 'bundler'
