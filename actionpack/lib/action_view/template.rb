@@ -1,8 +1,7 @@
 # encoding: utf-8
 # This is so that templates compiled in this file are UTF-8
-
-require 'set'
-require "action_view/template/resolver"
+require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/object/blank'
 
 module ActionView
   class Template
@@ -19,24 +18,33 @@ module ActionView
 
     attr_reader :source, :identifier, :handler, :virtual_path, :formats
 
+    Finalizer = proc do |method_name|
+      proc do
+        ActionView::CompiledTemplates.module_eval do
+          remove_possible_method method_name
+        end
+      end
+    end
+
     def initialize(source, identifier, handler, details)
       @source     = source
       @identifier = identifier
       @handler    = handler
 
-      @partial      = details[:partial]
       @virtual_path = details[:virtual_path]
       @method_names = {}
 
-      format    = details[:format]
-      format  ||= handler.default_format.to_sym if handler.respond_to?(:default_format)
-      format  ||= :html
-      @formats  = [format.to_sym]
+      format   = details[:format] || :html
+      @formats = Array.wrap(format).map(&:to_sym)
     end
 
     def render(view, locals, &block)
-      method_name = compile(locals, view)
-      view.send(method_name, locals, &block)
+      # Notice that we use a bang in this instrumentation because you don't want to
+      # consume this in production. This is only slow if it's being listened to.
+      ActiveSupport::Notifications.instrument("action_view.render_template!", :virtual_path => @virtual_path) do
+        method_name = compile(locals, view)
+        view.send(method_name, locals, &block)
+      end
     rescue Exception => e
       if e.is_a?(Template::Error)
         e.sub_template_of(self)
@@ -58,10 +66,6 @@ module ActionView
       @counter_name ||= "#{variable_name}_counter".to_sym
     end
 
-    def partial?
-      @partial
-    end
-
     def inspect
       if defined?(Rails.root)
         identifier.sub("#{Rails.root}/", '')
@@ -73,7 +77,6 @@ module ActionView
     private
       def compile(locals, view)
         method_name = build_method_name(locals)
-
         return method_name if view.respond_to?(method_name)
 
         locals_code = locals.keys.map! { |key| "#{key} = local_assigns[:#{key}];" }.join
@@ -102,6 +105,8 @@ module ActionView
 
         begin
           ActionView::CompiledTemplates.module_eval(source, identifier, line)
+          ObjectSpace.define_finalizer(self, Finalizer[method_name])
+
           method_name
         rescue Exception => e # errors from template code
           if logger = (view && view.logger)

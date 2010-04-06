@@ -1,7 +1,108 @@
 require 'rack/session/abstract/id'
-require 'action_view/test_case'
+require 'active_support/core_ext/object/blank'
 
 module ActionController
+  module TemplateAssertions
+    extend ActiveSupport::Concern
+
+    included do
+      setup :setup_subscriptions
+      teardown :teardown_subscriptions
+    end
+
+    def setup_subscriptions
+      @partials = Hash.new(0)
+      @templates = Hash.new(0)
+      @layouts = Hash.new(0)
+
+      ActiveSupport::Notifications.subscribe("action_view.render_template") do |name, start, finish, id, payload|
+        path = payload[:layout]
+        @layouts[path] += 1
+      end
+
+      ActiveSupport::Notifications.subscribe("action_view.render_template!") do |name, start, finish, id, payload|
+        path = payload[:virtual_path]
+        next unless path
+        partial = path =~ /^.*\/_[^\/]*$/
+        if partial
+          @partials[path] += 1
+          @partials[path.split("/").last] += 1
+          @templates[path] += 1
+        else
+          @templates[path] += 1
+        end
+      end
+    end
+
+    def teardown_subscriptions
+      ActiveSupport::Notifications.unsubscribe("action_view.render_template!")
+    end
+
+    # Asserts that the request was rendered with the appropriate template file or partials
+    #
+    # ==== Examples
+    #
+    #   # assert that the "new" view template was rendered
+    #   assert_template "new"
+    #
+    #   # assert that the "_customer" partial was rendered twice
+    #   assert_template :partial => '_customer', :count => 2
+    #
+    #   # assert that no partials were rendered
+    #   assert_template :partial => false
+    #
+    def assert_template(options = {}, message = nil)
+      validate_request!
+
+      case options
+      when NilClass, String
+        rendered = @templates
+        msg = build_message(message,
+                "expecting <?> but rendering with <?>",
+                options, rendered.keys.join(', '))
+        assert_block(msg) do
+          if options.nil?
+            @templates.blank?
+          else
+            rendered.any? { |t,num| t.match(options) }
+          end
+        end
+      when Hash
+        if expected_partial = options[:partial]
+          if expected_count = options[:count]
+            actual_count = @partials[expected_partial]
+            # actual_count = found.nil? ? 0 : found[1]
+            msg = build_message(message,
+                    "expecting ? to be rendered ? time(s) but rendered ? time(s)",
+                     expected_partial, expected_count, actual_count)
+            assert(actual_count == expected_count.to_i, msg)
+          elsif options.key?(:layout)
+            msg = build_message(message,
+                    "expecting layout <?> but action rendered <?>",
+                    expected_layout, @layouts.keys)
+
+            case layout = options[:layout]
+            when String
+              assert(@layouts.include?(expected_layout), msg)
+            when Regexp
+              assert(@layouts.any? {|l| l =~ layout }, msg)
+            when nil
+              assert(@layouts.empty?, msg)
+            end
+          else
+            msg = build_message(message,
+                    "expecting partial <?> but action rendered <?>",
+                    options[:partial], @partials.keys)
+            assert(@partials.include?(expected_partial), msg)
+          end
+        else
+          assert @partials.empty?,
+            "Expected no partials to be rendered"
+        end
+      end
+    end
+  end
+
   class TestRequest < ActionDispatch::TestRequest #:nodoc:
     def initialize(env = {})
       super
@@ -17,9 +118,9 @@ module ActionController
       end
     end
 
-    def assign_parameters(router, controller_path, action, parameters = {})
+    def assign_parameters(routes, controller_path, action, parameters = {})
       parameters = parameters.symbolize_keys.merge(:controller => controller_path, :action => action)
-      extra_keys = router.extra_keys(parameters)
+      extra_keys = routes.extra_keys(parameters)
       non_path_parameters = get? ? query_parameters : request_parameters
       parameters.each do |key, value|
         if value.is_a? Fixnum
@@ -181,6 +282,7 @@ module ActionController
   #  assert_redirected_to page_url(:title => 'foo')
   class TestCase < ActiveSupport::TestCase
     include ActionDispatch::TestProcess
+    include ActionController::TemplateAssertions
 
     # Executes a request simulating GET HTTP method and set/volley the response
     def get(action, parameters = nil, session = nil, flash = nil)
@@ -220,7 +322,7 @@ module ActionController
     def process(action, parameters = nil, session = nil, flash = nil, http_method = 'GET')
       # Sanity check for required instance variables so we can give an
       # understandable error message.
-      %w(@router @controller @request @response).each do |iv_name|
+      %w(@routes @controller @request @response).each do |iv_name|
         if !(instance_variable_names.include?(iv_name) || instance_variable_names.include?(iv_name.to_sym)) || instance_variable_get(iv_name).nil?
           raise "#{iv_name} is nil: make sure you set it in your test's setup method."
         end
@@ -236,7 +338,7 @@ module ActionController
       @request.env['REQUEST_METHOD'] = http_method
 
       parameters ||= {}
-      @request.assign_parameters(@router, @controller.class.name.underscore.sub(/_controller$/, ''), action.to_s, parameters)
+      @request.assign_parameters(@routes, @controller.class.name.underscore.sub(/_controller$/, ''), action.to_s, parameters)
 
       @request.session = ActionController::TestSession.new(session) unless session.nil?
       @request.session["flash"] = @request.flash.update(flash || {})
@@ -345,7 +447,7 @@ module ActionController
             :relative_url_root => nil,
             :_path_segments => @request.symbolized_path_parameters)
 
-          url, query_string = @router.url_for(options).split("?", 2)
+          url, query_string = @routes.url_for(options).split("?", 2)
 
           @request.env["SCRIPT_NAME"] = @controller.config.relative_url_root
           @request.env["PATH_INFO"] = url

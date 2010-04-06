@@ -177,22 +177,21 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     assert_nothing_raised { firm.destroy }
   end
 
-  def test_succesful_build_association
+  def test_dependence_with_restrict
+    firm = RestrictedFirm.new(:name => 'restrict')
+    firm.save!
+    account = firm.create_account(:credit_limit => 10)
+    assert !firm.account.nil?
+    assert_raise(ActiveRecord::DeleteRestrictionError) { firm.destroy }
+  end
+
+  def test_successful_build_association
     firm = Firm.new("name" => "GlobalMegaCorp")
     firm.save
 
     account = firm.build_account("credit_limit" => 1000)
     assert account.save
     assert_equal account, firm.account
-  end
-
-  def test_failing_build_association
-    firm = Firm.new("name" => "GlobalMegaCorp")
-    firm.save
-
-    account = firm.build_account
-    assert !account.save
-    assert_equal ["can't be empty"], account.errors["credit_limit"]
   end
 
   def test_build_association_twice_without_saving_affects_nothing

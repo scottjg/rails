@@ -4,6 +4,7 @@ require 'action_view/helpers/tag_helper'
 require 'action_view/helpers/form_tag_helper'
 require 'active_support/core_ext/class/inheritable_attributes'
 require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/object/blank'
 
 module ActionView
   module Helpers
@@ -28,7 +29,7 @@ module ActionView
     #
     #     # Note: a @person variable will have been created in the controller.
     #     # For example: @person = Person.new
-    #     <% form_for :person, @person, :url => { :action => "create" } do |f| %>
+    #     <%= form_for :person, @person, :url => { :action => "create" } do |f| %>
     #       <%= f.text_field :first_name %>
     #       <%= f.text_field :last_name %>
     #       <%= submit_tag 'Create' %>
@@ -44,7 +45,7 @@ module ActionView
     #
     # If you are using a partial for your form fields, you can use this shortcut:
     #
-    #     <% form_for :person, @person, :url => { :action => "create" } do |f| %>
+    #     <%= form_for :person, @person, :url => { :action => "create" } do |f| %>
     #       <%= render :partial => f %>
     #       <%= submit_tag 'Create' %>
     #     <% end %>
@@ -95,6 +96,7 @@ module ActionView
       extend ActiveSupport::Concern
 
       include FormTagHelper
+      include UrlHelper
 
       # Creates a form and a scope around a specific model object that is used
       # as a base for questioning about values for the fields.
@@ -102,7 +104,7 @@ module ActionView
       # Rails provides succinct resource-oriented form generation with +form_for+
       # like this:
       #
-      #   <% form_for @offer do |f| %>
+      #   <%= form_for @offer do |f| %>
       #     <%= f.label :version, 'Version' %>:
       #     <%= f.text_field :version %><br />
       #     <%= f.label :author, 'Author' %>:
@@ -119,7 +121,7 @@ module ActionView
       # The generic way to call +form_for+ yields a form builder around a
       # model:
       #
-      #   <% form_for :person, :url => { :action => "update" } do |f| %>
+      #   <%= form_for :person, :url => { :action => "create" } do |f| %>
       #     <%= f.error_messages %>
       #     First name: <%= f.text_field :first_name %><br />
       #     Last name : <%= f.text_field :last_name %><br />
@@ -143,7 +145,7 @@ module ActionView
       # If the instance variable is not <tt>@person</tt> you can pass the actual
       # record as the second argument:
       #
-      #   <% form_for :person, person, :url => { :action => "update" } do |f| %>
+      #   <%= form_for :person, person, :url => { :action => "create" } do |f| %>
       #     ...
       #   <% end %>
       #
@@ -175,7 +177,7 @@ module ActionView
       # possible to use both the stand-alone FormHelper methods and methods
       # from FormTagHelper. For example:
       #
-      #   <% form_for :person, @person, :url => { :action => "update" } do |f| %>
+      #   <%= form_for :person, @person, :url => { :action => "create" } do |f| %>
       #     First name: <%= f.text_field :first_name %>
       #     Last name : <%= f.text_field :last_name %>
       #     Biography : <%= text_area :person, :biography %>
@@ -195,37 +197,37 @@ module ActionView
       #
       # For example, if <tt>@post</tt> is an existing record you want to edit
       #
-      #   <% form_for @post do |f| %>
+      #   <%= form_for @post do |f| %>
       #     ...
       #   <% end %>
       #
       # is equivalent to something like:
       #
-      #   <% form_for :post, @post, :url => post_path(@post), :html => { :method => :put, :class => "edit_post", :id => "edit_post_45" } do |f| %>
+      #   <%= form_for :post, @post, :url => post_path(@post), :html => { :method => :put, :class => "edit_post", :id => "edit_post_45" } do |f| %>
       #     ...
       #   <% end %>
       #
       # And for new records
       #
-      #   <% form_for(Post.new) do |f| %>
+      #   <%= form_for(Post.new) do |f| %>
       #     ...
       #   <% end %>
       #
       # expands to
       #
-      #   <% form_for :post, Post.new, :url => posts_path, :html => { :class => "new_post", :id => "new_post" } do |f| %>
+      #   <%= form_for :post, Post.new, :url => posts_path, :html => { :class => "new_post", :id => "new_post" } do |f| %>
       #     ...
       #   <% end %>
       #
       # You can also overwrite the individual conventions, like this:
       #
-      #   <% form_for(@post, :url => super_post_path(@post)) do |f| %>
+      #   <%= form_for(@post, :url => super_post_path(@post)) do |f| %>
       #     ...
       #   <% end %>
       #
       # And for namespaced routes, like +admin_post_url+:
       #
-      #   <% form_for([:admin, @post]) do |f| %>
+      #   <%= form_for([:admin, @post]) do |f| %>
       #    ...
       #   <% end %>
       #
@@ -243,7 +245,7 @@ module ActionView
       #
       # Example:
       #
-      #   <% form_for(:post, @post, :remote => true, :html => { :id => 'create-post', :method => :put }) do |f| %>
+      #   <%= form_for(:post, @post, :remote => true, :html => { :id => 'create-post', :method => :put }) do |f| %>
       #     ...
       #   <% end %>
       #
@@ -263,7 +265,7 @@ module ActionView
       # custom builder. For example, let's say you made a helper to
       # automatically add labels to form inputs.
       #
-      #   <% form_for :person, @person, :url => { :action => "update" }, :builder => LabellingFormBuilder do |f| %>
+      #   <%= form_for :person, @person, :url => { :action => "create" }, :builder => LabellingFormBuilder do |f| %>
       #     <%= f.text_field :first_name %>
       #     <%= f.text_field :last_name %>
       #     <%= text_area :person, :biography %>
@@ -298,15 +300,16 @@ module ActionView
 
         case record_or_name_or_array
         when String, Symbol
+          ActiveSupport::Deprecation.warn("Using form_for(:name, @resource) is deprecated. Please use form_for(@resource, :as => :name) instead.", caller) unless args.empty?
           object_name = record_or_name_or_array
         when Array
           object = record_or_name_or_array.last
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
+          object_name = options[:as] || ActionController::RecordIdentifier.singular_class_name(object)
           apply_form_for_options!(record_or_name_or_array, options)
           args.unshift object
         else
           object = record_or_name_or_array
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
+          object_name = options[:as] || ActionController::RecordIdentifier.singular_class_name(object)
           apply_form_for_options!([object], options)
           args.unshift object
         end
@@ -324,9 +327,13 @@ module ActionView
 
         html_options =
           if object.respond_to?(:persisted?) && object.persisted?
-            { :class  => dom_class(object, :edit), :id => dom_id(object, :edit), :method => :put }
+            { :class  => options[:as] ? "#{options[:as]}_edit" : dom_class(object, :edit),
+              :id => options[:as] ? "#{options[:as]}_edit" : dom_id(object, :edit),
+              :method => :put }
           else
-            { :class  => dom_class(object, :new),  :id => dom_id(object), :method => :post }
+            { :class  => options[:as] ? "#{options[:as]}_new" : dom_class(object, :new),
+              :id => options[:as] ? "#{options[:as]}_new" : dom_id(object),
+              :method => :post }
           end
 
         options[:html] ||= {}
@@ -340,11 +347,11 @@ module ActionView
       #
       # === Generic Examples
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     First name: <%= person_form.text_field :first_name %>
       #     Last name : <%= person_form.text_field :last_name %>
       #
-      #     <% fields_for @person.permission do |permission_fields| %>
+      #     <%= fields_for @person.permission do |permission_fields| %>
       #       Admin?  : <%= permission_fields.check_box :admin %>
       #     <% end %>
       #   <% end %>
@@ -352,13 +359,13 @@ module ActionView
       # ...or if you have an object that needs to be represented as a different
       # parameter, like a Client that acts as a Person:
       #
-      #   <% fields_for :person, @client do |permission_fields| %>
+      #   <%= fields_for :person, @client, :url => { :action => "create" } do |permission_fields| %>
       #     Admin?: <%= permission_fields.check_box :admin %>
       #   <% end %>
       #
       # ...or if you don't have an object, just a name of the parameter:
       #
-      #   <% fields_for :person do |permission_fields| %>
+      #   <%= fields_for :person, :url => { :action => "create" } do |permission_fields| %>
       #     Admin?: <%= permission_fields.check_box :admin %>
       #   <% end %>
       #
@@ -402,9 +409,9 @@ module ActionView
       #
       # This model can now be used with a nested fields_for, like so:
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     ...
-      #     <% person_form.fields_for :address do |address_fields| %>
+      #     <%= person_form.fields_for :address do |address_fields| %>
       #       Street  : <%= address_fields.text_field :street %>
       #       Zip code: <%= address_fields.text_field :zip_code %>
       #     <% end %>
@@ -427,15 +434,15 @@ module ActionView
       #     accepts_nested_attributes_for :address, :allow_destroy => true
       #   end
       #
-      # Now, when you use a form element with the <tt>_delete</tt> parameter,
+      # Now, when you use a form element with the <tt>_destroy</tt> parameter,
       # with a value that evaluates to +true+, you will destroy the associated
       # model (eg. 1, '1', true, or 'true'):
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     ...
-      #     <% person_form.fields_for :address do |address_fields| %>
+      #     <%= person_form.fields_for :address do |address_fields| %>
       #       ...
-      #       Delete: <%= address_fields.check_box :_delete %>
+      #       Delete: <%= address_fields.check_box :_destroy %>
       #     <% end %>
       #   <% end %>
       #
@@ -459,9 +466,9 @@ module ActionView
       # the nested fields_for call will be repeated for each instance in the
       # collection:
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     ...
-      #     <% person_form.fields_for :projects do |project_fields| %>
+      #     <%= person_form.fields_for :projects do |project_fields| %>
       #       <% if project_fields.object.active? %>
       #         Name: <%= project_fields.text_field :name %>
       #       <% end %>
@@ -470,11 +477,11 @@ module ActionView
       #
       # It's also possible to specify the instance to be used:
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     ...
       #     <% @person.projects.each do |project| %>
       #       <% if project.active? %>
-      #         <% person_form.fields_for :projects, project do |project_fields| %>
+      #         <%= person_form.fields_for :projects, project do |project_fields| %>
       #           Name: <%= project_fields.text_field :name %>
       #         <% end %>
       #       <% end %>
@@ -483,9 +490,9 @@ module ActionView
       #
       # Or a collection to be used:
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     ...
-      #     <% person_form.fields_for :projects, @active_projects do |project_fields| %>
+      #     <%= person_form.fields_for :projects, @active_projects do |project_fields| %>
       #       Name: <%= project_fields.text_field :name %>
       #     <% end %>
       #   <% end %>
@@ -508,14 +515,14 @@ module ActionView
       #   end
       #
       # This will allow you to specify which models to destroy in the
-      # attributes hash by adding a form element for the <tt>_delete</tt>
+      # attributes hash by adding a form element for the <tt>_destroy</tt>
       # parameter with a value that evaluates to +true+
       # (eg. 1, '1', true, or 'true'):
       #
-      #   <% form_for @person, :url => { :action => "update" } do |person_form| %>
+      #   <%= form_for @person do |person_form| %>
       #     ...
-      #     <% person_form.fields_for :projects do |project_fields| %>
-      #       Delete: <%= project_fields.check_box :_delete %>
+      #     <%= person_form.fields_for :projects do |project_fields| %>
+      #       Delete: <%= project_fields.check_box :_destroy %>
       #     <% end %>
       #   <% end %>
       def fields_for(record_or_name_or_array, *args, &block)
@@ -725,7 +732,7 @@ module ActionView
       # Unfortunately that workaround does not work when the check box goes
       # within an array-like parameter, as in
       #
-      #   <% fields_for "project[invoice_attributes][]", invoice, :index => nil do |form| %>
+      #   <%= fields_for "project[invoice_attributes][]", invoice, :index => nil do |form| %>
       #     <%= form.check_box :paid %>
       #     ...
       #   <% end %>
@@ -776,6 +783,56 @@ module ActionView
       #   #    <input type="radio" id="user_receive_newsletter_no" name="user[receive_newsletter]" value="no" checked="checked" />
       def radio_button(object_name, method, tag_value, options = {})
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_radio_button_tag(tag_value, options)
+      end
+
+      # Returns a text_field of type "search".
+      def search_field(object_name, method, options = {})
+        options = options.stringify_keys
+
+        if options["autosave"]
+          if options["autosave"] == true
+            options["autosave"] = request.host.split(".").reverse.join(".")
+          end
+          options["results"] ||= 10
+        end
+
+        if options["onsearch"]
+          options["incremental"] = true unless options.has_key?("incremental")
+        end
+
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("search", options)
+      end
+
+      # Returns a text_field of type "tel".
+      def telephone_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("tel", options)
+      end
+      alias phone_field telephone_field
+
+      # Returns a text_field of type "url".
+      def url_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("url", options)
+      end
+
+      # Returns a text_field of type "email".
+      def email_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("email", options)
+      end
+
+      # Returns an input tag of type "number".
+      #
+      # ==== Options
+      # * Accepts same options as number_field_tag
+      def number_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_number_field_tag("number", options)
+      end
+
+      # Returns an input tag of type "range".
+      #
+      # ==== Options
+      # * Accepts same options as range_field_tag
+      def range_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_number_field_tag("range", options)
       end
     end
 
@@ -838,6 +895,14 @@ module ActionView
         options["value"] &&= html_escape(options["value"])
         add_default_name_and_id(options)
         tag("input", options)
+      end
+
+      def to_number_field_tag(field_type, options = {})
+        options = options.stringify_keys
+        if range = options.delete("in") || options.delete("within")
+          options.update("min" => range.min, "max" => range.max)
+        end
+        to_input_field_tag(field_type, options)
       end
 
       def to_radio_button_tag(tag_value, options = {})
@@ -1014,7 +1079,7 @@ module ActionView
     class FormBuilder #:nodoc:
       # The methods which wrap a form helper call.
       class_inheritable_accessor :field_helpers
-      self.field_helpers = (FormHelper.instance_methods - ['form_for'])
+      self.field_helpers = (FormHelper.instance_method_names - ['form_for'])
 
       attr_accessor :object_name, :object, :options
 
@@ -1040,7 +1105,7 @@ module ActionView
       end
 
       (field_helpers - %w(label check_box radio_button fields_for hidden_field)).each do |selector|
-        src = <<-end_src
+        src, file, line = <<-end_src, __FILE__, __LINE__ + 1
           def #{selector}(method, options = {})  # def text_field(method, options = {})
             @template.send(                      #   @template.send(
               #{selector.inspect},               #     "text_field",
@@ -1049,7 +1114,7 @@ module ActionView
               objectify_options(options))        #     objectify_options(options))
           end                                    # end
         end_src
-        class_eval src, __FILE__, __LINE__
+        class_eval src, file, line
       end
 
       def fields_for(record_or_name_or_array, *args, &block)
@@ -1115,7 +1180,7 @@ module ActionView
       # Add the submit button for the given form. When no value is given, it checks
       # if the object is a new resource or not to create the proper label:
       #
-      #   <% form_for @post do |f| %>
+      #   <%= form_for @post do |f| %>
       #     <%= f.submit %>
       #   <% end %>
       # 
@@ -1220,7 +1285,7 @@ module ActionView
     end
   end
 
-  ActionView.base_hook do
+  ActiveSupport.on_load(:action_view) do
     class ActionView::Base
       cattr_accessor :default_form_builder
       @@default_form_builder = ::ActionView::Helpers::FormBuilder

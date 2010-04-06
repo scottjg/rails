@@ -11,8 +11,10 @@ require 'active_support/core_ext/hash/deep_merge'
 require 'active_support/core_ext/hash/indifferent_access'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/string/behavior'
-require 'active_support/core_ext/object/singleton_class'
+require 'active_support/core_ext/kernel/singleton_class'
 require 'active_support/core_ext/module/delegation'
+require 'active_support/core_ext/object/duplicable'
+require 'active_support/core_ext/object/blank'
 require 'arel'
 require 'active_record/errors'
 
@@ -336,6 +338,9 @@ module ActiveRecord #:nodoc:
     # Accessor for the name of the prefix string to prepend to every table name. So if set to "basecamp_", all
     # table names will be named like "basecamp_projects", "basecamp_people", etc. This is a convenient way of creating a namespace
     # for tables in a shared database. By default, the prefix is the empty string.
+    #
+    # If you are organising your models within modules you can add a prefix to the models within a namespace by defining
+    # a singleton method in the parent module called table_name_prefix which returns your chosen prefix.
     cattr_accessor :table_name_prefix, :instance_writer => false
     @@table_name_prefix = ""
 
@@ -374,7 +379,7 @@ module ActiveRecord #:nodoc:
 
     ##
     # :singleton-method:
-    # Specify whether or not to use timestamps for migration numbers
+    # Specify whether or not to use timestamps for migration versions
     cattr_accessor :timestamped_migrations , :instance_writer => false
     @@timestamped_migrations = true
 
@@ -763,12 +768,16 @@ module ActiveRecord #:nodoc:
               contained = contained.singularize if parent.pluralize_table_names
               contained << '_'
             end
-            name = "#{table_name_prefix}#{contained}#{undecorated_table_name(base.name)}#{table_name_suffix}"
+            name = "#{full_table_name_prefix}#{contained}#{undecorated_table_name(base.name)}#{table_name_suffix}"
           end
 
         @quoted_table_name = nil
         set_table_name(name)
         name
+      end
+
+      def full_table_name_prefix #:nodoc:
+        (parents.detect{ |p| p.respond_to?(:table_name_prefix) } || self).table_name_prefix
       end
 
       # Defines the column name for use with single table inheritance
@@ -1041,6 +1050,12 @@ module ActiveRecord #:nodoc:
 
           object.instance_variable_set(:'@attributes', record)
           object.instance_variable_set(:'@attributes_cache', {})
+          object.instance_variable_set(:@new_record, false)
+          object.instance_variable_set(:@readonly, false)
+          object.instance_variable_set(:@destroyed, false)
+          object.instance_variable_set(:@marked_for_destruction, false)
+          object.instance_variable_set(:@previously_changed, {})
+          object.instance_variable_set(:@changed_attributes, {})
 
           object.send(:_run_find_callbacks)
           object.send(:_run_initialize_callbacks)
@@ -1282,7 +1297,7 @@ module ActiveRecord #:nodoc:
         # <tt>options</tt> argument is the same as in find.
         #
         #   class Person < ActiveRecord::Base
-        #     default_scope :order => 'last_name, first_name'
+        #     default_scope order('last_name, first_name')
         #   end
         def default_scope(options = {})
           self.default_scoping << construct_finder_arel(options)
@@ -1506,6 +1521,12 @@ module ActiveRecord #:nodoc:
         @attributes = attributes_from_column_definition
         @attributes_cache = {}
         @new_record = true
+        @readonly = false
+        @destroyed = false
+        @marked_for_destruction = false
+        @previously_changed = {}
+        @changed_attributes = {}
+
         ensure_proper_type
 
         if scope = self.class.send(:current_scoped_methods)
@@ -1551,7 +1572,7 @@ module ActiveRecord #:nodoc:
       # or nil if this record's unsaved.
       #
       # For example, suppose that you have a User model, and that you have a
-      # <tt>map.resources :users</tt> route. Normally, +user_path+ will
+      # <tt>resources :users</tt> route. Normally, +user_path+ will
       # construct a path with the user object's 'id' in it:
       #
       #   user = User.find_by_name('Phusion')
@@ -1570,7 +1591,7 @@ module ActiveRecord #:nodoc:
       #   user_path(user)  # => "/users/Phusion"
       def to_param
         # We can't use alias_method here, because method 'id' optimizes itself on the fly.
-        (id = self.id) ? id.to_s : nil # Be sure to stringify the id for routes
+        id && id.to_s # Be sure to stringify the id for routes
       end
 
       # Returns a cache key that can be used to identify this record.
@@ -1597,12 +1618,12 @@ module ActiveRecord #:nodoc:
 
       # Returns true if this object hasn't been saved yet -- that is, a record for the object doesn't exist yet; otherwise, returns false.
       def new_record?
-        @new_record || false
+        @new_record
       end
 
       # Returns true if this object has been destroyed, otherwise returns false.
       def destroyed?
-        @destroyed || false
+        @destroyed
       end
 
       # Returns if the record is persisted, i.e. it's not a new record and it was not destroyed.
@@ -1695,7 +1716,7 @@ module ActiveRecord #:nodoc:
       # This is especially useful for boolean flags on existing records. The regular +update_attribute+ method
       # in Base is replaced with this when the validations module is mixed in, which it is by default.
       def update_attribute(name, value)
-        send(name.to_s + '=', value)
+        send("#{name}=", value)
         save(:validate => false)
       end
 
@@ -1912,14 +1933,14 @@ module ActiveRecord #:nodoc:
       # Returns duplicated record with unfreezed attributes.
       def dup
         obj = super
-        obj.instance_variable_set('@attributes', instance_variable_get('@attributes').dup)
+        obj.instance_variable_set('@attributes', @attributes.dup)
         obj
       end
 
       # Returns +true+ if the record is read only. Records loaded through joins with piggy-back
       # attributes will be marked as read only since they cannot be saved.
       def readonly?
-        defined?(@readonly) && @readonly == true
+        @readonly
       end
 
       # Marks this record as read only.
@@ -1939,10 +1960,10 @@ module ActiveRecord #:nodoc:
 
     protected
       def clone_attributes(reader_method = :read_attribute, attributes = {})
-        self.attribute_names.inject(attributes) do |attrs, name|
-          attrs[name] = clone_attribute_value(reader_method, name)
-          attrs
+        attribute_names.each do |name|
+          attributes[name] = clone_attribute_value(reader_method, name)
         end
+        attributes
       end
 
       def clone_attribute_value(reader_method, attribute_name)
@@ -2039,26 +2060,6 @@ module ActiveRecord #:nodoc:
         default = [ self.class.primary_key, self.class.inheritance_column ]
         default << 'id' unless self.class.primary_key.eql? 'id'
         default
-      end
-
-      # Returns a copy of the attributes hash where all the values have been safely quoted for use in
-      # an SQL statement.
-      def attributes_with_quotes(include_primary_key = true, include_readonly_attributes = true, attribute_names = @attributes.keys)
-        quoted = {}
-        connection = self.class.connection
-        attribute_names.each do |name|
-          if (column = column_for_attribute(name)) && (include_primary_key || !column.primary)
-            value = read_attribute(name)
-
-            # We need explicit to_yaml because quote() does not properly convert Time/Date fields to YAML.
-            if value && self.class.serialized_attributes.has_key?(name) && (value.acts_like?(:date) || value.acts_like?(:time))
-              value = value.to_yaml
-            end
-
-            quoted[name] = connection.quote(value, column)
-          end
-        end
-        include_readonly_attributes ? quoted : remove_readonly_attributes(quoted)
       end
 
       # Returns a copy of the attributes hash where all the values have been safely quoted for use in
@@ -2222,6 +2223,7 @@ module ActiveRecord #:nodoc:
     extend QueryCache::ClassMethods
     extend ActiveSupport::Benchmarkable
 
+    include ActiveModel::Conversion
     include Validations
     include Locking::Optimistic, Locking::Pessimistic
     include AttributeMethods
@@ -2231,12 +2233,10 @@ module ActiveRecord #:nodoc:
     include AttributeMethods::Dirty
     include Callbacks, ActiveModel::Observing, Timestamp
     include Associations, AssociationPreload, NamedScope
-    include ActiveModel::Conversion
 
     # AutosaveAssociation needs to be included before Transactions, because we want
     # #save_with_autosave_associations to be wrapped inside a transaction.
     include AutosaveAssociation, NestedAttributes
-
     include Aggregations, Transactions, Reflection, Serialization
 
     NilClass.add_whiner(self) if NilClass.respond_to?(:add_whiner)
@@ -2245,4 +2245,4 @@ end
 
 # TODO: Remove this and make it work with LAZY flag
 require 'active_record/connection_adapters/abstract_adapter'
-ActiveRecord.run_base_hooks(ActiveRecord::Base)
+ActiveSupport.run_load_hooks(:active_record, ActiveRecord::Base)

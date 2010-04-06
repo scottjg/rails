@@ -1,6 +1,7 @@
 require 'action_view/helpers/javascript_helper'
 require 'active_support/core_ext/array/access'
 require 'active_support/core_ext/hash/keys'
+require 'action_dispatch'
 
 module ActionView
   module Helpers #:nodoc:
@@ -9,11 +10,25 @@ module ActionView
     # This allows you to use the same format for links in views
     # and controllers.
     module UrlHelper
-      include JavaScriptHelper
+      # This helper may be included in any class that includes the
+      # URL helpers of a router (router.url_helpers). Some methods
+      # provided here will only work in the context of a request
+      # (link_to_unless_current, for instance), which must be provided
+      # as a method called #request on the context.
+
+      extend ActiveSupport::Concern
+
+      include ActionDispatch::Routing::UrlFor
+      include TagHelper
 
       # Need to map default url options to controller one.
-      def default_url_options(*args) #:nodoc:
-        controller.send(:default_url_options, *args)
+      # def default_url_options(*args) #:nodoc:
+      #   controller.send(:default_url_options, *args)
+      # end
+      #
+      def url_options
+        return super unless controller.respond_to?(:url_options)
+        controller.url_options
       end
 
       # Returns the URL for the set of +options+ provided. This takes the
@@ -89,7 +104,7 @@ module ActionView
         when Hash
           options = { :only_path => options[:host].nil? }.update(options.symbolize_keys)
           escape  = options.key?(:escape) ? options.delete(:escape) : false
-          controller.send(:url_for, options)
+          super
         when :back
           escape = false
           controller.request.env["HTTP_REFERER"] || 'javascript:history.back()'
@@ -111,13 +126,24 @@ module ActionView
       #
       # ==== Signatures
       #
-      #   link_to(name, options = {}, html_options = nil)
-      #   link_to(options = {}, html_options = nil) do
+      #   link_to(body, url, html_options = {})
+      #     # url is a String; you can use URL helpers like
+      #     # posts_path
+      #
+      #   link_to(body, url_options = {}, html_options = {})
+      #     # url_options, except :confirm or :method,
+      #     # is passed to url_for
+      #
+      #   link_to(options = {}, html_options = {}) do
+      #     # name
+      #   end
+      #
+      #   link_to(url, html_options = {}) do
       #     # name
       #   end
       #
       # ==== Options
-      # * <tt>:confirm => 'question?'</tt> - This will allow the unobtrusive JavaScript 
+      # * <tt>:confirm => 'question?'</tt> - This will allow the unobtrusive JavaScript
       #   driver to prompt with the question specified. If the user accepts, the link is
       #   processed normally, otherwise no action is taken.
       # * <tt>:method => symbol of HTTP verb</tt> - This modifier will dynamically
@@ -130,7 +156,11 @@ module ActionView
       #   disabled clicking the link will have no effect. If you are relying on the
       #   POST behavior, you should check for it in your controller's action by using
       #   the request object's methods for <tt>post?</tt>, <tt>delete?</tt> or <tt>put?</tt>.
-      # * The +html_options+ will accept a hash of html attributes for the link tag.
+      # * <tt>:remote => true</tt> - This will allow the unobtrusive JavaScript
+      #   driver to make an Ajax request to the URL in question instead of following
+      #   the link. The drivers each provide mechanisms for listening for the
+      #   completion of the Ajax request and performing JavaScript operations once
+      #   they're complete
       #
       # ==== Examples
       # Because it relies on +url_for+, +link_to+ supports both older-style controller/action/id arguments
@@ -162,7 +192,7 @@ module ActionView
       #
       # You can use a block as well if your link target is hard to fit into the name parameter. ERb example:
       #
-      #   <% link_to(@profile) do %>
+      #   <%= link_to(@profile) do %>
       #     <strong><%= @profile.name %></strong> -- <span>Check it out!</span>
       #   <% end %>
       #   # => <a href="/profiles/1">
@@ -206,14 +236,14 @@ module ActionView
         if block_given?
           options      = args.first || {}
           html_options = args.second
-          safe_concat(link_to(capture(&block), options, html_options))
+          link_to(capture(&block), options, html_options)
         else
           name         = args[0]
           options      = args[1] || {}
           html_options = args[2]
 
-          url = url_for(options)
           html_options = convert_options_to_data_attributes(options, html_options)
+          url = url_for(options)
 
           if html_options
             html_options = html_options.stringify_keys
@@ -224,7 +254,7 @@ module ActionView
           end
 
           href_attr = "href=\"#{url}\"" unless href
-          ("<a #{href_attr}#{tag_options}>".html_safe << (name || url)).safe_concat("</a>")
+          "<a #{href_attr}#{tag_options}>#{ERB::Util.h(name || url)}</a>".html_safe
         end
       end
 
@@ -251,10 +281,10 @@ module ActionView
       # There are a few special +html_options+:
       # * <tt>:method</tt> - Specifies the anchor name to be appended to the path.
       # * <tt>:disabled</tt> - Specifies the anchor name to be appended to the path.
-      # * <tt>:confirm</tt> - This will use the unobtrusive JavaScript driver to 
+      # * <tt>:confirm</tt> - This will use the unobtrusive JavaScript driver to
       #   prompt with the question specified. If the user accepts, the link is
       #   processed normally, otherwise no action is taken.
-      # * <tt>:remote</tt> -  If set to true, will allow the Unobtrusive JavaScript drivers to control the 
+      # * <tt>:remote</tt> -  If set to true, will allow the Unobtrusive JavaScript drivers to control the
       #   submit behaviour. By default this behaviour is an ajax submit.
       #
       # ==== Examples
@@ -274,7 +304,7 @@ module ActionView
       #   #    </form>"
       #
       #
-      #   <%= button_to('Destroy', 'http://www.example.com', :confirm => 'Are you sure?', 
+      #   <%= button_to('Destroy', 'http://www.example.com', :confirm => 'Are you sure?',
       #             :method => "delete", :remote => true, :disable_with => 'loading...') %>
       #   # => "<form class='button-to' method='post' action='http://www.example.com' data-remote='true'>
       #   #       <div>
@@ -283,7 +313,6 @@ module ActionView
       #   #       </div>
       #   #     </form>"
       #   #
-
       def button_to(name, options = {}, html_options = {})
         html_options = html_options.stringify_keys
         convert_boolean_attributes!(html_options, %w( disabled ))
@@ -538,8 +567,14 @@ module ActionView
       #   current_page?(:controller => 'library', :action => 'checkout')
       #   # => false
       def current_page?(options)
+        unless request
+          raise "You cannot use helpers that need to determine the current " \
+                "page unless your view context provides a Request object " \
+                "in a #request method"
+        end
+
         url_string = CGI.unescapeHTML(url_for(options))
-        request = controller.request
+
         # We ignore any extra parameters in the request_uri if the
         # submitted url doesn't have any either.  This lets the function
         # work with things like ?order=asc
@@ -577,8 +612,6 @@ module ActionView
 
           add_confirm_to_attributes!(html_options, confirm) if confirm
           add_method_to_attributes!(html_options, method)   if method
-
-          html_options["data-url"] = options[:url] if options.is_a?(Hash) && options[:url]
 
           html_options
         end

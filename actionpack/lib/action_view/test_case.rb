@@ -1,30 +1,12 @@
+require 'active_support/core_ext/object/blank'
 require 'action_controller/test_case'
 require 'action_view'
 
 module ActionView
-  class Base
-    alias_method :initialize_without_template_tracking, :initialize
-    def initialize(*args)
-      @_rendered = { :template => nil, :partials => Hash.new(0) }
-      initialize_without_template_tracking(*args)
-    end
-
-    attr_internal :rendered
-  end
-
-  class Template
-    alias_method :render_without_tracking, :render
-    def render(view, locals, &blk)
-      rendered = view.rendered
-      rendered[:partials][self] += 1 if partial?
-      rendered[:template] ||= []
-      rendered[:template] << self
-      render_without_tracking(view, locals, &blk)
-    end
-  end
-
   class TestCase < ActiveSupport::TestCase
     class TestController < ActionController::Base
+      include ActionDispatch::TestProcess
+
       attr_accessor :request, :response, :params
 
       def self.controller_path
@@ -42,6 +24,7 @@ module ActionView
     end
 
     include ActionDispatch::Assertions, ActionDispatch::TestProcess
+    include ActionController::TemplateAssertions
     include ActionView::Context
 
     include ActionController::PolymorphicRoutes
@@ -64,7 +47,7 @@ module ActionView
     end
 
     def config
-      @controller.config
+      @controller.config if @controller.respond_to?(:config)
     end
 
     def render(options = {}, local_assigns = {}, &block)
@@ -124,7 +107,8 @@ module ActionView
 
       def _view
         view = ActionView::Base.new(ActionController::Base.view_paths, _assigns, @controller)
-        view.class.send :include, _helpers
+        view.singleton_class.send :include, _helpers
+        view.singleton_class.send :include, @controller._router.url_helpers
         view.output_buffer = self.output_buffer
         view
       end
@@ -158,8 +142,13 @@ module ActionView
         end
       end
 
+      def _router
+        @controller._router if @controller.respond_to?(:_router)
+      end
+
       def method_missing(selector, *args)
-        if @controller._router.named_routes.helpers.include?(selector)
+        if @controller.respond_to?(:_router) &&
+        @controller._router.named_routes.helpers.include?(selector)
           @controller.__send__(selector, *args)
         else
           super

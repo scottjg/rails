@@ -1,5 +1,6 @@
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/enumerable'
+require 'active_support/core_ext/object/blank'
 
 module ActiveRecord
   class InverseOfAssociationNotFoundError < ActiveRecordError #:nodoc:
@@ -85,6 +86,15 @@ module ActiveRecord
     end
   end
 
+  # This error is raised when trying to destroy a parent instance in a N:1, 1:1 assosications
+  # (has_many, has_one) when there is at least 1 child assosociated instance.
+  # ex: if @project.tasks.size > 0, DeleteRestrictionError will be raised when trying to destroy @project
+  class DeleteRestrictionError < ActiveRecordError #:nodoc:
+    def initialize(reflection)
+      super("Cannot delete record because of dependent #{reflection.name}")
+    end
+  end
+
   # See ActiveRecord::Associations::ClassMethods for documentation.
   module Associations # :nodoc:
     extend ActiveSupport::Concern
@@ -111,8 +121,11 @@ module ActiveRecord
     private
       # Gets the specified association instance if it responds to :loaded?, nil otherwise.
       def association_instance_get(name)
-        association = instance_variable_get("@#{name}")
-        association if association.respond_to?(:loaded?)
+        ivar = "@#{name}"
+        if instance_variable_defined?(ivar)
+          association = instance_variable_get(ivar)
+          association if association.respond_to?(:loaded?)
+        end
       end
 
       # Set the specified association instance.
@@ -827,6 +840,8 @@ module ActiveRecord
       #   objects are deleted *without* calling their +destroy+ method.  If set to <tt>:nullify</tt> all associated
       #   objects' foreign keys are set to +NULL+ *without* calling their +save+ callbacks. *Warning:* This option is ignored when also using
       #   the <tt>:through</tt> option.
+      #   the <tt>:through</tt> option. If set to <tt>:restrict</tt>
+      #   this object cannot be deleted if it has any associated object.
       # [:finder_sql]
       #   Specify a complete SQL statement to fetch the association. This is a good way to go for complex
       #   associations that depend on multiple tables. Note: When this option is used, +find_in_collection+ is _not_ added.
@@ -1207,7 +1222,7 @@ module ActiveRecord
       # * <tt>Developer#projects.empty?</tt>
       # * <tt>Developer#projects.size</tt>
       # * <tt>Developer#projects.find(id)</tt>
-      # * <tt>Developer#clients.exists?(...)</tt>
+      # * <tt>Developer#projects.exists?(...)</tt>
       # * <tt>Developer#projects.build</tt> (similar to <tt>Project.new("project_id" => id)</tt>)
       # * <tt>Developer#projects.create</tt> (similar to <tt>c = Project.new("project_id" => id); c.save; c</tt>)
       # The declaration may include an options hash to specialize the behavior of the association.
@@ -1465,23 +1480,21 @@ module ActiveRecord
 
         # Creates before_destroy callback methods that nullify, delete or destroy
         # has_many associated objects, according to the defined :dependent rule.
+        # If the association is marked as :dependent => :restrict, create a callback
+        # that prevents deleting entirely.
         #
         # See HasManyAssociation#delete_records.  Dependent associations
         # delete children, otherwise foreign key is set to NULL.
+        # See HasManyAssociation#delete_records. Dependent associations
+        # delete children if the option is set to :destroy or :delete_all, set the
+        # foreign key to NULL if the option is set to :nullify, and do not touch the
+        # child records if the option is set to :restrict.
         #
         # The +extra_conditions+ parameter, which is not used within the main
         # Active Record codebase, is meant to allow plugins to define extra
         # finder conditions.
         def configure_dependency_for_has_many(reflection, extra_conditions = nil)
           if reflection.options.include?(:dependent)
-            # Add polymorphic type if the :as option is present
-            dependent_conditions = []
-            dependent_conditions << "#{reflection.primary_key_name} = \#{record.#{reflection.name}.send(:owner_quoted_id)}"
-            dependent_conditions << "#{reflection.options[:as]}_type = '#{base_class.name}'" if reflection.options[:as]
-            dependent_conditions << sanitize_sql(reflection.options[:conditions], reflection.table_name) if reflection.options[:conditions]
-            dependent_conditions << extra_conditions if extra_conditions
-            dependent_conditions = dependent_conditions.collect {|where| "(#{where})" }.join(" AND ")
-            dependent_conditions = dependent_conditions.gsub('@', '\@')
             case reflection.options[:dependent]
               when :destroy
                 method_name = "has_many_dependent_destroy_for_#{reflection.name}".to_sym
@@ -1490,51 +1503,40 @@ module ActiveRecord
                 end
                 before_destroy method_name
               when :delete_all
-                # before_destroy do |record|
-                #   self.class.send(:delete_all_has_many_dependencies,
-                #     record,
-                #     "posts",
-                #     Post,
-                #     %@...@) # this is a string literal like %(...)
-                #   end
-                # end
-                module_eval <<-CALLBACK
-                  before_destroy do |record|
-                    self.class.send(:delete_all_has_many_dependencies,
-                      record,
-                      "#{reflection.name}",
-                      #{reflection.class_name},
-                      %@#{dependent_conditions}@)
-                  end
-                CALLBACK
+                before_destroy do |record|
+                  self.class.send(:delete_all_has_many_dependencies,
+                  record,
+                  reflection.name,
+                  reflection.klass,
+                  reflection.dependent_conditions(record, self.class, extra_conditions))
+                end
               when :nullify
-                # before_destroy do |record|
-                #   self.class.send(:nullify_has_many_dependencies,
-                #     record,
-                #     "posts",
-                #     Post,
-                #     "user_id",
-                #     %@...@) # this is a string literal like %(...)
-                #   end
-                # end
-                module_eval <<-CALLBACK
-                  before_destroy do |record|
-                    self.class.send(:nullify_has_many_dependencies,
-                      record,
-                      "#{reflection.name}",
-                      #{reflection.class_name},
-                      "#{reflection.primary_key_name}",
-                      %@#{dependent_conditions}@)
+                before_destroy do |record|
+                  self.class.send(:nullify_has_many_dependencies,
+                  record,
+                  reflection.name,
+                  reflection.klass,
+                  reflection.primary_key_name,
+                  reflection.dependent_conditions(record, self.class, extra_conditions))
+                end
+              when :restrict
+                method_name = "has_many_dependent_restrict_for_#{reflection.name}".to_sym
+                define_method(method_name) do
+                  unless send(reflection.name).empty?
+                    raise DeleteRestrictionError.new(reflection)
                   end
-                CALLBACK
+                end
+                before_destroy method_name
               else
-                raise ArgumentError, "The :dependent option expects either :destroy, :delete_all, or :nullify (#{reflection.options[:dependent].inspect})"
+                raise ArgumentError, "The :dependent option expects either :destroy, :delete_all, :nullify or :restrict (#{reflection.options[:dependent].inspect})"
             end
           end
         end
 
         # Creates before_destroy callback methods that nullify, delete or destroy
         # has_one associated objects, according to the defined :dependent rule.
+        # If the association is marked as :dependent => :restrict, create a callback
+        # that prevents deleting entirely.
         def configure_dependency_for_has_one(reflection)
           if reflection.options.include?(:dependent)
             name = reflection.options[:dependent]
@@ -1542,17 +1544,29 @@ module ActiveRecord
 
             case name
               when :destroy, :delete
-                define_method(method_name) do
-                  association = send(reflection.name)
-                  association.send(name) if association
-                end
+                class_eval <<-eoruby, __FILE__, __LINE__ + 1
+                  def #{method_name}
+                    association = #{reflection.name}
+                    association.#{name} if association
+                  end
+                eoruby
               when :nullify
+                class_eval <<-eoruby, __FILE__, __LINE__ + 1
+                  def #{method_name}
+                    association = #{reflection.name}
+                    association.update_attribute(#{reflection.primary_key_name.inspect}, nil) if association
+                  end
+                eoruby
+              when :restrict
+                method_name = "has_one_dependent_restrict_for_#{reflection.name}".to_sym
                 define_method(method_name) do
-                  association = send(reflection.name)
-                  association.update_attribute(reflection.primary_key_name, nil) if association
+                  unless send(reflection.name).nil?
+                    raise DeleteRestrictionError.new(reflection)
+                  end
                 end
+                before_destroy method_name
               else
-                raise ArgumentError, "The :dependent option expects either :destroy, :delete or :nullify (#{reflection.options[:dependent].inspect})"
+                raise ArgumentError, "The :dependent option expects either :destroy, :delete, :nullify or :restrict (#{reflection.options[:dependent].inspect})"
             end
 
             before_destroy method_name
@@ -1568,10 +1582,12 @@ module ActiveRecord
             end
 
             method_name = :"belongs_to_dependent_#{name}_for_#{reflection.name}"
-            define_method(method_name) do
-              association = send(reflection.name)
-              association.send(name) if association
-            end
+            class_eval <<-eoruby, __FILE__, __LINE__ + 1
+              def #{method_name}
+                association = #{reflection.name}
+                association.#{name} if association
+              end
+            eoruby
             after_destroy method_name
           end
         end
@@ -1668,15 +1684,6 @@ module ActiveRecord
           end
 
           reflection
-        end
-
-        def using_limitable_reflections?(reflections)
-          reflections.collect(&:collection?).length.zero?
-        end
-
-        def column_aliases(join_dependency)
-          join_dependency.joins.collect{|join| join.column_names_with_alias.collect{|column_name, aliased_name|
-              "#{connection.quote_table_name join.aliased_table_name}.#{connection.quote_column_name column_name} AS #{aliased_name}"}}.flatten.join(", ")
         end
 
         def add_association_callbacks(association_name, options)
@@ -1995,7 +2002,7 @@ module ActiveRecord
                   [aliased_table[foreign_key].eq(parent_table[reflection.options[:primary_key] || parent.primary_key])]
                 end
               when :belongs_to
-                [aliased_table[reflection.klass.primary_key].eq(parent_table[options[:foreign_key] || reflection.primary_key_name])]
+                [aliased_table[options[:primary_key] || reflection.klass.primary_key].eq(parent_table[options[:foreign_key] || reflection.primary_key_name])]
               end
 
               unless klass.descends_from_active_record?

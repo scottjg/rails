@@ -1,6 +1,8 @@
 require 'mail'
 require 'action_mailer/tmail_compat'
 require 'action_mailer/collector'
+require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/object/blank'
 
 module ActionMailer #:nodoc:
   # Action Mailer allows you to send email from your application using a mailer model and views.
@@ -289,7 +291,7 @@ module ActionMailer #:nodoc:
       :parts_order  => [ "text/plain", "text/enriched", "text/html" ]
     }.freeze
 
-    ActionMailer.run_base_hooks(self)
+    ActiveSupport.run_load_hooks(:action_mailer, self)
 
     class << self
 
@@ -590,7 +592,7 @@ module ActionMailer #:nodoc:
       responses, parts_order = [], nil
 
       if block_given?
-        collector = ActionMailer::Collector.new(self) { render(action_name) }
+        collector = ActionMailer::Collector.new(lookup_context) { render(action_name) }
         yield(collector)
         parts_order = collector.responses.map { |r| r[:content_type] }
         responses  = collector.responses
@@ -604,6 +606,8 @@ module ActionMailer #:nodoc:
         templates_name = headers.delete(:template_name) || action_name
 
         each_template(templates_path, templates_name) do |template|
+          self.formats = template.formats
+
           responses << {
             :body => render(:template => template),
             :content_type => template.mime_type.to_s
@@ -615,7 +619,7 @@ module ActionMailer #:nodoc:
     end
 
     def each_template(paths, name, &block) #:nodoc:
-      Array(paths).each do |path|
+      Array.wrap(paths).each do |path|
         templates = lookup_context.find_all(name, path)
         templates = templates.uniq_by { |t| t.formats }
 

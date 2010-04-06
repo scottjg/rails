@@ -3,6 +3,7 @@ require 'cgi'
 require 'action_view/helpers/url_helper'
 require 'action_view/helpers/tag_helper'
 require 'active_support/core_ext/file'
+require 'active_support/core_ext/object/blank'
 
 module ActionView
   module Helpers #:nodoc:
@@ -58,7 +59,7 @@ module ActionView
     # +asset_host+ to a proc like this:
     #
     #   ActionController::Base.asset_host = Proc.new { |source|
-    #     "http://assets#{rand(2) + 1}.example.com"
+    #     "http://assets#{source.hash % 2 + 1}.example.com"
     #   }
     #   image_tag("rails.png")
     #   # => <img alt="Rails" src="http://assets0.example.com/images/rails.png?1230601161" />
@@ -66,7 +67,7 @@ module ActionView
     #   # => <link href="http://assets1.example.com/stylesheets/application.css?1232285206" media="screen" rel="stylesheet" type="text/css" />
     #
     # The example above generates "http://assets1.example.com" and
-    # "http://assets2.example.com" randomly. This option is useful for example if
+    # "http://assets2.example.com". This option is useful for example if
     # you need fewer/more than four hosts, custom host names, etc.
     #
     # As you see the proc takes a +source+ parameter. That's a string with the
@@ -107,7 +108,7 @@ module ActionView
     #     "http://asset%d.example.com", "https://asset1.example.com"
     #   )
     #
-    # === Using asset timestamps
+    # === Customizing the asset path
     #
     # By default, Rails appends asset's timestamps to all asset paths. This allows
     # you to set a cache-expiration date for the asset far into the future, but
@@ -132,6 +133,65 @@ module ActionView
     # will request the same assets over and over again even thought they didn't
     # change. You can use something like Live HTTP Headers for Firefox to verify
     # that the cache is indeed working.
+    #
+    # This strategy works well enough for most server setups and requires the
+    # least configuration, but if you deploy several application servers at
+    # different times - say to handle a temporary spike in load - then the
+    # asset time stamps will be out of sync. In a setup like this you may want
+    # to set the way that asset paths are generated yourself.
+    #
+    # Altering the asset paths that Rails generates can be done in two ways.
+    # The easiest is to define the RAILS_ASSET_ID environment variable. The
+    # contents of this variable will always be used in preference to
+    # calculated timestamps. A more complex but flexible way is to set
+    # <tt>ActionController::Base.config.asset_path</tt> to a proc
+    # that takes the unmodified asset path and returns the path needed for
+    # your asset caching to work. Typically you'd do something like this in
+    # <tt>config/environments/production.rb</tt>:
+    #
+    #   # Normally you'd calculate RELEASE_NUMBER at startup.
+    #   RELEASE_NUMBER = 12345
+    #   config.action_controller.asset_path_template = proc { |asset_path|
+    #     "/release-#{RELEASE_NUMBER}#{asset_path}"
+    #   }
+    #
+    # This example would cause the following behaviour on all servers no
+    # matter when they were deployed:
+    #
+    #   image_tag("rails.png")
+    #   # => <img alt="Rails" src="/release-12345/images/rails.png" />
+    #   stylesheet_link_tag("application")
+    #   # => <link href="/release-12345/stylesheets/application.css?1232285206" media="screen" rel="stylesheet" type="text/css" />
+    #
+    # Changing the asset_path does require that your web servers have
+    # knowledge of the asset template paths that you rewrite to so it's not
+    # suitable for out-of-the-box use. To use the example given above you
+    # could use something like this in your Apache VirtualHost configuration:
+    #
+    #   <LocationMatch "^/release-\d+/(images|javascripts|stylesheets)/.*$">
+    #     # Some browsers still send conditional-GET requests if there's a
+    #     # Last-Modified header or an ETag header even if they haven't
+    #     # reached the expiry date sent in the Expires header.
+    #     Header unset Last-Modified
+    #     Header unset ETag
+    #     FileETag None
+    #
+    #     # Assets requested using a cache-busting filename should be served
+    #     # only once and then cached for a really long time. The HTTP/1.1
+    #     # spec frowns on hugely-long expiration times though and suggests
+    #     # that assets which never expire be served with an expiration date
+    #     # 1 year from access.
+    #     ExpiresActive On
+    #     ExpiresDefault "access plus 1 year"
+    #   </LocationMatch>
+    #
+    #   # We use cached-busting location names with the far-future expires
+    #   # headers to ensure that if a file does change it can force a new
+    #   # request. The actual asset filenames are still the same though so we
+    #   # need to rewrite the location from the cache-busting location to the
+    #   # real asset location so that we can serve it.
+    #   RewriteEngine On
+    #   RewriteRule ^/release-\d+/(images|javascripts|stylesheets)/(.*)$ /$1/$2 [L]
     module AssetTagHelper
       JAVASCRIPT_DEFAULT_SOURCES = ['prototype', 'effects', 'dragdrop', 'controls', 'rails'].freeze unless const_defined?(:JAVASCRIPT_DEFAULT_SOURCES)
 
@@ -623,41 +683,37 @@ module ActionView
       @@cache_asset_timestamps = true
 
       private
+        def rewrite_extension?(source, dir, ext)
+          source_ext = File.extname(source)[1..-1]
+          ext && (source_ext.blank? || (ext != source_ext && File.exist?(File.join(config.assets_dir, dir, "#{source}.#{ext}"))))
+        end
+
+        def rewrite_host_and_protocol(source, has_request)
+          host = compute_asset_host(source)
+          if has_request && host.present? && !is_uri?(host)
+            host = "#{controller.request.protocol}#{host}"
+          end
+          "#{host}#{source}"
+        end
+
         # Add the the extension +ext+ if not present. Return full URLs otherwise untouched.
         # Prefix with <tt>/dir/</tt> if lacking a leading +/+. Account for relative URL
         # roots. Rewrite the asset path for cache-busting asset ids. Include
         # asset host, if configured, with the correct request protocol.
         def compute_public_path(source, dir, ext = nil, include_host = true)
+          return source if is_uri?(source)
+
+          source += ".#{ext}" if rewrite_extension?(source, dir, ext)
+          source  = "/#{dir}/#{source}" unless source[0] == ?/
+          source = rewrite_asset_path(source, config.asset_path)
+
           has_request = controller.respond_to?(:request)
-
-          source_ext = File.extname(source)[1..-1]
-          if ext && !is_uri?(source) && (source_ext.blank? || (ext != source_ext && File.exist?(File.join(config.assets_dir, dir, "#{source}.#{ext}"))))
-            source += ".#{ext}"
+          if has_request && include_host && source !~ %r{^#{controller.config.relative_url_root}/}
+            source = "#{controller.config.relative_url_root}#{source}"
           end
+          source = rewrite_host_and_protocol(source, has_request) if include_host
 
-          unless is_uri?(source)
-            source = "/#{dir}/#{source}" unless source[0] == ?/
-
-            source = rewrite_asset_path(source)
-
-            if has_request && include_host
-              unless source =~ %r{^#{controller.config.relative_url_root}/}
-                source = "#{controller.config.relative_url_root}#{source}"
-              end
-            end
-          end
-
-          if include_host && !is_uri?(source)
-            host = compute_asset_host(source)
-
-            if has_request && !host.blank? && !is_uri?(host)
-              host = "#{controller.request.protocol}#{host}"
-            end
-
-            "#{host}#{source}"
-          else
-            source
-          end
+          source
         end
 
         def is_uri?(path)
@@ -713,7 +769,13 @@ module ActionView
 
         # Break out the asset path rewrite in case plugins wish to put the asset id
         # someplace other than the query string.
-        def rewrite_asset_path(source)
+        def rewrite_asset_path(source, path = nil)
+          if path && path.respond_to?(:call)
+            return path.call(source)
+          elsif path && path.is_a?(String)
+            return path % [source]
+          end
+
           asset_id = rails_asset_id(source)
           if asset_id.blank?
             source

@@ -1,3 +1,4 @@
+require 'active_support/core_ext/object/blank'
 require 'set'
 
 module ActionView
@@ -65,7 +66,7 @@ module ActionView
       #   content_tag("select", options, :multiple => true)
       #    # => <select multiple="multiple">...options...</select>
       #
-      #   <% content_tag :div, :class => "strong" do -%>
+      #   <%= content_tag :div, :class => "strong" do -%>
       #     Hello world!
       #   <% end -%>
       #    # => <div class="strong">Hello world!</div>
@@ -109,7 +110,7 @@ module ActionView
 
         def content_tag_string(name, content, options, escape = true)
           tag_options = tag_options(options, escape) if options
-          ("<#{name}#{tag_options}>".html_safe << content.to_s).safe_concat("</#{name}>")
+          "<#{name}#{tag_options}>#{ERB::Util.h(content)}</#{name}>".html_safe
         end
 
         def tag_options(options, escape = true)

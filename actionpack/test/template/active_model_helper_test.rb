@@ -118,13 +118,12 @@ class ActiveModelHelperTest < ActionView::TestCase
     setup_user
 
     @response = ActionController::TestResponse.new
+  end
 
-    @controller = Object.new
-    def @controller.url_for(options)
-      options = options.symbolize_keys
+  def url_for(options)
+    options = options.symbolize_keys
 
-      [options[:action], options[:id].to_param].compact.join('/')
-    end
+    [options[:action], options[:id].to_param].compact.join('/')
   end
 
   def test_generic_input_tag
@@ -145,6 +144,20 @@ class ActiveModelHelperTest < ActionView::TestCase
       %(<div class="fieldWithErrors"><input id="post_author_name" name="post[author_name]" size="30" type="text" value="" /></div>),
       text_field("post", "author_name")
     )
+  end
+
+  def test_field_error_proc
+    old_proc = ActionView::Base.field_error_proc
+    ActionView::Base.field_error_proc = Proc.new do |html_tag, instance|
+      %(<div class=\"fieldWithErrors\">#{html_tag} <span class="error">#{[instance.error_message].join(', ')}</span></div>).html_safe
+    end
+
+    assert_dom_equal(
+      %(<div class="fieldWithErrors"><input id="post_author_name" name="post[author_name]" size="30" type="text" value="" /> <span class="error">can't be empty</span></div>),
+      text_field("post", "author_name")
+    )
+  ensure
+    ActionView::Base.field_error_proc = old_proc if old_proc
   end
 
   def test_form_with_string
@@ -250,6 +263,14 @@ class ActiveModelHelperTest < ActionView::TestCase
 
   def test_error_message_on_with_options_hash
     assert_dom_equal "<div class=\"differentError\">beforecan't be emptyafter</div>", error_message_on(:post, :author_name, :css_class => 'differentError', :prepend_text => 'before', :append_text => 'after')
+  end
+
+  def test_error_message_on_with_tag_option_in_options_hash
+    assert_dom_equal "<span class=\"differentError\">beforecan't be emptyafter</span>", error_message_on(:post, :author_name, :html_tag => "span", :css_class => 'differentError', :prepend_text => 'before', :append_text => 'after')
+  end
+
+  def test_error_message_on_handles_empty_errors
+    assert_equal "", error_message_on(@post, :tag)
   end
 
   def test_error_messages_for_many_objects

@@ -1,3 +1,5 @@
+require 'active_support/core_ext/object/blank'
+
 module ActiveRecord
   module QueryMethods
     extend ActiveSupport::Concern
@@ -6,9 +8,11 @@ module ActiveRecord
       (ActiveRecord::Relation::ASSOCIATION_METHODS + ActiveRecord::Relation::MULTI_VALUE_METHODS).each do |query_method|
         attr_accessor :"#{query_method}_values"
 
+        next if [:where, :having].include?(query_method)
         class_eval <<-CEVAL
-          def #{query_method}(*args)
+          def #{query_method}(*args, &block)
             new_relation = clone
+            new_relation.send(:apply_modules, Module.new(&block)) if block_given?
             value = Array.wrap(args.flatten).reject {|x| x.blank? }
             new_relation.#{query_method}_values += value if value.present?
             new_relation
@@ -18,8 +22,9 @@ module ActiveRecord
 
       [:where, :having].each do |query_method|
         class_eval <<-CEVAL
-          def #{query_method}(*args)
+          def #{query_method}(*args, &block)
             new_relation = clone
+            new_relation.send(:apply_modules, Module.new(&block)) if block_given?
             value = build_where(*args)
             new_relation.#{query_method}_values += [*value] if value.present?
             new_relation
@@ -31,8 +36,9 @@ module ActiveRecord
         attr_accessor :"#{query_method}_value"
 
         class_eval <<-CEVAL
-          def #{query_method}(value = true)
+          def #{query_method}(value = true, &block)
             new_relation = clone
+            new_relation.send(:apply_modules, Module.new(&block)) if block_given?
             new_relation.#{query_method}_value = value
             new_relation
           end
@@ -40,8 +46,16 @@ module ActiveRecord
       end
     end
 
-    def lock(locks = true)
+    def extending(*modules)
+      new_relation = clone
+      new_relation.send :apply_modules, *modules
+      new_relation
+    end
+
+    def lock(locks = true, &block)
       relation = clone
+      relation.send(:apply_modules, Module.new(&block)) if block_given?
+
       case locks
       when String, TrueClass, NilClass
         clone.tap {|new_relation| new_relation.lock_value = locks || true }
@@ -133,13 +147,8 @@ module ActiveRecord
         arel = h.is_a?(String) ? arel.having(h) : arel.having(*h)
       end
 
-      if defined?(@limit_value) && @limit_value.present?
-        arel = arel.take(@limit_value)
-      end
-
-      if defined?(@offset_value) && @offset_value.present?
-        arel = arel.skip(@offset_value)
-      end
+      arel = arel.take(@limit_value) if @limit_value.present?
+      arel = arel.skip(@offset_value) if @offset_value.present?
 
       @group_values.uniq.each do |g|
         arel = arel.group(g) if g.present?
@@ -162,19 +171,14 @@ module ActiveRecord
         arel = arel.project(quoted_table_name + '.*')
       end
 
-      arel =
-        if defined?(@from_value) && @from_value.present?
-          arel.from(@from_value)
-        else
-          arel.from(quoted_table_name)
-        end
+      arel = @from_value.present? ? arel.from(@from_value) : arel.from(quoted_table_name)
 
       case @lock_value
       when TrueClass
         arel = arel.lock
       when String
         arel = arel.lock(@lock_value)
-      end if defined?(@lock_value)
+      end if @lock_value.present?
 
       arel
     end
@@ -197,6 +201,12 @@ module ActiveRecord
     end
 
     private
+
+    def apply_modules(modules)
+      values = Array.wrap(modules)
+      @extensions += values if values.present?
+      values.each {|extension| extend(extension) }
+    end
 
     def reverse_sql_order(order_query)
       order_query.to_s.split(/,/).each { |s|

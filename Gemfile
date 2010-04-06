@@ -1,20 +1,24 @@
-path File.dirname(__FILE__)
 source 'http://rubygems.org'
 
 gem "arel", :git => "git://github.com/rails/arel.git"
-gem "rails", "3.0.0.beta1"
+gem "rails", :path => File.dirname(__FILE__)
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
 
-if RUBY_VERSION < '1.9'
-  gem "ruby-debug", ">= 0.10.3"
+group :mri do
+  if RUBY_VERSION < '1.9'
+    gem "system_timer"
+    gem "ruby-debug", ">= 0.10.3"
+  elsif RUBY_VERSION < '1.9.2' && !ENV['CI']
+    gem "ruby-debug19"
+  end
 end
 
 # AR
 gem "sqlite3-ruby", ">= 1.2.5", :require => 'sqlite3'
 
-group :test do
+group :db do
   gem "pg", ">= 0.9.0"
   gem "mysql", ">= 2.8.1"
 end

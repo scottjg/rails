@@ -1,3 +1,5 @@
+require 'active_support/json'
+
 module ActionController #:nodoc:
   # Responder is responsible for exposing a resource to different mime requests,
   # usually depending on the HTTP verb. The responder is triggered when
@@ -214,7 +216,7 @@ module ActionController #:nodoc:
     # the verb is POST.
     #
     def default_action
-      @action ||= ACTIONS_FOR_VERBS[request.method]
+      @action ||= ACTIONS_FOR_VERBS[request.method_symbol]
     end
   end
 end

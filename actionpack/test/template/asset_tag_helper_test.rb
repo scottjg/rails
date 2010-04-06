@@ -34,9 +34,7 @@ class AssetTagHelperTest < ActionView::TestCase
       )
     end
 
-    @controller = Class.new(BasicController) do
-      def url_for(*args) "http://www.example.com" end
-    end.new
+    @controller = BasicController.new
 
     @request = Class.new do
       def protocol() 'http://' end
@@ -47,6 +45,10 @@ class AssetTagHelperTest < ActionView::TestCase
     @controller.request = @request
 
     ActionView::Helpers::AssetTagHelper::reset_javascript_include_default
+  end
+
+  def url_for(*args)
+    "http://www.example.com"
   end
 
   def teardown
@@ -141,7 +143,6 @@ class AssetTagHelperTest < ActionView::TestCase
 
   ImageLinkToTag = {
     %(image_tag("xml.png")) => %(<img alt="Xml" src="/images/xml.png" />),
-    %(image_tag("..jpg")) => %(<img alt="..jpg" src="/images/..jpg" />),
     %(image_tag("rss.gif", :alt => "rss syndication")) => %(<img alt="rss syndication" src="/images/rss.gif" />),
     %(image_tag("gold.png", :size => "45x70")) => %(<img alt="Gold" height="70" src="/images/gold.png" width="45" />),
     %(image_tag("gold.png", "size" => "45x70")) => %(<img alt="Gold" height="70" src="/images/gold.png" width="45" />),
@@ -372,6 +373,22 @@ class AssetTagHelperTest < ActionView::TestCase
   def test_timebased_asset_id
     expected_time = File.stat(File.expand_path(File.dirname(__FILE__) + "/../fixtures/public/images/rails.png")).mtime.to_i.to_s
     assert_equal %(<img alt="Rails" src="/images/rails.png?#{expected_time}" />), image_tag("rails.png")
+  end
+
+  def test_string_asset_id
+    @controller.config.asset_path = "/assets.v12345%s"
+
+    expected_path = "/assets.v12345/images/rails.png"
+    assert_equal %(<img alt="Rails" src="#{expected_path}" />), image_tag("rails.png")
+  end
+
+  def test_proc_asset_id
+    @controller.config.asset_path = Proc.new do |asset_path|
+      "/assets.v12345#{asset_path}"
+    end
+
+    expected_path = "/assets.v12345/images/rails.png"
+    assert_equal %(<img alt="Rails" src="#{expected_path}" />), image_tag("rails.png")
   end
 
   def test_timebased_asset_id_with_relative_url_root
@@ -878,23 +895,17 @@ class AssetTagHelperNonVhostTest < ActionView::TestCase
 
   def setup
     super
-    @controller = Class.new(BasicController) do
-      def url_for(options)
-        "http://www.example.com/collaboration/hieraki"
-      end
-    end.new
-
+    @controller = BasicController.new
     @controller.config.relative_url_root = "/collaboration/hieraki"
 
-    @request = Class.new do
-      def protocol
-        'gopher://'
-      end
-    end.new
-
+    @request = Struct.new(:protocol).new("gopher://")
     @controller.request = @request
 
     ActionView::Helpers::AssetTagHelper::reset_javascript_include_default
+  end
+
+  def url_for(options)
+    "http://www.example.com/collaboration/hieraki"
   end
 
   def test_should_compute_proper_path

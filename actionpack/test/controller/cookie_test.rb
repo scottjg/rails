@@ -1,7 +1,5 @@
 require 'abstract_unit'
 
-ActionController::Base.cookie_verifier_secret = "thisISverySECRET123"
-
 class CookieTest < ActionController::TestCase
   class TestController < ActionController::Base
     def authenticate
@@ -64,12 +62,19 @@ class CookieTest < ActionController::TestCase
       cookies.permanent.signed[:remember_me] = 100
       head :ok
     end
+
+    def delete_and_set_cookie
+      cookies.delete :user_name
+      cookies[:user_name] = { :value => "david", :expires => Time.utc(2005, 10, 10,5) }
+      head :ok
+    end
   end
 
   tests TestController
 
   def setup
     super
+    @request.env["action_dispatch.secret_token"] = "thisISverySECRET123"
     @request.host = "www.nextangle.com"
   end
 
@@ -152,6 +157,11 @@ class CookieTest < ActionController::TestCase
     assert_equal 100, @controller.send(:cookies).signed[:remember_me]
   end
 
+  def test_delete_and_set_cookie
+    get :delete_and_set_cookie
+    assert_cookie_header "user_name=david; path=/; expires=Mon, 10-Oct-2005 05:00:00 GMT"
+    assert_equal({"user_name" => "david"}, @response.cookies)
+  end
 
   private
     def assert_cookie_header(expected)

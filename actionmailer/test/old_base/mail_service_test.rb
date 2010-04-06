@@ -340,6 +340,8 @@ class ActionMailerTest < Test::Unit::TestCase
 
     @original_logger = TestMailer.logger
     @recipient = 'test@localhost'
+
+    TestMailer.delivery_method = :test
   end
 
   def teardown
@@ -782,7 +784,7 @@ EOF
     expected.date    = Time.local 2004, 12, 12
 
     created = TestMailer.utf8_body @recipient
-    assert_match(/åœö blah/, created.encoded)
+    assert_match(/åœö blah/, created.decoded)
   end
 
   def test_multiple_utf8_recipients
@@ -1017,8 +1019,8 @@ EOF
 
   def test_empty_header_values_omitted
     result = TestMailer.unnamed_attachment(@recipient).encoded
-    assert_match %r{Content-Type: application/octet-stream;}, result
-    assert_match %r{Content-Disposition: attachment;}, result
+    assert_match %r{Content-Type: application/octet-stream}, result
+    assert_match %r{Content-Disposition: attachment}, result
   end
 
   def test_headers_with_nonalpha_chars
@@ -1191,6 +1193,6 @@ class RespondToTest < Test::Unit::TestCase
       RespondToMailer.not_a_method
     end
 
-    assert_match(/undefined method.*not_a_method/, error.message)
+    assert_match(/method.*not_a_method/, error.message)
   end
 end

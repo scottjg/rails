@@ -9,7 +9,7 @@ module RenderTestCases
   def setup_view(paths)
     @assigns = { :secret => 'in the sauce' }
     @view = ActionView::Base.new(paths, @assigns)
-    @controller_view = ActionView::Base.for_controller(TestController.new)
+    @controller_view = TestController.new.view_context
 
     # Reload and register danish language for testing
     I18n.reload!
@@ -228,6 +228,14 @@ module RenderTestCases
       @view.render(:file => "test/hello_world.erb", :layout => "layouts/yield")
   end
 
+  # TODO: Move to deprecated_tests.rb
+  def test_render_with_nested_layout_deprecated
+    assert_deprecated do
+      assert_equal %(<title>title</title>\n\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
+        @view.render(:file => "test/deprecated_nested_layout.erb", :layout => "layouts/yield")
+    end
+  end
+
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout.erb", :layout => "layouts/yield")
@@ -273,6 +281,10 @@ class CachedViewRenderTest < ActiveSupport::TestCase
     assert_equal ActionView::FileSystemResolver, view_paths.first.class
     setup_view(view_paths)
   end
+
+  def teardown
+    GC.start
+  end
 end
 
 class LazyViewRenderTest < ActiveSupport::TestCase
@@ -285,5 +297,9 @@ class LazyViewRenderTest < ActiveSupport::TestCase
     view_paths = ActionView::Base.process_view_paths(path)
     assert_equal ActionView::FileSystemResolver.new(FIXTURE_LOAD_PATH), view_paths.first
     setup_view(view_paths)
+  end
+
+  def teardown
+    GC.start
   end
 end

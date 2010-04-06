@@ -8,11 +8,15 @@ class FormTagHelperTest < ActionView::TestCase
 
   def setup
     super
-    @controller = Class.new(BasicController) do
-      def url_for(options)
-        "http://www.example.com"
-      end
-    end.new
+    @controller = BasicController.new
+  end
+
+  def url_for(options)
+    if options.is_a?(Hash)
+      "http://www.example.com"
+    else
+      super
+    end
   end
 
   VALID_HTML_ID = /^[A-Za-z][-_:.A-Za-z0-9]*$/ # see http://www.w3.org/TR/html4/types.html#type-name
@@ -156,6 +160,12 @@ class FormTagHelperTest < ActionView::TestCase
     actual = select_tag "places", "<option>Home</option><option>Work</option><option>Pub</option>".html_safe, :include_blank => "string"
     expected = %(<select id="places" name="places"><option value="">string</option><option>Home</option><option>Work</option><option>Pub</option></select>)
     assert_dom_equal expected, actual
+  end
+
+  def test_select_tag_with_array_options
+    assert_deprecated /array/ do
+      select_tag "people", ["<option>david</option>"]
+    end
   end
 
   def test_text_area_tag_size_string
@@ -323,6 +333,36 @@ class FormTagHelperTest < ActionView::TestCase
       %(<input type="image" src="/images/save.gif" data-confirm="Are you sure?" />),
       image_submit_tag("save.gif", :confirm => "Are you sure?")
     )
+  end
+
+  def test_search_field_tag
+    expected = %{<input id="query" name="query" type="search" />}
+    assert_dom_equal(expected, search_field_tag("query"))
+  end
+
+  def telephone_field_tag
+    expected = %{<input id="cell" name="cell" type="tel" />}
+    assert_dom_equal(expected, telephone_field_tag("cell"))
+  end
+
+  def test_url_field_tag
+    expected = %{<input id="homepage" name="homepage" type="url" />}
+    assert_dom_equal(expected, url_field_tag("homepage"))
+  end
+
+  def test_email_field_tag
+    expected = %{<input id="address" name="address" type="email" />}
+    assert_dom_equal(expected, email_field_tag("address"))
+  end
+
+  def test_number_field_tag
+    expected = %{<input name="quantity" max="9" id="quantity" type="number" min="1" />}
+    assert_dom_equal(expected, number_field_tag("quantity", nil, :in => 1...10))
+  end
+
+  def test_range_input_tag
+    expected = %{<input name="volume" step="0.1" max="11" id="volume" type="range" min="0" />}
+    assert_dom_equal(expected, range_field_tag("volume", nil, :in => 0..11, :step => 0.1))
   end
 
   def test_pass

@@ -1,4 +1,4 @@
-require 'active_support/core_ext/object/singleton_class'
+require 'active_support/core_ext/kernel/singleton_class'
 
 module ActiveRecord
   # Exception that can be raised to stop migrations from going backwards.
@@ -315,7 +315,9 @@ module ActiveRecord
       end
 
       def announce(message)
-        text = "#{@version} #{name}: #{message}"
+        version = defined?(@version) ? @version : nil
+
+        text = "#{version} #{name}: #{message}"
         length = [0, 75 - text.length].max
         write "== %s %s" % [text, "=" * length]
       end
@@ -372,7 +374,7 @@ module ActiveRecord
       end
 
       def load_migration
-        load(filename)
+        require(File.expand_path(filename))
         name.constantize
       end
 

@@ -836,6 +836,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal num_accounts, Account.count
   end
 
+  def test_restrict
+    firm = RestrictedFirm.new(:name => 'restrict')
+    firm.save!
+    child_firm = firm.companies.create(:name => 'child')
+    assert !firm.companies.empty?
+    assert_raise(ActiveRecord::DeleteRestrictionError) { firm.destroy }
+  end
+
   def test_included_in_collection
     assert companies(:first_firm).clients.include?(Client.find(2))
   end
@@ -1159,5 +1167,23 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm = Firm.find(:first, :order => "id")
     client = firm.clients_using_primary_key.create!(:name => 'test')
     assert_equal firm.name, client.firm_name
+  end
+
+  def test_defining_has_many_association_with_delete_all_dependency_lazily_evaluates_target_class
+    ActiveRecord::Reflection::AssociationReflection.any_instance.expects(:class_name).never
+    class_eval <<-EOF
+      class DeleteAllModel < ActiveRecord::Base
+        has_many :nonentities, :dependent => :delete_all
+      end
+    EOF
+  end
+
+  def test_defining_has_many_association_with_nullify_dependency_lazily_evaluates_target_class
+    ActiveRecord::Reflection::AssociationReflection.any_instance.expects(:class_name).never
+    class_eval <<-EOF
+      class NullifyModel < ActiveRecord::Base
+        has_many :nonentities, :dependent => :nullify
+      end
+    EOF
   end
 end

@@ -1,5 +1,3 @@
-require File.expand_path('../../load_paths', __FILE__)
-
 require 'rake'
 require 'rake/testtask'
 require 'rake/rdoctask'
@@ -36,7 +34,7 @@ end
 
 desc "Updates application README to the latest version Railties README"
 task :update_readme do
-  readme = "lib/generators/rails/app/templates/README"
+  readme = "lib/rails/generators/rails/app/templates/README"
   rm readme
   cp "./README", readme
 end
@@ -48,7 +46,7 @@ task :generate_guides do
 end
 
 task :update_prototype_ujs do
-  system "curl http://github.com/rails/prototype-ujs/raw/master/src/rails.js > lib/generators/rails/app/templates/public/javascripts/rails.js"
+  system "curl http://github.com/rails/prototype-ujs/raw/master/src/rails.js > lib/rails/generators/rails/app/templates/public/javascripts/rails.js"
 end
 
 # Generate documentation ------------------------------------------------------------------
@@ -60,10 +58,8 @@ Rake::RDocTask.new { |rdoc|
   rdoc.options << '--charset' << 'utf-8'
   rdoc.template = ENV['template'] ? "#{ENV['template']}.rb" : '../doc/template/horo'
   rdoc.rdoc_files.include('README', 'CHANGELOG')
-  rdoc.rdoc_files.include('lib/*.rb')
-  rdoc.rdoc_files.include('lib/rails/*.rb')
-  rdoc.rdoc_files.include('lib/generators/*.rb')
-  rdoc.rdoc_files.include('lib/commands/**/*.rb')
+  rdoc.rdoc_files.include('lib/**/*.rb')
+  rdoc.rdoc_files.exclude('lib/rails/generators/**/templates/*')
 }
 
 # Generate GEM ----------------------------------------------------------------------------

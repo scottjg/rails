@@ -1,4 +1,5 @@
 require 'active_support/core_ext/hash/keys'
+require 'active_support/core_ext/object/blank'
 
 module ActionDispatch
   module Session
@@ -191,7 +192,7 @@ module ActionDispatch
           if secret.blank?
             raise ArgumentError, "A secret is required to generate an " +
               "integrity hash for cookie session data. Use " +
-              "config.cookie_secret = \"some secret phrase of at " +
+              "config.secret_token = \"some secret phrase of at " +
               "least #{SECRET_MIN_LENGTH} characters\"" +
               "in config/application.rb"
           end

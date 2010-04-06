@@ -1,6 +1,7 @@
 require 'cgi'
 require 'action_view/helpers/tag_helper'
 require 'active_support/core_ext/object/returning'
+require 'active_support/core_ext/object/blank'
 
 module ActionView
   module Helpers
@@ -37,12 +38,12 @@ module ActionView
       #   form_tag('/upload', :multipart => true)
       #   # => <form action="/upload" method="post" enctype="multipart/form-data">
       #
-      #   <% form_tag('/posts')do -%>
+      #   <%= form_tag('/posts')do -%>
       #     <div><%= submit_tag 'Save' %></div>
       #   <% end -%>
       #   # => <form action="/posts" method="post"><div><input type="submit" name="submit" value="Save" /></div></form>
       # 
-      #  <% form_tag('/posts', :remote => true) %>
+      #  <%= form_tag('/posts', :remote => true) %>
       #   # => <form action="/posts" method="post" data-remote="true">
       #   
       def form_tag(url_for_options = {}, options = {}, *parameters_for_url, &block)
@@ -92,6 +93,10 @@ module ActionView
       #   # => <select disabled="disabled" id="destination" name="destination"><option>NYC</option>
       #   #    <option>Paris</option><option>Rome</option></select>
       def select_tag(name, option_tags = nil, options = {})
+        if Array === option_tags
+          ActiveSupport::Deprecation.warn 'Passing an array of option_tags to select_tag implicitly joins them without marking them as HTML-safe. Pass option_tags.join.html_safe instead.', caller
+        end
+
         html_name = (options[:multiple] == true && !name.to_s.ends_with?("[]")) ? "#{name}[]" : name
         if blank = options.delete(:include_blank)
           if blank.kind_of?(String)
@@ -430,17 +435,17 @@ module ActionView
       # <tt>options</tt> accept the same values as tag.
       #
       # ==== Examples
-      #   <% field_set_tag do %>
+      #   <%= field_set_tag do %>
       #     <p><%= text_field_tag 'name' %></p>
       #   <% end %>
       #   # => <fieldset><p><input id="name" name="name" type="text" /></p></fieldset>
       #
-      #   <% field_set_tag 'Your details' do %>
+      #   <%= field_set_tag 'Your details' do %>
       #     <p><%= text_field_tag 'name' %></p>
       #   <% end %>
       #   # => <fieldset><legend>Your details</legend><p><input id="name" name="name" type="text" /></p></fieldset>
       #
-      #   <% field_set_tag nil, :class => 'format' do %>
+      #   <%= field_set_tag nil, :class => 'format' do %>
       #     <p><%= text_field_tag 'name' %></p>
       #   <% end %>
       #   # => <fieldset class="format"><p><input id="name" name="name" type="text" /></p></fieldset>
@@ -450,6 +455,69 @@ module ActionView
         output.safe_concat(content_tag(:legend, legend)) unless legend.blank?
         output.concat(content)
         output.safe_concat("</fieldset>")
+      end
+
+      # Creates a text field of type "search".
+      #
+      # ==== Options
+      # * Accepts the same options as text_field_tag.
+      def search_field_tag(name, value = nil, options = {})
+        text_field_tag(name, value, options.stringify_keys.update("type" => "search"))
+      end
+
+      # Creates a text field of type "tel".
+      #
+      # ==== Options
+      # * Accepts the same options as text_field_tag.
+      def telephone_field_tag(name, value = nil, options = {})
+        text_field_tag(name, value, options.stringify_keys.update("type" => "tel"))
+      end
+      alias phone_field_tag telephone_field_tag
+
+      # Creates a text field of type "url".
+      #
+      # ==== Options
+      # * Accepts the same options as text_field_tag.
+      def url_field_tag(name, value = nil, options = {})
+        text_field_tag(name, value, options.stringify_keys.update("type" => "url"))
+      end
+
+      # Creates a text field of type "email".
+      #
+      # ==== Options
+      # * Accepts the same options as text_field_tag.
+      def email_field_tag(name, value = nil, options = {})
+        text_field_tag(name, value, options.stringify_keys.update("type" => "email"))
+      end
+
+      # Creates a number field.
+      #
+      # ==== Options
+      # * <tt>:min</tt> - The minimum acceptable value.
+      # * <tt>:max</tt> - The maximum acceptable value.
+      # * <tt>:in</tt> - A range specifying the <tt>:min</tt> and
+      #   <tt>:max</tt> values.
+      # * <tt>:step</tt> - The acceptable value granularity.
+      # * Otherwise accepts the same options as text_field_tag.
+      #
+      # ==== Examples
+      #   number_field_tag 'quantity', nil, :in => 1...10
+      #   => <input id="quantity" name="quantity" min="1" max="9" />
+      def number_field_tag(name, value = nil, options = {})
+        options = options.stringify_keys
+        options["type"] ||= "number"
+        if range = options.delete("in") || options.delete("within")
+          options.update("min" => range.min, "max" => range.max)
+        end
+        text_field_tag(name, value, options)
+      end
+
+      # Creates a range form element.
+      #
+      # ==== Options
+      # * Accepts the same options as number_field_tag.
+      def range_field_tag(name, value = nil, options = {})
+        number_field_tag(name, value, options.stringify_keys.update("type" => "range"))
       end
 
       private
