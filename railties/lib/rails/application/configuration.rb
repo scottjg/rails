@@ -6,7 +6,7 @@ module Rails
       include ::Rails::Configuration::Deprecated
 
       attr_accessor :allow_concurrency, :cache_classes, :cache_store,
-                    :cookie_secret, :consider_all_requests_local, :dependency_loading,
+                    :secret_token, :consider_all_requests_local, :dependency_loading,
                     :filter_parameters,  :log_level, :logger, :metals,
                     :plugins, :preload_frameworks, :reload_engines, :reload_plugins,
                     :serve_static_assets, :time_zone, :whiny_nils
@@ -37,6 +37,7 @@ module Rails
           paths.app.controllers << builtin_controller if builtin_controller
           paths.config.database    "config/database.yml"
           paths.config.environment "config/environments", :glob => "#{Rails.env}.rb"
+          paths.lib.templates      "lib/templates"
           paths.log                "log/#{Rails.env}.log"
           paths.tmp                "tmp"
           paths.tmp.cache          "tmp/cache"
@@ -123,7 +124,7 @@ module Rails
 
       def session_options
         return @session_options unless @session_store == :cookie_store
-        @session_options.merge(:secret => @cookie_secret)
+        @session_options.merge(:secret => @secret_token)
       end
 
       def default_middleware_stack
@@ -132,7 +133,7 @@ module Rails
           middleware.use('::Rack::Lock', :if => lambda { !allow_concurrency })
           middleware.use('::Rack::Runtime')
           middleware.use('::Rails::Rack::Logger')
-          middleware.use('::ActionDispatch::ShowExceptions', lambda { consider_all_requests_local })
+          middleware.use('::ActionDispatch::ShowExceptions', lambda { consider_all_requests_local }, :if => lambda { action_dispatch.show_exceptions })
           middleware.use("::ActionDispatch::RemoteIp", lambda { action_dispatch.ip_spoofing_check }, lambda { action_dispatch.trusted_proxies })
           middleware.use('::Rack::Sendfile', lambda { action_dispatch.x_sendfile_header })
           middleware.use('::ActionDispatch::Callbacks', lambda { !cache_classes })
