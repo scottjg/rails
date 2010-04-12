@@ -1,4 +1,5 @@
 require 'set'
+require 'active_support/core_ext/array/wrap'
 
 module ActiveRecord
   module Associations
@@ -98,7 +99,7 @@ module ActiveRecord
         if @target.is_a?(Array)
           @target.to_ary
         else
-          Array(@target)
+          Array.wrap(@target)
         end
       end
       alias_method :to_a, :to_ary
@@ -147,7 +148,7 @@ module ActiveRecord
       #     has_many :books
       #   end
       #
-      #   Author.find(:first).books.transaction do
+      #   Author.first.books.transaction do
       #     # same effect as calling Book.transaction
       #   end
       def transaction(*args)
