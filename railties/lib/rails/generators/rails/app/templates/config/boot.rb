@@ -1,14 +1,9 @@
-# Use locked gems if present.
-begin
-  require File.expand_path('../../.bundle/environment', __FILE__)
+require 'rubygems'
 
-rescue LoadError
-  # Otherwise, use RubyGems.
-  require 'rubygems'
-
-  # And set up the gems listed in the Gemfile.
-  if File.exist?(File.expand_path('../../Gemfile', __FILE__))
-    require 'bundler'
-    Bundler.setup
-  end
+# Set up gems listed in the Gemfile.
+gemfile = File.expand_path('../../Gemfile', __FILE__)
+if File.exist?(gemfile)
+  ENV['BUNDLE_GEMFILE'] = gemfile
+  require 'bundler'
+  Bundler.setup
 end
