@@ -281,6 +281,7 @@ class PrototypeHelperTest < PrototypeHelperBaseTest
 
   protected
     def author_path(record)
+      record = record[:id] if record.is_a?(Hash)
       "/authors/#{record.id}"
     end
 
@@ -289,10 +290,15 @@ class PrototypeHelperTest < PrototypeHelperBaseTest
     end
 
     def author_articles_path(author)
+      author = author[:author_id] if author.is_a?(Hash)
       "/authors/#{author.id}/articles"
     end
 
-    def author_article_path(author, article)
+    def author_article_path(author, article = nil)
+      if author.is_a?(Hash)
+        article = author[:id]
+        author = author[:author_id]
+      end
       "/authors/#{author.id}/articles/#{article.id}"
     end
 end
