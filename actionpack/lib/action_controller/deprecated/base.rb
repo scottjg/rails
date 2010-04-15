@@ -133,7 +133,7 @@ module ActionController
         ActiveSupport::Deprecation.warn("Setting filter_parameter_logging in ActionController is deprecated and has no longer effect, please set 'config.filter_parameters' in config/application.rb instead", caller)
         filter = Rails.application.config.filter_parameters
         filter.concat(args)
-        filter << block if block
+        filter << block if blocks
         filter
       end
 
@@ -156,7 +156,7 @@ module ActionController
     deprecated_config_accessor :logger
     deprecated_config_accessor :page_cache_directory
     deprecated_config_accessor :page_cache_extension
-    # deprecated_config_accessor :protected_instance_variables
+    deprecated_config_accessor :protected_instance_variables
     deprecated_config_accessor :relative_url_root, "relative_url_root is ineffective. Please stop using it"
     deprecated_config_accessor :perform_caching
     deprecated_config_accessor :stylesheets_dir
