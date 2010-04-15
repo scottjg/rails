@@ -1,8 +1,7 @@
 require "rails"
 
-#active_record
-
 %w(
+  active_record
   action_controller
   action_mailer
   active_resource
