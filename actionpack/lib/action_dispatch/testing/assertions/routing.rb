@@ -186,6 +186,9 @@ module ActionDispatch
           request.env["REQUEST_METHOD"] = request_method.to_s.upcase if request_method
           request.path = path
 
+          if @routes.nil?
+            raise "@routes is not set. Tory setting @routes = Rails.application.routes"
+          end
           params = @routes.recognize_path(path, { :method => request.method })
           request.path_parameters = params.with_indifferent_access
 
