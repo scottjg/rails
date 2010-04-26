@@ -3,6 +3,7 @@ require 'date'
 require 'time'
 require 'uri'
 require 'benchmark'
+require 'timeout'
 
 module ActiveResource
   class ConnectionError < StandardError # :nodoc:
@@ -82,7 +83,7 @@ module ActiveResource
       :head => 'Accept'
     }
 
-    attr_reader :site, :user, :password, :timeout, :proxy, :ssl_options
+    attr_reader :site, :user, :password, :timeout, :proxy, :ssl_options, :open_timeout
     attr_accessor :format
 
     class << self
@@ -96,6 +97,7 @@ module ActiveResource
     def initialize(site, format = ActiveResource::Formats[:xml])
       raise ArgumentError, 'Missing site URI' unless site
       @user = @password = nil
+      @timeout = 60
       self.site = site
       self.format = format
     end
@@ -130,6 +132,11 @@ module ActiveResource
     # Hash of options applied to Net::HTTP instance when +site+ protocol is 'https'.
     def ssl_options=(opts={})
       @ssl_options = opts
+    end
+
+    # Set the number of seconds for HTTP to wait for an open socket with the server
+    def open_timeout=(timeout)
+      @open_timeout = timeout
     end
 
     # Execute a GET request.
@@ -168,7 +175,11 @@ module ActiveResource
       def request(method, path, *arguments)
         logger.info "#{method.to_s.upcase} #{site.scheme}://#{site.host}:#{site.port}#{path}" if logger
         result = nil
-        ms = Benchmark.ms { result = http.send(method, path, *arguments) }
+        ms = Benchmark.ms do
+          Timeout::timeout(@timeout) do
+            result = http.send(method, path, *arguments)
+          end
+        end
         logger.info "--> %d %s (%d %.0fms)" % [result.code, result.message, result.body ? result.body.length : 0, ms] if logger
         handle_response(result)
       rescue Timeout::Error => e
@@ -227,10 +238,8 @@ module ActiveResource
         http = apply_ssl_options(http)
 
         # Net::HTTP timeouts default to 60 seconds.
-        if @timeout
-          http.open_timeout = @timeout
-          http.read_timeout = @timeout
-        end
+        http.read_timeout = @timeout if @timeout
+        http.open_timeout = @open_timeout if @open_timeout
 
         http
       end

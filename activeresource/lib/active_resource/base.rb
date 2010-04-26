@@ -345,6 +345,12 @@ module ActiveResource
         @timeout = timeout
       end
 
+      # Sets the number of seconds after which connection timeouts to the REST API should occur.
+      def open_timeout=(timeout)
+        @connection = nil
+        @open_timeout = timeout
+      end
+
       # Gets the number of seconds after which requests to the REST API should time out.
       def timeout
         if defined?(@timeout)
@@ -379,6 +385,15 @@ module ActiveResource
         end
       end
 
+      def open_timeout
+        if defined?(@open_timeout)
+          @open_timeout
+        else
+          30
+        end
+      end
+
+
       # An instance of ActiveResource::Connection that is the base \connection to the remote service.
       # The +refresh+ parameter toggles whether or not the \connection is refreshed at every request
       # or not (defaults to <tt>false</tt>).
@@ -389,6 +404,7 @@ module ActiveResource
           @connection.user = user if user
           @connection.password = password if password
           @connection.timeout = timeout if timeout
+          @connection.open_timeout = open_timeout if open_timeout
           @connection.ssl_options = ssl_options if ssl_options
           @connection
         else
