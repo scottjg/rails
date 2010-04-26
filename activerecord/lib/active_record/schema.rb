@@ -46,7 +46,7 @@ module ActiveRecord
     #     ...
     #   end
     def self.define(info={}, &block)
-      Base.connection.drop_table(ActiveRecord::Migrator.schema_migrations_table_name)
+      Base.connection.drop_table(ActiveRecord::Migrator.schema_migrations_table_name) if Base.connection.table_exists?(ActiveRecord::Migrator.schema_migrations_table_name)
       initialize_schema_migrations_table
 
       instance_eval(&block)
