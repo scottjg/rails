@@ -615,6 +615,7 @@ module ActiveRecord
         end
 
         def translate_exception(exception, message)
+          return super unless exception.respond_to?(:errno)
           case exception.errno
           when 1062
             RecordNotUnique.new(message, exception)
