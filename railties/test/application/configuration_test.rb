@@ -109,7 +109,7 @@ module ApplicationTests
       end
     end
 
-    test "Frameworks are not preloaded by default" do
+    test "frameworks are not preloaded by default" do
       require "#{app_path}/config/environment"
 
       assert ActionController.autoload?(:RecordIdentifier)
@@ -180,7 +180,8 @@ module ApplicationTests
       require "#{app_path}/config/application"
 
       unless RUBY_VERSION < '1.9'
-        assert_equal Encoding.find("utf-8"), Encoding.default_external
+        assert_equal Encoding::UTF_8, Encoding.default_external
+        assert_equal Encoding::UTF_8, Encoding.default_internal
       end
     end
 
@@ -193,71 +194,10 @@ module ApplicationTests
       assert_equal File.join(app_path, "somewhere"), Rails.public_path
     end
 
-    def make_basic_app
-      require "rails"
-      require "action_controller/railtie"
-
-      app = Class.new(Rails::Application)
-
-      yield app if block_given?
-
-      app.config.session_store :disabled
-      app.initialize!
-
-      app.routes.draw do
-        match "/" => "omg#index"
-      end
-
-      require 'rack/test'
-      extend Rack::Test::Methods
-    end
-
-    test "config.action_dispatch.x_sendfile_header defaults to ''" do
-      make_basic_app
-
-      class ::OmgController < ActionController::Base
-        def index
-          send_file __FILE__
-        end
-      end
-
-      get "/"
-      assert_equal File.read(__FILE__), last_response.body
-    end
-
-    test "config.action_dispatch.x_sendfile_header can be set" do
-      make_basic_app do |app|
-        app.config.action_dispatch.x_sendfile_header = "X-Sendfile"
-      end
-
-      class ::OmgController < ActionController::Base
-        def index
-          send_file __FILE__
-        end
-      end
-
-      get "/"
-      assert_equal File.expand_path(__FILE__), last_response.headers["X-Sendfile"]
-    end
-
-    test "config.action_dispatch.x_sendfile_header is sent to Rack::Sendfile" do
-      make_basic_app do |app|
-        app.config.action_dispatch.x_sendfile_header = 'X-Lighttpd-Send-File'
-      end
-
-      class ::OmgController < ActionController::Base
-        def index
-          send_file __FILE__
-        end
-      end
-
-      get "/"
-      assert_equal File.expand_path(__FILE__), last_response.headers["X-Lighttpd-Send-File"]
-    end
-
     test "config.secret_token is sent in env" do
       make_basic_app do |app|
-        app.config.secret_token = 'ThisIsASECRET123'
+        app.config.secret_token = 'b3c631c314c0bbca50c1b2843150fe33'
+        app.config.session_store :disabled
       end
 
       class ::OmgController < ActionController::Base
@@ -268,7 +208,7 @@ module ApplicationTests
       end
 
       get "/"
-      assert_equal 'ThisIsASECRET123', last_response.body
+      assert_equal 'b3c631c314c0bbca50c1b2843150fe33', last_response.body
     end
 
     test "protect from forgery is the default in a new app" do
@@ -287,14 +227,17 @@ module ApplicationTests
     end
 
     test "config.action_controller.perform_caching = true" do
-        make_basic_app do |app|
-          app.config.action_controller.perform_caching = true
-        end
+      make_basic_app do |app|
+        app.config.action_controller.perform_caching = true
+      end
 
       class ::OmgController < ActionController::Base
+        @@count = 0
+
         caches_action :index
         def index
-          render :text => rand(1000)
+          @@count += 1
+          render :text => @@count
         end
       end
 
@@ -310,9 +253,12 @@ module ApplicationTests
       end
 
       class ::OmgController < ActionController::Base
+        @@count = 0
+
         caches_action :index
         def index
-          render :text => rand(1000)
+          @@count += 1
+          render :text => @@count
         end
       end
 

@@ -15,6 +15,12 @@ module ActiveRecord
     config.generators.orm :active_record, :migration => true,
                                           :timestamps => true
 
+    config.app_middleware.insert_after "::ActionDispatch::Callbacks",
+      "ActiveRecord::QueryCache"
+
+    config.app_middleware.insert_after "::ActionDispatch::Callbacks",
+      "ActiveRecord::ConnectionAdapters::ConnectionManagement"
+
     rake_tasks do
       load "active_record/railties/databases.rake"
     end
@@ -58,35 +64,23 @@ module ActiveRecord
       end
     end
 
-    # Setup database middleware after initializers have run
-    initializer "active_record.initialize_database_middleware", :after => "action_controller.set_configs" do |app|
-      middleware = app.config.middleware
-      if middleware.include?("ActiveRecord::SessionStore")
-        middleware.insert_before "ActiveRecord::SessionStore", ActiveRecord::ConnectionAdapters::ConnectionManagement
-        middleware.insert_before "ActiveRecord::SessionStore", ActiveRecord::QueryCache
-      else
-        middleware.use ActiveRecord::ConnectionAdapters::ConnectionManagement
-        middleware.use ActiveRecord::QueryCache
-      end
-    end
-
-    initializer "active_record.load_observers" do
-      ActiveSupport.on_load(:active_record) { instantiate_observers }
-
-      ActiveSupport.on_load(:active_record) do
-        ActionDispatch::Callbacks.to_prepare(:activerecord_instantiate_observers) do
-          ActiveRecord::Base.instantiate_observers
-        end
-      end
-    end
-
     initializer "active_record.set_dispatch_hooks", :before => :set_clear_dependencies_hook do |app|
-      ActiveSupport.on_load(:active_record) do
-        unless app.config.cache_classes
+      unless app.config.cache_classes
+        ActiveSupport.on_load(:active_record) do
           ActionDispatch::Callbacks.after do
             ActiveRecord::Base.reset_subclasses
             ActiveRecord::Base.clear_reloadable_connections!
           end
+        end
+      end
+    end
+
+    config.after_initialize do
+      ActiveSupport.on_load(:active_record) do
+        instantiate_observers
+
+        ActionDispatch::Callbacks.to_prepare(:activerecord_instantiate_observers) do
+          ActiveRecord::Base.instantiate_observers
         end
       end
     end

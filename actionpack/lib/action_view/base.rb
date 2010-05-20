@@ -176,8 +176,6 @@ module ActionView #:nodoc:
       delegate :logger, :to => 'ActionController::Base', :allow_nil => true
     end
 
-    ActiveSupport.run_load_hooks(:action_view, self)
-
     attr_accessor :base_path, :assigns, :template_extension, :lookup_context
     attr_internal :captures, :request, :controller, :template, :config
 
@@ -203,7 +201,7 @@ module ActionView #:nodoc:
     end
 
     def initialize(lookup_context = nil, assigns_for_first_render = {}, controller = nil, formats = nil) #:nodoc:
-      @config = nil
+      @config  = nil
       @assigns = assigns_for_first_render.each { |key, value| instance_variable_set("@#{key}", value) }
       @helpers = self.class.helpers || Module.new
 
@@ -214,6 +212,7 @@ module ActionView #:nodoc:
       @_config       = ActiveSupport::InheritableOptions.new(controller.config) if controller && controller.respond_to?(:config)
       @_content_for  = Hash.new { |h,k| h[k] = ActiveSupport::SafeBuffer.new }
       @_virtual_path = nil
+      @output_buffer = nil
 
       @lookup_context = lookup_context.is_a?(ActionView::LookupContext) ?
         lookup_context : ActionView::LookupContext.new(lookup_context)
@@ -229,5 +228,7 @@ module ActionView #:nodoc:
       response.body_parts << part
       nil
     end
+
+    ActiveSupport.run_load_hooks(:action_view, self)
   end
 end

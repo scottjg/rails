@@ -111,6 +111,7 @@ module RenderTestCases
     assert_match %r!method.*doesnt_exist!, e.message
     assert_equal "", e.sub_template_message
     assert_equal "1", e.line_number
+    assert_equal "1: <%= doesnt_exist %>", e.annoted_source_code.strip
     assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
   end
 
@@ -231,13 +232,13 @@ module RenderTestCases
   # TODO: Move to deprecated_tests.rb
   def test_render_with_nested_layout_deprecated
     assert_deprecated do
-      assert_equal %(<title>title</title>\n\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
+      assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
         @view.render(:file => "test/deprecated_nested_layout.erb", :layout => "layouts/yield")
     end
   end
 
   def test_render_with_nested_layout
-    assert_equal %(<title>title</title>\n\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
+    assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout.erb", :layout => "layouts/yield")
   end
 
@@ -283,7 +284,7 @@ class LazyViewRenderTest < ActiveSupport::TestCase
       with_external_encoding Encoding::ASCII_8BIT do
         result = @view.render(:file => "test/utf8_magic.html.erb", :layouts => "layouts/yield")
         assert_equal Encoding::UTF_8, result.encoding
-        assert_equal "Русский текст\n\nUTF-8\nUTF-8\nUTF-8\n", result
+        assert_equal "\nРусский \nтекст\n\nUTF-8\nUTF-8\nUTF-8\n", result
       end
     end
 
@@ -301,7 +302,7 @@ class LazyViewRenderTest < ActiveSupport::TestCase
           result = @view.render(:file => "test/utf8.html.erb", :layouts => "layouts/yield")
           flunk 'Should have raised incompatible encoding error'
         rescue ActionView::Template::Error => error
-          assert_match 'invalid byte sequence in Shift_JIS', error.original_exception.message
+          assert_match 'Your template was not saved as valid Shift_JIS', error.original_exception.message
         end
       end
     end
@@ -312,7 +313,7 @@ class LazyViewRenderTest < ActiveSupport::TestCase
           result = @view.render(:file => "test/utf8_magic_with_bare_partial.html.erb", :layouts => "layouts/yield")
           flunk 'Should have raised incompatible encoding error'
         rescue ActionView::Template::Error => error
-          assert_match 'invalid byte sequence in Shift_JIS', error.original_exception.message
+          assert_match 'Your template was not saved as valid Shift_JIS', error.original_exception.message
         end
       end
     end

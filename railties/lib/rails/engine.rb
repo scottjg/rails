@@ -1,6 +1,7 @@
 require 'rails/railtie'
 require 'active_support/core_ext/module/delegation'
 require 'pathname'
+require 'rbconfig'
 
 module Rails
   # Rails::Engine allows you to wrap a specific Rails application and share it accross
@@ -41,10 +42,10 @@ module Rails
   #     config.load_paths << File.expand_path("../lib/some/path", __FILE__)
   #
   #     initializer "my_engine.add_middleware" do |app|
-  #       app.middlewares.use MyEngine::Middleware
+  #       app.middleware.use MyEngine::Middleware
   #     end
   #   end
-  # 
+  #
   # == Paths
   #
   # Since Rails 3.0, both your Application and Engines do not have hardcoded paths.
@@ -119,20 +120,29 @@ module Rails
         root = File.exist?("#{root_path}/#{flag}") ? root_path : default
         raise "Could not find root path for #{self}" unless root
 
-        RUBY_PLATFORM =~ /mswin|mingw/ ?
+        Config::CONFIG['host_os'] =~ /mswin|mingw/ ?
           Pathname.new(root).expand_path : Pathname.new(root).realpath
       end
     end
 
-    delegate :middleware, :paths, :root, :to => :config
+    delegate :paths, :root, :to => :config
 
     def load_tasks
       super
       config.paths.lib.tasks.to_a.sort.each { |ext| load(ext) }
     end
 
+    def eager_load!
+      config.eager_load_paths.each do |load_path|
+        matcher = /\A#{Regexp.escape(load_path)}\/(.*)\.rb\Z/
+        Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
+          require_dependency file.sub(matcher, '\1')
+        end
+      end
+    end
+
     # Add configured load paths to ruby load paths and remove duplicates.
-    initializer :set_load_path, :before => :bootstrap_load_path do
+    initializer :set_load_path, :before => :bootstrap_hook do
       config.load_paths.reverse_each do |path|
         $LOAD_PATH.unshift(path) if File.directory?(path)
       end
@@ -141,7 +151,10 @@ module Rails
 
     # Set the paths from which Rails will automatically load source files,
     # and the load_once paths.
-    initializer :set_autoload_paths, :before => :bootstrap_load_path do |app|
+    #
+    # This needs to be an initializer, since it needs to run once
+    # per engine and get the engine as a block parameter
+    initializer :set_autoload_paths, :before => :bootstrap_hook do |app|
       ActiveSupport::Dependencies.load_paths.unshift(*config.load_paths)
 
       if reloadable?(app)
@@ -166,7 +179,7 @@ module Rails
       paths.app.controllers.to_a.each do |load_path|
         load_path = File.expand_path(load_path)
         Dir["#{load_path}/*/**/*_controller.rb"].collect do |path|
-          namespace = File.dirname(path).sub(/#{load_path}\/?/, '')
+          namespace = File.dirname(path).sub(/#{Regexp.escape(load_path)}\/?/, '')
           app.routes.controller_namespaces << namespace unless namespace.empty?
         end
       end
@@ -199,17 +212,9 @@ module Rails
       end
     end
 
-    initializer :load_app_classes do |app|
-      next if $rails_rake_task
-
-      if app.config.cache_classes
-        config.eager_load_paths.each do |load_path|
-          matcher = /\A#{Regexp.escape(load_path)}\/(.*)\.rb\Z/
-          Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
-            require_dependency file.sub(matcher, '\1')
-          end
-        end
-      end
+    initializer :engines_blank_point do
+      # We need this initializer so all extra initializers added in engines are
+      # consistently executed after all the initializers above across all engines.
     end
 
   protected

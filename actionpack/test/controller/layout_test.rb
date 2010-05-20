@@ -1,4 +1,5 @@
 require 'abstract_unit'
+require 'rbconfig'
 
 # The view_paths array must be set on Base and not LayoutTest so that LayoutTest's inherited
 # method has access to the view_paths array when looking for a layout to automatically assign.
@@ -8,8 +9,6 @@ ActionView::Template::register_template_handler :mab,
   lambda { |template| template.source.inspect }
 
 ActionController::Base.view_paths = [ File.dirname(__FILE__) + '/../fixtures/layout_tests/' ]
-
-require "fixture_template"
 
 class LayoutTest < ActionController::Base
   def self.controller_path; 'views' end
@@ -209,7 +208,7 @@ class LayoutStatusIsRenderedTest < ActionController::TestCase
   end
 end
 
-unless RUBY_PLATFORM =~ /mswin|mingw/
+unless Config::CONFIG['host_os'] =~ /mswin|mingw/
   class LayoutSymlinkedTest < LayoutTest
     layout "symlinked/symlinked_layout"
   end

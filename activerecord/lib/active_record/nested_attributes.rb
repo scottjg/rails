@@ -1,6 +1,7 @@
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/object/try'
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/hash/indifferent_access'
 
 module ActiveRecord
   module NestedAttributes #:nodoc:
@@ -354,7 +355,7 @@ module ActiveRecord
         association.to_a
       else
         attribute_ids = attributes_collection.map {|a| a['id'] || a[:id] }.compact
-        attribute_ids.present? ? association.all(:conditions => {:id => attribute_ids}) : []
+        attribute_ids.present? ? association.all(:conditions => {association.primary_key => attribute_ids}) : []
       end
 
       attributes_collection.each do |attributes|

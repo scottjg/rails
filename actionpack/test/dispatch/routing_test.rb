@@ -54,6 +54,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       match "/local/:action", :controller => "local"
 
+      match "/projects/status(.:format)"
+
       constraints(:ip => /192\.168\.1\.\d\d\d/) do
         get 'admin' => "queenbee#index"
       end
@@ -184,6 +186,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       resources :products, :constraints => { :id => /\d{4}/ } do
+        root :to => "products#root"
+        get :favorite, :on => :collection
         resources :images
       end
 
@@ -235,8 +239,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     AltRoutes = ActionDispatch::Routing::RouteSet.new(AltRequest)
     AltRoutes.draw do
-      get "/" => XHeader.new, :constraints => {:x_header => /HEADER/}
-      get "/" => AltApp.new
+      get "/" => TestRoutingMapper::TestAltApp::XHeader.new, :constraints => {:x_header => /HEADER/}
+      get "/" => TestRoutingMapper::TestAltApp::AltApp.new
     end
 
     def app
@@ -390,12 +394,14 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/admin', {}, {'REMOTE_ADDR' => '192.168.1.100'}
       assert_equal 'queenbee#index', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/admin', {}, {'REMOTE_ADDR' => '10.0.0.100'} }
+      get '/admin', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
 
       get '/admin/accounts', {}, {'REMOTE_ADDR' => '192.168.1.100'}
       assert_equal 'queenbee#accounts', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/admin/accounts', {}, {'REMOTE_ADDR' => '10.0.0.100'} }
+      get '/admin/accounts', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
     end
   end
 
@@ -423,6 +429,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     with_test_routes do
       get '/local/dashboard'
       assert_equal 'local#dashboard', @response.body
+    end
+  end
+
+  def test_projects_status
+    with_test_routes do
+      assert_equal '/projects/status', url_for(:controller => 'projects', :action => 'status', :only_path => true)
+      assert_equal '/projects/status.json', url_for(:controller => 'projects', :action => 'status', :format => 'json', :only_path => true)
     end
   end
 
@@ -639,10 +652,14 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal 'comments#index', @response.body
       assert_equal '/posts/1/comments', post_comments_path(:post_id => 1)
 
-      assert_raise(ActionController::RoutingError) { post '/posts' }
-      assert_raise(ActionController::RoutingError) { put '/posts/1' }
-      assert_raise(ActionController::RoutingError) { delete '/posts/1' }
-      assert_raise(ActionController::RoutingError) { delete '/posts/1/comments' }
+      post '/posts'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      put '/posts/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      delete '/posts/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      delete '/posts/1/comments'
+      assert_equal 'pass', @response.headers['X-Cascade']
     end
   end
 
@@ -766,7 +783,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/articles/rails/1'
       assert_equal 'articles#with_id', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/articles/123/1' }
+      get '/articles/123/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
 
       assert_equal '/articles/rails/1', article_with_title_path(:title => 'rails', :id => 1)
     end
@@ -944,22 +962,33 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
   def test_resource_constraints
     with_test_routes do
-      assert_raise(ActionController::RoutingError) { get '/products/1' }
+      get '/products/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
       get '/products'
-      assert_equal 'products#index', @response.body
+      assert_equal 'products#root', @response.body
+      get '/products/favorite'
+      assert_equal 'products#favorite', @response.body
       get '/products/0001'
       assert_equal 'products#show', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/products/1/images' }
+      get '/products/1/images'
+      assert_equal 'pass', @response.headers['X-Cascade']
       get '/products/0001/images'
       assert_equal 'images#index', @response.body
       get '/products/0001/images/1'
       assert_equal 'images#show', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/dashboard', {}, {'REMOTE_ADDR' => '10.0.0.100'} }
+      get '/dashboard', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
       get '/dashboard', {}, {'REMOTE_ADDR' => '192.168.1.100'}
       assert_equal 'dashboards#show', @response.body
     end
+  end
+
+  def test_root_works_in_the_resources_scope
+    get '/products'
+    assert_equal 'products#root', @response.body
+    assert_equal '/products', products_root_path
   end
 
   def test_module_scope
@@ -988,6 +1017,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       assert_equal 'http://www.example.com/whatever/foo/bar/1',
         url_for(:controller => "foo", :action => "bar", :id => 1)
+    end
+  end
+
+  def test_assert_recognizes_account_overview
+    with_test_routes do
+      assert_recognizes({:controller => "account", :action => "overview"}, "/account/overview")
     end
   end
 

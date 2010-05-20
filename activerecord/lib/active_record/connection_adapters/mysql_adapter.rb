@@ -15,26 +15,26 @@ module MysqlCompat #:nodoc:
     # Ruby driver has a version string and returns null values in each_hash
     # C driver >= 2.7 returns null values in each_hash
     if Mysql.const_defined?(:VERSION) && (Mysql::VERSION.is_a?(String) || Mysql::VERSION >= 20700)
-      target.class_eval <<-'end_eval'
-      def all_hashes                     # def all_hashes
-        rows = []                        #   rows = []
-        each_hash { |row| rows << row }  #   each_hash { |row| rows << row }
-        rows                             #   rows
-      end                                # end
+      target.class_eval <<-'end_eval', __FILE__, __LINE__ + 1
+        def all_hashes                     # def all_hashes
+          rows = []                        #   rows = []
+          each_hash { |row| rows << row }  #   each_hash { |row| rows << row }
+          rows                             #   rows
+        end                                # end
       end_eval
 
     # adapters before 2.7 don't have a version constant
     # and don't return null values in each_hash
     else
-      target.class_eval <<-'end_eval'
-      def all_hashes                                            # def all_hashes
-        rows = []                                               #   rows = []
-        all_fields = fetch_fields.inject({}) { |fields, f|      #   all_fields = fetch_fields.inject({}) { |fields, f|
-          fields[f.name] = nil; fields                          #     fields[f.name] = nil; fields
-        }                                                       #   }
-        each_hash { |row| rows << all_fields.dup.update(row) }  #   each_hash { |row| rows << all_fields.dup.update(row) }
-        rows                                                    #   rows
-      end                                                       # end
+      target.class_eval <<-'end_eval', __FILE__, __LINE__ + 1
+        def all_hashes                                            # def all_hashes
+          rows = []                                               #   rows = []
+          all_fields = fetch_fields.inject({}) { |fields, f|      #   all_fields = fetch_fields.inject({}) { |fields, f|
+            fields[f.name] = nil; fields                          #     fields[f.name] = nil; fields
+          }                                                       #   }
+          each_hash { |row| rows << all_fields.dup.update(row) }  #   each_hash { |row| rows << all_fields.dup.update(row) }
+          rows                                                    #   rows
+        end                                                       # end
       end_eval
     end
 
@@ -461,10 +461,11 @@ module ActiveRecord
           if current_index != row[2]
             next if row[2] == "PRIMARY" # skip the primary key
             current_index = row[2]
-            indexes << IndexDefinition.new(row[0], row[2], row[1] == "0", [])
+            indexes << IndexDefinition.new(row[0], row[2], row[1] == "0", [], [])
           end
 
           indexes.last.columns << row[4]
+          indexes.last.lengths << row[7]
         end
         result.free
         indexes
@@ -594,6 +595,18 @@ module ActiveRecord
       end
 
       protected
+        def quoted_columns_for_index(column_names, options = {})
+          length = options[:length] if options.is_a?(Hash)
+
+          quoted_column_names = case length
+          when Hash
+            column_names.map {|name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
+          when Fixnum
+            column_names.map {|name| "#{quote_column_name(name)}(#{length})"}
+          else
+            column_names.map {|name| quote_column_name(name) }
+          end
+        end
 
         def translate_exception(exception, message)
           return super unless exception.respond_to?(:errno)

@@ -12,12 +12,16 @@ $:.unshift(File.dirname(__FILE__) + '/fixtures/alternate_helpers')
 
 ENV['TMPDIR'] = File.join(File.dirname(__FILE__), 'tmp')
 
+if defined?(Encoding.default_internal)
+  Encoding.default_internal = "UTF-8"
+end
+
 require 'test/unit'
 require 'abstract_controller'
 require 'action_controller'
 require 'action_view'
+require 'action_view/testing/resolvers'
 require 'action_dispatch'
-require 'fixture_template'
 require 'active_support/dependencies'
 require 'active_model'
 
@@ -143,6 +147,12 @@ class BasicController
   end
 end
 
+class ActionDispatch::IntegrationTest < ActiveSupport::TestCase
+  setup do
+    @routes = SharedTestRoutes
+  end
+end
+
 class ActionController::IntegrationTest < ActiveSupport::TestCase
   def self.build_app(routes = nil)
     RoutedRackApp.new(routes || ActionDispatch::Routing::RouteSet.new) do |middleware|
@@ -152,6 +162,7 @@ class ActionController::IntegrationTest < ActiveSupport::TestCase
       middleware.use "ActionDispatch::Cookies"
       middleware.use "ActionDispatch::Flash"
       middleware.use "ActionDispatch::Head"
+      yield(middleware) if block_given?
     end
   end
 

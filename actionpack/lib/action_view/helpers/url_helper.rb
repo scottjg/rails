@@ -504,7 +504,7 @@ module ActionView
           "document.write('#{content_tag("a", name || email_address_obfuscated.html_safe, html_options.merge({ "href" => "mailto:"+email_address+extras }))}');".each_byte do |c|
             string << sprintf("%%%x", c)
           end
-          "<script type=\"#{Mime::JS}\">eval(decodeURIComponent('#{string}'))</script>"
+          "<script type=\"#{Mime::JS}\">eval(decodeURIComponent('#{string}'))</script>".html_safe
         elsif encode == "hex"
           email_address_encoded = ''
           email_address_obfuscated.each_byte do |c|
@@ -596,10 +596,8 @@ module ActionView
           html_options = {} if html_options.nil?
           html_options = html_options.stringify_keys
 
-          if (options.is_a?(Hash) && options.key?('remote')) || (html_options.is_a?(Hash) && html_options.key?('remote'))
+          if (options.is_a?(Hash) && options.key?('remote') && options.delete('remote')) || (html_options.is_a?(Hash) && html_options.key?('remote') && html_options.delete('remote'))
             html_options['data-remote'] = 'true'
-            options.delete('remote') if options.is_a?(Hash)
-            html_options.delete('remote') if html_options.is_a?(Hash)
           end
 
           confirm = html_options.delete("confirm")

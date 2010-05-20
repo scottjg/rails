@@ -103,6 +103,13 @@ class UrlHelperTest < ActiveSupport::TestCase
     )
   end
 
+  def test_button_to_with_remote_false
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\"><div><input type=\"submit\" value=\"Hello\" /></div></form>",
+      button_to("Hello", "http://www.example.com", :remote => false)
+    )
+  end
+
   def test_button_to_enabled_disabled
     assert_dom_equal(
       "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\"><div><input type=\"submit\" value=\"Hello\" /></div></form>",
@@ -202,6 +209,13 @@ class UrlHelperTest < ActiveSupport::TestCase
     assert_dom_equal(
       "<a href=\"http://www.example.com\" data-remote=\"true\">Hello</a>",
       link_to("Hello", "http://www.example.com", :remote => true)
+    )
+  end
+
+  def test_link_to_with_remote_false
+    assert_dom_equal(
+      "<a href=\"http://www.example.com\">Hello</a>",
+      link_to("Hello", "http://www.example.com", :remote => false)
     )
   end
 
@@ -356,11 +370,15 @@ class UrlHelperTest < ActiveSupport::TestCase
   end
 
   def test_mail_to_with_javascript
-    assert_dom_equal "<script type=\"text/javascript\">eval(decodeURIComponent('%64%6f%63%75%6d%65%6e%74%2e%77%72%69%74%65%28%27%3c%61%20%68%72%65%66%3d%22%6d%61%69%6c%74%6f%3a%6d%65%40%64%6f%6d%61%69%6e%2e%63%6f%6d%22%3e%4d%79%20%65%6d%61%69%6c%3c%2f%61%3e%27%29%3b'))</script>", mail_to("me@domain.com", "My email", :encode => "javascript")
+    snippet = mail_to("me@domain.com", "My email", :encode => "javascript")
+    assert_dom_equal "<script type=\"text/javascript\">eval(decodeURIComponent('%64%6f%63%75%6d%65%6e%74%2e%77%72%69%74%65%28%27%3c%61%20%68%72%65%66%3d%22%6d%61%69%6c%74%6f%3a%6d%65%40%64%6f%6d%61%69%6e%2e%63%6f%6d%22%3e%4d%79%20%65%6d%61%69%6c%3c%2f%61%3e%27%29%3b'))</script>", snippet
+    assert snippet.html_safe?
   end
 
   def test_mail_to_with_javascript_unicode
-    assert_dom_equal "<script type=\"text/javascript\">eval(decodeURIComponent('%64%6f%63%75%6d%65%6e%74%2e%77%72%69%74%65%28%27%3c%61%20%68%72%65%66%3d%22%6d%61%69%6c%74%6f%3a%75%6e%69%63%6f%64%65%40%65%78%61%6d%70%6c%65%2e%63%6f%6d%22%3e%c3%ba%6e%69%63%6f%64%65%3c%2f%61%3e%27%29%3b'))</script>", mail_to("unicode@example.com", "únicode", :encode => "javascript")
+    snippet = mail_to("unicode@example.com", "únicode", :encode => "javascript")
+    assert_dom_equal "<script type=\"text/javascript\">eval(decodeURIComponent('%64%6f%63%75%6d%65%6e%74%2e%77%72%69%74%65%28%27%3c%61%20%68%72%65%66%3d%22%6d%61%69%6c%74%6f%3a%75%6e%69%63%6f%64%65%40%65%78%61%6d%70%6c%65%2e%63%6f%6d%22%3e%c3%ba%6e%69%63%6f%64%65%3c%2f%61%3e%27%29%3b'))</script>", snippet
+    assert snippet.html_safe
   end
 
   def test_mail_with_options
@@ -417,6 +435,10 @@ class UrlHelperControllerTest < ActionController::TestCase
       render :inline => "<%= url_for :controller => 'url_helper_controller_test/url_helper', :action => 'show_url_for' %>"
     end
 
+    def show_overriden_url_for
+      render :inline => "<%= url_for params.merge(:controller => 'url_helper_controller_test/url_helper', :action => 'show_url_for') %>"
+    end
+
     def show_named_route
       render :inline => "<%= show_named_route_#{params[:kind]} %>"
     end
@@ -432,6 +454,11 @@ class UrlHelperControllerTest < ActionController::TestCase
 
   def test_url_for_shows_only_path
     get :show_url_for
+    assert_equal '/url_helper_controller_test/url_helper/show_url_for', @response.body
+  end
+
+  def test_overriden_url_for_shows_only_path
+    get :show_overriden_url_for
     assert_equal '/url_helper_controller_test/url_helper/show_url_for', @response.body
   end
 

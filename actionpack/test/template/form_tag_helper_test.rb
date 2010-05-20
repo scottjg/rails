@@ -3,9 +3,6 @@ require 'abstract_unit'
 class FormTagHelperTest < ActionView::TestCase
   tests ActionView::Helpers::FormTagHelper
 
-  # include ActiveSupport::Configurable
-  # DEFAULT_CONFIG = ActionView::DEFAULT_CONFIG
-
   def setup
     super
     @controller = BasicController.new
@@ -59,6 +56,12 @@ class FormTagHelperTest < ActionView::TestCase
   def test_form_tag_with_remote
     actual = form_tag({}, :remote => true)
     expected = %(<form action="http://www.example.com" method="post" data-remote="true">)
+    assert_dom_equal expected, actual
+  end
+
+  def test_form_tag_with_remote_false
+    actual = form_tag({}, :remote => false)
+    expected = %(<form action="http://www.example.com" method="post">)
     assert_dom_equal expected, actual
   end
 
@@ -283,6 +286,20 @@ class FormTagHelperTest < ActionView::TestCase
   def test_label_tag_id_sanitized
     label_elem = root_elem(label_tag("item[title]"))
     assert_match VALID_HTML_ID, label_elem['for']
+  end
+
+  def test_label_tag_with_block
+    assert_dom_equal('<label>Blocked</label>', label_tag { "Blocked" })
+  end
+
+  def test_label_tag_with_block_and_argument
+    output = label_tag("clock") { "Grandfather" }
+    assert_dom_equal('<label for="clock">Grandfather</label>', output)
+  end
+
+  def test_label_tag_with_block_and_argument_and_options
+    output = label_tag("clock", :id => "label_clock") { "Grandfather" }
+    assert_dom_equal('<label for="clock" id="label_clock">Grandfather</label>', output)
   end
 
   def test_boolean_options

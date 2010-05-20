@@ -52,7 +52,7 @@ module ActionController #:nodoc:
     private
 
       def cache_configured?
-        config.perform_caching && cache_store
+        perform_caching && cache_store
       end
     end
 
@@ -63,10 +63,9 @@ module ActionController #:nodoc:
     included do
       extend ConfigMethods
 
-      @@perform_caching = true
-      cattr_accessor :perform_caching
+      config_accessor :perform_caching
+      self.perform_caching = true if perform_caching.nil?
     end
-
 
     def caching_allowed?
       request.get? && response.status == 200

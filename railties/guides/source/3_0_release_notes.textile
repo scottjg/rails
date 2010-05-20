@@ -36,6 +36,8 @@ h4. Rails 3 requires Ruby 1.8.7+
 
 Rails 3.0 requires Ruby 1.8.7 or higher. Support for all of the previous Ruby versions has been dropped officially and you should upgrade as early as possible. Rails 3.0 is also compatible with Ruby 1.9.2.
 
+TIP: Note that Ruby 1.8.7 p248 and p249 has marshaling bugs that crash Rails 3.0.0. Ruby 1.9.1 outright segfaults on Rails 3.0.0, so if you want to use Rails 3 with 1.9.x, jump on 1.9.2 trunk for smooth sailing.
+
 h4. Rails Application object
 
 As part of the groundwork for supporting running multiple Rails applications in the same process, Rails 3 introduces the concept of an Application object. An application object holds all the application specific configurations and is very similar in nature to +config/environment.rb+ from the previous versions of Rails.
@@ -87,7 +89,7 @@ h4. Vendoring Gems
 
 Rails now uses a +Gemfile+ in the application root to determine the gems you require for your application to start. This +Gemfile+ is processed by the "Bundler":http://github.com/carlhuda/bundler, which then installs all your dependencies. It can even install all the dependencies locally to your application so that it doesn't depend on the system gems.
 
-More information: - "bundler README on Github":http://github.com/carlhuda/bundler
+More information: - "bundler homepage":http://gembundler.com
 
 h4. Living on the Edge
 
@@ -102,7 +104,7 @@ $ rails myapp --edge
 If you have a local checkout of the Rails repository and want to generate an application using that, you can pass the +--dev+ flag:
 
 <shell>
-$ ruby /path/to/rails/railties/bin/rails myapp --dev
+$ ruby /path/to/rails/bin/rails myapp --dev
 </shell>
 
 h3. Rails Architectural Changes
@@ -273,7 +275,7 @@ end
 
 <ruby>
 scope 'es' do
-  resources :projects, :path_names => { :edit => 'cambiar' }, :as => 'projeto'
+  resources :projects, :path_names => { :edit => 'cambiar' }, :path => 'projeto'
 end
 
 # Gives you the edit action with /es/projeto/1/cambiar
@@ -568,6 +570,8 @@ Action Mailer has been given a new API with TMail being replaced out with the ne
 * The +mail+ delivery method acts in a similar way to Action Controller's +respond_to+, and you can explicitly or implicitly render templates. Action Mailer will turn the email into a multipart email as needed.
 * You can pass a proc to the <tt>format.mime_type</tt> calls within the mail block and explicitly render specific types of text, or add layouts or different templates. The +render+ call inside the proc is from Abstract Controller and supports the same options.
 * What were mailer unit tests have been moved to functional tests.
+* Action Mailer now delegates all auto encoding of header fields and bodies to Mail Gem
+* Action Mailer will auto encode email bodies and headers for you
 
 Deprecations:
 

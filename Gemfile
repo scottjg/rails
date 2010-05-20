@@ -6,17 +6,22 @@ gem "rails", :path => File.dirname(__FILE__)
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
 
-group :mri do
-  if RUBY_VERSION < '1.9'
-    gem "system_timer"
-    gem "ruby-debug", ">= 0.10.3"
-  elsif RUBY_VERSION < '1.9.2' && !ENV['CI']
-    gem "ruby-debug19"
-  end
+mri = !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
+if mri && RUBY_VERSION < '1.9'
+  gem "system_timer"
+  gem "ruby-debug", ">= 0.10.3"
+end
+
+if mri || RUBY_ENGINE == "rbx"
+  gem 'json'
+  gem 'yajl-ruby'
+  gem "nokogiri", ">= 1.4.0"
+elsif RUBY_ENGINE == "jruby"
+  gem "jruby-debug"
 end
 
 # AR
-gem "sqlite3-ruby", ">= 1.2.5", :require => 'sqlite3'
+gem "sqlite3-ruby", "= 1.3.0.beta.2", :require => 'sqlite3'
 
 group :db do
   gem "pg", ">= 0.9.0"
