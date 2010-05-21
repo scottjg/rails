@@ -1,6 +1,5 @@
-activesupport_path = File.expand_path('../../../activesupport/lib', __FILE__)
-$:.unshift(activesupport_path) if File.directory?(activesupport_path) && !$:.include?(activesupport_path)
-require 'active_support/ruby/shim'
+require 'abstract_controller'
+require 'action_dispatch'
 
 module ActionController
   extend ActiveSupport::Autoload
@@ -14,13 +13,13 @@ module ActionController
   autoload_under "metal" do
     autoload :Compatibility
     autoload :ConditionalGet
-    autoload :Configuration
     autoload :Cookies
     autoload :Flash
     autoload :Head
     autoload :Helpers
     autoload :HideActions
     autoload :HttpAuthentication
+    autoload :ImplicitRender
     autoload :Instrumentation
     autoload :MimeResponds
     autoload :RackDelegation
@@ -34,19 +33,18 @@ module ActionController
     autoload :Streaming
     autoload :Testing
     autoload :UrlFor
-    autoload :Verification
   end
 
   autoload :Dispatcher,      'action_controller/deprecated/dispatcher'
   autoload :Integration,     'action_controller/deprecated/integration_test'
   autoload :IntegrationTest, 'action_controller/deprecated/integration_test'
   autoload :PerformanceTest, 'action_controller/deprecated/performance_test'
+  autoload :UrlWriter,       'action_controller/deprecated'
   autoload :Routing,         'action_controller/deprecated'
   autoload :TestCase,        'action_controller/test_case'
 
   eager_autoload do
     autoload :RecordIdentifier
-    autoload :UrlRewriter
 
     # TODO: Don't autoload exceptions, setup explicit
     # requires for files that need them
@@ -66,13 +64,11 @@ module ActionController
 end
 
 # All of these simply register additional autoloads
-require 'abstract_controller'
-require 'action_dispatch'
 require 'action_view'
 require 'action_controller/vendor/html-scanner'
 
 # Common ActiveSupport usage in ActionController
-require "active_support/concern"
+require 'active_support/concern'
 require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/core_ext/load_error'
 require 'active_support/core_ext/module/attr_internal'

@@ -92,8 +92,7 @@ module ActionController
       inflection = if options[:action].to_s == "new"
         args.pop
         :singular
-      elsif (record.respond_to?(:new_record?) && record.new_record?) ||
-            (record.respond_to?(:destroyed?) && record.destroyed?)
+      elsif (record.respond_to?(:persisted?) && !record.persisted?)
         args.pop
         :plural
       elsif record.is_a?(Class)
@@ -121,7 +120,7 @@ module ActionController
     end
 
     %w(edit new).each do |action|
-      module_eval <<-EOT, __FILE__, __LINE__
+      module_eval <<-EOT, __FILE__, __LINE__ + 1
         def #{action}_polymorphic_url(record_or_hash, options = {})         # def edit_polymorphic_url(record_or_hash, options = {})
           polymorphic_url(                                                  #   polymorphic_url(
             record_or_hash,                                                 #     record_or_hash,

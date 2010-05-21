@@ -88,7 +88,7 @@ Please note that you need to +git :init+ before you can install a plugin as a su
 Or use plain old SVN :
 
 <ruby>
-plugin 'wtfsvn', :svn => 'svn://crap.com/wtf/trunk'
+plugin 'usingsvn', :svn => 'svn://example.com/usingsvn/trunk'
 </ruby>
 
 h4. vendor/lib/file/initializer(filename, data = nil, &block)
@@ -113,7 +113,7 @@ CODE
 
 Similarly +lib()+ creates a file in the +lib/+ directory and +vendor()+ creates a file in the +vendor/+ directory.
 
-There is even +file()+, which accepts a relative path from +RAILS_ROOT+ and creates all the directories/file needed :
+There is even +file()+, which accepts a relative path from +Rails.root+ and creates all the directories/file needed :
 
 <ruby>
 file 'app/components/foo.rb', <<-CODE

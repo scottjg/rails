@@ -89,6 +89,10 @@ module TestHelpers
         end
       end
 
+      unless options[:gemfile]
+        File.delete"#{app_path}/Gemfile"
+      end
+
       routes = File.read("#{app_path}/config/routes.rb")
       if routes =~ /(\n\s*end\s*)\Z/
         File.open("#{app_path}/config/routes.rb", 'w') do |f|
@@ -96,10 +100,31 @@ module TestHelpers
         end
       end
 
-      add_to_config 'config.action_controller.session = { :key => "_myapp_session", :secret => "bac838a849c1d5c4de2e6a50af826079" }'
+      add_to_config 'config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"; config.session_store :cookie_store, :key => "_myapp_session"'
+    end
+
+    def make_basic_app
+      require "rails"
+      require "action_controller/railtie"
+
+      app = Class.new(Rails::Application)
+      app.config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"
+      app.config.session_store :cookie_store, :key => "_myapp_session"
+
+      yield app if block_given?
+      app.initialize!
+
+      app.routes.draw do
+        match "/" => "omg#index"
+      end
+
+      require 'rack/test'
+      extend ::Rack::Test::Methods
     end
 
     class Bukkit
+      attr_reader :path
+
       def initialize(path)
         @path = path
       end
@@ -118,10 +143,29 @@ module TestHelpers
     def plugin(name, string = "")
       dir = "#{app_path}/vendor/plugins/#{name}"
       FileUtils.mkdir_p(dir)
+
       File.open("#{dir}/init.rb", 'w') do |f|
         f.puts "::#{name.upcase} = 'loaded'"
         f.puts string
       end
+
+      Bukkit.new(dir).tap do |bukkit|
+        yield bukkit if block_given?
+      end
+    end
+
+    def engine(name)
+      dir = "#{app_path}/random/#{name}"
+      FileUtils.mkdir_p(dir)
+
+      app = File.readlines("#{app_path}/config/application.rb")
+      app.insert(2, "$:.unshift(\"#{dir}/lib\")")
+      app.insert(3, "require #{name.inspect}")
+
+      File.open("#{app_path}/config/application.rb", 'r+') do |f|
+        f.puts app
+      end
+
       Bukkit.new(dir).tap do |bukkit|
         yield bukkit if block_given?
       end
@@ -129,7 +173,7 @@ module TestHelpers
 
     def script(script)
       Dir.chdir(app_path) do
-        `#{Gem.ruby} #{app_path}/script/#{script}`
+        `#{Gem.ruby} #{app_path}/script/rails #{script}`
       end
     end
 
@@ -162,23 +206,7 @@ module TestHelpers
     end
 
     def boot_rails
-      root = File.expand_path('../../../..', __FILE__)
-      begin
-        require "#{root}/vendor/gems/environment"
-      rescue LoadError
-        %w(
-          actionmailer/lib
-          actionpack/lib
-          activemodel/lib
-          activerecord/lib
-          activeresource/lib
-          activesupport/lib
-          railties/lib
-          railties
-        ).reverse_each do |path|
-          $:.unshift "#{root}/#{path}"
-        end
-      end
+      require File.expand_path('../../../../load_paths', __FILE__)
     end
   end
 end
@@ -199,14 +227,18 @@ Module.new do
   end
   FileUtils.mkdir(tmp_path)
 
-  environment = File.expand_path('../../../../vendor/gems/environment', __FILE__)
+  environment = File.expand_path('../../../../load_paths', __FILE__)
   if File.exist?("#{environment}.rb")
     require_environment = "-r #{environment}"
   end
 
-  `#{Gem.ruby} #{require_environment} #{RAILS_FRAMEWORK_ROOT}/railties/bin/rails #{tmp_path('app_template')}`
+  `#{Gem.ruby} #{require_environment} #{RAILS_FRAMEWORK_ROOT}/bin/rails #{tmp_path('app_template')}`
   File.open("#{tmp_path}/app_template/config/boot.rb", 'w') do |f|
-    f.puts "require '#{environment}'" if require_environment
+    if require_environment
+      f.puts "Dir.chdir('#{File.dirname(environment)}') do"
+      f.puts "  require '#{environment}'"
+      f.puts "end"
+    end
     f.puts "require 'rails/all'"
   end
 end

@@ -30,6 +30,14 @@ module ActionDispatch
       METHOD
     end
 
+    def self.new(env)
+      if request = env["action_dispatch.request"] && request.instance_of?(self)
+        return request
+      end
+
+      super
+    end
+
     def key?(key)
       @env.key?(key)
     end
@@ -37,47 +45,65 @@ module ActionDispatch
     HTTP_METHODS = %w(get head put post delete options)
     HTTP_METHOD_LOOKUP = HTTP_METHODS.inject({}) { |h, m| h[m] = h[m.upcase] = m.to_sym; h }
 
-    # Returns the true HTTP request \method as a lowercase symbol, such as
-    # <tt>:get</tt>. If the request \method is not listed in the HTTP_METHODS
-    # constant above, an UnknownHttpMethod exception is raised.
+    # Returns the HTTP \method that the application should see.
+    # In the case where the \method was overridden by a middleware
+    # (for instance, if a HEAD request was converted to a GET,
+    # or if a _method parameter was used to determine the \method
+    # the application should use), this \method returns the overridden
+    # value, not the original.
     def request_method
-      method = env["rack.methodoverride.original_method"] || env["REQUEST_METHOD"]
-      HTTP_METHOD_LOOKUP[method] || raise(ActionController::UnknownHttpMethod, "#{method}, accepted HTTP methods are #{HTTP_METHODS.to_sentence(:locale => :en)}")
-    end
-
-    # Returns the HTTP request \method used for action processing as a
-    # lowercase symbol, such as <tt>:post</tt>. (Unlike #request_method, this
-    # method returns <tt>:get</tt> for a HEAD request because the two are
-    # functionally equivalent from the application's perspective.)
-    def method
       method = env["REQUEST_METHOD"]
       HTTP_METHOD_LOOKUP[method] || raise(ActionController::UnknownHttpMethod, "#{method}, accepted HTTP methods are #{HTTP_METHODS.to_sentence(:locale => :en)}")
+      method
     end
 
-    # Is this a GET (or HEAD) request?  Equivalent to <tt>request.method == :get</tt>.
+    # Returns a symbol form of the #request_method
+    def request_method_symbol
+      HTTP_METHOD_LOOKUP[request_method]
+    end
+
+    # Returns the original value of the environment's REQUEST_METHOD,
+    # even if it was overridden by middleware. See #request_method for
+    # more information.
+    def method
+      method = env["rack.methodoverride.original_method"] || env['REQUEST_METHOD']
+      HTTP_METHOD_LOOKUP[method] || raise(ActionController::UnknownHttpMethod, "#{method}, accepted HTTP methods are #{HTTP_METHODS.to_sentence(:locale => :en)}")
+      method
+    end
+
+    # Returns a symbol form of the #method
+    def method_symbol
+      HTTP_METHOD_LOOKUP[method]
+    end
+
+    # Is this a GET (or HEAD) request?
+    # Equivalent to <tt>request.request_method == :get</tt>.
     def get?
-      method == :get
+      HTTP_METHOD_LOOKUP[request_method] == :get
     end
 
-    # Is this a POST request?  Equivalent to <tt>request.method == :post</tt>.
+    # Is this a POST request?
+    # Equivalent to <tt>request.request_method == :post</tt>.
     def post?
-      method == :post
+      HTTP_METHOD_LOOKUP[request_method] == :post
     end
 
-    # Is this a PUT request?  Equivalent to <tt>request.method == :put</tt>.
+    # Is this a PUT request?
+    # Equivalent to <tt>request.request_method == :put</tt>.
     def put?
-      method == :put
+      HTTP_METHOD_LOOKUP[request_method] == :put
     end
 
-    # Is this a DELETE request?  Equivalent to <tt>request.method == :delete</tt>.
+    # Is this a DELETE request?
+    # Equivalent to <tt>request.request_method == :delete</tt>.
     def delete?
-      method == :delete
+      HTTP_METHOD_LOOKUP[request_method] == :delete
     end
 
-    # Is this a HEAD request? Since <tt>request.method</tt> sees HEAD as <tt>:get</tt>,
-    # this \method checks the actual HTTP \method directly.
+    # Is this a HEAD request?
+    # Equivalent to <tt>request.method == :head</tt>.
     def head?
-      request_method == :head
+      HTTP_METHOD_LOOKUP[method] == :head
     end
 
     # Provides access to the request's HTTP headers, for example:
@@ -88,11 +114,11 @@ module ActionDispatch
     end
 
     def forgery_whitelisted?
-      method == :get || xhr? || content_type.nil? || !content_type.verify_request?
+      get? || xhr? || content_mime_type.nil? || !content_mime_type.verify_request?
     end
 
     def media_type
-      content_type.to_s
+      content_mime_type.to_s
     end
 
     # Returns the content length of the request as an integer.
@@ -119,36 +145,7 @@ module ActionDispatch
     # delimited list in the case of multiple chained proxies; the last
     # address which is not trusted is the originating IP.
     def remote_ip
-      remote_addr_list = @env['REMOTE_ADDR'] && @env['REMOTE_ADDR'].scan(/[^,\s]+/)
-
-      unless remote_addr_list.blank?
-        not_trusted_addrs = remote_addr_list.reject {|addr| addr =~ TRUSTED_PROXIES || addr =~ ActionController::Base.trusted_proxies}
-        return not_trusted_addrs.first unless not_trusted_addrs.empty?
-      end
-      remote_ips = @env['HTTP_X_FORWARDED_FOR'] && @env['HTTP_X_FORWARDED_FOR'].split(',')
-
-      if @env.include? 'HTTP_CLIENT_IP'
-        if ActionController::Base.ip_spoofing_check && remote_ips && !remote_ips.include?(@env['HTTP_CLIENT_IP'])
-          # We don't know which came from the proxy, and which from the user
-          raise ActionController::ActionControllerError.new <<EOM
-IP spoofing attack?!
-HTTP_CLIENT_IP=#{@env['HTTP_CLIENT_IP'].inspect}
-HTTP_X_FORWARDED_FOR=#{@env['HTTP_X_FORWARDED_FOR'].inspect}
-EOM
-        end
-
-        return @env['HTTP_CLIENT_IP']
-      end
-
-      if remote_ips
-        while remote_ips.size > 1 && (TRUSTED_PROXIES =~ remote_ips.last.strip || ActionController::Base.trusted_proxies =~ remote_ips.last.strip)
-          remote_ips.pop
-        end
-
-        return remote_ips.last.strip
-      end
-
-      @env['REMOTE_ADDR']
+      (@env["action_dispatch.remote_ip"] || ip).to_s
     end
 
     # Returns the lowercase name of the HTTP server software.
@@ -178,7 +175,7 @@ EOM
     end
 
     def form_data?
-      FORM_DATA_MEDIA_TYPES.include?(content_type.to_s)
+      FORM_DATA_MEDIA_TYPES.include?(content_mime_type.to_s)
     end
 
     def body_stream #:nodoc:

@@ -1,3 +1,5 @@
+require 'active_support/core_ext/object/blank'
+
 module ActiveRecord
   class Relation
     JoinOperation = Struct.new(:relation, :join_class, :on)
@@ -5,20 +7,33 @@ module ActiveRecord
     MULTI_VALUE_METHODS = [:select, :group, :order, :joins, :where, :having]
     SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from]
 
-    include FinderMethods, Calculations, SpawnMethods, QueryMethods
+    include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
     delegate :length, :collect, :map, :each, :all?, :include?, :to => :to_a
     delegate :insert, :to => :arel
 
     attr_reader :table, :klass
+    attr_accessor :extensions
 
-    def initialize(klass, table)
+    def initialize(klass, table, &block)
       @klass, @table = klass, table
+
+      @implicit_readonly = nil
+      @loaded            = nil
+
+      SINGLE_VALUE_METHODS.each {|v| instance_variable_set(:"@#{v}_value", nil)}
       (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
+      @extensions = []
+
+      apply_modules(Module.new(&block)) if block_given?
     end
 
     def new(*args, &block)
       with_create_scope { @klass.new(*args, &block) }
+    end
+
+    def initialize_copy(other)
+      reset
     end
 
     alias build new
@@ -32,7 +47,7 @@ module ActiveRecord
     end
 
     def respond_to?(method, include_private = false)
-      return true if arel.respond_to?(method, include_private) || Array.method_defined?(method)
+      return true if arel.respond_to?(method, include_private) || Array.method_defined?(method) || @klass.respond_to?(method, include_private)
 
       if match = DynamicFinderMatch.match(method)
         return true if @klass.send(:all_attributes_exists?, match.attribute_names)
@@ -50,7 +65,7 @@ module ActiveRecord
 
       preload = @preload_values
       preload +=  @includes_values unless eager_loading?
-      preload.each {|associations| @klass.send(:preload_associations, @records, associations) } 
+      preload.each {|associations| @klass.send(:preload_associations, @records, associations) }
 
       # @readonly_value is true only if set explicity. @implicit_readonly is true if there are JOINS and no explicit SELECT.
       readonly = @readonly_value.nil? ? @implicit_readonly : @readonly_value
@@ -296,11 +311,28 @@ module ActiveRecord
       @should_eager_load ||= (@eager_load_values.any? || (@includes_values.any? && references_eager_loaded_tables?))
     end
 
+    def ==(other)
+      case other
+      when Relation
+        other.to_sql == to_sql
+      when Array
+        to_a == other.to_a
+      end
+    end
+
+    def inspect
+      to_a.inspect
+    end
+
     protected
 
     def method_missing(method, *args, &block)
       if Array.method_defined?(method)
         to_a.send(method, *args, &block)
+      elsif @klass.scopes[method]
+        merge(@klass.send(method, *args, &block))
+      elsif @klass.respond_to?(method)
+        @klass.send(:with_scope, self) { @klass.send(method, *args, &block) }
       elsif arel.respond_to?(method)
         arel.send(method, *args, &block)
       elsif match = DynamicFinderMatch.match(method)

@@ -1,11 +1,12 @@
 require 'optparse'
+require 'rbconfig'
 
 options = { :environment => (ENV['RAILS_ENV'] || "development").dup }
 code_or_file = nil
 
 ARGV.clone.options do |opts|
   script_name = File.basename($0)
-  opts.banner = "Usage: #{$0} [options] ('Some.ruby(code)' or a filename)"
+  opts.banner = "Usage: runner [options] ('Some.ruby(code)' or a filename)"
 
   opts.separator ""
 
@@ -18,7 +19,7 @@ ARGV.clone.options do |opts|
   opts.on("-h", "--help",
           "Show this help message.") { $stderr.puts opts; exit }
 
-  if RUBY_PLATFORM !~ /mswin/
+  if Config::CONFIG['host_os'] !~ /mswin|mingw/
     opts.separator ""
     opts.separator "You can also use runner as a shebang line for your scripts like this:"
     opts.separator "-------------------------------------------------------------"
@@ -34,6 +35,9 @@ end
 ARGV.delete(code_or_file)
 
 ENV["RAILS_ENV"] = options[:environment]
+
+require APP_PATH
+Rails::Application.require_environment!
 
 begin
   if code_or_file.nil?

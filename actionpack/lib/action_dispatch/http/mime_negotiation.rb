@@ -5,7 +5,7 @@ module ActionDispatch
       #
       # For backward compatibility, the post \format is extracted from the
       # X-Post-Data-Format HTTP header if present.
-      def content_type
+      def content_mime_type
         @env["action_dispatch.request.content_type"] ||= begin
           if @env['CONTENT_TYPE'] =~ /^([^,\;]*)/
             Mime::Type.lookup($1.strip.downcase)
@@ -15,13 +15,17 @@ module ActionDispatch
         end
       end
 
+      def content_type
+        content_mime_type && content_mime_type.to_s
+      end
+
       # Returns the accepted MIME type for the request.
       def accepts
         @env["action_dispatch.request.accepts"] ||= begin
           header = @env['HTTP_ACCEPT'].to_s.strip
 
           if header.empty?
-            [content_type]
+            [content_mime_type]
           else
             Mime::Type.parse(header)
           end
@@ -44,7 +48,7 @@ module ActionDispatch
         @env["action_dispatch.request.formats"] ||=
           if parameters[:format]
             Array(Mime[parameters[:format]])
-          elsif xhr? || (accept && !accept.include?(?,))
+          elsif xhr? || (accept && accept !~ /,\s*\*\/\*/)
             accepts
           else
             [Mime::HTML]
@@ -65,21 +69,6 @@ module ActionDispatch
       def format=(extension)
         parameters[:format] = extension.to_s
         @env["action_dispatch.request.formats"] = [Mime::Type.lookup_by_extension(parameters[:format])]
-      end
-
-      # Returns a symbolized version of the <tt>:format</tt> parameter of the request.
-      # If no \format is given it returns <tt>:js</tt>for Ajax requests and <tt>:html</tt>
-      # otherwise.
-      def template_format
-        parameter_format = parameters[:format]
-
-        if parameter_format
-          parameter_format
-        elsif xhr?
-          :js
-        else
-          :html
-        end
       end
 
       # Receives an array of mimes and return the first user sent mime that

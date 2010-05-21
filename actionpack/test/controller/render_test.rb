@@ -18,7 +18,18 @@ class TestController < ActionController::Base
 
   layout :determine_layout
 
+  def name
+    nil
+  end
+
+  private :name
+  helper_method :name
+
   def hello_world
+  end
+
+  def hello_world_file
+    render :file => File.expand_path("../../fixtures/hello.html", __FILE__)
   end
 
   def conditional_hello
@@ -214,6 +225,10 @@ class TestController < ActionController::Base
     render :text => false
   end
 
+  def render_text_with_resource
+    render :text => Customer.new("David")
+  end
+
   # :ported:
   def render_nothing_with_appendix
     render :text => "appended"
@@ -347,7 +362,7 @@ class TestController < ActionController::Base
     @before = "i'm before the render"
     render_to_string :text => "foo"
     @after = "i'm after the render"
-    render :action => "test/hello_world"
+    render :template => "test/hello_world"
   end
 
   def render_to_string_with_exception
@@ -361,7 +376,7 @@ class TestController < ActionController::Base
     rescue
     end
     @after = "i'm after the render"
-    render :action => "test/hello_world"
+    render :template => "test/hello_world"
   end
 
   def accessing_params_in_template_with_layout
@@ -410,7 +425,6 @@ class TestController < ActionController::Base
 
   def rendering_with_conflicting_local_vars
     @name = "David"
-    def @template.name() nil end
     render :action => "potential_conflicts"
   end
 
@@ -499,14 +513,10 @@ class TestController < ActionController::Base
     end
   end
 
-  def partial_only_with_layout
-    render :partial => "partial_only", :layout => true
-  end
-
   def render_to_string_with_partial
     @partial_only = render_to_string :partial => "partial_only"
     @partial_with_locals = render_to_string :partial => "customer", :locals => { :customer => Customer.new("david") }
-    render :action => "test/hello_world"
+    render :template => "test/hello_world"
   end
 
   def partial_with_counter
@@ -518,11 +528,11 @@ class TestController < ActionController::Base
   end
 
   def partial_with_form_builder
-    render :partial => ActionView::Helpers::FormBuilder.new(:post, nil, @template, {}, Proc.new {})
+    render :partial => ActionView::Helpers::FormBuilder.new(:post, nil, view_context, {}, Proc.new {})
   end
 
   def partial_with_form_builder_subclass
-    render :partial => LabellingFormBuilder.new(:post, nil, @template, {}, Proc.new {})
+    render :partial => LabellingFormBuilder.new(:post, nil, view_context, {}, Proc.new {})
   end
 
   def partial_collection
@@ -535,6 +545,10 @@ class TestController < ActionController::Base
 
   def partial_collection_with_counter
     render :partial => "customer_counter", :collection => [ Customer.new("david"), Customer.new("mary") ]
+  end
+
+  def partial_collection_with_as_and_counter
+    render :partial => "customer_counter_with_as", :collection => [ Customer.new("david"), Customer.new("mary") ], :as => :client
   end
 
   def partial_collection_with_locals
@@ -609,6 +623,15 @@ class TestController < ActionController::Base
     raise
   end
 
+  before_filter :only => :render_with_filters do
+    request.format = :xml
+  end
+
+  # Ensure that the before filter is executed *before* self.formats is set.
+  def render_with_filters
+    render :action => :formatted_xml_erb
+  end
+
   private
 
     def determine_layout
@@ -617,8 +640,7 @@ class TestController < ActionController::Base
              "rendering_nothing_on_layout", "render_text_hello_world",
              "render_text_hello_world_with_layout",
              "hello_world_with_layout_false",
-             "partial_only", "partial_only_with_layout",
-             "accessing_params_in_template",
+             "partial_only", "accessing_params_in_template",
              "accessing_params_in_template_with_layout",
              "render_with_explicit_template",
              "render_with_explicit_string_template",
@@ -747,6 +769,11 @@ class RenderTest < ActionController::TestCase
     assert_equal "The secret is in the sauce\n", @response.body
   end
 
+  def test_render_file
+    get :hello_world_file
+    assert_equal "Hello world!", @response.body
+  end
+
   # :ported:
   def test_render_file_as_string_with_instance_variables
     get :render_file_as_string_with_instance_variables
@@ -815,6 +842,11 @@ class RenderTest < ActionController::TestCase
     get :render_nothing_with_appendix
     assert_response 200
     assert_equal 'appended', @response.body
+  end
+
+  def test_render_text_with_resource
+    get :render_text_with_resource
+    assert_equal 'name: "David"', @response.body
   end
 
   # :ported:
@@ -1016,6 +1048,11 @@ class RenderTest < ActionController::TestCase
     assert_equal "<html>Hello world!</html>", @response.body
   end
 
+  def test_render_with_filters
+    get :render_with_filters
+    assert_equal "<test>passed formatted xml erb</test>", @response.body
+  end
+
   # :ported:
   def test_double_render
     assert_raise(ActionController::DoubleRenderError) { get :double_render }
@@ -1042,7 +1079,7 @@ class RenderTest < ActionController::TestCase
 
   def test_action_talk_to_layout
     get :action_talk_to_layout
-    assert_equal "<title>Talking to the layout</title>\n\nAction was here!", @response.body
+    assert_equal "<title>Talking to the layout</title>\nAction was here!", @response.body
   end
 
   # :addressed:
@@ -1059,7 +1096,7 @@ class RenderTest < ActionController::TestCase
 
   def test_yield_content_for
     assert_not_deprecated { get :yield_content_for }
-    assert_equal "<title>Putting stuff in the title!</title>\n\nGreat stuff!\n", @response.body
+    assert_equal "<title>Putting stuff in the title!</title>\nGreat stuff!\n", @response.body
   end
 
   def test_overwritting_rendering_relative_file_with_extension
@@ -1166,11 +1203,6 @@ class RenderTest < ActionController::TestCase
     assert_equal 'partial html', @response.body
   end
 
-  def test_partial_only_with_layout
-    get :partial_only_with_layout
-    assert_equal "<html>only partial</html>", @response.body
-  end
-
   def test_render_to_string_partial
     get :render_to_string_with_partial
     assert_equal "only partial", assigns(:partial_only)
@@ -1211,6 +1243,11 @@ class RenderTest < ActionController::TestCase
 
   def test_partial_collection_with_counter
     get :partial_collection_with_counter
+    assert_equal "david0mary1", @response.body
+  end
+
+  def test_partial_collection_with_as_and_counter
+    get :partial_collection_with_as_and_counter
     assert_equal "david0mary1", @response.body
   end
 
@@ -1351,7 +1388,7 @@ class EtagRenderTest < ActionController::TestCase
   def test_render_against_etag_request_should_have_no_content_length_when_match
     @request.if_none_match = etag_for("hello david")
     get :render_hello_world_from_variable
-    assert !@response.headers.has_key?("Content-Length"), @response.headers['Content-Length']
+    assert !@response.headers.has_key?("Content-Length")
   end
 
   def test_render_against_etag_request_should_200_when_no_match

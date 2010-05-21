@@ -3,19 +3,23 @@ $:.unshift(activesupport_path) if File.directory?(activesupport_path) && !$:.inc
 
 require 'active_support'
 require 'active_support/core_ext/object/blank'
-require 'active_support/core_ext/object/metaclass'
+require 'active_support/core_ext/kernel/singleton_class'
 require 'active_support/core_ext/array/extract_options'
 require 'active_support/core_ext/hash/deep_merge'
 require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/core_ext/string/inflections'
 
-# TODO: Do not always push on vendored thor
-$LOAD_PATH.unshift("#{File.dirname(__FILE__)}/vendor/thor-0.12.3/lib")
 require 'rails/generators/base'
-require 'rails/generators/named_base'
 
 module Rails
   module Generators
+    autoload :Actions,         'rails/generators/actions'
+    autoload :ActiveModel,     'rails/generators/active_model'
+    autoload :Migration,       'rails/generators/migration'
+    autoload :NamedBase,       'rails/generators/named_base'
+    autoload :ResourceHelpers, 'rails/generators/resource_helpers'
+    autoload :TestCase,        'rails/generators/test_case'
+
     DEFAULT_ALIASES = {
       :rails => {
         :actions => '-a',
@@ -38,33 +42,18 @@ module Rails
     }
 
     DEFAULT_OPTIONS = {
-      :active_record => {
-        :migration  => true,
-        :timestamps => true
-      },
-
-      :erb => {
-        :layout => true
-      },
-
       :rails => {
         :force_plural => false,
         :helper => true,
-        :layout => true,
-        :orm => :active_record,
-        :integration_tool => :test_unit,
-        :performance_tool => :test_unit,
+        :orm => nil,
+        :integration_tool => nil,
+        :performance_tool => nil,
         :resource_controller => :controller,
         :scaffold_controller => :scaffold_controller,
         :singleton => false,
         :stylesheets => true,
-        :template_engine => :erb,
-        :test_framework => :test_unit
-      },
-
-      :test_unit => {
-        :fixture => true,
-        :fixture_replacement => nil
+        :test_framework => nil,
+        :template_engine => :erb
       },
 
       :plugin => {
@@ -77,6 +66,12 @@ module Rails
       no_color! unless config.colorize_logging
       aliases.deep_merge! config.aliases
       options.deep_merge! config.options
+      fallbacks.merge! config.fallbacks
+      templates_path.concat config.templates
+    end
+
+    def self.templates_path
+      @templates_path ||= []
     end
 
     def self.aliases #:nodoc:
@@ -171,8 +166,40 @@ module Rails
       end
     end
 
+    def self.hidden_namespaces
+      @hidden_namespaces ||= begin
+        orm      = options[:rails][:orm]
+        test     = options[:rails][:test_framework]
+        template = options[:rails][:template_engine]
+
+        [
+          "rails",
+          "#{orm}:migration",
+          "#{orm}:model",
+          "#{orm}:observer",
+          "#{test}:controller",
+          "#{test}:helper",
+          "#{test}:integration",
+          "#{test}:mailer",
+          "#{test}:model",
+          "#{test}:observer",
+          "#{test}:scaffold",
+          "#{test}:view",
+          "#{template}:controller",
+          "#{template}:scaffold"
+        ]
+      end
+    end
+
+    class << self
+      def hide_namespaces(*namespaces)
+        hidden_namespaces.concat(namespaces)
+      end
+      alias hide_namespace hide_namespaces
+    end
+
     # Show help message with available generators.
-    def self.help
+    def self.help(command = 'generate')
       lookup!
 
       namespaces = subclasses.map{ |k| k.namespace }
@@ -184,8 +211,7 @@ module Rails
         groups[base] << namespace
       end
 
-      puts "Usage:"
-      puts "  script/generate GENERATOR [args] [options]"
+      puts "Usage: rails #{command} GENERATOR [args] [options]"
       puts
       puts "General options:"
       puts "  -h, [--help]     # Print generators options and usage"
@@ -200,7 +226,10 @@ module Rails
       # Print Rails defaults first.
       rails = groups.delete("rails")
       rails.map! { |n| n.sub(/^rails:/, '') }
+      rails.delete("app")
       print_list("rails", rails)
+
+      hidden_namespaces.each {|n| groups.delete(n.to_s) }
 
       groups.sort.each { |b, n| print_list(b, n) }
     end
@@ -209,9 +238,17 @@ module Rails
 
       # Prints a list of generators.
       def self.print_list(base, namespaces) #:nodoc:
+        namespaces = namespaces.reject do |n|
+          hidden_namespaces.include?(n)
+        end
+
         return if namespaces.empty?
         puts "#{base.camelize}:"
-        namespaces.each { |namespace| puts("  #{namespace}") }
+
+        namespaces.each do |namespace|
+          puts("  #{namespace}")
+        end
+
         puts
       end
 
@@ -238,7 +275,7 @@ module Rails
         paths = namespaces_to_paths(namespaces)
 
         paths.each do |raw_path|
-          ["rails_generators", "generators"].each do |base|
+          ["rails/generators", "generators"].each do |base|
             path = "#{base}/#{raw_path}_generator"
 
             begin
@@ -261,7 +298,7 @@ module Rails
         load_generators_from_railties!
 
         $LOAD_PATH.each do |base|
-          Dir[File.join(base, "{generators,rails_generators}", "**", "*_generator.rb")].each do |path|
+          Dir[File.join(base, "{rails/generators,generators}", "**", "*_generator.rb")].each do |path|
             begin
               require path
             rescue Exception => e
@@ -295,3 +332,6 @@ module Rails
   end
 end
 
+# If the application was already defined, configure generators,
+# otherwise you have to configure it by hand.
+Rails::Generators.configure! if Rails.respond_to?(:application) && Rails.application

@@ -207,6 +207,10 @@ class FormOptionsHelperTest < ActionView::TestCase
     )
   end
 
+  def test_grouped_options_for_select_returns_html_safe_string
+    assert grouped_options_for_select([["Hats", ["Baseball Cap","Cowboy Hat"]]]).html_safe?
+  end
+
   def test_optgroups_with_with_options_with_hash
     assert_dom_equal(
        "<optgroup label=\"Europe\"><option value=\"Denmark\">Denmark</option>\n<option value=\"Germany\">Germany</option></optgroup><optgroup label=\"North America\"><option value=\"United States\">United States</option>\n<option value=\"Canada\">Canada</option></optgroup>",
@@ -293,7 +297,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post = Post.new
     @post.category = "<mus>"
 
-    fields_for :post, @post do |f|
+    output_buffer = fields_for :post, @post do |f|
       concat f.select(:category, %w( abe <mus> hest))
     end
   
@@ -307,7 +311,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post = Post.new
     @post.category = "<mus>"
 
-    fields_for :post, @post, :index => 108 do |f|
+    output_buffer = fields_for :post, @post, :index => 108 do |f|
       concat f.select(:category, %w( abe <mus> hest))
     end
 
@@ -322,7 +326,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post.category = "<mus>"
     def @post.to_param; 108; end
 
-    fields_for "post[]", @post do |f|
+    output_buffer = fields_for "post[]", @post do |f|
       concat f.select(:category, %w( abe <mus> hest))
     end
 
@@ -336,7 +340,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post = Post.new
     options = "<option value=\"abe\">abe</option><option value=\"mus\">mus</option><option value=\"hest\">hest</option>"
 
-    fields_for :post, @post do |f|
+    output_buffer = fields_for :post, @post do |f|
       concat f.select(:category, options, :prompt => 'The prompt')
     end
 
@@ -462,7 +466,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post = Post.new
     @post.author_name = "Babe"
 
-    fields_for :post, @post do |f|
+    output_buffer = fields_for :post, @post do |f|
       concat f.collection_select(:author_name, dummy_posts, :author_name, :author_name)
     end
   
@@ -476,7 +480,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post = Post.new
     @post.author_name = "Babe"
 
-    fields_for :post, @post, :index => 815 do |f|
+    output_buffer = fields_for :post, @post, :index => 815 do |f|
       concat f.collection_select(:author_name, dummy_posts, :author_name, :author_name)
     end
 
@@ -491,7 +495,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post.author_name = "Babe"
     def @post.to_param; 815; end
 
-    fields_for "post[]", @post do |f|
+    output_buffer = fields_for "post[]", @post do |f|
       concat f.collection_select(:author_name, dummy_posts, :author_name, :author_name)
     end
 
@@ -570,7 +574,7 @@ class FormOptionsHelperTest < ActionView::TestCase
   def test_time_zone_select_under_fields_for
     @firm = Firm.new("D")
 
-    fields_for :firm, @firm do |f|
+    output_buffer = fields_for :firm, @firm do |f|
       concat f.time_zone_select(:time_zone)
     end
   
@@ -589,7 +593,7 @@ class FormOptionsHelperTest < ActionView::TestCase
   def test_time_zone_select_under_fields_for_with_index
     @firm = Firm.new("D")
 
-    fields_for :firm, @firm, :index => 305 do |f|
+    output_buffer = fields_for :firm, @firm, :index => 305 do |f|
       concat f.time_zone_select(:time_zone)
     end
 
@@ -609,7 +613,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @firm = Firm.new("D")
     def @firm.to_param; 305; end
 
-    fields_for "firm[]", @firm do |f|
+    output_buffer = fields_for "firm[]", @firm do |f|
       concat f.time_zone_select(:time_zone)
     end
 
@@ -763,6 +767,62 @@ class FormOptionsHelperTest < ActionView::TestCase
                    html
   end
 
+  def test_options_for_select_with_element_attributes
+    assert_dom_equal(
+      "<option value=\"&lt;Denmark&gt;\" class=\"bold\">&lt;Denmark&gt;</option>\n<option value=\"USA\" onclick=\"alert('Hello World');\">USA</option>\n<option value=\"Sweden\">Sweden</option>\n<option value=\"Germany\">Germany</option>",
+      options_for_select([ [ "<Denmark>", { :class => 'bold' } ], [ "USA", { :onclick => "alert('Hello World');" } ], [ "Sweden" ], "Germany" ])
+    )
+  end
+
+  def test_options_for_select_with_element_attributes_and_selection
+    assert_dom_equal(
+      "<option value=\"&lt;Denmark&gt;\">&lt;Denmark&gt;</option>\n<option value=\"USA\" class=\"bold\" selected=\"selected\">USA</option>\n<option value=\"Sweden\">Sweden</option>",
+      options_for_select([ "<Denmark>", [ "USA", { :class => 'bold' } ], "Sweden" ], "USA")
+    )
+  end
+
+  def test_options_for_select_with_element_attributes_and_selection_array
+    assert_dom_equal(
+      "<option value=\"&lt;Denmark&gt;\">&lt;Denmark&gt;</option>\n<option value=\"USA\" class=\"bold\" selected=\"selected\">USA</option>\n<option value=\"Sweden\" selected=\"selected\">Sweden</option>",
+      options_for_select([ "<Denmark>", [ "USA", { :class => 'bold' } ], "Sweden" ], [ "USA", "Sweden" ])
+    )
+  end
+
+  def test_option_html_attributes_from_without_hash
+    assert_dom_equal(
+      "",
+      option_html_attributes([ 'foo', 'bar' ])
+    )
+  end
+
+  def test_option_html_attributes_with_single_element_hash
+    assert_dom_equal(
+      " class=\"fancy\"",
+      option_html_attributes([ 'foo', 'bar', { :class => 'fancy' } ])
+    )
+  end
+
+  def test_option_html_attributes_with_multiple_element_hash
+    assert_dom_equal(
+      " class=\"fancy\" onclick=\"alert('Hello World');\"",
+      option_html_attributes([ 'foo', 'bar', { :class => 'fancy', 'onclick' => "alert('Hello World');" } ])
+    )
+  end
+
+  def test_option_html_attributes_with_multiple_hashes
+    assert_dom_equal(
+      " class=\"fancy\" onclick=\"alert('Hello World');\"",
+      option_html_attributes([ 'foo', 'bar', { :class => 'fancy' }, { 'onclick' => "alert('Hello World');" } ])
+    )
+  end
+
+  def test_option_html_attributes_with_special_characters
+    assert_dom_equal(
+      " onclick=\"alert(&quot;&lt;code&gt;&quot;)\"",
+      option_html_attributes([ 'foo', 'bar', { :onclick => %(alert("<code>")) } ])
+    )
+  end
+
   def test_grouped_collection_select
     @continents = [
       Continent.new("<Africa>", [Country.new("<sa>", "<South Africa>"), Country.new("so", "Somalia")] ),
@@ -787,7 +847,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     @post = Post.new
     @post.origin = 'dk'
 
-    fields_for :post, @post do |f|
+    output_buffer = fields_for :post, @post do |f|
       concat f.grouped_collection_select("origin", @continents, :countries, :continent_name, :country_id, :country_name)
     end
 

@@ -154,6 +154,11 @@ module ActiveRecord
         @klass ||= active_record.send(:compute_type, class_name)
       end
 
+      def initialize(macro, name, options, active_record)
+        super
+        @collection = [:has_many, :has_and_belongs_to_many].include?(macro)
+      end
+
       # Returns a new, unsaved instance of the associated class. +options+ will
       # be passed to the class's constructor.
       def build_association(*options)
@@ -256,9 +261,6 @@ module ActiveRecord
       # association. Returns +true+ if the +macro+ is one of +has_many+ or
       # +has_and_belongs_to_many+, +false+ otherwise.
       def collection?
-        if @collection.nil?
-          @collection = [:has_many, :has_and_belongs_to_many].include?(macro)
-        end
         @collection
       end
 
@@ -273,6 +275,17 @@ module ActiveRecord
       # * the association is a +has_many+ association
       def validate?
         !options[:validate].nil? ? options[:validate] : (options[:autosave] == true || macro == :has_many)
+      end
+
+      def dependent_conditions(record, base_class, extra_conditions)
+        dependent_conditions = []
+        dependent_conditions << "#{primary_key_name} = #{record.send(name).send(:owner_quoted_id)}"
+        dependent_conditions << "#{options[:as]}_type = '#{base_class.name}'" if options[:as]
+        dependent_conditions << klass.send(:sanitize_sql, options[:conditions]) if options[:conditions]
+        dependent_conditions << extra_conditions if extra_conditions
+        dependent_conditions = dependent_conditions.collect {|where| "(#{where})" }.join(" AND ")
+        dependent_conditions = dependent_conditions.gsub('@', '\@')
+        dependent_conditions
       end
 
       private

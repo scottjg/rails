@@ -4,19 +4,13 @@ require 'active_support'
 require 'active_support/core_ext/kernel/reporting'
 require 'active_support/core_ext/logger'
 
-require 'rails/initializable'
 require 'rails/application'
-require 'rails/railtie'
-require 'rails/plugin'
-require 'rails/railties_path'
 require 'rails/version'
-require 'rails/rack'
-require 'rails/paths'
-require 'rails/configuration'
 require 'rails/deprecation'
-require 'rails/subscriber'
+require 'rails/log_subscriber'
 require 'rails/ruby_version_check'
 
+require 'active_support/railtie'
 require 'action_dispatch/railtie'
 
 # For Ruby 1.8, this initialization sets $KCODE to 'u' to enable the
@@ -29,10 +23,12 @@ if RUBY_VERSION < '1.9'
   $KCODE='u'
 else
   Encoding.default_external = Encoding::UTF_8
+  Encoding.default_internal = Encoding::UTF_8
 end
 
 module Rails
-  autoload :Bootstrap, 'rails/bootstrap'
+  autoload :Info, 'rails/info'
+  autoload :InfoController, 'rails/info_controller'
 
   class << self
     def application
@@ -84,6 +80,10 @@ module Rails
       @_env ||= ActiveSupport::StringInquirer.new(ENV["RAILS_ENV"] || ENV["RACK_ENV"] || "development")
     end
 
+    def env=(environment)
+      @_env = ActiveSupport::StringInquirer.new(environment)
+    end
+
     def cache
       RAILS_CACHE
     end
@@ -93,11 +93,12 @@ module Rails
     end
 
     def public_path
-      @@public_path ||= self.root ? File.join(self.root, "public") : "public"
+      application && application.paths.public.to_a.first
     end
 
     def public_path=(path)
-      @@public_path = path
+      ActiveSupport::Deprecation.warn "Setting Rails.public_path= is deprecated. " <<
+        "Please set paths.public = in config/application.rb instead.", caller
     end
   end
 end

@@ -15,24 +15,32 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
   stub_controllers do |routes|
     Routes = routes
     Routes.draw do
-      controller :sessions do
-        get  'login' => :new, :as => :login
-        post 'login' => :create
+      default_url_options :host => "rubyonrails.org"
 
-        delete 'logout' => :destroy, :as => :logout
+      controller :sessions do
+        get  'login' => :new
+        post 'login' => :create
+        delete 'logout' => :destroy
       end
 
       resource :session do
         get :create
+        post :reset
+
+        resource :info
       end
 
       match 'account/logout' => redirect("/logout"), :as => :logout_redirect
       match 'account/login', :to => redirect("/login")
 
       match 'account/overview'
+      match '/account/nested/overview'
+      match 'sign_in' => "sessions#new"
 
       match 'account/modulo/:name', :to => redirect("/%{name}s")
       match 'account/proc/:name', :to => redirect {|params| "/#{params[:name].pluralize}" }
+      match 'account/proc_req' => redirect {|params, req| "/#{req.method}" }
+
       match 'account/google' => redirect('http://www.google.com/')
 
       match 'openid/login', :via => [:get, :post], :to => "openid#login"
@@ -44,6 +52,10 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         match 'global/:action'
       end
 
+      match "/local/:action", :controller => "local"
+
+      match "/projects/status(.:format)"
+
       constraints(:ip => /192\.168\.1\.\d\d\d/) do
         get 'admin' => "queenbee#index"
       end
@@ -52,8 +64,9 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         get 'admin/accounts' => "queenbee#accounts"
       end
 
-      scope 'es' do
-        resources :projects, :path_names => { :edit => 'cambiar' }, :as => 'projeto'
+      scope 'pt', :name_prefix => 'pt' do
+        resources :projects, :path_names => { :edit => 'editar' }, :path => 'projetos'
+        resource  :admin,    :path_names => { :new => 'novo' },    :path => 'administrador'
       end
 
       resources :projects, :controller => :project do
@@ -68,8 +81,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
           resource  :avatar, :controller => :avatar
         end
 
-        resources :images do
+        resources :images, :as => :funny_images do
           post :revise, :on => :member
+        end
+
+        resource :manager, :as => :super_manager do
+          post :fire
         end
 
         resources :people do
@@ -104,7 +121,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         end
       end
 
-      resources :posts, :only => [:index, :show]
+      resources :posts, :only => [:index, :show] do
+        resources :comments, :except => :destroy
+      end
+
+      resources :sheep
 
       match 'sprockets.js' => ::TestRoutingMapper::SprocketsApp
 
@@ -114,9 +135,19 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       # misc
       match 'articles/:year/:month/:day/:title', :to => "articles#show", :as => :article
 
+      # default params
+      match 'inline_pages/(:id)', :to => 'pages#show', :id => 'home'
+      match 'default_pages/(:id)', :to => 'pages#show', :defaults => { :id => 'home' }
+      defaults :id => 'home' do
+        match 'scoped_pages/(:id)', :to => 'pages#show'
+      end
+
       namespace :account do
-        match 'description', :to => "account#description", :as => "description"
+        match 'shorthand'
+        match 'description', :to => "description", :as => "description"
         resource :subscription, :credit, :credit_card
+
+        root :to => "account#index"
 
         namespace :admin do
           resource :subscription
@@ -124,7 +155,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       namespace :forum do
-        resources :products, :as => '' do
+        resources :products, :path => '' do
           resources :questions
         end
       end
@@ -141,25 +172,102 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         resources :rooms
       end
 
-      scope '(:locale)', :locale => /en|pl/ do
-        resources :descriptions
-      end
+      match '/info' => 'projects#info', :as => 'info'
 
       namespace :admin do
-        scope '(/:locale)', :locale => /en|pl/ do
+        scope '(:locale)', :locale => /en|pl/ do
           resources :descriptions
         end
       end
 
-      match '/info' => 'projects#info', :as => 'info'
+      scope '(:locale)', :locale => /en|pl/ do
+        resources :descriptions
+        root :to => 'projects#index'
+      end
 
-      root :to => 'projects#index'
+      resources :products, :constraints => { :id => /\d{4}/ } do
+        root :to => "products#root"
+        get :favorite, :on => :collection
+        resources :images
+      end
+
+      resource :dashboard, :constraints => { :ip => /192\.168\.1\.\d{1,3}/ }
+
+      scope :module => 'api' do
+        resource :token
+      end
+
+      scope :path => 'api' do
+        resource :me
+        match '/' => 'mes#index'
+      end
+
+      match "whatever/:controller(/:action(/:id))"
+    end
+  end
+
+  class TestAltApp < ActionController::IntegrationTest
+    class AltRequest
+      def initialize(env)
+        @env = env
+      end
+
+      def path_info
+        "/"
+      end
+
+      def request_method
+        "GET"
+      end
+
+      def x_header
+        @env["HTTP_X_HEADER"] || ""
+      end
+    end
+
+    class XHeader
+      def call(env)
+        [200, {"Content-Type" => "text/html"}, ["XHeader"]]
+      end
+    end
+
+    class AltApp
+      def call(env)
+        [200, {"Content-Type" => "text/html"}, ["Alternative App"]]
+      end
+    end
+
+    AltRoutes = ActionDispatch::Routing::RouteSet.new(AltRequest)
+    AltRoutes.draw do
+      get "/" => TestRoutingMapper::TestAltApp::XHeader.new, :constraints => {:x_header => /HEADER/}
+      get "/" => TestRoutingMapper::TestAltApp::AltApp.new
+    end
+
+    def app
+      AltRoutes
+    end
+
+    def test_alt_request_without_header
+      get "/"
+      assert_equal "Alternative App", @response.body
+    end
+
+    def test_alt_request_with_matched_header
+      get "/", {}, "HTTP_X_HEADER" => "HEADER"
+      assert_equal "XHeader", @response.body
+    end
+
+    def test_alt_request_with_unmatched_header
+      get "/", {}, "HTTP_X_HEADER" => "NON_MATCH"
+      assert_equal "Alternative App", @response.body
     end
   end
 
   def app
     Routes
   end
+
+  include Routes.url_helpers
 
   def test_logout
     with_test_routes do
@@ -182,6 +290,9 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       assert_equal '/login', url_for(:controller => 'sessions', :action => 'create', :only_path => true)
       assert_equal '/login', url_for(:controller => 'sessions', :action => 'new', :only_path => true)
+
+      assert_equal 'http://rubyonrails.org/login', Routes.url_for(:controller => 'sessions', :action => 'create')
+      assert_equal 'http://rubyonrails.org/login', Routes.url_helpers.login_url
     end
   end
 
@@ -226,6 +337,18 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/session/edit'
       assert_equal 'sessions#edit', @response.body
       assert_equal '/session/edit', edit_session_path
+
+      post '/session/reset'
+      assert_equal 'sessions#reset', @response.body
+      assert_equal '/session/reset', reset_session_path
+    end
+  end
+
+  def test_session_info_nested_singleton_resource
+    with_test_routes do
+      get '/session/info'
+      assert_equal 'infos#show', @response.body
+      assert_equal '/session/info', session_info_path
     end
   end
 
@@ -247,6 +370,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_redirect_proc_with_request
+    with_test_routes do
+      get '/account/proc_req'
+      assert_equal 301, @response.status
+      assert_equal 'http://www.example.com/GET', @response.headers['Location']
+      assert_equal 'Moved Permanently', @response.body
+    end
+  end
+
   def test_openid
     with_test_routes do
       get '/openid/login'
@@ -262,12 +394,14 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/admin', {}, {'REMOTE_ADDR' => '192.168.1.100'}
       assert_equal 'queenbee#index', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/admin', {}, {'REMOTE_ADDR' => '10.0.0.100'} }
+      get '/admin', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
 
       get '/admin/accounts', {}, {'REMOTE_ADDR' => '192.168.1.100'}
       assert_equal 'queenbee#accounts', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/admin/accounts', {}, {'REMOTE_ADDR' => '10.0.0.100'} }
+      get '/admin/accounts', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
     end
   end
 
@@ -288,6 +422,20 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/global/export', export_request_path
       assert_equal '/global/hide_notice', global_hide_notice_path
       assert_equal '/export/123/foo.txt', export_download_path(:id => 123, :file => 'foo.txt')
+    end
+  end
+
+  def test_local
+    with_test_routes do
+      get '/local/dashboard'
+      assert_equal 'local#dashboard', @response.body
+    end
+  end
+
+  def test_projects_status
+    with_test_routes do
+      assert_equal '/projects/status', url_for(:controller => 'projects', :action => 'status', :only_path => true)
+      assert_equal '/projects/status.json', url_for(:controller => 'projects', :action => 'status', :format => 'json', :only_path => true)
     end
   end
 
@@ -388,15 +536,35 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_project_manager
+    with_test_routes do
+      get '/projects/1/manager'
+      assert_equal 'managers#show', @response.body
+      assert_equal '/projects/1/manager', project_super_manager_path(:project_id => '1')
+
+      get '/projects/1/manager/new'
+      assert_equal 'managers#new', @response.body
+      assert_equal '/projects/1/manager/new', new_project_super_manager_path(:project_id => '1')
+
+      post '/projects/1/manager/fire'
+      assert_equal 'managers#fire', @response.body
+      assert_equal '/projects/1/manager/fire', fire_project_super_manager_path(:project_id => '1')
+    end
+  end
+
   def test_project_images
     with_test_routes do
       get '/projects/1/images'
       assert_equal 'images#index', @response.body
-      assert_equal '/projects/1/images', project_images_path(:project_id => '1')
+      assert_equal '/projects/1/images', project_funny_images_path(:project_id => '1')
+
+      get '/projects/1/images/new'
+      assert_equal 'images#new', @response.body
+      assert_equal '/projects/1/images/new', new_project_funny_image_path(:project_id => '1')
 
       post '/projects/1/images/1/revise'
       assert_equal 'images#revise', @response.body
-      assert_equal '/projects/1/images/1/revise', revise_project_image_path(:project_id => '1', :id => '1')
+      assert_equal '/projects/1/images/1/revise', revise_project_funny_image_path(:project_id => '1', :id => '1')
     end
   end
 
@@ -470,7 +638,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_posts
+  def test_resource_routes_with_only_and_except
     with_test_routes do
       get '/posts'
       assert_equal 'posts#index', @response.body
@@ -480,19 +648,55 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal 'posts#show', @response.body
       assert_equal '/posts/1', post_path(:id => 1)
 
-      assert_raise(ActionController::RoutingError) { post '/posts' }
-      assert_raise(ActionController::RoutingError) { put '/posts/1' }
-      assert_raise(ActionController::RoutingError) { delete '/posts/1' }
+      get '/posts/1/comments'
+      assert_equal 'comments#index', @response.body
+      assert_equal '/posts/1/comments', post_comments_path(:post_id => 1)
+
+      post '/posts'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      put '/posts/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      delete '/posts/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      delete '/posts/1/comments'
+      assert_equal 'pass', @response.headers['X-Cascade']
+    end
+  end
+
+  def test_resource_with_slugs_in_ids
+    with_test_routes do
+      get '/posts/rails-rocks'
+      assert_equal 'posts#show', @response.body
+      assert_equal '/posts/rails-rocks', post_path(:id => 'rails-rocks')
+    end
+  end
+
+  def test_resources_for_uncountable_names
+    with_test_routes do
+      assert_equal '/sheep', sheep_index_path
+      assert_equal '/sheep/1', sheep_path(1)
+      assert_equal '/sheep/new', new_sheep_path
+      assert_equal '/sheep/1/edit', edit_sheep_path(1)
     end
   end
 
   def test_path_names
     with_test_routes do
-      get '/es/projeto'
+      get '/pt/projetos'
       assert_equal 'projects#index', @response.body
+      assert_equal '/pt/projetos', pt_projects_path
 
-      get '/es/projeto/1/cambiar'
+      get '/pt/projetos/1/editar'
       assert_equal 'projects#edit', @response.body
+      assert_equal '/pt/projetos/1/editar', edit_pt_project_path(1)
+
+      get '/pt/administrador'
+      assert_equal 'admins#show', @response.body
+      assert_equal '/pt/administrador', pt_admin_path
+
+      get '/pt/administrador/novo'
+      assert_equal 'admins#new', @response.body
+      assert_equal '/pt/administrador/novo', new_pt_admin_path
     end
   end
 
@@ -579,7 +783,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/articles/rails/1'
       assert_equal 'articles#with_id', @response.body
 
-      assert_raise(ActionController::RoutingError) { get '/articles/123/1' }
+      get '/articles/123/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
 
       assert_equal '/articles/rails/1', article_with_title_path(:title => 'rails', :id => 1)
     end
@@ -630,6 +835,30 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_convention_match_inside_namespace
+    with_test_routes do
+      assert_equal '/account/shorthand', account_shorthand_path
+      get '/account/shorthand'
+      assert_equal 'account#shorthand', @response.body
+    end
+  end
+
+  def test_convention_match_nested_and_with_leading_slash
+    with_test_routes do
+      assert_equal '/account/nested/overview', account_nested_overview_path
+      get '/account/nested/overview'
+      assert_equal 'account/nested#overview', @response.body
+    end
+  end
+
+  def test_convention_with_explicit_end
+    with_test_routes do
+      get '/sign_in'
+      assert_equal 'sessions#new', @response.body
+      assert_equal '/sign_in', sign_in_path
+    end
+  end
+
   def test_redirect_with_complete_url
     with_test_routes do
       get '/account/google'
@@ -657,6 +886,22 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       get '/account/description'
       assert_equal 'account#description', @response.body
+    end
+  end
+
+  def test_namespaced_roots
+    with_test_routes do
+      assert_equal '/account', account_root_path
+      get '/account'
+      assert_equal 'account/account#index', @response.body
+    end
+  end
+
+  def test_optional_scoped_root
+    with_test_routes do
+      assert_equal '/en', root_path("en")
+      get '/en'
+      assert_equal 'projects#index', @response.body
     end
   end
 
@@ -702,16 +947,87 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_default_params
+    with_test_routes do
+      get '/inline_pages'
+      assert_equal 'home', @request.params[:id]
+
+      get '/default_pages'
+      assert_equal 'home', @request.params[:id]
+
+      get '/scoped_pages'
+      assert_equal 'home', @request.params[:id]
+    end
+  end
+
+  def test_resource_constraints
+    with_test_routes do
+      get '/products/1'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      get '/products'
+      assert_equal 'products#root', @response.body
+      get '/products/favorite'
+      assert_equal 'products#favorite', @response.body
+      get '/products/0001'
+      assert_equal 'products#show', @response.body
+
+      get '/products/1/images'
+      assert_equal 'pass', @response.headers['X-Cascade']
+      get '/products/0001/images'
+      assert_equal 'images#index', @response.body
+      get '/products/0001/images/1'
+      assert_equal 'images#show', @response.body
+
+      get '/dashboard', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
+      get '/dashboard', {}, {'REMOTE_ADDR' => '192.168.1.100'}
+      assert_equal 'dashboards#show', @response.body
+    end
+  end
+
+  def test_root_works_in_the_resources_scope
+    get '/products'
+    assert_equal 'products#root', @response.body
+    assert_equal '/products', products_root_path
+  end
+
+  def test_module_scope
+    with_test_routes do
+      get '/token'
+      assert_equal 'api/tokens#show', @response.body
+      assert_equal '/token', token_path
+    end
+  end
+
+  def test_path_scope
+    with_test_routes do
+      get '/api/me'
+      assert_equal 'mes#show', @response.body
+      assert_equal '/api/me', me_path
+
+      get '/api'
+      assert_equal 'mes#index', @response.body
+    end
+  end
+
+  def test_url_generator_for_generic_route
+    with_test_routes do
+      get 'whatever/foo/bar'
+      assert_equal 'foo#bar', @response.body
+
+      assert_equal 'http://www.example.com/whatever/foo/bar/1',
+        url_for(:controller => "foo", :action => "bar", :id => 1)
+    end
+  end
+
+  def test_assert_recognizes_account_overview
+    with_test_routes do
+      assert_recognizes({:controller => "account", :action => "overview"}, "/account/overview")
+    end
+  end
+
   private
     def with_test_routes
-      real_routes, temp_routes = ActionController::Routing::Routes, Routes
-
-      ActionController::Routing.module_eval { remove_const :Routes }
-      ActionController::Routing.module_eval { const_set :Routes, temp_routes }
-
       yield
-    ensure
-      ActionController::Routing.module_eval { remove_const :Routes }
-      ActionController::Routing.const_set(:Routes, real_routes)
     end
 end

@@ -1,36 +1,32 @@
-require 'rails/subscriber'
+require 'rails/log_subscriber'
 
 module Rails
   module Rack
     # Log the request started and flush all loggers after it.
-    class Logger < Rails::Subscriber
+    class Logger < Rails::LogSubscriber
       def initialize(app)
         @app = app
       end
 
       def call(env)
-        @env = env
-        before_dispatch
-        result = @app.call(@env)
-        after_dispatch
-        result
+        before_dispatch(env)
+        @app.call(env)
+      ensure
+        after_dispatch(env)
       end
 
       protected
 
-        def request
-          @request ||= ActionDispatch::Request.new(@env) 
-        end
-
-        def before_dispatch
-          path = request.request_uri.inspect rescue "unknown"
+        def before_dispatch(env)
+          request = ActionDispatch::Request.new(env)
+          path = request.fullpath.inspect rescue "unknown"
 
           info "\n\nStarted #{request.method.to_s.upcase} #{path} " <<
                       "for #{request.remote_ip} at #{Time.now.to_s(:db)}"
         end
 
-        def after_dispatch
-          Rails::Subscriber.flush_all!
+        def after_dispatch(env)
+          Rails::LogSubscriber.flush_all!
         end
 
     end

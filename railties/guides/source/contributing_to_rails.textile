@@ -76,20 +76,27 @@ TIP: You may want to "put your git branch name in your shell prompt":http://gith
 h4. Set up and Run the Tests
 
 All of the Rails tests must pass with any code you submit, otherwise you have no chance of getting code accepted. This means you need to be able to run the tests. Rails needs the +mocha+ gem for running some tests, so install it with:
+
 <shell>
 gem install mocha
 </shell>
 
-For the tests that touch the database, this means creating the databases. If you're using MySQL:
+For the tests that touch the database, this means creating test databases. If you're using MySQL, create a user named +rails+ with privileges on the test databases.
 
 <shell>
-mysql> create database activerecord_unittest;  
-mysql> create database activerecord_unittest2;  
-mysql> GRANT ALL PRIVILEGES ON activerecord_unittest.*  
-       to 'rails'@'localhost';  
-mysql> GRANT ALL PRIVILEGES ON activerecord_unittest2.*  
-       to 'rails'@'localhost';  
+mysql> GRANT ALL PRIVILEGES ON activerecord_unittest.*
+       to 'rails'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON activerecord_unittest2.*
+       to 'rails'@'localhost';
 </shell>
+
+Enter this from the +activerecord+ directory to create the test databases:
+
+<shell>
+rake mysql:build_databases
+</shell>
+
+NOTE: Using the rake task to create the test databases ensures they have the correct character set and collation.
 
 If you’re using another database, check the files under +activerecord/test/connections+ in the Rails source code for default connection information. You can edit these files if you _must_ on your machine to provide different credentials, but obviously you should not push any such changes back to Rails.
 
@@ -201,7 +208,7 @@ h4. Follow the Coding Conventions
 Rails follows a simple set of coding style conventions.
 
 * Two spaces, no tabs
-* Prefer +&&+/+||+ over +and+/+or+
+* Prefer +&amp;&amp;+/+||+ over +and+/+or+
 * +MyClass.my_method(my_arg)+ not +my_method( my_arg )+ or +my_method my_arg+
 * Follow the conventions you see used in the source already
 
@@ -266,7 +273,6 @@ h3. Changelog
 
 "Lighthouse ticket":http://rails.lighthouseapp.com/projects/16213-rails-guides/tickets/64
 
+* April 6, 2010: Fixed document to validate XHTML 1.0 Strict. "Jaime Iniesta":http://jaimeiniesta.com
 * August 1, 2009: Updates/amplifications by "Mike Gunderloy":credits.html#mgunderloy
 * March 2, 2009: Initial draft by "Mike Gunderloy":credits.html#mgunderloy
-
-

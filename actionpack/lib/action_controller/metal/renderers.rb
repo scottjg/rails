@@ -1,3 +1,6 @@
+require 'active_support/core_ext/class/attribute'
+require 'active_support/core_ext/object/blank'
+
 module ActionController
   def self.add_renderer(key, &block)
     Renderers.add(key, &block)
@@ -7,8 +10,8 @@ module ActionController
     extend ActiveSupport::Concern
 
     included do
-      extlib_inheritable_accessor :_renderers
-      self._renderers = {}
+      class_attribute :_renderers
+      self._renderers = {}.freeze
     end
 
     module ClassMethods
@@ -17,7 +20,7 @@ module ActionController
           <<-RUBY_EVAL
             if options.key?(:#{name})
               _process_options(options)
-              return _render_option_#{name}(options[:#{name}], options)
+              return _render_option_#{name}(options.delete(:#{name}), options)
             end
           RUBY_EVAL
         end
@@ -30,9 +33,11 @@ module ActionController
       end
 
       def use_renderers(*args)
+        new = _renderers.dup
         args.each do |key|
-          _renderers[key] = RENDERERS[key]
+          new[key] = RENDERERS[key]
         end
+        self._renderers = new.freeze
         _write_render_options
       end
       alias use_renderer use_renderers
@@ -66,7 +71,7 @@ module ActionController
     end
 
     add :json do |json, options|
-      json = ActiveSupport::JSON.encode(json) unless json.respond_to?(:to_str)
+      json = ActiveSupport::JSON.encode(json, options) unless json.respond_to?(:to_str)
       json = "#{options[:callback]}(#{json})" unless options[:callback].blank?
       self.content_type ||= Mime::JSON
       self.response_body  = json
@@ -74,17 +79,18 @@ module ActionController
 
     add :js do |js, options|
       self.content_type ||= Mime::JS
-      self.response_body  = js.respond_to?(:to_js) ? js.to_js : js
+      self.response_body  = js.respond_to?(:to_js) ? js.to_js(options) : js
     end
 
     add :xml do |xml, options|
       self.content_type ||= Mime::XML
-      self.response_body  = xml.respond_to?(:to_xml) ? xml.to_xml : xml
+      self.response_body  = xml.respond_to?(:to_xml) ? xml.to_xml(options) : xml
     end
 
     add :update do |proc, options|
+      view_context = self.view_context
       generator = ActionView::Helpers::PrototypeHelper::JavaScriptGenerator.new(view_context, &proc)
-      self.content_type = Mime::JS
+      self.content_type  = Mime::JS
       self.response_body = generator.to_s
     end
   end

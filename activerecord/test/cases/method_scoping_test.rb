@@ -382,7 +382,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     Developer.send(:with_scope, :find => { :conditions => "salary < 100000" }) do
       Developer.send(:with_scope, :find => { :offset => 1, :order => 'id asc' }) do
         # Oracle adapter does not generated space after asc therefore trailing space removed from regex
-        assert_sql /ORDER BY  id asc/ do
+        assert_sql(/ORDER BY  id asc/) do
           assert_equal(poor_jamis, Developer.find(:first, :order => 'id asc'))
         end
       end
@@ -588,7 +588,7 @@ class HasAndBelongsToManyScopingTest< ActiveRecord::TestCase
 end
 
 class DefaultScopingTest < ActiveRecord::TestCase
-  fixtures :developers
+  fixtures :developers, :posts
 
   def test_default_scope
     expected = Developer.find(:all, :order => 'salary DESC').collect { |dev| dev.salary }
@@ -615,15 +615,30 @@ class DefaultScopingTest < ActiveRecord::TestCase
   def test_default_scoping_with_inheritance
     # Inherit a class having a default scope and define a new default scope
     klass = Class.new(DeveloperOrderedBySalary)
-    klass.send :default_scope, {}
+    klass.send :default_scope, :limit => 1 
 
     # Scopes added on children should append to parent scope
-    assert klass.scoped.order_values.blank?
+    assert_equal 1,               klass.scoped.limit_value
+    assert_equal ['salary DESC'], klass.scoped.order_values
 
     # Parent should still have the original scope
+    assert_nil DeveloperOrderedBySalary.scoped.limit_value
     assert_equal ['salary DESC'], DeveloperOrderedBySalary.scoped.order_values
   end
 
+  def test_default_scope_called_twice_merges_conditions
+    Developer.destroy_all
+    Developer.create!(:name => "David", :salary => 80000)
+    Developer.create!(:name => "David", :salary => 100000)
+    Developer.create!(:name => "Brian", :salary => 100000)
+
+    klass = Class.new(Developer)
+    klass.__send__ :default_scope, :conditions => { :name => "David" }
+    klass.__send__ :default_scope, :conditions => { :salary => 100000 }
+    assert_equal 1,       klass.count
+    assert_equal "David", klass.first.name
+    assert_equal 100000,  klass.first.salary
+  end
   def test_method_scope
     expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.salary }
     received = DeveloperOrderedBySalary.all_ordered_by_name.collect { |dev| dev.salary }
@@ -656,6 +671,22 @@ class DefaultScopingTest < ActiveRecord::TestCase
     expected = Developer.find(:all, :order => 'salary').collect { |dev| dev.salary }
     received = DeveloperOrderedBySalary.find(:all, :order => 'salary').collect { |dev| dev.salary }
     assert_equal expected, received
+  end
+
+  def test_default_scope_using_relation
+    posts = PostWithComment.scoped
+    assert_equal 2, posts.count
+    assert_equal posts(:thinking), posts.first
+  end
+
+  def test_create_attribute_overwrites_default_scoping
+    assert_equal 'David', PoorDeveloperCalledJamis.create!(:name => 'David').name
+    assert_equal 200000, PoorDeveloperCalledJamis.create!(:name => 'David', :salary => 200000).salary
+  end
+ 
+  def test_create_attribute_overwrites_default_values
+    assert_equal nil, PoorDeveloperCalledJamis.create!(:salary => nil).salary
+    assert_equal 50000, PoorDeveloperCalledJamis.create!(:name => 'David').salary
   end
 end
 

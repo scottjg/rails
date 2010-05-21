@@ -1,5 +1,6 @@
 require 'open-uri'
 require 'active_support/deprecation'
+require 'rbconfig'
 
 module Rails
   module Generators
@@ -32,7 +33,7 @@ module Rails
           options[:git] = "-b #{options[:branch]} #{options[:git]}"   if options[:branch]
           options[:svn] = "-r #{options[:revision]} #{options[:svn]}" if options[:revision]
           in_root do
-            run_ruby_script "script/plugin install #{options[:svn] || options[:git]}", :verbose => false
+            run_ruby_script "script/rails plugin install #{options[:svn] || options[:git]}", :verbose => false
           end
         else
           log "! no git or svn provided for #{name}. Skipping..."
@@ -53,7 +54,8 @@ module Rails
         name, version = args
 
         # Deal with deprecated options
-        { :env => :only, :lib => :require_as }.each do |old, new|
+        { :env => :group, :only => :group,
+          :lib => :require, :require_as => :require }.each do |old, new|
           next unless options[old]
           options[new] = options.delete(old)
           ActiveSupport::Deprecation.warn "#{old.inspect} option in gem is deprecated, use #{new.inspect} instead"
@@ -69,7 +71,7 @@ module Rails
         # otherwise use name (version).
         parts, message = [ name.inspect ], name
         if version ||= options.delete(:version)
-          parts   << version
+          parts   << version.inspect
           message << " (#{version})"
         end
         message = options[:git] if options[:git]
@@ -81,7 +83,7 @@ module Rails
         end
 
         in_root do
-          append_file "Gemfile", "gem #{parts.join(", ")}", :verbose => false
+          append_file "Gemfile", "gem #{parts.join(", ")}\n", :verbose => false
         end
       end
 
@@ -89,12 +91,12 @@ module Rails
       #
       # ==== Example
       #
-      #   source "http://gems.github.com/"
+      #   add_source "http://gems.github.com/"
       def add_source(source, options={})
         log :source, source
 
         in_root do
-          prepend_file "Gemfile", "source #{source.inspect}", :verbose => false
+          prepend_file "Gemfile", "source #{source.inspect}\n", :verbose => false
         end
       end
 
@@ -226,7 +228,7 @@ module Rails
         log :generate, what
         argument = args.map {|arg| arg.to_s }.flatten.join(" ")
 
-        in_root { run_ruby_script("script/generate #{what} #{argument}", :verbose => false) }
+        in_root { run_ruby_script("script/rails generate #{what} #{argument}", :verbose => false) }
       end
 
       # Runs the supplied rake task
@@ -240,7 +242,7 @@ module Rails
       def rake(command, options={})
         log :rake, command
         env  = options[:env] || 'development'
-        sudo = options[:sudo] && RUBY_PLATFORM !~ /mswin|mingw/ ? 'sudo ' : ''
+        sudo = options[:sudo] && Config::CONFIG['host_os'] !~ /mswin|mingw/ ? 'sudo ' : ''
         in_root { run("#{sudo}#{extify(:rake)} #{command} RAILS_ENV=#{env}", :verbose => false) }
       end
 
@@ -280,6 +282,16 @@ module Rails
         end
       end
 
+      # Reads the given file at the source root and prints it in the console.
+      #
+      # === Example
+      #
+      #   readme "README"
+      #
+      def readme(path)
+        say File.read(find_in_source_paths(path))
+      end
+
       protected
 
         # Define log for backwards compatibility. If just one argument is sent,
@@ -297,7 +309,7 @@ module Rails
         # Add an extension to the given name based on the platform.
         #
         def extify(name)
-          if RUBY_PLATFORM =~ /mswin|mingw/
+          if Config::CONFIG['host_os'] =~ /mswin|mingw/
             "#{name}.bat"
           else
             name

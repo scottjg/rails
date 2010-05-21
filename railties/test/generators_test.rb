@@ -1,6 +1,6 @@
 require 'generators/generators_test_helper'
-require 'generators/rails/model/model_generator'
-require 'generators/test_unit/model/model_generator'
+require 'rails/generators/rails/model/model_generator'
+require 'rails/generators/test_unit/model/model_generator'
 require 'mocha'
 
 class GeneratorsTest < Rails::Generators::TestCase
@@ -99,15 +99,19 @@ class GeneratorsTest < Rails::Generators::TestCase
     assert_match /Rails:/, output
     assert_match /^  model$/, output
     assert_match /^  scaffold_controller$/, output
+    assert_no_match /^  app$/, output
   end
 
   def test_rails_generators_with_others_information
     output = capture(:stdout){ Rails::Generators.help }
-    assert_match /ActiveRecord:/, output
     assert_match /Fixjour:/, output
-    assert_match /^  active_record:model$/, output
-    assert_match /^  active_record:fixjour$/, output
     assert_match /^  fixjour$/, output
+  end
+
+  def test_rails_generators_does_not_show_activerecord_hooks
+    output = capture(:stdout){ Rails::Generators.help }
+    assert_match /ActiveRecord:/, output
+    assert_match /^  active_record:fixjour$/, output
   end
 
   def test_no_color_sets_proper_shell
@@ -144,16 +148,17 @@ class GeneratorsTest < Rails::Generators::TestCase
   end
 
   def test_developer_options_are_overwriten_by_user_options
-    Rails::Generators.options[:new_generator] = { :generate => false }
+    Rails::Generators.options[:with_options] = { :generate => false }
 
-    klass = Class.new(Rails::Generators::Base) do
-      def self.name() 'NewGenerator' end
-      class_option :generate, :default => true
-    end
+    self.class.class_eval <<-end_eval
+      class WithOptionsGenerator < Rails::Generators::Base
+        class_option :generate, :default => true
+      end
+    end_eval
 
-    assert_equal false, klass.class_options[:generate].default
+    assert_equal false, WithOptionsGenerator.class_options[:generate].default
   ensure
-    Rails::Generators.subclasses.delete(klass)
+    Rails::Generators.subclasses.delete(WithOptionsGenerator)
   end
 
   def test_load_generators_from_railties

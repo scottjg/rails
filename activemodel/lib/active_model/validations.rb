@@ -1,15 +1,61 @@
 require 'active_support/core_ext/array/extract_options'
+require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/hash/keys'
 require 'active_model/errors'
 
 module ActiveModel
+  
+  # Provides a full validation framework to your objects.
+  # 
+  # A minimal implementation could be:
+  # 
+  #   class Person
+  #     include ActiveModel::Validations
+  # 
+  #     attr_accessor :first_name, :last_name
+  #
+  #     validates_each :first_name, :last_name do |record, attr, value|
+  #       record.errors.add attr, 'starts with z.' if value.to_s[0] == ?z
+  #     end
+  #   end
+  # 
+  # Which provides you with the full standard validation stack that you
+  # know from ActiveRecord.
+  # 
+  #   person = Person.new
+  #   person.valid?
+  #   #=> true
+  #   person.invalid?
+  #   #=> false
+  #   person.first_name = 'zoolander'
+  #   person.valid?
+  #   #=> false
+  #   person.invalid?
+  #   #=> true
+  #   person.errors
+  #   #=> #<OrderedHash {:first_name=>["starts with z."]}>
+  # 
+  # Note that ActiveModel::Validations automatically adds an +errors+ method
+  # to your instances initialized with a new ActiveModel::Errors object, so
+  # there is no need for you to add this manually.
+  # 
   module Validations
     extend ActiveSupport::Concern
     include ActiveSupport::Callbacks
 
     included do
       extend ActiveModel::Translation
+
+      extend  HelperMethods
+      include HelperMethods
+
       define_callbacks :validate, :scope => :name
+
+      attr_accessor :validation_context
+
+      class_attribute :_validators
+      self._validators = Hash.new { |h,k| h[k] = [] }
     end
 
     module ClassMethods
@@ -18,8 +64,10 @@ module ActiveModel
       #   class Person
       #     include ActiveModel::Validations
       # 
+      #     attr_accessor :first_name, :last_name
+      #
       #     validates_each :first_name, :last_name do |record, attr, value|
-      #       record.errors.add attr, 'starts with z.' if value[0] == ?z
+      #       record.errors.add attr, 'starts with z.' if value.to_s[0] == ?z
       #     end
       #   end
       #
@@ -71,21 +119,28 @@ module ActiveModel
       #     end
       #   end
       #
-      # This usage applies to +validate_on_create+ and +validate_on_update as well+.
       def validate(*args, &block)
         options = args.last
         if options.is_a?(Hash) && options.key?(:on)
-          options[:if] = Array(options[:if])
-          options[:if] << "@_on_validate == :#{options[:on]}"
+          options[:if] = Array.wrap(options[:if])
+          options[:if] << "validation_context == :#{options[:on]}"
         end
         set_callback(:validate, *args, &block)
       end
-    
-      private
-    
-      def _merge_attributes(attr_names)
-        options = attr_names.extract_options!
-        options.merge(:attributes => attr_names)
+
+      # List all validators that being used to validate the model using +validates_with+
+      # method.
+      def validators
+        _validators.values.flatten.uniq
+      end
+
+      # List all validators that being used to validate a specific attribute.
+      def validators_on(attribute)
+        _validators[attribute.to_sym]
+      end
+
+      def attribute_method?(attribute)
+        method_defined?(attribute)
       end
     end
 
@@ -95,15 +150,20 @@ module ActiveModel
     end
 
     # Runs all the specified validations and returns true if no errors were added otherwise false.
-    def valid?
+    # Context can optionally be supplied to define which callbacks to test against (the context is
+    # defined on the validations using :on).
+    def valid?(context = nil)
+      current_context, self.validation_context = validation_context, context
       errors.clear
       _run_validate_callbacks
       errors.empty?
+    ensure
+      self.validation_context = current_context
     end
 
     # Performs the opposite of <tt>valid?</tt>. Returns true if errors were added, false otherwise.
-    def invalid?
-      !valid?
+    def invalid?(context = nil)
+      !valid?(context)
     end
 
     # Hook method defining how an attribute value should be retieved. By default this is assumed

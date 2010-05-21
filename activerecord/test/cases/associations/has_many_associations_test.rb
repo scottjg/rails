@@ -14,7 +14,7 @@ require 'models/tagging'
 
 class HasManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :categories, :companies, :developers, :projects,
-           :developers_projects, :topics, :authors, :comments, :author_addresses,
+           :developers_projects, :topics, :authors, :comments,
            :people, :posts, :readers, :taggings
 
   def setup
@@ -175,14 +175,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     c = Client.new
     assert_nil c.firm
 
-    if c.firm
-      assert false, "belongs_to failed if check"
-    end
-
-    unless c.firm
-    else
-      assert false,  "belongs_to failed unless check"
-    end
+    flunk "belongs_to failed if check" if c.firm
   end
 
   def test_find_ids
@@ -620,7 +613,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal [], Client.destroyed_client_ids[firm.id]
 
     # Should be destroyed since the association is exclusively dependent.
-    assert Client.find_by_id(client_id).nil?
+    assert_nil Client.find_by_id(client_id)
   end
 
   def test_dependent_association_respects_optional_conditions_on_delete
@@ -669,7 +662,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     old_record = firm.clients_using_primary_key_with_delete_all.first
     firm = Firm.find(:first)
     firm.destroy
-    assert Client.find_by_id(old_record.id).nil?
+    assert_nil Client.find_by_id(old_record.id)
   end
 
   def test_creation_respects_hash_condition
@@ -682,24 +675,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert        !another_ms_client.new_record?
     assert_equal  'Microsoft', another_ms_client.name
-  end
-
-  def test_dependent_delete_and_destroy_with_belongs_to
-    author_address = author_addresses(:david_address)
-    assert_equal [], AuthorAddress.destroyed_author_address_ids[authors(:david).id]
-
-    assert_difference "AuthorAddress.count", -2 do
-      authors(:david).destroy
-    end
-
-    assert_equal nil, AuthorAddress.find_by_id(authors(:david).author_address_id)
-    assert_equal nil, AuthorAddress.find_by_id(authors(:david).author_address_extra_id)
-  end
-
-  def test_invalid_belongs_to_dependent_option_raises_exception
-    assert_raise ArgumentError do
-      Author.belongs_to :special_author_address, :dependent => :nullify
-    end
   end
 
   def test_clearing_without_initial_access
@@ -854,6 +829,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal num_accounts, Account.count
   end
 
+  def test_restrict
+    firm = RestrictedFirm.new(:name => 'restrict')
+    firm.save!
+    child_firm = firm.companies.create(:name => 'child')
+    assert !firm.companies.empty?
+    assert_raise(ActiveRecord::DeleteRestrictionError) { firm.destroy }
+  end
+
   def test_included_in_collection
     assert companies(:first_firm).clients.include?(Client.find(2))
   end
@@ -908,6 +891,10 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert !company.clients.loaded?
     assert_equal [companies(:first_client).id, companies(:second_client).id], company.client_ids
     assert !company.clients.loaded?
+  end
+
+  def test_get_ids_ignores_include_option
+    assert_equal [readers(:michael_welcome).id], posts(:welcome).readers_with_person_ids
   end
 
   def test_get_ids_for_unloaded_finder_sql_associations_loads_them
@@ -1177,5 +1164,23 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm = Firm.find(:first, :order => "id")
     client = firm.clients_using_primary_key.create!(:name => 'test')
     assert_equal firm.name, client.firm_name
+  end
+
+  def test_defining_has_many_association_with_delete_all_dependency_lazily_evaluates_target_class
+    ActiveRecord::Reflection::AssociationReflection.any_instance.expects(:class_name).never
+    class_eval <<-EOF
+      class DeleteAllModel < ActiveRecord::Base
+        has_many :nonentities, :dependent => :delete_all
+      end
+    EOF
+  end
+
+  def test_defining_has_many_association_with_nullify_dependency_lazily_evaluates_target_class
+    ActiveRecord::Reflection::AssociationReflection.any_instance.expects(:class_name).never
+    class_eval <<-EOF
+      class NullifyModel < ActiveRecord::Base
+        has_many :nonentities, :dependent => :nullify
+      end
+    EOF
   end
 end

@@ -1,3 +1,5 @@
+require 'active_support/configurable'
+
 module AbstractController
   class Error < StandardError; end
   class ActionNotFound < StandardError; end
@@ -5,7 +7,8 @@ module AbstractController
   class Base
     attr_internal :response_body
     attr_internal :action_name
-    attr_internal :formats
+
+    include ActiveSupport::Configurable
 
     class << self
       attr_reader :abstract
@@ -84,16 +87,11 @@ module AbstractController
       # ==== Returns
       # String
       def controller_path
-        @controller_path ||= name && name.sub(/Controller$/, '').underscore
+        @controller_path ||= name.sub(/Controller$/, '').underscore unless anonymous?
       end
     end
 
     abstract!
-
-    # Initialize controller with nil formats.
-    def initialize #:nodoc:
-      @_formats = nil
-    end
 
     # Calls the action going through the entire action dispatch stack.
     #
@@ -125,6 +123,7 @@ module AbstractController
     end
 
     private
+
       # Returns true if the name can be considered an action. This can
       # be overridden in subclasses to modify the semantics of what
       # can be considered an action.

@@ -1,4 +1,5 @@
-require 'active_support/core_ext/class/inheritable_attributes'
+require 'active_support/core_ext/class/attribute'
+require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/hash/reverse_merge'
 require 'rails/generators'
 require 'fileutils'
@@ -28,8 +29,8 @@ module Rails
     class TestCase < ActiveSupport::TestCase
       include FileUtils
 
-      extlib_inheritable_accessor :destination_root, :current_path, :generator_class,
-                                  :default_arguments, :instance_writer => false
+      class_attribute :destination_root, :current_path, :generator_class, :default_arguments
+      delegate :destination_root, :current_path, :generator_class, :default_arguments, :to => :'self.class'
 
       # Generators frequently change the current path using +FileUtils.cd+.
       # So we need to store the path at file load and revert back to it after each test.
@@ -188,6 +189,18 @@ module Rails
       end
       alias :assert_method :assert_instance_method
 
+      # Asserts the given field name gets translated to an attribute type 
+      # properly.
+      #
+      #   assert_field_type :date, :date_select
+      #
+      def assert_field_type(name, attribute_type)
+        assert_equal(
+          Rails::Generators::GeneratedAttribute.new('test', name.to_s).field_type,
+          attribute_type
+        )
+      end
+      
       # Runs the generator configured for this class. The first argument is an array like
       # command line arguments:
       #

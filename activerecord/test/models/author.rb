@@ -35,7 +35,7 @@ class Author < ActiveRecord::Base
   has_many :ordered_uniq_comments, :through => :posts, :source => :comments, :uniq => true, :order => 'comments.id'
   has_many :ordered_uniq_comments_desc, :through => :posts, :source => :comments, :uniq => true, :order => 'comments.id DESC'
   has_many :readonly_comments, :through => :posts, :source => :comments, :readonly => true
-  
+
   has_many :special_posts
   has_many :special_post_comments, :through => :special_posts, :source => :comments
 
@@ -104,6 +104,10 @@ class Author < ActiveRecord::Base
     "#{id}-#{name}"
   end
 
+  def social
+    %w(twitter github)
+  end
+
   private
     def log_before_adding(object)
       @post_log << "before_adding#{object.id || '<new>'}"
@@ -130,14 +134,11 @@ class AuthorAddress < ActiveRecord::Base
   has_one :author
 
   def self.destroyed_author_address_ids
-    @destroyed_author_address_ids ||= Hash.new { |h,k| h[k] = [] }
+    @destroyed_author_address_ids ||= []
   end
 
   before_destroy do |author_address|
-    if author_address.author
-      AuthorAddress.destroyed_author_address_ids[author_address.author.id] << author_address.id
-    end
-    true
+    AuthorAddress.destroyed_author_address_ids << author_address.id
   end
 end
 

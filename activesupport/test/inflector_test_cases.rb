@@ -12,6 +12,8 @@ module InflectorTestCases
     "stack"       => "stacks",
     "wish"        => "wishes",
     "fish"        => "fish",
+    "jeans"       => "jeans",
+    "funky jeans" => "funky jeans",
 
     "category"    => "categories",
     "query"       => "queries",
@@ -158,7 +160,9 @@ module InflectorTestCases
     "Allow_Under_Scores"                  => "allow_under_scores",
     "Trailing bad characters!@#"          => "trailing-bad-characters",
     "!@#Leading bad characters"           => "leading-bad-characters",
-    "Squeeze   separators"                => "squeeze-separators"
+    "Squeeze   separators"                => "squeeze-separators",
+    "Test with + sign"                    => "test-with-sign",
+    "Test with malformed utf8 \251"       => "test-with-malformed-utf8"
   }
 
   StringToParameterizeWithNoSeparator = {
@@ -166,7 +170,9 @@ module InflectorTestCases
     "Random text with *(bad)* characters" => "randomtextwithbadcharacters",
     "Trailing bad characters!@#"          => "trailingbadcharacters",
     "!@#Leading bad characters"           => "leadingbadcharacters",
-    "Squeeze   separators"                => "squeezeseparators"
+    "Squeeze   separators"                => "squeezeseparators",
+    "Test with + sign"                    => "testwithsign",
+    "Test with malformed utf8 \251"       => "testwithmalformedutf8"
   }
 
   StringToParameterizeWithUnderscore = {
@@ -174,21 +180,19 @@ module InflectorTestCases
     "Random text with *(bad)* characters" => "random_text_with_bad_characters",
     "Trailing bad characters!@#"          => "trailing_bad_characters",
     "!@#Leading bad characters"           => "leading_bad_characters",
-    "Squeeze   separators"                => "squeeze_separators"
+    "Squeeze   separators"                => "squeeze_separators",
+    "Test with + sign"                    => "test_with_sign",
+    "Test with malformed utf8 \251"       => "test_with_malformed_utf8"
   }
 
-  # Ruby 1.9 doesn't do Unicode normalization yet.
-  if RUBY_VERSION >= '1.9'
-    StringToParameterizedAndNormalized = {
-      "Malmö"                               => "malm",
-      "Garçons"                             => "gar-ons"
-    }
-  else
-    StringToParameterizedAndNormalized = {
-      "Malmö"                               => "malmo",
-      "Garçons"                             => "garcons"
-    }
-  end
+  StringToParameterizedAndNormalized = {
+    "Malmö"                               => "malmo",
+    "Garçons"                             => "garcons",
+    "Ops\331"                             => "opsu",
+    "Ærøskøbing"                          => "aeroskobing",
+    "Aßlar"                               => "asslar",
+    "Japanese: 日本語"                    => "japanese"
+  }
 
   UnderscoreToHuman = {
     "employee_salary" => "Employee salary",

@@ -18,7 +18,8 @@ require 'models/essay'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
-           :developers_projects, :computers, :authors, :posts, :tags, :taggings, :comments
+           :developers_projects, :computers, :authors, :author_addresses,
+           :posts, :tags, :taggings, :comments
 
   def test_belongs_to
     Client.find(3).firm.name
@@ -29,6 +30,17 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_belongs_to_with_primary_key
     client = Client.create(:name => "Primary key client", :firm_name => companies(:first_firm).name)
     assert_equal companies(:first_firm).name, client.firm_with_primary_key.name
+  end
+
+  def test_belongs_to_with_primary_key_joins_on_correct_column
+    sql = Client.joins(:firm_with_primary_key).to_sql
+    if current_adapter?(:MysqlAdapter)
+      assert_no_match(/`firm_with_primary_keys_companies`\.`id`/, sql)
+      assert_match(/`firm_with_primary_keys_companies`\.`name`/, sql)
+    else
+      assert_no_match(/"firm_with_primary_keys_companies"\."id"/, sql)
+      assert_match(/"firm_with_primary_keys_companies"\."name"/, sql)
+    end
   end
 
   def test_proxy_assignment
@@ -58,6 +70,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     citibank = Client.create("name" => "Primary key client")
     citibank.firm_with_primary_key = apple
     assert_equal apple.name, citibank.firm_name
+  end
+
+  def test_eager_loading_with_primary_key
+    apple = Firm.create("name" => "Apple")
+    citibank = Client.create("name" => "Citibank", :firm_name => "Apple")
+    citibank_result = Client.find(:first, :conditions => {:name => "Citibank"}, :include => :firm_with_primary_key)
+    assert_not_nil citibank_result.instance_variable_get("@firm_with_primary_key")
   end
 
   def test_no_unexpected_aliasing
@@ -346,14 +365,14 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_raise(ActiveRecord::ReadOnlyRecord) { companies(:first_client).readonly_firm.save! }
     assert companies(:first_client).readonly_firm.readonly?
   end
-  
+
   def test_polymorphic_assignment_foreign_type_field_updating
     # should update when assigning a saved record
     sponsor = Sponsor.new
     member = Member.create
     sponsor.sponsorable = member
     assert_equal "Member", sponsor.sponsorable_type
-    
+
     # should update when assigning a new record
     sponsor = Sponsor.new
     member = Member.new
@@ -374,17 +393,17 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     essay.writer = writer
     assert_equal "Author", essay.writer_type
   end
-  
+
   def test_polymorphic_assignment_updates_foreign_id_field_for_new_and_saved_records
     sponsor = Sponsor.new
     saved_member = Member.create
     new_member = Member.new
-    
+
     sponsor.sponsorable = saved_member
     assert_equal saved_member.id, sponsor.sponsorable_id
-    
+
     sponsor.sponsorable = new_member
-    assert_equal nil, sponsor.sponsorable_id
+    assert_nil sponsor.sponsorable_id
   end
 
   def test_polymorphic_assignment_with_primary_key_updates_foreign_id_field_for_new_and_saved_records
@@ -396,7 +415,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal saved_writer.name, essay.writer_id
 
     essay.writer = new_writer
-    assert_equal nil, essay.writer_id
+    assert_nil essay.writer_id
   end
 
   def test_belongs_to_proxy_should_not_respond_to_private_methods
@@ -422,6 +441,31 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_nothing_raised do
       Account.find(@account.id).save!
       Account.find(@account.id, :include => :firm).save!
+    end
+  end
+
+  def test_dependent_delete_and_destroy_with_belongs_to
+    author_address = author_addresses(:david_address)
+    author_address_extra = author_addresses(:david_address_extra)
+    assert_equal [], AuthorAddress.destroyed_author_address_ids
+
+    assert_difference "AuthorAddress.count", -2 do
+      authors(:david).destroy
+    end
+
+    assert_equal [], AuthorAddress.find_all_by_id([author_address.id, author_address_extra.id])
+    assert_equal [author_address.id], AuthorAddress.destroyed_author_address_ids
+  end
+
+  def test_invalid_belongs_to_dependent_option_nullify_raises_exception
+    assert_raise ArgumentError do
+      Author.belongs_to :special_author_address, :dependent => :nullify
+    end
+  end
+
+  def test_invalid_belongs_to_dependent_option_restrict_raises_exception
+    assert_raise ArgumentError do
+      Author.belongs_to :special_author_address, :dependent => :restrict
     end
   end
 end

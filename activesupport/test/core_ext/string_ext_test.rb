@@ -117,17 +117,20 @@ class StringInflectionsTest < Test::Unit::TestCase
     assert_equal Time.local(2005, 2, 27, 23, 50, 19, 275038), "2005-02-27T23:50:19.275038".to_time(:local)
     assert_equal DateTime.civil(2039, 2, 27, 23, 50), "2039-02-27 23:50".to_time
     assert_equal Time.local_time(2039, 2, 27, 23, 50), "2039-02-27 23:50".to_time(:local)
+    assert_nil "".to_time
   end
-  
+
   def test_string_to_datetime
     assert_equal DateTime.civil(2039, 2, 27, 23, 50), "2039-02-27 23:50".to_datetime
     assert_equal 0, "2039-02-27 23:50".to_datetime.offset # use UTC offset
     assert_equal ::Date::ITALY, "2039-02-27 23:50".to_datetime.start # use Ruby's default start value
     assert_equal DateTime.civil(2039, 2, 27, 23, 50, 19 + Rational(275038, 1000000), "-04:00"), "2039-02-27T23:50:19.275038-04:00".to_datetime
+    assert_nil "".to_datetime
   end
-  
+
   def test_string_to_date
     assert_equal Date.new(2005, 2, 27), "2005-02-27".to_date
+    assert_nil "".to_date
   end
 
   def test_access
@@ -221,7 +224,7 @@ class CoreExtStringMultibyteTest < ActiveSupport::TestCase
   BYTE_STRING = "\270\236\010\210\245"
 
   def test_core_ext_adds_mb_chars
-    assert UNICODE_STRING.respond_to?(:mb_chars)
+    assert_respond_to UNICODE_STRING, :mb_chars
   end
 
   def test_string_should_recognize_utf8_strings
@@ -230,35 +233,23 @@ class CoreExtStringMultibyteTest < ActiveSupport::TestCase
     assert !BYTE_STRING.is_utf8?
   end
 
-  if RUBY_VERSION < '1.8.7'
-    def test_core_ext_adds_chars
-      assert UNICODE_STRING.respond_to?(:chars)
-    end
-
-    def test_chars_warns_about_deprecation
-      assert_deprecated("String#chars") do
-        ''.chars
-      end
-    end
-  end
-
   if RUBY_VERSION < '1.9'
     def test_mb_chars_returns_self_when_kcode_not_set
       with_kcode('none') do
-        assert UNICODE_STRING.mb_chars.kind_of?(String)
+        assert_kind_of String, UNICODE_STRING.mb_chars
       end
     end
 
     def test_mb_chars_returns_an_instance_of_the_chars_proxy_when_kcode_utf8
       with_kcode('UTF8') do
-        assert UNICODE_STRING.mb_chars.kind_of?(ActiveSupport::Multibyte.proxy_class)
+        assert_kind_of ActiveSupport::Multibyte.proxy_class, UNICODE_STRING.mb_chars
       end
     end
   end
 
   if RUBY_VERSION >= '1.9'
     def test_mb_chars_returns_string
-      assert UNICODE_STRING.mb_chars.kind_of?(String)
+      assert_kind_of String, UNICODE_STRING.mb_chars
     end
   end
 end
@@ -267,7 +258,7 @@ end
   string.rb - Interpolation for String.
 
   Copyright (C) 2005-2009 Masao Mutoh
- 
+
   You may redistribute it and/or modify it under the same
   license terms as Ruby.
 =end
@@ -285,7 +276,7 @@ class TestGetTextString < Test::Unit::TestCase
 
   def test_percent
     assert_equal("% 1", "%% %<num>d" % {:num => 1.0})
-    assert_equal("%{num} %<num>d", "%%{num} %%<num>d" % {:num => 1})
+    assert_equal("%{num} %<num>d 1", "%%{num} %%<num>d %<num>d" % {:num => 1})
   end
 
   def test_sprintf_percent_in_replacement
@@ -335,6 +326,11 @@ end
 class OutputSafetyTest < ActiveSupport::TestCase
   def setup
     @string = "hello"
+    @object = Class.new(Object) do
+      def to_s
+        "other"
+      end
+    end.new
   end
 
   test "A string is unsafe by default" do
@@ -342,12 +338,12 @@ class OutputSafetyTest < ActiveSupport::TestCase
   end
 
   test "A string can be marked safe" do
-    @string.html_safe!
-    assert @string.html_safe?
+    string = @string.html_safe
+    assert string.html_safe?
   end
 
   test "Marking a string safe returns the string" do
-    assert_equal @string, @string.html_safe!
+    assert_equal @string, @string.html_safe
   end
 
   test "A fixnum is safe by default" do
@@ -355,90 +351,101 @@ class OutputSafetyTest < ActiveSupport::TestCase
   end
 
   test "An object is unsafe by default" do
-    klass = Class.new(Object) do
-      def to_str
-        "other"
-      end
-    end
+    assert !@object.html_safe?
+  end
 
-    @string.html_safe!
-    @string << klass.new
+  test "Adding an object to a safe string returns a safe string" do
+    string = @string.html_safe
+    string << @object
 
-    assert_equal "helloother", @string
-    assert !@string.html_safe?
+    assert_equal "helloother", string
+    assert string.html_safe?
   end
 
   test "Adding a safe string to another safe string returns a safe string" do
-    @other_string = "other".html_safe!
-    @string.html_safe!
-    @combination = @other_string + @string
+    @other_string = "other".html_safe
+    string = @string.html_safe
+    @combination = @other_string + string
 
     assert_equal "otherhello", @combination
     assert @combination.html_safe?
   end
 
-  test "Adding an unsafe string to a safe string returns an unsafe string" do
-    @other_string = "other".html_safe!
-    @combination = @other_string + @string
-    @other_combination = @string + @other_string
+  test "Adding an unsafe string to a safe string escapes it and returns a safe string" do
+    @other_string = "other".html_safe
+    @combination = @other_string + "<foo>"
+    @other_combination = @string + "<foo>"
 
-    assert_equal "otherhello", @combination
-    assert_equal "helloother", @other_combination
+    assert_equal "other&lt;foo&gt;", @combination
+    assert_equal "hello<foo>", @other_combination
 
-    assert !@combination.html_safe?
+    assert @combination.html_safe?
     assert !@other_combination.html_safe?
   end
 
   test "Concatting safe onto unsafe yields unsafe" do
     @other_string = "other"
-    @string.html_safe!
 
-    @other_string.concat(@string)
+    string = @string.html_safe
+    @other_string.concat(string)
     assert !@other_string.html_safe?
   end
 
-  test "Concatting unsafe onto safe yields unsafe" do
-    @other_string = "other".html_safe!
-
-    @other_string.concat(@string)
-    assert !@other_string.html_safe?
+  test "Concatting unsafe onto safe yields escaped safe" do
+    @other_string = "other".html_safe
+    string = @other_string.concat("<foo>")
+    assert_equal "other&lt;foo&gt;", string
+    assert string.html_safe?
   end
 
   test "Concatting safe onto safe yields safe" do
-    @other_string = "other".html_safe!
-    @string.html_safe!
+    @other_string = "other".html_safe
+    string = @string.html_safe
 
-    @other_string.concat(@string)
+    @other_string.concat(string)
     assert @other_string.html_safe?
   end
 
   test "Concatting safe onto unsafe with << yields unsafe" do
     @other_string = "other"
-    @string.html_safe!
+    string = @string.html_safe
 
-    @other_string << @string
+    @other_string << string
     assert !@other_string.html_safe?
   end
 
-  test "Concatting unsafe onto safe with << yields unsafe" do
-    @other_string = "other".html_safe!
-
-    @other_string << @string
-    assert !@other_string.html_safe?
+  test "Concatting unsafe onto safe with << yields escaped safe" do
+    @other_string = "other".html_safe
+    string = @other_string << "<foo>"
+    assert_equal "other&lt;foo&gt;", string
+    assert string.html_safe?
   end
 
   test "Concatting safe onto safe with << yields safe" do
-    @other_string = "other".html_safe!
-    @string.html_safe!
+    @other_string = "other".html_safe
+    string = @string.html_safe
 
-    @other_string << @string
+    @other_string << string
     assert @other_string.html_safe?
   end
 
   test "Concatting a fixnum to safe always yields safe" do
-    @string.html_safe!
-    @string.concat(13)
-    assert @string.html_safe?
+    string = @string.html_safe
+    string = string.concat(13)
+    assert_equal "hello".concat(13), string
+    assert string.html_safe?
+  end
+
+  test 'emits normal string yaml' do
+    assert_equal 'foo'.to_yaml, 'foo'.html_safe.to_yaml(:foo => 1)
+  end
+
+  test 'knows whether it is encoding aware' do
+    if RUBY_VERSION >= "1.9"
+      assert 'ruby'.encoding_aware?
+    else
+      assert !'ruby'.encoding_aware?
+    end
   end
 end
 

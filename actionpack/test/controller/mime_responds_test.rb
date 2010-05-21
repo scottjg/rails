@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'controller/fake_models'
+require 'active_support/core_ext/hash/conversions'
 
 class RespondToController < ActionController::Base
   layout :set_layout
@@ -155,13 +156,11 @@ class RespondToControllerTest < ActionController::TestCase
 
   def setup
     super
-    ActionController::Base.use_accept_header = true
     @request.host = "www.example.com"
   end
 
   def teardown
     super
-    ActionController::Base.use_accept_header = false
   end
 
   def test_html
@@ -499,7 +498,7 @@ class RespondWithController < ActionController::Base
 
   def using_resource_with_action
     respond_with(resource, :action => :foo) do |format|
-      format.html { raise ActionView::MissingTemplate.new([], "method") }
+      format.html { raise ActionView::MissingTemplate.new([], "foo/bar", {}, false) }
     end
   end
 
@@ -513,7 +512,7 @@ class RespondWithController < ActionController::Base
 protected
 
   def resource
-    Customer.new("david", 13)
+    Customer.new("david", request.delete? ? nil : 13)
   end
 
   def _render_js(js, options)
@@ -544,13 +543,11 @@ class RespondWithControllerTest < ActionController::TestCase
 
   def setup
     super
-    ActionController::Base.use_accept_header = true
     @request.host = "www.example.com"
   end
 
   def teardown
     super
-    ActionController::Base.use_accept_header = false
   end
 
   def test_using_resource
@@ -717,7 +714,7 @@ class RespondWithControllerTest < ActionController::TestCase
       delete :using_resource
       assert_equal "text/html", @response.content_type
       assert_equal 302, @response.status
-      assert_equal "http://www.example.com/customers/13", @response.location
+      assert_equal "http://www.example.com/customers", @response.location
     end
   end
 
@@ -769,7 +766,7 @@ class RespondWithControllerTest < ActionController::TestCase
     Customer.any_instance.stubs(:errors).returns(errors)
 
     post :using_resource_with_action
-    assert_equal "foo - #{[:html].to_s}", @controller.response_body
+    assert_equal "foo - #{[:html].to_s}", @controller.response.body
   end
 
   def test_respond_as_responder_entry_point

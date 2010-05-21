@@ -42,7 +42,7 @@ class TestTest < ActionController::TestCase
     end
 
     def test_uri
-      render :text => request.request_uri
+      render :text => request.fullpath
     end
 
     def test_query_string
@@ -113,6 +113,11 @@ XML
       render :nothing => true
     end
 
+    def test_assigns
+      @foo = "foo"
+      render :nothing => true
+    end
+
     private
       def rescue_action(e)
         raise e
@@ -128,6 +133,7 @@ XML
     @controller = TestController.new
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
+    @request.env['PATH_INFO'] = nil
   end
 
   def test_raw_post_handling
@@ -188,6 +194,12 @@ XML
     assert_equal Hash.new, @request.session.to_hash
   end
 
+  def test_response_and_request_have_nice_accessors
+    process :no_op
+    assert_equal @response, response
+    assert_equal @request, request
+  end
+
   def test_process_with_request_uri_with_no_params
     process :test_uri
     assert_equal "/test_test/test/test_uri", @response.body
@@ -199,7 +211,7 @@ XML
   end
 
   def test_process_with_request_uri_with_params_with_explicit_uri
-    @request.request_uri = "/explicit/uri"
+    @request.env['PATH_INFO'] = "/explicit/uri"
     process :test_uri, :id => 7
     assert_equal "/explicit/uri", @response.body
   end
@@ -210,7 +222,8 @@ XML
   end
 
   def test_process_with_query_string_with_explicit_uri
-    @request.request_uri = "/explicit/uri?q=test?extra=question"
+    @request.env['PATH_INFO'] = '/explicit/uri'
+    @request.env['QUERY_STRING'] = 'q=test?extra=question'
     process :test_query_string
     assert_equal "q=test?extra=question", @response.body
   end
@@ -220,6 +233,17 @@ XML
     assert_equal "OK", @response.body
     process :test_only_one_param, :right => true
     assert_equal "OK", @response.body
+  end
+
+  def test_assigns
+    process :test_assigns
+    # assigns can be accessed using assigns(key)
+    # or assigns[key], where key is a string or
+    # a symbol
+    assert_equal "foo", assigns(:foo)
+    assert_equal "foo", assigns("foo")
+    assert_equal "foo", assigns[:foo]
+    assert_equal "foo", assigns["foo"]
   end
 
   def test_assert_tag_tag
@@ -476,8 +500,8 @@ XML
   end
 
   def test_with_routing_places_routes_back
-    assert ActionController::Routing::Routes
-    routes_id = ActionController::Routing::Routes.object_id
+    assert @routes
+    routes_id = @routes.object_id
 
     begin
       with_routing { raise 'fail' }
@@ -485,8 +509,8 @@ XML
     rescue RuntimeError
     end
 
-    assert ActionController::Routing::Routes
-    assert_equal routes_id, ActionController::Routing::Routes.object_id
+    assert @routes
+    assert_equal routes_id, @routes.object_id
   end
 
   def test_remote_addr

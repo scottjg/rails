@@ -1,9 +1,9 @@
+# -*- coding: utf-8 -*-
+
 require "cases/helper"
-require 'cases/tests_database'
 require 'models/person'
 
 class I18nValidationTest < ActiveModel::TestCase
-  include ActiveModel::TestsDatabase
 
   def setup
     Person.reset_callbacks(:validate)
@@ -41,6 +41,14 @@ class I18nValidationTest < ActiveModel::TestCase
     @person.errors.add_on_blank :title, 'custom'
   end
 
+  def test_full_message_encoding
+    I18n.backend.store_translations('en', :errors => {
+      :messages => { :too_short => '猫舌' }})
+    Person.validates_length_of :title, :within => 3..5
+    @person.valid?
+    assert_equal ['Title 猫舌'], @person.errors.full_messages
+  end
+
   def test_errors_full_messages_translates_human_attribute_name_for_model_attributes
     @person.errors.add(:name, 'not found')
     Person.expects(:human_attribute_name).with(:name, :default => 'Name').returns("Person's name")
@@ -48,12 +56,12 @@ class I18nValidationTest < ActiveModel::TestCase
   end
 
   def test_errors_full_messages_uses_format
-    I18n.backend.store_translations('en', :errors => {:format => "Field {{attribute}} {{message}}"})
+    I18n.backend.store_translations('en', :errors => {:format => "Field %{attribute} %{message}"})
     @person.errors.add('name', 'empty')
     assert_equal ["Field Name empty"], @person.errors.full_messages
   end
 
-  # ActiveRecord::Validations
+  # ActiveModel::Validations
   # validates_confirmation_of w/ mocha
   def test_validates_confirmation_of_generates_message
     Person.validates_confirmation_of :title
@@ -207,15 +215,15 @@ class I18nValidationTest < ActiveModel::TestCase
 
   def test_validates_numericality_of_only_integer_generates_message
     Person.validates_numericality_of :title, :only_integer => true
-    @person.title = 'a'
-    @person.errors.expects(:generate_message).with(:title, :not_a_number, {:value => 'a', :default => nil})
+    @person.title = '0.0'
+    @person.errors.expects(:generate_message).with(:title, :not_an_integer, {:value => '0.0', :default => nil})
     @person.valid?
   end
 
   def test_validates_numericality_of_only_integer_generates_message_with_custom_default_message
     Person.validates_numericality_of :title, :only_integer => true, :message => 'custom'
-    @person.title = 'a'
-    @person.errors.expects(:generate_message).with(:title, :not_a_number, {:value => 'a', :default => 'custom'})
+    @person.title = '0.0'
+    @person.errors.expects(:generate_message).with(:title, :not_an_integer, {:value => '0.0', :default => 'custom'})
     @person.valid?
   end
 
@@ -254,7 +262,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_confirmation_of w/o mocha
 
   def test_validates_confirmation_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:confirmation => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:confirmation => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:confirmation => 'global message'}}
 
     Person.validates_confirmation_of :title
@@ -275,7 +283,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_acceptance_of w/o mocha
 
   def test_validates_acceptance_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:accepted => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:accepted => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:accepted => 'global message'}}
 
     Person.validates_acceptance_of :title, :allow_nil => false
@@ -294,7 +302,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_presence_of w/o mocha
 
   def test_validates_presence_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:blank => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:blank => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:blank => 'global message'}}
 
     Person.validates_presence_of :title
@@ -313,7 +321,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_length_of :within w/o mocha
 
   def test_validates_length_of_within_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:too_short => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:too_short => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:too_short => 'global message'}}
 
     Person.validates_length_of :title, :within => 3..5
@@ -332,7 +340,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_length_of :is w/o mocha
 
   def test_validates_length_of_is_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:wrong_length => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:wrong_length => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:wrong_length => 'global message'}}
 
     Person.validates_length_of :title, :is => 5
@@ -351,7 +359,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_format_of w/o mocha
 
   def test_validates_format_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:invalid => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:invalid => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:invalid => 'global message'}}
 
     Person.validates_format_of :title, :with => /^[1-9][0-9]*$/
@@ -370,7 +378,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_inclusion_of w/o mocha
 
   def test_validates_inclusion_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:inclusion => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:inclusion => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:inclusion => 'global message'}}
 
     Person.validates_inclusion_of :title, :in => %w(a b c)
@@ -389,7 +397,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_exclusion_of w/o mocha
 
   def test_validates_exclusion_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:exclusion => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:exclusion => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:exclusion => 'global message'}}
 
     Person.validates_exclusion_of :title, :in => %w(a b c)
@@ -410,7 +418,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_numericality_of without :only_integer w/o mocha
 
   def test_validates_numericality_of_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:not_a_number => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:not_a_number => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:not_a_number => 'global message'}}
 
     Person.validates_numericality_of :title
@@ -431,20 +439,20 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_numericality_of with :only_integer w/o mocha
 
   def test_validates_numericality_of_only_integer_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:not_a_number => 'custom message'}}}}}
-    I18n.backend.store_translations 'en', :errors => {:messages => {:not_a_number => 'global message'}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:not_an_integer => 'custom message'}}}}}}
+    I18n.backend.store_translations 'en', :errors => {:messages => {:not_an_integer => 'global message'}}
 
     Person.validates_numericality_of :title, :only_integer => true
-    @person.title = 'a'
+    @person.title = '1.0'
     @person.valid?
     assert_equal ['custom message'], @person.errors[:title]
   end
 
   def test_validates_numericality_of_only_integer_finds_global_default_translation
-    I18n.backend.store_translations 'en', :errors => {:messages => {:not_a_number => 'global message'}}
+    I18n.backend.store_translations 'en', :errors => {:messages => {:not_an_integer => 'global message'}}
 
     Person.validates_numericality_of :title, :only_integer => true
-    @person.title = 'a'
+    @person.title = '1.0'
     @person.valid?
     assert_equal ['global message'], @person.errors[:title]
   end
@@ -452,7 +460,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_numericality_of :odd w/o mocha
 
   def test_validates_numericality_of_odd_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:odd => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:odd => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:odd => 'global message'}}
 
     Person.validates_numericality_of :title, :only_integer => true, :odd => true
@@ -473,7 +481,7 @@ class I18nValidationTest < ActiveModel::TestCase
   # validates_numericality_of :less_than w/o mocha
 
   def test_validates_numericality_of_less_than_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:less_than => 'custom message'}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:less_than => 'custom message'}}}}}}
     I18n.backend.store_translations 'en', :errors => {:messages => {:less_than => 'global message'}}
 
     Person.validates_numericality_of :title, :only_integer => true, :less_than => 0
@@ -502,7 +510,7 @@ class I18nValidationTest < ActiveModel::TestCase
   end
 
   def test_validates_with_message_symbol_must_translate_per_attribute
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:attributes => {:title => {:custom_error => "I am a custom error"}}}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:custom_error => "I am a custom error"}}}}}}
     Person.validates_presence_of :title, :message => :custom_error
     @person.title = nil
     @person.valid?
@@ -510,7 +518,7 @@ class I18nValidationTest < ActiveModel::TestCase
   end
 
   def test_validates_with_message_symbol_must_translate_per_model
-    I18n.backend.store_translations 'en', :errors => {:models => {:person => {:custom_error => "I am a custom error"}}}
+    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:custom_error => "I am a custom error"}}}}
     Person.validates_presence_of :title, :message => :custom_error
     @person.title = nil
     @person.valid?

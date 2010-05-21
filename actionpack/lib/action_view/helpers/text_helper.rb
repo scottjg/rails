@@ -1,3 +1,4 @@
+require 'active_support/core_ext/object/blank'
 require 'action_view/helpers/tag_helper'
 
 module ActionView
@@ -17,19 +18,19 @@ module ActionView
       #       concat "hello"
       #       # is the equivalent of <%= "hello" %>
       #
-      #       if (logged_in == true):
+      #       if logged_in
       #         concat "Logged in!"
       #       else
       #         concat link_to('login', :action => login)
       #       end
       #       # will either display "Logged in!" or a login link
       #   %>
-      def concat(string, unused_binding = nil)
-        if unused_binding
-          ActiveSupport::Deprecation.warn("The binding argument of #concat is no longer needed.  Please remove it from your views and helpers.", caller)
-        end
-
+      def concat(string)
         output_buffer << string
+      end
+
+      def safe_concat(string)
+        output_buffer.respond_to?(:safe_concat) ? output_buffer.safe_concat(string) : concat(string)
       end
 
       # Truncates a given +text+ after a given <tt>:length</tt> if +text+ is longer than <tt>:length</tt>
@@ -187,7 +188,7 @@ module ActionView
       #   pluralize(0, 'person')
       #   # => 0 people
       def pluralize(count, singular, plural = nil)
-        "#{count || 0} " + ((count == 1 || count == '1') ? singular : (plural || singular.pluralize))
+        "#{count || 0} " + ((count == 1 || count =~ /^1(\.0+)?$/) ? singular : (plural || singular.pluralize))
       end
 
       # Wraps the +text+ into lines no longer than +line_width+ width. This method
@@ -327,12 +328,12 @@ module ActionView
       #   # => "<p class='description'>Look ma! A class!</p>"
       def simple_format(text, html_options={})
         start_tag = tag('p', html_options, true)
-        text = text.to_s.dup
+        text = h(text)
         text.gsub!(/\r\n?/, "\n")                    # \r\n and \r -> \n
         text.gsub!(/\n\n+/, "</p>\n\n#{start_tag}")  # 2+ newline  -> paragraph
         text.gsub!(/([^\n]\n)(?=[^\n])/, '\1<br />') # 1 newline   -> br
         text.insert 0, start_tag
-        text << "</p>"
+        text.safe_concat("</p>")
       end
 
       # Turns all URLs and e-mail addresses into clickable links. The <tt>:link</tt> option
@@ -415,7 +416,7 @@ module ActionView
       #                {:first => 'Emily', :middle => 'Shannon', :maiden => 'Pike', :last => 'Hicks'},
       #               {:first => 'June', :middle => 'Dae', :last => 'Jones'}]
       #   <% @items.each do |item| %>
-      #     <tr class="<%= cycle("even", "odd", :name => "row_class") -%>">
+      #     <tr class="<%= cycle("odd", "even", :name => "row_class") -%>">
       #       <td>
       #         <% item.values.each do |value| %>
       #           <%# Create a named cycle "colors" %>
@@ -576,7 +577,7 @@ module ActionView
         # each email is yielded and the result is used as the link text.
         def auto_link_email_addresses(text, html_options = {})
           body = text.dup
-          text.gsub(/([\w\.!#\$%\-+.]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)+)/) do
+          text.gsub(/([\w\.!#\$%\-+]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)+)/) do
             text = $1
 
             if body.match(/<a\b[^>]*>(.*)(#{Regexp.escape(text)})(.*)<\/a>/)

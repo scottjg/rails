@@ -9,7 +9,7 @@ module RenderTestCases
   def setup_view(paths)
     @assigns = { :secret => 'in the sauce' }
     @view = ActionView::Base.new(paths, @assigns)
-    @controller_view = ActionView::Base.for_controller(TestController.new)
+    @controller_view = TestController.new.view_context
 
     # Reload and register danish language for testing
     I18n.reload!
@@ -33,17 +33,17 @@ module RenderTestCases
   end
 
   def test_render_file_with_localization
-    old_locale, I18n.locale = I18n.locale, :da
+    old_locale, @view.locale = @view.locale, :da
     assert_equal "Hey verden", @view.render(:file => "test/hello_world")
   ensure
-    I18n.locale = old_locale
+    @view.locale = old_locale
   end
 
   def test_render_file_with_dashed_locale
-    old_locale, I18n.locale = I18n.locale, :"pt-BR"
+    old_locale, @view.locale = @view.locale, :"pt-BR"
     assert_equal "Ola mundo", @view.render(:file => "test/hello_world")
   ensure
-    I18n.locale = old_locale
+    @view.locale = old_locale
   end
 
   def test_render_file_at_top_level
@@ -108,9 +108,10 @@ module RenderTestCases
     @view.render(:partial => "test/raise")
     flunk "Render did not raise Template::Error"
   rescue ActionView::Template::Error => e
-    assert_match "undefined local variable or method `doesnt_exist'", e.message
+    assert_match %r!method.*doesnt_exist!, e.message
     assert_equal "", e.sub_template_message
     assert_equal "1", e.line_number
+    assert_equal "1: <%= doesnt_exist %>", e.annoted_source_code.strip
     assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
   end
 
@@ -118,7 +119,7 @@ module RenderTestCases
     @view.render(:file => "test/sub_template_raise")
     flunk "Render did not raise Template::Error"
   rescue ActionView::Template::Error => e
-    assert_match "undefined local variable or method `doesnt_exist'", e.message
+    assert_match %r!method.*doesnt_exist!, e.message
     assert_equal "Trace of template inclusion: #{File.expand_path("#{FIXTURE_LOAD_PATH}/test/sub_template_raise.html.erb")}", e.sub_template_message
     assert_equal "1", e.line_number
     assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
@@ -228,34 +229,22 @@ module RenderTestCases
       @view.render(:file => "test/hello_world.erb", :layout => "layouts/yield")
   end
 
+  # TODO: Move to deprecated_tests.rb
+  def test_render_with_nested_layout_deprecated
+    assert_deprecated do
+      assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
+        @view.render(:file => "test/deprecated_nested_layout.erb", :layout => "layouts/yield")
+    end
+  end
+
   def test_render_with_nested_layout
-    assert_equal %(<title>title</title>\n\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
+    assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout.erb", :layout => "layouts/yield")
   end
 
-  if '1.9'.respond_to?(:force_encoding)
-    def test_render_utf8_template_with_magic_comment
-      with_external_encoding Encoding::ASCII_8BIT do
-        result = @view.render(:file => "test/utf8_magic.html.erb", :layouts => "layouts/yield")
-        assert_equal "Русский текст\nUTF-8\nUTF-8\nUTF-8\n", result
-        assert_equal Encoding::UTF_8, result.encoding
-      end
-    end
-
-    def test_render_utf8_template_with_default_external_encoding
-      with_external_encoding Encoding::UTF_8 do
-        result = @view.render(:file => "test/utf8.html.erb", :layouts => "layouts/yield")
-        assert_equal "Русский текст\nUTF-8\nUTF-8\nUTF-8\n", result
-        assert_equal Encoding::UTF_8, result.encoding
-      end
-    end
-
-    def with_external_encoding(encoding)
-      old, Encoding.default_external = Encoding.default_external, encoding
-      yield
-    ensure
-      Encoding.default_external = old
-    end
+  def test_render_with_file_in_layout
+    assert_equal %(\n<title>title</title>\n\n),
+      @view.render(:file => "test/layout_render_file.erb")
   end
 end
 
@@ -265,8 +254,12 @@ class CachedViewRenderTest < ActiveSupport::TestCase
   # Ensure view path cache is primed
   def setup
     view_paths = ActionController::Base.view_paths
-    assert_equal ActionView::FileSystemResolverWithFallback, view_paths.first.class
+    assert_equal ActionView::FileSystemResolver, view_paths.first.class
     setup_view(view_paths)
+  end
+
+  def teardown
+    GC.start
   end
 end
 
@@ -276,9 +269,60 @@ class LazyViewRenderTest < ActiveSupport::TestCase
   # Test the same thing as above, but make sure the view path
   # is not eager loaded
   def setup
-    path = ActionView::FileSystemResolverWithFallback.new(FIXTURE_LOAD_PATH)
+    path = ActionView::FileSystemResolver.new(FIXTURE_LOAD_PATH)
     view_paths = ActionView::Base.process_view_paths(path)
-    assert_equal ActionView::FileSystemResolverWithFallback, view_paths.first.class
+    assert_equal ActionView::FileSystemResolver.new(FIXTURE_LOAD_PATH), view_paths.first
     setup_view(view_paths)
+  end
+
+  def teardown
+    GC.start
+  end
+
+  if '1.9'.respond_to?(:force_encoding)
+    def test_render_utf8_template_with_magic_comment
+      with_external_encoding Encoding::ASCII_8BIT do
+        result = @view.render(:file => "test/utf8_magic.html.erb", :layouts => "layouts/yield")
+        assert_equal Encoding::UTF_8, result.encoding
+        assert_equal "\nРусский \nтекст\n\nUTF-8\nUTF-8\nUTF-8\n", result
+      end
+    end
+
+    def test_render_utf8_template_with_default_external_encoding
+      with_external_encoding Encoding::UTF_8 do
+        result = @view.render(:file => "test/utf8.html.erb", :layouts => "layouts/yield")
+        assert_equal Encoding::UTF_8, result.encoding
+        assert_equal "Русский текст\n\nUTF-8\nUTF-8\nUTF-8\n", result
+      end
+    end
+
+    def test_render_utf8_template_with_incompatible_external_encoding
+      with_external_encoding Encoding::SJIS do
+        begin
+          result = @view.render(:file => "test/utf8.html.erb", :layouts => "layouts/yield")
+          flunk 'Should have raised incompatible encoding error'
+        rescue ActionView::Template::Error => error
+          assert_match 'Your template was not saved as valid Shift_JIS', error.original_exception.message
+        end
+      end
+    end
+
+    def test_render_utf8_template_with_partial_with_incompatible_encoding
+      with_external_encoding Encoding::SJIS do
+        begin
+          result = @view.render(:file => "test/utf8_magic_with_bare_partial.html.erb", :layouts => "layouts/yield")
+          flunk 'Should have raised incompatible encoding error'
+        rescue ActionView::Template::Error => error
+          assert_match 'Your template was not saved as valid Shift_JIS', error.original_exception.message
+        end
+      end
+    end
+
+    def with_external_encoding(encoding)
+      old, Encoding.default_external = Encoding.default_external, encoding
+      yield
+    ensure
+      Encoding.default_external = old
+    end
   end
 end

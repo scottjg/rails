@@ -6,6 +6,7 @@ module Rails
   end
 end
 Rails.application.config.root = Rails.root
+Rails.application.config.generators.templates = [File.join(Rails.root, "lib", "templates")]
 
 require 'rails/generators'
 require 'rails/generators/test_case'
@@ -24,5 +25,12 @@ module GeneratorsTestHelper
       rescue
       end
     end
+  end
+
+  def copy_routes
+    routes = File.expand_path("../../../lib/rails/generators/rails/app/templates/config/routes.rb", __FILE__)
+    destination = File.join(destination_root, "config")
+    FileUtils.mkdir_p(destination)
+    FileUtils.cp File.expand_path(routes), destination
   end
 end

@@ -1,8 +1,5 @@
 require 'generators/generators_test_helper'
-require 'generators/rails/app/app_generator'
-
-# TODO This line shouldn't be required
-require 'generators/rails/model/model_generator'
+require 'rails/generators/rails/app/app_generator'
 
 class ActionsTest < Rails::Generators::TestCase
   include GeneratorsTestHelper
@@ -36,22 +33,22 @@ class ActionsTest < Rails::Generators::TestCase
   end
 
   def test_plugin_with_git_option_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install #{@git_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install #{@git_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :git => @git_plugin_uri
   end
 
   def test_plugin_with_svn_option_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install #{@svn_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install #{@svn_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :svn => @svn_plugin_uri
   end
 
   def test_plugin_with_git_option_and_branch_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install -b stable #{@git_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install -b stable #{@git_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :git => @git_plugin_uri, :branch => 'stable'
   end
 
   def test_plugin_with_svn_option_and_revision_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install -r 1234 #{@svn_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install -r 1234 #{@svn_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :svn => @svn_plugin_uri, :revision => 1234
   end
 
@@ -89,8 +86,13 @@ class ActionsTest < Rails::Generators::TestCase
       action :gem, 'mislav-will-paginate', :lib => 'will-paginate', :source => 'http://gems.github.com'
     end
 
-    assert_file 'Gemfile', /gem "mislav\-will\-paginate", :require_as => "will\-paginate"/
+    assert_deprecated do
+      action :gem, 'thoughtbot-factory_girl', :require_as => 'factory_girl', :source => 'http://gems.github.com'
+    end    
+
+    assert_file 'Gemfile', /gem "mislav\-will\-paginate", :require => "will\-paginate"/
     assert_file 'Gemfile', /source "http:\/\/gems\.github\.com"/
+    assert_file 'Gemfile', /gem "thoughtbot-factory_girl", :require => "factory_girl"/
   end
 
   def test_gem_with_env_should_include_all_dependencies_in_gemfile
@@ -100,7 +102,30 @@ class ActionsTest < Rails::Generators::TestCase
       action :gem, 'rspec', :env => %w(development test)
     end
 
-    assert_file 'Gemfile', /gem "rspec", :only => \["development", "test"\]/
+    assert_deprecated do
+      action :gem, 'rspec-rails', :only => %w(development test)      
+    end
+
+    assert_file 'Gemfile', /gem "rspec", :group => \["development", "test"\]/
+    assert_file 'Gemfile', /gem "rspec-rails", :group => \["development", "test"\]/
+  end
+
+  def test_gem_with_version_should_include_version_in_gemfile
+    run_generator
+
+    action :gem, 'rspec', '>=2.0.0.a5'
+
+    assert_file 'Gemfile', /gem "rspec", ">=2.0.0.a5"/
+  end
+
+  def test_gem_should_insert_on_separate_lines
+    run_generator
+
+    action :gem, 'rspec'
+    action :gem, 'rspec-rails'
+
+    assert_file 'Gemfile', /gem "rspec"$/
+    assert_file 'Gemfile', /gem "rspec-rails"$/
   end
 
   def test_environment_should_include_data_in_environment_initializer_block
@@ -155,7 +180,7 @@ class ActionsTest < Rails::Generators::TestCase
   end
 
   def test_generate_should_run_script_generate_with_argument_and_options
-    generator.expects(:run_ruby_script).once.with('script/generate model MyModel', :verbose => false)
+    generator.expects(:run_ruby_script).once.with('script/rails generate model MyModel', :verbose => false)
     action :generate, 'model', 'MyModel'
   end
 
@@ -190,6 +215,12 @@ class ActionsTest < Rails::Generators::TestCase
     route_command = "route '/login', :controller => 'sessions', :action => 'new'"
     action :route, route_command
     assert_file 'config/routes.rb', /#{Regexp.escape(route_command)}/
+  end
+
+  def test_readme
+    run_generator
+    Rails::Generators::AppGenerator.expects(:source_root).times(2).returns(destination_root)
+    assert_match(/Welcome to Rails/, action(:readme, "README"))
   end
 
   protected

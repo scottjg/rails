@@ -1,3 +1,6 @@
+require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/object/blank'
+
 module ActiveRecord
   module QueryMethods
     extend ActiveSupport::Concern
@@ -6,9 +9,11 @@ module ActiveRecord
       (ActiveRecord::Relation::ASSOCIATION_METHODS + ActiveRecord::Relation::MULTI_VALUE_METHODS).each do |query_method|
         attr_accessor :"#{query_method}_values"
 
-        class_eval <<-CEVAL
-          def #{query_method}(*args)
-            new_relation = spawn
+        next if [:where, :having].include?(query_method)
+        class_eval <<-CEVAL, __FILE__, __LINE__ + 1
+          def #{query_method}(*args, &block)
+            new_relation = clone
+            new_relation.send(:apply_modules, Module.new(&block)) if block_given?
             value = Array.wrap(args.flatten).reject {|x| x.blank? }
             new_relation.#{query_method}_values += value if value.present?
             new_relation
@@ -17,11 +22,12 @@ module ActiveRecord
       end
 
       [:where, :having].each do |query_method|
-        class_eval <<-CEVAL
-          def #{query_method}(*args)
-            new_relation = spawn
+        class_eval <<-CEVAL, __FILE__, __LINE__ + 1
+          def #{query_method}(*args, &block)
+            new_relation = clone
+            new_relation.send(:apply_modules, Module.new(&block)) if block_given?
             value = build_where(*args)
-            new_relation.#{query_method}_values += [*value] if value.present?
+            new_relation.#{query_method}_values += Array.wrap(value) if value.present?
             new_relation
           end
         CEVAL
@@ -30,9 +36,10 @@ module ActiveRecord
       ActiveRecord::Relation::SINGLE_VALUE_METHODS.each do |query_method|
         attr_accessor :"#{query_method}_value"
 
-        class_eval <<-CEVAL
-          def #{query_method}(value = true)
-            new_relation = spawn
+        class_eval <<-CEVAL, __FILE__, __LINE__ + 1
+          def #{query_method}(value = true, &block)
+            new_relation = clone
+            new_relation.send(:apply_modules, Module.new(&block)) if block_given?
             new_relation.#{query_method}_value = value
             new_relation
           end
@@ -40,13 +47,21 @@ module ActiveRecord
       end
     end
 
-    def lock(locks = true)
-      relation = spawn
+    def extending(*modules)
+      new_relation = clone
+      new_relation.send :apply_modules, *modules
+      new_relation
+    end
+
+    def lock(locks = true, &block)
+      relation = clone
+      relation.send(:apply_modules, Module.new(&block)) if block_given?
+
       case locks
       when String, TrueClass, NilClass
-        spawn.tap {|new_relation| new_relation.lock_value = locks || true }
+        clone.tap {|new_relation| new_relation.lock_value = locks || true }
       else
-        spawn.tap {|new_relation| new_relation.lock_value = false }
+        clone.tap {|new_relation| new_relation.lock_value = false }
       end
     end
 
@@ -65,48 +80,14 @@ module ActiveRecord
       @arel ||= build_arel
     end
 
-    def build_arel
+    def custom_join_sql(*joins)
       arel = table
-
-      joined_associations = []
-      association_joins = []
-
-      joins = @joins_values.map {|j| j.respond_to?(:strip) ? j.strip : j}.uniq
-
-      # Build association joins first
-      joins.each do |join|
-        association_joins << join if [Hash, Array, Symbol].include?(join.class) && !array_of_strings?(join)
-      end
-
-      if association_joins.any?
-        join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(@klass, association_joins.uniq, nil)
-        to_join = []
-
-        join_dependency.join_associations.each do |association|
-          if (association_relation = association.relation).is_a?(Array)
-            to_join << [association_relation.first, association.association_join.first]
-            to_join << [association_relation.last, association.association_join.last]
-          else
-            to_join << [association_relation, association.association_join]
-          end
-        end
-
-        to_join.each do |tj|
-          unless joined_associations.detect {|ja| ja[0] == tj[0] && ja[1] == tj[1] }
-            joined_associations << tj
-            arel = arel.join(tj[0]).on(*tj[1])
-          end
-        end
-      end
-
       joins.each do |join|
         next if join.blank?
 
         @implicit_readonly = true
 
         case join
-        when Relation::JoinOperation
-          arel = arel.join(join.relation, join.join_class).on(*join.on)
         when Hash, Array, Symbol
           if array_of_strings?(join)
             join_string = join.join(' ')
@@ -116,6 +97,51 @@ module ActiveRecord
           arel = arel.join(join)
         end
       end
+      arel.joins(arel)
+    end
+
+    def build_arel
+      arel = table
+
+      joined_associations = []
+      association_joins = []
+
+      joins = @joins_values.map {|j| j.respond_to?(:strip) ? j.strip : j}.uniq
+
+      joins.each do |join|
+        association_joins << join if [Hash, Array, Symbol].include?(join.class) && !array_of_strings?(join)
+      end
+
+      stashed_association_joins = joins.select {|j| j.is_a?(ActiveRecord::Associations::ClassMethods::JoinDependency::JoinAssociation)}
+
+      non_association_joins = (joins - association_joins - stashed_association_joins).reject {|j| j.blank?}
+      custom_joins = custom_join_sql(*non_association_joins)
+
+      join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(@klass, association_joins, custom_joins)
+
+      join_dependency.graft(*stashed_association_joins)
+
+      @implicit_readonly = true unless association_joins.empty? && stashed_association_joins.empty?
+
+      to_join = []
+
+      join_dependency.join_associations.each do |association|
+        if (association_relation = association.relation).is_a?(Array)
+          to_join << [association_relation.first, association.join_class, association.association_join.first]
+          to_join << [association_relation.last, association.join_class, association.association_join.last]
+        else
+          to_join << [association_relation, association.join_class, association.association_join]
+        end
+      end
+
+      to_join.each do |tj|
+        unless joined_associations.detect {|ja| ja[0] == tj[0] && ja[1] == tj[1] && ja[2] == tj[2] }
+          joined_associations << tj
+          arel = arel.join(tj[0], tj[1]).on(*tj[2])
+        end
+      end
+
+      arel = arel.join(custom_joins)
 
       @where_values.uniq.each do |where|
         next if where.blank?
@@ -136,13 +162,9 @@ module ActiveRecord
       arel = arel.take(@limit_value) if @limit_value.present?
       arel = arel.skip(@offset_value) if @offset_value.present?
 
-      @group_values.uniq.each do |g|
-        arel = arel.group(g) if g.present?
-      end
+      arel = arel.group(*@group_values.uniq.select{|g| g.present?})
 
-      @order_values.uniq.each do |o|
-        arel = arel.order(Arel::SqlLiteral.new(o.to_s)) if o.present?
-      end
+      arel = arel.order(*@order_values.uniq.select{|o| o.present?}.map(&:to_s))
 
       selects = @select_values.uniq
 
@@ -164,7 +186,7 @@ module ActiveRecord
         arel = arel.lock
       when String
         arel = arel.lock(@lock_value)
-      end
+      end if @lock_value.present?
 
       arel
     end
@@ -172,21 +194,25 @@ module ActiveRecord
     def build_where(*args)
       return if args.blank?
 
-      builder = PredicateBuilder.new(table.engine)
-
-      conditions = if [String, Array].include?(args.first.class)
-        @klass.send(:sanitize_sql, args.size > 1 ? args : args.first)
-      elsif args.first.is_a?(Hash)
-        attributes = @klass.send(:expand_hash_conditions_for_aggregates, args.first)
-        builder.build_from_hash(attributes, table)
+      opts = args.first
+      case opts
+      when String, Array
+        @klass.send(:sanitize_sql, args.size > 1 ? args : opts)
+      when Hash
+        attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
+        PredicateBuilder.new(table.engine).build_from_hash(attributes, table)
       else
-        args.first
+        opts
       end
-
-      conditions
     end
 
     private
+
+    def apply_modules(modules)
+      values = Array.wrap(modules)
+      @extensions += values if values.present?
+      values.each {|extension| extend(extension) }
+    end
 
     def reverse_sql_order(order_query)
       order_query.to_s.split(/,/).each { |s|

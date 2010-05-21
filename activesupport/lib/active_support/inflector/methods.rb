@@ -36,11 +36,13 @@ module ActiveSupport
     #   "ActiveRecord".underscore         # => "active_record"
     #   "ActiveRecord::Errors".underscore # => active_record/errors
     def underscore(camel_cased_word)
-      camel_cased_word.to_s.gsub(/::/, '/').
-        gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').
-        gsub(/([a-z\d])([A-Z])/,'\1_\2').
-        tr("-", "_").
-        downcase
+      word = camel_cased_word.to_s.dup
+      word.gsub!(/::/, '/')
+      word.gsub!(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
+      word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
+      word.tr!("-", "_")
+      word.downcase!
+      word
     end
 
     # Replaces underscores with dashes in the string.
@@ -109,7 +111,7 @@ module ActiveSupport
 
         constant = Object
         names.each do |name|
-          constant = constant.const_get(name, false) || constant.const_missing(name)
+          constant = constant.const_defined?(name, false) ? constant.const_get(name) : constant.const_missing(name)
         end
         constant
       end

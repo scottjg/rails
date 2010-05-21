@@ -1,5 +1,10 @@
+require 'active_support/core_ext/array/wrap'
+require "active_support/core_ext/module/anonymous"
+require 'active_support/core_ext/object/blank'
+
 module ActiveModel #:nodoc:
-  # A simple base class that can be used along with ActiveModel::Validations::ClassMethods.validates_with
+  # A simple base class that can be used along with 
+  # +ActiveModel::Validations::ClassMethods.validates_with+
   #
   #   class Person
   #     include ActiveModel::Validations
@@ -28,7 +33,7 @@ module ActiveModel #:nodoc:
   #   end
   #
   #   class MyValidator < ActiveModel::Validator
-  #     def validate
+  #     def validate(record)
   #       record # => The person instance being validated
   #       options # => Any non-standard options passed to validates_with
   #     end
@@ -83,13 +88,32 @@ module ActiveModel #:nodoc:
   #       klass.send :attr_accessor, :custom_attribute
   #     end
   #   end
+  #
+  # This setup method is only called when used with validation macros or the
+  # class level <tt>validates_with</tt> method.
   # 
   class Validator
     attr_reader :options
 
+    # Returns the kind of the validator.
+    #
+    # == Examples
+    #
+    #   PresenceValidator.kind    #=> :presence
+    #   UniquenessValidator.kind  #=> :uniqueness
+    #
+    def self.kind
+      @kind ||= name.split('::').last.underscore.sub(/_validator$/, '').to_sym unless anonymous?
+    end
+
     # Accepts options that will be made availible through the +options+ reader.
     def initialize(options)
       @options = options
+    end
+
+    # Return the kind for this validator.
+    def kind
+      self.class.kind
     end
 
     # Override this method in subclasses with validation logic, adding errors
@@ -111,7 +135,7 @@ module ActiveModel #:nodoc:
     # +options+ reader, however the <tt>:attributes</tt> option will be removed
     # and instead be made available through the +attributes+ reader.
     def initialize(options)
-      @attributes = Array(options.delete(:attributes))
+      @attributes = Array.wrap(options.delete(:attributes))
       raise ":attributes cannot be blank" if @attributes.empty?
       super
       check_validity!

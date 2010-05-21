@@ -1,5 +1,5 @@
 #--
-# Copyright (c) 2004-2009 David Heinemeier Hansson
+# Copyright (c) 2004-2010 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -35,28 +35,36 @@ module ActionView
     autoload :Context
     autoload :Template
     autoload :Helpers
-    autoload :SafeBuffer
 
     autoload_under "render" do
+      autoload :Layouts
       autoload :Partials
       autoload :Rendering
     end
 
-    autoload :MissingTemplate,   'action_view/base'
-    autoload :Resolver,          'action_view/template/resolver'
-    autoload :PathResolver,      'action_view/template/resolver'
-    autoload :PathSet,           'action_view/paths'
-    autoload :FileSystemResolverWithFallback, 'action_view/template/resolver'
+    autoload :Base
+    autoload :LookupContext
+    autoload :Resolver,           'action_view/template/resolver'
+    autoload :PathResolver,       'action_view/template/resolver'
+    autoload :FileSystemResolver, 'action_view/template/resolver'
+    autoload :PathSet,            'action_view/paths'
 
-    autoload :TemplateError,     'action_view/template/error'
+    autoload :MissingTemplate,    'action_view/template/error'
+    autoload :ActionViewError,    'action_view/template/error'
+    autoload :EncodingError,      'action_view/template/error'
+    autoload :TemplateError,      'action_view/template/error'
+    autoload :WrongEncodingError, 'action_view/template/error'
+
     autoload :TemplateHandler,   'action_view/template'
     autoload :TemplateHandlers,  'action_view/template'
   end
 
   autoload :TestCase, 'action_view/test_case'
+
+  ENCODING_FLAG = '#.*coding[:=]\s*(\S+)[ \t]*'
 end
 
-require 'action_view/erb/util'
-require 'action_view/base'
+require 'active_support/i18n'
+require 'active_support/core_ext/string/output_safety'
 
 I18n.load_path << "#{File.dirname(__FILE__)}/action_view/locale/en.yml"

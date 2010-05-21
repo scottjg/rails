@@ -1,4 +1,12 @@
-require 'thor'
+begin
+  require 'thor/group'
+rescue LoadError
+  puts "Thor is not available.\nIf you ran this command from a git checkout " \
+       "of Rails, please make sure thor is installed,\nand run this command " \
+       "as `ruby /path/to/rails myapp --dev`"
+  exit
+end
+
 require 'rails/generators/actions'
 
 module Rails
@@ -12,24 +20,19 @@ module Rails
 
       add_runtime_options!
 
-      # Automatically sets the source root based on the class name.
-      #
-      def self.source_root
-        @_rails_source_root ||= begin
-          if base_name && generator_name
-            File.expand_path(File.join("../../generators", base_name, generator_name, 'templates'), File.dirname(__FILE__))
-          end
-        end
+      # Returns the source root for this generator using default_source_root as default.
+      def self.source_root(path=nil)
+        @_source_root = path if path
+        @_source_root ||= default_source_root
       end
 
       # Tries to get the description from a USAGE file one folder above the source
       # root otherwise uses a default description.
-      #
       def self.desc(description=nil)
         return super if description
-        usage = File.expand_path(File.join(source_root, "..", "USAGE"))
+        usage = source_root && File.expand_path("../USAGE", source_root)
 
-        @desc ||= if File.exist?(usage)
+        @desc ||= if usage && File.exist?(usage)
           File.read(usage)
         else
           "Description:\n    Create #{base_name.humanize.downcase} files for #{generator_name} generator."
@@ -39,7 +42,6 @@ module Rails
       # Convenience method to get the namespace from the class name. It's the
       # same as Thor default except that the Generator at the end of the class
       # is removed.
-      #
       def self.namespace(name=nil)
         return super if name
         @namespace ||= super.sub(/_generator$/, '').sub(/:generators:/, ':')
@@ -62,7 +64,7 @@ module Rails
       #
       # For example, if the user invoke the controller generator as:
       #
-      #   ruby script/generate controller Account --test-framework=test_unit
+      #   rails generate controller Account --test-framework=test_unit
       #
       # The controller generator will then try to invoke the following generators:
       #
@@ -117,11 +119,11 @@ module Rails
       # All hooks come with switches for user interface. If the user don't want
       # to use any test framework, he can do:
       #
-      #   ruby script/generate controller Account --skip-test-framework
+      #   rails generate controller Account --skip-test-framework
       #
       # Or similarly:
       #
-      #   ruby script/generate controller Account --no-test-framework
+      #   rails generate controller Account --no-test-framework
       #
       # ==== Boolean hooks
       #
@@ -133,7 +135,7 @@ module Rails
       #
       # Then, if you want, webrat to be invoked, just supply:
       #
-      #   ruby script/generate controller Account --webrat
+      #   rails generate controller Account --webrat
       #
       # The hooks lookup is similar as above:
       #
@@ -192,7 +194,6 @@ module Rails
       end
 
       # Make class option aware of Rails::Generators.options and Rails::Generators.aliases.
-      #
       def self.class_option(name, options={}) #:nodoc:
         options[:desc]    = "Indicates when to generate #{name.to_s.humanize.downcase}" unless options.key?(:desc)
         options[:aliases] = default_aliases_for_option(name, options)
@@ -200,21 +201,33 @@ module Rails
         super(name, options)
       end
 
+      # Returns the default source root for a given generator. This is used internally
+      # by rails to set its generators source root. If you want to customize your source
+      # root, you should use source_root.
+      def self.default_source_root
+        return unless base_name && generator_name
+        path = File.expand_path(File.join(base_name, generator_name, 'templates'), base_root)
+        path if File.exists?(path)
+      end
+
+      # Returns the base root for a common set of generators. This is used to dynamically
+      # guess the default source root.
+      def self.base_root
+        File.dirname(__FILE__)
+      end
+
       # Cache source root and add lib/generators/base/generator/templates to
       # source paths.
-      #
       def self.inherited(base) #:nodoc:
         super
 
-        # Cache source root, we need to do this, since __FILE__ is a relative value
-        # and can point to wrong directions when inside an specified directory.
+        # Invoke source_root so the default_source_root is set.
         base.source_root
 
         if base.name && base.name !~ /Base$/
           Rails::Generators.subclasses << base
 
-          if defined?(Rails.root) && Rails.root
-            path = File.expand_path(File.join(Rails.root, 'lib', 'templates'))
+          Rails::Generators.templates_path.each do |path|
             if base.name.include?('::')
               base.source_paths << File.join(path, base.base_name, base.generator_name)
             else
@@ -261,7 +274,7 @@ module Rails
         # Use Rails default banner.
         #
         def self.banner
-          "#{$0} #{generator_name} #{self.arguments.map{ |a| a.usage }.join(' ')} [options]"
+          "rails generate #{generator_name} #{self.arguments.map{ |a| a.usage }.join(' ')} [options]"
         end
 
         # Sets the base_name taking into account the current class namespace.

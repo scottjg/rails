@@ -73,58 +73,6 @@ module ActionDispatch
         end
       end
 
-      # Asserts that the request was rendered with the appropriate template file or partials
-      #
-      # ==== Examples
-      #
-      #   # assert that the "new" view template was rendered
-      #   assert_template "new"
-      #
-      #   # assert that the "_customer" partial was rendered twice
-      #   assert_template :partial => '_customer', :count => 2
-      #
-      #   # assert that no partials were rendered
-      #   assert_template :partial => false
-      #
-      def assert_template(options = {}, message = nil)
-        validate_request!
-
-        case options
-         when NilClass, String
-          rendered = (@controller.template.rendered[:template] || []).map { |t| t.identifier }
-          msg = build_message(message,
-                  "expecting <?> but rendering with <?>",
-                  options, rendered.join(', '))
-          assert_block(msg) do
-            if options.nil?
-              @controller.template.rendered[:template].blank?
-            else
-              rendered.any? { |t| t.match(options) }
-            end
-          end
-        when Hash
-          if expected_partial = options[:partial]
-            partials = @controller.template.rendered[:partials]
-            if expected_count = options[:count]
-              found = partials.detect { |p, _| p.identifier.match(expected_partial) }
-              actual_count = found.nil? ? 0 : found.second
-              msg = build_message(message,
-                      "expecting ? to be rendered ? time(s) but rendered ? time(s)",
-                       expected_partial, expected_count, actual_count)
-              assert(actual_count == expected_count.to_i, msg)
-            else
-              msg = build_message(message,
-                      "expecting partial <?> but action rendered <?>",
-                      options[:partial], partials.keys)
-              assert(partials.keys.any? { |p| p.identifier.match(expected_partial) }, msg)
-            end
-          else
-            assert @controller.template.rendered[:partials].empty?,
-              "Expected no partials to be rendered"
-          end
-        end
-      end
-
       private
         # Proxy to to_param if the object will respond to it.
         def parameterize(value)
@@ -132,16 +80,21 @@ module ActionDispatch
         end
 
         def normalize_argument_to_redirection(fragment)
-          after_routing = @controller.url_for(fragment)
-          if after_routing =~ %r{^\w+://.*}
-            after_routing
-          else
-            # FIXME - this should probably get removed.
-            if after_routing.first != '/'
-              after_routing = '/' + after_routing
+          case fragment
+          when %r{^\w[\w\d+.-]*:.*}
+            fragment
+          when String
+            if fragment =~ %r{^\w[\w\d+.-]*:.*}
+              fragment
+            else
+              @request.protocol + @request.host_with_port + fragment
             end
-            @request.protocol + @request.host_with_port + after_routing
-          end
+          when :back
+            raise RedirectBackError unless refer = @request.headers["Referer"]
+            refer
+          else
+            @controller.url_for(fragment)
+          end.gsub(/[\r\n]/, '')
         end
 
         def validate_request!

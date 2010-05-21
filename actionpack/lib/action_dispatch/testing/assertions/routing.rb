@@ -1,4 +1,5 @@
 require 'active_support/core_ext/hash/diff'
+require 'active_support/core_ext/hash/indifferent_access'
 
 module ActionDispatch
   module Assertions
@@ -80,7 +81,7 @@ module ActionDispatch
         expected_path = "/#{expected_path}" unless expected_path[0] == ?/
         # Load routes.rb if it hasn't been loaded.
 
-        generated_path, extra_keys = ActionController::Routing::Routes.generate_extras(options, defaults)
+        generated_path, extra_keys = @routes.generate_extras(options, defaults)
         found_extras = options.reject {|k, v| ! extra_keys.include? k}
 
         msg = build_message(message, "found extras <?>, not <?>", found_extras, extras)
@@ -125,7 +126,7 @@ module ActionDispatch
       end
 
       # A helper to make it easier to test different route configurations.
-      # This method temporarily replaces ActionController::Routing::Routes
+      # This method temporarily replaces @routes
       # with a new RouteSet instance.
       #
       # The new instance is yielded to the passed block. Typically the block
@@ -142,22 +143,33 @@ module ActionDispatch
       #   end
       #
       def with_routing
-        real_routes = ActionController::Routing::Routes
-        ActionController::Routing.module_eval { remove_const :Routes }
+        old_routes, @routes = @routes, ActionDispatch::Routing::RouteSet.new
+        old_controller, @controller = @controller, @controller.clone if @controller
+        _routes = @routes
 
-        temporary_routes = ActionController::Routing::RouteSet.new
-        ActionController::Routing.module_eval { const_set :Routes, temporary_routes }
-
-        yield temporary_routes
-      ensure
-        if ActionController::Routing.const_defined? :Routes
-          ActionController::Routing.module_eval { remove_const :Routes }
+        # Unfortunately, there is currently an abstraction leak between AC::Base
+        # and AV::Base which requires having the URL helpers in both AC and AV.
+        # To do this safely at runtime for tests, we need to bump up the helper serial
+        # to that the old AV subclass isn't cached.
+        #
+        # TODO: Make this unnecessary
+        if @controller
+          @controller.singleton_class.send(:include, _routes.url_helpers)
+          @controller.view_context_class = Class.new(@controller.view_context_class) do
+            include _routes.url_helpers
+          end
         end
-        ActionController::Routing.const_set(:Routes, real_routes) if real_routes
+        yield @routes
+      ensure
+        @routes = old_routes
+        if @controller
+          @controller = old_controller
+        end
       end
 
+      # ROUTES TODO: These assertions should really work in an integration context
       def method_missing(selector, *args, &block)
-        if @controller && ActionController::Routing::Routes.named_routes.helpers.include?(selector)
+        if @controller && @routes && @routes.named_routes.helpers.include?(selector)
           @controller.send(selector, *args, &block)
         else
           super
@@ -174,7 +186,7 @@ module ActionDispatch
           request.env["REQUEST_METHOD"] = request_method.to_s.upcase if request_method
           request.path = path
 
-          params = ActionController::Routing::Routes.recognize_path(path, { :method => request.method })
+          params = @routes.recognize_path(path, { :method => request.method })
           request.path_parameters = params.with_indifferent_access
 
           request

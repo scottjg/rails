@@ -44,7 +44,7 @@ class ValidationsTest < ActiveRecord::TestCase
   def test_error_on_create
     r = WrongReply.new
     r.title = "Wrong Create"
-    assert !r.valid?
+    assert !r.save
     assert r.errors[:title].any?, "A reply with a bad title should mark that attribute as invalid"
     assert_equal ["is Wrong Create"], r.errors[:title], "A reply with a bad content should contain an error"
   end
@@ -60,6 +60,23 @@ class ValidationsTest < ActiveRecord::TestCase
 
     assert r.errors[:title].any?, "A reply with a bad title should mark that attribute as invalid"
     assert_equal ["is Wrong Update"], r.errors[:title], "A reply with a bad content should contain an error"
+  end
+
+  def test_error_on_given_context
+    r = WrongReply.new
+    assert !r.valid?(:special_case)
+    assert "Invalid", r.errors[:title].join
+
+    r.title = "secret"
+    r.content = "Good"
+    assert r.valid?(:special_case)
+
+    r.title = nil
+    assert !r.save(:context => :special_case)
+    assert "Invalid", r.errors[:title].join
+
+    r.title = "secret"
+    assert r.save(:context => :special_case)
   end
 
   def test_invalid_record_exception
@@ -135,12 +152,6 @@ class ValidationsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_create_without_validation_bang
-    count = WrongReply.count
-    assert_nothing_raised { WrongReply.new.save_without_validation! }
-    assert count+1, WrongReply.count
-  end
-
   def test_validates_acceptance_of_with_non_existant_table
     Object.const_set :IncorporealModel, Class.new(ActiveRecord::Base)
 
@@ -157,9 +168,9 @@ class ValidationsTest < ActiveRecord::TestCase
   end
 
   def test_validates_acceptance_of_as_database_column
-    Topic.validates_acceptance_of(:author_name)
-    topic = Topic.create("author_name" => "Dan Brown")
-    assert_equal "Dan Brown", topic["author_name"]
+    Topic.validates_acceptance_of(:approved)
+    topic = Topic.create("approved" => true)
+    assert topic["approved"]
   end
 
   def test_validate_is_deprecated_on_create

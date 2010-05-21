@@ -56,6 +56,16 @@ protected
   end
 end
 
+class AnotherMethodMissingController < ActionController::Base
+  cattr_accessor :_exception
+  rescue_from Exception, :with => :_exception=
+
+  protected
+  def method_missing(*attrs, &block)
+    super
+  end
+end
+
 class DefaultUrlOptionsController < ActionController::Base
   def from_view
     render :inline => "<%= #{params[:route]} %>"
@@ -64,6 +74,19 @@ class DefaultUrlOptionsController < ActionController::Base
   def default_url_options(options = nil)
     { :host => 'www.override.com', :action => 'new', :locale => 'en' }
   end
+end
+
+class UrlOptionsController < ActionController::Base
+  def from_view
+    render :inline => "<%= #{params[:route]} %>"
+  end
+
+  def url_options
+    super.merge(:host => 'www.override.com', :action => 'new', :locale => 'en')
+  end
+end
+
+class RecordIdentifierController < ActionController::Base
 end
 
 class ControllerClassTests < ActiveSupport::TestCase
@@ -92,6 +115,11 @@ class ControllerClassTests < ActiveSupport::TestCase
 
     assert_equal [:password], parameters
   end
+
+  def test_record_identifier
+    assert_respond_to RecordIdentifierController.new, :dom_id
+    assert_respond_to RecordIdentifierController.new, :dom_class
+  end
 end
 
 class ControllerInstanceTests < Test::Unit::TestCase
@@ -106,12 +134,21 @@ class ControllerInstanceTests < Test::Unit::TestCase
 
   def test_action_methods
     @empty_controllers.each do |c|
-      assert_equal Set.new, c.class.__send__(:action_methods), "#{c.controller_path} should be empty!"
+      assert_equal Set.new, c.class.action_methods, "#{c.controller_path} should be empty!"
     end
 
     @non_empty_controllers.each do |c|
-      assert_equal Set.new(%w(public_action)), c.class.__send__(:action_methods), "#{c.controller_path} should not be empty!"
+      assert_equal Set.new(%w(public_action)), c.class.action_methods, "#{c.controller_path} should not be empty!"
     end
+  end
+
+  def test_temporary_anonymous_controllers
+    name = 'ExamplesController'
+    klass = Class.new(ActionController::Base)
+    Object.const_set(name, klass)
+
+    controller = klass.new
+    assert_equal "examples", controller.controller_path
   end
 end
 
@@ -146,10 +183,52 @@ class PerformActionTest < ActionController::TestCase
     assert_equal 'method_missing', @response.body
   end
 
+  def test_method_missing_should_recieve_symbol
+    use_controller AnotherMethodMissingController
+    get :some_action
+    assert_kind_of NameError, @controller._exception
+  end
+
   def test_get_on_hidden_should_fail
     use_controller NonEmptyController
     assert_raise(ActionController::UnknownAction) { get :hidden_action }
     assert_raise(ActionController::UnknownAction) { get :another_hidden_action }
+  end
+end
+
+class UrlOptionsTest < ActionController::TestCase
+  tests UrlOptionsController
+
+  def setup
+    super
+    @request.host = 'www.example.com'
+    rescue_action_in_public!
+  end
+
+  def test_url_options_override
+    with_routing do |set|
+      set.draw do
+        match 'from_view', :to => 'url_options#from_view', :as => :from_view
+        match ':controller/:action'
+      end
+
+      get :from_view, :route => "from_view_url"
+
+      assert_equal 'http://www.override.com/from_view?locale=en', @response.body
+      assert_equal 'http://www.override.com/from_view?locale=en', @controller.send(:from_view_url)
+      assert_equal 'http://www.override.com/default_url_options/new?locale=en', @controller.url_for(:controller => 'default_url_options')
+    end
+  end 
+
+  def test_url_helpers_does_not_become_actions
+    with_routing do |set|
+      set.draw do
+        match "account/overview"
+      end
+
+      @controller.class.send(:include, set.url_helpers)
+      assert !@controller.class.action_methods.include?("account_overview_path")
+    end
   end
 end
 
@@ -162,9 +241,9 @@ class DefaultUrlOptionsTest < ActionController::TestCase
     rescue_action_in_public!
   end
 
-  def test_default_url_options_are_used_if_set
+  def test_default_url_options_override
     with_routing do |set|
-      set.draw do |map|
+      set.draw do
         match 'from_view', :to => 'default_url_options#from_view', :as => :from_view
         match ':controller/:action'
       end
@@ -179,7 +258,7 @@ class DefaultUrlOptionsTest < ActionController::TestCase
 
   def test_default_url_options_are_used_in_non_positional_parameters
     with_routing do |set|
-      set.draw do |map|
+      set.draw do
         scope("/:locale") do
           resources :descriptions
         end
@@ -219,12 +298,15 @@ class EmptyUrlOptionsTest < ActionController::TestCase
   end
 
   def test_named_routes_with_path_without_doing_a_request_first
+    @controller = EmptyController.new
+    @controller.request = @request
+
     with_routing do |set|
       set.draw do |map|
         resources :things
       end
 
-      assert_equal '/things', EmptyController.new.send(:things_path)
+      assert_equal '/things', @controller.send(:things_path)
     end
   end
 end

@@ -1,6 +1,40 @@
 require 'abstract_unit'
 require 'generators/generators_test_helper'
-require 'generators/rails/app/app_generator'
+require 'rails/generators/rails/app/app_generator'
+
+DEFAULT_APP_FILES = %w(
+  .gitignore
+  Gemfile
+  Rakefile
+  config.ru
+  app/controllers
+  app/helpers
+  app/models
+  app/views/layouts
+  config/environments
+  config/initializers
+  config/locales
+  db
+  doc
+  lib
+  lib/tasks
+  log
+  public/images
+  public/javascripts
+  public/stylesheets
+  script/rails
+  test/fixtures
+  test/functional
+  test/integration
+  test/performance
+  test/unit
+  vendor
+  vendor/plugins
+  tmp/sessions
+  tmp/sockets
+  tmp/cache
+  tmp/pids
+)
 
 class AppGeneratorTest < Rails::Generators::TestCase
   include GeneratorsTestHelper
@@ -9,6 +43,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def setup
     super
     Rails::Generators::AppGenerator.instance_variable_set('@desc', nil)
+    @bundle_command = File.basename(Thor::Util.ruby_command).sub(/ruby/, 'bundle')
   end
 
   def teardown
@@ -19,35 +54,29 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_application_skeleton_is_created
     run_generator
 
-    %w(
-      app/controllers
-      app/helpers
-      app/models
-      app/views/layouts
-      config/environments
-      config/initializers
-      config/locales
-      db
-      doc
-      lib
-      lib/tasks
-      log
-      public/images
-      public/javascripts
-      public/stylesheets
-      script/performance
-      test/fixtures
-      test/functional
-      test/integration
-      test/performance
-      test/unit
-      vendor
-      vendor/plugins
-      tmp/sessions
-      tmp/sockets
-      tmp/cache
-      tmp/pids
-    ).each{ |path| assert_file path }
+    DEFAULT_APP_FILES.each{ |path| assert_file path }
+  end
+
+  def test_application_controller_and_layout_files
+    run_generator
+    assert_file "app/controllers/application_controller.rb", /layout 'application'/
+    assert_file "app/views/layouts/application.html.erb", /stylesheet_link_tag :all/
+    assert_no_file "public/stylesheets/application.css"
+  end
+
+  def test_options_before_application_name_raises_an_error
+    content = capture(:stderr){ run_generator(["--skip-activerecord", destination_root]) }
+    assert_equal "Options should be given after the application name. For details run: rails --help\n", content
+  end
+
+  def test_name_collision_raises_an_error
+    reserved_words = %w[generate g console c server s dbconsole db
+                        application destroy benchmarker profiler
+                        plugin runner test]
+    reserved_words.each do |reserved|
+      content = capture(:stderr){ run_generator [File.join(destination_root, reserved)] }
+      assert_equal "Invalid application name #{reserved}. Please give a name which does not match one of the reserved rails words.\n", content      
+    end
   end
 
   def test_invalid_database_option_raises_an_error
@@ -58,6 +87,13 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_invalid_application_name_raises_an_error
     content = capture(:stderr){ run_generator [File.join(destination_root, "43-things")] }
     assert_equal "Invalid application name 43-things. Please give a name which does not start with numbers.\n", content
+  end
+
+  def test_application_name_raises_an_error_if_name_already_used_constant
+    %w{ String Hash Class Module Set Symbol }.each do |ruby_class|
+      content = capture(:stderr){ run_generator [File.join(destination_root, ruby_class)] }
+      assert_equal "Invalid application name #{ruby_class}, constant #{ruby_class} is already in use. Please choose another application name.\n", content
+    end
   end
 
   def test_invalid_application_name_is_fixed
@@ -74,6 +110,13 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_config_database_is_added_by_default
     run_generator
     assert_file "config/database.yml", /sqlite3/
+    assert_file "Gemfile", /^gem\s+["']sqlite3-ruby["'],\s+:require\s+=>\s+["']sqlite3["']$/
+  end
+
+  def test_config_another_database
+    run_generator([destination_root, "-d", "mysql"])
+    assert_file "config/database.yml", /mysql/
+    assert_file "Gemfile", /^gem\s+["']mysql["']$/
   end
 
   def test_config_database_is_not_added_if_skip_activerecord_is_given
@@ -83,7 +126,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_activerecord_is_removed_from_frameworks_if_skip_activerecord_is_given
     run_generator [destination_root, "--skip-activerecord"]
-    assert_file "config/boot.rb", /# require "active_record\/railtie"/
+    assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
   end
 
   def test_prototype_and_test_unit_are_added_by_default
@@ -95,37 +138,18 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_prototype_and_test_unit_are_skipped_if_required
     run_generator [destination_root, "--skip-prototype", "--skip-testunit"]
     assert_no_file "public/javascripts/prototype.js"
+    assert_file "public/javascripts"
     assert_no_file "test"
   end
 
-  def test_shebang_is_added_to_files
+  def test_shebang_is_added_to_rails_file
     run_generator [destination_root, "--ruby", "foo/bar/baz"]
-
-    %w(
-      about
-      console
-      dbconsole
-      destroy
-      generate
-      plugin
-      runner
-      server
-    ).each { |path| assert_file "script/#{path}", /#!foo\/bar\/baz/ }
+    assert_file "script/rails", /#!foo\/bar\/baz/
   end
 
   def test_shebang_when_is_the_same_as_default_use_env
     run_generator [destination_root, "--ruby", Thor::Util.ruby_command]
-
-    %w(
-      about
-      console
-      dbconsole
-      destroy
-      generate
-      plugin
-      runner
-      server
-    ).each { |path| assert_file "script/#{path}", /#!\/usr\/bin\/env/ }
+    assert_file "script/rails", /#!\/usr\/bin\/env/
   end
 
   def test_template_from_dir_pwd
@@ -144,7 +168,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
     template = %{ say "It works!" }
     template.instance_eval "def read; self; end" # Make the string respond to read
 
-    generator([destination_root], :template => path).expects(:open).with(path).returns(template)
+    generator([destination_root], :template => path).expects(:open).with(path, 'Accept' => 'application/x-thor-template').returns(template)
     assert_match /It works!/, silence(:stdout){ generator.invoke }
   end
 
@@ -168,24 +192,86 @@ class AppGeneratorTest < Rails::Generators::TestCase
   end
 
   def test_dev_option
-    generator([destination_root], :dev => true).expects(:run).with("gem bundle")
+    generator([destination_root], :dev => true).expects(:run).with("#{@bundle_command} install")
     silence(:stdout){ generator.invoke }
     rails_path = File.expand_path('../../..', Rails.root)
-    dev_gem = %(directory #{rails_path.inspect}, :glob => "{*/,}*.gemspec")
-    assert_file 'Gemfile', /^#{Regexp.escape(dev_gem)}$/
+    assert_file 'Gemfile', /^gem\s+["']rails["'],\s+:path\s+=>\s+["']#{Regexp.escape(rails_path)}["']$/
   end
 
   def test_edge_option
-    generator([destination_root], :edge => true).expects(:run).with("gem bundle")
+    generator([destination_root], :edge => true).expects(:run).with("#{@bundle_command} install")
     silence(:stdout){ generator.invoke }
-    edge_gem = %(gem "rails", :git => "git://github.com/rails/rails.git")
-    assert_file 'Gemfile', /^#{Regexp.escape(edge_gem)}$/
+    assert_file 'Gemfile', /^gem\s+["']rails["'],\s+:git\s+=>\s+["']#{Regexp.escape("git://github.com/rails/rails.git")}["']$/
   end
 
-  protected
+protected
 
-    def action(*args, &block)
-      silence(:stdout){ generator.send(*args, &block) }
-    end
+  def action(*args, &block)
+    silence(:stdout){ generator.send(*args, &block) }
+  end
 
+end
+
+class CustomAppGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  tests Rails::Generators::AppGenerator
+
+  arguments [destination_root]
+
+  def setup
+    super
+    Rails::Generators::AppGenerator.instance_variable_set('@desc', nil)
+    @bundle_command = File.basename(Thor::Util.ruby_command).sub(/ruby/, 'bundle')
+  end
+
+  def teardown
+    super
+    Rails::Generators::AppGenerator.instance_variable_set('@desc', nil)
+    Object.class_eval { remove_const :AppBuilder if const_defined?(:AppBuilder) }
+  end
+
+  def test_builder_option_with_empty_app_builder
+    FileUtils.cd(Rails.root)
+    run_generator([destination_root, "-b", "#{Rails.root}/lib/empty_builder.rb"])
+    DEFAULT_APP_FILES.each{ |path| assert_no_file path }
+  end
+
+  def test_builder_option_with_simple_app_builder
+    FileUtils.cd(Rails.root)
+    run_generator([destination_root, "-b", "#{Rails.root}/lib/simple_builder.rb"])
+    (DEFAULT_APP_FILES - ['config.ru']).each{ |path| assert_no_file path }
+    assert_file "config.ru", %[run proc { |env| [200, { "Content-Type" => "text/html" }, ["Hello World"]] }]
+  end
+
+  def test_builder_option_with_relative_path
+    here = File.expand_path(File.dirname(__FILE__))
+    FileUtils.cd(here)
+    run_generator([destination_root, "-b", "../fixtures/lib/simple_builder.rb"])
+    (DEFAULT_APP_FILES - ['config.ru']).each{ |path| assert_no_file path }
+    assert_file "config.ru", %[run proc { |env| [200, { "Content-Type" => "text/html" }, ["Hello World"]] }]
+  end
+
+  def test_builder_option_with_tweak_app_builder
+    FileUtils.cd(Rails.root)
+    run_generator([destination_root, "-b", "#{Rails.root}/lib/tweak_builder.rb"])
+    DEFAULT_APP_FILES.each{ |path| assert_file path }
+    assert_file "config.ru", %[run proc { |env| [200, { "Content-Type" => "text/html" }, ["Hello World"]] }]
+  end
+
+  def test_builder_option_with_http
+    path = "http://gist.github.com/103208.txt"
+    template = "class AppBuilder; end"
+    template.instance_eval "def read; self; end" # Make the string respond to read
+
+    generator([destination_root], :builder => path).expects(:open).with(path, 'Accept' => 'application/x-thor-template').returns(template)
+    capture(:stdout) { generator.invoke }
+
+    DEFAULT_APP_FILES.each{ |path| assert_no_file path }
+  end
+
+protected
+
+  def action(*args, &block)
+    silence(:stdout){ generator.send(*args, &block) }
+  end
 end

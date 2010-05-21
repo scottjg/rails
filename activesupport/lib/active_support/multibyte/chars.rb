@@ -19,7 +19,7 @@ module ActiveSupport #:nodoc:
     #   bad.explicit_checking_method "T".mb_chars.downcase.to_s
     #
     # The default Chars implementation assumes that the encoding of the string is UTF-8, if you want to handle different
-    # encodings you can write your own multibyte string handler and configure it through 
+    # encodings you can write your own multibyte string handler and configure it through
     # ActiveSupport::Multibyte.proxy_class.
     #
     #   class CharsForUTF32
@@ -72,10 +72,8 @@ module ActiveSupport #:nodoc:
       def self.codepoints_to_pattern(array_of_codepoints) #:nodoc:
         array_of_codepoints.collect{ |e| [e].pack 'U*' }.join('|')
       end
-      UNICODE_TRAILERS_PAT = /(#{codepoints_to_pattern(UNICODE_LEADERS_AND_TRAILERS)})+\Z/
-      UNICODE_LEADERS_PAT = /\A(#{codepoints_to_pattern(UNICODE_LEADERS_AND_TRAILERS)})+/
-
-      UTF8_PAT = ActiveSupport::Multibyte::VALID_CHARACTER['UTF-8']
+      UNICODE_TRAILERS_PAT = /(#{codepoints_to_pattern(UNICODE_LEADERS_AND_TRAILERS)})+\Z/u
+      UNICODE_LEADERS_PAT = /\A(#{codepoints_to_pattern(UNICODE_LEADERS_AND_TRAILERS)})+/u
 
       attr_reader :wrapped_string
       alias to_s wrapped_string
@@ -409,25 +407,11 @@ module ActiveSupport #:nodoc:
       # Returns the KC normalization of the string by default. NFKC is considered the best normalization form for
       # passing strings to databases and validations.
       #
-      # * <tt>str</tt> - The string to perform normalization on.
       # * <tt>form</tt> - The form you want to normalize in. Should be one of the following:
       #   <tt>:c</tt>, <tt>:kc</tt>, <tt>:d</tt>, or <tt>:kd</tt>. Default is
       #   ActiveSupport::Multibyte.default_normalization_form
       def normalize(form=ActiveSupport::Multibyte.default_normalization_form)
-        # See http://www.unicode.org/reports/tr15, Table 1
-        codepoints = self.class.u_unpack(@wrapped_string)
-        chars(case form
-          when :d
-            self.class.reorder_characters(self.class.decompose_codepoints(:canonical, codepoints))
-          when :c
-            self.class.compose_codepoints(self.class.reorder_characters(self.class.decompose_codepoints(:canonical, codepoints)))
-          when :kd
-            self.class.reorder_characters(self.class.decompose_codepoints(:compatability, codepoints))
-          when :kc
-            self.class.compose_codepoints(self.class.reorder_characters(self.class.decompose_codepoints(:compatability, codepoints)))
-          else
-            raise ArgumentError, "#{form} is not a valid normalization variant", caller
-        end.pack('U*'))
+        chars(self.class.normalize(@wrapped_string, form))
       end
 
       # Performs canonical decomposition on all the characters.
@@ -458,8 +442,10 @@ module ActiveSupport #:nodoc:
       end
 
       # Replaces all ISO-8859-1 or CP1252 characters by their UTF-8 equivalent resulting in a valid UTF-8 string.
-      def tidy_bytes
-        chars(self.class.tidy_bytes(@wrapped_string))
+      #
+      # Passing +true+ will forcibly tidy all bytes, assuming that the string's encoding is entirely CP1252 or ISO-8859-1.
+      def tidy_bytes(force = false)
+        chars(self.class.tidy_bytes(@wrapped_string, force))
       end
 
       %w(lstrip rstrip strip reverse upcase downcase tidy_bytes capitalize).each do |method|
@@ -528,7 +514,7 @@ module ActiveSupport #:nodoc:
               unpacked << codepoints[marker..pos-1]
               marker = pos
             end
-          end 
+          end
           unpacked
         end
 
@@ -644,33 +630,105 @@ module ActiveSupport #:nodoc:
           codepoints
         end
 
-        # Replaces all ISO-8859-1 or CP1252 characters by their UTF-8 equivalent resulting in a valid UTF-8 string.
-        def tidy_bytes(string)
-          string.split(//u).map do |c|
-            c.force_encoding(Encoding::ASCII) if c.respond_to?(:force_encoding)
-
-            if !ActiveSupport::Multibyte::VALID_CHARACTER['UTF-8'].match(c)
-              n = c.unpack('C')[0]
-              n < 128 ? n.chr :
-              n < 160 ? [UCD.cp1252[n] || n].pack('U') :
-              n < 192 ? "\xC2" + n.chr : "\xC3" + (n-64).chr
-            else
-              c
-            end
-          end.join
+        def tidy_byte(byte)
+          if byte < 160
+            [UCD.cp1252[byte] || byte].pack("U").unpack("C*")
+          elsif byte < 192
+            [194, byte]
+          else
+            [195, byte - 64]
+          end
         end
+        private :tidy_byte
+
+        # Replaces all ISO-8859-1 or CP1252 characters by their UTF-8 equivalent resulting in a valid UTF-8 string.
+        #
+        # Passing +true+ will forcibly tidy all bytes, assuming that the string's encoding is entirely CP1252 or ISO-8859-1.
+        def tidy_bytes(string, force = false)
+          if force
+            return string.unpack("C*").map do |b|
+              tidy_byte(b)
+            end.flatten.compact.pack("C*").unpack("U*").pack("U*")
+          end
+
+          bytes = string.unpack("C*")
+          conts_expected = 0
+          last_lead = 0
+
+          bytes.each_index do |i|
+
+            byte          = bytes[i]
+            is_ascii      = byte < 128
+            is_cont       = byte > 127 && byte < 192
+            is_lead       = byte > 191 && byte < 245
+            is_unused     = byte > 240
+            is_restricted = byte > 244
+
+            # Impossible or highly unlikely byte? Clean it.
+            if is_unused || is_restricted
+              bytes[i] = tidy_byte(byte)
+            elsif is_cont
+              # Not expecting contination byte? Clean up. Otherwise, now expect one less.
+              conts_expected == 0 ? bytes[i] = tidy_byte(byte) : conts_expected -= 1
+            else
+              if conts_expected > 0
+                # Expected continuation, but got ASCII or leading? Clean backwards up to
+                # the leading byte.
+                (1..(i - last_lead)).each {|j| bytes[i - j] = tidy_byte(bytes[i - j])}
+                conts_expected = 0
+              end
+              if is_lead
+                # Final byte is leading? Clean it.
+                if i == bytes.length - 1
+                  bytes[i] = tidy_byte(bytes.last)
+                else
+                  # Valid leading byte? Expect continuations determined by position of
+                  # first zero bit, with max of 3.
+                  conts_expected = byte < 224 ? 1 : byte < 240 ? 2 : 3
+                  last_lead = i
+                end
+              end
+            end
+          end
+          bytes.empty? ? "" : bytes.flatten.compact.pack("C*").unpack("U*").pack("U*")
+        end
+
+        # Returns the KC normalization of the string by default. NFKC is considered the best normalization form for
+        # passing strings to databases and validations.
+        #
+        # * <tt>string</tt> - The string to perform normalization on.
+        # * <tt>form</tt> - The form you want to normalize in. Should be one of the following:
+        #   <tt>:c</tt>, <tt>:kc</tt>, <tt>:d</tt>, or <tt>:kd</tt>. Default is
+        #   ActiveSupport::Multibyte.default_normalization_form
+        def normalize(string, form=ActiveSupport::Multibyte.default_normalization_form)
+          # See http://www.unicode.org/reports/tr15, Table 1
+          codepoints = u_unpack(string)
+          case form
+            when :d
+              reorder_characters(decompose_codepoints(:canonical, codepoints))
+            when :c
+              compose_codepoints(reorder_characters(decompose_codepoints(:canonical, codepoints)))
+            when :kd
+              reorder_characters(decompose_codepoints(:compatability, codepoints))
+            when :kc
+              compose_codepoints(reorder_characters(decompose_codepoints(:compatability, codepoints)))
+            else
+              raise ArgumentError, "#{form} is not a valid normalization variant", caller
+          end.pack('U*')
+        end
+
       end
 
       protected
-        
+
         def translate_offset(byte_offset) #:nodoc:
           return nil if byte_offset.nil?
           return 0   if @wrapped_string == ''
-          
+
           if @wrapped_string.respond_to?(:force_encoding)
             @wrapped_string = @wrapped_string.dup.force_encoding(Encoding::ASCII_8BIT)
           end
-          
+
           begin
             @wrapped_string[0...byte_offset].unpack('U*').length
           rescue ArgumentError => e

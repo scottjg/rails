@@ -2,7 +2,7 @@
 # For instance, you can figure out the name of a database from the name of a class.
 #
 #   "ScaleScore".tableize # => "scale_scores"
-
+#
 class String
   # Returns the plural form of the word in the string.
   #
