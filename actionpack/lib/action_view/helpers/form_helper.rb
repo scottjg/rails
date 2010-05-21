@@ -283,6 +283,7 @@ module ActionView
       # FormTagHelper#form_tag.
       def form_for(record_or_name_or_array, *args, &proc)
         raise ArgumentError, "Missing block" unless block_given?
+
         options = args.extract_options!
 
         case record_or_name_or_array
@@ -530,14 +531,38 @@ module ActionView
       end
 
       # Returns a label tag tailored for labelling an input field for a specified attribute (identified by +method+) on an object
-      # assigned to the template (identified by +object+). The text of label will default to the attribute name unless you specify
-      # it explicitly. Additional options on the label tag can be passed as a hash with +options+. These options will be tagged
+      # assigned to the template (identified by +object+). The text of label will default to the attribute name unless a translation
+      # is found in the current I18n locale (through helpers.label.<modelname>.<attribute>) or you specify it explicitly.
+      # Additional options on the label tag can be passed as a hash with +options+. These options will be tagged
       # onto the HTML as an HTML element attribute as in the example shown, except for the <tt>:value</tt> option, which is designed to
       # target labels for radio_button tags (where the value is used in the ID of the input tag).
       #
       # ==== Examples
       #   label(:post, :title)
       #   # => <label for="post_title">Title</label>
+      #
+      #   You can localize your labels based on model and attribute names.
+      #   For example you can define the following in your locale (e.g. en.yml)
+      #
+      #   helpers:
+      #     label:
+      #       post:
+      #         body: "Write your entire text here"
+      #
+      #   Which then will result in
+      #
+      #   label(:post, :body)
+      #   # => <label for="post_body">Write your entire text here</label>
+      #
+      #   Localization can also be based purely on the translation of the attribute-name like this:
+      #
+      #   activemodel:
+      #     attribute:
+      #       post:
+      #         cost: "Total cost"
+      #
+      #   label(:post, :cost)
+      #   # => <label for="post_cost">Total cost</label>
       #
       #   label(:post, :title, "A short title")
       #   # => <label for="post_title">A short title</label>
@@ -871,7 +896,7 @@ module ActionView
         if field_type == "hidden"
           options.delete("size")
         end
-        options["type"] = field_type
+        options["type"]  ||= field_type
         options["value"] ||= value_before_type_cast(object) unless field_type == "file"
         options["value"] &&= html_escape(options["value"])
         add_default_name_and_id(options)
@@ -923,7 +948,12 @@ module ActionView
           checked = self.class.check_box_checked?(value(object), checked_value)
         end
         options["checked"] = "checked" if checked
-        add_default_name_and_id(options)
+        if options["multiple"]
+          add_default_name_and_id_for_value(checked_value, options)
+          options.delete("multiple")
+        else
+          add_default_name_and_id(options)
+        end
         hidden = tag("input", "name" => options["name"], "type" => "hidden", "value" => options['disabled'] && checked ? checked_value : unchecked_value)
         checkbox = tag("input", options)
         (hidden + checkbox).html_safe
@@ -1177,6 +1207,10 @@ module ActionView
         @template.submit_tag(value, options.reverse_merge(:id => "#{object_name}_submit"))
       end
 
+      def emitted_hidden_id?
+        @emitted_hidden_id
+      end
+
       private
         def objectify_options(options)
           @default_options.merge(options.merge(:object => @object))
@@ -1234,6 +1268,7 @@ module ActionView
           if object.persisted?
             @template.fields_for(name, object, options) do |builder|
               block.call(builder)
+              @template.concat builder.hidden_field(:id) unless builder.emitted_hidden_id?
             end
           else
             @template.fields_for(name, object, options, &block)
