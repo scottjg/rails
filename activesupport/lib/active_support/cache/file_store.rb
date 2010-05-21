@@ -155,7 +155,7 @@ module ActiveSupport
         # Translate a file path into a key.
         def file_path_key(path)
           fname = path[cache_path.size, path.size].split(File::SEPARATOR, 4).last
-          fname.gsub(UNESCAPE_FILENAME_CHARS){|match| $1.ord.to_s(16)}
+          fname.gsub(UNESCAPE_FILENAME_CHARS){|match| URI.decode(match)}
         end
 
         # Delete empty directories in the cache.
