@@ -21,6 +21,7 @@ class Class # :nodoc:
       EOS
     end
   end
+  alias class_inheritable_reader_dmg class_inheritable_reader
 
   def class_inheritable_writer(*syms)
     options = syms.extract_options!
@@ -74,17 +75,17 @@ class Class # :nodoc:
   end
 
   def class_inheritable_accessor(*syms)
-    class_inheritable_reader(*syms)
+    class_inheritable_reader_dmg(*syms)
     class_inheritable_writer(*syms)
   end
 
   def class_inheritable_array(*syms)
-    class_inheritable_reader(*syms)
+    class_inheritable_reader_dmg(*syms)
     class_inheritable_array_writer(*syms)
   end
 
   def class_inheritable_hash(*syms)
-    class_inheritable_reader(*syms)
+    class_inheritable_reader_dmg(*syms)
     class_inheritable_hash_writer(*syms)
   end
 
