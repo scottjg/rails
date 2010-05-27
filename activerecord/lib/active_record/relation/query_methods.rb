@@ -128,7 +128,7 @@ module ActiveRecord
       join_dependency.join_associations.each do |association|
         if (association_relation = association.relation).is_a?(Array)
           to_join << [association_relation.first, association.join_class, association.association_join.first]
-          to_join << [association_relation.last, association.join_class, association.association_join.last]
+          to_join << [association_relation.last, association.join_class, association.association_join[1..-1]]
         else
           to_join << [association_relation, association.join_class, association.association_join]
         end

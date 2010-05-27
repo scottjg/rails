@@ -350,6 +350,14 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal comments(:more_greetings), Author.find(authors(:david).id, :include => :comments_with_order_and_conditions).comments_with_order_and_conditions.first
   end
 
+  def test_eager_join_with_has_many_through_join_model_with_conditions_on_top_level
+    id = authors(:david).id
+    author = assert_queries(2) { Author.eager_load(:comments_with_order_and_conditions).find(id) }
+    comments = assert_no_queries { author.comments_with_order_and_conditions.to_ary }
+    assert_equal 2, assert_no_queries { comments.size }
+    assert_equal comments(:more_greetings), assert_no_queries { comments.sort_by(&:body)[0] }
+  end
+
   def test_eager_with_has_many_through_join_model_with_include
     author_comments = Author.find(authors(:david).id, :include => :comments_with_include).comments_with_include.to_a
     assert_no_queries do
