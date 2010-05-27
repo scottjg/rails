@@ -433,22 +433,22 @@ class RelationTest < ActiveRecord::TestCase
   def test_count
     posts = Post.scoped
 
-    assert_equal 7, posts.count
-    assert_equal 7, posts.count(:all)
-    assert_equal 7, posts.count(:id)
+    assert_equal 8, posts.count
+    assert_equal 8, posts.count(:all)
+    assert_equal 8, posts.count(:id)
 
     assert_equal 1, posts.where('comments_count > 1').count
-    assert_equal 5, posts.where(:comments_count => 0).count
+    assert_equal 6, posts.where(:comments_count => 0).count
   end
 
   def test_count_with_distinct
     posts = Post.scoped
 
     assert_equal 3, posts.count(:comments_count, :distinct => true)
-    assert_equal 7, posts.count(:comments_count, :distinct => false)
+    assert_equal 8, posts.count(:comments_count, :distinct => false)
 
     assert_equal 3, posts.select(:comments_count).count(:distinct => true)
-    assert_equal 7, posts.select(:comments_count).count(:distinct => false)
+    assert_equal 8, posts.select(:comments_count).count(:distinct => false)
   end
 
   def test_count_explicit_columns
@@ -458,7 +458,7 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal [0], posts.select('comments_count').where('id is not null').group('id').order('id').count.values.uniq
     assert_equal 0, posts.where('id is not null').select('comments_count').count
 
-    assert_equal 7, posts.select('comments_count').count('id')
+    assert_equal 8, posts.select('comments_count').count('id')
     assert_equal 0, posts.select('comments_count').count
     assert_equal 0, posts.count(:comments_count)
     assert_equal 0, posts.count('comments_count')
@@ -467,12 +467,12 @@ class RelationTest < ActiveRecord::TestCase
   def test_size
     posts = Post.scoped
 
-    assert_queries(1) { assert_equal 7, posts.size }
+    assert_queries(1) { assert_equal 8, posts.size }
     assert ! posts.loaded?
 
     best_posts = posts.where(:comments_count => 0)
     best_posts.to_a # force load
-    assert_no_queries { assert_equal 5, best_posts.size }
+    assert_no_queries { assert_equal 6, best_posts.size }
   end
 
   def test_count_complex_chained_relations

@@ -177,9 +177,9 @@ class FinderTest < ActiveRecord::TestCase
     second_three_posts = Post.find :all, :order => ' author_id,id ', :limit => 3, :offset => 3
     last_posts = Post.find :all, :order => ' author_id, id  ', :limit => 3, :offset => 6
 
-    assert_equal [[0,3],[1,1],[1,2]], first_three_posts.map { |p| [p.author_id, p.id] }
-    assert_equal [[1,4],[1,5],[1,6]], second_three_posts.map { |p| [p.author_id, p.id] }
-    assert_equal [[2,7]], last_posts.map { |p| [p.author_id, p.id] }
+    assert_equal [[0,3],[0,8],[1,1]], first_three_posts.map { |p| [p.author_id, p.id] }
+    assert_equal [[1,2],[1,4],[1,5]], second_three_posts.map { |p| [p.author_id, p.id] }
+    assert_equal [[1,6],[2,7]], last_posts.map { |p| [p.author_id, p.id] }
   end
 
 

@@ -143,7 +143,7 @@ class NamedScopeTest < ActiveRecord::TestCase
   end
 
   def test_named_scope_with_STI
-    assert_equal 3,Post.containing_the_letter_a.count
+    assert_equal 4,Post.containing_the_letter_a.count
     assert_equal 1,SpecialPost.containing_the_letter_a.count
   end
 

@@ -50,3 +50,10 @@ eager_other:
   title: eager loading with OR'd conditions
   body: hello
   type: Post
+
+alt_post:
+  id: 8
+  author_id: 0
+  title: No author
+  body: I just appeared one day
+  type: Post

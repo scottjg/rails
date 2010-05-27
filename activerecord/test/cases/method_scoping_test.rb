@@ -546,12 +546,12 @@ class HasManyScopingTest< ActiveRecord::TestCase
   end
 
   def test_forwarding_to_scoped
-    assert_equal 4, Comment.search_by_type('Comment').size
+    assert_equal 5, Comment.search_by_type('Comment').size
     assert_equal 2, @welcome.comments.search_by_type('Comment').size
   end
 
   def test_forwarding_to_dynamic_finders
-    assert_equal 4, Comment.find_all_by_type('Comment').size
+    assert_equal 5, Comment.find_all_by_type('Comment').size
     assert_equal 2, @welcome.comments.find_all_by_type('Comment').size
   end
 

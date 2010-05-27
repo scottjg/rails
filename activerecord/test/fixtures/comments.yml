@@ -57,3 +57,9 @@ eager_other_comment1:
   post_id: 7
   body: go crazy
   type: SpecialComment
+
+alt_thank_you:
+  id: 12
+  post_id: 8
+  body: Thank you for the post
+  type: Comment

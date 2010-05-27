@@ -53,7 +53,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
 
   def test_with_ordering
     list = Post.find(:all, :include => :comments, :order => "posts.id DESC")
-    [:eager_other, :sti_habtm, :sti_post_and_comments, :sti_comments,
+    [:alt_post, :eager_other, :sti_habtm, :sti_post_and_comments, :sti_comments,
      :authorless, :thinking, :welcome
     ].each_with_index do |post, index|
       assert_equal posts(post), list[index]
@@ -174,7 +174,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
 
   def test_eager_association_loading_with_belongs_to
     comments = Comment.find(:all, :include => :post)
-    assert_equal 10, comments.length
+    assert_equal 11, comments.length
     titles = comments.map { |c| c.post.title }
     assert titles.include?(posts(:welcome).title)
     assert titles.include?(posts(:sti_post_and_comments).title)
@@ -720,21 +720,21 @@ class EagerAssociationTest < ActiveRecord::TestCase
     posts = assert_queries(2) do
       Post.find(:all, :joins => :comments, :include => :author, :order => 'comments.id DESC')
     end
-    assert_equal posts(:eager_other), posts[0]
-    assert_equal authors(:mary), assert_no_queries { posts[0].author}
+    assert_equal posts(:eager_other), posts[1]
+    assert_equal authors(:mary), assert_no_queries { posts[1].author}
   end
 
   def test_eager_loading_with_conditions_on_joined_table_preloads
     posts = assert_queries(2) do
       Post.find(:all, :select => 'distinct posts.*', :include => :author, :joins => [:comments], :conditions => "comments.body like 'Thank you%'", :order => 'posts.id')
     end
-    assert_equal [posts(:welcome)], posts
+    assert_equal posts(:welcome, :alt_post), posts
     assert_equal authors(:david), assert_no_queries { posts[0].author}
 
     posts = assert_queries(2) do
       Post.find(:all, :select => 'distinct posts.*', :include => :author, :joins => [:comments], :conditions => "comments.body like 'Thank you%'", :order => 'posts.id')
     end
-    assert_equal [posts(:welcome)], posts
+    assert_equal posts(:welcome, :alt_post), posts
     assert_equal authors(:david), assert_no_queries { posts[0].author}
 
     posts = assert_queries(2) do
@@ -753,13 +753,13 @@ class EagerAssociationTest < ActiveRecord::TestCase
     posts = assert_queries(2) do
       Post.find(:all, :select => 'distinct posts.*', :include => :author, :joins => "INNER JOIN comments on comments.post_id = posts.id", :conditions => "comments.body like 'Thank you%'", :order => 'posts.id')
     end
-    assert_equal [posts(:welcome)], posts
+    assert_equal posts(:welcome, :alt_post), posts
     assert_equal authors(:david), assert_no_queries { posts[0].author}
 
     posts = assert_queries(2) do
       Post.find(:all, :select => 'distinct posts.*', :include => :author, :joins => ["INNER JOIN comments on comments.post_id = posts.id"], :conditions => "comments.body like 'Thank you%'", :order => 'posts.id')
     end
-    assert_equal [posts(:welcome)], posts
+    assert_equal posts(:welcome, :alt_post), posts
     assert_equal authors(:david), assert_no_queries { posts[0].author}
 
   end
