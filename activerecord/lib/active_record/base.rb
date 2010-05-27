@@ -1071,7 +1071,7 @@ module ActiveRecord #:nodoc:
         def attribute_condition(quoted_column_name, argument)
           case argument
             when nil   then "#{quoted_column_name} IS ?"
-            when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::NamedScope::Scope then "#{quoted_column_name} IN (?)"
+            when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::Relation then "#{quoted_column_name} IN (?)"
             when Range then if argument.exclude_end?
                               "#{quoted_column_name} >= ? AND #{quoted_column_name} < ?"
                             else
