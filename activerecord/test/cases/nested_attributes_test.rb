@@ -1,11 +1,14 @@
 require "cases/helper"
 require "models/pirate"
 require "models/ship"
+require "models/ship_part"
 require "models/bird"
 require "models/parrot"
 require "models/treasure"
 require "models/man"
 require "models/interest"
+require "models/owner"
+require "models/pet"
 
 module AssertRaiseWithMessage
   def assert_raise_with_message(expected_exception, expected_message)
@@ -33,9 +36,28 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
   end
 
   def test_should_add_a_proc_to_nested_attributes_options
+    assert_equal ActiveRecord::NestedAttributes::ClassMethods::REJECT_ALL_BLANK_PROC,
+                 Pirate.nested_attributes_options[:birds_with_reject_all_blank][:reject_if]
+    
     [:parrots, :birds].each do |name|
       assert_instance_of Proc, Pirate.nested_attributes_options[name][:reject_if]
     end
+  end
+
+  def test_should_not_build_a_new_record_if_reject_all_blank_returns_false
+    pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+    pirate.birds_with_reject_all_blank_attributes = [{:name => '', :color => ''}]
+    pirate.save!
+
+    assert pirate.birds_with_reject_all_blank.empty?
+  end
+
+  def test_should_build_a_new_record_if_reject_all_blank_does_not_return_false
+    pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+    pirate.birds_with_reject_all_blank_attributes = [{:name => 'Tweetie', :color => ''}]
+    pirate.save!
+
+    assert_equal 1, pirate.birds_with_reject_all_blank.count
   end
 
   def test_should_raise_an_ArgumentError_for_non_existing_associations
@@ -60,12 +82,6 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
     assert !ship._destroy
     ship.mark_for_destruction
     assert ship._destroy
-  end
-
-  def test_underscore_delete_is_deprecated
-    ActiveSupport::Deprecation.expects(:warn)
-    ship = Ship.create!(:name => 'Nights Dirty Lightning')
-    ship._delete
   end
 
   def test_reject_if_method_without_arguments
@@ -157,6 +173,12 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
 
     assert_equal @ship, @pirate.ship
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
+  end
+
+  def test_should_raise_RecordNotFound_if_an_id_is_given_but_doesnt_return_a_record
+    assert_raise_with_message ActiveRecord::RecordNotFound, "Couldn't find Ship with ID=1234567890 for Pirate with ID=#{@pirate.id}" do
+      @pirate.ship_attributes = { :id => 1234567890 }
+    end
   end
 
   def test_should_take_a_hash_with_string_keys_and_update_the_associated_model
@@ -252,6 +274,8 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
 end
 
 class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
+  include AssertRaiseWithMessage
+
   def setup
     @ship = Ship.new(:name => 'Nights Dirty Lightning')
     @pirate = @ship.build_pirate(:catchphrase => 'Aye')
@@ -304,6 +328,12 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
 
     assert_equal @pirate, @ship.pirate
     assert_equal 'Arr', @ship.pirate.catchphrase
+  end
+
+  def test_should_raise_RecordNotFound_if_an_id_is_given_but_doesnt_return_a_record
+    assert_raise_with_message ActiveRecord::RecordNotFound, "Couldn't find Pirate with ID=1234567890 for Ship with ID=#{@ship.id}" do
+      @ship.pirate_attributes = { :id => 1234567890 }
+    end
   end
 
   def test_should_take_a_hash_with_string_keys_and_update_the_associated_model
@@ -367,10 +397,6 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     assert Ship.reflect_on_association(:pirate).options[:autosave]
   end
 
-  def test_should_accept_update_only_option
-    @ship.update_attribute(:update_only_pirate_attributes, { :id => @pirate.ship.id, :catchphrase => 'Arr' })
-  end
-
   def test_should_create_new_model_when_nothing_is_there_and_update_only_is_true
     @pirate.delete
     assert_difference('Pirate.count', 1) do
@@ -429,6 +455,16 @@ module NestedAttributesOnACollectionAssociationTests
     assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
   end
 
+  def test_should_not_load_association_when_updating_existing_records
+    @pirate.reload
+    @pirate.send(association_setter, [{ :id => @child_1.id, :name => 'Grace OMalley' }])
+    assert ! @pirate.send(@association_name).loaded?
+
+    @pirate.save
+    assert ! @pirate.send(@association_name).loaded?
+    assert_equal 'Grace OMalley', @child_1.reload.name
+  end
+
   def test_should_take_a_hash_with_composite_id_keys_and_assign_the_attributes_to_the_associated_models
     @child_1.stubs(:id).returns('ABC1X')
     @child_2.stubs(:id).returns('ABC2X')
@@ -441,6 +477,12 @@ module NestedAttributesOnACollectionAssociationTests
     }
 
     assert_equal ['Grace OMalley', 'Privateers Greed'], [@child_1.name, @child_2.name]
+  end
+
+  def test_should_raise_RecordNotFound_if_an_id_is_given_but_doesnt_return_a_record
+    assert_raise_with_message ActiveRecord::RecordNotFound, "Couldn't find #{@child_1.class.name} with ID=1234567890 for Pirate with ID=#{@pirate.id}" do
+      @pirate.attributes = { association_getter => [{ :id => 1234567890 }] }
+    end
   end
 
   def test_should_automatically_build_new_associated_models_for_each_entry_in_a_hash_where_the_id_is_missing
@@ -477,7 +519,7 @@ module NestedAttributesOnACollectionAssociationTests
 
   def test_should_ignore_new_associated_records_if_a_reject_if_proc_returns_false
     @alternate_params[association_getter]['baz'] = {}
-    assert_no_difference("@pirate.send(@association_name).length") do
+    assert_no_difference("@pirate.send(@association_name).count") do
       @pirate.attributes = @alternate_params
     end
   end
@@ -548,7 +590,7 @@ module NestedAttributesOnACollectionAssociationTests
     assert Pirate.reflect_on_association(@association_name).options[:autosave]
   end
 
-  def test_validate_presence_of_parent__works_with_inverse_of
+  def test_validate_presence_of_parent_works_with_inverse_of
     Man.accepts_nested_attributes_for(:interests)
     assert_equal :man, Man.reflect_on_association(:interests).options[:inverse_of]
     assert_equal :interests, Interest.reflect_on_association(:man).options[:inverse_of]
@@ -565,7 +607,7 @@ module NestedAttributesOnACollectionAssociationTests
     end
   end
 
-  def test_validate_presence_of_parent__fails_without_inverse_of
+  def test_validate_presence_of_parent_fails_without_inverse_of
     Man.accepts_nested_attributes_for(:interests)
     Man.reflect_on_association(:interests).options.delete(:inverse_of)
     Interest.reflect_on_association(:man).options.delete(:inverse_of)
@@ -665,5 +707,107 @@ class TestNestedAttributesLimit < ActiveRecord::TestCase
                                                       'bar' => { :name => 'Blown Away' },
                                                       'car' => { :name => 'The Happening' }} }
     end
+  end
+end
+
+class TestNestedAttributesWithNonStandardPrimaryKeys < ActiveRecord::TestCase
+  fixtures :owners, :pets
+
+  def setup
+    Owner.accepts_nested_attributes_for :pets
+
+    @owner = owners(:ashley)
+    @pet1, @pet2 = pets(:chew), pets(:mochi)
+
+    @params = {
+      :pets_attributes => {
+        '0' => { :id => @pet1.id, :name => 'Foo' },
+        '1' => { :id => @pet2.id, :name => 'Bar' }
+      }
+    }
+  end
+
+  def test_should_update_existing_records_with_non_standard_primary_key
+    @owner.update_attributes(@params)
+    assert_equal ['Foo', 'Bar'], @owner.pets.map(&:name)
+  end
+end
+
+class TestHasOneAutosaveAssoictaionWhichItselfHasAutosaveAssociations < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @pirate = Pirate.create!(:catchphrase => "My baby takes tha mornin' train!")
+    @ship = @pirate.create_ship(:name => "The good ship Dollypop")
+    @part = @ship.parts.create!(:name => "Mast")
+    @trinket = @part.trinkets.create!(:name => "Necklace")
+  end
+  
+  test "when great-grandchild changed in memory, saving parent should save great-grandchild" do
+    @trinket.name = "changed"
+    @pirate.save
+    assert_equal "changed", @trinket.reload.name
+  end
+  
+  test "when great-grandchild changed via attributes, saving parent should save great-grandchild" do
+    @pirate.attributes = {:ship_attributes => {:id => @ship.id, :parts_attributes => [{:id => @part.id, :trinkets_attributes => [{:id => @trinket.id, :name => "changed"}]}]}}
+    @pirate.save
+    assert_equal "changed", @trinket.reload.name
+  end
+  
+  test "when great-grandchild marked_for_destruction via attributes, saving parent should destroy great-grandchild" do
+    @pirate.attributes = {:ship_attributes => {:id => @ship.id, :parts_attributes => [{:id => @part.id, :trinkets_attributes => [{:id => @trinket.id, :_destroy => true}]}]}}
+    assert_difference('@part.trinkets.count', -1) { @pirate.save }
+  end
+  
+  test "when great-grandchild added via attributes, saving parent should create great-grandchild" do
+    @pirate.attributes = {:ship_attributes => {:id => @ship.id, :parts_attributes => [{:id => @part.id, :trinkets_attributes => [{:name => "created"}]}]}}
+    assert_difference('@part.trinkets.count', 1) { @pirate.save }
+  end
+  
+  test "when extra records exist for associations, validate (which calls nested_records_changed_for_autosave?) should not load them up" do
+    @trinket.name = "changed"
+    Ship.create!(:pirate => @pirate, :name => "The Black Rock")
+    ShipPart.create!(:ship => @ship, :name => "Stern")
+    assert_no_queries { @pirate.valid? }
+  end
+end
+
+class TestHasManyAutosaveAssoictaionWhichItselfHasAutosaveAssociations < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  def setup
+    @ship = Ship.create!(:name => "The good ship Dollypop")
+    @part = @ship.parts.create!(:name => "Mast")
+    @trinket = @part.trinkets.create!(:name => "Necklace")
+  end
+  
+  test "when grandchild changed in memory, saving parent should save grandchild" do
+    @trinket.name = "changed"
+    @ship.save
+    assert_equal "changed", @trinket.reload.name
+  end
+  
+  test "when grandchild changed via attributes, saving parent should save grandchild" do
+    @ship.attributes = {:parts_attributes => [{:id => @part.id, :trinkets_attributes => [{:id => @trinket.id, :name => "changed"}]}]}
+    @ship.save
+    assert_equal "changed", @trinket.reload.name
+  end
+  
+  test "when grandchild marked_for_destruction via attributes, saving parent should destroy grandchild" do
+    @ship.attributes = {:parts_attributes => [{:id => @part.id, :trinkets_attributes => [{:id => @trinket.id, :_destroy => true}]}]}
+    assert_difference('@part.trinkets.count', -1) { @ship.save }
+  end
+  
+  test "when grandchild added via attributes, saving parent should create grandchild" do
+    @ship.attributes = {:parts_attributes => [{:id => @part.id, :trinkets_attributes => [{:name => "created"}]}]}
+    assert_difference('@part.trinkets.count', 1) { @ship.save }
+  end
+  
+  test "when extra records exist for associations, validate (which calls nested_records_changed_for_autosave?) should not load them up" do
+    @trinket.name = "changed"
+    Ship.create!(:name => "The Black Rock")
+    ShipPart.create!(:ship => @ship, :name => "Stern")
+    assert_no_queries { @ship.valid? }
   end
 end

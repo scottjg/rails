@@ -461,6 +461,9 @@ module ActiveRecord #:nodoc:
     # Accessor for the name of the prefix string to prepend to every table name. So if set to "basecamp_", all
     # table names will be named like "basecamp_projects", "basecamp_people", etc. This is a convenient way of creating a namespace
     # for tables in a shared database. By default, the prefix is the empty string.
+    #
+    # If you are organising your models within modules you can add a prefix to the models within a namespace by defining
+    # a singleton method in the parent module called table_name_prefix which returns your chosen prefix.
     cattr_accessor :table_name_prefix, :instance_writer => false
     @@table_name_prefix = ""
 
@@ -1171,7 +1174,7 @@ module ActiveRecord #:nodoc:
               contained = contained.singularize if parent.pluralize_table_names
               contained << '_'
             end
-            name = "#{table_name_prefix}#{contained}#{undecorated_table_name(base.name)}#{table_name_suffix}"
+            name = "#{full_table_name_prefix}#{contained}#{undecorated_table_name(base.name)}#{table_name_suffix}"
           end
 
         set_table_name(name)
@@ -1199,6 +1202,10 @@ module ActiveRecord #:nodoc:
             key = base_name.to_s.foreign_key
         end
         key
+      end
+
+      def full_table_name_prefix #:nodoc:
+        (parents.detect{ |p| p.respond_to?(:table_name_prefix) } || self).table_name_prefix
       end
 
       # Defines the column name for use with single table inheritance
@@ -1880,7 +1887,7 @@ module ActiveRecord #:nodoc:
               #     find(:first, options.merge(finder_options))
               #   end
               # end
-              self.class_eval %{
+              self.class_eval <<-EOS, __FILE__, __LINE__ + 1
                 def self.#{method_id}(*args)
                   options = args.extract_options!
                   attributes = construct_attributes_from_arguments(
@@ -1900,7 +1907,7 @@ module ActiveRecord #:nodoc:
                   end
                   #{'result || raise(RecordNotFound, "Couldn\'t find #{name} with #{attributes.to_a.collect {|pair| "#{pair.first} = #{pair.second}"}.join(\', \')}")' if bang}
                 end
-              }, __FILE__, __LINE__
+              EOS
               send(method_id, *arguments)
             elsif match.instantiator?
               instantiator = match.instantiator
@@ -1929,17 +1936,19 @@ module ActiveRecord #:nodoc:
               #     record
               #   end
               # end
-              self.class_eval %{
+              self.class_eval <<-EOS, __FILE__, __LINE__ + 1
                 def self.#{method_id}(*args)
-                  guard_protected_attributes = false
-
-                  if args[0].is_a?(Hash)
-                    guard_protected_attributes = true
-                    attributes = args[0].with_indifferent_access
-                    find_attributes = attributes.slice(*[:#{attribute_names.join(',:')}])
-                  else
-                    find_attributes = attributes = construct_attributes_from_arguments([:#{attribute_names.join(',:')}], args)
+                  attributes = [:#{attribute_names.join(',:')}]
+                  protected_attributes_for_create, unprotected_attributes_for_create = {}, {}
+                  args.each_with_index do |arg, i|
+                    if arg.is_a?(Hash)
+                      protected_attributes_for_create = args[i].with_indifferent_access
+                    else
+                      unprotected_attributes_for_create[attributes[i]] = args[i]
+                    end
                   end
+
+                  find_attributes = (protected_attributes_for_create.merge(unprotected_attributes_for_create)).slice(*attributes)
 
                   options = { :conditions => find_attributes }
                   set_readonly_option!(options)
@@ -1947,7 +1956,10 @@ module ActiveRecord #:nodoc:
                   record = find(:first, options)
 
                   if record.nil?
-                    record = self.new { |r| r.send(:attributes=, attributes, guard_protected_attributes) }
+                    record = self.new do |r|
+                      r.send(:attributes=, protected_attributes_for_create, true) unless protected_attributes_for_create.empty?
+                      r.send(:attributes=, unprotected_attributes_for_create, false) unless unprotected_attributes_for_create.empty?
+                    end
                     #{'yield(record) if block_given?'}
                     #{'record.save' if instantiator == :create}
                     record
@@ -1955,14 +1967,14 @@ module ActiveRecord #:nodoc:
                     record
                   end
                 end
-              }, __FILE__, __LINE__
+              EOS
               send(method_id, *arguments, &block)
             end
           elsif match = DynamicScopeMatch.match(method_id)
             attribute_names = match.attribute_names
             super unless all_attributes_exists?(attribute_names)
             if match.scope?
-              self.class_eval %{
+              self.class_eval <<-EOS, __FILE__, __LINE__ + 1
                 def self.#{method_id}(*args)                        # def self.scoped_by_user_name_and_password(*args)
                   options = args.extract_options!                   #   options = args.extract_options!
                   attributes = construct_attributes_from_arguments( #   attributes = construct_attributes_from_arguments(
@@ -1971,7 +1983,7 @@ module ActiveRecord #:nodoc:
                                                                     # 
                   scoped(:conditions => attributes)                 #   scoped(:conditions => attributes)
                 end                                                 # end
-              }, __FILE__, __LINE__
+              EOS
               send(method_id, *arguments)
             end
           else
@@ -2213,9 +2225,9 @@ module ActiveRecord #:nodoc:
           modularized_name = compute_module ? type_name_with_module(type_name) : type_name
           silence_warnings do
             begin
-              class_eval(modularized_name, __FILE__, __LINE__)
+              class_eval(modularized_name, __FILE__)
             rescue NameError
-              class_eval(type_name, __FILE__, __LINE__)
+              class_eval(type_name, __FILE__)
             end
           end
         end
@@ -2456,7 +2468,7 @@ module ActiveRecord #:nodoc:
         @new_record = true
         ensure_proper_type
         self.attributes = attributes unless attributes.nil?
-        self.class.send(:scope, :create).each { |att,value| self.send("#{att}=", value) } if self.class.send(:scoped?, :create)
+        assign_attributes(self.class.send(:scope, :create)) if self.class.send(:scoped?, :create)
         result = yield self if block_given?
         callback(:after_initialize) if respond_to_without_attributes?(:after_initialize)
         result
@@ -2713,7 +2725,7 @@ module ActiveRecord #:nodoc:
       def reload(options = nil)
         clear_aggregation_cache
         clear_association_cache
-        @attributes.update(self.class.find(self.id, options).instance_variable_get('@attributes'))
+        @attributes.update(self.class.send(:with_exclusive_scope) { self.class.find(self.id, options) }.instance_variable_get('@attributes'))
         @attributes_cache = {}
         self
       end
@@ -2756,26 +2768,15 @@ module ActiveRecord #:nodoc:
         attributes = new_attributes.dup
         attributes.stringify_keys!
 
-        multi_parameter_attributes = []
         attributes = remove_attributes_protected_from_mass_assignment(attributes) if guard_protected_attributes
-
-        attributes.each do |k, v|
-          if k.include?("(")
-            multi_parameter_attributes << [ k, v ]
-          else
-            respond_to?(:"#{k}=") ? send(:"#{k}=", v) : raise(UnknownAttributeError, "unknown attribute: #{k}")
-          end
-        end
-
-        assign_multiparameter_attributes(multi_parameter_attributes)
+        assign_attributes(attributes) if attributes and attributes.any?
       end
 
       # Returns a hash of all the attributes with their names as keys and the values of the attributes as values.
       def attributes
-        self.attribute_names.inject({}) do |attrs, name|
-          attrs[name] = read_attribute(name)
-          attrs
-        end
+        attrs = {}
+        attribute_names.each { |name| attrs[name] = read_attribute(name) }
+        attrs
       end
 
       # Returns a hash of attributes before typecasting and deserialization.
@@ -2889,6 +2890,23 @@ module ActiveRecord #:nodoc:
       end
 
     private
+      # Assigns attributes, dealing nicely with both multi and single paramater attributes
+      # Assumes attributes is a hash
+
+      def assign_attributes(attributes={})
+        multiparameter_attributes = []
+        
+        attributes.each do |k, v|
+          if k.to_s.include?("(")
+            multiparameter_attributes << [ k, v ]
+          else
+            respond_to?(:"#{k}=") ? send(:"#{k}=", v) : raise(UnknownAttributeError, "unknown attribute: #{k}")
+          end
+        end
+
+        assign_multiparameter_attributes(multiparameter_attributes) unless  multiparameter_attributes.empty?        
+      end
+    
       def create_or_update
         raise ReadOnlyRecord if readonly?
         result = new_record? ? create : update
@@ -3119,7 +3137,7 @@ module ActiveRecord #:nodoc:
 
       # Returns a comma-separated pair list, like "key1 = val1, key2 = val2".
       def comma_pair_list(hash)
-        hash.inject([]) { |list, pair| list << "#{pair.first} = #{pair.last}" }.join(", ")
+        hash.map { |k,v| "#{k} = #{v}" }.join(", ")
       end
 
       def quoted_column_names(attributes = attributes_with_quotes)
