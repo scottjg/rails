@@ -327,7 +327,7 @@ module ActionController
           cookies = cookies.to_s.split("\n") unless cookies.is_a?(Array)
           cookies.each do |cookie|
             name, value = cookie.match(/^([^=]*)=([^;]*);/)[1,2]
-            @cookies[name.strip] = value
+            @cookies[name] = value
           end
 
           @body = ""

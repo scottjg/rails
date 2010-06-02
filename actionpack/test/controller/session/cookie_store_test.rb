@@ -25,12 +25,6 @@ class CookieStoreTest < ActionController::IntegrationTest
       session[:foo] = "bar"
       render :text => Rack::Utils.escape(Verifier.generate(session.to_hash))
     end
-    
-    def set_session_value_and_cookie
-      cookies["foo"] = "bar"
-      session[:foo] = "bar"
-      render :text => Rack::Utils.escape(Verifier.generate(session.to_hash))
-    end
 
     def get_session_value
       render :text => "foo: #{session[:foo].inspect}"
@@ -104,14 +98,6 @@ class CookieStoreTest < ActionController::IntegrationTest
       assert_response :success
       assert_equal "_myapp_session=#{response.body}; path=/; HttpOnly",
         headers['Set-Cookie']
-   end
-  end
-
-  def test_setting_session_value_and_cookie
-    with_test_route_set do
-      get '/set_session_value_and_cookie'
-      assert_response :success
-      assert_equal({"_myapp_session" => response.body, "foo" => "bar"}, cookies)
    end
   end
 
