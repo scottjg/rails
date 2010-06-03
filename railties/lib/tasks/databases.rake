@@ -105,9 +105,21 @@ namespace :db do
     end
   end
 
+  def rems_select_db
+    ActiveRecord::Base.hijack_connection(:master)
+    if ENV["ls_db"]
+      dbm = Rems::DbManager.instance
+      dbm.load_config $rails_config, ENV["RAILS_ENV"]
+      ls_db = dbm.ls_db ENV["ls_db"].to_i
+      raise "Can't find ls_db" unless ls_db
+      ActiveRecord::Base.hijack_connection(ls_db)
+      ActiveRecord::Migration.master_db = false unless ENV["ls_db"].to_i==0
+    end
+  end
 
   desc "Migrate the database through scripts in db/migrate and update db/schema.rb by invoking db:schema:dump. Target specific version with VERSION=x. Turn off output with VERBOSE=false."
   task :migrate => :environment do
+    rems_select_db
     ActiveRecord::Migration.verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
     ActiveRecord::Migrator.migrate("db/migrate/", ENV["VERSION"] ? ENV["VERSION"].to_i : nil)
     Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
@@ -116,6 +128,7 @@ namespace :db do
   namespace :migrate do
     desc  'Rollbacks the database one migration and re migrate up. If you want to rollback more than one step, define STEP=x. Target specific version with VERSION=x.'
     task :redo => :environment do
+      rems_select_db
       if ENV["VERSION"]
         Rake::Task["db:migrate:down"].invoke
         Rake::Task["db:migrate:up"].invoke
@@ -132,6 +145,7 @@ namespace :db do
     task :up => :environment do
       version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
       raise "VERSION is required" unless version
+      rems_select_db
       ActiveRecord::Migrator.run(:up, "db/migrate/", version)
       Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
     end
@@ -140,6 +154,7 @@ namespace :db do
     task :down => :environment do
       version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
       raise "VERSION is required" unless version
+      rems_select_db
       ActiveRecord::Migrator.run(:down, "db/migrate/", version)
       Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
     end
