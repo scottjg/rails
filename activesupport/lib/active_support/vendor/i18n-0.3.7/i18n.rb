@@ -229,13 +229,14 @@ module I18n
     # values.
     def translate(*args)
       options = args.pop if args.last.is_a?(Hash)
+      org_options = options ? options.dup : {}
       key     = args.shift
       locale  = options && options.delete(:locale) || config.locale
       raises  = options && options.delete(:raise)
       config.backend.translate(locale, key, options || {})
     rescue I18n::ArgumentError => exception
       raise exception if raises
-      handle_exception(exception, locale, key, options)
+      handle_exception(exception, locale, key, org_options)
     end
     alias :t :translate
 
