@@ -1,8 +1,8 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = "activesupport"
-  s.version = "2.3.4"
-  s.date = "2009-09-01"
+  s.version = "2.3.8"
+  s.date = "2010-06-03"
   s.summary = "Support and utility classes used by the Rails framework."
   s.description = %q{Utility library which carries commonly used classes and goodies from the Rails framework}
  
