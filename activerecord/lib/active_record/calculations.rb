@@ -88,7 +88,7 @@ module ActiveRecord
       # Options such as <tt>:conditions</tt>, <tt>:order</tt>, <tt>:group</tt>, <tt>:having</tt>, and <tt>:joins</tt> can be passed to customize the query.
       #
       # There are two basic forms of output:
-      #   * Single aggregate value: The single value is type cast to Fixnum for COUNT, Float for AVG, and the given column's type for everything else.
+      #   * Single aggregate value: The single value is type cast to Integer for COUNT, Float for AVG, and the given column's type for everything else.
       #   * Grouped values: This returns an ordered hash of the values and groups them by the <tt>:group</tt> option.  It takes either a column name, or the name
       #     of a belongs_to association.
       #
@@ -298,7 +298,12 @@ module ActiveRecord
             case operation.to_s.downcase
             when 'count' then value.to_i
             when 'sum'   then type_cast_using_column(value || '0', column)
-            when 'avg' then value.try(:to_d)
+# Rails 2.3.5
+#            when 'avg'   then value && (value.is_a?(Fixnum) ? value.to_f : value).to_d
+# Rails 2.3.10
+#            when 'avg' then value.try(:to_d)
+# New Relic
+            when 'avg'   then value && (value.is_a?(Integer) ? value.to_f : value).to_d
             else type_cast_using_column(value, column)
             end
           else
