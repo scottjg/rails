@@ -911,6 +911,24 @@ module ActiveRecord
         !self.class.uses_transaction?(method_name)
     end
 
+    def blow_away_tables
+      ActiveRecord::Base.connection.disable_referential_integrity do
+        ActiveRecord::Base.connection.tables.each do |table|
+          if table != 'schema_migrations'
+            ActiveRecord::Base.connection.execute "delete from #{table}"
+          end
+        end
+
+        ActiveRecord::Base.connection.execute "delete from schema_migrations where version='clean_fixtures'"
+      end
+
+      Fixtures.reset_cache
+      @@already_loaded_fixtures[self.class] = nil
+
+      true
+    end
+
+
     def setup_fixtures
       return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
 
@@ -921,8 +939,13 @@ module ActiveRecord
       @fixture_cache = {}
       @@already_loaded_fixtures ||= {}
 
+      # Blow away once at the start of all tests
+      @@blow_away_tables ||= blow_away_tables
+
       # Load fixtures once and begin transaction.
       if run_in_transaction?
+        blow_away_tables unless ActiveRecord::Base.connection.select_value("select count(*) from schema_migrations where version='clean_fixtures'") == "0"
+
         if @@already_loaded_fixtures[self.class]
           @loaded_fixtures = @@already_loaded_fixtures[self.class]
         else
@@ -932,6 +955,8 @@ module ActiveRecord
         ActiveRecord::Base.connection.increment_open_transactions
         ActiveRecord::Base.connection.transaction_joinable = false
         ActiveRecord::Base.connection.begin_db_transaction
+
+        ActiveRecord::Base.connection.execute "insert into schema_migrations (version) values ('clean_fixtures')"
       # Load fixtures for every test.
       else
         Fixtures.reset_cache
