@@ -358,6 +358,64 @@ class FormTagHelperTest < ActionView::TestCase
     )
   end
 
+  def test_image_button_to_with_straight_url
+    assert_dom_equal "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input type=\"image\" src=\"/images/hello.png\" /></div></form>", image_button_to("hello.png", "http://www.example.com")
+  end
+
+  def test_image_button_to_with_query
+    assert_dom_equal "<form method=\"post\" action=\"http://www.example.com/q1=v1&amp;q2=v2\" class=\"image_button_to\"><div><input type=\"image\" src=\"/images/hello.png\" /></div></form>", image_button_to("hello.png", "http://www.example.com/q1=v1&q2=v2")
+  end
+
+  def test_image_button_to_with_escaped_query
+    assert_dom_equal "<form method=\"post\" action=\"http://www.example.com/q1=v1&amp;q2=v2\" class=\"image_button_to\"><div><input type=\"image\" src=\"/images/hello.png\" /></div></form>", image_button_to("hello.png", "http://www.example.com/q1=v1&amp;q2=v2")
+  end
+
+  def test_image_button_to_with_javascript_confirm
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input data-confirm=\"Are you sure?\" type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :confirm => "Are you sure?")
+    )
+  end
+
+  def test_image_button_to_with_remote_and_javascript_confirm
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\" data-remote=\"true\"><div><input data-confirm=\"Are you sure?\" type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :remote => true, :confirm => "Are you sure?")
+    )
+  end
+
+  def test_image_button_to_with_remote_false
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :remote => false)
+    )
+  end
+
+  def test_image_button_to_enabled_disabled
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :disabled => false)
+    )
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input disabled=\"disabled\" type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :disabled => true)
+    )
+  end
+
+  def test_image_button_to_with_method_delete
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input type=\"hidden\" name=\"_method\" value=\"delete\" /><input type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :method => :delete)
+    )
+  end
+
+  def test_image_button_to_with_method_get
+    assert_dom_equal(
+      "<form method=\"get\" action=\"http://www.example.com\" class=\"image_button_to\"><div><input type=\"image\" src=\"/images/hello.png\" /></div></form>",
+      image_button_to("hello.png", "http://www.example.com", :method => :get)
+    )
+  end
+
   def test_search_field_tag
     expected = %{<input id="query" name="query" type="search" />}
     assert_dom_equal(expected, search_field_tag("query"))

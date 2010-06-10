@@ -122,6 +122,43 @@ module ActionView
         tag(:input, html_options.merge(:type => 'button', :value => name, :onclick => onclick))
       end
 
+      # Returns an image button for the given +source+ that'll trigger a
+      # JavaScript +function+ using the onclick handler.
+      #
+      # The first argument +source+ is the filename of the button as treated by
+      # +image_submit_tag+, that is, passed to AssetTagHelper#image_path.
+      #
+      # The next arguments are optional and may include the javascript function
+      # definition and a hash of html_options.
+      #
+      # The +function+ argument can be omitted in favor of an +update_page+ block,
+      # which evaluates to a string when the template is rendered (instead of
+      # making an Ajax request first).
+      #
+      # The +html_options+ will accept a hash of html attributes for the link tag.
+      # Some examples are :class => "nav_button", :id => "articles_nav_button"
+      #
+      # Note: if you choose to specify the javascript function in a block, but
+      # would like to pass html_options, set the +function+ parameter to nil
+      #
+      # Examples:
+      #   button_to_function "greeting.png", "alert('Hello world!')"
+      #   button_to_function "delete.png", "if (confirm('Really?')) do_delete()"
+      #   button_to_function "details.png" do |page|
+      #     page[:details].visual_effect :toggle_slide
+      #   end
+      #   button_to_function "details.png", :class => "details_button" do |page|
+      #     page[:details].visual_effect :toggle_slide
+      #   end
+      def image_button_to_function(source, *args, &block)
+        html_options = args.extract_options!.symbolize_keys
+
+        function = block_given? ? update_page(&block) : args[0] || ''
+        onclick = "#{"#{html_options[:onclick]}; " if html_options[:onclick]}#{function};"
+
+        image_submit_tag(source, html_options.merge({:onclick => onclick}))
+      end
+
       # Returns a link of the given +name+ that will trigger a JavaScript +function+ using the
       # onclick handler and return false after the fact.
       #

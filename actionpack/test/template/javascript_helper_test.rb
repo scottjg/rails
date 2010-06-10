@@ -14,6 +14,7 @@ class JavaScriptHelperTest < ActionView::TestCase
 
   def setup
     super
+    @controller = BasicController.new
     ActiveSupport.escape_html_entities_in_json  = true
     @template = self
   end
@@ -58,6 +59,35 @@ class JavaScriptHelperTest < ActionView::TestCase
   def test_button_to_function_without_function
     assert_dom_equal "<input onclick=\";\" type=\"button\" value=\"Greeting\" />",
       button_to_function("Greeting")
+  end
+
+  def test_image_button_to_function
+    assert_dom_equal %(<input type="image" onclick="alert('Hello world!');" src="/images/greeting.png" />),
+      image_button_to_function("greeting.png", "alert('Hello world!')")
+  end
+
+  def test_image_button_to_function_with_rjs_block
+    html = image_button_to_function( "greeting.png" ) do |page|
+      page.replace_html 'header', "<h1>Greetings</h1>"
+    end
+    assert_dom_equal %(<input type="image" onclick="Element.update(&quot;header&quot;, &quot;\\u003Ch1\\u003EGreetings\\u003C/h1\\u003E&quot;);;" src="/images/greeting.png" />), html
+  end
+
+  def test_image_button_to_function_with_rjs_block_and_options
+    html = image_button_to_function( "greeting.png", :class => "greeter" ) do |page|
+      page.replace_html 'header', "<h1>Greetings</h1>"
+    end
+    assert_dom_equal %(<input type="image" class="greeter" onclick="Element.update(&quot;header&quot;, &quot;\\u003Ch1\\u003EGreetings\\u003C\/h1\\u003E&quot;);;" src="/images/greeting.png" />), html
+  end
+
+  def test_image_button_to_function_with_onclick
+    assert_dom_equal "<input onclick=\"alert('Goodbye World :('); alert('Hello world!');\" type=\"image\" src=\"/images/greeting.png\" />",
+      image_button_to_function("greeting.png", "alert('Hello world!')", :onclick => "alert('Goodbye World :(')")
+  end
+
+  def test_image_button_to_function_without_function
+    assert_dom_equal "<input onclick=\";\" type=\"image\" src=\"/images/greeting.png\" />",
+      image_button_to_function("greeting.png")
   end
 
   def test_link_to_function
