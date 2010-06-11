@@ -17,7 +17,7 @@ This guide is designed for beginners who want to get started with a Rails applic
 
 * The "Ruby":http://www.ruby-lang.org/en/downloads language version 1.8.7 or higher
 
-TIP: Note that Ruby 1.8.7 p248 and p249 has marshaling bugs that crash Rails 3.0.0. Ruby 1.9.1 outright segfaults on Rails 3.0.0, so if you want to use Rails 3 with 1.9.x, jump on 1.9.2 trunk for smooth sailing.
+TIP: Note that Ruby 1.8.7 p248 and p249 has marshaling bugs that crash Rails 3.0. Ruby Enterprise Edition have these fixed since release 1.8.7-2010.02 though. On the 1.9 front, Ruby 1.9.1 is not usable because it outright segfaults on Rails 3.0, so if you want to use Rails 3 with 1.9.x jump on 1.9.2 for smooth sailing.
 
 * The "RubyGems":http://rubyforge.org/frs/?group_id=126 packaging system
 * A working installation of the "SQLite3 Database":http://www.sqlite.org
@@ -160,7 +160,7 @@ The best way to use this guide is to follow each step as it happens, no code or 
 To begin, open a terminal, navigate to a folder where you have rights to create files, and type:
 
 <shell>
-$ rails blog
+$ rails new blog
 </shell>
 
 This will create a Rails application called Blog in a directory called blog.
@@ -1342,7 +1342,7 @@ We also add a <tt>@post.tags.build</tt> at the top of this form, this is to make
 Now create the folder <tt>app/views/tags</tt> and make a file in there called <tt>_form.html.erb</tt> which contains the form for the tag:
 
 <erb>
-<% form.fields_for :tags do |tag_form| %>
+<%= form.fields_for :tags do |tag_form| %>
   <div class="field">
     <%= tag_form.label :name, 'Tag:' %>
     <%= tag_form.text_field :name %>

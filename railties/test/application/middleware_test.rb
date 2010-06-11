@@ -1,4 +1,5 @@
 require 'isolation/abstract_unit'
+require 'stringio'
 
 module ApplicationTests
   class MiddlewareTest < Test::Unit::TestCase
@@ -57,6 +58,12 @@ module ApplicationTests
       assert !middleware.include?("ActionDispatch::Static")
     end
 
+    test "can delete a middleware from the stack" do
+      add_to_config "config.middleware.delete ActionDispatch::Static"
+      boot!
+      assert !middleware.include?("ActionDispatch::Static")
+    end
+
     test "removes show exceptions if action_dispatch.show_exceptions is disabled" do
       add_to_config "config.action_dispatch.show_exceptions = false"
       boot!
@@ -80,12 +87,6 @@ module ApplicationTests
       add_to_config "config.middleware.insert_before ActionDispatch::Static, Rack::Config"
       boot!
       assert_equal "Rack::Config", middleware.first
-    end
-
-    test "shows cascade if any metal exists" do
-      app_file "app/metal/foo.rb", "class Foo; end"
-      boot!
-      assert middleware.include?("ActionDispatch::Cascade")
     end
 
     # x_sendfile_header middleware
@@ -163,6 +164,25 @@ module ApplicationTests
       assert_equal "1.1.1.1", remote_ip("REMOTE_ADDR" => "4.2.42.42,1.1.1.1")
     end
 
+    test "show exceptions middleware filter backtrace before logging" do
+      my_middleware = Struct.new(:app) do
+        def call(env)
+          raise "Failure"
+        end
+      end
+
+      make_basic_app do |app|
+        app.config.middleware.use my_middleware
+      end
+
+      stringio = StringIO.new
+      Rails.logger = Logger.new(stringio)
+
+      env = Rack::MockRequest.env_for("/")
+      Rails.application.call(env)
+      assert_no_match(/action_dispatch/, stringio.string)
+    end
+
     private
 
       def boot!
@@ -170,7 +190,7 @@ module ApplicationTests
       end
 
       def middleware
-        AppTemplate::Application.middleware.active.map(&:klass).map(&:name)
+        AppTemplate::Application.middleware.map(&:klass).map(&:name)
       end
 
       def remote_ip(env = {})

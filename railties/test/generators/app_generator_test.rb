@@ -59,7 +59,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_application_controller_and_layout_files
     run_generator
-    assert_file "app/controllers/application_controller.rb", /layout 'application'/
     assert_file "app/views/layouts/application.html.erb", /stylesheet_link_tag :all/
     assert_no_file "public/stylesheets/application.css"
   end
@@ -70,9 +69,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   end
 
   def test_name_collision_raises_an_error
-    reserved_words = %w[generate g console c server s dbconsole db
-                        application destroy benchmarker profiler
-                        plugin runner test]
+    reserved_words = %w[application destroy plugin runner test]
     reserved_words.each do |reserved|
       content = capture(:stderr){ run_generator [File.join(destination_root, reserved)] }
       assert_equal "Invalid application name #{reserved}. Please give a name which does not match one of the reserved rails words.\n", content      

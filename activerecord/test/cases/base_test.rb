@@ -430,14 +430,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_preserving_date_objects
-    if current_adapter?(:SybaseAdapter, :OracleAdapter)
+    if current_adapter?(:SybaseAdapter)
       # Sybase ctlib does not (yet?) support the date type; use datetime instead.
-      # Oracle treats all dates/times as Time.
       assert_kind_of(
         Time, Topic.find(1).last_read,
         "The last_read attribute should be of the Time class"
       )
     else
+      # Oracle enhanced adapter allows to define Date attributes in model class (see topic.rb)
       assert_kind_of(
         Date, Topic.find(1).last_read,
         "The last_read attribute should be of the Date class"
@@ -706,55 +706,6 @@ class BasicsTest < ActiveRecord::TestCase
   def test_boolean_attributes
     assert ! Topic.find(1).approved?
     assert Topic.find(2).approved?
-  end
-
-  def test_increment_counter
-    Topic.increment_counter("replies_count", 1)
-    assert_equal 2, Topic.find(1).replies_count
-
-    Topic.increment_counter("replies_count", 1)
-    assert_equal 3, Topic.find(1).replies_count
-  end
-
-  def test_decrement_counter
-    Topic.decrement_counter("replies_count", 2)
-    assert_equal(-1, Topic.find(2).replies_count)
-
-    Topic.decrement_counter("replies_count", 2)
-    assert_equal(-2, Topic.find(2).replies_count)
-  end
-
-  def test_reset_counters
-    assert_equal 1, Topic.find(1).replies_count
-
-    Topic.increment_counter("replies_count", 1)
-    assert_equal 2, Topic.find(1).replies_count
-
-    Topic.reset_counters(1, :replies)
-    assert_equal 1, Topic.find(1).replies_count
-  end
-
-  def test_update_counter
-    category = categories(:general)
-    assert_nil category.categorizations_count
-    assert_equal 2, category.categorizations.count
-
-    Category.update_counters(category.id, "categorizations_count" => category.categorizations.count)
-    category.reload
-    assert_not_nil category.categorizations_count
-    assert_equal 2, category.categorizations_count
-
-    Category.update_counters(category.id, "categorizations_count" => category.categorizations.count)
-    category.reload
-    assert_not_nil category.categorizations_count
-    assert_equal 4, category.categorizations_count
-
-    category_2 = categories(:technology)
-    count_1, count_2 = (category.categorizations_count || 0), (category_2.categorizations_count || 0)
-    Category.update_counters([category.id, category_2.id], "categorizations_count" => 2)
-    category.reload; category_2.reload
-    assert_equal count_1 + 2, category.categorizations_count
-    assert_equal count_2 + 2, category_2.categorizations_count
   end
 
   def test_update_all
@@ -2174,10 +2125,11 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal "integer", xml.elements["//parent-id"].attributes['type']
     assert_equal "true", xml.elements["//parent-id"].attributes['nil']
 
-    if current_adapter?(:SybaseAdapter, :OracleAdapter)
+    if current_adapter?(:SybaseAdapter)
       assert_equal last_read_in_current_timezone, xml.elements["//last-read"].text
       assert_equal "datetime" , xml.elements["//last-read"].attributes['type']
     else
+      # Oracle enhanced adapter allows to define Date attributes in model class (see topic.rb)
       assert_equal "2004-04-15", xml.elements["//last-read"].text
       assert_equal "date" , xml.elements["//last-read"].attributes['type']
     end
@@ -2380,6 +2332,23 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_dup
     assert !Minimalistic.new.freeze.dup.frozen?
+  end
+
+  def test_compute_type_success
+    assert_equal Author, ActiveRecord::Base.send(:compute_type, 'Author')
+  end
+
+  def test_compute_type_nonexistent_constant
+    assert_raises NameError do
+      ActiveRecord::Base.send :compute_type, 'NonexistentModel'
+    end
+  end
+
+  def test_compute_type_no_method_error
+    String.any_instance.stubs(:constantize).raises(NoMethodError)
+    assert_raises NoMethodError do
+      ActiveRecord::Base.send :compute_type, 'InvalidModel'
+    end
   end
 
   protected

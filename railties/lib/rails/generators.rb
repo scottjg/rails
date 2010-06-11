@@ -68,6 +68,7 @@ module Rails
       options.deep_merge! config.options
       fallbacks.merge! config.fallbacks
       templates_path.concat config.templates
+      templates_path.uniq!
     end
 
     def self.templates_path
@@ -177,6 +178,7 @@ module Rails
           "#{orm}:migration",
           "#{orm}:model",
           "#{orm}:observer",
+          "#{orm}:session_migration",
           "#{test}:controller",
           "#{test}:helper",
           "#{test}:integration",
@@ -185,8 +187,11 @@ module Rails
           "#{test}:observer",
           "#{test}:scaffold",
           "#{test}:view",
+          "#{test}:performance",
+          "#{test}:plugin",
           "#{template}:controller",
-          "#{template}:scaffold"
+          "#{template}:scaffold",
+          "#{template}:mailer"
         ]
       end
     end
@@ -328,10 +333,5 @@ module Rails
         paths.uniq!
         paths
       end
-
   end
 end
-
-# If the application was already defined, configure generators,
-# otherwise you have to configure it by hand.
-Rails::Generators.configure! if Rails.respond_to?(:application) && Rails.application

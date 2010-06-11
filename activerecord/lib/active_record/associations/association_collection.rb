@@ -388,7 +388,7 @@ module ActiveRecord
             begin
               if !loaded?
                 if @target.is_a?(Array) && @target.any?
-                  @target = find_target + @target.find_all {|t| t.new_record? }
+                  @target = find_target.map { |f| i = @target.index(f); i ? @target.delete_at(i) : f } + @target
                 else
                   @target = find_target
                 end
@@ -411,7 +411,8 @@ module ActiveRecord
             end
           elsif @reflection.klass.scopes[method]
             @_named_scopes_cache ||= {}
-            @_named_scopes_cache[method] ||= with_scope(construct_scope) { @reflection.klass.send(method, *args) }
+            @_named_scopes_cache[method] ||= {}
+            @_named_scopes_cache[method][args] ||= with_scope(construct_scope) { @reflection.klass.send(method, *args) }
           else
             with_scope(construct_scope) do
               if block_given?

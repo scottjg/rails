@@ -1,4 +1,5 @@
 require 'active_support/configurable'
+require 'active_support/core_ext/module/anonymous'
 
 module AbstractController
   class Error < StandardError; end
@@ -105,7 +106,7 @@ module AbstractController
       @_action_name = action_name = action.to_s
 
       unless action_name = method_for_action(action_name)
-        raise ActionNotFound, "The action '#{action}' could not be found"
+        raise ActionNotFound, "The action '#{action}' could not be found for #{self.class.name}" 
       end
 
       @_response_body = nil

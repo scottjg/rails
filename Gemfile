@@ -21,9 +21,15 @@ elsif RUBY_ENGINE == "jruby"
   gem "jruby-openssl"
 end
 
+# AS
+gem "memcache-client", ">= 1.7.5"
+
+# AM
+gem "text-format", "~> 1.0.0"
+
 # AR
 if mri || RUBY_ENGINE == "rbx"
-  gem "sqlite3-ruby", "= 1.3.0.beta.2", :require => 'sqlite3'
+  gem "sqlite3-ruby", "~> 1.3.0", :require => 'sqlite3'
 
   group :db do
     gem "pg", ">= 0.9.0"
@@ -37,10 +43,6 @@ elsif RUBY_ENGINE == "jruby"
     gem "activerecord-jdbcpostgresql-adapter"
   end
 end
-
-# AP
-gem "rack-test", "0.5.3", :require => 'rack/test'
-gem "RedCloth", ">= 4.2.2"
 
 group :documentation do
   gem 'rdoc', '2.1'
