@@ -129,12 +129,14 @@ module ActiveSupport
     def pluralize(word)
       result = word.to_s.dup
 
-      if word.empty? || inflections.uncountables.include?(result.downcase)
-        result
-      else
-        inflections.plurals.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
-        result
+      if m = (/(.*_)([a-z]+)$/i.match(result) || /^([A-Za-z]+)([A-Z][a-z]+)$/.match(result))
+        result = m[2]
       end
+
+      unless word.empty? || inflections.uncountables.include?(result.downcase)
+        inflections.plurals.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
+      end
+      m ? (m[1] + result) : result
     end
 
     # The reverse of +pluralize+, returns the singular form of a word in a string.
