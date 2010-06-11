@@ -105,6 +105,18 @@ module InflectorTestCases
     "database"    => "databases"
   }
 
+  Uncountable = %w(
+    equipment StandardEquipment standard_equipment
+    information TechnicalInformation technical_information
+    rice WhiteRice white_rice
+    money EasyMoney easy_money
+    species OriginOfSpecies origin_of_species
+    series LinearSeries linear_series
+    fish BigFish big_fish
+    sheep BlackSheep black_sheep
+    jeans BlueJeans blue_jeans
+  )
+
   CamelToUnderscore = {
     "Product"               => "product",
     "SpecialGuest"          => "special_guest",

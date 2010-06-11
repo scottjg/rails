@@ -36,6 +36,13 @@ class InflectorTest < Test::Unit::TestCase
     end
   end
 
+  Uncountable.each do |word|
+    define_method "test_uncountable_#{word}" do
+      assert_equal(word, ActiveSupport::Inflector.singularize(word))
+      assert_equal(word, ActiveSupport::Inflector.pluralize(word))
+    end
+  end
+
   def test_overwrite_previous_inflectors
     assert_equal("series", ActiveSupport::Inflector.singularize("series"))
     ActiveSupport::Inflector.inflections.singular "series", "serie"
