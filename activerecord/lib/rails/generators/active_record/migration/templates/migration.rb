@@ -5,7 +5,7 @@ class <%= migration_class_name %> < ActiveRecord::Migration
   end
 
   def self.down<% attributes.reverse.each do |attribute| %>
-    <%= migration_action == 'add' ? 'remove' : 'add' %>_column :<%= table_name %>, :<%= attribute.name %><% if migration_action == 'remove' %>, :<%= attribute.type %><% end -%>
+    <%= migration_action == 'add' ? 'add' : 'remove' %>_column :<%= table_name %>, :<%= attribute.name %><% if migration_action == 'remove' %>, :<%= attribute.type %><% end -%>
   <%- end %>
   end
 end
