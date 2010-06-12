@@ -100,6 +100,7 @@ module ActiveSupport #:nodoc:
         #
         # Example:
         #   'é'.mb_chars <=> 'ü'.mb_chars #=> -1
+        remove_method :<=>
         def <=>(other)
           @wrapped_string <=> other.to_s
         end
