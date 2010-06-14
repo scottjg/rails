@@ -3,10 +3,14 @@ require 'active_support/time'
 module Rails
   module Generators
     class GeneratedAttribute
-      attr_accessor :name, :type
+      attr_accessor :name, :type, :options
 
-      def initialize(name, type)
-        @name, @type = name, type.to_sym
+      def initialize(options)
+        @name, @type, @options = options.shift, options.shift.to_sym, ''
+        @options = "#{
+          h = Hash[*options]
+          h.keys.map{ |k| ",  :#{k} => #{h[k]}" }.join
+          }"  unless options.empty?
       end
 
       def field_type

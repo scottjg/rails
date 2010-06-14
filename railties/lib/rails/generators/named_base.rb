@@ -64,8 +64,7 @@ module Rails
         # Convert attributes array into GeneratedAttribute objects.
         def parse_attributes! #:nodoc:
           self.attributes = (attributes || []).map do |key_value|
-            name, type = key_value.split(':')
-            Rails::Generators::GeneratedAttribute.new(name, type)
+            Rails::Generators::GeneratedAttribute.new(key_value.split(':'))
           end
         end
 
