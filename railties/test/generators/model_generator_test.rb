@@ -105,6 +105,25 @@ class ModelGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  def test_migration_with_extended_attributes
+    run_generator ["product", "name:string:length:30", "price:decimal:precision:8:scale:2:default:4.95"]
+
+    assert_migration "db/migrate/create_products.rb" do |m|
+      assert_class_method :up, m do |up|
+        assert_match /create_table :products/, up
+        assert_match /t\.string :name,  :length => 30$/, up
+        # the price attribute has three extensions, on that line only in non-specified order.
+        assert_match /^\s+t\.decimal :price,.*:default => 4\.95.*$/, up
+        assert_match /^\s+t\.decimal :price,.*:precision => 8.*$/, up
+        assert_match /^\s+t\.decimal :price,.*:scale => 2.*$/, up
+    end
+
+      assert_class_method :down, m do |down|
+        assert_match /drop_table :products/, down
+      end
+    end
+  end
+
   def test_migration_without_timestamps
     ActiveRecord::Base.timestamped_migrations = false
     run_generator ["account"]

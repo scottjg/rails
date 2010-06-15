@@ -235,9 +235,13 @@ module Rails
       # attribute type and, optionally, the attribute name:
       #
       #   create_generated_attribute(:string, 'name')
+      #   create_generated_attribute(:string, 'name', 'length:30')
       #
-      def create_generated_attribute(attribute_type, name = 'test')
-        Rails::Generators::GeneratedAttribute.new(name, attribute_type.to_s)
+      def create_generated_attribute(attribute_type, name = 'test', options=nil)
+#         Rails::Generators::GeneratedAttribute.new(name, attribute_type.to_s)
+        options = 'default:0'.split( ':' )
+        *attribute_args =  name, attribute_type.to_s, options
+        Rails::Generators::GeneratedAttribute.new( attribute_args.compact )
       end
 
       protected
