@@ -1356,7 +1356,7 @@ module ActiveResource
         resource = namespaces.reverse.inject(nil) do |s,ns|
           begin
             break ns.const_get(resource_name)
-          rescue NameError
+          rescue NameError, ArgumentError
           end
         end
         if resource
