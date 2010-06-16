@@ -1,4 +1,5 @@
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/object/instance_yield'
 
 module ActiveRecord
   # Allows programmers to programmatically define a schema in a portable
@@ -46,7 +47,7 @@ module ActiveRecord
     #     ...
     #   end
     def self.define(info={}, &block)
-      instance_eval(&block)
+      instance_yield(&block)
 
       unless info[:version].blank?
         initialize_schema_migrations_table

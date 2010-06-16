@@ -10,6 +10,7 @@ require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/object/misc'
 require 'active_support/core_ext/object/to_query'
 require 'active_support/core_ext/object/duplicable'
+require 'active_support/core_ext/object/instance_yield'
 require 'set'
 require 'uri'
 
@@ -308,7 +309,7 @@ module ActiveResource
       def schema(&block)
         if block_given?
           schema_definition = Schema.new
-          schema_definition.instance_eval(&block)
+          schema_definition.instance_yield(&block)
 
           # skip out if we didn't define anything
           return unless schema_definition.attrs.present?
