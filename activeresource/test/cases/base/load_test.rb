@@ -2,6 +2,7 @@ require 'abstract_unit'
 require "fixtures/person"
 require "fixtures/street_address"
 require 'active_support/core_ext/hash/conversions'
+require 'active_support/dependencies'
 
 module Highrise
   class Note < ActiveResource::Base
@@ -170,12 +171,12 @@ end
 
 class NamespaceLoadTest < Test::Unit::TestCase
   def setup
-    ActiveSupport::Dependencies.load_paths << "#{File.dirname(__FILE__)}/../../test/fixtures"
+    ActiveSupport::Dependencies.load_paths << "#{File.dirname(__FILE__)}/../../fixtures"
     @user = Accounts::User.new
   end
 
   def teardown
-    ActiveSupport::Dependencies.load_paths.delete "#{File.dirname(__FILE__)}/../../test/fixtures"
+    ActiveSupport::Dependencies.load_paths.delete "#{File.dirname(__FILE__)}/../../fixtures"
   end
 
   def test_user_load
