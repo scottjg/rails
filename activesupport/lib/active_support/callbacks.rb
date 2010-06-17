@@ -445,11 +445,13 @@ module ActiveSupport
       # Use skip_callback to skip any defined one.
       #
       # When creating or skipping callbacks, you can specify conditions that
-      # are always the same for a given key. For instance, in ActionPack,
+      # are always the same for a given key. For instance, in Action Pack,
       # we convert :only and :except conditions into per-key conditions.
       #
       #   before_filter :authenticate, :except => "index"
+      #
       # becomes
+      #
       #   dispatch_callback :before, :authenticate, :per_key => {:unless => proc {|c| c.action_name == "index"}}
       #
       # Per-Key conditions are evaluated only once per use of a given key.
@@ -510,48 +512,65 @@ module ActiveSupport
         __define_runner(symbol)
       end
 
-      # Define callbacks types.
-      #
-      # ==== Example
+      # Defines callbacks types:
       #
       #   define_callbacks :validate
       #
-      # ==== Options
+      # This macro accepts the following options:
       #
       # * <tt>:terminator</tt> - Indicates when a before filter is considered
       # to be halted.
       #
       #   define_callbacks :validate, :terminator => "result == false"
       #
-      # In the example above, if any before validate callbacks returns false,
-      # other callbacks are not executed. Defaults to "false".
+      # In the example above, if any before validate callbacks returns +false+,
+      # other callbacks are not executed. Defaults to "false", meaning no value
+      # halts the chain.
       #
       # * <tt>:rescuable</tt> - By default, after filters are not executed if
-      # the given block or an before_filter raises an error. Supply :rescuable => true
-      # to change this behavior.
+      # the given block or a before filter raises an error. Set this option to
+      # true to change this behavior.
       #
-      # * <tt>:scope</tt> - Show which methods should be executed when a class
-      # is given as callback:
+      # * <tt>:scope</tt> - Indicates which methods should be executed when a class
+      # is given as callback. Defaults to <tt>[:kind]</tt>.
       #
-      #   define_callbacks :filters, :scope => [ :kind ]
+      #  class Audit
+      #    def before(caller)
+      #      puts 'Audit: before is called'
+      #    end
       #
-      # When a class is given:
+      #    def before_save(caller)
+      #      puts 'Audit: before_save is called'
+      #    end
+      #  end
       #
-      #   before_filter MyFilter
+      #  class Account
+      #    include ActiveSupport::Callbacks
       #
-      # It will call the type of the filter in the given class, which in this
-      # case, is "before".
+      #    define_callbacks :save
+      #    set_callback :save, :before, Audit.new
       #
-      # If, for instance, you supply the given scope:
+      #    def save
+      #      run_callbacks :save do
+      #        puts 'save in main'
+      #      end
+      #    end
+      #  end
       #
-      #   define_callbacks :validate, :scope => [ :kind, :name ]
+      # In the above case whenever you save an account the method <tt>Audit#before</tt> will
+      # be called. On the other hand
       #
-      # It will call "#{kind}_#{name}" in the given class. So "before_validate"
-      # will be called in the class below:
+      #   define_callbacks :save, :scope => [:kind, :name]
       #
-      #   before_validate MyValidation
+      # would trigger <tt>Audit#before_save</tt> instead. That's constructed by calling
+      # <tt>"#{kind}_#{name}"</tt> on the given instance. In this case "kind" is "before" and
+      # "name" is "save".
       #
-      # Defaults to :kind.
+      # A declaration like
+      #
+      #   define_callbacks :save, :scope => [:name]
+      #
+      # would call <tt>Audit#save</tt>.
       #
       def define_callbacks(*callbacks)
         config = callbacks.last.is_a?(Hash) ? callbacks.pop : {}
