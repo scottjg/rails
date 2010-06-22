@@ -6,6 +6,7 @@ require 'active_support/core_ext/file'
 require 'active_support/core_ext/object/blank'
 
 module ActionView
+  # = Action View Asset Tag Helpers
   module Helpers #:nodoc:
     # This module provides methods for generating HTML that links views to assets such
     # as images, javascripts, stylesheets, and feeds. These methods do not verify
@@ -193,7 +194,7 @@ module ActionView
     #   RewriteEngine On
     #   RewriteRule ^/release-\d+/(images|javascripts|stylesheets)/(.*)$ /$1/$2 [L]
     module AssetTagHelper
-      JAVASCRIPT_DEFAULT_SOURCES = ['prototype', 'effects', 'dragdrop', 'controls', 'rails'].freeze unless const_defined?(:JAVASCRIPT_DEFAULT_SOURCES)
+      JAVASCRIPT_DEFAULT_SOURCES = ['prototype', 'effects', 'dragdrop', 'controls', 'rails'].freeze
 
       # Returns a link tag that browsers and news readers can use to auto-detect
       # an RSS or ATOM feed. The +type+ can either be <tt>:rss</tt> (default) or

@@ -4,6 +4,7 @@ require 'active_support/core_ext/object/returning'
 require 'active_support/core_ext/object/blank'
 
 module ActionView
+  # = Action View Form Tag Helpers
   module Helpers
     # Provides a number of methods for creating form tags that doesn't rely on an Active Record object assigned to the template like
     # FormHelper does. Instead, you provide the names and values manually.
@@ -535,7 +536,7 @@ module ActionView
 
         def extra_tags_for_form(html_options)
           case method = html_options.delete("method").to_s
-            when /^get$/i # must be case-insentive, but can't use downcase as might be nil
+            when /^get$/i # must be case-insensitive, but can't use downcase as might be nil
               html_options["method"] = "get"
               ''
             when /^post$/i, "", nil

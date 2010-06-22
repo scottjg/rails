@@ -4,6 +4,7 @@ require 'action_controller/test_case'
 require 'action_view'
 
 module ActionView
+  # = Action View Test Case
   class TestCase < ActiveSupport::TestCase
     class TestController < ActionController::Base
       include ActionDispatch::TestProcess
@@ -84,6 +85,7 @@ module ActionView
 
       def setup_with_controller
         @controller = ActionView::TestCase::TestController.new
+        @request = @controller.request
         @output_buffer = ActiveSupport::SafeBuffer.new
         @rendered = ''
 
@@ -99,6 +101,10 @@ module ActionView
       def render(options = {}, local_assigns = {}, &block)
         @rendered << output = _view.render(options, local_assigns, &block)
         output
+      end
+
+      def locals
+        @locals ||= {}
       end
 
       included do
@@ -130,12 +136,23 @@ module ActionView
         end
       end
 
+      module Locals
+        attr_accessor :locals
+
+        def _render_partial(options)
+          locals[options[:partial]] = options[:locals]
+          super(options)
+        end
+      end
+
       def _view
         @_view ||= begin
                      view = ActionView::Base.new(ActionController::Base.view_paths, _assigns, @controller)
                      view.singleton_class.send :include, _helpers
                      view.singleton_class.send :include, @controller._router.url_helpers
                      view.singleton_class.send :delegate, :alert, :notice, :to => "request.flash"
+                     view.extend(Locals)
+                     view.locals = self.locals
                      view.output_buffer = self.output_buffer
                      view
                    end

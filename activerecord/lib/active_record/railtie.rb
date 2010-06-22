@@ -9,6 +9,7 @@ require "active_model/railtie"
 require "action_controller/railtie"
 
 module ActiveRecord
+  # = Active Record Railtie
   class Railtie < Rails::Railtie
     config.active_record = ActiveSupport::OrderedOptions.new
 
@@ -68,7 +69,6 @@ module ActiveRecord
       unless app.config.cache_classes
         ActiveSupport.on_load(:active_record) do
           ActionDispatch::Callbacks.after do
-            ActiveRecord::Base.reset_subclasses
             ActiveRecord::Base.clear_reloadable_connections!
           end
         end

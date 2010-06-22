@@ -68,6 +68,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         get 'admin/accounts' => "queenbee#accounts"
       end
 
+      get 'admin/passwords' => "queenbee#passwords", :constraints => ::TestRoutingMapper::IpRestrictor
+
       scope 'pt', :name_prefix => 'pt' do
         resources :projects, :path_names => { :edit => 'editar', :new => 'novo' }, :path => 'projetos' do
           post :preview, :on => :new
@@ -142,6 +144,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         resources :comments, :except => :destroy
       end
 
+      resource  :past, :only => :destroy
+      resource  :present, :only => :update
+      resource  :future, :only => :create
+      resources :relationships, :only => [:create, :destroy]
+      resources :friendships,   :only => [:update]
+
       shallow do
         namespace :api do
           resources :teams do
@@ -171,6 +179,33 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
               resource :info
             end
           end
+        end
+      end
+
+      resources :customers do
+        get "recent" => "customers#recent", :as => :recent, :on => :collection
+        get "profile" => "customers#profile", :as => :profile, :on => :member
+        post "preview" => "customers#preview", :as => :preview, :on => :new
+        resource :avatar do
+          get "thumbnail(.:format)" => "avatars#thumbnail", :as => :thumbnail, :on => :member
+        end
+        resources :invoices do
+          get "outstanding" => "invoices#outstanding", :as => :outstanding, :on => :collection
+          get "overdue", :to => :overdue, :on => :collection
+          get "print" => "invoices#print", :as => :print, :on => :member
+          post "preview" => "invoices#preview", :as => :preview, :on => :new
+        end
+        resources :notes, :shallow => true do
+          get "preview" => "notes#preview", :as => :preview, :on => :new
+          get "print" => "notes#print", :as => :print, :on => :member
+        end
+      end
+
+      namespace :api do
+        resources :customers do
+          get "recent" => "customers#recent", :as => :recent, :on => :collection
+          get "profile" => "customers#profile", :as => :profile, :on => :member
+          post "preview" => "customers#preview", :as => :preview, :on => :new
         end
       end
 
@@ -243,8 +278,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       resource :dashboard, :constraints => { :ip => /192\.168\.1\.\d{1,3}/ }
 
-      scope :module => 'api' do
+      scope :module => :api do
         resource :token
+        resources :errors, :shallow => true do
+          resources :notices
+        end
       end
 
       scope :path => 'api' do
@@ -467,6 +505,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal 'queenbee#accounts', @response.body
 
       get '/admin/accounts', {}, {'REMOTE_ADDR' => '10.0.0.100'}
+      assert_equal 'pass', @response.headers['X-Cascade']
+
+      get '/admin/passwords', {}, {'REMOTE_ADDR' => '192.168.1.100'}
+      assert_equal 'queenbee#passwords', @response.body
+
+      get '/admin/passwords', {}, {'REMOTE_ADDR' => '10.0.0.100'}
       assert_equal 'pass', @response.headers['X-Cascade']
     end
   end
@@ -729,6 +773,38 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_resource_routes_only_create_update_destroy
+    with_test_routes do
+      delete '/past'
+      assert_equal 'pasts#destroy', @response.body
+      assert_equal '/past', past_path
+
+      put '/present'
+      assert_equal 'presents#update', @response.body
+      assert_equal '/present', present_path
+
+      post '/future'
+      assert_equal 'futures#create', @response.body
+      assert_equal '/future', future_path
+    end
+  end
+
+  def test_resources_routes_only_create_update_destroy
+    with_test_routes do
+      post '/relationships'
+      assert_equal 'relationships#create', @response.body
+      assert_equal '/relationships', relationships_path
+
+      delete '/relationships/1'
+      assert_equal 'relationships#destroy', @response.body
+      assert_equal '/relationships/1', relationship_path(1)
+
+      put '/friendships/1'
+      assert_equal 'friendships#update', @response.body
+      assert_equal '/friendships/1', friendship_path(1)
+    end
+  end
+
   def test_resource_with_slugs_in_ids
     with_test_routes do
       get '/posts/rails-rocks'
@@ -843,7 +919,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/account/admin/subscription', account_admin_subscription_path
     end
   end
-  
+
   def test_namespace_nested_in_resources
     with_test_routes do
       get '/clients/1/google/account'
@@ -1254,6 +1330,38 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       post '/comments/3/preview'
       assert_equal 'comments#preview', @response.body
       assert_equal '/comments/3/preview', preview_comment_path(:id => '3')
+    end
+  end
+
+  def test_custom_resource_routes_are_scoped
+    with_test_routes do
+      assert_equal '/customers/recent', recent_customers_path
+      assert_equal '/customers/1/profile', profile_customer_path(:id => '1')
+      assert_equal '/customers/new/preview', preview_new_customer_path
+      assert_equal '/customers/1/avatar/thumbnail.jpg', thumbnail_customer_avatar_path(:customer_id => '1', :format => :jpg)
+      assert_equal '/customers/1/invoices/outstanding', outstanding_customer_invoices_path(:customer_id => '1')
+      assert_equal '/customers/1/invoices/2/print', print_customer_invoice_path(:customer_id => '1', :id => '2')
+      assert_equal '/customers/1/invoices/new/preview', preview_new_customer_invoice_path(:customer_id => '1')
+      assert_equal '/customers/1/notes/new/preview', preview_new_customer_note_path(:customer_id => '1')
+      assert_equal '/notes/1/print', print_note_path(:id => '1')
+      assert_equal '/api/customers/recent', recent_api_customers_path
+      assert_equal '/api/customers/1/profile', profile_api_customer_path(:id => '1')
+      assert_equal '/api/customers/new/preview', preview_new_api_customer_path
+
+      get '/customers/1/invoices/overdue'
+      assert_equal 'invoices#overdue', @response.body
+    end
+  end
+
+  def test_shallow_nested_routes_ignore_module
+    with_test_routes do
+      get '/errors/1/notices'
+      assert_equal 'api/notices#index', @response.body
+      assert_equal '/errors/1/notices', error_notices_path(:error_id => '1')
+
+      get '/notices/1'
+      assert_equal 'api/notices#show', @response.body
+      assert_equal '/notices/1', notice_path(:id => '1')
     end
   end
 

@@ -218,4 +218,26 @@ module ActionView
       end
     end
   end
+
+  class RenderTemplateTest < ActionView::TestCase
+    test "render template supports specifying partials" do
+      controller.controller_path = "test"
+      render(:template => "test/calling_partial_with_layout")
+      assert_template :partial => "_partial_for_use_in_layout"
+    end
+
+    test "render template supports specifying locals (passing)" do
+      controller.controller_path = "test"
+      render(:template => "test/calling_partial_with_layout")
+      assert_template :partial => "_partial_for_use_in_layout", :locals => { :name => "David" }
+    end
+
+    test "render template supports specifying locals (failing)" do
+      controller.controller_path = "test"
+      render(:template => "test/calling_partial_with_layout")
+      assert_raise Test::Unit::AssertionFailedError, /Somebody else.*David/m do
+        assert_template :partial => "_partial_for_use_in_layout", :locals => { :name => "Somebody Else" }
+      end
+    end
+  end
 end

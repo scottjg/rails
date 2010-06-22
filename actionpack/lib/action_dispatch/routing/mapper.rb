@@ -33,7 +33,7 @@ module ActionDispatch
       end
 
       class Mapping #:nodoc:
-        IGNORE_OPTIONS = [:to, :as, :controller, :action, :via, :on, :constraints, :defaults, :only, :except, :anchor, :shallow]
+        IGNORE_OPTIONS = [:to, :as, :controller, :action, :via, :on, :constraints, :defaults, :only, :except, :anchor, :shallow, :shallow_path, :shallow_prefix]
 
         def initialize(set, scope, args)
           @set, @scope    = set, scope
@@ -102,7 +102,7 @@ module ActionDispatch
           end
 
           def requirements
-            @requirements ||= (@options[:constraints] || {}).tap do |requirements|
+            @requirements ||= (@options[:constraints].is_a?(Hash) ? @options[:constraints] : {}).tap do |requirements|
               requirements.reverse_merge!(@scope[:constraints]) if @scope[:constraints]
               @options.each { |k, v| requirements[k] = v if v.is_a?(Regexp) }
             end
@@ -343,7 +343,7 @@ module ActionDispatch
 
         def namespace(path)
           path = path.to_s
-          scope(:path => path, :name_prefix => path, :module => path) { yield }
+          scope(:path => path, :name_prefix => path, :module => path, :shallow_path => path, :shallow_prefix => path) { yield }
         end
 
         def constraints(constraints = {})
@@ -378,7 +378,15 @@ module ActionDispatch
             Mapper.normalize_path("#{parent}/#{child}")
           end
 
+          def merge_shallow_path_scope(parent, child)
+            Mapper.normalize_path("#{parent}/#{child}")
+          end
+
           def merge_name_prefix_scope(parent, child)
+            parent ? "#{parent}_#{child}" : child
+          end
+
+          def merge_shallow_prefix_scope(parent, child)
             parent ? "#{parent}_#{child}" : child
           end
 
@@ -536,6 +544,7 @@ module ActionDispatch
           def member_name
             name
           end
+          alias_method :collection_name, :member_name
 
           def nested_path
             path
@@ -646,7 +655,9 @@ module ActionDispatch
 
           with_scope_level(:new) do
             scope(*parent_resource.new_scope) do
-              yield
+              scope(action_path(:new)) do
+                yield
+              end
             end
           end
         end
@@ -659,10 +670,10 @@ module ActionDispatch
           with_scope_level(:nested) do
             if parent_resource.shallow?
               with_exclusive_scope do
-                if @scope[:module].blank?
+                if @scope[:shallow_path].blank?
                   scope(*parent_resource.nested_scope) { yield }
                 else
-                  scope(@scope[:module], :name_prefix => @scope[:module].tr('/', '_')) do
+                  scope(@scope[:shallow_path], :name_prefix => @scope[:shallow_prefix]) do
                     scope(*parent_resource.nested_scope) { yield }
                   end
                 end
@@ -722,7 +733,17 @@ module ActionDispatch
             options = options_for_action(args.first, options)
 
             with_exclusive_scope do
-              return match(path, options)
+              return super(path, options)
+            end
+          elsif resource_method_scope?
+            path = path_for_custom_action
+            options[:as] = name_for_action(options[:as]) if options[:as]
+            args.push(options)
+
+            with_exclusive_scope do
+              scope(path) do
+                return super
+              end
             end
           end
 
@@ -736,7 +757,7 @@ module ActionDispatch
 
         def root(options={})
           if @scope[:scope_level] == :resources
-            with_scope_level(:collection) do
+            with_scope_level(:nested) do
               scope(parent_resource.path, :name_prefix => parent_resource.collection_name) do
                 super(options)
               end
@@ -779,12 +800,18 @@ module ActionDispatch
             [:resource, :resources].include?(@scope[:scope_level])
           end
 
+          def resource_method_scope?
+            [:collection, :member, :new].include?(@scope[:scope_level])
+          end
+
           def with_exclusive_scope
             begin
               old_name_prefix, old_path = @scope[:name_prefix], @scope[:path]
               @scope[:name_prefix], @scope[:path] = nil, nil
 
-              yield
+              with_scope_level(:exclusive) do
+                yield
+              end
             ensure
               @scope[:name_prefix], @scope[:path] = old_name_prefix, old_path
             end
@@ -829,7 +856,7 @@ module ActionDispatch
               "#{@scope[:path]}(.:format)"
             when :show, :update, :destroy
               if parent_resource.shallow?
-                "#{@scope[:module]}/#{parent_resource.path}/:id(.:format)"
+                "#{@scope[:shallow_path]}/#{parent_resource.path}/:id(.:format)"
               else
                 "#{@scope[:path]}(.:format)"
               end
@@ -837,22 +864,33 @@ module ActionDispatch
               "#{@scope[:path]}/#{action_path(:new)}(.:format)"
             when :edit
               if parent_resource.shallow?
-                "#{@scope[:module]}/#{parent_resource.path}/:id/#{action_path(:edit)}(.:format)"
+                "#{@scope[:shallow_path]}/#{parent_resource.path}/:id/#{action_path(:edit)}(.:format)"
               else
                 "#{@scope[:path]}/#{action_path(:edit)}(.:format)"
               end
             else
               case @scope[:scope_level]
-              when :collection
+              when :collection, :new
                 "#{@scope[:path]}/#{action_path(action)}(.:format)"
-              when :new
-                "#{@scope[:path]}/#{action_path(:new)}/#{action_path(action)}(.:format)"
               else
                 if parent_resource.shallow?
-                  "#{@scope[:module]}/#{parent_resource.path}/:id/#{action_path(action)}(.:format)"
+                  "#{@scope[:shallow_path]}/#{parent_resource.path}/:id/#{action_path(action)}(.:format)"
                 else
                   "#{@scope[:path]}/#{action_path(action)}(.:format)"
                 end
+              end
+            end
+          end
+
+          def path_for_custom_action
+            case @scope[:scope_level]
+            when :collection, :new
+              @scope[:path]
+            else
+              if parent_resource.shallow?
+                "#{@scope[:shallow_path]}/#{parent_resource.path}/:id"
+              else
+                @scope[:path]
               end
             end
           end
@@ -871,12 +909,12 @@ module ActionDispatch
 
           def name_for_action(action)
             name_prefix = @scope[:name_prefix].blank? ? "" : "#{@scope[:name_prefix]}_"
-            shallow_prefix = @scope[:module].blank? ? "" : "#{@scope[:module].tr('/', '_')}_"
+            shallow_prefix = @scope[:shallow_prefix].blank? ? "" : "#{@scope[:shallow_prefix]}_"
 
             case action
-            when :index
+            when :index, :create
               "#{name_prefix}#{parent_resource.collection_name}"
-            when :show
+            when :show, :update, :destroy
               if parent_resource.shallow?
                 "#{shallow_prefix}#{parent_resource.member_name}"
               else
@@ -890,8 +928,6 @@ module ActionDispatch
               end
             when :new
               "new_#{name_prefix}#{parent_resource.member_name}"
-            when :update, :create, :destroy
-              nil
             else
               case @scope[:scope_level]
               when :collection

@@ -4,6 +4,7 @@ require 'active_support/core_ext/hash/keys'
 require 'action_dispatch'
 
 module ActionView
+  # = Action View URL Helpers
   module Helpers #:nodoc:
     # Provides a set of methods for making links and getting URLs that
     # depend on the routing subsystem (see ActionDispatch::Routing).
@@ -12,7 +13,7 @@ module ActionView
     module UrlHelper
       # This helper may be included in any class that includes the
       # URL helpers of a router (router.url_helpers). Some methods
-      # provided here will only work in the context of a request
+      # provided here will only work in the4 context of a request
       # (link_to_unless_current, for instance), which must be provided
       # as a method called #request on the context.
 

@@ -3,6 +3,8 @@ require 'active_support/core_ext/array/wrap'
 
 module ActiveRecord
   module Associations
+    # = Active Record Association Collection
+    #
     # AssociationCollection is an abstract class that provides common stuff to
     # ease the implementation of association proxies that represent
     # collections. See the class hierarchy in AssociationProxy.
@@ -388,7 +390,11 @@ module ActiveRecord
             begin
               if !loaded?
                 if @target.is_a?(Array) && @target.any?
-                  @target = find_target + @target.find_all {|t| t.new_record? }
+                  @target = find_target.map do |f|
+                    i = @target.index(f)
+                    t = @target.delete_at(i) if i
+                    (t && t.changed?) ? t : f
+                  end + @target
                 else
                   @target = find_target
                 end

@@ -7,6 +7,7 @@ require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/object/blank'
 
 module ActionView
+  # = Action View Form Helpers
   module Helpers
     # Form helpers are designed to make working with resources much easier
     # compared to using vanilla HTML.
@@ -92,7 +93,7 @@ module ActionView
     #     # error handling
     #   end
     #
-    # That's how you tipically work with resources.
+    # That's how you typically work with resources.
     module FormHelper
       extend ActiveSupport::Concern
 
@@ -220,15 +221,15 @@ module ActionView
       #   <% end %>
       #
       # === Unobtrusive JavaScript
-      # 
-      # Specifying:  
-      #  
+      #
+      # Specifying:
+      #
       #    :remote => true
       #
       # in the options hash creates a form that will allow the unobtrusive JavaScript drivers to modify its
-      # behaviour. The expected default behaviour is an XMLHttpRequest in the background instead of the regular 
+      # behaviour. The expected default behaviour is an XMLHttpRequest in the background instead of the regular
       # POST arrangement, but ultimately the behaviour is the choice of the JavaScript driver implementor.
-      # Even though it's using JavaScript to serialize the form elements, the form submission will work just like 
+      # Even though it's using JavaScript to serialize the form elements, the form submission will work just like
       # a regular submission as viewed by the receiving side (all elements available in <tt>params</tt>).
       #
       # Example:
@@ -269,7 +270,7 @@ module ActionView
       # <tt>labelling_form</tt>.
       #
       # The custom FormBuilder class is automatically merged with the options
-      # of a nested fields_for call, unless it's explicitely set.
+      # of a nested fields_for call, unless it's explicitly set.
       #
       # In many cases you will want to wrap the above in another helper, so you
       # could do something like the following:
@@ -717,7 +718,7 @@ module ActionView
       #
       # To prevent this the helper generates an auxiliary hidden field before
       # the very check box. The hidden field has the same name and its
-      # attributes mimick an unchecked check box.
+      # attributes mimic an unchecked check box.
       #
       # This way, the client either sends only the hidden field (representing
       # the check box is unchecked), or both fields. Since the HTML specification
@@ -838,9 +839,9 @@ module ActionView
 
       attr_reader :method_name, :object_name
 
-      DEFAULT_FIELD_OPTIONS     = { "size" => 30 }.freeze unless const_defined?(:DEFAULT_FIELD_OPTIONS)
-      DEFAULT_RADIO_OPTIONS     = { }.freeze unless const_defined?(:DEFAULT_RADIO_OPTIONS)
-      DEFAULT_TEXT_AREA_OPTIONS = { "cols" => 40, "rows" => 20 }.freeze unless const_defined?(:DEFAULT_TEXT_AREA_OPTIONS)
+      DEFAULT_FIELD_OPTIONS     = { "size" => 30 }.freeze
+      DEFAULT_RADIO_OPTIONS     = { }.freeze
+      DEFAULT_TEXT_AREA_OPTIONS = { "cols" => 40, "rows" => 20 }.freeze
 
       def initialize(object_name, method_name, template_object, object = nil)
         @object_name, @method_name = object_name.to_s.dup, method_name.to_s.dup
@@ -1030,7 +1031,7 @@ module ActionView
       private
         def add_default_name_and_id_for_value(tag_value, options)
           unless tag_value.nil?
-            pretty_tag_value = tag_value.to_s.gsub(/\s/, "_").gsub(/\W/, "").downcase
+            pretty_tag_value = tag_value.to_s.gsub(/\s/, "_").gsub(/[^-\w]/, "").downcase
             specified_id = options["id"]
             add_default_name_and_id(options)
             options["id"] += "_#{pretty_tag_value}" if specified_id.blank? && options["id"].present?
@@ -1180,7 +1181,7 @@ module ActionView
       #   <%= form_for @post do |f| %>
       #     <%= f.submit %>
       #   <% end %>
-      # 
+      #
       # In the example above, if @post is a new record, it will use "Create Post" as
       # submit button label, otherwise, it uses "Update Post".
       #

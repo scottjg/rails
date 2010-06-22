@@ -15,7 +15,7 @@ module ActiveRecord
       self.nested_attributes_options = {}
     end
 
-    # == Nested Attributes
+    # = Active Record Nested Attributes
     #
     # Nested attributes allow you to save attributes on associated records
     # through the parent. By default nested attribute updating is turned off,
@@ -25,6 +25,7 @@ module ActiveRecord
     #
     # The attribute writer is named after the association, which means that
     # in the following example, two new methods are added to your model:
+    # 
     # <tt>author_attributes=(attributes)</tt> and
     # <tt>pages_attributes=(attributes)</tt>.
     #
@@ -132,7 +133,7 @@ module ActiveRecord
     #   member.posts.first.title # => 'Kari, the awesome Ruby documentation browser!'
     #   member.posts.second.title # => 'The egalitarian assumption of the modern citizen'
     #
-    #  Alternatively, :reject_if also accepts a symbol for using methods:
+    # Alternatively, :reject_if also accepts a symbol for using methods:
     #
     #    class Member < ActiveRecord::Base
     #      has_many :posts
@@ -144,7 +145,7 @@ module ActiveRecord
     #      accepts_nested_attributes_for :posts, :reject_if => :reject_posts
     #
     #      def reject_posts(attributed)
-    #        attributed['title].blank?
+    #        attributed['title'].blank?
     #      end
     #    end
     #
@@ -278,7 +279,7 @@ module ActiveRecord
     # Assigns the given attributes to the association.
     #
     # If update_only is false and the given attributes include an <tt>:id</tt>
-    # that matches the existing record’s id, then the existing record will be
+    # that matches the existing record's id, then the existing record will be
     # modified. If update_only is true, a new record is only created when no
     # object exists. Otherwise a new record will be built.
     #
