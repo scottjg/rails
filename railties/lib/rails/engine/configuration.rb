@@ -5,10 +5,12 @@ module Rails
     class Configuration < ::Rails::Railtie::Configuration
       attr_reader :root
       attr_writer :eager_load_paths, :load_once_paths, :load_paths
+      attr_accessor :middleware
 
       def initialize(root=nil)
         super()
         @root = root
+        @middleware = ActionDispatch::MiddlewareStack.new
       end
 
       def paths
