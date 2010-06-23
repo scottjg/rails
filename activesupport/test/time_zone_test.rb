@@ -269,6 +269,11 @@ class TimeZoneTest < Test::Unit::TestCase
     assert ActiveSupport::TimeZone.us_zones.include?(ActiveSupport::TimeZone["Hawaii"])
     assert !ActiveSupport::TimeZone.us_zones.include?(ActiveSupport::TimeZone["Kuala Lumpur"])
   end
+  
+  def test_unknown_zones_dont_store_mapping_keys
+    ActiveSupport::TimeZone["bogus"]
+    assert !ActiveSupport::TimeZone.zones_map.key?("bogus")
+  end
 
   protected
     def with_env_tz(new_tz = 'US/Eastern')
