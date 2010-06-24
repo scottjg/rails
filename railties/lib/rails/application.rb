@@ -107,10 +107,6 @@ module Rails
       super
     end
 
-    def routes
-      @routes ||= ActionDispatch::Routing::RouteSet.new
-    end
-
     def railties
       @railties ||= Railties.new(config)
     end
