@@ -110,6 +110,14 @@ module ActiveRecord
         def we_can_set_the_inverse_on_this?(record)
           false
         end
+
+        def construct_scope
+          if target_reflection_has_associated_record?
+            super
+          else
+            {:find => {:conditions => "1 != 1"}}
+          end
+        end
     end
   end
 end

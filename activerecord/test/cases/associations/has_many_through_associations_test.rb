@@ -351,7 +351,10 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_association_through_a_belongs_to_association_where_the_association_doesnt_exist
     author = authors(:mary)
     post = Post.create!(:title => "TITLE", :body => "BODY")
+    AuthorFavorite.create!
     assert_equal [], post.author_favorites
+    assert_equal [], post.author_favorites.all
+    assert_equal 0, post.author_favorites.count
   end
 
   def test_has_many_association_through_a_belongs_to_association
@@ -362,6 +365,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     author.author_favorites.create(:favorite_author_id => 3)
     assert_equal post.author.author_favorites, post.author_favorites
   end
+
 
   def test_has_many_association_through_a_has_many_association_with_nonstandard_primary_keys
     assert_equal 1, owners(:blackbeard).toys.count
