@@ -63,6 +63,7 @@ module ActionDispatch
       class NamedRouteCollection #:nodoc:
         include Enumerable
         attr_reader :routes, :helpers, :module
+        attr_accessor :router
 
         def initialize
           clear!
@@ -169,18 +170,21 @@ module ActionDispatch
             selector = url_helper_name(name, kind)
             hash_access_method = hash_access_name(name, kind)
 
-            @module.module_eval <<-END_EVAL, __FILE__, __LINE__ + 1
-              def #{selector}(*args)
-                options =  #{hash_access_method}(args.extract_options!)
+            _original_router = self.router
+
+            @module.module_eval do
+              define_method selector do |*args|
+                options =  self.__send__(hash_access_method, args.extract_options!)
 
                 if args.any?
                   options[:_positional_args] = args
-                  options[:_positional_keys] = #{route.segment_keys.inspect}
+                  options[:_positional_keys] = route.segment_keys
                 end
 
+                @_original_router = _original_router
                 url_for(options)
               end
-            END_EVAL
+            end
             helpers << selector
           end
       end
@@ -196,6 +200,7 @@ module ActionDispatch
       def initialize(request_class = ActionDispatch::Request)
         self.routes = []
         self.named_routes = NamedRouteCollection.new
+        self.named_routes.router = self
         self.resources_path_names = self.class.default_resources_path_names.dup
         self.controller_namespaces = Set.new
         self.default_url_options = {}
