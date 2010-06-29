@@ -192,6 +192,17 @@ module ActionDispatch
       attr_accessor :set, :routes, :named_routes
       attr_accessor :disable_clear_and_finalize, :resources_path_names
       attr_accessor :default_url_options, :request_class
+      attr_accessor :generation_scope
+
+      def prefix?
+        !!prefix
+      end
+
+      def prefix
+        @prefix ||= if @generation_scope
+          GenerationScopeRouteSet.new(ActionDispatch::Request, @generation_scope)
+        end
+      end
 
       def self.default_resources_path_names
         { :new => 'new', :edit => 'edit' }
@@ -470,8 +481,10 @@ module ActionDispatch
         end
 
         path_options = options.except(*RESERVED_OPTIONS)
+        path_options = path_options.except(*prefix.root_segment_keys) if prefix? && !options[:script_name]
         path_options = yield(path_options) if block_given?
         path = generate(path_options, path_segments || {})
+        path = prefix.generate_prefix(options) + path if prefix? && !options[:script_name]
 
         # ROUTES TODO: This can be called directly, so script_name should probably be set in the router
         rewritten_url << (options[:trailing_slash] ? path.sub(/\?|\z/) { "/" + $& } : path)
@@ -537,6 +550,38 @@ module ActionDispatch
             ""
           end
         end
+    end
+
+    class GenerationScopeHelper
+    end
+
+    class GenerationScopeRouteSet < RouteSet
+      def draw_prefix
+        _scope = @scope
+        draw do
+          scope *_scope do
+            match("/" => lambda { |env| [200, {}, ''] }, :as => "root")
+          end
+        end
+
+        finalize!
+      end
+
+      def root_segment_keys
+        draw_prefix unless @finalized
+        named_routes["root"].segment_keys
+      end
+
+      def generate_prefix(options = {})
+        draw_prefix unless @finalized
+        options.reject! { |k, v| !(root_segment_keys + RESERVED_OPTIONS).include?(k) }
+        url_helpers.root_path(options)
+      end
+
+      def initialize(request_class = ActionDispatch::Request, scope)
+        super(request_class)
+        @scope = scope
+      end
     end
   end
 end
