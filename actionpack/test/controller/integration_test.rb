@@ -90,6 +90,26 @@ class SessionTest < Test::Unit::TestCase
     assert_equal '/show', @session.url_for(options)
   end
 
+  def test_generic_url_rewriter_request
+    mock_stringio = mock()
+    mock_rewriter = mock()
+    mock_rewriter.stubs(:rewrite)
+    @session.host! "rubyonrails.com"
+    @session.stubs(:controller).returns(nil)
+    StringIO.stubs(:new).returns(mock_stringio)
+    ActionController::UrlRewriter.stubs(:new).returns(mock_rewriter)
+    ActionController::Request.expects(:new).with({
+      'REQUEST_METHOD' => "GET",
+      'QUERY_STRING'   => "",
+      "REQUEST_URI"    => "/",
+      "HTTP_HOST"      => "rubyonrails.com",
+      "SERVER_PORT"    => "80",
+      "HTTPS"          => "off",
+      "rack.input"     => mock_stringio
+    })
+    @session.url_for({})
+  end
+
   def test_redirect_bool_with_status_in_300s
     @session.stubs(:status).returns 301
     assert @session.redirect?

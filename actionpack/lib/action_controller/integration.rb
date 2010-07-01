@@ -383,7 +383,8 @@ module ActionController
             "REQUEST_URI"    => "/",
             "HTTP_HOST"      => host,
             "SERVER_PORT"    => https? ? "443" : "80",
-            "HTTPS"          => https? ? "on" : "off"
+            "HTTPS"          => https? ? "on" : "off",
+            "rack.input"     => StringIO.new
           }
           UrlRewriter.new(Request.new(env), {})
         end
