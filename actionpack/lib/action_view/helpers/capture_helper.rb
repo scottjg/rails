@@ -32,12 +32,12 @@ module ActionView
       #
       def capture(*args, &block)
         # Return captured buffer in erb.
-        if block_called_from_erb?(block)
+        #if block_called_from_erb?(block)
           with_output_buffer { block.call(*args) }
-        else
+        #else
           # Return block result otherwise, but protect buffer also.
-          with_output_buffer { return block.call(*args) }
-        end
+        #  with_output_buffer { return block.call(*args) }
+        #end
       end
 
       # Calling content_for stores a block of markup in an identifier for later use.
@@ -124,7 +124,7 @@ module ActionView
 
       # Use an alternate output buffer for the duration of the block.
       # Defaults to a new empty string.
-      def with_output_buffer(buf = ActiveSupport::SafeBuffer.new) #:nodoc:
+      def with_output_buffer(buf = Flucto::View::OutputBuffer.new) #:nodoc:
         self.output_buffer, old_buffer = buf, output_buffer
         yield
         output_buffer
