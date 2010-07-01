@@ -128,7 +128,13 @@ module ActionDispatch
         when String
           options
         when nil, Hash
-          _routes.url_for(url_options.merge((options || {}).symbolize_keys))
+          _original_routes = options ? options.delete(:routes) : nil
+
+          if respond_to?(:env) && env && _original_routes.equal?(env["action_dispatch.routes"])
+             options[:skip_prefix] = true
+          end
+
+          (_original_routes || _routes).url_for(url_options.merge((options || {}).symbolize_keys))
         else
           polymorphic_url(options)
         end

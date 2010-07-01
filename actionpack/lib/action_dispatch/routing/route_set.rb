@@ -198,6 +198,7 @@ module ActionDispatch
                   options[:_positional_keys] = route.segment_keys
                 end
 
+                options[:routes] = _original_routes
                 url_for(options)
               end
             end
@@ -310,10 +311,9 @@ module ActionDispatch
       end
 
       class Generator #:nodoc:
-        attr_reader :options, :recall, :set, :script_name, :named_route
+        attr_reader :options, :recall, :set, :named_route
 
         def initialize(options, recall, set, extras = false)
-          @script_name = options.delete(:script_name)
           @named_route = options.delete(:use_route)
           @options     = options.dup
           @recall      = recall.dup
@@ -409,7 +409,7 @@ module ActionDispatch
           return [path, params.keys] if @extras
 
           path << "?#{params.to_query}" if params.any?
-          "#{script_name}#{path}"
+          path
         rescue Rack::Mount::RoutingError
           raise error
         end
@@ -471,7 +471,6 @@ module ActionDispatch
         rewritten_url = ""
 
         path_segments = options.delete(:_path_segments)
-
         unless options[:only_path]
           rewritten_url << (options[:protocol] || "http")
           rewritten_url << "://" unless rewritten_url.match("://")
@@ -483,9 +482,15 @@ module ActionDispatch
           rewritten_url << ":#{options.delete(:port)}" if options.key?(:port)
         end
 
+        path = [options.delete(:script_name)]
+        if !options.delete(:skip_prefix)
+          path << _generate_prefix(options)
+        end
+
         path_options = options.except(*RESERVED_OPTIONS)
         path_options = yield(path_options) if block_given?
-        path = generate(path_options, path_segments || {})
+        path << generate(path_options, path_segments || {})
+        path = path.compact.join ''
 
         # ROUTES TODO: This can be called directly, so script_name should probably be set in the routes
         rewritten_url << (options[:trailing_slash] ? path.sub(/\?|\z/) { "/" + $& } : path)
