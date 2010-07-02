@@ -77,6 +77,9 @@ module ActiveRecord
             if @query_cache.has_key?(sql)
               log_info(sql, "CACHE", 0.0)
               @query_cache[sql]
+            elsif sql =~ /for[\s\n\t]update/i
+              # don't cache for lock
+              yield
             else
               @query_cache[sql] = yield
             end
