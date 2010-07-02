@@ -103,7 +103,7 @@ module ActiveSupport
           old_buffer = buffer
 
           encoding =   if @log.respond_to? :internal_encoding
-                          @log.internal_encoding || @io.external_encoding
+                          @log.internal_encoding || @log.external_encoding
                         elsif @log.is_a? StringIO
                           @log.string.encoding
                         end
