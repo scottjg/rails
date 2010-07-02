@@ -101,7 +101,16 @@ module ActiveSupport
       @guard.synchronize do
         unless buffer.empty?
           old_buffer = buffer
-          @log.write(old_buffer.join.force_encoding(@log.external_encoding).encode)
+
+          encoding =   if @log.respond_to? :internal_encoding
+                          @log.internal_encoding || @io.external_encoding
+                        elsif @log.is_a? StringIO
+                          @log.string.encoding
+                        end
+          encoding ||= Encoding.default_internal || Encoding.default_external
+
+          
+          @log.write(old_buffer.join.force_encoding(encoding).encode)
         end
 
         # Important to do this even if buffer was empty or else @buffer will
