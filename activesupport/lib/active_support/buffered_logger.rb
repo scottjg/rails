@@ -101,7 +101,7 @@ module ActiveSupport
       @guard.synchronize do
         unless buffer.empty?
           old_buffer = buffer
-          @log.write(old_buffer.join)
+          @log.write(old_buffer.join.force_encoding(Encoding.default_external))
         end
 
         # Important to do this even if buffer was empty or else @buffer will
