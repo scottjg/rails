@@ -4,6 +4,8 @@ module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
     extend self
 
+    # Note that a Constant will also store constants that have been removed,
+    # which allows bringing a constant back to live without loading the source file.
     class Constant
       extend Enumerable
 
