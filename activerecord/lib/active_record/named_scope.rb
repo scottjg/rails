@@ -91,11 +91,7 @@ module ActiveRecord
             when Hash
               options
             when Proc
-              if self.model_name != parent_scope.model_name
-                options.bind(parent_scope).call(*args)
-              else
-                options.call(*args)
-              end
+              options.call(*args)
           end, &block)
         end
 
