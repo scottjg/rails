@@ -1,81 +1,74 @@
-require 'thread'
-require 'active_support/dependencies/hard_reloader'
+require 'set'
 
 module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
-    class WatchStack < Array
-      def initialize
-        @mutex = Mutex.new
+    extend self
+
+    class Constant
+      extend Enumerable
+
+      def self.map
+        @map ||= {}
       end
 
-      def self.locked(*methods)
-        methods.each { |m| class_eval "def #{m}(*) lock { super } end", __FILE__, __LINE__ }
+      def self.all
+        map.each
       end
 
-      def get(key)
-        (val = assoc(key)) ? val[1] : []
+      def self.each
+        # avoid creating a Proc for performance
+        return all.each unless block_given?
+        all.each { |c| yield(c) }
       end
 
-      locked :concat, :each, :delete_if, :<<
-
-      def new_constants_for(frames)
-        constants = []
-        frames.each do |mod_name, prior_constants|
-          mod = Inflector.constantize(mod_name) if Dependencies.qualified_const_defined?(mod_name)
-          next unless mod.is_a?(Module)
-
-          new_constants = mod.local_constant_names - prior_constants
-          get(mod_name).concat(new_constants)
-
-          new_constants.each do |suffix|
-            constants << ([mod_name, suffix] - ["Object"]).join("::")
-          end
+      def self.new(name, constant = nil)
+        name, constant = name.name, name if constant.nil? and name.respond_to? :name
+        constant = Inflector.constantize(name) unless constant
+        return super if name.blank? # anonymous module
+        if self === constant
+          map[name] = constant
+        else
+          map[name] ||= super
         end
-        constants
       end
 
-      # Add a set of modules to the watch stack, remembering the initial constants
-      def add_modules(modules)
-        list = modules.map do |desc|
-          name = Dependencies.to_constant_name(desc)
-          consts = Dependencies.qualified_const_defined?(name) ?
-          Inflector.constantize(name).local_constant_names : []
-          [name, consts]
+      class << self
+        alias [] new
+        alias []= new
+      end
+
+      attr_reader :constant
+
+      def initialize(name, constant)
+        @name, @constant      = name, constant
+        @associated_constants = Set[self, Constant[constant.parent]]
+        @associated_files     = Set.new
+      end
+
+      def associated_files(transitive = true)
+        return @associated_files unless transitive
+        associated_constants.inject(Set.new) { |a,v| a.merge v.associated_files(false) }
+      end
+
+      def associated_constants(transitive = true, bucket = Set.new)
+        return @associated_constants unless transitive
+        bucket << self
+        @associated_constants.each do |c|
+          c.associated_constants(true, bucket) unless bucket.include? c
         end
-        concat(list)
-        list
+        bucket
       end
 
-      def lock
-        @mutex.synchronize { yield self }
+      def associate_with_constant(other)
+        @associated_constants << Constant[other]
+      end
+
+      def associate_with_file(file)
+        @associated_files << file
       end
     end
 
-    mattr_accessor :mutex
-    self.mutex = Mutex.new
-
-    mattr_accessor :default_strategy
-    self.default_strategy = HardReloader
-
-    def self.lock
-      mutex.synchronize { yield }
-    end
-
-    def self.method_missing(name, *args, &block)
-      lock { self.strategy = default_strategy unless set_strategy? }
-      return send(name, *args, &block) if respond_to? name
-      super
-    end
-
-    def self.set_strategy?
-      !!@strategy
-    end
-
-    def self.strategy=(value)
-      fail 'strategy already set' if set_strategy?
-      include value
-      extend self
-      @strategy = value
+    def schedule_reload
     end
   end
 end
