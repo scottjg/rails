@@ -35,6 +35,18 @@ class TimeWithZoneTest < Test::Unit::TestCase
   def test_in_time_zone_with_new_zone_equal_to_old_zone_does_not_create_new_object
     assert_equal @twz.object_id, @twz.in_time_zone(ActiveSupport::TimeZone['Eastern Time (US & Canada)']).object_id
   end
+  
+  def test_in_time_zone_with_nil_argument_raises_argument_error
+    assert_raises ArgumentError do
+      @twz.in_time_zone(nil)
+    end
+  end
+  
+  def test_in_time_zone_with_unknown_argument_raises_argument_error
+    assert_raises ArgumentError do
+      @twz.in_time_zone('not a zone')
+    end
+  end
 
   def test_utc?
     assert_equal false, @twz.utc?
@@ -731,17 +743,20 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < Test::Unit::TestCase
       assert_equal 'Fri, 31 Dec 1999 14:00:00 HST -10:00', @t.in_time_zone.inspect
       assert_equal 'Fri, 31 Dec 1999 14:00:00 HST -10:00', @dt.in_time_zone.inspect
     end
-    Time.use_zone nil do
-      assert_equal @t, @t.in_time_zone
-      assert_equal @dt, @dt.in_time_zone
-    end
   end
 
-  def test_nil_time_zone
+  def test_in_time_zone_with_no_time_zone_set_raises_argument_error
+    old_default, Time.zone_default = Time.zone_default, nil
     Time.use_zone nil do
-      assert !@t.in_time_zone.respond_to?(:period), 'no period method'
-      assert !@dt.in_time_zone.respond_to?(:period), 'no period method'
+      assert_raises ArgumentError do
+        @t.in_time_zone
+      end
+      assert_raises ArgumentError do
+        @dt.in_time_zone
+      end
     end
+  ensure
+    Time.zone_default = old_default
   end
 
   def test_in_time_zone_with_argument
@@ -760,6 +775,28 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < Test::Unit::TestCase
     with_env_tz 'US/Eastern' do
       time = Time.local(1999, 12, 31, 19) # == Time.utc(2000)
       assert_equal 'Fri, 31 Dec 1999 15:00:00 AKST -09:00', time.in_time_zone('Alaska').inspect
+    end
+  end
+  
+  def test_in_time_zone_with_nil_as_arg_raises_argument_error
+    Time.use_zone 'Alaska' do
+      assert_raises ArgumentError do
+        @t.in_time_zone(nil)
+      end
+      assert_raises ArgumentError do
+        @dt.in_time_zone(nil)
+      end
+    end
+  end
+  
+  def test_in_time_zone_with_unrecognized_zone_identifier_as_arg_raises_argument_error
+    Time.use_zone 'Alaska' do
+      assert_raises ArgumentError do
+        @t.in_time_zone('not a zone')
+      end
+      assert_raises ArgumentError do
+        @dt.in_time_zone('not a zone')
+      end
     end
   end
 
