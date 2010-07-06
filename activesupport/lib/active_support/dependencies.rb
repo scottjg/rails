@@ -8,6 +8,11 @@ module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
     extend self
 
+    # An array of qualified constant names that have been loaded. Adding a name to
+    # this array will cause it to be unloaded the next time Dependencies are cleared.
+    mattr_accessor :autoloaded_constants
+    self.autoloaded_constants = []
+
     # Note that a Constant will also store constants that have been removed,
     # which allows bringing a constant back to live without loading the source file.
     class Constant # :nodoc:

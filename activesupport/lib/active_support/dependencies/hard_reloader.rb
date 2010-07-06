@@ -43,11 +43,6 @@ module ActiveSupport #:nodoc:
       mattr_accessor :autoload_once_paths
       self.autoload_once_paths = []
 
-      # An array of qualified constant names that have been loaded. Adding a name to
-      # this array will cause it to be unloaded the next time Dependencies are cleared.
-      mattr_accessor :autoloaded_constants
-      self.autoloaded_constants = []
-
       mattr_accessor :references
       self.references = {}
 
