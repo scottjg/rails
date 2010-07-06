@@ -81,6 +81,7 @@ module ActionDispatch
       class NamedRouteCollection #:nodoc:
         include Enumerable
         attr_reader :routes, :helpers, :module
+        attr_accessor :_routes
 
         def initialize
           clear!
@@ -186,19 +187,20 @@ module ActionDispatch
           def define_url_helper(route, name, kind, options)
             selector = url_helper_name(name, kind)
             hash_access_method = hash_access_name(name, kind)
+            _original_routes = self._routes
 
-            @module.module_eval <<-END_EVAL, __FILE__, __LINE__ + 1
-              def #{selector}(*args)
-                options =  #{hash_access_method}(args.extract_options!)
+            @module.module_eval do
+              define_method selector do |*args|
+                options =  self.__send__(hash_access_method, args.extract_options!)
 
                 if args.any?
                   options[:_positional_args] = args
-                  options[:_positional_keys] = #{route.segment_keys.inspect}
+                  options[:_positional_keys] = route.segment_keys
                 end
 
                 url_for(options)
               end
-            END_EVAL
+            end
             helpers << selector
           end
       end
@@ -214,6 +216,7 @@ module ActionDispatch
       def initialize(request_class = ActionDispatch::Request)
         self.routes = []
         self.named_routes = NamedRouteCollection.new
+        self.named_routes._routes = self
         self.resources_path_names = self.class.default_resources_path_names.dup
         self.controller_namespaces = Set.new
         self.default_url_options = {}
@@ -453,7 +456,11 @@ module ActionDispatch
         Generator.new(options, recall, self, extras).generate
       end
 
-      RESERVED_OPTIONS = [:anchor, :params, :only_path, :host, :protocol, :port, :trailing_slash]
+      RESERVED_OPTIONS = [:anchor, :params, :only_path, :host, :protocol, :port, :trailing_slash, :routes, :skip_prefix, :script_name]
+
+      def _generate_prefix(options = {})
+        nil
+      end
 
       def url_for(options)
         finalize!
