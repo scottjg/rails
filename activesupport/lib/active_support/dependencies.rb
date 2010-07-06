@@ -9,7 +9,7 @@ module ActiveSupport # :nodoc:
 
     # Note that a Constant will also store constants that have been removed,
     # which allows bringing a constant back to live without loading the source file.
-    class Constant
+    class Constant # :nodoc:
       extend Enumerable
 
       def self.map
@@ -42,6 +42,7 @@ module ActiveSupport # :nodoc:
 
       attr_reader :constant
       delegate :anonymous?, :reachable?, :to => :constant
+      delegate :autoloaded_constants, :to => :Dependencies
 
       def initialize(name, constant)
         @name, @constant      = name, constant
@@ -71,6 +72,58 @@ module ActiveSupport # :nodoc:
 
       def associate_with_file(file)
         @associated_files << file
+      end
+
+      def qualified_const_defined?
+        !!qualified_const
+      end
+
+      def qualified_const
+        names = name.sub(/^::/, '').to_s.split('::')
+        names.inject(Object) do |mod, name|
+          return unless local_const_defined?(mod, name)
+          mod.const_get name
+        end
+      end
+
+      def autoloaded?
+        !anonymous? and qualified_const_defined? and autoloaded_constants.include?(name)
+      end
+
+      def unload?
+        autoloaded? or explicitly_unloadable?
+      end
+
+      def explicitly_unloadable?
+        raise NotImplementedError
+      end
+
+      def reload?
+        raise NotImplementedError
+      end
+
+      def activate
+        raise NotImplementedError
+      end
+
+      def deactivate
+        raise NotImplementedError
+      end
+
+      def unload
+        unload! if unload?
+      end
+
+      def load
+        reload? ? load! : activate
+      end
+
+      def unload!
+        raise NotImplementedError
+      end
+
+      def load!
+        raise NotImplementedError
       end
     end
 
