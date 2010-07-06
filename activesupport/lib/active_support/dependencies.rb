@@ -1,4 +1,7 @@
 require 'set'
+require 'active_support/core_ext/module/anonymous'
+require 'active_support/core_ext/module/delegation'
+require 'active_support/core_ext/module/reachable'
 
 module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
@@ -14,19 +17,17 @@ module ActiveSupport # :nodoc:
       end
 
       def self.all
-        map.each
+        map.values
       end
 
-      def self.each
-        # avoid creating a Proc for performance
-        return all.each unless block_given?
-        all.each { |c| yield(c) }
+      def self.each(&block)
+        all.each(&block)
       end
 
       def self.new(name, constant = nil)
         name, constant = name.name, name if constant.nil? and name.respond_to? :name
         constant = Inflector.constantize(name) unless constant
-        return super if name.blank? # anonymous module
+        return super if name.blank?
         if self === constant
           map[name] = constant
         else
@@ -40,10 +41,11 @@ module ActiveSupport # :nodoc:
       end
 
       attr_reader :constant
+      delegate :anonymous?, :reachable?, :to => :constant
 
       def initialize(name, constant)
         @name, @constant      = name, constant
-        @associated_constants = Set[self, Constant[constant.parent]]
+        @associated_constants = Set[self]
         @associated_files     = Set.new
       end
 
@@ -53,9 +55,11 @@ module ActiveSupport # :nodoc:
       end
 
       def associated_constants(transitive = true, bucket = Set.new)
-        return @associated_constants unless transitive
+        return [] unless unloadable?
+        associated = @associated_constants + constant.ancestors + constant.singleton_class.ancestors
+        return associated unless transitive
         bucket << self
-        @associated_constants.each do |c|
+        associated.each do |c|
           c.associated_constants(true, bucket) unless bucket.include? c
         end
         bucket
