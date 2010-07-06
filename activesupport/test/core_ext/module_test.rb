@@ -155,6 +155,12 @@ class ModuleTest < Test::Unit::TestCase
     end
   end
 
+  def test_parent_name
+    assert_equal 'Yz::Zy', Yz::Zy::Cd.parent_name
+    assert_equal 'Yz', Yz::Zy.parent_name
+    assert_equal nil, Yz.parent_name
+  end
+
   def test_parent
     assert_equal Yz::Zy, Yz::Zy::Cd.parent
     assert_equal Yz, Yz::Zy.parent
