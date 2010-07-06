@@ -5,10 +5,14 @@ class Module
   #
   #   M::N.parent_name # => "M"
   def parent_name
-    unless defined? @parent_name
-      @parent_name = name =~ /::[^:]+\Z/ ? $`.freeze : nil
-    end
+    set_base_and_parent_name unless defined? @parent_name
     @parent_name
+  end
+
+  # Returns the name without the parent name
+  def base_name
+    set_base_and_parent_name unless defined? @base_name
+    @base_name
   end
 
   # Returns the module which contains this one according to its name.
@@ -84,5 +88,12 @@ class Module
   # constants themselves. See <tt>local_constants</tt>.
   def local_constant_names
     local_constants.map { |c| c.to_s }
+  end
+
+  private
+
+  def set_base_and_parent_name
+    names = name =~ /::[^:]+\Z/ ? [$`, $1] : [nil, name]
+    @parent_name, @base_name = names.map { |n| n.freeze }
   end
 end
