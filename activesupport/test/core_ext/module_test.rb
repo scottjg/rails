@@ -159,18 +159,21 @@ class ModuleTest < Test::Unit::TestCase
     assert_equal 'Cd', Yz::Zy::Cd.base_name
     assert_equal 'Zy', Yz::Zy.base_name
     assert_equal 'Yz', Yz.base_name
+    assert_equal '', Module.new.base_name
   end
 
   def test_parent_name
     assert_equal 'Yz::Zy', Yz::Zy::Cd.parent_name
     assert_equal 'Yz', Yz::Zy.parent_name
     assert_equal nil, Yz.parent_name
+    assert_equal nil, Module.new.parent_name
   end
 
   def test_parent
     assert_equal Yz::Zy, Yz::Zy::Cd.parent
     assert_equal Yz, Yz::Zy.parent
     assert_equal Object, Yz.parent
+    assert_equal Object, Module.new.parent
   end
 
   def test_parents
