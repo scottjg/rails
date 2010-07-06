@@ -2,6 +2,7 @@ require 'set'
 require 'active_support/core_ext/module/anonymous'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/reachable'
+require 'active_support/core_ext/module/introspection'
 
 module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
@@ -28,6 +29,7 @@ module ActiveSupport # :nodoc:
         name, constant = name.name, name if constant.nil? and name.respond_to? :name
         constant = Inflector.constantize(name) unless constant
         return super if name.blank?
+        name.sub! /^::/, ''
         if self === constant
           map[name] = constant
         else
@@ -42,7 +44,7 @@ module ActiveSupport # :nodoc:
 
       attr_reader :constant
       delegate :anonymous?, :reachable?, :to => :constant
-      delegate :autoloaded_constants, :to => :Dependencies
+      delegate :autoloaded_constants, :to => Dependencies
 
       def initialize(name, constant)
         @name, @constant      = name, constant
@@ -79,10 +81,9 @@ module ActiveSupport # :nodoc:
       end
 
       def qualified_const
-        names = name.sub(/^::/, '').to_s.split('::')
         names.inject(Object) do |mod, name|
           return unless local_const_defined?(mod, name)
-          mod.const_get name
+          mod.const_get(name)
         end
       end
 
@@ -107,7 +108,8 @@ module ActiveSupport # :nodoc:
       end
 
       def deactivate
-        raise NotImplementedError
+        return false unless qualified_const_defined?
+        constant.parent.send(:remove_const, const.base_name)
       end
 
       def unload
