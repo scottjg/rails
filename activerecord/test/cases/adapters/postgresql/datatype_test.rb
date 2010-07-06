@@ -210,17 +210,21 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
   def test_timestamp_with_zone_values_with_rails_time_zone_support
     old_tz         = ActiveRecord::Base.time_zone_aware_attributes
     old_default_tz = ActiveRecord::Base.default_timezone
+    old_default_zone = Time.zone_default
 
     ActiveRecord::Base.time_zone_aware_attributes = true
     ActiveRecord::Base.default_timezone = :utc
+    Time.zone_default = 'Central Time (US & Canada)'
 
     @connection.reconnect!
-
+    PostgresqlTimestampWithZone.reset_column_information
+    
     @first_timestamp_with_zone = PostgresqlTimestampWithZone.find(1)
     assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
   ensure
     ActiveRecord::Base.default_timezone = old_default_tz
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
+    Time.zone_default = old_default_zone
     @connection.reconnect!
   end
 
@@ -232,6 +236,7 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
     ActiveRecord::Base.default_timezone = :local
 
     @connection.reconnect!
+    PostgresqlTimestampWithZone.reset_column_information
 
     @first_timestamp_with_zone = PostgresqlTimestampWithZone.find(1)
     assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
