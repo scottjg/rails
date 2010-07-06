@@ -93,7 +93,7 @@ class Module
   private
 
   def set_base_and_parent_name
-    names = name =~ /::[^:]+\Z/ ? [$`, $1] : [nil, name]
+    names = name =~ /::([^:]+)\Z/ ? [$`, $1] : [nil, name]
     @parent_name, @base_name = names.map { |n| n.freeze }
   end
 end
