@@ -58,6 +58,7 @@ module ActiveSupport # :nodoc:
       end
 
       def associated_constants(transitive = true, bucket = Set.new)
+        update_const
         return [] unless unloadable?
         associated = @associated_constants + constant.ancestors + constant.singleton_class.ancestors
         return associated unless transitive
@@ -66,6 +67,10 @@ module ActiveSupport # :nodoc:
           c.associated_constants(true, bucket) unless bucket.include? c
         end
         bucket
+      end
+
+      def update_const
+        @constant = c if c = qualified_const
       end
 
       def associate_with_constant(other)
@@ -82,12 +87,13 @@ module ActiveSupport # :nodoc:
 
       def qualified_const
         names.inject(Object) do |mod, name|
-          return unless local_const_defined?(mod, name)
+          return unless Dependencies.local_const_defined?(mod, name)
           mod.const_get(name)
         end
       end
 
       def autoloaded?
+        update_const
         !anonymous? and qualified_const_defined? and autoloaded_constants.include?(name)
       end
 
@@ -104,12 +110,13 @@ module ActiveSupport # :nodoc:
       end
 
       def activate
-        raise NotImplementedError
+        deactivate
+        constant.parent.const_set const_set.base_name, constant
       end
 
       def deactivate
         return false unless qualified_const_defined?
-        constant.parent.send(:remove_const, const.base_name)
+        constant.parent.send(:remove_const, constant.base_name)
       end
 
       def unload
@@ -126,6 +133,18 @@ module ActiveSupport # :nodoc:
 
       def load!
         raise NotImplementedError
+      end
+    end
+
+    if Module.method(:const_defined?).arity == 1
+      # Does this module define this constant?
+      # Wrapper to accommodate changing Module#const_defined? in Ruby 1.9
+      def local_const_defined?(mod, const)
+        mod.const_defined?(const)
+      end
+    else
+      def local_const_defined?(mod, const) #:nodoc:
+        mod.const_defined?(const, false)
       end
     end
 
