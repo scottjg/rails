@@ -42,15 +42,19 @@ class Time
     end
 
     private
-      def get_zone(time_zone)
-        return time_zone if time_zone.nil? || time_zone.is_a?(ActiveSupport::TimeZone)
+      def get_zone(zone_name)
+        return zone_name if zone_name.nil? || zone_name.is_a?(ActiveSupport::TimeZone)
         # lookup timezone based on identifier (unless we've been passed a TZInfo::Timezone)
-        unless time_zone.respond_to?(:period_for_local)
-          time_zone = ActiveSupport::TimeZone[time_zone] || TZInfo::Timezone.get(time_zone) rescue nil
+        time_zone = if zone_name.respond_to?(:period_for_local)
+          zone_name
+        else
+          ActiveSupport::TimeZone[zone_name] || TZInfo::Timezone.get(zone_name) rescue nil
         end
         # Return if a TimeZone instance, or wrap in a TimeZone instance if a TZInfo::Timezone
         if time_zone
           time_zone.is_a?(ActiveSupport::TimeZone) ? time_zone : ActiveSupport::TimeZone.create(time_zone.name, nil, time_zone)
+        else
+          raise ArgumentError, "#{zone_name.inspect} does not identify an ActiveSupport::TimeZone or TZInfo::Timezone"
         end
       end
   end

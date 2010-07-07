@@ -31,6 +31,12 @@ class TimeWithZoneTest < Test::Unit::TestCase
   def test_in_time_zone_with_argument
     assert_equal ActiveSupport::TimeWithZone.new(@utc, ActiveSupport::TimeZone['Alaska']), @twz.in_time_zone('Alaska')
   end
+  
+  def test_in_time_zone_with_unknown_argument_raises_argument_error
+    assert_raises ArgumentError do
+      @twz.in_time_zone('not a zone')
+    end
+  end
 
   def test_in_time_zone_with_new_zone_equal_to_old_zone_does_not_create_new_object
     assert_equal @twz.object_id, @twz.in_time_zone(ActiveSupport::TimeZone['Eastern Time (US & Canada)']).object_id
@@ -755,6 +761,15 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < Test::Unit::TestCase
       assert_equal 'Fri, 31 Dec 1999 15:00:00 AKST -09:00', @t.in_time_zone(-9.hours).inspect
     end
   end
+  
+  def test_in_time_zone_with_unknown_argument_raises_argument_error
+    assert_raises ArgumentError do
+      @t.in_time_zone('not a zone')
+    end
+    assert_raises ArgumentError do
+      @dt.in_time_zone('not a zone')
+    end
+  end
 
   def test_in_time_zone_with_time_local_instance
     with_env_tz 'US/Eastern' do
@@ -788,6 +803,12 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < Test::Unit::TestCase
     assert_equal ActiveSupport::TimeZone['Alaska'], Time.zone
     Time.zone = nil
     assert_equal nil, Time.zone
+  end
+  
+  def test_time_zone_setter_raises_argument_error_when_passed_unknown_identifier
+    assert_raises ArgumentError do
+      Time.zone = 'not a zone'
+    end
   end
 
   def test_time_zone_getter_and_setter_with_zone_default
@@ -831,11 +852,13 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < Test::Unit::TestCase
   end
 
   def test_time_zone_setter_with_invalid_zone
-    Time.zone = 'foo'
-    assert_nil Time.zone
-
-    Time.zone = -15.hours
-    assert_nil Time.zone
+    assert_raises ArgumentError do
+      Time.zone = 'foo'
+    end
+    
+    assert_raises ArgumentError do
+      Time.zone = -15.hours
+    end
   end
 
   def test_current_returns_time_now_when_zone_default_not_set
