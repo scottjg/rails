@@ -13,7 +13,8 @@ class DateTime
   # and the conversion will be based on that zone instead of <tt>Time.zone</tt>.
   #
   #   DateTime.new(2000).in_time_zone('Alaska')  # => Fri, 31 Dec 1999 15:00:00 AKST -09:00
-  def in_time_zone(zone = ::Time.zone)
+  def in_time_zone(zone = nil)
+    zone ||= ::Time.zone
     return self unless zone
 
     ActiveSupport::TimeWithZone.new(utc? ? self : getutc, ::Time.__send__(:get_zone, zone))

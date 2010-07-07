@@ -37,6 +37,12 @@ class TimeWithZoneTest < Test::Unit::TestCase
       @twz.in_time_zone('not a zone')
     end
   end
+  
+  def test_in_time_zone_with_nil_argument_uses_global_time_zone_value
+    Time.use_zone 'Central Time (US & Canada)' do
+      assert_equal 'Fri, 31 Dec 1999 18:00:00 CST -06:00', @twz.in_time_zone(nil).inspect
+    end
+  end
 
   def test_in_time_zone_with_new_zone_equal_to_old_zone_does_not_create_new_object
     assert_equal @twz.object_id, @twz.in_time_zone(ActiveSupport::TimeZone['Eastern Time (US & Canada)']).object_id
@@ -759,6 +765,13 @@ class TimeWithZoneMethodsForTimeAndDateTimeTest < Test::Unit::TestCase
       assert_equal 'Sat, 01 Jan 2000 00:00:00 UTC +00:00', @t.in_time_zone('UTC').inspect
       assert_equal 'Sat, 01 Jan 2000 00:00:00 UTC +00:00', @dt.in_time_zone('UTC').inspect
       assert_equal 'Fri, 31 Dec 1999 15:00:00 AKST -09:00', @t.in_time_zone(-9.hours).inspect
+    end
+  end
+  
+  def test_in_time_zone_with_nil_argument_uses_global_time_zone_value
+    Time.use_zone 'Eastern Time (US & Canada)' do
+      assert_equal 'Fri, 31 Dec 1999 19:00:00 EST -05:00', @t.in_time_zone(nil).inspect
+      assert_equal 'Fri, 31 Dec 1999 19:00:00 EST -05:00', @dt.in_time_zone(nil).inspect
     end
   end
   
