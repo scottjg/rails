@@ -20,6 +20,10 @@ module ActiveSupport # :nodoc:
     mattr_accessor :autoload_paths
     self.autoload_paths = []
 
+    # Should we load files or require them?
+    mattr_accessor :mechanism
+    self.mechanism = ENV['NO_RELOAD'] ? :require : :load
+
     # Note that a Constant will also store constants that have been removed,
     # which allows bringing a constant back to live without loading the source file.
     class Constant # :nodoc:
