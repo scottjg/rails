@@ -14,6 +14,12 @@ module ActiveSupport # :nodoc:
     mattr_accessor :autoloaded_constants
     self.autoloaded_constants = []
 
+    # The set of directories from which we may automatically load files. Files
+    # under these directories will be reloaded on each request in development mode,
+    # unless the directory also appears in autoload_once_paths.
+    mattr_accessor :autoload_paths
+    self.autoload_paths = []
+
     # Note that a Constant will also store constants that have been removed,
     # which allows bringing a constant back to live without loading the source file.
     class Constant # :nodoc:
