@@ -74,6 +74,8 @@ module ActiveRecord
       @records
     end
 
+    def as_json(options = nil) to_a end #:nodoc:
+
     # Returns size of the records.
     def size
       loaded? ? @records.length : count
