@@ -24,6 +24,11 @@ module ActiveSupport # :nodoc:
     mattr_accessor :mechanism
     self.mechanism = ENV['NO_RELOAD'] ? :require : :load
 
+    # An array of constant names that need to be unloaded on every request. Used
+    # to allow arbitrary constants to be marked for unloading.
+    mattr_accessor :explicitly_unloadable_constants
+    self.explicitly_unloadable_constants = []
+
     # Note that a Constant will also store constants that have been removed,
     # which allows bringing a constant back to live without loading the source file.
     class Constant # :nodoc:
