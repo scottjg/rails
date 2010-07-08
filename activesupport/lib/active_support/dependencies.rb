@@ -3,6 +3,7 @@ require 'active_support/core_ext/module/anonymous'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/reachable'
 require 'active_support/core_ext/module/introspection'
+require 'active_support/deprecation'
 
 module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
@@ -34,7 +35,7 @@ module ActiveSupport # :nodoc:
         name, constant = name.name, name if constant.nil? and name.respond_to? :name
         constant = Inflector.constantize(name) unless constant
         return super if name.blank?
-        name.sub! /^::/, ''
+        name.sub! /^((::)?Object)?::/, ''
         if self === constant
           map[name] = constant
         else
@@ -47,7 +48,7 @@ module ActiveSupport # :nodoc:
         alias []= new
       end
 
-      attr_reader :constant
+      attr_reader :constant, :name
       delegate :anonymous?, :reachable?, :to => :constant
       delegate :autoloaded_constants, :to => Dependencies
 
@@ -75,7 +76,7 @@ module ActiveSupport # :nodoc:
       end
 
       def update_const
-        @constant = c if c = qualified_const
+        @constant = qualified_const if qualified_const_defined?
       end
 
       def associate_with_constant(other)
@@ -91,7 +92,8 @@ module ActiveSupport # :nodoc:
       end
 
       def qualified_const
-        names.inject(Object) do |mod, name|
+        @names ||= name.split("::")
+        @names.inject(Object) do |mod, name|
           return unless Dependencies.local_const_defined?(mod, name)
           mod.const_get(name)
         end
@@ -155,5 +157,13 @@ module ActiveSupport # :nodoc:
 
     def schedule_reload
     end
+
+    alias clear schedule_reload
+
+    def autoloaded?(desc)
+      Constant[desc].autoloaded?
+    end
+
+    Deprecation.deprecate_methods self, :autoloaded?, :clear
   end
 end
