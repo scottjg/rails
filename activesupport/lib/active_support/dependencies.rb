@@ -46,11 +46,46 @@ module ActiveSupport # :nodoc:
     mattr_accessor :autoload_once_paths
     self.autoload_once_paths = []
 
+    mattr_accessor :world_reload_count
+    self.world_reload_count = 0
+
+    mattr_accessor :default_strategy
+    self.default_strategy = :world
+
     def hook!
       Object.send(:include, Loadable)
     end
 
     def unhook!
+    end
+
+    module Strategies
+      module World
+        def mark
+          return false if reload?
+          # avoid looping through all constants
+          Dependencies.world_reload_count += 1
+          mark!
+        end
+      end
+
+      module Associated
+        def mark
+          return false if reload?
+          associated_constants.each(&:mark)
+          mark!
+        end
+      end
+
+      module SingleClass
+        def mark
+          mark!
+        end
+      end
+
+      module MonkeyPatch
+        include SingleClass
+      end
     end
 
     # Object includes this module
@@ -105,14 +140,23 @@ module ActiveSupport # :nodoc:
         alias []= new
       end
 
-      attr_reader :constant, :name
-      delegate :anonymous?, :reachable?, :to => :constant
+      attr_reader :constant, :name, :strategy
+      delegate :anonymous?, :reachable?, :const_set, :const_get, :to => :constant
       delegate :autoloaded_constants, :to => Dependencies
 
       def initialize(name, constant)
         @name, @constant      = name, constant
         @associated_constants = Set[self]
         @associated_files     = Set.new
+        self.strategy         = Dependencies.default_strategy
+      end
+
+      def class?
+        Class === constant
+      end
+
+      def module?(include_classes = false)
+        Module === constant and (include_classes or !class?)
       end
 
       def associated_files(transitive = true)
@@ -121,19 +165,15 @@ module ActiveSupport # :nodoc:
       end
 
       def associated_constants(transitive = true, bucket = Set.new)
-        update_const
         return [] unless unloadable?
-        associated = @associated_constants + constant.ancestors + constant.singleton_class.ancestors
+        associated = @associated_constants
+        associated_constants += constant.ancestors + constant.singleton_class.ancestors if module?(true)
         return associated unless transitive
         bucket << self
         associated.each do |c|
           c.associated_constants(true, bucket) unless bucket.include? c
         end
         bucket
-      end
-
-      def update_const
-        @constant = qualified_const if qualified_const_defined?
       end
 
       def associate_with_constant(other)
@@ -148,16 +188,25 @@ module ActiveSupport # :nodoc:
         !!qualified_const
       end
 
+      alias active? qualified_const_defined?
+
       def qualified_const
         @names ||= name.split("::")
-        @names.inject(Object) do |mod, name|
+        @constant = @names.inject(Object) do |mod, name|
           return unless Dependencies.local_const_defined?(mod, name)
           mod.const_get(name)
         end
       end
 
+      def parent
+        Constant[constant.parent]
+      end
+
+      def remove_const(desc)
+        constant.send(:remove_const, desc)
+      end
+
       def autoloaded?
-        update_const
         !anonymous? and qualified_const_defined? and autoloaded_constants.include?(name)
       end
 
@@ -172,13 +221,14 @@ module ActiveSupport # :nodoc:
       end
 
       def activate
-        deactivate
-        constant.parent.const_set const_set.base_name, constant
+        return false if active?
+        parent.activate
+        parent.const_set const_set.base_name, constant
       end
 
       def deactivate
         return false unless qualified_const_defined?
-        constant.parent.send(:remove_const, constant.base_name)
+        parent.remove_const(constant.base_name)
       end
 
       def unload
@@ -193,6 +243,12 @@ module ActiveSupport # :nodoc:
       end
 
       def load!
+      end
+
+      def strategy=(value)
+        value = Strategies.const_get(Inflector.camelize(value.to_s)) unless Module === value
+        extend value
+        @strategy = value
       end
     end
 
