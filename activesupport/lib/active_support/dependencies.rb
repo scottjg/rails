@@ -9,6 +9,10 @@ module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
     extend self
 
+    # Should we turn on Ruby warnings on the first load of dependent files?
+    mattr_accessor :warnings_on_first_load
+    self.warnings_on_first_load = false
+
     # An array of qualified constant names that have been loaded. Adding a name to
     # this array will cause it to be unloaded the next time Dependencies are cleared.
     mattr_accessor :autoloaded_constants
@@ -29,6 +33,44 @@ module ActiveSupport # :nodoc:
     mattr_accessor :explicitly_unloadable_constants
     self.explicitly_unloadable_constants = []
 
+    # All files currently loaded.
+    mattr_accessor :loaded
+    self.loaded = Set.new
+
+    # All files ever loaded.
+    mattr_accessor :history
+    self.history = Set.new
+
+    # The set of directories from which automatically loaded constants are loaded
+    # only once. All directories in this set must also be present in +autoload_paths+.
+    mattr_accessor :autoload_once_paths
+    self.autoload_once_paths = []
+
+    def hook!
+      Object.send(:include, Loadable)
+    end
+
+    def unhook!
+    end
+
+    # Object includes this module
+    module Loadable #:nodoc:
+      def unloadable
+      end
+
+      def require_or_load(file_name)
+      end
+
+      def require_dependency(file_name, message = "No such file to load -- %s")
+        unless file_name.is_a?(String)
+          raise ArgumentError, "the file name must be a String -- you passed #{file_name.inspect}"
+        end
+      end
+
+      def require_association(file_name)
+      end
+    end
+
     # Note that a Constant will also store constants that have been removed,
     # which allows bringing a constant back to live without loading the source file.
     class Constant # :nodoc:
@@ -48,9 +90,9 @@ module ActiveSupport # :nodoc:
 
       def self.new(name, constant = nil)
         name, constant = name.name, name if constant.nil? and name.respond_to? :name
+        name = Dependencies.to_constant_name name
         constant = Inflector.constantize(name) unless constant
         return super if name.blank?
-        name.sub! /^((::)?Object)?::/, ''
         if self === constant
           map[name] = constant
         else
@@ -124,11 +166,9 @@ module ActiveSupport # :nodoc:
       end
 
       def explicitly_unloadable?
-        raise NotImplementedError
       end
 
       def reload?
-        raise NotImplementedError
       end
 
       def activate
@@ -150,11 +190,9 @@ module ActiveSupport # :nodoc:
       end
 
       def unload!
-        raise NotImplementedError
       end
 
       def load!
-        raise NotImplementedError
       end
     end
 
@@ -179,6 +217,60 @@ module ActiveSupport # :nodoc:
       Constant[desc].autoloaded?
     end
 
-    Deprecation.deprecate_methods self, :autoloaded?, :clear
+    def remove_constant(desc)
+      Constant[desc].deactivate
+    end
+
+    def ref(desc)
+      Constant[desc]
+    end
+
+    # Given +path+, a filesystem path to a ruby file, return an array of constant
+    # paths which would cause Dependencies to attempt to load this file.
+    def loadable_constants_for_path(path, bases = autoload_paths)
+      path = $1 if path =~ /\A(.*)\.rb\Z/
+      expanded_path = File.expand_path(path)
+      paths = []
+
+      bases.each do |root|
+        expanded_root = File.expand_path(root)
+        next unless %r{\A#{Regexp.escape(expanded_root)}(/|\\)} =~ expanded_path
+
+        nesting = expanded_path[(expanded_root.size)..-1]
+        nesting = nesting[1..-1] if nesting && nesting[0] == ?/
+        next if nesting.blank?
+
+        paths << nesting.camelize
+      end
+
+      paths.uniq!
+      paths
+    end
+
+    # Convert the provided const desc to a qualified constant name (as a string).
+    # A module, class, symbol, or string may be provided.
+    def to_constant_name(desc) #:nodoc:
+      name = case desc
+      when String then desc.sub(/^::/, '')
+      when Symbol then desc.to_s
+      when Module
+        desc.name.presence ||
+        raise(ArgumentError, "Anonymous modules have no name to be referenced by")
+      else raise TypeError, "Not a valid constant descriptor: #{desc.inspect}"
+      end
+    end
+
+    # Return the constant path for the provided parent and constant name.
+    def qualified_name_for(mod, name)
+      mod_name = to_constant_name mod
+      mod_name == "Object" ? name.to_s : "#{mod_name}::#{name}"
+    end
+
+    def qualified_const_defined?(desc)
+      Constant[desc].qualified_const_defined?
+    end
+
+    Deprecation.deprecate_methods self, :autoloaded?, :clear, :remove_constant, :ref, :qualified_const_defined?
+    hook!
   end
 end
