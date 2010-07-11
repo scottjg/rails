@@ -70,6 +70,8 @@ module ActiveSupport # :nodoc:
       end
 
       module Associated
+        include World
+
         def mark
           return false if reload?
           associated_constants.each(&:mark)
@@ -77,14 +79,10 @@ module ActiveSupport # :nodoc:
         end
       end
 
-      module SingleClass
+      module MonkeyPatch
         def mark
           mark!
         end
-      end
-
-      module MonkeyPatch
-        include SingleClass
       end
     end
 
