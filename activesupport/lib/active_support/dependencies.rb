@@ -9,6 +9,54 @@ module ActiveSupport # :nodoc:
   module Dependencies # :nodoc:
     extend self
 
+    class WatchStack < Array
+      def initialize
+        @mutex = Mutex.new
+      end
+
+      def self.locked(*methods)
+        methods.each { |m| class_eval "def #{m}(*) lock { super } end", __FILE__, __LINE__ }
+      end
+
+      def get(key)
+        (val = assoc(key)) ? val[1] : []
+      end
+
+      locked :concat, :each, :delete_if, :<<
+
+      def new_constants_for(frames)
+        constants = []
+        frames.each do |mod_name, prior_constants|
+          mod = Inflector.constantize(mod_name) if Dependencies.qualified_const_defined?(mod_name)
+          next unless mod.is_a?(Module)
+
+          new_constants = mod.local_constant_names - prior_constants
+          get(mod_name).concat(new_constants)
+
+          new_constants.each do |suffix|
+            constants << ([mod_name, suffix] - ["Object"]).join("::")
+          end
+        end
+        constants
+      end  
+
+      # Add a set of modules to the watch stack, remembering the initial constants
+      def add_modules(modules)
+        list = modules.map do |desc|
+          name = Dependencies.to_constant_name(desc)
+          consts = Dependencies.qualified_const_defined?(name) ?
+          Inflector.constantize(name).local_constant_names : []
+          [name, consts]
+        end
+        concat(list)
+        list
+      end
+
+      def lock
+        @mutex.synchronize { yield self }
+      end
+    end
+
     # Should we turn on Ruby warnings on the first load of dependent files?
     mattr_accessor :warnings_on_first_load
     self.warnings_on_first_load = false
@@ -45,6 +93,10 @@ module ActiveSupport # :nodoc:
     # only once. All directories in this set must also be present in +autoload_paths+.
     mattr_accessor :autoload_once_paths
     self.autoload_once_paths = []
+
+    # An internal stack used to record which constants are loaded by any block.
+    mattr_accessor :constant_watch_stack
+    self.constant_watch_stack = WatchStack.new
 
     mattr_accessor :world_reload_count
     self.world_reload_count = 0
@@ -299,6 +351,49 @@ module ActiveSupport # :nodoc:
 
       paths.uniq!
       paths
+    end
+
+    # Run the provided block and detect the new constants that were loaded during
+    # its execution. Constants may only be regarded as 'new' once -- so if the
+    # block calls +new_constants_in+ again, then the constants defined within the
+    # inner call will not be reported in this one.
+    #
+    # If the provided block does not run to completion, and instead raises an
+    # exception, any new constants are regarded as being only partially defined
+    # and will be removed immediately.
+    def new_constants_in(*descs)
+      #log_call(*descs)
+      watch_frames = constant_watch_stack.add_modules(descs)
+
+      aborting = true
+      begin
+        yield # Now yield to the code that is to define new constants.
+        aborting = false
+      ensure
+        new_constants = constant_watch_stack.new_constants_for(watch_frames)
+
+        #log "New constants: #{new_constants * ', '}"
+        return new_constants unless aborting
+
+        #log "Error during loading, removing partially loaded constants "
+        new_constants.each {|c| remove_constant(c) }.clear
+      end
+
+      return []
+    ensure
+      # Remove the stack frames that we added.
+      watch_frames.each {|f| constant_watch_stack.delete(f) } if watch_frames.present?
+    end
+
+    # Search for a file in autoload_paths matching the provided suffix.
+    def search_for_file(path_suffix)
+      path_suffix = path_suffix.sub(/(\.rb)?$/, ".rb")
+
+      autoload_paths.each do |root|
+        path = File.join(root, path_suffix)
+        return path if File.file? path
+      end
+      nil # Gee, I sure wish we had first_match ;-)
     end
 
     # Convert the provided const desc to a qualified constant name (as a string).
