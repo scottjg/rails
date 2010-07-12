@@ -1,6 +1,17 @@
+require 'set'
+require 'active_support/inflector'
+
 module ActiveSupport # :nodoc:
   # Documentation goes here.
   module Dependencies
+    # The logger is used for generating information on the action run-time (including benchmarking) if available.
+    # Can be set to nil for no logging. Compatible with both Ruby's own Logger and Log4r loggers.
+    mattr_accessor :logger
+
+    # Set to true to enable logging of const_missing and file loads
+    mattr_accessor :log_activity
+    self.log_activity = false
+
     module Tools # :nodoc:
       def self.included(base) # :nodoc:
         base.extend(self)
@@ -16,6 +27,31 @@ module ActiveSupport # :nodoc:
           desc.name.presence ||
           raise(ArgumentError, "Anonymous modules have no name to be referenced by")
         else raise TypeError, "Not a valid constant descriptor: #{desc.inspect}"
+        end
+      end
+
+      def logger
+        Dependencies.logger
+      end
+
+      def log_activity?
+        Dependencies.log_activity
+      end
+
+      protected
+
+      def log_call(*args)
+        if logger && log_activity?
+          arg_str = args.collect { |arg| arg.inspect } * ', '
+          /in `([a-z_\?\!]+)'/ =~ caller(1).first
+          selector = $1 || '<unknown>'
+          log "called #{selector}(#{arg_str})"
+        end
+      end
+
+      def log(msg)
+        if logger && log_activity?
+          logger.debug "Dependencies: #{msg}"
         end
       end
     end
