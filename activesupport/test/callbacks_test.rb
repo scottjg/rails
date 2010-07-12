@@ -71,6 +71,43 @@ module CallbacksTest
     def no; false; end
   end
 
+  class ErrorPerson < Person
+    reset_callbacks   :save
+    define_callbacks  :rescuable_save,              :rescuable => true
+    define_callbacks  :rescuable_save_with_around,  :rescuable => true
+
+    set_callback      :rescuable_save, :before do
+      raise "Error"
+    end
+
+    set_callback      :rescuable_save, :after do |r|
+      r.history << [:after_rescuable_save, :block]
+    end
+
+    def rescuable_save
+      run_callbacks :rescuable_save
+    end
+
+
+    set_callback    :rescuable_save_with_around, :before do
+      raise "Error"
+    end
+
+    set_callback    :rescuable_save_with_around,  :around do |&block|
+      r.history << [:before_rescuable_save_with_around, :around_block]
+      block.call
+      r.history << [:after_rescuable_save_with_around, :around_block]
+    end
+
+    set_callback      :rescuable_save_with_around, :after do |r|
+      r.history << [:after_rescuable_save_with_around, :block]
+    end
+
+    def rescuable_save_with_around
+      run_callbacks :rescuable_save_with_around
+    end
+  end
+
   class ParentController
     include ActiveSupport::Callbacks
 
@@ -332,6 +369,30 @@ module CallbacksTest
         [:after_save, :proc],
         [:after_save, :string],
         [:after_save, :symbol]
+      ], person.history
+    end
+
+    def test_error_in_before_save
+      person = ErrorPerson.new
+      begin
+        person.rescuable_save
+        fail "expected exception"
+      rescue
+      end
+      assert_equal [
+        [:after_rescuable_save, :block],
+      ], person.history
+    end
+
+    def test_error_in_before_save_with_around
+      person = ErrorPerson.new
+      begin
+        person.rescuable_save_with_around
+        fail "expected exception"
+      rescue
+      end
+      assert_equal [
+        [:after_rescuable_save_with_around, :block],
       ], person.history
     end
   end
