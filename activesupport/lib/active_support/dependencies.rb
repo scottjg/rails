@@ -74,6 +74,16 @@ module ActiveSupport # :nodoc:
         end
       end
 
+      def trace
+        caller.reject {|l| l =~ %r{#{Regexp.escape(__FILE__)}} }
+      end
+
+      def name_error(name)
+        NameError.new("uninitialized constant #{name}").tap do |name_error|
+          name_error.set_backtrace(trace)
+        end
+      end
+
       def logger
         Dependencies.logger
       end
@@ -86,6 +96,16 @@ module ActiveSupport # :nodoc:
         Dependencies.autoloaded_constants
       end
 
+      # Search for a file in autoload_paths matching the provided suffix.
+      def search_for_file(path_suffix)
+        path_suffix = path_suffix.sub(/(\.rb)?$/, ".rb")
+        Dependencies.autoload_paths.each do |root|
+          path = File.join(root, path_suffix)
+          return path if File.file? path
+        end
+        nil # Gee, I sure wish we had first_match ;-)
+      end
+
       if Module.method(:const_defined?).arity == 1
         # Does this module define this constant?
         # Wrapper to accommodate changing Module#const_defined? in Ruby 1.9
@@ -96,6 +116,10 @@ module ActiveSupport # :nodoc:
         def local_const_defined?(mod, const) #:nodoc:
           mod.const_defined?(const, false)
         end
+      end
+
+      def loaded?(file)
+        Dependencies.loaded.include? File.expand_path(file)
       end
 
       protected
@@ -155,7 +179,7 @@ module ActiveSupport # :nodoc:
         @name = name
         if name =~ /::([^:]+)\Z/
           @parent, @local_name = Constant[$`], $1
-        elsif name == 'Object'
+        elsif object?
           @parent, @local_name = self, 'Object'
         else
           @parent, @local_name = Constant[Object], name
@@ -178,8 +202,18 @@ module ActiveSupport # :nodoc:
         end
       end
 
+      def object?
+        name == 'Object'
+      end
+
       def active?
         qualified_const == constant
+      end
+
+      def active!
+        unless active?
+          raise ArgumentError, "A copy of #{name} has been removed from the module tree but is still active!"
+        end
       end
 
       def autoloaded?
@@ -208,11 +242,20 @@ module ActiveSupport # :nodoc:
       end
 
       def load_constant(const_name)
-        complete_name = "#{name}::#{const_name}"
+        log_call self, const_name
+        complete_name = object? ? const_name.to_s : "#{name}::#{const_name}"
         if Constant.available? complete_name
           Constant[complete_name].reload
         else
-          raise NotImplementedError
+          active!
+          file_path = search_for_file(complete_name.underscore)
+          if file_path and not loaded?(file_path)
+            require_or_load file_path
+            raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
+            Constant[]
+          else
+            raise name_error(complete_name)
+          end
         end
       end
     end
@@ -242,11 +285,52 @@ module ActiveSupport # :nodoc:
       end
 
       module Module
+        def self.append_features(base)
+          base.class_eval do
+            # Emulate #exclude via an ivar
+            return if defined?(@_const_missing) && @_const_missing
+            @_const_missing = instance_method(:const_missing)
+            remove_method(:const_missing)
+          end
+          super
+        end
+
         def self.exclude_from(base)
           #base.class_eval do
           #  define_method :const_missing, @_const_missing
           #  @_const_missing = nil
           #end
+        end
+
+        # Use const_missing to autoload associations so we don't have to
+        # require_association when using single-table inheritance.
+        def const_missing(const_name, nesting = nil)
+          klass_name = name.presence || "Object"
+
+          if !nesting
+            # We'll assume that the nesting of Foo::Bar is ["Foo::Bar", "Foo"]
+            # even though it might not be, such as in the case of
+            # class Foo::Bar; Baz; end
+            nesting = []
+            klass_name.to_s.scan(/::|$/) { nesting.unshift $` }
+          end
+
+          # If there are multiple levels of nesting to search under, the top
+          # level is the one we want to report as the lookup fail.
+          error = nil
+          nesting.each do |namespace|
+            begin
+              return Dependencies.load_missing_constant Inflector.constantize(namespace), const_name
+            rescue NoMethodError then raise
+            rescue NameError => e
+              error ||= e
+            end
+          end
+
+          # Raise the first error for this set. If this const_missing came from an
+          # earlier const_missing, this will result in the real error bubbling
+          # all the way up
+          raise error
         end
 
         def unloadable(const_desc = self)
