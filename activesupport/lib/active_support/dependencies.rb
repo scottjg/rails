@@ -252,7 +252,7 @@ module ActiveSupport # :nodoc:
         else
           @parent, @local_name = Constant[Object], name
         end
-        @constant = qualified_const
+        update
       end
 
       def qualified_name_for(mod, name = nil)
@@ -269,7 +269,7 @@ module ActiveSupport # :nodoc:
       end
 
       def update
-        @constant = qualified_const || constant
+        @constant = qualified_const
       end
 
       def object?
@@ -317,8 +317,9 @@ module ActiveSupport # :nodoc:
         super(mod, name) if mod
       end
 
-      def load_constant(const_name)
+      def load_constant(from_mod, const_name)
         log_call const_name
+        self.constant = from_mod unless active?
         active!
 
         complete_name = qualified_name_for(const_name)
@@ -343,7 +344,7 @@ module ActiveSupport # :nodoc:
       end
 
       def load_parent_constant(const_name, complete_name)
-        parent.load_constant(const_name)
+        parent.load_constant(parent.constant, const_name)
       rescue NameError => e
         raise unless e.missing_name? qualified_name_for(parent, const_name)
         raise name_error(complete_name)
@@ -579,7 +580,7 @@ module ActiveSupport # :nodoc:
     end
 
     def load_missing_constant(from_mod, const_name)
-      Constant[from_mod].load_constant(const_name)
+      Constant[from_mod].load_constant(from_mod, const_name)
     end
 
     # Run the provided block and detect the new constants that were loaded during
