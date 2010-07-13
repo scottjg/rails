@@ -8,14 +8,6 @@ module Rails
   # In Rails 3.0, a Rails::Application object was introduced which is nothing more than
   # an Engine but with the responsibility of coordinating the whole boot process.
   #
-  # Opposite to Rails::Engine, you can only have one Rails::Application instance
-  # in your process and both Rails::Application and YourApplication::Application
-  # points to it.
-  #
-  # In other words, Rails::Application is Singleton and whenever you are accessing
-  # Rails::Application.config or YourApplication::Application.config, you are actually
-  # accessing YourApplication::Application.instance.config.
-  #
   # == Initialization
   #
   # Rails::Application is responsible for executing all railties, engines and plugin
@@ -28,7 +20,7 @@ module Rails
   # Besides providing the same configuration as Rails::Engine and Rails::Railtie,
   # the application object has several specific configurations, for example
   # "allow_concurrency", "cache_classes", "consider_all_requests_local", "filter_parameters",
-  # "logger", "reload_engines", "reload_plugins" and so forth.
+  # "logger", "reload_plugins" and so forth.
   #
   # Check Rails::Application::Configuration to see them all.
   #
@@ -57,6 +49,10 @@ module Rails
 
       def instance
         if self == Rails::Application
+          if Rails.application
+            ActiveSupport::Deprecation.warn "Calling a method in Rails::Application is deprecated, " <<
+              "please call it directly in your application constant #{Rails.application.class.name}.", caller
+          end
           Rails.application
         else
           @@instance ||= new
@@ -67,7 +63,7 @@ module Rails
         raise "You cannot have more than one Rails::Application" if Rails.application
         super
         Rails.application = base.instance
-        Rails.application.add_lib_to_load_paths!
+        Rails.application.add_lib_to_load_path!
         ActiveSupport.run_load_hooks(:before_configuration, base.instance)
       end
 
@@ -97,7 +93,7 @@ module Rails
     # are changing config.root inside your application definition or having a custom
     # Rails application, you will need to add lib to $LOAD_PATH on your own in case
     # you need to load files in lib/ during the application configuration as well.
-    def add_lib_to_load_paths! #:nodoc:
+    def add_lib_to_load_path! #:nodoc:
       path = config.root.join('lib').to_s
       $LOAD_PATH.unshift(path) if File.exists?(path)
     end
@@ -125,14 +121,13 @@ module Rails
     end
 
     def reload_routes!
-      routes = Rails::Application.routes
-      routes.disable_clear_and_finalize = true
-
-      routes.clear!
+      _routes = self.routes
+      _routes.disable_clear_and_finalize = true
+      _routes.clear!
       routes_reloader.paths.each { |path| load(path) }
-      ActiveSupport.on_load(:action_controller) { routes.finalize! }
+      ActiveSupport.on_load(:action_controller) { _routes.finalize! }
     ensure
-      routes.disable_clear_and_finalize = false
+      _routes.disable_clear_and_finalize = false
     end
 
     def initialize!
@@ -216,11 +211,6 @@ module Rails
 
     def initialize_generators
       require "rails/generators"
-    end
-
-    # Application is always reloadable when config.cache_classes is false.
-    def reloadable?(app)
-      true
     end
   end
 end

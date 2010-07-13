@@ -1,4 +1,5 @@
 require 'active_support/core_ext/kernel/singleton_class'
+require 'active_support/core_ext/module/aliasing'
 
 module ActiveRecord
   # Exception that can be raised to stop migrations from going backwards.
@@ -283,7 +284,7 @@ module ActiveRecord
   #
   #    config.active_record.timestamped_migrations = false
   #
-  # In environment.rb.
+  # In application.rb.
   #
   class Migration
     @@verbose = true

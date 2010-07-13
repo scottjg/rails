@@ -105,7 +105,7 @@ module ActiveSupport #:nodoc:
         # Example:
         #   ('Café'.mb_chars + ' périferôl').to_s #=> "Café périferôl"
         def +(other)
-          self << other
+          chars(@wrapped_string + other)
         end
 
         # Like <tt>String#=~</tt> only it returns the character offset (in codepoints) instead of the byte offset.
@@ -195,6 +195,45 @@ module ActiveSupport #:nodoc:
           Unicode.u_unpack(@wrapped_string)[0]
         end
 
+        # Works just like <tt>String#rjust</tt>, only integer specifies characters instead of bytes.
+        #
+        # Example:
+        #
+        #   "¾ cup".mb_chars.rjust(8).to_s
+        #   #=> "   ¾ cup"
+        #
+        #   "¾ cup".mb_chars.rjust(8, " ").to_s # Use non-breaking whitespace
+        #   #=> "   ¾ cup"
+        def rjust(integer, padstr=' ')
+          justify(integer, :right, padstr)
+        end
+
+        # Works just like <tt>String#ljust</tt>, only integer specifies characters instead of bytes.
+        #
+        # Example:
+        #
+        #   "¾ cup".mb_chars.rjust(8).to_s
+        #   #=> "¾ cup   "
+        #
+        #   "¾ cup".mb_chars.rjust(8, " ").to_s # Use non-breaking whitespace
+        #   #=> "¾ cup   "
+        def ljust(integer, padstr=' ')
+          justify(integer, :left, padstr)
+        end
+
+        # Works just like <tt>String#center</tt>, only integer specifies characters instead of bytes.
+        #
+        # Example:
+        #
+        #   "¾ cup".mb_chars.center(8).to_s
+        #   #=> " ¾ cup  "
+        #
+        #   "¾ cup".mb_chars.center(8, " ").to_s # Use non-breaking whitespace
+        #   #=> " ¾ cup  "
+        def center(integer, padstr=' ')
+          justify(integer, :center, padstr)
+        end
+
       else
         def =~(other)
           @wrapped_string =~ other
@@ -250,46 +289,6 @@ module ActiveSupport #:nodoc:
         end
       end
 
-      # Works just like <tt>String#rjust</tt>, only integer specifies characters instead of bytes.
-      #
-      # Example:
-      #
-      #   "¾ cup".mb_chars.rjust(8).to_s
-      #   #=> "   ¾ cup"
-      #
-      #   "¾ cup".mb_chars.rjust(8, " ").to_s # Use non-breaking whitespace
-      #   #=> "   ¾ cup"
-      def rjust(integer, padstr=' ')
-        justify(integer, :right, padstr)
-      end
-
-      # Works just like <tt>String#ljust</tt>, only integer specifies characters instead of bytes.
-      #
-      # Example:
-      #
-      #   "¾ cup".mb_chars.rjust(8).to_s
-      #   #=> "¾ cup   "
-      #
-      #   "¾ cup".mb_chars.rjust(8, " ").to_s # Use non-breaking whitespace
-      #   #=> "¾ cup   "
-      def ljust(integer, padstr=' ')
-        justify(integer, :left, padstr)
-      end
-
-      # Works just like <tt>String#center</tt>, only integer specifies characters instead of bytes.
-      #
-      # Example:
-      #
-      #   "¾ cup".mb_chars.center(8).to_s
-      #   #=> " ¾ cup  "
-      #
-      #   "¾ cup".mb_chars.center(8, " ").to_s # Use non-breaking whitespace
-      #   #=> " ¾ cup  "
-      def center(integer, padstr=' ')
-        justify(integer, :center, padstr)
-      end
-
-
       # Reverses all characters in the string.
       #
       # Example:
@@ -317,25 +316,14 @@ module ActiveSupport #:nodoc:
           result = @wrapped_string.slice(*args)
         elsif args.size == 1 && args[0].kind_of?(Numeric)
           character = Unicode.u_unpack(@wrapped_string)[args[0]]
-          result = character.nil? ? nil : [character].pack('U')
+          result = character && [character].pack('U')
         else
-          result = Unicode.u_unpack(@wrapped_string).slice(*args).pack('U*')
+          cps = Unicode.u_unpack(@wrapped_string).slice(*args)
+          result = cps && cps.pack('U*')
         end
-        result.nil? ? nil : chars(result)
+        result && chars(result)
       end
       alias_method :[], :slice
-
-      # Like <tt>String#slice!</tt>, except instead of byte offsets you specify character offsets.
-      #
-      # Example:
-      #   s = 'こんにちは'
-      #   s.mb_chars.slice!(2..3).to_s #=> "にち"
-      #   s #=> "こんは"
-      def slice!(*args)
-        slice = self[*args]
-        self[*args] = ''
-        slice
-      end
 
       # Limit the byte size of the string to a number of bytes without breaking characters. Usable
       # when the storage for a string is limited for some reason.
@@ -425,14 +413,14 @@ module ActiveSupport #:nodoc:
         chars(Unicode.tidy_bytes(@wrapped_string, force))
       end
 
-      %w(lstrip rstrip strip reverse upcase downcase tidy_bytes capitalize).each do |method|
-        define_method("#{method}!") do |*args|
-          unless args.nil?
-            @wrapped_string = send(method, *args).to_s
-          else
-            @wrapped_string = send(method).to_s
+       %w(capitalize downcase lstrip reverse rstrip slice strip tidy_bytes upcase).each do |method|
+        # Only define a corresponding bang method for methods defined in the proxy; On 1.9 the proxy will
+        # exclude lstrip!, rstrip! and strip! because they are already work as expected on multibyte strings.
+        if public_method_defined?(method)
+          define_method("#{method}!") do |*args|
+            @wrapped_string = send(args.nil? ? method : method, *args).to_s
+            self
           end
-          self
         end
       end
 

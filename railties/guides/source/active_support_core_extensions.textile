@@ -24,7 +24,7 @@ h5. Cherry-picking a Definition
 
 The most lightweight way to get +blank?+ is to cherry-pick the file that defines it.
 
-For every single method defined as a core extension this guide has a note that says where is such a method defined. In the case of +blank?+ the note reads:
+For every single method defined as a core extension this guide has a note that says where such a method is defined. In the case of +blank?+ the note reads:
 
 NOTE: Defined in +active_support/core_ext/object/blank.rb+.
 
@@ -124,7 +124,7 @@ NOTE: Defined in +active_support/core_ext/object/blank.rb+.
 
 h4. +duplicable?+
 
-A few fundamental objects in Ruby are singletons. For example, in the whole live of a program the integer 1 refers always to the same instance:
+A few fundamental objects in Ruby are singletons. For example, in the whole life of a program the integer 1 refers always to the same instance:
 
 <ruby>
 1.object_id                 # => 3
@@ -209,8 +209,7 @@ String.singleton_class     # => #<Class:String>
 String.new.singleton_class # => #<Class:#<String:0x17a1d1c>>
 </ruby>
 
-WARNING: Fixnums and symbols have no singleton classes, +singleton_class+
-raises +TypeError+ on them. Moreover, the singleton classes of +nil+, +true+, and +false+, are +NilClass+, +TrueClass+, and +FalseClass+, respectively.
+WARNING: Fixnums and symbols have no singleton classes, +singleton_class+ raises +TypeError+ on them. Moreover, the singleton classes of +nil+, +true+, and +false+, are +NilClass+, +TrueClass+, and +FalseClass+, respectively.
 
 NOTE: Defined in +active_support/core_ext/kernel/singleton_class.rb+.
 
@@ -256,7 +255,7 @@ NOTE: Defined in +active_support/core_ext/object/acts_like.rb+.
 
 h4. +to_param+
 
-All objects in Rails respond to the method +to_param+, which is meant to return something that represents them as values in a query string, or as a URL fragments.
+All objects in Rails respond to the method +to_param+, which is meant to return something that represents them as values in a query string, or as URL fragments.
 
 By default +to_param+ just calls +to_s+:
 
@@ -387,40 +386,6 @@ end
 TIP: Since +with_options+ forwards calls to its receiver they can be nested. Each nesting level will merge inherited defaults in addition to their own.
 
 NOTE: Defined in +active_support/core_ext/object/with_options.rb+.
-
-h5. +subclasses_of+
-
-The method +subclasses_of+ receives an arbitrary number of class objects and returns all their anonymous or reachable descendants as a single array:
-
-<ruby>
-class C; end
-subclasses_of(C) # => []
-
-subclasses_of(Integer) # => [Bignum, Fixnum]
-
-module M
-  class A; end
-  class B1 < A; end
-  class B2 < A; end
-end
-
-module N
-  class C < M::B1; end
-end
-
-subclasses_of(M::A) # => [N::C, M::B2, M::B1]
-</ruby>
-
-The order in which these classes are returned is unspecified. The returned collection may have duplicates:
-
-<ruby>
-subclasses_of(Numeric, Integer)
-# => [Bignum, Float, Fixnum, Integer, Date::Infinity, Rational, BigDecimal, Bignum, Fixnum]
-</ruby>
-
-See also +Class#subclasses+ in "Extensions to +Class+ FIX THIS LINK":FIXME.
-
-NOTE: Defined in +active_support/core_ext/object/extending.rb+.
 
 h4. Instance Variables
 
@@ -1142,36 +1107,51 @@ If for whatever reason an application loads the definition of a mailer class and
 
 NOTE: Defined in +active_support/core_ext/class/delegating_attributes.rb+.
 
-h4. Descendants
+h4. Subclasses & Descendants
 
 h5. +subclasses+
 
-The +subclasses+ method returns the names of all the anonymous or reachable descendants of its receiver as an array of strings:
+The +subclasses+ method returns the subclasses of the receiver:
 
 <ruby>
 class C; end
 C.subclasses # => []
 
-Integer.subclasses # => ["Bignum", "Fixnum"]
+class B < C; end
+C.subclasses # => [B]
 
-module M
-  class A; end
-  class B1 < A; end
-  class B2 < A; end
-end
+class A < B; end
+C.subclasses # => [B]
 
-module N
-  class C < M::B1; end
-end
-
-M::A.subclasses # => ["N::C", "M::B2", "M::B1"]
+class D < C; end
+C.subclasses # => [B, D]
 </ruby>
 
-The order in which these class names are returned is unspecified.
+The order in which these classes are returned is unspecified.
 
-See also +Object#subclasses_of+ in "Extensions to All Objects FIX THIS LINK":FIXME.
+WARNING: This method is redefined in some Rails core classes but should be all compatible in Rails 3.1.
 
-WARNING: This method is redefined in some Rails core classes.
+NOTE: Defined in +active_support/core_ext/class/subclasses.rb+.
+
+h5. +descendants+
+
+The +descendants+ method returns all classes that are <tt>&lt;</tt> than its receiver: 
+
+<ruby>
+class C; end
+C.descendants # => []
+
+class B < C; end
+C.descendants # => [B]
+
+class A < B; end
+C.descendants # => [B, A]
+
+class D < C; end
+C.descendants # => [B, A, D]
+</ruby>
+
+The order in which these classes are returned is unspecified.
 
 NOTE: Defined in +active_support/core_ext/class/subclasses.rb+.
 
@@ -1696,6 +1676,90 @@ foreign_key = options[:foreign_key] || reflection.active_record.name.foreign_key
 </ruby>
 
 NOTE: Defined in +active_support/core_ext/string/inflections.rb+.
+
+h4. Conversions
+
+h5. +constantize+
+
+The method +constantize+ expects the receiver to contain the name of a constant, and tries to get you the object stored in there, assuming it is defined:
+
+<ruby>
+"ActiveRecord::Base".constantize # => ActiveRecord::Base
+</ruby>
+
+The name is assumed to be top-level, no matter whether it starts with "::" or not. No lexical context is taken into account:
+
+<ruby>
+C = 1
+module M
+  C = 2
+  "C".constantize # => 1, same as "::C".constantize
+end
+</ruby>
+
+NOTE: Defined in +active_support/core_ext/string/conversions.rb+.
+
+h5. +ord+
+
+Ruby 1.9 defines +ord+ to be the codepoint of the first character of the receiver. Active Support backports +ord+ for single-byte encondings like ASCII or ISO-8859-1 in Ruby 1.8:
+
+<ruby>
+"a".ord # => 97
+"à".ord # => 224, in ISO-8859-1
+</ruby>
+
+In Ruby 1.8 +ord+ doesn't work in general in UTF8 strings, use the multibyte support in Active Support for that:
+
+<ruby>
+"a".mb_chars.ord # => 97
+"à".mb_chars.ord # => 224, in UTF8
+</ruby>
+
+Note that the 224 is different in both examples. In ISO-8859-1 "à" is represented as a single byte, 224. Its single-character representattion in UTF8 has two bytes, namely 195 and 160, but its Unicode codepoint is 224. If we call +ord+ on the UTF8 string "à" the return value will be 195 in Ruby 1.8. That is not an error, because UTF8 is unsupported, the call itself would be bogus.
+
+INFO: +ord+ is equivalent to +getbyte(0)+.
+
+NOTE: Defined in +active_support/core_ext/string/conversions.rb+.
+
+h5. +getbyte+
+
+Active Support backports +getbyte+ from Ruby 1.9:
+
+<ruby>
+"foo".getbyte(0)  # => 102, same as "foo".ord
+"foo".getbyte(1)  # => 111
+"foo".getbyte(9)  # => nil
+"foo".getbyte(-1) # => 111
+</ruby>
+
+INFO: +getbyte+ is equivalent to +[]+.
+
+NOTE: Defined in +active_support/core_ext/string/conversions.rb+.
+
+h5. +to_date+, +to_time+, +to_datetime+
+
+The methods +to_date+, +to_time+, and +to_datetime+ are basically convenience wrappers around +Date._parse+:
+
+<ruby>
+"2010-07-27".to_date              # => Tue, 27 Jul 2010
+"2010-07-27 23:37:00".to_time     # => Tue Jul 27 23:37:00 UTC 2010
+"2010-07-27 23:37:00".to_datetime # => Tue, 27 Jul 2010 23:37:00 +0000 
+</ruby>
+
++to_time+ receives an optional argument +:utc+ or +:local+, to indicate which time zone you want the time in:
+
+<ruby>
+"2010-07-27 23:42:00".to_time(:utc)   # => Tue Jul 27 23:42:00 UTC 2010
+"2010-07-27 23:42:00".to_time(:local) # => Tue Jul 27 23:42:00 +0200 2010
+</ruby>
+
+Default is +:utc+.
+
+Please refer to the documentation of +Date._parse+ for further details.
+
+INFO: The three of them return +nil+ for blank receivers.
+
+NOTE: Defined in +active_support/core_ext/string/conversions.rb+.
 
 h3. Extensions to +Numeric+
 

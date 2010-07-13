@@ -124,7 +124,6 @@ module ActionView
       # model:
       #
       #   <%= form_for :person do |f| %>
-      #     <%= f.error_messages %>
       #     First name: <%= f.text_field :first_name %><br />
       #     Last name : <%= f.text_field :last_name %><br />
       #     Biography : <%= f.text_area :biography %><br />
@@ -214,11 +213,21 @@ module ActionView
       #     ...
       #   <% end %>
       #
-      # And for namespaced routes, like +admin_post_url+:
+      # For namespaced routes, like +admin_post_url+:
       #
       #   <%= form_for([:admin, @post]) do |f| %>
       #    ...
       #   <% end %>
+      #
+      # If your resource has associations defined, for example, you want to add comments 
+      # to the post given that the routes are set correctly:
+      #
+      #   <%= form_for([@document, @comment]) do |f| %>
+      #    ...
+      #   <% end %>
+      #
+      # Where +@document = Document.find(params[:id])+ and
+      # +@comment = Comment.new+.
       #
       # === Unobtrusive JavaScript
       #
@@ -667,7 +676,7 @@ module ActionView
       #   # => <input type="file" id="attachment_file" name="attachment[file]" class="file_input" />
       #
       def file_field(object_name, method, options = {})
-        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("file", options)
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("file", options.update({:size => nil}))
       end
 
       # Returns a textarea opening and closing tag set tailored for accessing a specified attribute (identified by +method+)
@@ -898,7 +907,7 @@ module ActionView
           options.delete("size")
         end
         options["type"]  ||= field_type
-        options["value"] ||= value_before_type_cast(object) unless field_type == "file"
+        options["value"] = options.fetch("value"){ value_before_type_cast(object) } unless field_type == "file"
         options["value"] &&= html_escape(options["value"])
         add_default_name_and_id(options)
         tag("input", options)
@@ -1043,14 +1052,14 @@ module ActionView
         def add_default_name_and_id(options)
           if options.has_key?("index")
             options["name"] ||= tag_name_with_index(options["index"])
-            options["id"] = options.fetch("id", tag_id_with_index(options["index"]))
+            options["id"] = options.fetch("id"){ tag_id_with_index(options["index"]) }
             options.delete("index")
           elsif defined?(@auto_index)
             options["name"] ||= tag_name_with_index(@auto_index)
-            options["id"] = options.fetch("id", tag_id_with_index(@auto_index))
+            options["id"] = options.fetch("id"){ tag_id_with_index(@auto_index) }
           else
             options["name"] ||= tag_name + (options.has_key?('multiple') ? '[]' : '')
-            options["id"] = options.fetch("id", tag_id)
+            options["id"] = options.fetch("id"){ tag_id }
           end
         end
 

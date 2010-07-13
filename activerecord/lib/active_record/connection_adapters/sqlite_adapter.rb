@@ -2,25 +2,6 @@ require 'active_record/connection_adapters/abstract_adapter'
 require 'active_support/core_ext/kernel/requires'
 
 module ActiveRecord
-  class Base
-    class << self
-      private
-        def parse_sqlite_config!(config)
-          # Require database.
-          unless config[:database]
-            raise ArgumentError, "No database file specified. Missing argument: database"
-          end
-
-          # Allow database path relative to Rails.root, but only if
-          # the database path is not the special path that tells
-          # Sqlite to build a database only in memory.
-          if defined?(Rails.root) && ':memory:' != config[:database]
-            config[:database] = File.expand_path(config[:database], Rails.root)
-          end
-        end
-    end
-  end
-
   module ConnectionAdapters #:nodoc:
     class SQLiteColumn < Column #:nodoc:
       class <<  self
@@ -151,7 +132,7 @@ module ActiveRecord
       # DATABASE STATEMENTS ======================================
 
       def execute(sql, name = nil) #:nodoc:
-        catch_schema_changes { log(sql, name) { @connection.execute(sql) } }
+        log(sql, name) { @connection.execute(sql) }
       end
 
       def update_sql(sql, name = nil) #:nodoc:
@@ -176,15 +157,15 @@ module ActiveRecord
       end
 
       def begin_db_transaction #:nodoc:
-        catch_schema_changes { @connection.transaction }
+        @connection.transaction
       end
 
       def commit_db_transaction #:nodoc:
-        catch_schema_changes { @connection.commit }
+        @connection.commit
       end
 
       def rollback_db_transaction #:nodoc:
-        catch_schema_changes { @connection.rollback }
+        @connection.rollback
       end
 
       # SCHEMA STATEMENTS ========================================
@@ -209,16 +190,21 @@ module ActiveRecord
 
       def indexes(table_name, name = nil) #:nodoc:
         execute("PRAGMA index_list(#{quote_table_name(table_name)})", name).map do |row|
-          index = IndexDefinition.new(table_name, row['name'])
-          index.unique = row['unique'].to_i != 0
-          index.columns = execute("PRAGMA index_info('#{index.name}')").map { |col| col['name'] }
-          index
+          IndexDefinition.new(
+            table_name,
+            row['name'],
+            row['unique'].to_i != 0,
+            execute("PRAGMA index_info('#{row['name']}')").map { |col|
+              col['name']
+            })
         end
       end
 
       def primary_key(table_name) #:nodoc:
-        column = table_structure(table_name).find {|field| field['pk'].to_i == 1}
-        column ? column['name'] : nil
+        column = table_structure(table_name).find { |field|
+          field['pk'].to_i == 1
+        }
+        column && column['name']
       end
 
       def remove_index!(table_name, index_name) #:nodoc:
@@ -246,6 +232,7 @@ module ActiveRecord
       end
 
       def remove_column(table_name, *column_names) #:nodoc:
+        raise ArgumentError.new("You must specify at least one column name.  Example: remove_column(:people, :first_name)") if column_names.empty?
         column_names.flatten.each do |column_name|
           alter_table(table_name) do |definition|
             definition.columns.delete(definition[column_name])
@@ -296,10 +283,8 @@ module ActiveRecord
         def select(sql, name = nil) #:nodoc:
           execute(sql, name).map do |row|
             record = {}
-            row.each_key do |key|
-              if key.is_a?(String)
-                record[key.sub(/^"?\w+"?\./, '')] = row[key]
-              end
+            row.each do |key, value|
+              record[key.sub(/^"?\w+"?\./, '')] = value if key.is_a?(String)
             end
             record
           end
@@ -390,26 +375,15 @@ module ActiveRecord
           end
         end
 
-        def catch_schema_changes
-          return yield
-        rescue ActiveRecord::StatementInvalid => exception
-          if exception.message =~ /database schema has changed/
-            reconnect!
-            retry
-          else
-            raise
-          end
-        end
-
         def sqlite_version
           @sqlite_version ||= SQLiteAdapter::Version.new(select_value('select sqlite_version(*)'))
         end
 
         def default_primary_key_type
           if supports_autoincrement?
-            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL'.freeze
+            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL'
           else
-            'INTEGER PRIMARY KEY NOT NULL'.freeze
+            'INTEGER PRIMARY KEY NOT NULL'
           end
         end
 

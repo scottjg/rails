@@ -3,6 +3,7 @@ require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/ordered_options'
+require 'action_view/log_subscriber'
 
 module ActionView #:nodoc:
   class NonConcattingString < ActiveSupport::SafeBuffer
@@ -172,7 +173,7 @@ module ActionView #:nodoc:
     @@field_error_proc = Proc.new{ |html_tag, instance| "<div class=\"field_with_errors\">#{html_tag}</div>".html_safe }
 
     class_attribute :helpers
-    class_attribute :_router
+    class_attribute :_routes
 
     class << self
       delegate :erb_trim_mode=, :to => 'ActionView::Template::Handlers::ERB'
@@ -204,8 +205,12 @@ module ActionView #:nodoc:
         value.dup : ActionView::PathSet.new(Array.wrap(value))
     end
 
+    def assign(new_assigns) # :nodoc:
+      self.assigns = new_assigns.each { |key, value| instance_variable_set("@#{key}", value) }
+    end
+
     def initialize(lookup_context = nil, assigns_for_first_render = {}, controller = nil, formats = nil) #:nodoc:
-      self.assigns = assigns_for_first_render.each { |key, value| instance_variable_set("@#{key}", value) }
+      assign(assigns_for_first_render)
       self.helpers = self.class.helpers || Module.new
 
       if @_controller = controller

@@ -1,11 +1,5 @@
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/object/try'
-begin
-  require 'tzinfo'
-rescue LoadError => e
-  $stderr.puts "You don't have tzinfo installed in your application. Please add it to your Gemfile and run bundle install"
-  raise e
-end
 
 # The TimeZone class serves as a wrapper around TZInfo::Timezone instances. It allows us to do the following:
 #
@@ -14,10 +8,10 @@ end
 # * Lazily load TZInfo::Timezone instances only when they're needed.
 # * Create ActiveSupport::TimeWithZone instances via TimeZone's +local+, +parse+, +at+ and +now+ methods.
 #
-# If you set <tt>config.time_zone</tt> in the Rails Initializer, you can access this TimeZone object via <tt>Time.zone</tt>:
+# If you set <tt>config.time_zone</tt> in the Rails Application, you can access this TimeZone object via <tt>Time.zone</tt>:
 #
-#   # environment.rb:
-#   Rails::Initializer.run do |config|
+#   # application.rb:
+#   class Application < Rails::Application
 #     config.time_zone = "Eastern Time (US & Canada)"
 #   end
 #
@@ -201,6 +195,12 @@ module ActiveSupport
     # (GMT). Seconds were chosen as the offset unit because that is the unit that
     # Ruby uses to represent time zone offsets (see Time#utc_offset).
     def initialize(name, utc_offset = nil, tzinfo = nil)
+      begin
+        require 'tzinfo'
+      rescue LoadError => e
+        $stderr.puts "You don't have tzinfo installed in your application. Please add it to your Gemfile and run bundle install"
+        raise e
+      end
       @name = name
       @utc_offset = utc_offset
       @tzinfo = tzinfo || TimeZone.find_tzinfo(name)
@@ -350,7 +350,11 @@ module ActiveSupport
       def [](arg)
         case arg
           when String
-            zones_map[arg] ||= lookup(arg)
+          begin
+            zones_map[arg] ||= lookup(arg).tap { |tz| tz.utc_offset }
+          rescue TZInfo::InvalidTimezoneIdentifier
+            nil
+          end
           when Numeric, ActiveSupport::Duration
             arg *= 3600 if arg.abs <= 13
             all.find { |z| z.utc_offset == arg.to_i }

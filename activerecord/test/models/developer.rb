@@ -55,6 +55,12 @@ class Developer < ActiveRecord::Base
   def log=(message)
     audit_logs.build :message => message
   end
+
+  def self.all_johns 
+    self.with_exclusive_scope :find => where(:name => 'John') do
+      self.all
+    end
+  end
 end
 
 class AuditLog < ActiveRecord::Base
@@ -82,6 +88,7 @@ class DeveloperOrderedBySalary < ActiveRecord::Base
   self.table_name = 'developers'
   default_scope :order => 'salary DESC'
   scope :by_name, :order => 'name DESC'
+  scope :reordered_by_name, reorder('name DESC')
 
   def self.all_ordered_by_name
     with_scope(:find => { :order => 'name DESC' }) do

@@ -26,10 +26,10 @@ module ActiveRecord
 
       delegate :group, :order, :limit, :joins, :where, :preload, :eager_load, :includes, :from, :lock, :readonly, :having, :to => :scoped
 
-      def select(select = nil, &block)
+      def select(select = nil)
         if block_given?
           load_target
-          @target.select(&block)
+          @target.select.each { |e| yield e }
         else
           scoped.select(select)
         end
@@ -123,7 +123,7 @@ module ActiveRecord
         end
       end
 
-      # Add +records+ to this association.  Returns +self+ so method calls may be chained.  
+      # Add +records+ to this association.  Returns +self+ so method calls may be chained.
       # Since << flattens its argument list and inserts each record, +push+ and +concat+ behave identically.
       def <<(*records)
         result = true
@@ -168,7 +168,7 @@ module ActiveRecord
         reset_target!
         reset_named_scopes_cache!
       end
-      
+
       # Calculate sum using SQL, not Enumerable
       def sum(*args)
         if block_given?
@@ -183,10 +183,13 @@ module ActiveRecord
       # descendant's +construct_sql+ method will have set :counter_sql automatically.
       # Otherwise, construct options and pass them with scope to the target class's +count+.
       def count(column_name = nil, options = {})
-        if @reflection.options[:counter_sql]
+        column_name, options = nil, column_name if column_name.is_a?(Hash)
+
+        if @reflection.options[:counter_sql] && !options.blank?
+          raise ArgumentError, "If finder_sql/counter_sql is used then options cannot be passed"
+        elsif @reflection.options[:counter_sql]
           @reflection.klass.count_by_sql(@counter_sql)
         else
-          column_name, options = nil, column_name if column_name.is_a?(Hash)
 
           if @reflection.options[:uniq]
             # This is needed because 'SELECT count(DISTINCT *)..' is not valid SQL.
@@ -241,7 +244,7 @@ module ActiveRecord
 
         if @reflection.options[:dependent] && @reflection.options[:dependent] == :destroy
           destroy_all
-        else          
+        else
           delete_all
         end
 
@@ -253,9 +256,10 @@ module ActiveRecord
       # See destroy for more info.
       def destroy_all
         load_target
-        destroy(@target)
-        reset_target!
-        reset_named_scopes_cache!
+        destroy(@target).tap do
+          reset_target!
+          reset_named_scopes_cache!
+        end
       end
 
       def create(attrs = {})
@@ -393,7 +397,12 @@ module ActiveRecord
                   @target = find_target.map do |f|
                     i = @target.index(f)
                     t = @target.delete_at(i) if i
-                    (t && t.changed?) ? t : f
+                    if t && t.changed?
+                      t
+                    else
+                      f.mark_for_destruction if t && t.marked_for_destruction?
+                      f
+                    end
                   end + @target
                 else
                   @target = find_target
@@ -409,6 +418,17 @@ module ActiveRecord
         end
 
         def method_missing(method, *args)
+          case method.to_s
+          when 'find_or_create'
+            return find(:first, :conditions => args.first) || create(args.first)
+          when /^find_or_create_by_(.*)$/
+            rest = $1
+            return  send("find_by_#{rest}", *args) ||
+                    method_missing("create_by_#{rest}", *args)
+          when /^create_by_(.*)$/
+            return create Hash[$1.split('_and_').zip(args)]
+          end
+
           if @target.respond_to?(method) || (!@reflection.klass.respond_to?(method) && Class.respond_to?(method))
             if block_given?
               super { |*block_args| yield(*block_args) }
@@ -520,8 +540,8 @@ module ActiveRecord
         def callbacks_for(callback_name)
           full_callback_name = "#{callback_name}_for_#{@reflection.name}"
           @owner.class.read_inheritable_attribute(full_callback_name.to_sym) || []
-        end   
-        
+        end
+
         def ensure_owner_is_not_new
           if @owner.new_record?
             raise ActiveRecord::RecordNotSaved, "You cannot call create unless the parent is saved"

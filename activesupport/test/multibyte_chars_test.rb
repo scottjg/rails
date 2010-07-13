@@ -49,13 +49,15 @@ class MultibyteCharsTest < Test::Unit::TestCase
   end
 
   def test_should_concatenate
-    assert_equal 'ab', 'a'.mb_chars + 'b'
-    assert_equal 'ab', 'a' + 'b'.mb_chars
-    assert_equal 'ab', 'a'.mb_chars + 'b'.mb_chars
+    mb_a = 'a'.mb_chars
+    mb_b = 'b'.mb_chars
+    assert_equal 'ab', mb_a + 'b'
+    assert_equal 'ab', 'a' + mb_b
+    assert_equal 'ab', mb_a + mb_b
 
-    assert_equal 'ab', 'a'.mb_chars << 'b'
-    assert_equal 'ab', 'a' << 'b'.mb_chars
-    assert_equal 'ab', 'a'.mb_chars << 'b'.mb_chars
+    assert_equal 'ab', mb_a << 'b'
+    assert_equal 'ab', 'a' << mb_b
+    assert_equal 'abb', mb_a << mb_b
   end
 
   def test_consumes_utf8_strings
@@ -121,22 +123,30 @@ class MultibyteCharsUTF8BehaviourTest < Test::Unit::TestCase
     assert_equal 'こに わ', @chars
   end
 
-  def test_overridden_bang_methods_return_self
-    [:rstrip!, :lstrip!, :strip!, :reverse!, :upcase!, :downcase!, :capitalize!].each do |method|
-      assert_equal @chars.object_id, @chars.send(method).object_id
-    end
+  %w{capitalize downcase lstrip reverse rstrip strip upcase}.each do |method|
+    class_eval(<<-EOTESTS)
+      def test_#{method}_bang_should_return_self
+        assert_equal @chars.object_id, @chars.send("#{method}!").object_id
+      end
+
+      def test_#{method}_bang_should_change_wrapped_string
+        original = ' él piDió Un bUen café '
+        proxy = chars(original.dup)
+        proxy.send("#{method}!")
+        assert_not_equal original, proxy.to_s
+      end
+    EOTESTS
   end
 
-  def test_overridden_bang_methods_change_wrapped_string
-    [:rstrip!, :lstrip!, :strip!, :reverse!, :upcase!, :downcase!].each do |method|
-      original = ' Café '
-      proxy = chars(original.dup)
-      proxy.send(method)
-      assert_not_equal original, proxy.to_s
-    end
-    proxy = chars('òu')
-    proxy.capitalize!
-    assert_equal 'Òu', proxy.to_s
+  def test_tidy_bytes_bang_should_return_self
+    assert_equal @chars.object_id, @chars.tidy_bytes!.object_id
+  end
+
+  def test_tidy_bytes_bang_should_change_wrapped_string
+    original = " Un bUen café \x92"
+    proxy = chars(original.dup)
+    proxy.tidy_bytes!
+    assert_not_equal original, proxy.to_s
   end
 
   if RUBY_VERSION >= '1.9'
@@ -395,6 +405,7 @@ class MultibyteCharsUTF8BehaviourTest < Test::Unit::TestCase
     assert_equal 'こ', @chars.slice(0)
     assert_equal 'わ', @chars.slice(3)
     assert_equal nil, ''.mb_chars.slice(-1..1)
+    assert_equal nil, ''.mb_chars.slice(-1, 1)
     assert_equal '', ''.mb_chars.slice(0..10)
     assert_equal 'にちわ', @chars.slice(1..3)
     assert_equal 'にちわ', @chars.slice(1, 3)
@@ -414,8 +425,9 @@ class MultibyteCharsUTF8BehaviourTest < Test::Unit::TestCase
   end
 
   def test_slice_bang_removes_the_slice_from_the_receiver
-    @chars.slice!(1..2)
-    assert_equal 'こわ', @chars
+    chars = 'úüù'.mb_chars
+    chars.slice!(0,2)
+    assert_equal 'úü', chars
   end
 
   def test_slice_should_throw_exceptions_on_invalid_arguments

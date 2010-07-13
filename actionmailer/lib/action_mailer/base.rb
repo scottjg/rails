@@ -4,6 +4,7 @@ require 'action_mailer/collector'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/proc'
+require 'action_mailer/log_subscriber'
 
 module ActionMailer #:nodoc:
   # Action Mailer allows you to send email from your application using a mailer model and views.
@@ -128,7 +129,7 @@ module ActionMailer #:nodoc:
   #
   #   ActionMailer::Base.default_url_options[:host] = "example.com"
   #
-  # This can also be set as a configuration option in <tt>config/environment.rb</tt>:
+  # This can also be set as a configuration option in <tt>config/application.rb</tt>:
   #
   #   config.action_mailer.default_url_options = { :host => "example.com" }
   #
@@ -534,7 +535,9 @@ module ActionMailer #:nodoc:
     #                 :reply_to => 'bounces@test.lindsaar.net'
     #  end
     #
-    # If you need other headers not listed above, use the <tt>headers['name'] = value</tt> method.
+    # If you need other headers not listed above, you can either pass them in
+    # as part of the headers hash or use the <tt>headers['name'] = value</tt>
+    # method.
     #
     # When a <tt>:return_path</tt> is specified as header, that value will be used as the 'envelope from'
     # address for the Mail message.  Setting this is useful when you want delivery notifications
@@ -734,13 +737,13 @@ module ActionMailer #:nodoc:
         raise "You can no longer call ActionMailer::Base.default_url_options " \
               "directly. You need to set config.action_mailer.default_url_options. " \
               "If you are using ActionMailer standalone, you need to include the " \
-              "url_helpers of a router directly."
+              "routing url_helpers directly."
       end
     end
 
     # This module will complain if the user tries to set default_url_options
     # directly instead of through the config object. In Action Mailer's Railtie,
-    # we include the url_helpers of the router, which will override this module
+    # we include the router's url_helpers, which will override this module.
     extend DeprecatedUrlOptions
 
     ActiveSupport.run_load_hooks(:action_mailer, self)

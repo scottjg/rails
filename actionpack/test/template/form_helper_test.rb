@@ -188,11 +188,21 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, text_field("post", "title", :maxlength => 35, :size => nil)
   end
 
+  def test_text_field_with_nil_value
+    expected = '<input id="post_title" name="post[title]" size="30" type="text" />'
+    assert_dom_equal expected, text_field("post", "title", :value => nil)
+  end
+
   def test_text_field_doesnt_change_param_values
     object_name = 'post[]'
     expected = '<input id="post_123_title" name="post[123][title]" size="30" type="text" value="Hello World" />'
     assert_equal expected, text_field(object_name, "title")
     assert_equal object_name, "post[]"
+  end
+
+  def test_file_field_has_no_size
+    expected = '<input id="user_avatar" name="user[avatar]" type="file" />'
+    assert_dom_equal expected, file_field("user", "avatar")
   end
 
   def test_hidden_field
@@ -206,6 +216,11 @@ class FormHelperTest < ActionView::TestCase
     @post.title = "<b>Hello World</b>"
     assert_dom_equal '<input id="post_title" name="post[title]" type="hidden" value="&lt;b&gt;Hello World&lt;/b&gt;" />',
       hidden_field("post", "title")
+  end
+
+  def test_hidden_field_with_nil_value
+    expected = '<input id="post_title" name="post[title]" type="hidden" />'
+    assert_dom_equal expected, hidden_field("post", "title", :value => nil)
   end
 
   def test_text_field_with_options
@@ -573,7 +588,8 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =
-      "<form action='http://www.example.com' id='create-post' method='post'>" +
+      "<form accept-charset='UTF-8' action='http://www.example.com' id='create-post' method='post'>" +
+      snowman +
       "<label for='post_title'>The Title</label>" +
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
@@ -594,15 +610,14 @@ class FormHelperTest < ActionView::TestCase
       concat f.submit('Create post')
     end
 
-    expected =
-      "<form class='other_name_edit' method='post' action='/posts/123' id='create-post'>" +
-      "<div style='margin:0;padding:0;display:inline'><input name='_method' value='put' type='hidden' /></div>" +
+    expected =  whole_form("/posts/123", "create-post", "other_name_edit", :method => "put") do
       "<label for='other_name_title'>Title</label>" +
       "<input name='other_name[title]' size='30' id='other_name_title' value='Hello World' type='text' />" +
       "<textarea name='other_name[body]' id='other_name_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='other_name[secret]' value='0' type='hidden' />" +
       "<input name='other_name[secret]' checked='checked' id='other_name_secret' value='1' type='checkbox' />" +
-      "<input name='commit' id='other_name_submit' value='Create post' type='submit' /></form>"
+      "<input name='commit' id='other_name_submit' value='Create post' type='submit' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -616,14 +631,12 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' id='create-post' method='post'>" +
-      "<div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div>" +
+    expected =  whole_form("http://www.example.com", "create-post", nil, "put") do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
-      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />" +
-      "</form>"
+      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -637,14 +650,12 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' id='create-post' method='post' data-remote='true'>" +
-      "<div style='margin:0;padding:0;display:inline'><input name='_method' type='hidden' value='put' /></div>" +
+    expected =  whole_form("http://www.example.com", "create-post", nil, :method => "put", :remote => true) do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
-      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />" +
-      "</form>"
+      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -658,13 +669,12 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' method='post' data-remote='true'>" +
+    expected =  whole_form("http://www.example.com", nil, nil, :remote => true) do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
-      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />" +
-      "</form>"
+      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -676,13 +686,12 @@ class FormHelperTest < ActionView::TestCase
       concat f.check_box(:secret)
     end
 
-    expected =
-      "<form action='http://www.example.com' id='create-post' method='post'>" +
+    expected =  whole_form("http://www.example.com", "create-post") do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
-      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />" +
-      "</form>"
+      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -697,14 +706,13 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' method='post'>" +
+    expected = whole_form do
       "<label for='post_123_title'>Title</label>" +
       "<input name='post[123][title]' size='30' type='text' id='post_123_title' value='Hello World' />" +
       "<textarea name='post[123][body]' id='post_123_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[123][secret]' type='hidden' value='0' />" +
-      "<input name='post[123][secret]' checked='checked' type='checkbox' id='post_123_secret' value='1' />" +
-      "</form>"
+      "<input name='post[123][secret]' checked='checked' type='checkbox' id='post_123_secret' value='1' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -718,13 +726,12 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' method='post'>" +
+    expected = whole_form do
       "<input name='post[][title]' size='30' type='text' id='post__title' value='Hello World' />" +
       "<textarea name='post[][body]' id='post__body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[][secret]' type='hidden' value='0' />" +
-      "<input name='post[][secret]' checked='checked' type='checkbox' id='post__secret' value='1' />" +
-      "</form>"
+      "<input name='post[][secret]' checked='checked' type='checkbox' id='post__secret' value='1' />"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -739,9 +746,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='commit' id='post_submit' type='submit' value='Create Post' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='commit' id='post_submit' type='submit' value='Create Post' />"
+                end
+
     assert_dom_equal expected, output_buffer
   ensure
     I18n.locale = old_locale
@@ -756,9 +764,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='commit' id='post_submit' type='submit' value='Confirm Post changes' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='commit' id='post_submit' type='submit' value='Confirm Post changes' />"
+                end
+
     assert_dom_equal expected, output_buffer
   ensure
     I18n.locale = old_locale
@@ -771,9 +780,10 @@ class FormHelperTest < ActionView::TestCase
       concat f.submit :class => "extra"
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='commit' class='extra' id='post_submit' type='submit' value='Save changes' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='commit' class='extra' id='post_submit' type='submit' value='Save changes' />"
+                end
+
     assert_dom_equal expected, output_buffer
   ensure
     I18n.locale = old_locale
@@ -788,9 +798,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='commit' id='another_post_submit' type='submit' value='Update your Post' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='commit' id='another_post_submit' type='submit' value='Update your Post' />"
+                end
+
     assert_dom_equal expected, output_buffer
   ensure
     I18n.locale = old_locale
@@ -805,9 +816,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[comment][title]' size='30' type='text' id='post_comment_title' value='Hello World' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[comment][title]' size='30' type='text' id='post_comment_title' value='Hello World' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -822,10 +833,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[123][title]' size='30' type='text' id='post_123_title' value='Hello World' />" +
-               "<input name='post[123][comment][][name]' size='30' type='text' id='post_123_comment__name' value='new comment' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[123][title]' size='30' type='text' id='post_123_title' value='Hello World' />" +
+                  "<input name='post[123][comment][][name]' size='30' type='text' id='post_123_comment__name' value='new comment' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -840,10 +851,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[1][title]' size='30' type='text' id='post_1_title' value='Hello World' />" +
-               "<input name='post[1][comment][1][name]' size='30' type='text' id='post_1_comment_1_name' value='new comment' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[1][title]' size='30' type='text' id='post_1_title' value='Hello World' />" +
+                  "<input name='post[1][comment][1][name]' size='30' type='text' id='post_1_comment_1_name' value='new comment' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -857,9 +868,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[1][comment][title]' size='30' type='text' id='post_1_comment_title' value='Hello World' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[1][comment][title]' size='30' type='text' id='post_1_comment_title' value='Hello World' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -873,9 +884,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[1][comment][5][title]' size='30' type='text' id='post_1_comment_5_title' value='Hello World' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[1][comment][5][title]' size='30' type='text' id='post_1_comment_5_title' value='Hello World' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -889,9 +900,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[123][comment][title]' size='30' type='text' id='post_123_comment_title' value='Hello World' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[123][comment][title]' size='30' type='text' id='post_123_comment_title' value='Hello World' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -905,9 +916,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[comment][5][title]' type='radio' id='post_comment_5_title_hello' value='hello' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[comment][5][title]' type='radio' id='post_comment_5_title_hello' value='hello' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -921,9 +932,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = "<form action='http://www.example.com' method='post'>" +
-               "<input name='post[123][comment][123][title]' size='30' type='text' id='post_123_comment_123_title' value='Hello World' />" +
-               "</form>"
+    expected =  whole_form do
+                  "<input name='post[123][comment][123][title]' size='30' type='text' id='post_123_comment_123_title' value='Hello World' />"
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -942,12 +953,11 @@ class FormHelperTest < ActionView::TestCase
         }
       end
 
-      expected = "<form action='http://www.example.com' method='post'>" +
-                 "<input name='post[123][comment][5][title]' size='30' type='text' id='post_123_comment_5_title' value='Hello World' />" +
-                 "</form>" +
-                 "<form action='http://www.example.com' method='post'>" +
-                 "<input name='post[1][comment][123][title]' size='30' type='text' id='post_1_comment_123_title' value='Hello World' />" +
-                 "</form>"
+      expected =  whole_form do
+                    "<input name='post[123][comment][5][title]' size='30' type='text' id='post_123_comment_5_title' value='Hello World' />"
+                  end + whole_form do
+                    "<input name='post[1][comment][123][title]' size='30' type='text' id='post_1_comment_123_title' value='Hello World' />"
+                  end
 
       assert_dom_equal expected, output_buffer
     end
@@ -965,10 +975,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="new author" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="new author" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -996,11 +1006,11 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="author #321" />' +
-               '<input id="post_author_attributes_id" name="post[author_attributes][id]" type="hidden" value="321" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="author #321" />' +
+                  '<input id="post_author_attributes_id" name="post[author_attributes][id]" type="hidden" value="321" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1018,11 +1028,11 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_author_attributes_id" name="post[author_attributes][id]" type="hidden" value="321" />' +
-               '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="author #321" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_author_attributes_id" name="post[author_attributes][id]" type="hidden" value="321" />' +
+                  '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="author #321" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1041,13 +1051,13 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
-               '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
+                  '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1067,13 +1077,13 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
-               '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
+                  '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1092,11 +1102,11 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="new comment" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="new comment" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1115,12 +1125,12 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #321" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="321" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #321" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="321" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1135,9 +1145,9 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1154,13 +1164,13 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
-               '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
+                  '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1178,13 +1188,13 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
-               '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #1" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="1" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="comment #2" />' +
+                  '<input id="post_comments_attributes_1_id" name="post[comments_attributes][1][id]" type="hidden" value="2" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1203,12 +1213,12 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #321" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="321" />' +
-               '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input name="post[title]" size="30" type="text" id="post_title" value="Hello World" />' +
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #321" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="321" />' +
+                  '<input id="post_comments_attributes_1_name" name="post[comments_attributes][1][name]" size="30" type="text" value="new comment" />'
+                end
 
     assert_dom_equal expected, output_buffer
     assert_equal yielded_comments, @post.comments
@@ -1225,10 +1235,10 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input id="post_comments_attributes_abc_name" name="post[comments_attributes][abc][name]" size="30" type="text" value="comment #321" />' +
-               '<input id="post_comments_attributes_abc_id" name="post[comments_attributes][abc][id]" type="hidden" value="321" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input id="post_comments_attributes_abc_name" name="post[comments_attributes][abc][name]" size="30" type="text" value="comment #321" />' +
+                  '<input id="post_comments_attributes_abc_id" name="post[comments_attributes][abc][id]" type="hidden" value="321" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1263,20 +1273,20 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected = '<form action="http://www.example.com" method="post">' +
-               '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #321" />' +
-               '<input id="post_comments_attributes_0_relevances_attributes_0_value" name="post[comments_attributes][0][relevances_attributes][0][value]" size="30" type="text" value="commentrelevance #314" />' +
-               '<input id="post_comments_attributes_0_relevances_attributes_0_id" name="post[comments_attributes][0][relevances_attributes][0][id]" type="hidden" value="314" />' +
-               '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="321" />' +
-               '<input id="post_tags_attributes_0_value" name="post[tags_attributes][0][value]" size="30" type="text" value="tag #123" />' +
-               '<input id="post_tags_attributes_0_relevances_attributes_0_value" name="post[tags_attributes][0][relevances_attributes][0][value]" size="30" type="text" value="tagrelevance #3141" />' +
-               '<input id="post_tags_attributes_0_relevances_attributes_0_id" name="post[tags_attributes][0][relevances_attributes][0][id]" type="hidden" value="3141" />' +
-               '<input id="post_tags_attributes_0_id" name="post[tags_attributes][0][id]" type="hidden" value="123" />' +
-               '<input id="post_tags_attributes_1_value" name="post[tags_attributes][1][value]" size="30" type="text" value="tag #456" />' +
-               '<input id="post_tags_attributes_1_relevances_attributes_0_value" name="post[tags_attributes][1][relevances_attributes][0][value]" size="30" type="text" value="tagrelevance #31415" />' +
-               '<input id="post_tags_attributes_1_relevances_attributes_0_id" name="post[tags_attributes][1][relevances_attributes][0][id]" type="hidden" value="31415" />' +
-               '<input id="post_tags_attributes_1_id" name="post[tags_attributes][1][id]" type="hidden" value="456" />' +
-               '</form>'
+    expected =  whole_form do
+                  '<input id="post_comments_attributes_0_name" name="post[comments_attributes][0][name]" size="30" type="text" value="comment #321" />' +
+                  '<input id="post_comments_attributes_0_relevances_attributes_0_value" name="post[comments_attributes][0][relevances_attributes][0][value]" size="30" type="text" value="commentrelevance #314" />' +
+                  '<input id="post_comments_attributes_0_relevances_attributes_0_id" name="post[comments_attributes][0][relevances_attributes][0][id]" type="hidden" value="314" />' +
+                  '<input id="post_comments_attributes_0_id" name="post[comments_attributes][0][id]" type="hidden" value="321" />' +
+                  '<input id="post_tags_attributes_0_value" name="post[tags_attributes][0][value]" size="30" type="text" value="tag #123" />' +
+                  '<input id="post_tags_attributes_0_relevances_attributes_0_value" name="post[tags_attributes][0][relevances_attributes][0][value]" size="30" type="text" value="tagrelevance #3141" />' +
+                  '<input id="post_tags_attributes_0_relevances_attributes_0_id" name="post[tags_attributes][0][relevances_attributes][0][id]" type="hidden" value="3141" />' +
+                  '<input id="post_tags_attributes_0_id" name="post[tags_attributes][0][id]" type="hidden" value="123" />' +
+                  '<input id="post_tags_attributes_1_value" name="post[tags_attributes][1][value]" size="30" type="text" value="tag #456" />' +
+                  '<input id="post_tags_attributes_1_relevances_attributes_0_value" name="post[tags_attributes][1][relevances_attributes][0][value]" size="30" type="text" value="tagrelevance #31415" />' +
+                  '<input id="post_tags_attributes_1_relevances_attributes_0_id" name="post[tags_attributes][1][relevances_attributes][0][id]" type="hidden" value="31415" />' +
+                  '<input id="post_tags_attributes_1_id" name="post[tags_attributes][1][id]" type="hidden" value="456" />'
+                end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1416,7 +1426,8 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =
-      "<form action='http://www.example.com' id='create-post' method='post'>" +
+      "<form accept-charset='UTF-8' action='http://www.example.com' id='create-post' method='post'>" +
+      snowman +
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='parent_post[secret]' type='hidden' value='0' />" +
@@ -1439,11 +1450,11 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =
-      "<form action='http://www.example.com' id='create-post' method='post'>" +
-      "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
-      "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
-      "<input name='post[comment][name]' type='text' id='post_comment_name' value='new comment' size='30' />" +
-      "</form>"
+      whole_form("http://www.example.com", "create-post") do
+        "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
+        "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
+        "<input name='post[comment][name]' type='text' id='post_comment_name' value='new comment' size='30' />"
+      end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1467,14 +1478,40 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' method='post'>" +
-      "<label for='title'>Title:</label> <input name='post[title]' size='30' type='text' id='post_title' value='Hello World' /><br/>" +
-      "<label for='body'>Body:</label> <textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea><br/>" +
-      "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' /><input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' /><br/>" +
-      "</form>"
+    expected =  whole_form do
+        "<label for='title'>Title:</label> <input name='post[title]' size='30' type='text' id='post_title' value='Hello World' /><br/>" +
+        "<label for='body'>Body:</label> <textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea><br/>" +
+        "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' /><input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' /><br/>"
+      end
 
     assert_dom_equal expected, output_buffer
+  end
+
+  def snowman(method = nil)
+    txt =  %{<div style="margin:0;padding:0;display:inline">}
+    txt << %{<input name="_snowman" type="hidden" value="&#9731;" />}
+    txt << %{<input name="_method" type="hidden" value="#{method}" />} if method
+    txt << %{</div>}
+  end
+
+  def form_text(action = "http://www.example.com", id = nil, html_class = nil, remote = nil)
+    txt =  %{<form accept-charset="UTF-8" action="#{action}"}
+    txt << %{ data-remote="true"} if remote
+    txt << %{ class="#{html_class}"} if html_class
+    txt << %{ id="#{id}"} if id
+    txt << %{ method="post">}
+  end
+
+  def whole_form(action = "http://www.example.com", id = nil, html_class = nil, options = nil)
+    contents = block_given? ? yield : ""
+
+    if options.is_a?(Hash)
+      method, remote = options.values_at(:method, :remote)
+    else
+      method = options
+    end
+
+    form_text(action, id, html_class, remote) + snowman(method) + contents + "</form>"
   end
 
   def test_default_form_builder
@@ -1489,12 +1526,11 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =
-      "<form action='http://www.example.com' method='post'>" +
+    expected =  whole_form do
       "<label for='title'>Title:</label> <input name='post[title]' size='30' type='text' id='post_title' value='Hello World' /><br/>" +
       "<label for='body'>Body:</label> <textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea><br/>" +
-      "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' /><input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' /><br/>" +
-      "</form>"
+      "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' /><input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' /><br/>"
+    end
 
     assert_dom_equal expected, output_buffer
   ensure
@@ -1567,7 +1603,7 @@ class FormHelperTest < ActionView::TestCase
     assert_deprecated do
       form_for(:post, @post, :html => {:id => 'some_form', :class => 'some_class'}) do |f| end
     end
-    expected = "<form action=\"http://www.example.com\" class=\"some_class\" id=\"some_form\" method=\"post\"></form>"
+    expected = whole_form("http://www.example.com", "some_form", "some_class")
 
     assert_dom_equal expected, output_buffer
   end
@@ -1577,7 +1613,8 @@ class FormHelperTest < ActionView::TestCase
       form_for(:post, @post, :url => 'http://www.otherdomain.com') do |f| end
     end
 
-    assert_equal '<form action="http://www.otherdomain.com" method="post"></form>', output_buffer
+    assert_equal whole_form("http://www.otherdomain.com"), output_buffer
+    # assert_equal '<form action="http://www.otherdomain.com" method="post"></form>', output_buffer
   end
 
   def test_form_for_with_hash_url_option
@@ -1594,14 +1631,15 @@ class FormHelperTest < ActionView::TestCase
       form_for(:post, @post, :url => @post) do |f| end
     end
 
-    expected = "<form action=\"/posts/123\" method=\"post\"></form>"
+    expected = whole_form("/posts/123")
+    # expected = "<form action=\"/posts/123\" method=\"post\"></form>"
     assert_equal expected, output_buffer
   end
 
   def test_form_for_with_existing_object
     form_for(@post) do |f| end
 
-    expected = "<form action=\"/posts/123\" class=\"edit_post\" id=\"edit_post_123\" method=\"post\"><div style=\"margin:0;padding:0;display:inline\"><input name=\"_method\" type=\"hidden\" value=\"put\" /></div></form>"
+    expected = whole_form("/posts/123", "edit_post_123", "edit_post", "put")
     assert_equal expected, output_buffer
   end
 
@@ -1612,7 +1650,7 @@ class FormHelperTest < ActionView::TestCase
 
     form_for(post) do |f| end
 
-    expected = "<form action=\"/posts\" class=\"new_post\" id=\"new_post\" method=\"post\"></form>"
+    expected = whole_form("/posts", "new_post", "new_post")
     assert_equal expected, output_buffer
   end
 
@@ -1620,14 +1658,14 @@ class FormHelperTest < ActionView::TestCase
     @comment.save
     form_for([@post, @comment]) {}
 
-    expected = %(<form action="#{comment_path(@post, @comment)}" class="edit_comment" id="edit_comment_1" method="post"><div style="margin:0;padding:0;display:inline"><input name="_method" type="hidden" value="put" /></div></form>)
+    expected = whole_form(comment_path(@post, @comment), "edit_comment_1", "edit_comment", "put")
     assert_dom_equal expected, output_buffer
   end
 
   def test_form_for_with_new_object_in_list
     form_for([@post, @comment]) {}
 
-    expected = %(<form action="#{comments_path(@post)}" class="new_comment" id="new_comment" method="post"></form>)
+    expected = whole_form(comments_path(@post), "new_comment", "new_comment")
     assert_dom_equal expected, output_buffer
   end
 
@@ -1635,21 +1673,21 @@ class FormHelperTest < ActionView::TestCase
     @comment.save
     form_for([:admin, @post, @comment]) {}
 
-    expected = %(<form action="#{admin_comment_path(@post, @comment)}" class="edit_comment" id="edit_comment_1" method="post"><div style="margin:0;padding:0;display:inline"><input name="_method" type="hidden" value="put" /></div></form>)
+    expected = whole_form(admin_comment_path(@post, @comment), "edit_comment_1", "edit_comment", "put")
     assert_dom_equal expected, output_buffer
   end
 
   def test_form_for_with_new_object_and_namespace_in_list
     form_for([:admin, @post, @comment]) {}
 
-    expected = %(<form action="#{admin_comments_path(@post)}" class="new_comment" id="new_comment" method="post"></form>)
+    expected = whole_form(admin_comments_path(@post), "new_comment", "new_comment")
     assert_dom_equal expected, output_buffer
   end
 
   def test_form_for_with_existing_object_and_custom_url
     form_for(@post, :url => "/super_posts") do |f| end
 
-    expected = "<form action=\"/super_posts\" class=\"edit_post\" id=\"edit_post_123\" method=\"post\"><div style=\"margin:0;padding:0;display:inline\"><input name=\"_method\" type=\"hidden\" value=\"put\" /></div></form>"
+    expected = whole_form("/super_posts", "edit_post_123", "edit_post", "put")
     assert_equal expected, output_buffer
   end
 
