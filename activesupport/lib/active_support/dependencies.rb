@@ -355,6 +355,14 @@ module ActiveSupport # :nodoc:
           #base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
         end
 
+        def require_dependency(file_name, message = "No such file to load -- %s")
+          unless file_name.is_a?(String)
+            raise ArgumentError, "the file name must be a String -- you passed #{file_name.inspect}"
+          end
+
+          Dependencies.depend_on(file_name, false, message)
+        end
+
         # Mark the given constant as unloadable. Unloadable constants are removed each
         # time dependencies are cleared.
         #
@@ -426,6 +434,26 @@ module ActiveSupport # :nodoc:
           super(const_desc)
         end
       end
+
+      module Exception # :nodoc:
+        def blame_file!(file)
+          (@blamed_files ||= []).unshift file
+        end
+
+        def blamed_files
+          @blamed_files ||= []
+        end
+
+        def describe_blame
+          return nil if blamed_files.empty?
+          "This error occurred while loading the following files:\n   #{blamed_files.join "\n   "}"
+        end
+
+        def copy_blame!(exc)
+          @blamed_files = exc.blamed_files.clone
+          self
+        end
+      end
     end
 
     extend self
@@ -486,9 +514,13 @@ module ActiveSupport # :nodoc:
     mattr_accessor :constant_watch_stack
     self.constant_watch_stack = WatchStack.new
 
+    mattr_accessor :dependencies
+    self.dependencies = Hash.new { |h,k| h[k] = Set.new }
+
     def hook!
       Object.send(:include, Hooks::Object)
       Module.send(:include, Hooks::Module)
+      Exception.send(:include, Hooks::Exception)
       true
     end
 
@@ -591,6 +623,20 @@ module ActiveSupport # :nodoc:
       return result
     end
 
+    def depend_on(file_name, swallow_load_errors = false, message = "No such file to load -- %s.rb", from = nil)
+      from ||= File.expand_path(trace.first[/^[^:]+/])
+      file_name = search_for_file(file_name) || file_name
+      dependencies[file_name] << from
+      require_or_load(file_name)
+    rescue LoadError => load_error
+      unless swallow_load_errors
+        if file_name = load_error.message[/ -- (.*?)(\.rb)?$/, 1]
+          raise LoadError.new(message % file_name).copy_blame!(load_error)
+        end
+        raise
+      end
+    end
+
     def require_or_load(file_name, const_path = nil)
       log_call file_name, const_path
       file_name = $1 if file_name =~ /^(.*)\.rb$/
@@ -622,6 +668,10 @@ module ActiveSupport # :nodoc:
       rescue Exception
         loaded.delete expanded
         raise
+      end
+
+      dependencies[expanded].each do |dep|
+        require_or_load dep
       end
 
       # Record history *after* loading so first load gets warnings.
