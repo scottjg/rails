@@ -134,6 +134,12 @@ module ActiveSupport # :nodoc:
         Dependencies.loaded.include? File.expand_path(file)
       end
 
+      # Return the constant path for the provided parent and constant name.
+      def qualified_name_for(mod, name)
+        mod_name = to_constant_name mod
+        mod_name == "Object" ? name.to_s : "#{mod_name}::#{name}"
+      end
+
       protected
 
       def log_call(*args)
@@ -248,6 +254,11 @@ module ActiveSupport # :nodoc:
         @constant = qualified_const
       end
 
+      def qualified_name_for(mod, name = nil)
+        mod, name = self, mod unless name
+        super(mod, name)
+      end
+
       def qualified_const_defined?(desc = name)
         super
       end
@@ -308,7 +319,7 @@ module ActiveSupport # :nodoc:
         log_call const_name
         active!
 
-        complete_name = object? ? const_name.to_s : "#{name}::#{const_name}"
+        complete_name = qualified_name_for(const_name)
         path_suffix   = complete_name.underscore
         file_path     = search_for_file(path_suffix)
 
@@ -330,7 +341,7 @@ module ActiveSupport # :nodoc:
       def load_parent_constant(const_name, complete_name)
         parent.load_constant(const_name)
       rescue NameError => e
-        raise unless e.missing_name? "#{parent.name}::#{const_name}"
+        raise unless e.missing_name? qualified_name_for(parent, const_name)
         raise name_error(complete_name)
       end
 
