@@ -16,7 +16,7 @@ module ActiveSupport
   #     end
   #   end
   #
-  # And it's finally registed as:
+  # And it's finally registered as:
   #
   #   ActiveRecord::LogSubscriber.attach_to :active_record
   #
