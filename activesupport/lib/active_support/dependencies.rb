@@ -240,7 +240,7 @@ module ActiveSupport # :nodoc:
         alias [] new
       end
 
-      attr_reader :name, :constant, :parent, :local_name
+      attr_accessor :name, :constant, :parent, :local_name
 
       def initialize(name)
         @unloadable = nil
@@ -277,7 +277,7 @@ module ActiveSupport # :nodoc:
       end
 
       def active?
-        qualified_const == constant
+        (const = qualified_const) and const == constant
       end
 
       def active!
@@ -309,7 +309,7 @@ module ActiveSupport # :nodoc:
       end
 
       def remove_constant(const_name)
-        constant.send(:remove_const, const_name)
+        constant.send(:remove_const, const_name) if constant
       end
 
       def local_const_defined?(mod, name = nil)
