@@ -243,6 +243,7 @@ module ActiveSupport # :nodoc:
       attr_reader :name, :constant, :parent, :local_name
 
       def initialize(name)
+        @unloadable = nil
         @name = name
         if name =~ /::([^:]+)\Z/
           @parent, @local_name = Constant[$`], $1
