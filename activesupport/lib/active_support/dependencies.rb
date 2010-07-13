@@ -245,10 +245,7 @@ module ActiveSupport # :nodoc:
         else
           @parent, @local_name = Constant[Object], name
         end
-        unless @constant = qualified_const
-          @parent.load_constant(local_name)
-          @constant = qualified_const
-        end
+        @constant = qualified_const
       end
 
       def qualified_const_defined?(desc = name)
@@ -257,6 +254,10 @@ module ActiveSupport # :nodoc:
 
       def qualified_const(desc = name)
         super
+      end
+
+      def update
+        @constant = qualified_const || constant
       end
 
       def object?
@@ -297,40 +298,38 @@ module ActiveSupport # :nodoc:
       def remove_constant(const_name)
         constant.send(:remove_const, const_name)
       end
-      
+
       def local_const_defined?(mod, name = nil)
         mod, name = constant, mod unless name
         super(mod, name)
       end
 
       def load_constant(const_name)
-        log_call self, const_name
+        log_call const_name
+        active!
+
         complete_name = object? ? const_name.to_s : "#{name}::#{const_name}"
-        if Constant.available? complete_name
-          Constant[complete_name].reload
-        else
-          active!
-          path_suffix = complete_name.underscore
-          file_path   = search_for_file(path_suffix)
-          if file_path and not loaded?(file_path)
-            require_or_load file_path
-            raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
-            Constant[complete_name].constant
-          elsif base_path = autoloadable_module?(path_suffix)
-            constant.const_set(const_name, Module.new)
-            autoloaded_constants << complete_name_name unless Dependencies.autoload_once_paths.include?(base_path)
-            Constant[complete_name].constant
-          elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
-            begin
-              return parent.load_constant(const_name)
-            rescue NameError => e
-              raise unless e.missing_name? "#{parent.name}::#{const_name}"
-              raise name_error(complete_name)
-            end
-          else
+        path_suffix   = complete_name.underscore
+        file_path     = search_for_file(path_suffix)
+
+        if file_path and not loaded?(file_path)
+          require_or_load file_path
+          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
+        elsif base_path = autoloadable_module?(path_suffix)
+          constant.const_set(const_name, Module.new)
+          autoloaded_constants << complete_name_name unless Dependencies.autoload_once_paths.include?(base_path)
+        elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
+          begin
+            return parent.load_constant(const_name)
+          rescue NameError => e
+            raise unless e.missing_name? "#{parent.name}::#{const_name}"
             raise name_error(complete_name)
           end
+        else
+          raise name_error(complete_name)
         end
+
+        Constant[complete_name].update
       end
 
       alias get constant
