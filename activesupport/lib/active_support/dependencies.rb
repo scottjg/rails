@@ -1,5 +1,6 @@
 require 'set'
 require 'active_support/inflector'
+require 'active_support/deprecation'
 
 module ActiveSupport # :nodoc:
   # Documentation goes here.
@@ -196,8 +197,16 @@ module ActiveSupport # :nodoc:
         end
       end
 
-      def load_constant(local_name)
-        complete_name = "#{name}::#{local_name}"
+      def remove
+        parent.remove_constant(local_name) if qualified_const_defined?
+      end
+
+      def remove_constant(const_name)
+        constant.send(:remove_const, const_name)
+      end
+
+      def load_constant(const_name)
+        complete_name = "#{name}::#{const_name}"
         if Constant.available? complete_name
           Constant[complete_name].reload
         else
@@ -274,6 +283,10 @@ module ActiveSupport # :nodoc:
       autoloaded_constants + explicitly_unloadable_constants
     end
 
+    def remove_constant(desc)
+      Constant[desc].remove
+    end
+
     def clear
       log_call
       loaded.clear
@@ -284,6 +297,7 @@ module ActiveSupport # :nodoc:
       Constant[from_mod].load_constant(const_name)
     end
 
+    #Deprecation.deprecate_methods self, :autoloaded?, :remove_constant
     hook!
   end
 end
