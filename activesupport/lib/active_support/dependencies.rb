@@ -325,6 +325,8 @@ module ActiveSupport # :nodoc:
         path_suffix   = complete_name.underscore
         file_path     = search_for_file(path_suffix)
 
+        raise ArgumentError, "#{name} is not missing constant #{const_name}!" if local_const_defined?(const_name)
+
         if file_path and not loaded?(file_path)
           require_or_load file_path
           raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name) 
