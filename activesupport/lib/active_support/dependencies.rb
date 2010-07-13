@@ -314,7 +314,7 @@ module ActiveSupport # :nodoc:
 
       def local_const_defined?(mod, name = nil)
         mod, name = constant, mod unless name
-        super(mod, name)
+        super(mod, name) if mod
       end
 
       def load_constant(const_name)
