@@ -34,8 +34,8 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
     @connection.execute("INSERT INTO postgresql_arrays (commission_by_quarter, nicknames) VALUES ( '{35000,21000,18000,17000}', '{foo,bar,baz}' )")
     @first_array = PostgresqlArray.find(1)
 
-    @connection.execute("INSERT INTO postgresql_moneys (wealth) VALUES ('567.89'::money)")
-    @connection.execute("INSERT INTO postgresql_moneys (wealth) VALUES ('-567.89'::money)")
+    @connection.execute("INSERT INTO postgresql_money (wealth) VALUES ('567.89'::money)")
+    @connection.execute("INSERT INTO postgresql_money (wealth) VALUES ('-567.89'::money)")
     @first_money = PostgresqlMoney.find(1)
     @second_money = PostgresqlMoney.find(2)
 
