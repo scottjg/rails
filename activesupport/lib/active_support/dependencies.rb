@@ -39,6 +39,15 @@ module ActiveSupport # :nodoc:
         end
       end
 
+      # Does the provided path_suffix correspond to an autoloadable module?
+      # Instead of returning a boolean, the autoload base for this module is returned.
+      def autoloadable_module?(path_suffix)
+        Dependencies.autoload_paths.each do |load_path|
+          return load_path if File.directory? File.join(load_path, path_suffix)
+        end
+        nil
+      end
+
       def trace
         caller.reject {|l| l =~ %r{#{Regexp.escape(__FILE__)}} }
       end
@@ -301,10 +310,15 @@ module ActiveSupport # :nodoc:
           Constant[complete_name].reload
         else
           active!
-          file_path = search_for_file(complete_name.underscore)
+          path_suffix = complete_name.underscore
+          file_path   = search_for_file(path_suffix)
           if file_path and not loaded?(file_path)
             require_or_load file_path
             raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
+            Constant[complete_name].constant
+          elsif base_path = autoloadable_module?(path_suffix)
+            constant.const_set(const_name, Module.new)
+            autoloaded_constants << complete_name_name unless Dependencies.autoload_once_paths.include?(base_path)
             Constant[complete_name].constant
           elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
             begin
