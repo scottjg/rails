@@ -192,7 +192,8 @@ module ActiveSupport # :nodoc:
       end
 
       def unloadable?
-        @unloadable ||= Dependencies.explicitly_unloadable_constants.any? do |desc|
+        return true if @unloadable or autoloaded?
+        @unloadable = Dependencies.explicitly_unloadable_constants.any? do |desc|
           Constant[desc] == self
         end
       end
