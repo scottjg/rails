@@ -363,6 +363,10 @@ module ActiveSupport # :nodoc:
           Dependencies.depend_on(file_name, false, message)
         end
 
+        def require_association(file_name)
+          Dependencies.associate_with(file_name)
+        end
+
         # Mark the given constant as unloadable. Unloadable constants are removed each
         # time dependencies are cleared.
         #
@@ -636,6 +640,10 @@ module ActiveSupport # :nodoc:
         end
         raise
       end
+    end
+
+    def associate_with(file_name)
+      depend_on(file_name, true)
     end
 
     def require_or_load(file_name, const_path = nil)
