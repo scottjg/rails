@@ -283,10 +283,8 @@ module ActiveRecord
         def select(sql, name = nil) #:nodoc:
           execute(sql, name).map do |row|
             record = {}
-            row.each_key do |key|
-              if key.is_a?(String)
-                record[key.sub(/^"?\w+"?\./, '')] = row[key]
-              end
+            row.each do |key, value|
+              record[key.sub(/^"?\w+"?\./, '')] = value if key.is_a?(String)
             end
             record
           end
@@ -383,9 +381,9 @@ module ActiveRecord
 
         def default_primary_key_type
           if supports_autoincrement?
-            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL'.freeze
+            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL'
           else
-            'INTEGER PRIMARY KEY NOT NULL'.freeze
+            'INTEGER PRIMARY KEY NOT NULL'
           end
         end
 
