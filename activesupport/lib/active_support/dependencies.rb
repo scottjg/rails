@@ -328,7 +328,7 @@ module ActiveSupport # :nodoc:
           raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name) 
         elsif base_path = autoloadable_module?(path_suffix)
           constant.const_set(const_name, Module.new)
-          autoloaded_constants << complete_name_name unless Dependencies.autoload_once_paths.include?(base_path)
+          autoloaded_constants << complete_name unless Dependencies.autoload_once_paths.include?(base_path)
         elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
           return load_parent_constant(const_name, complete_name)
         else
