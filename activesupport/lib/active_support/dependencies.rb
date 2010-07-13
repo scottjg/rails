@@ -527,6 +527,10 @@ module ActiveSupport # :nodoc:
       Constant[desc]
     end
 
+    def constantize(name)
+      Constant[name].constant
+    end
+
     def load_missing_constant(from_mod, const_name)
       Constant[from_mod].load_constant(const_name)
     end
