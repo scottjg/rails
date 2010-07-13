@@ -161,6 +161,7 @@ module ActiveSupport # :nodoc:
         end
         unless @constant = qualified_const
           @parent.load_constant(local_name)
+          @constant = qualified_const
         end
       end
 
@@ -181,7 +182,18 @@ module ActiveSupport # :nodoc:
       end
 
       def autoloaded?
-        !constant.anonymous? and qualified_const_defined? and autoloaded_constants.include?(name)
+        qualified_const_defined? and autoloaded_constants.include?(name)
+      end
+
+      def unloadable!
+        Dependencies.explicitly_unloadable_constants << self
+        @unloadable = true
+      end
+
+      def unloadable?
+        @unloadable ||= Dependencies.explicitly_unloadable_constants.any? do |desc|
+          Constant[desc] == self
+        end
       end
 
       def load_constant(local_name)
@@ -194,11 +206,72 @@ module ActiveSupport # :nodoc:
       end
     end
 
+    module Hooks
+      module Object
+        def self.exclude_from(base)
+          #base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
+        end
+
+        # Mark the given constant as unloadable. Unloadable constants are removed each
+        # time dependencies are cleared.
+        #
+        # Note that marking a constant for unloading need only be done once. Setup
+        # or init scripts may list each unloadable constant that may need unloading;
+        # each constant will be removed for every subsequent clear, as opposed to for
+        # the first clear.
+        #
+        # The provided constant descriptor may be a (non-anonymous) module or class,
+        # or a qualified constant name as a string or symbol.
+        #
+        # Returns true if the constant was not previously marked for unloading, false
+        # otherwise.
+        def unloadable(const_desc)
+          Constant[const_desc].unloadable!
+        end
+      end
+
+      module Module
+        def self.exclude_from(base)
+          #base.class_eval do
+          #  define_method :const_missing, @_const_missing
+          #  @_const_missing = nil
+          #end
+        end
+
+        def unloadable(const_desc = self)
+          super(const_desc)
+        end
+      end
+    end
+
     extend self
     include Tools
 
+    def hook!
+      Object.send(:include, Hooks::Object)
+      Module.send(:include, Hooks::Module)
+      true
+    end
+
+    def unhook!
+      Hooks::Object.exclude_from(Object)
+      Hooks::Module.exclude_from(Module)
+      true
+    end
+
     def autoloaded?(desc)
       Constant[desc].autoloaded?
+    end
+
+    # Remove the constants that have been autoloaded, and those that have been
+    # marked for unloading.
+    def remove_unloadable_constants!
+      unloadable_constants.each { |const| Constant[const].remove }
+      autoloaded_constants.clear
+    end
+
+    def unloadable_constants
+      autoloaded_constants + explicitly_unloadable_constants
     end
 
     def clear
@@ -210,5 +283,7 @@ module ActiveSupport # :nodoc:
     def load_missing_constant(from_mod, const_name)
       Constant[from_mod].load_constant(const_name)
     end
+
+    hook!
   end
 end
