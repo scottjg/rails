@@ -293,11 +293,15 @@ module ActiveSupport # :nodoc:
       remove_unloadable_constants!
     end
 
+    def ref(desc)
+      Constant[desc]
+    end
+
     def load_missing_constant(from_mod, const_name)
       Constant[from_mod].load_constant(const_name)
     end
 
-    #Deprecation.deprecate_methods self, :autoloaded?, :remove_constant
+    #Deprecation.deprecate_methods self, :autoloaded?, :remove_constant, :ref
     hook!
   end
 end
