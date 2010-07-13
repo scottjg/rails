@@ -17,7 +17,7 @@ end
 
 class DependenciesTest < Test::Unit::TestCase
   def teardown
-    ActiveSupport::Dependencies.clear
+    ActiveSupport::Dependencies.clear!
   end
 
   def with_loading(*from)

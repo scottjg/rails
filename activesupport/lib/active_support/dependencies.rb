@@ -561,6 +561,12 @@ module ActiveSupport # :nodoc:
       remove_unloadable_constants!
     end
 
+    def clear!
+      clear
+      explicitly_unloadable_constants.clear
+      Constant.map.clear
+    end
+
     def ref(desc)
       Constant[desc]
     end
