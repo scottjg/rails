@@ -314,22 +314,24 @@ module ActiveSupport # :nodoc:
 
         if file_path and not loaded?(file_path)
           require_or_load file_path
-          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
+          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name) 
         elsif base_path = autoloadable_module?(path_suffix)
           constant.const_set(const_name, Module.new)
           autoloaded_constants << complete_name_name unless Dependencies.autoload_once_paths.include?(base_path)
         elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
-          begin
-            return parent.load_constant(const_name)
-          rescue NameError => e
-            raise unless e.missing_name? "#{parent.name}::#{const_name}"
-            raise name_error(complete_name)
-          end
+          return load_parent_constant(const_name, complete_name)
         else
           raise name_error(complete_name)
         end
 
         Constant[complete_name].update
+      end
+
+      def load_parent_constant(const_name, complete_name)
+        parent.load_constant(const_name)
+      rescue NameError => e
+        raise unless e.missing_name? "#{parent.name}::#{const_name}"
+        raise name_error(complete_name)
       end
 
       alias get constant
