@@ -290,6 +290,7 @@ module ActiveSupport # :nodoc:
       end
 
       def unloadable!
+        return false if @unloadable
         Dependencies.explicitly_unloadable_constants << self
         @unloadable = true
       end
