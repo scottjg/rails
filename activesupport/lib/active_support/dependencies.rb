@@ -531,6 +531,7 @@ module ActiveSupport # :nodoc:
     end
 
     def autoloaded?(desc)
+      return false if desc.is_a?(Module) and desc.anonymous?
       Constant[desc].autoloaded?
     end
 
