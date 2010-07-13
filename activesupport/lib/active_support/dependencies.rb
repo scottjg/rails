@@ -1,6 +1,10 @@
 require 'set'
 require 'active_support/inflector'
 require 'active_support/deprecation'
+require 'active_support/core_ext/module/aliasing'
+require 'active_support/core_ext/module/attribute_accessors'
+require 'active_support/core_ext/module/introspection'
+require 'active_support/core_ext/module/anonymous'
 
 module ActiveSupport # :nodoc:
   # Documentation goes here.
@@ -302,11 +306,21 @@ module ActiveSupport # :nodoc:
             require_or_load file_path
             raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
             Constant[complete_name].constant
+          elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
+            begin
+              return parent.load_constant(const_name)
+            rescue NameError => e
+              raise unless e.missing_name? "#{parent.name}::#{const_name}"
+              raise name_error(complete_name)
+            end
           else
             raise name_error(complete_name)
           end
         end
       end
+
+      alias get constant
+      #Deprecation.deprecate_methods self, :get
     end
 
     module Hooks
