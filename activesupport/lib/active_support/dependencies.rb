@@ -1,4 +1,5 @@
 require 'set'
+require 'thread'
 require 'active_support/inflector'
 require 'active_support/deprecation'
 require 'active_support/core_ext/module/aliasing'
@@ -27,6 +28,11 @@ module ActiveSupport # :nodoc:
         end
       end
 
+      def to_strategy(desc)
+        return desc if Module === desc
+        Strategies.const_get desc.to_s.camelcase
+      end
+
       def qualified_const_defined?(name)
         !!qualified_const(name)
       end
@@ -46,6 +52,10 @@ module ActiveSupport # :nodoc:
           return load_path if File.directory? File.join(load_path, path_suffix)
         end
         nil
+      end
+
+      def calling_from
+        File.expand_path(trace.first[/^[^:]+/])
       end
 
       def trace
@@ -202,20 +212,29 @@ module ActiveSupport # :nodoc:
         list
       end
 
-      def lock
-        @mutex.synchronize { yield self }
+      def lock(&block)
+        @mutex.synchronize(&block)
       end
     end
 
     module Strategies # :nodoc:
       module World
+        def mark!
+          Dependencies.world_reload_count += 1
+          super
+        end
       end
 
       module Sloppy
-        include World
+        def mark!
+          super
+        end
       end
 
       module MonkeyPatch
+        def prepare
+          activate
+        end
       end
     end
 
@@ -243,8 +262,9 @@ module ActiveSupport # :nodoc:
       attr_accessor :name, :constant, :parent, :local_name
 
       def initialize(name)
+        @marked     = false
         @unloadable = nil
-        @name = name
+        @name       = name
         if name =~ /::([^:]+)\Z/
           @parent, @local_name = Constant[$`], $1
         elsif object?
@@ -252,7 +272,15 @@ module ActiveSupport # :nodoc:
         else
           @parent, @local_name = Constant[Object], name
         end
+        self.strategy = Dependencies.default_strategy
         update
+      end
+
+      def strategy=(mod)
+        extend to_strategy(mod)
+      end
+
+      def prepare
       end
 
       def qualified_name_for(mod, name = nil)
@@ -317,20 +345,44 @@ module ActiveSupport # :nodoc:
         super(mod, name) if mod
       end
 
+      def activate
+        parent.update
+        parent.constant.const_set(name, constant)
+        ActiveSupport::Dependencies.autoloaded_constants << name
+        constant
+      end
+
+      def marked?
+        return true if name != 'ReloadMe' # FIXME
+        @marked
+      end
+
+      def mark!
+        @marked = true
+      end
+
       def load_constant(from_mod, const_name)
         log_call const_name
+        Dependencies.check_updates
+
         self.constant = from_mod unless active?
         active!
 
         complete_name = qualified_name_for(const_name)
-        path_suffix   = complete_name.underscore
-        file_path     = search_for_file(path_suffix)
+        if Constant.available? complete_name
+          const = Constant[complete_name]
+          return const.activate unless const.marked?
+        end
+
+        path_suffix = complete_name.underscore
+        file_path   = search_for_file(path_suffix)
 
         raise ArgumentError, "#{name} is not missing constant #{const_name}!" if local_const_defined?(const_name)
+        Constant[complete_name].prepare if Constant.available? complete_name
 
         if file_path and not loaded?(file_path)
           require_or_load file_path
-          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name) 
+          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
         elsif base_path = autoloadable_module?(path_suffix)
           constant.const_set(const_name, Module.new)
           autoloaded_constants << complete_name unless Dependencies.autoload_once_paths.include?(base_path)
@@ -513,9 +565,6 @@ module ActiveSupport # :nodoc:
     mattr_accessor :log_activity
     self.log_activity = false
 
-    mattr_accessor :world_reload_count
-    self.world_reload_count = 0
-
     mattr_accessor :default_strategy
     self.default_strategy = :world
 
@@ -526,17 +575,37 @@ module ActiveSupport # :nodoc:
     mattr_accessor :dependencies
     self.dependencies = Hash.new { |h,k| h[k] = Set.new }
 
+    mattr_accessor :world_reload_count
+    self.world_reload_count = 0
+
+    mattr_accessor :checked_updates
+    self.checked_updates = false
+
+    mattr_accessor :mtimes
+    self.mtimes = {}
+
+    mattr_accessor :mutex
+    self.mutex = Mutex.new
+
     def hook!
-      Object.send(:include, Hooks::Object)
-      Module.send(:include, Hooks::Module)
-      Exception.send(:include, Hooks::Exception)
-      true
+      lock do
+        Object.send(:include, Hooks::Object)
+        Module.send(:include, Hooks::Module)
+        Exception.send(:include, Hooks::Exception)
+        true
+      end
     end
 
     def unhook!
-      Hooks::Object.exclude_from(Object)
-      Hooks::Module.exclude_from(Module)
-      true
+      lock do
+        Hooks::Object.exclude_from(Object)
+        Hooks::Module.exclude_from(Module)
+        true
+      end
+    end
+
+    def lock(&block)
+      mutex.synchronize(&block)
     end
 
     def autoloaded?(desc)
@@ -559,16 +628,46 @@ module ActiveSupport # :nodoc:
       Constant[desc].remove
     end
 
+    def check_updates
+      return if checked_updates
+      lock do
+        history.each do |file|
+          mtime = mtime(file)
+          next if mtime and mtime == mtimes[file]
+          mtimes[file] = mtime
+          loadable_constants_for_path(file).each do |desc|
+            Constant[desc].mark!
+          end
+        end
+        self.checked_updates = true
+      end
+    end
+
+    def mtime(file, ext = '.rb')
+      return File.mtime(file) if File.file?(file)
+      return mtime("#{file}#{ext}", nil) if ext
+    end
+
     def clear
       log_call
-      loaded.clear
-      remove_unloadable_constants!
+      lock do
+        loaded.clear
+        self.default_strategy = to_strategy(default_strategy)
+        remove_unloadable_constants!
+        if mtimes.empty?
+          history.each do |file|
+            mtimes[file] = mtime(file)
+          end
+        end
+        self.checked_updates = false
+      end
     end
 
     def clear!
-      clear
-      explicitly_unloadable_constants.clear
-      Constant.map.clear
+      log_call
+      [self, explicitly_unloadable_constants, mtimes, history, Constant.map].each do |list|
+        list.clear
+      end
     end
 
     def ref(desc)
@@ -640,7 +739,7 @@ module ActiveSupport # :nodoc:
     end
 
     def depend_on(file_name, swallow_load_errors = false, message = "No such file to load -- %s.rb", from = nil)
-      from ||= File.expand_path(trace.first[/^[^:]+/])
+      from ||= calling_from
       file_name = search_for_file(file_name) || file_name
       dependencies[file_name] << from
       require_or_load(file_name)

@@ -791,6 +791,23 @@ class DependenciesTest < Test::Unit::TestCase
     assert_nothing_raised { ActiveSupport::Dependencies.hook! }
   end
 
+  def test_reloads_only_on_file_changes
+    with_loading 'dependencies' do
+      $reload_me_counter = nil
+      file = ActiveSupport::Dependencies.search_for_file('reload_me')
+      File.utime Time.at(0), Time.at(0), file
+      2.times do
+        ActiveSupport::Dependencies.clear
+        ReloadMe.object_id
+        assert_equal 1, $reload_me_counter
+      end
+      File.utime Time.now, Time.now, file
+      ActiveSupport::Dependencies.clear
+      ReloadMe.object_id
+      assert_equal 2, $reload_me_counter
+    end
+  end
+
   def test_unhook
     ActiveSupport::Dependencies.unhook!
     assert !Module.new.respond_to?(:const_missing_without_dependencies)
