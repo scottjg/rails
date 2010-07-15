@@ -9,11 +9,11 @@ Gem::Specification.new do |s|
   EOF
  
   s.add_dependency('rake', '>= 0.8.3')
-  s.add_dependency('active_support',    '= 2.3.8')
-  s.add_dependency('active_record',     '= 2.3.8')
-  s.add_dependency('action_pack',       '= 2.3.8')
-  s.add_dependency('action_mailer',     '= 2.3.8')
-  s.add_dependency('active_resource',   '= 2.3.8')
+  # s.add_dependency('active_support',    '= 2.3.8')
+  # s.add_dependency('active_record',     '= 2.3.8')
+  # s.add_dependency('action_pack',       '= 2.3.8')
+  # s.add_dependency('action_mailer',     '= 2.3.8')
+  # s.add_dependency('active_resource',   '= 2.3.8')
  
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
