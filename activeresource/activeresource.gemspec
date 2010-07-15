@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = 'active_resource'
+  s.name = 'activeresource'
   s.version = '2.3.8'
   s.summary = "Think Active Record for web resources."
   s.description = %q{Wraps web resources in model classes that can be manipulated through XML over REST.}
