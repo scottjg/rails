@@ -226,7 +226,12 @@ module ActiveSupport # :nodoc:
 
       module Sloppy
         def mark!
-          raise NotImplementedError
+          list = associations
+          if constant
+            list.push(*constant.ancestors)
+            list.push(*constant.singleton_class.ancestors)
+          end
+          list.each { |c| Constant[c].mark if Constant.available?(c) }
         end
       end
 
@@ -259,13 +264,14 @@ module ActiveSupport # :nodoc:
         alias [] new
       end
 
-      attr_accessor :name, :constant, :parent, :local_name, :last_reload
+      attr_accessor :name, :constant, :parent, :local_name, :last_reload, :associations
 
       def initialize(name)
         @marked       = false
         @unloadable   = nil
         @name         = name
         @last_reload  = 0
+        @associations = Set.new
         if name =~ /::([^:]+)\Z/
           @parent, @local_name = Constant[$`], $1
         elsif object?
@@ -279,6 +285,10 @@ module ActiveSupport # :nodoc:
 
       def strategy=(mod)
         extend to_strategy(mod)
+      end
+
+      def associate_with(const)
+        associations << Constant[const]
       end
 
       def prepare
@@ -460,10 +470,10 @@ module ActiveSupport # :nodoc:
         end
 
         def self.exclude_from(base)
-          #base.class_eval do
-          #  define_method :const_missing, @_const_missing
-          #  @_const_missing = nil
-          #end
+          base.class_eval do
+            define_method :const_missing, @_const_missing
+            @_const_missing = nil
+          end
         end
 
         # Use const_missing to autoload associations so we don't have to
@@ -495,6 +505,12 @@ module ActiveSupport # :nodoc:
           # earlier const_missing, this will result in the real error bubbling
           # all the way up
           raise error
+        end
+
+        def associate_with(const)
+          return if anonymous? or const.anonymous?
+          Constant[self].associate_with(const)
+          Constant[const].associate_with(self)
         end
 
         def unloadable(const_desc = self)
@@ -812,3 +828,12 @@ module ActiveSupport # :nodoc:
     hook!
   end
 end
+
+class Module
+  alias append_features_without_dependencies append_features
+  def append_features(mod)
+    associate_with(mod)
+    append_features_without_dependencies(mod)
+  end
+end
+
