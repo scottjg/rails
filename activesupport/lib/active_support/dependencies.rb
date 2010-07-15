@@ -220,14 +220,13 @@ module ActiveSupport # :nodoc:
     module Strategies # :nodoc:
       module World
         def mark!
-          Dependencies.world_reload_count += 1
-          super
+          Dependencies.world_reload_count = Dependencies.reload_count
         end
       end
 
       module Sloppy
         def mark!
-          super
+          raise NotImplementedError
         end
       end
 
@@ -246,7 +245,8 @@ module ActiveSupport # :nodoc:
       self.map ||= {}
 
       def self.available?(name)
-        map.include? to_constant_name(name)
+        name = to_constant_name(name)
+        map.include?(name) or qualified_const_defined?(name)
       end
 
       def self.new(name)
@@ -259,12 +259,13 @@ module ActiveSupport # :nodoc:
         alias [] new
       end
 
-      attr_accessor :name, :constant, :parent, :local_name
+      attr_accessor :name, :constant, :parent, :local_name, :last_reload
 
       def initialize(name)
-        @marked     = false
-        @unloadable = nil
-        @name       = name
+        @marked       = false
+        @unloadable   = nil
+        @name         = name
+        @last_reload  = 0
         if name =~ /::([^:]+)\Z/
           @parent, @local_name = Constant[$`], $1
         elsif object?
@@ -297,7 +298,8 @@ module ActiveSupport # :nodoc:
       end
 
       def update
-        @constant = qualified_const
+        @last_reload  = Dependencies.world_reload_count
+        @constant     = qualified_const
       end
 
       def object?
@@ -354,11 +356,15 @@ module ActiveSupport # :nodoc:
 
       def marked?
         return true if name != 'ReloadMe' # FIXME
-        @marked
+        last_reload < Dependencies.world_reload_count or @marked
       end
 
       def mark!
         @marked = true
+      end
+
+      def mark
+        mark! unless marked?
       end
 
       def load_constant(from_mod, const_name)
@@ -578,6 +584,9 @@ module ActiveSupport # :nodoc:
     mattr_accessor :world_reload_count
     self.world_reload_count = 0
 
+    mattr_accessor :reload_count
+    self.reload_count = 0
+
     mattr_accessor :checked_updates
     self.checked_updates = false
 
@@ -636,7 +645,7 @@ module ActiveSupport # :nodoc:
           next if mtime and mtime == mtimes[file]
           mtimes[file] = mtime
           loadable_constants_for_path(file).each do |desc|
-            Constant[desc].mark!
+            Constant[desc].mark! if Constant.available?(desc)
           end
         end
         self.checked_updates = true
@@ -653,6 +662,7 @@ module ActiveSupport # :nodoc:
       lock do
         loaded.clear
         self.default_strategy = to_strategy(default_strategy)
+        self.reload_count += 1
         remove_unloadable_constants!
         if mtimes.empty?
           history.each do |file|
