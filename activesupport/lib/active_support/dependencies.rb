@@ -14,6 +14,7 @@ require 'active_support/core_ext/module/anonymous'
 # * How should monkey patching stratgy behave on world reload?
 # * Documentation
 # * Fix tests for mtime adjusting
+# * Refactor Constant#load_constant
 
 module ActiveSupport
   # Takes care of loading and reloading your classes and modules from a given set
