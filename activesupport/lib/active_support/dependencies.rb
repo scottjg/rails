@@ -707,21 +707,22 @@ module ActiveSupport
         end
       end
 
+      # Module included into Exception to enable hooks and internal API.
       module Exception # :nodoc:
-        def blame_file!(file)
+        def blame_file!(file) # :nodoc:
           (@blamed_files ||= []).unshift file
         end
 
-        def blamed_files
+        def blamed_files # :nodoc:
           @blamed_files ||= []
         end
 
-        def describe_blame
+        def describe_blame # :nodoc:
           return nil if blamed_files.empty?
           "This error occurred while loading the following files:\n   #{blamed_files.join "\n   "}"
         end
 
-        def copy_blame!(exc)
+        def copy_blame!(exc) # :nodoc:
           @blamed_files = exc.blamed_files.clone
           self
         end
