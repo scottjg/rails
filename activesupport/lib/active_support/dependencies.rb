@@ -857,7 +857,7 @@ module ActiveSupport
 
     # Checks for file changes.
     def check_updates
-      return if checked_updates
+      return if checked_updates or !load?
       lock do
         history.each do |file|
           mtime = mtime(file)
