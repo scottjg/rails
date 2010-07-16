@@ -1361,11 +1361,11 @@ module ActiveRecord
             if association.nil? || force_reload
               association = association_proxy_class.new(self, reflection)
               retval = force_reload ? reflection.klass.uncached { association.reload } : association.reload
-              if retval.nil? and association_proxy_class == BelongsToAssociation
-                association_instance_set(reflection.name, nil)
-                return nil
-              end
               association_instance_set(reflection.name, association)
+            elsif reflection.belongs_to? && self.class.column_names.include?(reflection.primary_key_name)
+              key_changed = send("#{reflection.primary_key_name}_changed?")
+              key = read_attribute(reflection.primary_key_name)
+              association.reload if key_changed && (key.nil? ^ association.target.nil?)
             end
 
             association.target.nil? ? nil : association
