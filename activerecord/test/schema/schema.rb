@@ -82,6 +82,12 @@ ActiveRecord::Schema.define do
     t.string :name
   end
 
+  create_table :cars, :force => true do |t|
+    t.string  :name
+    t.integer :engines_count
+    t.integer :wheels_count
+  end
+
   create_table :categories, :force => true do |t|
     t.string :name, :null => false
     t.string :type
@@ -158,6 +164,11 @@ ActiveRecord::Schema.define do
     t.string  :address_country
     t.string  :gps_location
   end
+  
+  create_table :dashboards, :force => true, :id => false do |t|
+    t.string :dashboard_id
+    t.string :name
+  end
 
   create_table :developers, :force => true do |t|
     t.string   :name
@@ -179,6 +190,9 @@ ActiveRecord::Schema.define do
   end
   add_index :edges, [:source_id, :sink_id], :unique => true, :name => 'unique_edge_index'
 
+  create_table :engines, :force => true do |t|
+    t.integer :car_id
+  end
 
   create_table :entrants, :force => true do |t|
     t.string  :name, :null => false
@@ -280,6 +294,12 @@ ActiveRecord::Schema.define do
     t.integer :job_id
     t.boolean :favourite
     t.integer :lock_version, :default => 0
+  end
+  
+  create_table :minivans, :force => true, :id => false do |t|
+    t.string :minivan_id
+    t.string :name
+    t.string :speedometer_id
   end
 
   create_table :minimalistics, :force => true do |t|
@@ -443,6 +463,12 @@ ActiveRecord::Schema.define do
     t.string :name
     t.integer :ship_id
   end
+  
+  create_table :speedometers, :force => true, :id => false do |t|
+    t.string :speedometer_id
+    t.string :name
+    t.string :dashboard_id
+  end
 
   create_table :sponsors, :force => true do |t|
     t.integer :club_id
@@ -564,6 +590,10 @@ ActiveRecord::Schema.define do
     t.integer :polymorphic_man_id
     t.string :polymorphic_man_type
     t.integer :zine_id
+  end
+
+  create_table :wheels, :force => true do |t|
+    t.references :wheelable, :polymorphic => true
   end
 
   create_table :zines, :force => true do |t|

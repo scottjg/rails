@@ -213,11 +213,21 @@ module ActionView
       #     ...
       #   <% end %>
       #
-      # And for namespaced routes, like +admin_post_url+:
+      # For namespaced routes, like +admin_post_url+:
       #
       #   <%= form_for([:admin, @post]) do |f| %>
       #    ...
       #   <% end %>
+      #
+      # If your resource has associations defined, for example, you want to add comments 
+      # to the post given that the routes are set correctly:
+      #
+      #   <%= form_for([@document, @comment]) do |f| %>
+      #    ...
+      #   <% end %>
+      #
+      # Where +@document = Document.find(params[:id])+ and
+      # +@comment = Comment.new+.
       #
       # === Unobtrusive JavaScript
       #
@@ -666,7 +676,7 @@ module ActionView
       #   # => <input type="file" id="attachment_file" name="attachment[file]" class="file_input" />
       #
       def file_field(object_name, method, options = {})
-        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("file", options)
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("file", options.update({:size => nil}))
       end
 
       # Returns a textarea opening and closing tag set tailored for accessing a specified attribute (identified by +method+)

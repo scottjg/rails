@@ -1,9 +1,7 @@
+require 'rack/mount'
 require 'forwardable'
 require 'active_support/core_ext/object/to_query'
 require 'action_dispatch/routing/deprecated_mapper'
-
-$: << File.expand_path('../../vendor/rack-mount-0.6.6.pre', __FILE__)
-require 'rack/mount'
 
 module ActionDispatch
   module Routing
@@ -14,7 +12,6 @@ module ActionDispatch
         def initialize(options={})
           @defaults = options[:defaults]
           @glob_param = options.delete(:glob)
-          @module = options.delete(:module)
           @controllers = {}
         end
 
@@ -39,12 +36,11 @@ module ActionDispatch
         # we should raise an error in case it's not found, because it usually means
         # an user error. However, if the controller was retrieved through a dynamic
         # segment, as in :controller(/:action), we should simply return nil and
-        # delegate the control back to Rack cascade. Besides, if this is not a default 
+        # delegate the control back to Rack cascade. Besides, if this is not a default
         # controller, it means we should respect the @scope[:module] parameter.
         def controller(params, default_controller=true)
           if params && params.key?(:controller)
-            controller_param = @module && !default_controller ?
-              "#{@module}/#{params[:controller]}" : params[:controller]
+            controller_param = params[:controller]
             controller_reference(controller_param)
           end
         rescue NameError => e
@@ -512,6 +508,8 @@ module ActionDispatch
           end
 
           dispatcher = route.app
+          dispatcher = dispatcher.app while dispatcher.is_a?(Mapper::Constraints)
+
           if dispatcher.is_a?(Dispatcher) && dispatcher.controller(params, false)
             dispatcher.prepare_params!(params)
             return params

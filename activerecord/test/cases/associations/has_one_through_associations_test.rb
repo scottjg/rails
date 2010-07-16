@@ -6,9 +6,12 @@ require 'models/membership'
 require 'models/sponsor'
 require 'models/organization'
 require 'models/member_detail'
+require 'models/minivan'
+require 'models/dashboard'
+require 'models/speedometer'
 
 class HasOneThroughAssociationsTest < ActiveRecord::TestCase
-  fixtures :member_types, :members, :clubs, :memberships, :sponsors, :organizations
+  fixtures :member_types, :members, :clubs, :memberships, :sponsors, :organizations, :minivans, :dashboards, :speedometers
   
   def setup
     @member = members(:groucho)
@@ -63,10 +66,6 @@ class HasOneThroughAssociationsTest < ActiveRecord::TestCase
 
   def test_has_one_through_polymorphic
     assert_equal clubs(:moustache_club), @member.sponsor_club
-  end
-
-  def has_one_through_to_has_many
-    assert_equal 2, @member.fellow_members.size
   end
 
   def test_has_one_through_eager_loading
@@ -204,6 +203,13 @@ class HasOneThroughAssociationsTest < ActiveRecord::TestCase
     assert_nothing_raised do
       Club.find(@club.id).save!
       Club.find(@club.id, :include => :sponsored_member).save!
+    end
+  end
+  
+  def test_value_is_properly_quoted
+    minivan = Minivan.find('m1')
+    assert_nothing_raised do
+      minivan.dashboard
     end
   end
 end

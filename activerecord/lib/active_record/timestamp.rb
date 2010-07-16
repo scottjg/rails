@@ -21,28 +21,20 @@ module ActiveRecord
     end
     
     # Saves the record with the updated_at/on attributes set to the current time.
-    # If the save fails because of validation errors, an 
-    # ActiveRecord::RecordInvalid exception is raised. If an attribute name is passed,
-    # that attribute is used for the touch instead of the updated_at/on attributes.
+    # Please note that no validation is performed and no callbacks are executed.
+    # If an attribute name is passed, that attribute is updated along with 
+    # updated_at/on attributes.
     #
     # Examples:
     #
-    #   product.touch               # updates updated_at
-    #   product.touch(:designed_at) # updates the designed_at attribute
+    #   product.touch               # updates updated_at/on
+    #   product.touch(:designed_at) # updates the designed_at attribute and updated_at/on
     def touch(attribute = nil)
-      current_time = current_time_from_proper_timezone
-
-      if attribute
-        write_attribute(attribute, current_time)
-      else
-        write_attribute('updated_at', current_time) if respond_to?(:updated_at)
-        write_attribute('updated_on', current_time) if respond_to?(:updated_on)
-      end
-
-      save!
+      update_attribute(attribute, current_time_from_proper_timezone)
     end
 
   private
+
     def create #:nodoc:
       if record_timestamps
         current_time = current_time_from_proper_timezone
@@ -50,26 +42,35 @@ module ActiveRecord
         write_attribute('created_at', current_time) if respond_to?(:created_at) && created_at.nil?
         write_attribute('created_on', current_time) if respond_to?(:created_on) && created_on.nil?
 
-        write_attribute('updated_at', current_time) if respond_to?(:updated_at) && updated_at.nil?
-        write_attribute('updated_on', current_time) if respond_to?(:updated_on) && updated_on.nil?
+        timestamp_attributes_for_update_in_model.each do |column|
+          write_attribute(column.to_s, current_time) if self.send(column).nil?
+        end
       end
 
       super
     end
 
     def update(*args) #:nodoc:
-      if record_timestamps && (!partial_updates? || changed?)
-        current_time = current_time_from_proper_timezone
-
-        write_attribute('updated_at', current_time) if respond_to?(:updated_at)
-        write_attribute('updated_on', current_time) if respond_to?(:updated_on)
-      end
-
+      record_update_timestamps if !partial_updates? || changed?
       super
     end
+
+    def record_update_timestamps #:nodoc:
+      return unless record_timestamps
+      current_time = current_time_from_proper_timezone
+      timestamp_attributes_for_update_in_model.inject({}) do |hash, column|
+        hash[column.to_s] = write_attribute(column.to_s, current_time)
+        hash
+      end
+    end
+
+    def timestamp_attributes_for_update_in_model #:nodoc:
+      [:updated_at, :updated_on].select { |elem| respond_to?(elem) }
+    end
     
-    def current_time_from_proper_timezone
+    def current_time_from_proper_timezone #:nodoc:
       self.class.default_timezone == :utc ? Time.now.utc : Time.now
     end
   end
 end
+

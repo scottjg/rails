@@ -68,7 +68,7 @@ module ActiveRecord
   # == Configuration
   #
   # In order to activate an observer, list it in the <tt>config.active_record.observers</tt> configuration setting in your
-  # <tt>config/environment.rb</tt> file.
+  # <tt>config/application.rb</tt> file.
   #
   #   config.active_record.observers = :comment_observer, :signup_observer
   #
@@ -94,7 +94,7 @@ module ActiveRecord
 
     def initialize
       super
-      observed_subclasses.each { |klass| add_observer!(klass) }
+      observed_descendants.each { |klass| add_observer!(klass) }
     end
 
     def self.method_added(method)
@@ -108,8 +108,8 @@ module ActiveRecord
 
     protected
 
-      def observed_subclasses
-        observed_classes.sum([]) { |klass| klass.send(:descendants) }
+      def observed_descendants
+        observed_classes.sum([]) { |klass| klass.descendants }
       end
 
       def observe_callbacks?
