@@ -777,6 +777,7 @@ module ActiveSupport
     mattr_accessor :log_activity
     self.log_activity = false
 
+    # Default reloading strategy to be used.
     mattr_accessor :default_strategy
     self.default_strategy = :world
 
@@ -784,24 +785,31 @@ module ActiveSupport
     mattr_accessor :constant_watch_stack
     self.constant_watch_stack = WatchStack.new
 
+    # Hash tracking file dependencies (created by require_dependency and require_association).
     mattr_accessor :dependencies
     self.dependencies = Hash.new { |h,k| h[k] = Set.new }
 
+    # Internal counter used to avoid having to mark all constants on world reloading.
     mattr_accessor :world_reload_count
     self.world_reload_count = 0
 
+    # Internal counter increased on every reload.
     mattr_accessor :reload_count
     self.reload_count = 0
 
+    # Flag indicating whether file changes have been checked since the last +clear+.
     mattr_accessor :checked_updates
     self.checked_updates = false
 
+    # Map of last change times for the files loaded.
     mattr_accessor :mtimes
     self.mtimes = {}
 
+    # Used for synchronization.
     mattr_accessor :mutex
     self.mutex = Mutex.new
 
+    # Enables dependency hooks.
     def hook!
       lock do
         Object.send(:include, Hooks::Object)
@@ -811,6 +819,7 @@ module ActiveSupport
       end
     end
 
+    # Disables dependency hooks.
     def unhook!
       lock do
         Hooks::Object.exclude_from(Object)
@@ -819,10 +828,11 @@ module ActiveSupport
       end
     end
 
-    def lock(&block)
+    def lock(&block) # :nodoc:
       mutex.synchronize(&block)
     end
 
+    # See +Constant#autoloaded?+.
     def autoloaded?(desc)
       return false if desc.is_a?(Module) and desc.anonymous?
       Constant[desc].autoloaded?
@@ -835,14 +845,17 @@ module ActiveSupport
       autoloaded_constants.clear
     end
 
+    # List of all unloadble constants currently active.
     def unloadable_constants
       autoloaded_constants + explicitly_unloadable_constants
     end
 
+    # See +Constant#remove+.
     def remove_constant(desc)
       Constant[desc].remove
     end
 
+    # Checks for file changes.
     def check_updates
       return if checked_updates
       lock do
@@ -858,11 +871,13 @@ module ActiveSupport
       end
     end
 
+    # Time for the last change made on +file+, aware that a file extension might be missing.
     def mtime(file, ext = '.rb')
       return File.mtime(file) if File.file?(file)
       return mtime("#{file}#{ext}", nil) if ext
     end
 
+    # Removes all unloadable constants, increases +reload_count+ and schedules a reload.
     def clear
       log_call
       lock do
@@ -879,6 +894,7 @@ module ActiveSupport
       end
     end
 
+    # Preforms a +clear+ and removes all meta data (tracked files, last changes, constant map).
     def clear!
       log_call
       [self, explicitly_unloadable_constants, mtimes, history, Constant.map].each do |list|
@@ -886,15 +902,15 @@ module ActiveSupport
       end
     end
 
-    def ref(desc)
+    def ref(desc) # :nodoc:
       Constant[desc]
     end
 
-    def constantize(name)
+    def constantize(name) # :nodoc:
       Constant[name].constant
     end
 
-    def load_missing_constant(from_mod, const_name)
+    def load_missing_constant(from_mod, const_name) # :nodoc:
       Constant[from_mod].load_constant(from_mod, const_name)
     end
 
@@ -954,6 +970,7 @@ module ActiveSupport
       return result
     end
 
+    # See +require_dependency+.
     def depend_on(file_name, swallow_load_errors = false, message = "No such file to load -- %s.rb", from = nil)
       from ||= calling_from
       file_name = search_for_file(file_name) || file_name
@@ -968,10 +985,14 @@ module ActiveSupport
       end
     end
 
+    # See +require_association+.
     def associate_with(file_name)
       depend_on(file_name, true)
     end
 
+    # +require+s or +load+s a file, depending on the chose mechanism.
+    # Starts tracking loaded files for changes and makes sure files
+    # are not loaded twice between +clear+s.
     def require_or_load(file_name, const_path = nil)
       log_call file_name, const_path
       file_name = $1 if file_name =~ /^(.*)\.rb$/
