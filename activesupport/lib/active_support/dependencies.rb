@@ -606,10 +606,10 @@ module ActiveSupport
           raise error
         end
 
-        def associate_with(const)
+        def associate_with(const, reverse = true)
           return if anonymous? or const.anonymous?
+          Constant[const].associate_with(self) if reverse
           Constant[self].associate_with(const)
-          Constant[const].associate_with(self)
         end
 
         def unloadable(const_desc = self)
@@ -925,6 +925,14 @@ module ActiveSupport
 
     #Deprecation.deprecate_methods self, :autoloaded?, :remove_constant, :ref
     hook!
+  end
+end
+
+class Class
+  alias inherited_without_dependencies inherited
+  def inherited(klass)
+    klass.associate_with(self, false)
+    inherited_without_dependencies(klass)
   end
 end
 
