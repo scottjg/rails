@@ -271,6 +271,8 @@ module ActiveSupport
       # World reloading strategy. Reload all reloadable constants if a single file changed.
       # Default strategy.
       #
+      # Constants will be removed and re-defined on reload.
+      #
       # Keep in mind:
       # Errors will occure if references to old constants or instances are
       # kept by parts of the object space that are not reloaded.
@@ -299,6 +301,8 @@ module ActiveSupport
       # Different events will automatically set associations (like include, extend, subclassing,
       # require_dependency, etc).
       #
+      # Constants will be removed and re-defined on reload.
+      #
       # Still highly experimental.
       #
       # Keep in mind:
@@ -315,6 +319,16 @@ module ActiveSupport
         end
       end
 
+      # Monkey patching reloading strategy. Will only reload classes and modules
+      # defined in files that changed.
+      #
+      # Instead of removing a class or module before reloading it, it is simply kept
+      # and patches itself on a reload. When using this strategy, make sure that the
+      # code in your files may be executed twice.
+      #
+      # It has the advantage of not invalidating existing instances and references.
+      #
+      # Still highly experimental.
       module MonkeyPatch
         def prepare
           activate
