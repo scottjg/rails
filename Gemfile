@@ -13,8 +13,14 @@ if mri && RUBY_VERSION < '1.9'
   gem "ruby-debug", ">= 0.10.3"
 end
 
-if mri || RUBY_ENGINE == "rbx"
+if mri
   gem 'json'
+elsif RUBY_ENGINE == "rbx"
+  # git://github.com/evanphx/json.git as soon as gemspec has been added
+  gem 'json', :git => "git://github.com/rkh/json.git"
+end
+
+if mri || RUBY_ENGINE == "rbx"
   gem 'yajl-ruby'
   gem "nokogiri", ">= 1.4.2"
 elsif RUBY_ENGINE == "jruby"
