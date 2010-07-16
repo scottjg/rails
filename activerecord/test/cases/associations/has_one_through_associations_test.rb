@@ -42,6 +42,18 @@ class HasOneThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal clubs(:moustache_club), new_member.club
   end
 
+  def test_creating_association_builds_through_record_for_new_through_belongs_to
+    new_minivan = Minivan.new
+    assert_nothing_raised do
+      new_minivan.dashboard = dashboards( :cool_first )
+    end
+    assert new_minivan.speedometer
+    assert_equal dashboards( :cool_first ), new_minivan.speedometer.dashboard
+    assert_equal dashboards( :cool_first ), new_minivan.dashboard
+    assert new_minivan.save
+    assert_equal dashboards( :cool_first ), new_minivan.dashboard
+  end
+
   def test_replace_target_record
     new_club = Club.create(:name => "Marx Bros")
     @member.club = new_club

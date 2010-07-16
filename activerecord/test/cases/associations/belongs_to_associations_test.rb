@@ -313,6 +313,16 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal Firm.find(:first, :order => "id"), c.firm_with_basic_id
   end
 
+  def test_forgetting_the_load_when_foreign_key_changes
+    first_firm = companies(:first_firm)
+    another_firm = companies(:another_firm)
+
+    c = Client.new({ :firm_id => first_firm.id })
+    assert_equal c.firm_with_basic_id, first_firm
+    c.firm_id = another_firm.id
+    assert_equal c.firm_with_basic_id, another_firm
+  end
+
   def test_field_name_same_as_foreign_key
     computer = Computer.find(1)
     assert_not_nil computer.developer, ":foreign key == attribute didn't lock up" # '

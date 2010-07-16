@@ -1449,11 +1449,18 @@ module ActiveRecord
             if association.nil? || force_reload
               association = association_proxy_class.new(self, reflection)
               retval = force_reload ? reflection.klass.uncached { association.reload } : association.reload
-              if retval.nil? and association_proxy_class == BelongsToAssociation
-                association_instance_set(reflection.name, nil)
-                return nil
-              end
               association_instance_set(reflection.name, association)
+            elsif reflection.belongs_to? && self.class.column_names.include?(reflection.primary_key_name)
+              key = read_attribute(reflection.primary_key_name)
+              target_primary_key = 
+                if association.target
+                  association.target.send( reflection.options[:primary_key] || 'id' )
+                end
+
+              # If A belongs_to B, we reload the association whenever A's key
+              # differs from A.B.id, e.g. because the user invoked A.key= or
+              # A.B=
+              association.reload if key != target_primary_key
             end
 
             association.target.nil? ? nil : association
