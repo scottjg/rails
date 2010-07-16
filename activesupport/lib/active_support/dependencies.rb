@@ -280,6 +280,30 @@ module ActiveSupport
         end
       end
 
+      # Sloppy reloading strategy. Will only reload associated constants.
+      #
+      #   # foo.rb
+      #   class Foo
+      #   end
+      #
+      #   # bar.rb
+      #   class Bar
+      #     associate_with Foo
+      #   end
+      #
+      #   # blah.rb
+      #   class Blah
+      #   end
+      #
+      # In the above example changes to foo.rb or bar.rb will only reload Foo and Bar.
+      # Different events will automatically set associations (like include, extend, subclassing,
+      # require_dependency, etc).
+      #
+      # Still highly experimental.
+      #
+      # Keep in mind:
+      # Errors will occure if references to old constants or instances are
+      # kept by parts of the object space that are not reloaded.
       module Sloppy
         def mark!
           list = associations
