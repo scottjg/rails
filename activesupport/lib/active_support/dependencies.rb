@@ -567,12 +567,16 @@ module ActiveSupport
       #Deprecation.deprecate_methods self, :get
     end
 
-    module Hooks
-      module Object
-        def self.exclude_from(base)
+    module Hooks # :nodoc:
+      # Module included into Object to enable hooks and public API.
+      module Object # :nodoc:
+        def self.exclude_from(base) # :nodoc:
           base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
         end
 
+        # Use this method instead of reload or require when loading reloadable code.
+        # Otherwise dependencies and new constants will not be tracked and code might not
+        # be reloadable.
         def require_dependency(file_name, message = "No such file to load -- %s")
           unless file_name.is_a?(String)
             raise ArgumentError, "the file name must be a String -- you passed #{file_name.inspect}"
@@ -581,19 +585,21 @@ module ActiveSupport
           Dependencies.depend_on(file_name, false, message)
         end
 
+        # Like +require_dependency+, but can be called for files that do not exist
+        # without raising an error.
         def require_association(file_name)
           Dependencies.associate_with(file_name)
         end
 
-        def load(file, *)
+        def load(file, *) # :nodoc:
           load_dependency(file) { super }
         end
 
-        def require(file, *)
+        def require(file, *) # :nodoc:
           load_dependency(file) { super }
         end
 
-        def load_dependency(file)
+        def load_dependency(file) # :nodoc:
           if Dependencies.load?
             Dependencies.new_constants_in(Object) { yield }.presence
           else
