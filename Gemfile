@@ -11,6 +11,8 @@ mri = !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
 if mri && RUBY_VERSION < '1.9'
   gem "system_timer"
   gem "ruby-debug", ">= 0.10.3"
+elsif mri && RUBY_VERSION >= '1.9.2'
+  gem "ruby-debug19"
 end
 
 if mri || RUBY_ENGINE == "rbx"
