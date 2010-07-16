@@ -137,6 +137,7 @@ module ActiveSupport
 
       # Shorthand for Dependencies.require_or_load
       def require_or_load(file_name, const_path = nil) # :nodoc:
+        return super if self == Dependencies
         Dependencies.require_or_load(file_name, const_path)
       end
 
