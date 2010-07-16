@@ -7,9 +7,26 @@ require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/anonymous'
 
-module ActiveSupport # :nodoc:
-  # Documentation goes here.
+module ActiveSupport
+  # Takes care of loading and reloading your classes and modules from a given set
+  # of paths. Dependencies will be set up correctly when using Rails.
+  #
+  # Example usage:
+  #   require 'active_support/dependencies'
+  #   
+  #   # search for files in path
+  #   ActiveSupport::Dependencies.autoload_paths = ['lib']
+  #   ActiveSupport::Dependencies.mechanism = :load # use load - allows reloading code
+  #   
+  #   # Will load ExampleClass from lib/example_class.rb
+  #   ExampleClass.do_something
+  #   
+  #   # Will trigger a reload if a file has been changed
+  #   ActiveSupport::Dependencies.clear
+  #   
+  #   ExampleClass.do_something_else
   module Dependencies
+    # Will be included into Dependencies, WatchStack and Constant
     module Tools # :nodoc:
       def self.included(base) # :nodoc:
         base.extend(self)
@@ -28,15 +45,37 @@ module ActiveSupport # :nodoc:
         end
       end
 
-      def to_strategy(desc)
+      # Convert a provided strategy desc into a strategy mixin:
+      #   to_strategy(MyStrategy) # => MyStrategy
+      #   to_strategy(:world)     # => ActiveSupport::Strategies::World
+      def to_strategy(desc) # :nodoc:
         return desc if Module === desc
         Strategies.const_get desc.to_s.camelcase
       end
 
+      # Returns true if a qualified constant matching name is defined.
+      # See qualified_const.
       def qualified_const_defined?(name)
         !!qualified_const(name)
       end
 
+      # Returns the qualified constant for a given const desc.
+      #
+      # Example:
+      #   module Example
+      #     include ActiveSupport::Dependencies::Tools
+      #     module Foo
+      #     end
+      #     
+      #     foo = Foo
+      #     qualified_const(foo) # => Example::Foo
+      #     
+      #     remove_const(:Foo)
+      #     qualified_const(foo) # => nil
+      #     
+      #     Foo = Array
+      #     qualified_const(foo) # => Array
+      #   end
       def qualified_const(name)
         names = to_constant_name(name).split("::")
         names.inject(Object) do |mod, name|
@@ -54,45 +93,50 @@ module ActiveSupport # :nodoc:
         nil
       end
 
-      def calling_from
+      # The file a method is called on.
+      def calling_from # :nodoc:
         File.expand_path(trace.first[/^[^:]+/])
       end
 
-      def trace
+      # Cleaned backtrace.
+      def trace # :nodoc:
         caller.reject {|l| l =~ %r{#{Regexp.escape(__FILE__)}} }
       end
 
-      def name_error(name)
+      # Generates a NameError for +name+ with cleaned +trace+.
+      def name_error(name) # :nodoc:
         NameError.new("uninitialized constant #{name}").tap do |name_error|
           name_error.set_backtrace(trace)
         end
       end
 
+      # Whether to use load or require.
       def load?
         Dependencies.mechanism == :load
       end
 
-      def logger
-        return super if self == Dependencies
+      # Shorthand for Dependencies.logger
+      def logger # :nodoc:
         Dependencies.logger
       end
 
-      def log_activity?
-        return super if self == Dependencies
+      # Shorthand for Dependencies.log_activity
+      def log_activity? # :nodoc:
         Dependencies.log_activity
       end
 
-      def autoloaded_constants
-        return super if self == Dependencies
+      # Shorthand for Dependencies.autoloaded_constants
+      def autoloaded_constants # :nodoc:
         Dependencies.autoloaded_constants
       end
 
+      # Checks whether given +path+ should only be autoloaded once.
       def load_once_path?(path)
         Dependencies.autoload_once_paths.any? { |base| path.starts_with? base }
       end
 
-      def require_or_load(file_name, const_path = nil)
-        return super if self == Dependencies
+      # Shorthand for Dependencies.require_or_load
+      def require_or_load(file_name, const_path = nil) # :nodoc:
         Dependencies.require_or_load(file_name, const_path)
       end
 
@@ -140,6 +184,7 @@ module ActiveSupport # :nodoc:
         end
       end
 
+      # Whether or not +file+ has been loaded by Dependencies since the last +clear+.
       def loaded?(file)
         Dependencies.loaded.include? File.expand_path(file)
       end
@@ -152,7 +197,7 @@ module ActiveSupport # :nodoc:
 
       protected
 
-      def log_call(*args)
+      def log_call(*args) # :nodoc:
         if logger && log_activity?
           arg_str = args.collect { |arg| arg.inspect } * ', '
           /in `([a-z_\?\!]+)'/ =~ caller(1).first
@@ -161,13 +206,14 @@ module ActiveSupport # :nodoc:
         end
       end
 
-      def log(msg)
+      def log(msg) # :nodoc:
         if logger && log_activity?
           logger.debug "Dependencies: #{msg}"
         end
       end
     end
 
+    # A WatchStack is used to track constants added to object space.
     class WatchStack < Array
       include Tools
 
@@ -175,16 +221,19 @@ module ActiveSupport # :nodoc:
         @mutex = Mutex.new
       end
 
-      def self.locked(*methods)
+      def self.locked(*methods) # :nodoc:
         methods.each { |m| class_eval "def #{m}(*) lock { super } end", __FILE__, __LINE__ }
       end
 
-      def get(key)
+      def get(key) # :nodoc:
         (val = assoc(key)) ? val[1] : []
       end
 
       locked :concat, :each, :delete_if, :<<
 
+      # Given a list of frames (parent module and all constants defined in it).
+      # Add new constants to the frames (thus not treating those as new the next time)
+      # and return an array of those new constants.
       def new_constants_for(frames)
         constants = []
         frames.each do |mod_name, prior_constants|
@@ -212,14 +261,20 @@ module ActiveSupport # :nodoc:
         list
       end
 
-      def lock(&block)
+      def lock(&block) # :nodoc:
         @mutex.synchronize(&block)
       end
     end
 
     module Strategies # :nodoc:
+      # World reloading strategy. Reload all reloadable constants if a single file changed.
+      # Default strategy.
+      #
+      # Keep in mind:
+      # Errors will occure if references to old constants or instances are
+      # kept by parts of the object space that are not reloaded.
       module World
-        def mark!
+        def mark! # :nodoc:
           Dependencies.world_reload_count = Dependencies.reload_count
         end
       end
