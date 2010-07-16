@@ -570,7 +570,7 @@ module ActiveSupport
     module Hooks
       module Object
         def self.exclude_from(base)
-          #base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
+          base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
         end
 
         def require_dependency(file_name, message = "No such file to load -- %s")
