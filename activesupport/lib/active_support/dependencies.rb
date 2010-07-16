@@ -628,8 +628,9 @@ module ActiveSupport
         end
       end
 
-      module Module
-        def self.append_features(base)
+      # Module included into Module to enable hooks and public API.
+      module Module # :nodoc:
+        def self.append_features(base) # :nodoc:
           base.class_eval do
             # Emulate #exclude via an ivar
             return if defined?(@_const_missing) && @_const_missing
@@ -639,7 +640,7 @@ module ActiveSupport
           super
         end
 
-        def self.exclude_from(base)
+        def self.exclude_from(base) # :nodoc:
           base.class_eval do
             define_method :const_missing, @_const_missing
             @_const_missing = nil
@@ -677,12 +678,30 @@ module ActiveSupport
           raise error
         end
 
+        # Associates the curren module with the given constant.
+        # If the second parameter is true (default), the association will be created
+        # for both directions.
+        #
+        # Used by the sloppy reloading strategy.
         def associate_with(const, reverse = true)
           return if anonymous? or const.anonymous?
           Constant[const].associate_with(self) if reverse
           Constant[self].associate_with(const)
         end
 
+        # Mark this module/class as unloadable. Unloadable constants are removed each
+        # time dependencies are cleared.
+        #
+        # Note that marking a constant for unloading need only be done once. Setup
+        # or init scripts may list each unloadable constant that may need unloading;
+        # each constant will be removed for every subsequent clear, as opposed to for
+        # the first clear.
+        #
+        # The provided constant descriptor may be a (non-anonymous) module or class,
+        # or a qualified constant name as a string or symbol.
+        #
+        # Returns true if the constant was not previously marked for unloading, false
+        # otherwise.
         def unloadable(const_desc = self)
           super(const_desc)
         end
