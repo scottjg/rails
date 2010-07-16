@@ -7,6 +7,7 @@ require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/anonymous'
 
+
 module ActiveSupport
   # Takes care of loading and reloading your classes and modules from a given set
   # of paths. Dependencies will be set up correctly when using Rails.
@@ -336,18 +337,32 @@ module ActiveSupport
       end
     end
 
+    # Wrapper class for classes and modules.
+    # It is not intended to be used directly.
     class Constant
       extend Enumerable
       include Tools
 
+      # Constant name - wrapper mapping
       mattr_accessor :map
       self.map ||= {}
 
+      # Checks whether a constant wrapper is already defined.
+      # Example:
+      #   class Foo; end
+      #   ActiveSupport::Dependencies::Constant.available? "Bar" # => false
+      #   ActiveSupport::Dependencies::Constant.available? "Foo" # => true
+      #
+      #   const = ActiveSupport::Dependencies::Constant["Bar"]
+      #   ActiveSupport::Dependencies::Constant.available? "Bar" # => true
       def self.available?(name)
         name = to_constant_name(name)
         map.include?(name) or qualified_const_defined?(name)
       end
 
+      # Creates new wrapper.
+      # Argument will be converted via +to_constant_name+.
+      # If the argument is a Constant, it will be returned instead.
       def self.new(name)
         return name if Constant === name
         name = to_constant_name(name)
@@ -360,7 +375,7 @@ module ActiveSupport
 
       attr_accessor :name, :constant, :parent, :local_name, :last_reload, :associations
 
-      def initialize(name)
+      def initialize(name) # :nodoc:
         @marked       = false
         @unloadable   = nil
         @name         = name
@@ -377,59 +392,82 @@ module ActiveSupport
         update
       end
 
+      # Strategy used for reloading the constant.
+      #
+      # Example:
+      #   ActiveSupport::Dependencies::Constant["Foo"].strategy = :monkey_patch
+      #   ActiveSupport::Dependencies::Constant["Bar"].strategy = MyStrategy
       def strategy=(mod)
         extend to_strategy(mod)
+        mod
       end
 
+      # Associates the constant with another constant.
+      # Used by the sloppy reloader.
       def associate_with(const)
         associations << Constant[const]
       end
 
+      # Action to be performed before loading the source.
+      # Intended to be overwritten by the strategy when necessary.
       def prepare
       end
 
+      # Returns the qualified name for
+      #   ActiveSupport::Dependencies::Constant["Foo"].qualified_name_for "Bar" # => "Foo::Bar"
       def qualified_name_for(mod, name = nil)
         mod, name = self, mod unless name
         super(mod, name)
       end
 
+      # Whether or not the constant wrapped is defined.
+      #   ActiveSupport::Dependencies::Constant["Foo"].qualified_const_defined? # => false
+      #   class Foo; end
+      #   ActiveSupport::Dependencies::Constant["Foo"].qualified_const_defined? # => true
       def qualified_const_defined?(desc = name)
         super
       end
 
-      def qualified_const(desc = name)
+      def qualified_const(desc = name) # :nodoc:
         super
       end
 
-      def update
+      # Updates internal constant to match outer constant.
+      def update # :nodoc:
         @last_reload  = Dependencies.world_reload_count
         @constant     = qualified_const
       end
 
-      def object?
+      def object? # :nodoc:
         name == 'Object'
       end
 
+      # Whether the current constant is active (it is defined and not an older version).
       def active?
         (const = qualified_const) and const == constant
       end
 
+      # Like +active?+ but instead of returning false it raises and ArgumentError.
       def active!
         unless active?
           raise ArgumentError, "A copy of #{name} has been removed from the module tree but is still active!"
         end
+        true
       end
 
+      # Whether or not the constant has been autoloaded (which will cause it to reload).
       def autoloaded?
         qualified_const_defined? and autoloaded_constants.include?(name)
       end
 
+      # Explicitly mark the constant as reloadable (see ActiveSupport::Dependencies::Hooks::Module#unloadable).
       def unloadable!
         return false if @unloadable
         Dependencies.explicitly_unloadable_constants << self
         @unloadable = true
       end
 
+      # Whether or not class is reloadable (explicitly or since it is autoloaded).
       def unloadable?
         return true if @unloadable or autoloaded?
         return false unless @unloadable.nil?
@@ -438,19 +476,23 @@ module ActiveSupport
         end
       end
 
+      # Removes the constant from object space.
       def remove
         parent.remove_constant(local_name) if qualified_const_defined?
       end
 
+      # Removes a nested constant from object space.
       def remove_constant(const_name)
         constant.send(:remove_const, const_name) if constant
       end
 
+      # Checks whether a nested constant is defined.
       def local_const_defined?(mod, name = nil)
         mod, name = constant, mod unless name
         super(mod, name) if mod
       end
 
+      # Adds the constant to object space.
       def activate
         parent.update
         parent.constant.const_set(name, constant)
@@ -458,20 +500,22 @@ module ActiveSupport
         constant
       end
 
+      # Whether or not the constant has been marked for reload.
       def marked?
         return true if name != 'ReloadMe' # FIXME
         last_reload < Dependencies.world_reload_count or @marked
       end
 
-      def mark!
+      def mark! #:nodoc:
+      end
+
+      # Marks the constant for reload.
+      def mark
+        mark! unless marked?
         @marked = true
       end
 
-      def mark
-        mark! unless marked?
-      end
-
-      def load_constant(from_mod, const_name)
+      def load_constant(from_mod, const_name) # :nodoc:
         log_call const_name
         Dependencies.check_updates
 
@@ -505,7 +549,7 @@ module ActiveSupport
         Constant[complete_name].update
       end
 
-      def load_parent_constant(const_name, complete_name)
+      def load_parent_constant(const_name, complete_name) # :nodoc:
         parent.load_constant(parent.constant, const_name)
       rescue NameError => e
         raise unless e.missing_name? qualified_name_for(parent, const_name)
