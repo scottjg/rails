@@ -928,23 +928,23 @@ module ActiveSupport
   end
 end
 
-class Class
+class Class # :nodoc:
   alias inherited_without_dependencies inherited
-  def inherited(klass)
+  def inherited(klass) # :nodoc:
     klass.associate_with(self, false)
     inherited_without_dependencies(klass)
   end
 end
 
-class Module
+class Module # :nodoc:
   alias append_features_without_dependencies append_features
-  def append_features(mod)
+  def append_features(mod) # :nodoc:
     associate_with(mod)
     append_features_without_dependencies(mod)
   end
 
   alias extend_object_without_dependencies extend_object
-  def extend_object(mod)
+  def extend_object(mod) # :nodoc:
     associate_with(mod) if Module === mod
     extend_object_without_dependencies(mod)
   end
