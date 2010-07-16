@@ -496,6 +496,25 @@ module ActiveSupport
           Dependencies.associate_with(file_name)
         end
 
+        def load(file, *)
+          load_dependency(file) { super }
+        end
+
+        def require(file, *)
+          load_dependency(file) { super }
+        end
+
+        def load_dependency(file)
+          if Dependencies.load?
+            Dependencies.new_constants_in(Object) { yield }.presence
+          else
+            yield
+          end
+        rescue Exception => exception  # errors from loading file
+          exception.blame_file! file
+          raise
+        end
+
         # Mark the given constant as unloadable. Unloadable constants are removed each
         # time dependencies are cleared.
         #
