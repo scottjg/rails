@@ -7,15 +7,6 @@ require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/anonymous'
 
-# TODO - RSoC 2010:
-# * More robust handling when constant still active
-# * Handling of referenced instances
-# * Public API
-# * How should monkey patching stratgy behave on world reload?
-# * Documentation
-# * Fix tests for mtime adjusting
-# * Refactor Constant#load_constant
-
 module ActiveSupport
   # Takes care of loading and reloading your classes and modules from a given set
   # of paths. Dependencies will be set up correctly when using Rails.
