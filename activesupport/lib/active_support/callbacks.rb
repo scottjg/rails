@@ -346,17 +346,26 @@ module ActiveSupport
         method = []
         method << "value = nil"
         method << "halted = false"
+        method << "rescued_error = nil" if config[:rescuable]
 
-        each do |callback|
+        around_callbacks  = select{|callback| callback.kind == :around }
+        other_callbacks   = reject{|callback| callback.kind == :around }
+
+        method << "begin" if config[:rescuable]
+
+        other_callbacks.each do |callback|
           method << callback.start(key, object)
         end
 
-        if config[:rescuable]
-          method << "rescued_error = nil"
-          method << "begin"
+        around_callbacks.each do |around_callback|
+          method << around_callback.start(key, object)
         end
 
         method << "value = yield if block_given? && !halted"
+
+        around_callbacks.reverse_each do |around_callback|
+          method << around_callback.end(key, object)
+        end
 
         if config[:rescuable]
           method << "rescue Exception => e"
@@ -364,7 +373,7 @@ module ActiveSupport
           method << "end"
         end
 
-        reverse_each do |callback|
+        other_callbacks.reverse_each do |callback|
           method << callback.end(key, object)
         end
 
