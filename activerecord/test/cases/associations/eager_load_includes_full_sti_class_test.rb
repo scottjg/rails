@@ -28,7 +28,7 @@ class EagerLoadIncludeFullStiClassNamesTest < ActiveRecord::TestCase
     assert_nil post.tagging
 
     ActiveRecord::Base.store_full_sti_class = true
-    post = Namespaced::Post.find_by_title( 'Great stuff', :include => :tagging )
+    post = Namespaced::Post.find_by_title( 'Great stuff', :include => :tagging ).reload
     assert_instance_of Tagging, post.tagging
   ensure
     ActiveRecord::Base.store_full_sti_class = old

@@ -37,7 +37,7 @@ module ActiveRecord
       end
 
       def remove(record)
-        current[[record.class.name, record.id]] = nil
+        current.delete([record.class.name, record.id])
       end
 
       def clear
