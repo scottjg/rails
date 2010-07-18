@@ -49,6 +49,10 @@ platforms :jruby do
     gem "activerecord-jdbcpostgresql-adapter"
   end
 end
+gem('weakling', ">= 0.1.4",
+  :path => '~/ruby/weakling' #
+#  :git => "git://github.com/swistak/weakling.git"
+)
 
 env 'CI' do
   gem "nokogiri", ">= 1.4.3.1"
