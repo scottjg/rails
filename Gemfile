@@ -50,8 +50,8 @@ platforms :jruby do
   end
 end
 gem('weakling', ">= 0.1.4",
-  :path => '~/ruby/weakling' #
-#  :git => "git://github.com/swistak/weakling.git"
+#  :path => '~/ruby/weakling' #
+  :git => "git://github.com/swistak/weakling.git"
 )
 
 env 'CI' do
