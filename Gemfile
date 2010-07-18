@@ -45,6 +45,10 @@ elsif RUBY_ENGINE == "jruby"
     gem "activerecord-jdbcpostgresql-adapter"
   end
 end
+gem('weakling', ">= 0.1.4",
+  :path => '~/ruby/weakling' #
+#  :git => "git://github.com/swistak/weakling.git"
+)
 
 if ENV['CI']
   gem "nokogiri", ">= 1.4.0"

@@ -32,6 +32,7 @@ require 'active_support'
 require 'active_support/i18n'
 require 'active_model'
 require 'arel'
+require 'weakling'
 
 module ActiveRecord
   extend ActiveSupport::Autoload
@@ -79,6 +80,7 @@ module ActiveRecord
     autoload :Timestamp
     autoload :Transactions
     autoload :Validations
+    autoload :IdentityMap
   end
 
   module AttributeMethods

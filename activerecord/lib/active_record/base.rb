@@ -852,7 +852,9 @@ module ActiveRecord #:nodoc:
         # single-table inheritance model that makes it possible to create
         # objects of different types from the same table.
         def instantiate(record)
-          object = find_sti_class(record[inheritance_column]).allocate
+          klass = find_sti_class(record[inheritance_column])
+          pk_value = record[klass.primary_key]
+          object = identity_map[[klass.name, pk_value]] ||= klass.allocate
 
           object.instance_variable_set(:@attributes, record)
           object.instance_variable_set(:@attributes_cache, {})
@@ -1786,6 +1788,7 @@ MSG
     include ActiveModel::MassAssignmentSecurity
     include Callbacks, ActiveModel::Observing, Timestamp
     include Associations, AssociationPreload, NamedScope
+    include IdentityMap
 
     # AutosaveAssociation needs to be included before Transactions, because we want
     # #save_with_autosave_associations to be wrapped inside a transaction.
