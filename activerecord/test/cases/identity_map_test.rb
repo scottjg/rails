@@ -109,8 +109,6 @@ class IdentityMapTest < ActiveRecord::TestCase
       assert posts.first.comments.first
     end
 
-    # With IM we'll retrieve post object from previous query, it'll have comments
-    # already preloaded from first call
     assert_queries(1) do
       posts = Post.scoped.includes(:comments)
       assert posts.first.comments.first
@@ -141,12 +139,12 @@ class IdentityMapTest < ActiveRecord::TestCase
     assert_equal [posts(:welcome)], posts
     assert_equal authors(:david), assert_no_queries { posts[0].author}
 
-    posts = assert_queries(2) do
+    posts = assert_queries(1) do
       Post.find(:all, :include => :author, :joins => {:taggings => :tag}, :conditions => "tags.name = 'General'", :order => 'posts.id')
     end
     assert_equal posts(:welcome, :thinking), posts
 
-    posts = assert_queries(2) do
+    posts = assert_queries(1) do
       Post.find(:all, :include => :author, :joins => {:taggings => {:tag => :taggings}}, :conditions => "taggings_tags.super_tag_id=2", :order => 'posts.id')
     end
     assert_equal posts(:welcome, :thinking), posts
