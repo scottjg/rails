@@ -2,31 +2,43 @@ module ActiveRecord
   module IdentityMap
     extend ActiveSupport::Concern
 
-    module InstanceMethods
+    class << self
+      attr_accessor :repositories
+      attr_accessor :current_repository_name
       
+      def current
+        repositories[current_repository_name] ||= Weakling::WeakHash.new
+      end
+
+      def with_repository(name = :default, &block)
+        old_repository = self.current_repository_name
+        self.current_repository_name = name
+
+        block.call(current)
+      ensure
+        self.current_repository_name = old_repository
+
+        current
+      end
+
+      def with_temporary_repository(&block)
+        repositories[:temporary] && repositories[:temporary].clear
+        with_repository(:temporary, &block)
+      ensure
+        repositories[:temporary] && repositories[:temporary].clear
+      end
+    end
+
+    self.repositories ||= Hash.new
+    self.current_repository_name ||= :default
+
+    module InstanceMethods
+
     end
     
     module ClassMethods
-      attr_accessor :repositories
-      attr_accessor :current_repository
-
       def identity_map
-        self.repositories ||= Hash.new
-        self.current_repository ||= :default
-        self.repositories[current_repository] ||= Weakling::WeakHash.new
-      end
-
-      # Finder methods must instantiate through this method to work with the
-      # single-table inheritance model that makes it possible to create
-      # objects of different types from the same table.
-      def instantiate(record)
-        p(record)
-        klass = find_sti_class(record[inheritance_column])
-        pk_value = record[klass.primary_key]
-
-        object = identity_map[[klass.name, pk_value]] ||= super
-
-        object
+        ActiveRecord::IdentityMap.current
       end
     end
   end

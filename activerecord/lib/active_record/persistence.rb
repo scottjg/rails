@@ -213,7 +213,10 @@ module ActiveRecord
     def reload(options = nil)
       clear_aggregation_cache
       clear_association_cache
-      @attributes.update(self.class.unscoped { self.class.find(self.id, options) }.instance_variable_get('@attributes'))
+      ActiveRecord::IdentityMap.with_temporary_repository do |repository|
+        new_attributes = self.class.unscoped { self.class.find(self.id, options) }.instance_variable_get('@attributes')
+        @attributes.update(new_attributes)
+      end
       @attributes_cache = {}
       self
     end
