@@ -731,6 +731,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
   end
 
   def test_eager_loading_with_conditions_on_joined_table_preloads
+    ActiveRecord::IdentityMap.without do
     posts = assert_queries(2) do
       Post.find(:all, :select => 'distinct posts.*', :include => :author, :joins => [:comments], :conditions => "comments.body like 'Thank you%'", :order => 'posts.id')
     end
@@ -752,10 +753,11 @@ class EagerAssociationTest < ActiveRecord::TestCase
       Post.find(:all, :include => :author, :joins => {:taggings => {:tag => :taggings}}, :conditions => "taggings_tags.super_tag_id=2", :order => 'posts.id')
     end
     assert_equal posts(:welcome, :thinking), posts
-
+    end
   end
 
   def test_eager_loading_with_conditions_on_string_joined_table_preloads
+    ActiveRecord::IdentityMap.without do
     posts = assert_queries(2) do
       Post.find(:all, :select => 'distinct posts.*', :include => :author, :joins => "INNER JOIN comments on comments.post_id = posts.id", :conditions => "comments.body like 'Thank you%'", :order => 'posts.id')
     end
@@ -767,7 +769,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
     end
     assert_equal [posts(:welcome)], posts
     assert_equal authors(:david), assert_no_queries { posts[0].author}
-
+    end
   end
 
   def test_eager_loading_with_select_on_joined_table_preloads

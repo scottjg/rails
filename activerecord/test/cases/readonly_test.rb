@@ -45,8 +45,10 @@ class ReadOnlyTest < ActiveRecord::TestCase
     Developer.joins('  ').readonly(false).each { |d| assert !d.readonly? }
 
     # Others do.
+    ActiveRecord::IdentityMap.without do
     Developer.joins(', projects').each { |d| assert d.readonly? }
     Developer.joins(', projects').readonly(false).each { |d| assert !d.readonly? }
+    end
   end
 
 
@@ -72,6 +74,7 @@ class ReadOnlyTest < ActiveRecord::TestCase
   end
 
   def test_readonly_scoping
+    ActiveRecord::IdentityMap.without do
     Post.send(:with_scope, :find => { :conditions => '1=1' }) do
       assert !Post.find(1).readonly?
       assert Post.readonly(true).find(1).readonly?
@@ -98,6 +101,7 @@ class ReadOnlyTest < ActiveRecord::TestCase
       assert Post.find(1).readonly?
       assert Post.readonly.find(1).readonly?
       assert !Post.readonly(false).find(1).readonly?
+    end
     end
   end
 
