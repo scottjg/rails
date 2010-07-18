@@ -11,7 +11,12 @@ require 'mocha'
 
 require 'active_record'
 require 'active_support/dependencies'
-require 'connection'
+begin
+  require 'connection'
+rescue LoadError
+  connection_type = defined?(JRUBY_VERSION) ? 'jdbc' : 'native'
+  require "test/connections/#{connection_type}_sqlite3/connection"
+end
 
 begin
   require 'ruby-debug'
