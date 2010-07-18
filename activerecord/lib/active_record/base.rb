@@ -848,14 +848,7 @@ module ActiveRecord #:nodoc:
           finder_needs_type_condition? ? @relation.where(type_condition) : @relation
         end
 
-        # Finder methods must instantiate through this method to work with the
-        # single-table inheritance model that makes it possible to create
-        # objects of different types from the same table.
-        def instantiate(record)
-          klass = find_sti_class(record[inheritance_column])
-          pk_value = record[klass.primary_key]
-          object = identity_map[[klass.name, pk_value]] ||= klass.allocate
-
+        def instantiate_without_im(object, record)
           object.instance_variable_set(:@attributes, record)
           object.instance_variable_set(:@attributes_cache, {})
           object.instance_variable_set(:@new_record, false)
@@ -864,6 +857,21 @@ module ActiveRecord #:nodoc:
           object.instance_variable_set(:@marked_for_destruction, false)
           object.instance_variable_set(:@previously_changed, {})
           object.instance_variable_set(:@changed_attributes, {})
+
+          object
+        end
+
+        # Finder methods must instantiate through this method to work with the
+        # single-table inheritance model that makes it possible to create
+        # objects of different types from the same table.
+        def instantiate(record)
+          sti_class = find_sti_class(record[inheritance_column])
+          record_id = sti_class.primary_key && record[sti_class.primary_key]
+          if record_id
+            object = identity_map[[sti_class.name, record_id]] ||= instantiate_without_im(sti_class.allocate, record)
+          else
+            object = instantiate_without_im(sti_class.allocate, record) 
+          end
 
           object.send(:_run_find_callbacks)
           object.send(:_run_initialize_callbacks)

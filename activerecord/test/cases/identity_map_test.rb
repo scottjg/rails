@@ -19,14 +19,8 @@ require 'models/subscriber'
 
 class IdentityMapTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
-           :developers_projects, :computers, :authors, :author_addresses,
-           :posts, :tags, :taggings, :comments, :subscribers
-
-  def setup
-    ActiveRecord::Base.current_repository = :test
-    ActiveRecord::Base.identity_map.clear
-    #ActiveRecord::Base.repositories[:test] = Hash.new
-  end
+    :developers_projects, :computers, :authors, :author_addresses,
+    :posts, :tags, :taggings, :comments, :subscribers
 
   def test_find_id
     assert_same(
@@ -68,5 +62,12 @@ class IdentityMapTest < ActiveRecord::TestCase
       Subscriber.find(:first, :conditions => {:nick => 'swistak'}),
       Subscriber.find(:first, :conditions => {:nick => 'swistak'})
     )
+  end
+
+  def test_im_with_polymorphic_has_many_going_through_join_model_with_custom_select_and_joins
+    tag = posts(:welcome).tags.first
+    tag_with_joins_and_select = posts(:welcome).tags.add_joins_and_select.first
+    assert_same(tag, tag_with_joins_and_select)
+    assert_nothing_raised(NoMethodError, "Joins/select was not loaded") { tag.author_id }
   end
 end
