@@ -867,8 +867,14 @@ module ActiveRecord #:nodoc:
         def instantiate(record)
           sti_class = find_sti_class(record[inheritance_column])
           record_id = sti_class.primary_key && record[sti_class.primary_key]
-          if record_id
-            object = identity_map[[sti_class.name, record_id]] ||= instantiate_without_im(sti_class.allocate, record)
+          if ActiveRecord::IdentityMap.enabled? && record_id
+            if object = identity_map.get(sti_class.name, record_id)
+              object.instance_variable_get("@attributes").update(record)
+              object.instance_variable_get("@attributes_cache").replace({})
+            else
+              object = instantiate_without_im(sti_class.allocate, record)
+              identity_map.add(object)
+            end
           else
             object = instantiate_without_im(sti_class.allocate, record) 
           end

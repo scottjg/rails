@@ -881,7 +881,7 @@ module ActiveRecord
               @fixture_cache[table_name].delete(fixture) if force_reload
 
               if @loaded_fixtures[table_name][fixture.to_s]
-                ActiveRecord::IdentityMap.with_temporary_repository do
+                ActiveRecord::IdentityMap.without do
                   @fixture_cache[table_name][fixture] ||= @loaded_fixtures[table_name][fixture.to_s].find
                 end
               else
