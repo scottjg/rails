@@ -501,7 +501,7 @@ module ActiveSupport
 
       # Whether or not the constant has been marked for reload.
       def marked?
-        return true if name != 'ReloadMe' # FIXME
+        return true unless Dependencies.check_mtime
         last_reload < Dependencies.world_reload_count or @marked
       end
 
@@ -800,6 +800,10 @@ module ActiveSupport
     # Used for synchronization.
     mattr_accessor :mutex
     self.mutex = Mutex.new
+
+    # Whether or not to check for file changes and only reload if changes occure.
+    mattr_accessor :check_mtime
+    self.check_mtime = true
 
     # Enables dependency hooks.
     def hook!

@@ -16,6 +16,10 @@ module ModuleWithConstant
 end
 
 class DependenciesTest < Test::Unit::TestCase
+  def setup
+    ActiveSupport::Dependencies.check_mtime = false
+  end
+
   def teardown
     ActiveSupport::Dependencies.clear!
   end
@@ -792,6 +796,7 @@ class DependenciesTest < Test::Unit::TestCase
   end
 
   def test_reloads_only_on_file_changes
+    ActiveSupport::Dependencies.check_mtime = true
     with_loading 'dependencies' do
       $reload_me_counter = nil
       file = ActiveSupport::Dependencies.search_for_file('reload_me')
