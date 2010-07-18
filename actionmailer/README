@@ -131,24 +131,21 @@ Additionally, Action Mailer requires the Mail gem, http://github.com/mikel/mail
 * Text::Format 0.63 by Austin Ziegler released under OpenSource
   Read more on http://www.halostatue.ca/ruby/Text__Format.html
 
-== Download
 
-The latest version of Action Mailer can be found at
+== Download and installation
 
-* http://rubyforge.org/project/showfiles.php?group_id=361
+Official releases of Action Mailer are available via RubyGems.
 
-Documentation can be found at 
+  % [sudo] gem install actionmailer
 
-* http://actionmailer.rubyonrails.org
-
-
-== Installation
-
-You can install Action Mailer with the following command.
+Alternatively, if you download the source you can install the library by
+running the following command inside its directory:
 
   % [sudo] ruby install.rb
 
-from its distribution directory.
+Source code can be downloaded as part of the Rails project on GitHub
+
+* http://github.com/rails/rails/tree/master/actionmailer/
 
 
 == License
@@ -158,10 +155,10 @@ Action Mailer is released under the MIT license.
 
 == Support
 
-The Action Mailer homepage is http://www.rubyonrails.org. You can find
-the Action Mailer RubyForge page at http://rubyforge.org/projects/actionmailer.
-And as Jim from Rake says:
+API documentation is at
 
-   Feel free to submit commits or feature requests.  If you send a patch,
-   remember to update the corresponding unit tests.  If fact, I prefer
-   new feature to be submitted in the form of new unit tests.
+* http://api.rubyonrails.com
+
+Bug reports and feature requests can be filed with the rest for the Ruby on Rails project here:
+
+* https://rails.lighthouseapp.com/projects/8994-ruby-on-rails/tickets
