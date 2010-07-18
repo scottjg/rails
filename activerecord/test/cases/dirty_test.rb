@@ -472,7 +472,7 @@ class DirtyTest < ActiveRecord::TestCase
     assert !pirate.previous_changes.key?('parrot_id')
     assert !pirate.previous_changes.key?('created_on')
 
-    pirate = Pirate.find_by_catchphrase("Ahoy!")
+    pirate = ActiveRecord::IdentityMap.without{ Pirate.find_by_catchphrase("Ahoy!") }
     pirate.update_attribute(:catchphrase, "Ninjas suck!")
 
     assert_equal 0, pirate.previous_changes.size

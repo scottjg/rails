@@ -470,8 +470,10 @@ module NestedAttributesOnACollectionAssociationTests
 
   def test_should_not_overwrite_unsaved_updates_when_loading_association
     @pirate.reload
+    ActiveRecord::IdentityMap.enabled = true
+    @pirate.send(@association_name).send :load_target
     @pirate.send(association_setter, [{ :id => @child_1.id, :name => 'Grace OMalley' }])
-    assert_equal 'Grace OMalley', @pirate.send(@association_name).send(:load_target).find { |r| r.id == @child_1.id }.name
+    assert_equal 'Grace OMalley', @pirate.send(@association_name).send(:load_target).detect { |r| r.id == @child_1.id }.name
   end
 
   def test_should_preserve_order_when_not_overwriting_unsaved_updates

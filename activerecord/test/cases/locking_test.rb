@@ -15,6 +15,11 @@ class ReadonlyFirstNamePerson < Person
   attr_readonly :first_name
 end
 
+# Becouse of introduction of IdentityMap optimistic locking should only be needed
+# in multithreaded applications, or when more then one software operates on database.
+#
+# I'm using ActiveRecord::IdentityMap.without to prevent Identity map from
+# using one record here.
 class OptimisticLockingTest < ActiveRecord::TestCase
   fixtures :people, :legacy_things, :references
 
@@ -24,8 +29,8 @@ class OptimisticLockingTest < ActiveRecord::TestCase
   self.use_transactional_fixtures = false
 
   def test_lock_existing
-    p1 = Person.find(1)
-    p2 = Person.find(1)
+    p1 = ActiveRecord::IdentityMap.without{ Person.find(1) }
+    p2 = ActiveRecord::IdentityMap.without{ Person.find(1) }
     assert_equal 0, p1.lock_version
     assert_equal 0, p2.lock_version
 
@@ -40,8 +45,8 @@ class OptimisticLockingTest < ActiveRecord::TestCase
 
   # See Lighthouse ticket #1966
   def test_lock_destroy
-    p1 = Person.find(1)
-    p2 = Person.find(1)
+    p1 = ActiveRecord::IdentityMap.without{ Person.find(1) }
+    p2 = ActiveRecord::IdentityMap.without{ Person.find(1) }
     assert_equal 0, p1.lock_version
     assert_equal 0, p2.lock_version
 
@@ -58,8 +63,8 @@ class OptimisticLockingTest < ActiveRecord::TestCase
   end
 
   def test_lock_repeating
-    p1 = Person.find(1)
-    p2 = Person.find(1)
+    p1 = ActiveRecord::IdentityMap.without{ Person.find(1) }
+    p2 = ActiveRecord::IdentityMap.without{ Person.find(1) }
     assert_equal 0, p1.lock_version
     assert_equal 0, p2.lock_version
 
@@ -103,8 +108,8 @@ class OptimisticLockingTest < ActiveRecord::TestCase
 
 
   def test_lock_column_name_existing
-    t1 = LegacyThing.find(1)
-    t2 = LegacyThing.find(1)
+    t1 = ActiveRecord::IdentityMap.without{ LegacyThing.find(1) }
+    t2 = ActiveRecord::IdentityMap.without{ LegacyThing.find(1) }
     assert_equal 0, t1.version
     assert_equal 0, t2.version
 
