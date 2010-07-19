@@ -122,6 +122,8 @@ module ActiveRecord
       raise ActiveRecordError, "#{name.to_s} is marked as readonly" if self.class.readonly_attributes.include? name.to_s
 
       changes = record_update_timestamps || {}
+      primary_key = self.class.primary_key
+      primary_key_value = self[self.class.primary_key]
 
       if name
         name = name.to_s
@@ -130,8 +132,7 @@ module ActiveRecord
       end
 
       @changed_attributes.except!(*changes.keys)
-      primary_key = self.class.primary_key
-      self.class.update_all(changes, { primary_key => self[primary_key] }) == 1
+      self.class.update_all(hash, { primary_key => primary_key_value }) == 1
     end
 
     # Updates the attributes of the model from the passed-in hash and saves the
