@@ -2,7 +2,7 @@ require "cases/helper"
 require "models/developer"
 require "active_support/log_subscriber/test_helper"
 
-class LogSubscriberTest < ActiveSupport::TestCase
+class LogSubscriberTest < ActiveRecord::TestCase
   include ActiveSupport::LogSubscriber::TestHelper
 
   def setup
@@ -22,6 +22,7 @@ class LogSubscriberTest < ActiveSupport::TestCase
   end
 
   def test_basic_query_logging
+    @logger.debugging = true
     Developer.all
     wait
     assert_equal 1, @logger.logged(:debug).size
@@ -30,6 +31,7 @@ class LogSubscriberTest < ActiveSupport::TestCase
   end
 
   def test_cached_queries
+    @logger.debugging = true
     ActiveRecord::Base.cache do
       Developer.all
       Developer.all
@@ -38,5 +40,22 @@ class LogSubscriberTest < ActiveSupport::TestCase
     assert_equal 2, @logger.logged(:debug).size
     assert_match(/CACHE/, @logger.logged(:debug).last)
     assert_match(/SELECT .*?FROM .?developers.?/i, @logger.logged(:debug).last)
+  end
+
+  def test_basic_query_doesnt_log_when_level_is_not_debug
+    @logger.debugging = false
+    Developer.all
+    wait
+    assert_equal 0, @logger.logged(:debug).size
+  end
+
+  def test_cached_queries_doesnt_log_when_level_is_not_debug
+    @logger.debugging = false
+    ActiveRecord::Base.cache do
+      Developer.all
+      Developer.all
+    end
+    wait
+    assert_equal 0, @logger.logged(:debug).size
   end
 end
