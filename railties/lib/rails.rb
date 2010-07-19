@@ -8,7 +8,6 @@ require 'active_support/core_ext/logger'
 
 require 'rails/application'
 require 'rails/version'
-require 'rails/deprecation'
 
 require 'active_support/railtie'
 require 'action_dispatch/railtie'
@@ -94,11 +93,6 @@ module Rails
 
     def public_path
       application && application.paths.public.to_a.first
-    end
-
-    def public_path=(path)
-      ActiveSupport::Deprecation.warn "Setting Rails.public_path= is deprecated. " <<
-        "Please set paths.public = in config/application.rb instead.", caller
     end
   end
 end
