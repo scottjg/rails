@@ -68,7 +68,13 @@ module ActiveSupport
       return self if time_zone == new_zone
       utc.in_time_zone(new_zone)
     end
-
+    
+    # Returns true or false depending on if the argument is within the specified time frame
+    # Song.first.created_at.within?(10.minutes) => Boolean
+    def within?(time)
+      (time.ago - self).negative?
+    end
+    
     # Returns a <tt>Time.local()</tt> instance of the simultaneous time in your system's <tt>ENV['TZ']</tt> zone
     def localtime
       utc.getlocal
