@@ -801,7 +801,7 @@ module ActiveSupport
     mattr_accessor :mutex
     self.mutex = Mutex.new
 
-    # Whether or not to check for file changes and only reload if changes occure.
+    # Whether or not to check for file changes and only reload if changes occur.
     mattr_accessor :check_mtime
     self.check_mtime = true
 
