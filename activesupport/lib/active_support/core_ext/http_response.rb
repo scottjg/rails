@@ -1,3 +1,5 @@
+require "active_support/core_ext/module"
+
 # Aliases Net::HTTPResponse#body is aliased to automatically inflate the body.
 Net::HTTPResponse.class_eval do
   def body_with_inflate
