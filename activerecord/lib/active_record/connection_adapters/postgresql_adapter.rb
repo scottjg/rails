@@ -218,6 +218,9 @@ module ActiveRecord
 
         # @local_tz is initialized as nil to avoid warnings when connect tries to use it
         @local_tz = nil
+        @table_alias_length = nil
+        @postgresql_version = nil
+
         connect
         @local_tz = execute('SHOW TIME ZONE').first["TimeZone"]
       end
@@ -308,14 +311,16 @@ module ActiveRecord
 
       # Quotes PostgreSQL-specific data types for SQL input.
       def quote(value, column = nil) #:nodoc:
-        if value.kind_of?(String) && column && column.type == :binary
+        return super unless column
+
+        if value.kind_of?(String) && column.type == :binary
           "'#{escape_bytea(value)}'"
-        elsif value.kind_of?(String) && column && column.sql_type == 'xml'
+        elsif value.kind_of?(String) && column.sql_type == 'xml'
           "xml '#{quote_string(value)}'"
-        elsif value.kind_of?(Numeric) && column && column.sql_type == 'money'
+        elsif value.kind_of?(Numeric) && column.sql_type == 'money'
           # Not truly string input, so doesn't require (or allow) escape string syntax.
-          "'#{value.to_s}'"
-        elsif value.kind_of?(String) && column && column.sql_type =~ /^bit/
+          "'#{value}'"
+        elsif value.kind_of?(String) && column.sql_type =~ /^bit/
           case value
             when /^[01]*$/
               "B'#{value}'" # Bit-string notation
@@ -370,7 +375,7 @@ module ActiveRecord
 
       def supports_disable_referential_integrity?() #:nodoc:
         version = query("SHOW server_version")[0][0].split('.')
-        (version[0].to_i >= 8 && version[1].to_i >= 1) ? true : false
+        version[0].to_i >= 8 && version[1].to_i >= 1
       rescue
         return false
       end

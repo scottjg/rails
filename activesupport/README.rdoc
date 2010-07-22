@@ -1,0 +1,34 @@
+= Active Support -- Utility classes and standard library extensions from Rails
+
+Active Support is a collection of various utility classes and standard library extensions that were found useful
+for Rails. All these additions have hence been collected in this bundle as way to gather all that sugar that makes
+Ruby sweeter.
+
+
+== Download
+
+The latest version of Active Support can be installed with Rubygems:
+
+* gem install activesupport
+
+Documentation can be found at 
+
+* http://api.rubyonrails.org
+
+
+== License
+
+Active Support is released under the MIT license.
+
+
+== Support
+
+The Active Support homepage is http://www.rubyonrails.com. You can find the Active Support
+RubyForge page at http://rubyforge.org/projects/activesupport. And as Jim from Rake says:
+
+   Feel free to submit commits or feature requests.  If you send a patch,
+   remember to update the corresponding unit tests.  If fact, I prefer
+   new feature to be submitted in the form of new unit tests.
+
+For other information, feel free to ask on the ruby-talk mailing list
+(which is mirrored to comp.lang.ruby) or contact mailto:david@loudthinking.com.
