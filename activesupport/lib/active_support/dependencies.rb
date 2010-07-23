@@ -331,6 +331,9 @@ module ActiveSupport
       #
       # Still highly experimental.
       module MonkeyPatch
+        def invalidate_remains
+        end
+
         def prepare
           activate
         end
