@@ -17,7 +17,8 @@ end
 
 class DependenciesTest < Test::Unit::TestCase
   def setup
-    ActiveSupport::Dependencies.check_mtime = false
+    ActiveSupport::Dependencies.invalidate_old  = true
+    ActiveSupport::Dependencies.check_mtime     = false
   end
 
   def teardown
@@ -436,6 +437,7 @@ class DependenciesTest < Test::Unit::TestCase
   end
 
   def test_references_should_work
+    ActiveSupport::Dependencies.invalidate_old = false # so we can keep reference
     with_loading 'dependencies' do
       root = ActiveSupport::Dependencies.autoload_paths.first
       c = ActiveSupport::Dependencies.ref("ServiceOne")

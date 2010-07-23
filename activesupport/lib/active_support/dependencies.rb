@@ -6,6 +6,7 @@ require 'active_support/core_ext/module/aliasing'
 require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/anonymous'
+require 'active_support/core_ext/kernel/singleton_class'
 
 module ActiveSupport
   # Takes care of loading and reloading your classes and modules from a given set
@@ -443,7 +444,9 @@ module ActiveSupport
 
       # Whether the current constant is active (it is defined and not an older version).
       def active?
-        (const = qualified_const) and const == constant
+        remove_placeholder
+        return false unless const = qualified_const
+        const.dependency_placeholder? or constant == const
       end
 
       # Like +active?+ but instead of returning false it raises and ArgumentError.
@@ -514,6 +517,34 @@ module ActiveSupport
         @marked = true
       end
 
+      def remove_placeholder
+        if constant and constant.dependency_placeholder?
+          @constant = nil
+          remove
+        end
+      end
+
+      def invalidate_remains
+        return unless Dependencies.invalidate_old
+        invalidate_class_remains(constant)
+        invalidate_class_remains(qualified_const)
+        remove_placeholder
+      end
+
+      def invalidate_class_remains(klass)
+        return unless Module === klass # allows passing in nil
+        meths = klass.methods + klass.private_methods + klass.protected_methods
+        meths.reject! { |m| !klass.respond_to?(m) or m =~ /^__/ or m.to_s == 'inspect' }
+        singleton = klass.singleton_class
+        meths.each { |m| singleton.send(:undef_method, m) }
+        const = self
+        singleton.send(:define_method, :dependency_placeholder?) { true }
+        singleton.send(:define_method, :method_missing) do |*a,&b|
+          const.active!
+          const.qualified_const.send(*a, &b)
+        end
+      end
+
       def load_constant(from_mod, const_name) # :nodoc:
         log_call const_name
         Dependencies.check_updates
@@ -525,6 +556,7 @@ module ActiveSupport
         if Constant.available? complete_name
           const = Constant[complete_name]
           return const.activate unless const.marked?
+          const.invalidate_remains
         end
 
         path_suffix = complete_name.underscore
@@ -637,6 +669,10 @@ module ActiveSupport
             define_method :const_missing, @_const_missing
             @_const_missing = nil
           end
+        end
+
+        def dependency_placeholder? # :nodoc:
+          false
         end
 
         # Use const_missing to autoload associations so we don't have to
@@ -804,6 +840,10 @@ module ActiveSupport
     # Whether or not to check for file changes and only reload if changes occur.
     mattr_accessor :check_mtime
     self.check_mtime = true
+
+    # Whether or not to invalidate old references
+    mattr_accessor :invalidate_old
+    self.invalidate_old = true
 
     # Enables dependency hooks.
     def hook!
