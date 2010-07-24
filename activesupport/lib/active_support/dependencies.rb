@@ -437,8 +437,11 @@ module ActiveSupport
 
       # Updates internal constant to match outer constant.
       def update # :nodoc:
-        @last_reload  = Dependencies.world_reload_count
-        @constant     = qualified_const
+        @last_reload = Dependencies.world_reload_count
+        if const = qualified_const and const != constant
+          invalidate_class_remains(constant)
+        end
+        @constant = const
       end
 
       def object? # :nodoc:
@@ -535,7 +538,7 @@ module ActiveSupport
       end
 
       def invalidate_class_remains(klass)
-        return unless Module === klass # allows passing in nil
+        return unless Dependencies.invalidate_old and Module === klass # allows passing in nil
         meths = klass.methods + klass.private_methods + klass.protected_methods
         meths.reject! { |m| !klass.respond_to?(m) or m =~ /^__/ or m.to_s == 'inspect' }
         singleton = klass.singleton_class
