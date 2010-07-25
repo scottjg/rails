@@ -30,15 +30,27 @@ module ActionView
       #   <b><%= @greeting %></b>
       #   </body></html>
       #
-      def capture(*args, &block)
+      def capture(*args)
         # Return captured buffer in erb.
         #if block_called_from_erb?(block)
-          with_output_buffer { block.call(*args) }
+        #  with_output_buffer { block.call(*args) }
         #else
           # Return block result otherwise, but protect buffer also.
         #  with_output_buffer { return block.call(*args) }
         #end
+        
+        value = nil
+        buffer = with_output_buffer { value = yield(*args) }
+        buffer.blank? ? value : buffer
       end
+
+#      def capture(*args)
+#        value = nil
+#        buffer = with_output_buffer { value = yield(*args) }
+#        if string = buffer.presence || value and string.is_a?(String)
+#          NonConcattingString.new(string)
+#        end
+#      end
 
       # Calling content_for stores a block of markup in an identifier for later use.
       # You can make subsequent calls to the stored content in other templates or the layout
