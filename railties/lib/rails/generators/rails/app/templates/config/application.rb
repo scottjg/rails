@@ -1,6 +1,6 @@
 require File.expand_path('../boot', __FILE__)
 
-<% unless options[:skip_activerecord] -%>
+<% unless options[:skip_active_record] -%>
 require 'rails/all'
 <% else -%>
 # Pick the frameworks you want:
@@ -45,13 +45,6 @@ module <%= app_const_base %>
 <% else -%>
     # config.action_view.javascript_expansions[:defaults] = %w(jquery rails)
 <% end -%>
-
-    # Configure generators values. Many other options are available, be sure to check the documentation.
-    # config.generators do |g|
-    #   g.orm             :active_record
-    #   g.template_engine :erb
-    #   g.test_framework  :test_unit, :fixture => true
-    # end
 
     # Configure the default encoding used in templates for Ruby 1.9.
     config.encoding = "utf-8"

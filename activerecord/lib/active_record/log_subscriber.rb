@@ -6,6 +6,8 @@ module ActiveRecord
     end
 
     def sql(event)
+      connection = ActiveRecord::Base.connection
+      connection.runtime += event.duration
       return unless logger.debug?
 
       name = '%s (%.1fms)' % [event.payload[:name], event.duration]

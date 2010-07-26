@@ -117,6 +117,7 @@ class DependenciesTest < Test::Unit::TestCase
       assert_equal true, $checked_verbose, 'After first load warnings should be left alone.'
 
       assert ActiveSupport::Dependencies.loaded.include?(expanded)
+      ActiveSupport::Dependencies.warnings_on_first_load = old_warnings
     end
   end
 
@@ -418,7 +419,6 @@ class DependenciesTest < Test::Unit::TestCase
 
   def test_removal_from_tree_should_be_detected
     with_loading 'dependencies' do
-      root = ActiveSupport::Dependencies.autoload_paths.first
       c = ServiceOne
       ActiveSupport::Dependencies.clear
       assert ! defined?(ServiceOne)
@@ -433,7 +433,6 @@ class DependenciesTest < Test::Unit::TestCase
 
   def test_references_should_work
     with_loading 'dependencies' do
-      root = ActiveSupport::Dependencies.autoload_paths.first
       c = ActiveSupport::Dependencies.ref("ServiceOne")
       service_one_first = ServiceOne
       assert_equal service_one_first, c.get
