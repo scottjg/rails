@@ -62,11 +62,6 @@ module ActiveModel
   #   person.name = 'Bill'
   #   person.name_change    # => ['Uncle Bob', 'Bill']
   #
-  # Save the changes:
-  #   person.save
-  #   person.changed?       # => false
-  #   person.name_changed?  # => false
-  #
   # Assigning the same value leaves the attribute unchanged:
   #   person.name = 'Bill'
   #   person.name_changed?  # => false
@@ -76,12 +71,6 @@ module ActiveModel
   #   person.name = 'Bob'
   #   person.changed        # => ['name']
   #   person.changes        # => { 'name' => ['Bill', 'Bob'] }
-  #
-  # Resetting an attribute returns it to its original state:
-  #   person.reset_name!    # => 'Bill'
-  #   person.changed?       # => false
-  #   person.name_changed?  # => false
-  #   person.name           # => 'Bill'
   #
   # Before modifying an attribute in-place:
   #   person.name_will_change!
