@@ -72,6 +72,12 @@ module ActiveModel
   #   person.changed        # => ['name']
   #   person.changes        # => { 'name' => ['Bill', 'Bob'] }
   #
+  # Resetting an attribute returns it to its original state:
+  #   person.reset_name!    # => 'Bill'
+  #   person.changed?       # => false
+  #   person.name_changed?  # => false
+  #   person.name           # => 'Bill'
+  #
   # Before modifying an attribute in-place:
   #   person.name_will_change!
   #   person.name << 'y'
@@ -153,7 +159,11 @@ module ActiveModel
 
       # Handle <tt>reset_*!</tt> for +method_missing+.
       def reset_attribute!(attr)
-        __send__("#{attr}=", changed_attributes[attr]) if attribute_changed?(attr)
+        if attribute_changed?(attr)
+          __send__("#{attr}=", changed_attributes[attr])
+          changed_attributes.delete(attr)
+        end
+      end
       end
   end
 end
