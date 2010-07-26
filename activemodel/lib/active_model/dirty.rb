@@ -42,7 +42,7 @@ module ActiveModel
   #     end
   #   
   #     def save
-  #       @previously_changed = changes
+  #       archive_and_clear_changes!
   #     end
   #   
   #   end
@@ -61,6 +61,11 @@ module ActiveModel
   #   person.name_change    # => ['Uncle Bob', 'Bob']
   #   person.name = 'Bill'
   #   person.name_change    # => ['Uncle Bob', 'Bill']
+  #
+  # Save the changes:
+  #   person.save
+  #   person.changed?       # => false
+  #   person.name_changed?  # => false
   #
   # Assigning the same value leaves the attribute unchanged:
   #   person.name = 'Bill'
@@ -164,6 +169,18 @@ module ActiveModel
           changed_attributes.delete(attr)
         end
       end
+
+      def clear_changes!
+        @changed_attributes.clear
+      end
+
+      def archive_changes!
+        @previously_changed = changes
+      end
+
+      def archive_and_clear_changes!
+        archive_changes!
+        clear_changes!
       end
   end
 end

@@ -18,6 +18,19 @@ class DirtyTest < ActiveModel::TestCase
       @name = val
     end
 
+    def clear!
+      clear_changes!
+    end
+
+    def archive!
+      archive_changes!
+    end
+
+    def archive_and_clear!
+      archive_and_clear_changes!
+    end
+  end
+
   setup do
     @model = DirtyModel.new
   end
@@ -65,6 +78,26 @@ class DirtyTest < ActiveModel::TestCase
     assert_nil @model.name
     assert !@model.name_changed?
     assert !@model.changed?
+  end
+
+  test "clearing changes" do
+    @model.name = "Bob"
+    assert @model.changed?
+    @model.clear!
+    assert !@model.changed?
+  end
+
+  test "archiving changes" do
+    @model.name = "Bob"
+    @model.archive!
+    assert_equal [nil, "Bob"], @model.previous_changes['name']
+  end
+
+  test "archiving and clearing" do
+    @model.name = "Bob"
+    @model.archive_and_clear!
+    assert !@model.changed?
+    assert_equal [nil, "Bob"], @model.previous_changes['name']
   end
 
 end
