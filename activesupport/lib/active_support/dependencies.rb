@@ -227,10 +227,6 @@ module ActiveSupport
         methods.each { |m| class_eval "def #{m}(*) lock { super } end", __FILE__, __LINE__ }
       end
 
-      def get(key) # :nodoc:
-        (val = assoc(key)) ? val[1] : []
-      end
-
       locked :concat, :each, :delete_if, :<<
 
       # Given a list of frames (parent module and all constants defined in it).
@@ -243,7 +239,18 @@ module ActiveSupport
           next unless mod.is_a?(Module)
 
           new_constants = mod.local_constant_names - prior_constants
-          get(mod_name).concat(new_constants)
+
+          # If we are checking for constants under, say, :Object, nested under something
+          # else that is checking for constants also under :Object, make sure the
+          # parent knows that we have found, and taken care of, the constant.
+          #
+          # In particular, this means that since Kernel.require discards the constants
+          # it finds, parents will be notified that about those constants, and not
+          # consider them "new". As a result, they will not be added to the
+          # autoloaded_constants list.
+          each do |key, value|
+            value.concat(new_constants) if key == mod_name
+          end
 
           new_constants.each do |suffix|
             constants << ([mod_name, suffix] - ["Object"]).join("::")
