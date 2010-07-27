@@ -1,32 +1,17 @@
 source 'http://rubygems.org'
 
-gem "arel", :git => "git://github.com/rails/arel.git"
+if ENV['AREL']
+  gem "arel", :path => ENV['AREL']
+else
+  gem "arel", :git => "git://github.com/rails/arel.git"
+end
+
 gem "rails", :path => File.dirname(__FILE__)
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
-gem "rdoc",  "2.2"
-
-mri = !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
-if mri && RUBY_VERSION < '1.9'
-  gem "system_timer"
-  gem "ruby-debug", ">= 0.10.3"
-end
-
-if mri
-  gem 'json'
-elsif RUBY_ENGINE == "rbx"
-  # git://github.com/evanphx/json.git as soon as gemspec has been added
-  gem 'json', :git => "git://github.com/rkh/json.git"
-end
-
-if mri || RUBY_ENGINE == "rbx"
-  gem 'yajl-ruby'
-  gem "nokogiri", ">= 1.4.2"
-elsif RUBY_ENGINE == "jruby"
-  gem "ruby-debug"
-  gem "jruby-openssl"
-end
+gem "rdoc",  ">= 2.5.9"
+gem "horo"
 
 # AS
 gem "memcache-client", ">= 1.8.5"
@@ -34,15 +19,33 @@ gem "memcache-client", ">= 1.8.5"
 # AM
 gem "text-format", "~> 1.0.0"
 
-# AR
-if mri || RUBY_ENGINE == "rbx"
+platforms :mri_18 do
+  gem "system_timer"
+  gem "ruby-debug", ">= 0.10.3"
+end
+
+platforms :ruby do
+  if RUBY_ENGINE == "rbx"
+    gem 'json', :git => "git://github.com/rkh/json.git"
+  else
+    gem 'json'
+  end
+
+  gem 'yajl-ruby'
+  gem "nokogiri", ">= 1.4.2"
+
+  # AR
   gem "sqlite3-ruby", "~> 1.3.1", :require => 'sqlite3'
 
   group :db do
     gem "pg", ">= 0.9.0"
     gem "mysql", ">= 2.8.1"
   end
-elsif RUBY_ENGINE == "jruby"
+end
+
+platforms :jruby do
+  gem "ruby-debug", ">= 0.10.3"
+
   gem "activerecord-jdbcsqlite3-adapter"
 
   group :db do
@@ -51,9 +54,11 @@ elsif RUBY_ENGINE == "jruby"
   end
 end
 
-if ENV['CI']
+env 'CI' do
   gem "nokogiri", ">= 1.4.2"
 
-  # fcgi gem doesn't compile on 1.9
-  gem "fcgi", ">= 0.8.8" if RUBY_VERSION < '1.9.0'
+  platforms :ruby_18 do
+    # fcgi gem doesn't compile on 1.9
+    gem "fcgi", ">= 0.8.8"
+  end
 end

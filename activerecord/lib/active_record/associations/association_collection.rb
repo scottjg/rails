@@ -396,11 +396,12 @@ module ActiveRecord
                 if @target.is_a?(Array) && @target.any?
                   @target = find_target.map do |f|
                     i = @target.index(f)
-                    t = @target.delete_at(i) if i
-                    if t && t.changed?
-                      t
+                    if i
+                      @target.delete_at(i).tap do |t|
+                        keys = ["id"] + t.changes.keys + (f.attribute_names - t.attribute_names)
+                        t.attributes = f.attributes.except(*keys)
+                      end
                     else
-                      f.mark_for_destruction if t && t.marked_for_destruction?
                       f
                     end
                   end + @target
@@ -477,7 +478,11 @@ module ActiveRecord
           callback(:before_add, record)
           yield(record) if block_given?
           @target ||= [] unless loaded?
-          @target << record unless @reflection.options[:uniq] && @target.include?(record)
+          if index = @target.index(record)
+            @target[index] = record
+          else
+             @target << record
+          end
           callback(:after_add, record)
           set_inverse_instance(record, @owner)
           record

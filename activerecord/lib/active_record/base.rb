@@ -1030,7 +1030,7 @@ module ActiveRecord #:nodoc:
         #   class Article < ActiveRecord::Base
         #     def self.find_with_exclusive_scope
         #       with_scope(:find => where(:blog_id => 1).limit(1)) do
-        #         with_exclusive_scope(:find => limit(10))
+        #         with_exclusive_scope(:find => limit(10)) do
         #           all # => SELECT * from articles LIMIT 10
         #         end
         #       end
@@ -1255,6 +1255,8 @@ MSG
             replace_named_bind_variables(statement, values.first)
           elsif statement.include?('?')
             replace_bind_variables(statement, values)
+          elsif statement.blank?
+            statement
           else
             statement % values.collect { |value| connection.quote_string(value.to_s) }
           end

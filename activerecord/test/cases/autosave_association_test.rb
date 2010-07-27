@@ -13,6 +13,8 @@ require 'models/post'
 require 'models/reader'
 require 'models/ship'
 require 'models/ship_part'
+require 'models/tag'
+require 'models/tagging'
 require 'models/treasure'
 require 'models/company'
 
@@ -171,7 +173,7 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
 end
 
 class TestDefaultAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
-  fixtures :companies
+  fixtures :companies, :posts, :tags, :taggings
 
   def test_should_save_parent_but_not_invalid_child
     client = Client.new(:name => 'Joe (the Plumber)')
@@ -311,6 +313,12 @@ class TestDefaultAutosaveAssociationOnABelongsToAssociation < ActiveRecord::Test
 
     assert_equal num_orders +1, Order.count
     assert_equal num_customers +2, Customer.count
+  end
+
+  def test_store_association_with_a_polymorphic_relationship
+    num_tagging = Tagging.count
+    tags(:misc).create_tagging(:taggable => posts(:thinking))
+    assert_equal num_tagging +1, Tagging.count
   end
 end
 
@@ -632,8 +640,6 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
   end
 
   def test_should_rollback_destructions_if_an_exception_occurred_while_saving_a_parent
-    #association save method only trigged when association is changed 
-    @ship.pirate.catchphrase = "new catch phrase"
     # Stub the save method of the @ship.pirate instance to destroy and then raise an exception
     class << @ship.pirate
       def save(*args)
@@ -880,22 +886,6 @@ class TestAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
   def setup
     @ship = Ship.create(:name => 'Nights Dirty Lightning')
     @pirate = @ship.create_pirate(:catchphrase => "Don' botharrr talkin' like one, savvy?")
-  end
-
-  def test_should_not_call_belongs_to_after_save_callbacks_if_no_changes
-    @ship.attributes = { :name => "Titanic", :pirate_attributes => {:id => @pirate.id} }
-    #here there are no changes to pirate so if save on ship causes save on pirate
-    #this callback will fail pirate save.(pirate save shouldn't happen)
-    @ship.pirate.cancel_save_from_callback = true
-    @ship.save
-    assert_equal 'Titanic', @ship.reload.name
-  end
-
-  def test_should_call_belongs_to_save_if_belongs_to_has_changes
-    @ship.attributes = { :name => "Titanic", :pirate_attributes => { :catchphrase => 'Jack', :id => @pirate.id} }
-    @ship.save
-    assert_equal 'Titanic', @ship.reload.name
-    assert_equal 'Jack', @pirate.reload.catchphrase
   end
 
   def test_should_still_work_without_an_associated_model

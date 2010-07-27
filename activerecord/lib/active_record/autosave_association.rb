@@ -372,17 +372,11 @@ module ActiveRecord
         if autosave && association.marked_for_destruction?
           association.destroy
         elsif autosave != false
-          if association.new_record? || ( autosave && association.changed? )
-            saved = association.save(:validate => !autosave) 
-          end
+          saved = association.save(:validate => !autosave) if association.new_record? || autosave
 
           if association.updated?
             association_id = association.send(reflection.options[:primary_key] || :id)
             self[reflection.primary_key_name] = association_id
-            # TODO: Removing this code doesn't seem to matter...
-            if reflection.options[:polymorphic]
-              self[reflection.options[:foreign_type]] = association.class.base_class.name.to_s
-            end
           end
 
           saved if autosave
