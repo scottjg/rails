@@ -946,7 +946,7 @@ module ActiveSupport
     # Preforms a +clear+ and removes all meta data (tracked files, last changes, constant map).
     def clear!
       log_call
-      [self, explicitly_unloadable_constants, mtimes, history, Constant.map].each do |list|
+      [self, explicitly_unloadable_constants, mtimes, history, Constant.map, constant_watch_stack].each do |list|
         list.clear
       end
     end
