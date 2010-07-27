@@ -386,6 +386,7 @@ module ActiveSupport
       attr_accessor :name, :constant, :parent, :local_name, :last_reload, :associations
 
       def initialize(name) # :nodoc:
+        @file         = nil
         @marked       = false
         @unloadable   = nil
         @name         = name
@@ -491,9 +492,30 @@ module ActiveSupport
         end
       end
 
+      def file
+        @file ||= begin
+          if f = search_for_file(name.underscore)
+            File.expand_path(f)
+          end
+        end
+      end
+
+      def possible_features
+        return [] unless file
+        @possible_features ||= begin
+          features = [file]
+          $:.each do |path|
+            path = File.expand_path(path)
+            features << file[(path.size+1)..-1] if file.start_with?(path)
+          end
+          features
+        end
+      end
+
       # Removes the constant from object space.
       def remove
         parent.remove_constant(local_name) if qualified_const_defined?
+        possible_features.each { |feature| $".delete(feature) }
       end
 
       # Removes a nested constant from object space.
