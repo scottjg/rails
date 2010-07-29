@@ -11,7 +11,7 @@ gem "horo"
 mri = !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
 if mri && RUBY_VERSION < '1.9'
   gem "system_timer"
-  gem "ruby-debug", ">= 0.10.3"
+  gem "ruby-debug", "= 0.10.1"
 end
 
 if mri || RUBY_ENGINE == "rbx"
