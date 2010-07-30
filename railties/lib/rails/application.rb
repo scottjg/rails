@@ -48,6 +48,12 @@ module Rails
         Rails.application.add_lib_to_load_path!
         ActiveSupport.run_load_hooks(:before_configuration, base.instance)
       end
+
+      def extract_namespace(klass)
+        demodulized = ActiveSupport::Inflector.demodulize(klass)
+        namespace = klass.name.gsub(/#{demodulized}$/, "").chomp("::")
+        namespace.blank? ? nil : ActiveSupport::Inflector.constantize(namespace)
+      end
     end
 
     delegate :default_url_options, :default_url_options=, :to => :routes

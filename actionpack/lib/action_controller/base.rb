@@ -60,7 +60,12 @@ module ActionController
 
     def self.inherited(klass)
       super
-      klass.helper :all
+      namespace = ::Rails::Application.extract_namespace(klass)
+      if namespace && namespace.respond_to?(:engine) && !namespace.engine.config.shared?
+        klass.helper(all_helpers_from_path(namespace.engine.config.paths.app.helpers.to_a))
+      else
+        klass.helper :all
+      end
     end
 
     ActiveSupport.run_load_hooks(:action_controller, self)

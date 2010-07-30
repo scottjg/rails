@@ -5,12 +5,13 @@ module Rails
     class Configuration < ::Rails::Railtie::Configuration
       attr_reader :root
       attr_writer :eager_load_paths, :autoload_once_paths, :autoload_paths
-      attr_accessor :middleware, :plugins, :asset_path
+      attr_accessor :middleware, :plugins, :asset_path, :shared
 
       def initialize(root=nil)
         super()
         @root = root
         @middleware = Rails::Configuration::MiddlewareStackProxy.new
+        @shared = true
       end
 
       def paths
@@ -54,6 +55,10 @@ module Rails
 
       def autoload_paths
         @autoload_paths ||= paths.autoload_paths
+      end
+
+      def shared?
+        !!shared
       end
     end
   end

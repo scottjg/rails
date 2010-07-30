@@ -4,6 +4,7 @@ require "action_dispatch/railtie"
 require "action_view/railtie"
 require "active_support/deprecation/proxy_wrappers"
 require "active_support/deprecation"
+require "action_controller/railties/routes_helpers"
 
 module ActionController
   class Railtie < Rails::Railtie
@@ -50,8 +51,7 @@ module ActionController
       options.helpers_path         ||= paths.app.helpers.to_a
 
       ActiveSupport.on_load(:action_controller) do
-        include app.routes.url_helpers
-        include app.routes.mounted_helpers(:app)
+        extend ::ActionController::Railties::RoutesHelpers.with(app.routes)
         options.each { |k,v| send("#{k}=", v) }
       end
     end
