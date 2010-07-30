@@ -19,6 +19,8 @@ module ActionMailer
 
       ActiveSupport.on_load(:action_mailer) do
         include app.routes.url_helpers
+        # TODO: write the test for the next line
+        include app.routes.mounted_helpers(:app)
         options.each { |k,v| send("#{k}=", v) }
       end
     end
