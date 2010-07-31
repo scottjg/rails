@@ -188,9 +188,9 @@ module ActiveSupport
       # The specific cache store implementation will decide what to do with
       # +options+.
       # 
-      # For example, MemCacheStore supports the +:expires_in+ option, which
-      # tells the memcached server to automatically expire the cache item after
-      # a certain period:
+      # For example, MemoryStore and MemCacheStore support the +:expires_in+
+      # option, which tells the memcached server to automatically expire the
+      # cache item after a certain period:
       #
       #   cache = ActiveSupport::Cache::MemCacheStore.new
       #   cache.write("foo", "bar", :expires_in => 5.seconds)

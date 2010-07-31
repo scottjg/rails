@@ -175,6 +175,46 @@ class MemoryStoreTest < ActiveSupport::TestCase
     result = @cache.read_multi('foo', 'goo')
     assert_equal({'foo' => 1, 'goo' => 2}, result)
   end
+  
+  def test_read_not_expired
+    @cache.write('foo', 'bar', :expires_in => 30.seconds)
+    now = Time.now
+    Time.stubs(:now).returns(now + 10.seconds)
+    assert_equal 'bar', @cache.read('foo')
+  end
+  
+  def test_read_expired
+    @cache.write('foo', 'bar', :expires_in => 30.seconds)
+    now = Time.now
+    Time.stubs(:now).returns(now + 1.minute)
+    assert_nil @cache.read('foo')
+  end
+  
+  def test_exist_not_expired
+    @cache.write('foo', 'bar', :expires_in => 30.seconds)
+    now = Time.now
+    Time.stubs(:now).returns(now + 10.seconds)
+    assert @cache.exist?('foo')
+  end
+
+  def test_exist_expired
+    @cache.write('foo', 'bar', :expires_in => 30.seconds)
+    now = Time.now
+    Time.stubs(:now).returns(now + 1.minute)
+    assert !@cache.exist?('foo')
+  end
+  
+  def test_expires_in_compatible_with_time_travel
+    # ensure a read after expiration time doesn't affect
+    # "subsequent" reads _before_ expiration time:
+    @cache.write('foo', 'bar', :expires_in => 30.seconds)
+    now = Time.now
+    Time.stubs(:now).returns(now + 1.minute)
+    @cache.read('foo')
+    Time.stubs(:now).returns(now + 10.seconds)
+    assert_equal 'bar', @cache.read('foo')
+  end
+    
 end
 
 uses_memcached 'memcached backed store' do

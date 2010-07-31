@@ -9,6 +9,14 @@ module ActiveSupport
     # then using MemoryStore is ok. Otherwise, consider carefully whether you
     # should be using this cache store.
     #
+    # MemoryStore supports the :expires_in option. Because MemoryStore is often
+    # used in testing environments, its implementation of :expires_in is compatible
+    # with "time travel" libraries (e.g. Timecop). Specifically, time-traveling
+    # to a point after the cache entry should expire, querying the cache for the
+    # entry, and then time-traveling back to before expiration will result in
+    # the entry still existing (or "existing again" depending on your frame
+    # of reference.)
+    #
     # MemoryStore is not only able to store strings, but also arbitrary Ruby
     # objects.
     #
@@ -16,7 +24,7 @@ module ActiveSupport
     # if you need thread-safety.
     class MemoryStore < Store
       def initialize
-        @data = {}
+        @data = {} # of the form {key => [value, expires_at or nil]}
       end
 
       def read_multi(*names)
@@ -27,12 +35,24 @@ module ActiveSupport
 
       def read(name, options = nil)
         super
-        @data[name]
+        value, expires_at = @data[name]
+        if value && (expires_at.blank? || expires_at > Time.now)
+          value
+        else
+          nil
+        end
       end
 
       def write(name, value, options = nil)
         super
-        @data[name] = value.freeze
+        expires_at = if options && options.respond_to?(:[]) && options[:expires_in]
+          Time.now + options.delete(:expires_in)
+        else
+          nil
+        end
+        value.freeze.tap do |val|
+          @data[name] = [value, expires_at]
+        end
       end
 
       def delete(name, options = nil)
@@ -47,7 +67,8 @@ module ActiveSupport
 
       def exist?(name, options = nil)
         super
-        @data.has_key?(name)
+        _, expires_at = @data[name]
+        @data.has_key?(name) && (expires_at.blank? || expires_at > Time.now)
       end
 
       def clear
