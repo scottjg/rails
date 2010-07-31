@@ -1,3 +1,4 @@
+require 'active_support/secure_random'
 require 'active_support/core_ext/module/delegation'
 
 module ActiveSupport
@@ -71,7 +72,11 @@ module ActiveSupport
       end
 
       def instrumenter
-        Thread.current[:"instrumentation_#{notifier.object_id}"] ||= Instrumenter.new(notifier)
+        Thread.current[:"instrumentation_#{notifier.object_id}"] ||= Instrumenter.new(unique_id, notifier)
+      end
+
+      def unique_id
+        SecureRandom.hex(10)
       end
     end
   end

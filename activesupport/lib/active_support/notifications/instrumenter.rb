@@ -1,13 +1,10 @@
-require 'active_support/secure_random'
-require 'active_support/core_ext/module/delegation'
-
 module ActiveSupport
   module Notifications
     class Instrumenter
       attr_reader :id
 
-      def initialize(notifier)
-        @id = unique_id
+      def initialize(id, notifier)
+        @id = id
         @notifier = notifier
       end
 
@@ -26,11 +23,6 @@ module ActiveSupport
           @notifier.publish(name, started, Time.now, @id, payload)
         end
       end
-
-      private
-        def unique_id
-          SecureRandom.hex(10)
-        end
     end
 
     class Event
