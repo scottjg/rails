@@ -253,7 +253,11 @@ module ActiveSupport
           end
 
           new_constants.each do |suffix|
-            constants << ([mod_name, suffix] - ["Object"]).join("::")
+            if mod_name == "Object"
+              constants << suffix
+            else
+              constants << [mod_name, suffix].join("::")
+            end
           end
         end
         constants
