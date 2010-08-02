@@ -568,10 +568,12 @@ module ActiveSupport
 
       def invalidate_class_remains(klass)
         return unless Dependencies.invalidate_old and Module === klass # allows passing in nil
-        meths = klass.methods + klass.private_methods + klass.protected_methods
-        meths.reject! { |m| !klass.respond_to?(m) or m =~ /^__/ or m.to_s == 'inspect' }
         singleton = klass.singleton_class
-        meths.each { |m| singleton.send(:undef_method, m) }
+        klass.methods.each do |method|
+          method = method.to_s
+          next if method =~ /^__/ or method == 'inspect'
+          singleton.send(:undef_method, method)
+        end
         const = self
         singleton.send(:define_method, :dependency_placeholder?) { true }
         singleton.send(:define_method, :method_missing) do |*a,&b|
