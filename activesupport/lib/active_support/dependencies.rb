@@ -253,11 +253,10 @@ module ActiveSupport
           end
 
           new_constants.each do |suffix|
-            if mod_name == "Object"
-              constants << suffix
-            else
-              constants << [mod_name, suffix].join("::")
-            end
+            name = mod_name == "Object" ? suffix : [mod_name, suffix].join("::")
+            constants << name
+            # Update reference, avoids uneccesary "already activated" errors.
+            Constant[name].update
           end
         end
         constants
