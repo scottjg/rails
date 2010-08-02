@@ -607,7 +607,7 @@ module ActiveSupport
 
           if file_path and not loaded?(file_path)
             require_or_load file_path
-            raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
+            raise LoadError, "Expected #{file_path} to define #{complete_name}" unless local_const_defined?(const_name)
           elsif base_path = autoloadable_module?(path_suffix)
             constant.const_set(const_name, Module.new)
             autoloaded_constants << complete_name unless Dependencies.autoload_once_paths.include?(base_path)
