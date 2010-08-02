@@ -602,19 +602,20 @@ module ActiveSupport
         path_suffix = complete_name.underscore
         file_path   = search_for_file(path_suffix)
 
-        raise ArgumentError, "#{name} is not missing constant #{const_name}!" if local_const_defined?(const_name)
-        Constant[complete_name].prepare if Constant.available? complete_name
+        unless local_const_defined?(const_name)
+          Constant[complete_name].prepare if Constant.available? complete_name
 
-        if file_path and not loaded?(file_path)
-          require_or_load file_path
-          raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
-        elsif base_path = autoloadable_module?(path_suffix)
-          constant.const_set(const_name, Module.new)
-          autoloaded_constants << complete_name unless Dependencies.autoload_once_paths.include?(base_path)
-        elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
-          return load_parent_constant(const_name, complete_name)
-        else
-          raise name_error(complete_name)
+          if file_path and not loaded?(file_path)
+            require_or_load file_path
+            raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless local_const_defined?(const_name)
+          elsif base_path = autoloadable_module?(path_suffix)
+            constant.const_set(const_name, Module.new)
+            autoloaded_constants << complete_name unless Dependencies.autoload_once_paths.include?(base_path)
+          elsif !object? and not constant.parents.any? { |p| local_const_defined?(p, const_name) }
+            return load_parent_constant(const_name, complete_name)
+          else
+            raise name_error(complete_name)
+          end
         end
 
         Constant[complete_name].update
