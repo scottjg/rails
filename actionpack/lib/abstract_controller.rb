@@ -23,4 +23,5 @@ module AbstractController
   autoload :Translation
   autoload :AssetPaths
   autoload :ViewPaths
+  autoload :UrlFor
 end
