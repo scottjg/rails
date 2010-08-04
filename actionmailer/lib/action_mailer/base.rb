@@ -340,7 +340,6 @@ module ActionMailer #:nodoc:
     include AbstractController::Helpers
     include AbstractController::Translation
     include AbstractController::AssetPaths
-    include AbstractController::UrlFor
 
     helper  ActionMailer::MailHelper
 
@@ -363,7 +362,7 @@ module ActionMailer #:nodoc:
     class << self
       def inherited(klass)
         super(klass)
-        klass.class_eval { @action_methods = nil }
+        klass.clear_action_methods!
       end
 
       def mailer_name
