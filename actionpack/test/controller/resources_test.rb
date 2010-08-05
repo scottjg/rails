@@ -1028,7 +1028,9 @@ class ResourcesTest < ActionController::TestCase
   def test_resource_has_only_collection_action
     with_routing do |set|
       set.draw do
-        resources :products, :except => :all, :collection => { :sale => :get }
+        resources :products, :except => :all do
+          get :sale, :on => :collection
+        end
       end
 
       assert_resource_allowed_routes('products', {},                    { :id => '1' }, [], [:index, :new, :create, :show, :edit, :update, :destroy])
@@ -1042,7 +1044,9 @@ class ResourcesTest < ActionController::TestCase
   def test_resource_has_only_member_action
     with_routing do |set|
       set.draw do
-        resources :products, :except => :all, :member => { :preview => :get }
+        resources :products, :except => :all do
+          get :preview, :on => :member
+        end
       end
 
       assert_resource_allowed_routes('products', {},                    { :id => '1' }, [], [:index, :new, :create, :show, :edit, :update, :destroy])
@@ -1075,7 +1079,9 @@ class ResourcesTest < ActionController::TestCase
     with_routing do |set|
       set.draw do
         resources :products, :only => [:index, :show] do
-          resources :images, :member => { :thumbnail => :get }, :only => :show
+          resources :images, :only => :show do
+            get :thumbnail, :on => :member
+          end
         end
       end
 
