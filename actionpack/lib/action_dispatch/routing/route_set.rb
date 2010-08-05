@@ -1,7 +1,6 @@
 require 'rack/mount'
 require 'forwardable'
 require 'active_support/core_ext/object/to_query'
-require 'action_dispatch/routing/deprecated_mapper'
 
 module ActionDispatch
   module Routing
@@ -211,7 +210,6 @@ module ActionDispatch
         self.routes = []
         self.named_routes = NamedRouteCollection.new
         self.resources_path_names = self.class.default_resources_path_names.dup
-        self.controller_namespaces = Set.new
         self.default_url_options = {}
 
         self.request_class = request_class
@@ -226,12 +224,7 @@ module ActionDispatch
       def draw(&block)
         clear! unless @disable_clear_and_finalize
 
-        mapper = Mapper.new(self)
-        if block.arity == 1
-          mapper.instance_exec(DeprecatedMapper.new(self), &block)
-        else
-          mapper.instance_exec(&block)
-        end
+        Mapper.new(self).instance_exec(&block)
 
         finalize! unless @disable_clear_and_finalize
 

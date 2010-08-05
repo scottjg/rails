@@ -211,7 +211,6 @@ module ActionDispatch
   # Run <tt>rake routes</tt>.
   #
   module Routing
-    autoload :DeprecatedMapper, 'action_dispatch/routing/deprecated_mapper'
     autoload :Mapper, 'action_dispatch/routing/mapper'
     autoload :Route, 'action_dispatch/routing/route'
     autoload :RouteSet, 'action_dispatch/routing/route_set'
