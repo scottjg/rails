@@ -33,7 +33,7 @@ module ApplicationTests
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           match ':controller(/:action)'
         end
       RUBY
@@ -61,7 +61,7 @@ module ApplicationTests
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           match ':controller(/:action)'
         end
       RUBY
@@ -72,7 +72,7 @@ module ApplicationTests
 
     test "mount rack app" do
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           mount lambda { |env| [200, {}, [env["PATH_INFO"]]] }, :at => "/blog"
           # The line below is required because mount sometimes
           # fails when a resource route is added.
@@ -102,7 +102,7 @@ module ApplicationTests
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           match ':controller(/:action)'
         end
       RUBY
@@ -134,7 +134,7 @@ module ApplicationTests
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           match 'admin/foo', :to => 'admin/foo#index'
           match 'foo', :to => 'foo#index'
         end
@@ -161,7 +161,7 @@ module ApplicationTests
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           match 'foo', :to => 'foo#bar'
         end
       RUBY
@@ -170,7 +170,7 @@ module ApplicationTests
       assert_equal 'bar', last_response.body
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           match 'foo', :to => 'foo#baz'
         end
       RUBY
@@ -189,7 +189,7 @@ module ApplicationTests
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do |map|
+        AppTemplate::Application.routes.draw do
           resources :yazilar
         end
       RUBY
