@@ -60,11 +60,7 @@ module ActionController
 
     def self.inherited(klass)
       super
-      if namespace = klass.parents.detect {|m| m.respond_to?(:_railtie) }
-        klass.helper(all_helpers_from_path(namespace._railtie.config.paths.app.helpers.to_a))
-      else
-        klass.helper :all
-      end
+      klass.helper :all
     end
 
     ActiveSupport.run_load_hooks(:action_controller, self)
