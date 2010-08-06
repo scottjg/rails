@@ -7,8 +7,8 @@ module Erb
       include Rails::Generators::ResourceHelpers
 
       argument :attributes, :type => :array, :default => [], :banner => "field:type field:type"
-      class_option :add_views, :type => :array, :default => [], :banner => "index _form etc"
-      class_option :skip_views, :type => :array, :default => [], :banner => "index _form etc"
+      class_option :add_views, :type => :array, :default => [], :banner => "index _form etc", :desc => "add custom views/templates"
+      class_option :skip_views, :type => :array, :default => [], :banner => "index _form etc", :desc => "skip views/templates"
 
       def create_root_folder
         empty_directory File.join("app/views", controller_file_path)
@@ -24,7 +24,7 @@ module Erb
     protected
 
       def available_views
-        ( %w(index edit show new _form) | add_views ) - skip_views 
+        ( %w(index edit show new _form) | options[:add_views] ) - options[:skip_views]
       end
 
     end
