@@ -27,7 +27,7 @@ module ActiveSupport
 
       def read(name, options = nil)
         super
-        @data[name]
+        @data[name].duplicable? ? @data[name].dup : @data[name]
       end
 
       def write(name, value, options = nil)
