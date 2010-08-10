@@ -7,6 +7,14 @@ module ActiveRecord
   class Base
     # Establishes a connection to the database that's used by all Active Record objects.
     def self.mysql_connection(config) # :nodoc:
+      begin
+        require 'mysql2' unless defined? ::Mysql2
+        require "active_record/connection_adapters/mysql2_adapter" unless self.respond_to?(:mysql2_connection)
+        return mysql2_connection(config)
+      rescue LoadError
+        # that's ok, we'll just fall back to the mysql driver
+      end
+
       config = config.symbolize_keys
       host     = config[:host]
       port     = config[:port]
