@@ -84,11 +84,15 @@ module ActionDispatch
         record = extract_record(record_or_hash_or_array)
         record = record.to_model if record.respond_to?(:to_model)
 
-        args = case record_or_hash_or_array
-          when Hash;  [ record_or_hash_or_array ]
-          when Array; record_or_hash_or_array.dup
-          else        [ record_or_hash_or_array ]
-        end
+        args = if record_or_hash_or_array.respond_to?(:polymorphic_url_args)
+		 record_or_hash_or_array.polymorphic_url_args
+	       else
+		 case record_or_hash_or_array
+		 when Hash;  [ record_or_hash_or_array ]
+		 when Array; record_or_hash_or_array.dup
+		 else        [ record_or_hash_or_array ]
+		 end
+	       end
 
         inflection = if options[:action].to_s == "new"
           args.pop
