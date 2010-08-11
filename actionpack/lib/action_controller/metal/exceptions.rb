@@ -24,13 +24,7 @@ module ActionController
   class NotImplemented < MethodNotAllowed #:nodoc:
   end
 
-  class UnknownController < ActionControllerError #:nodoc:
-  end
-
   class MissingFile < ActionControllerError #:nodoc:
-  end
-
-  class RenderError < ActionControllerError #:nodoc:
   end
 
   class SessionOverflowError < ActionControllerError #:nodoc:
