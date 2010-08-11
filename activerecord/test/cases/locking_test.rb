@@ -81,6 +81,7 @@ class OptimisticLockingTest < ActiveRecord::TestCase
   end
 
   def test_lock_new
+    ActiveRecord::IdentityMap.without do
     p1 = Person.new(:first_name => 'anika')
     assert_equal 0, p1.lock_version
 
@@ -97,6 +98,7 @@ class OptimisticLockingTest < ActiveRecord::TestCase
 
     p2.first_name = 'sue'
     assert_raise(ActiveRecord::StaleObjectError) { p2.save! }
+    end
   end
 
   def test_lock_new_with_nil

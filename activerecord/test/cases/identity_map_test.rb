@@ -64,6 +64,38 @@ class IdentityMapTest < ActiveRecord::TestCase
     )
   end
 
+  def test_creation
+    t1 = Topic.create("title" => "t1")
+    t2 = Topic.find(t1.id)
+    assert_same(t1, t2)
+  end
+
+  def test_updating_of_pkey
+    s = Subscriber.find_by_nick('swistak')
+    assert s.update_attribute(:nick, 'swistakTheJester')
+    assert_equal('swistakTheJester', s.nick)
+
+    assert stj = Subscriber.find_by_nick('swistakTheJester')
+    assert_same(s, stj)
+  end
+
+  def test_changing_associations
+    t1 = Topic.create("title" => "t1")
+    t2 = Topic.create("title" => "t2")
+    r1 = Reply.new("title" => "r1", "content" => "r1")
+
+    r1.topic = t1
+    assert r1.save
+
+    assert_same(t1.replies.first, r1)
+
+    r1.topic = t2
+    assert r1.save
+
+    assert_same(t2.replies.first, r1)
+    assert_equal(0, t1.replies.size)
+  end
+
   def test_im_with_polymorphic_has_many_going_through_join_model_with_custom_select_and_joins
     tag = posts(:welcome).tags.first
     tag_with_joins_and_select = posts(:welcome).tags.add_joins_and_select.first
@@ -144,7 +176,7 @@ class IdentityMapTest < ActiveRecord::TestCase
     end
     assert_equal posts(:welcome, :thinking), posts
 
-    posts = assert_queries(1) do
+    posts = assert_queries(2) do
       Post.find(:all, :include => :author, :joins => {:taggings => {:tag => :taggings}}, :conditions => "taggings_tags.super_tag_id=2", :order => 'posts.id')
     end
     assert_equal posts(:welcome, :thinking), posts

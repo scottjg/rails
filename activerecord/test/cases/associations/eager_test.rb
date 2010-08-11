@@ -442,6 +442,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
 
   def test_eager_with_has_and_belongs_to_many_and_limit
     posts = Post.find(:all, :include => :categories, :order => "posts.id", :limit => 3)
+    p(posts)
     assert_equal 3, posts.size
     assert_equal 2, posts[0].categories.size
     assert_equal 1, posts[1].categories.size
@@ -512,7 +513,9 @@ class EagerAssociationTest < ActiveRecord::TestCase
   end
 
   def test_eager_association_loading_with_habtm
+    assert ActiveRecord::IdentityMap.current.empty?
     posts = Post.find(:all, :include => :categories, :order => "posts.id")
+   posts.map{|post| p [post.id, post.title, post.categories.map(&:name)]}
     assert_equal 2, posts[0].categories.size
     assert_equal 1, posts[1].categories.size
     assert_equal 0, posts[2].categories.size

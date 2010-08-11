@@ -124,6 +124,7 @@ module ActiveRecord
       changes = record_update_timestamps || {}
       primary_key = self.class.primary_key
       primary_key_value = self[self.class.primary_key]
+      ActiveRecord::IdentityMap.remove(self) if name.to_s == primary_key
 
       if name
         name = name.to_s
@@ -268,6 +269,8 @@ module ActiveRecord
       end
 
       self.id ||= new_id
+
+      ActiveRecord::IdentityMap.add(self)
 
       @new_record = false
       id

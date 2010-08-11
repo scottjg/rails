@@ -550,6 +550,7 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
   self.use_transactional_fixtures = false
 
   def setup
+    ActiveRecord::IdentityMap.clear
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
     @ship = @pirate.create_ship(:name => 'Nights Dirty Lightning')
   end
@@ -1177,6 +1178,7 @@ class TestAutosaveAssociationValidationsOnAHasOneAssociation < ActiveRecord::Tes
 
   def setup
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+    ActiveRecord::IdentityMap.clear
     @pirate.create_ship(:name => 'titanic')
   end
 
