@@ -11,7 +11,7 @@ module ActiveRecord
 
     def includes(*args)
       args.reject! { |a| a.blank? }
-      clone.tap {|r| r.includes_values += args if args.present? }
+      clone.tap {|r| r.includes_values = (r.includes_values + args).flatten.uniq if args.present? }
     end
 
     def eager_load(*args)
@@ -135,9 +135,7 @@ module ActiveRecord
 
       arel = build_joins(arel, @joins_values) unless @joins_values.empty?
 
-      @where_values.uniq.each do |where|
-        next if where.blank?
-
+      (@where_values - ['']).uniq.each do |where|
         case where
         when Arel::SqlLiteral
           arel = arel.where(where)
