@@ -81,6 +81,11 @@ module ActionController
       def session=(value)
         ActiveSupport::Deprecation.warn "ActionController::Base.session= is deprecated. " <<
           "Please configure it on your application with config.session_store :cookie_store, :key => '....'", caller
+
+        if secret = value.delete(:secret)
+          Rails.application.config.secret_token = secret
+        end
+
         if value.delete(:disabled)
           Rails.application.config.session_store :disabled
         else
@@ -120,8 +125,13 @@ module ActionController
 
       # This was moved to a plugin
       def verify(*args)
-        ActiveSupport::Deprecation.warn "verify was removed from Rails and is now available as a plugin. " <<
+        ActiveSupport::Deprecation.warn "verify was removed from Rails and is now available as a plugin. " \
           "Please install it with `rails plugin install git://github.com/rails/verification.git`.", caller
+      end
+
+      def exempt_from_layout(*)
+        ActiveSupport::Deprecation.warn "exempt_from_layout is no longer needed, because layouts in Rails 3 " \
+          "are restricted to the content-type of the template that was rendered.", caller
       end
     end
 

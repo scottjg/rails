@@ -2,6 +2,7 @@ require 'active_support/core_ext/array/extract_options'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/hash/keys'
+require 'active_support/core_ext/hash/except'
 require 'active_model/errors'
 require 'active_model/validations/callbacks'
 
@@ -24,20 +25,16 @@ module ActiveModel
   #   end
   # 
   # Which provides you with the full standard validation stack that you
-  # know from ActiveRecord.
+  # know from Active Record:
   # 
   #   person = Person.new
-  #   person.valid?
-  #   #=> true
-  #   person.invalid?
-  #   #=> false
+  #   person.valid?                   # => true
+  #   person.invalid?                 # => false
+  #
   #   person.first_name = 'zoolander'
-  #   person.valid?
-  #   #=> false
-  #   person.invalid?
-  #   #=> true
-  #   person.errors
-  #   #=> #<OrderedHash {:first_name=>["starts with z."]}>
+  #   person.valid?                   # => false
+  #   person.invalid?                 # => true
+  #   person.errors                   # => #<OrderedHash {:first_name=>["starts with z."]}>
   # 
   # Note that ActiveModel::Validations automatically adds an +errors+ method
   # to your instances initialized with a new ActiveModel::Errors object, so
@@ -122,12 +119,26 @@ module ActiveModel
       #   end
       #
       def validate(*args, &block)
-        options = args.last
-        if options.is_a?(Hash) && options.key?(:on)
+        options = args.extract_options!
+        if options.key?(:on)
+          options = options.dup
           options[:if] = Array.wrap(options[:if])
           options[:if] << "validation_context == :#{options[:on]}"
         end
+        args << options
         set_callback(:validate, *args, &block)
+      end
+
+      [:create, :update].each do |type|
+        class_eval <<-RUBY
+          def validate_on_#{type}(*args, &block)
+            msg = "validate_on_#{type} is deprecated. Please use validate(args, :on => :#{type})"
+            ActiveSupport::Deprecation.warn(msg, caller)
+            options = args.extract_options!
+            options[:on] = :#{type}
+            validate(*args.push(options), &block)
+          end
+        RUBY
       end
 
       # List all validators that are being used to validate the model using 

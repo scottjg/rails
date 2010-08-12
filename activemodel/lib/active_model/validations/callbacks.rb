@@ -28,12 +28,12 @@ module ActiveModel
 
       module ClassMethods
         def before_validation(*args, &block)
-          options = args.last
+          options = args.extract_options!
           if options.is_a?(Hash) && options[:on]
             options[:if] = Array.wrap(options[:if])
             options[:if] << "self.validation_context == :#{options[:on]}"
           end
-          set_callback(:validation, :before, *args, &block)
+          set_callback(:validation, :before, *(args << options), &block)
         end
 
         def after_validation(*args, &block)
@@ -43,6 +43,20 @@ module ActiveModel
           options[:if] << "!halted && value != false"
           options[:if] << "self.validation_context == :#{options[:on]}" if options[:on]
           set_callback(:validation, :after, *(args << options), &block)
+        end
+
+        [:before, :after].each do |type|
+          [:create, :update].each do |on|
+            class_eval <<-RUBY
+              def #{type}_validation_on_#{on}(*args, &block)
+                msg = "#{type}_validation_on_#{on} is deprecated. Please use #{type}_validation(arguments, :on => :#{on}"
+                ActiveSupport::Deprecation.warn(msg, caller)
+                options = args.extract_options!
+                options[:on] = :#{on}
+                before_validation(*args.push(options), &block)
+              end
+            RUBY
+          end
         end
       end
 

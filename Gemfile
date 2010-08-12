@@ -11,7 +11,7 @@ gem "rails", :path => File.dirname(__FILE__)
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
 gem "rdoc",  ">= 2.5.9"
-gem "horo"
+gem "horo",  ">= 1.0.1"
 
 # AS
 gem "memcache-client", ">= 1.8.5"
@@ -27,7 +27,7 @@ end
 platforms :ruby do
   gem 'json'
   gem 'yajl-ruby'
-  gem "nokogiri", ">= 1.4.2"
+  gem "nokogiri", ">= 1.4.3.1"
 
   # AR
   gem "sqlite3-ruby", "~> 1.3.1", :require => 'sqlite3'
@@ -35,6 +35,7 @@ platforms :ruby do
   group :db do
     gem "pg", ">= 0.9.0"
     gem "mysql", ">= 2.8.1"
+    gem "mysql2", :git => 'git://github.com/brianmario/mysql2.git'
   end
 end
 
@@ -50,7 +51,7 @@ platforms :jruby do
 end
 
 env 'CI' do
-  gem "nokogiri", ">= 1.4.2"
+  gem "nokogiri", ">= 1.4.3.1"
 
   platforms :ruby_18 do
     # fcgi gem doesn't compile on 1.9

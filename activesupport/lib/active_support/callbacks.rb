@@ -419,7 +419,10 @@ module ActiveSupport
         @_keyed_callbacks ||= {}
         @_keyed_callbacks[name] ||= begin
           str = send("_#{kind}_callbacks").compile(name, object)
-          class_eval "def #{name}() #{str} end", __FILE__, __LINE__
+          class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
+            def #{name}() #{str} end
+            protected :#{name}
+          RUBY_EVAL
           true
         end
       end
@@ -568,7 +571,9 @@ module ActiveSupport
       #
       # would trigger <tt>Audit#before_save</tt> instead. That's constructed by calling
       # <tt>"#{kind}_#{name}"</tt> on the given instance. In this case "kind" is "before" and
-      # "name" is "save".
+      # "name" is "save". In this context ":kind" and ":name" have special meanings: ":kind"
+      # refers to the kind of callback (before/after/around) and ":name" refers to the
+      # method on which callbacks are being defined.
       #
       # A declaration like
       #

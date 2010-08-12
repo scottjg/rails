@@ -8,7 +8,13 @@ module ActiveRecord
 
       ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) - [:joins, :where]).each do |method|
         value = r.send(:"#{method}_values")
-        merged_relation.send(:"#{method}_values=", value) if value.present?
+        if value.present?
+          if method == :includes
+            merged_relation = merged_relation.includes(value)
+          else
+            merged_relation.send(:"#{method}_values=", value) 
+          end
+        end
       end
 
       merged_relation = merged_relation.joins(r.joins_values)
@@ -80,9 +86,13 @@ module ActiveRecord
 
       options.assert_valid_keys(VALID_FIND_OPTIONS)
 
-      [:joins, :select, :group, :having, :limit, :offset, :from, :lock, :readonly].each do |finder|
-        relation = relation.send(finder, options[finder]) if options.has_key?(finder)
+      [:joins, :select, :group, :having, :limit, :offset, :from, :lock].each do |finder|
+        if value = options[finder]
+          relation = relation.send(finder, value)
+        end
       end
+
+      relation = relation.readonly(options[:readonly]) if options.key? :readonly
 
       # Give precedence to newly-applied orders and groups to play nicely with with_scope
       [:group, :order].each do |finder|

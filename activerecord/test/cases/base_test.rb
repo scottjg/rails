@@ -116,21 +116,31 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_read_attributes_before_type_cast_on_datetime
-    developer = Developer.find(:first)
-    # Oracle adapter returns Time before type cast
-    unless current_adapter?(:OracleAdapter)
-      assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"]
-    else
-      assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s(:db)
+  if current_adapter?(:Mysql2Adapter)
+    def test_read_attributes_before_type_cast_on_boolean
+      bool = Booleantest.create({ "value" => false })
+      assert_equal 0, bool.reload.attributes_before_type_cast["value"]
+    end
+  end
 
-      developer.created_at = "345643456"
-      assert_equal developer.created_at_before_type_cast, "345643456"
-      assert_equal developer.created_at, nil
+  unless current_adapter?(:Mysql2Adapter)
+    def test_read_attributes_before_type_cast_on_datetime
+      developer = Developer.find(:first)
+      # Oracle adapter returns Time before type cast
+      if current_adapter?(:OracleAdapter)
+        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s(:db)
 
-      developer.created_at = "2010-03-21T21:23:32+01:00"
-      assert_equal developer.created_at_before_type_cast, "2010-03-21T21:23:32+01:00"
-      assert_equal developer.created_at, Time.parse("2010-03-21T21:23:32+01:00")
+        developer.created_at = "345643456"
+        assert_equal developer.created_at_before_type_cast, "345643456"
+        assert_equal developer.created_at, nil
+
+        developer.created_at = "2010-03-21T21:23:32+01:00"
+        assert_equal developer.created_at_before_type_cast, "2010-03-21T21:23:32+01:00"
+        assert_equal developer.created_at, Time.parse("2010-03-21T21:23:32+01:00")
+        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s(:db)
+      else
+        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"]
+      end
     end
   end
 
@@ -531,100 +541,11 @@ class BasicsTest < ActiveRecord::TestCase
     GUESSED_CLASSES.each(&:reset_table_name)
   end
 
-  def test_destroy_all
-    conditions = "author_name = 'Mary'"
-    topics_by_mary = Topic.all(:conditions => conditions, :order => 'id')
-    assert ! topics_by_mary.empty?
 
-    assert_difference('Topic.count', -topics_by_mary.size) do
-      destroyed = Topic.destroy_all(conditions).sort_by(&:id)
-      assert_equal topics_by_mary, destroyed
-      assert destroyed.all? { |topic| topic.frozen? }, "destroyed topics should be frozen"
-    end
-  end
-
-  def test_destroy_many
-    clients = Client.find([2, 3], :order => 'id')
-
-    assert_difference('Client.count', -2) do
-      destroyed = Client.destroy([2, 3]).sort_by(&:id)
-      assert_equal clients, destroyed
-      assert destroyed.all? { |client| client.frozen? }, "destroyed clients should be frozen"
-    end
-  end
-
-  def test_delete_many
-    original_count = Topic.count
-    Topic.delete(deleting = [1, 2])
-    assert_equal original_count - deleting.size, Topic.count
-  end
-
-  def test_boolean_attributes
-    assert ! Topic.find(1).approved?
-    assert Topic.find(2).approved?
-  end
-
-  if current_adapter?(:MysqlAdapter)
+  if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
     def test_update_all_with_order_and_limit
       assert_equal 1, Topic.update_all("content = 'bulk updated!'", nil, :limit => 1, :order => 'id DESC')
     end
-  end
-
-  # Oracle UPDATE does not support ORDER BY
-  unless current_adapter?(:OracleAdapter)
-    def test_update_all_ignores_order_without_limit_from_association
-      author = authors(:david)
-      assert_nothing_raised do
-        assert_equal author.posts_with_comments_and_categories.length, author.posts_with_comments_and_categories.update_all([ "body = ?", "bulk update!" ])
-      end
-    end
-
-    def test_update_all_with_order_and_limit_updates_subset_only
-      author = authors(:david)
-      assert_nothing_raised do
-        assert_equal 1, author.posts_sorted_by_id_limited.size
-        assert_equal 2, author.posts_sorted_by_id_limited.find(:all, :limit => 2).size
-        assert_equal 1, author.posts_sorted_by_id_limited.update_all([ "body = ?", "bulk update!" ])
-        assert_equal "bulk update!", posts(:welcome).body
-        assert_not_equal "bulk update!", posts(:thinking).body
-      end
-    end
-  end
-
-  def test_update_many
-    topic_data = { 1 => { "content" => "1 updated" }, 2 => { "content" => "2 updated" } }
-    updated = Topic.update(topic_data.keys, topic_data.values)
-
-    assert_equal 2, updated.size
-    assert_equal "1 updated", Topic.find(1).content
-    assert_equal "2 updated", Topic.find(2).content
-  end
-
-  def test_delete_all
-    assert Topic.count > 0
-
-    assert_equal Topic.count, Topic.delete_all
-  end
-
-  def test_update_by_condition
-    Topic.update_all "content = 'bulk updated!'", ["approved = ?", true]
-    assert_equal "Have a nice day", Topic.find(1).content
-    assert_equal "bulk updated!", Topic.find(2).content
-  end
-
-  def test_attribute_present
-    t = Topic.new
-    t.title = "hello there!"
-    t.written_on = Time.now
-    assert t.attribute_present?("title")
-    assert t.attribute_present?("written_on")
-    assert !t.attribute_present?("content")
-  end
-
-  def test_attribute_keys_on_new_instance
-    t = Topic.new
-    assert_equal nil, t.title, "The topics table has a title column, so it should be nil"
-    assert_raise(NoMethodError) { t.title2 }
   end
 
   def test_null_fields
@@ -709,8 +630,6 @@ class BasicsTest < ActiveRecord::TestCase
   def test_hashing
     assert_equal [ Topic.find(1) ], [ Topic.find(2).topic ] & [ Topic.find(1) ]
   end
-
-
 
   def test_readonly_attributes
     assert_equal Set.new([ 'title' , 'comments_count' ]), ReadonlyTitlePost.readonly_attributes
@@ -1313,49 +1232,6 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_increment_attribute
-    assert_equal 50, accounts(:signals37).credit_limit
-    accounts(:signals37).increment! :credit_limit
-    assert_equal 51, accounts(:signals37, :reload).credit_limit
-
-    accounts(:signals37).increment(:credit_limit).increment!(:credit_limit)
-    assert_equal 53, accounts(:signals37, :reload).credit_limit
-  end
-
-  def test_increment_nil_attribute
-    assert_nil topics(:first).parent_id
-    topics(:first).increment! :parent_id
-    assert_equal 1, topics(:first).parent_id
-  end
-
-  def test_increment_attribute_by
-    assert_equal 50, accounts(:signals37).credit_limit
-    accounts(:signals37).increment! :credit_limit, 5
-    assert_equal 55, accounts(:signals37, :reload).credit_limit
-
-    accounts(:signals37).increment(:credit_limit, 1).increment!(:credit_limit, 3)
-    assert_equal 59, accounts(:signals37, :reload).credit_limit
-  end
-
-  def test_decrement_attribute
-    assert_equal 50, accounts(:signals37).credit_limit
-
-    accounts(:signals37).decrement!(:credit_limit)
-    assert_equal 49, accounts(:signals37, :reload).credit_limit
-
-    accounts(:signals37).decrement(:credit_limit).decrement!(:credit_limit)
-    assert_equal 47, accounts(:signals37, :reload).credit_limit
-  end
-
-  def test_decrement_attribute_by
-    assert_equal 50, accounts(:signals37).credit_limit
-    accounts(:signals37).decrement! :credit_limit, 5
-    assert_equal 45, accounts(:signals37, :reload).credit_limit
-
-    accounts(:signals37).decrement(:credit_limit, 1).decrement!(:credit_limit, 3)
-    assert_equal 41, accounts(:signals37, :reload).credit_limit
-  end
-
   def test_toggle_attribute
     assert !topics(:first).approved?
     topics(:first).toggle!(:approved)
@@ -1480,28 +1356,6 @@ class BasicsTest < ActiveRecord::TestCase
                         :distinct => true)
     end
     assert_equal res6, res7
-  end
-
-  def test_clear_association_cache_stored
-    firm = Firm.find(1)
-    assert_kind_of Firm, firm
-
-    firm.clear_association_cache
-    assert_equal Firm.find(1).clients.collect{ |x| x.name }.sort, firm.clients.collect{ |x| x.name }.sort
-  end
-
-  def test_clear_association_cache_new_record
-     firm            = Firm.new
-     client_stored   = Client.find(3)
-     client_new      = Client.new
-     client_new.name = "The Joneses"
-     clients         = [ client_stored, client_new ]
-
-     firm.clients    << clients
-     assert_equal clients.map(&:name).to_set, firm.clients.map(&:name).to_set
-
-     firm.clear_association_cache
-     assert_equal clients.map(&:name).to_set, firm.clients.map(&:name).to_set
   end
 
   def test_interpolate_sql
@@ -1701,134 +1555,6 @@ class BasicsTest < ActiveRecord::TestCase
     assert_queries(2) { 2.times { query.call } }
     assert_queries 1, &query
     assert_no_queries { assert true }
-  end
-
-  def test_to_xml
-    xml = REXML::Document.new(topics(:first).to_xml(:indent => 0))
-    bonus_time_in_current_timezone = topics(:first).bonus_time.xmlschema
-    written_on_in_current_timezone = topics(:first).written_on.xmlschema
-    last_read_in_current_timezone = topics(:first).last_read.xmlschema
-
-    assert_equal "topic", xml.root.name
-    assert_equal "The First Topic" , xml.elements["//title"].text
-    assert_equal "David" , xml.elements["//author-name"].text
-    assert_match "Have a nice day", xml.elements["//content"].text
-
-    assert_equal "1", xml.elements["//id"].text
-    assert_equal "integer" , xml.elements["//id"].attributes['type']
-
-    assert_equal "1", xml.elements["//replies-count"].text
-    assert_equal "integer" , xml.elements["//replies-count"].attributes['type']
-
-    assert_equal written_on_in_current_timezone, xml.elements["//written-on"].text
-    assert_equal "datetime" , xml.elements["//written-on"].attributes['type']
-
-    assert_equal "david@loudthinking.com", xml.elements["//author-email-address"].text
-
-    assert_equal nil, xml.elements["//parent-id"].text
-    assert_equal "integer", xml.elements["//parent-id"].attributes['type']
-    assert_equal "true", xml.elements["//parent-id"].attributes['nil']
-
-    if current_adapter?(:SybaseAdapter)
-      assert_equal last_read_in_current_timezone, xml.elements["//last-read"].text
-      assert_equal "datetime" , xml.elements["//last-read"].attributes['type']
-    else
-      # Oracle enhanced adapter allows to define Date attributes in model class (see topic.rb)
-      assert_equal "2004-04-15", xml.elements["//last-read"].text
-      assert_equal "date" , xml.elements["//last-read"].attributes['type']
-    end
-
-    # Oracle and DB2 don't have true boolean or time-only fields
-    unless current_adapter?(:OracleAdapter, :DB2Adapter)
-      assert_equal "false", xml.elements["//approved"].text
-      assert_equal "boolean" , xml.elements["//approved"].attributes['type']
-
-      assert_equal bonus_time_in_current_timezone, xml.elements["//bonus-time"].text
-      assert_equal "datetime" , xml.elements["//bonus-time"].attributes['type']
-    end
-  end
-
-  def test_to_xml_skipping_attributes
-    xml = topics(:first).to_xml(:indent => 0, :skip_instruct => true, :except => [:title, :replies_count])
-    assert_equal "<topic>", xml.first(7)
-    assert !xml.include?(%(<title>The First Topic</title>))
-    assert xml.include?(%(<author-name>David</author-name>))
-
-    xml = topics(:first).to_xml(:indent => 0, :skip_instruct => true, :except => [:title, :author_name, :replies_count])
-    assert !xml.include?(%(<title>The First Topic</title>))
-    assert !xml.include?(%(<author-name>David</author-name>))
-  end
-
-  def test_to_xml_including_has_many_association
-    xml = topics(:first).to_xml(:indent => 0, :skip_instruct => true, :include => :replies, :except => :replies_count)
-    assert_equal "<topic>", xml.first(7)
-    assert xml.include?(%(<replies type="array"><reply>))
-    assert xml.include?(%(<title>The Second Topic of the day</title>))
-  end
-
-  def test_array_to_xml_including_has_many_association
-    xml = [ topics(:first), topics(:second) ].to_xml(:indent => 0, :skip_instruct => true, :include => :replies)
-    assert xml.include?(%(<replies type="array"><reply>))
-  end
-
-  def test_array_to_xml_including_methods
-    xml = [ topics(:first), topics(:second) ].to_xml(:indent => 0, :skip_instruct => true, :methods => [ :topic_id ])
-    assert xml.include?(%(<topic-id type="integer">#{topics(:first).topic_id}</topic-id>)), xml
-    assert xml.include?(%(<topic-id type="integer">#{topics(:second).topic_id}</topic-id>)), xml
-  end
-
-  def test_array_to_xml_including_has_one_association
-    xml = [ companies(:first_firm), companies(:rails_core) ].to_xml(:indent => 0, :skip_instruct => true, :include => :account)
-    assert xml.include?(companies(:first_firm).account.to_xml(:indent => 0, :skip_instruct => true))
-    assert xml.include?(companies(:rails_core).account.to_xml(:indent => 0, :skip_instruct => true))
-  end
-
-  def test_array_to_xml_including_belongs_to_association
-    xml = [ companies(:first_client), companies(:second_client), companies(:another_client) ].to_xml(:indent => 0, :skip_instruct => true, :include => :firm)
-    assert xml.include?(companies(:first_client).to_xml(:indent => 0, :skip_instruct => true))
-    assert xml.include?(companies(:second_client).firm.to_xml(:indent => 0, :skip_instruct => true))
-    assert xml.include?(companies(:another_client).firm.to_xml(:indent => 0, :skip_instruct => true))
-  end
-
-  def test_to_xml_including_belongs_to_association
-    xml = companies(:first_client).to_xml(:indent => 0, :skip_instruct => true, :include => :firm)
-    assert !xml.include?("<firm>")
-
-    xml = companies(:second_client).to_xml(:indent => 0, :skip_instruct => true, :include => :firm)
-    assert xml.include?("<firm>")
-  end
-
-  def test_to_xml_including_multiple_associations
-    xml = companies(:first_firm).to_xml(:indent => 0, :skip_instruct => true, :include => [ :clients, :account ])
-    assert_equal "<firm>", xml.first(6)
-    assert xml.include?(%(<account>))
-    assert xml.include?(%(<clients type="array"><client>))
-  end
-
-  def test_to_xml_including_multiple_associations_with_options
-    xml = companies(:first_firm).to_xml(
-      :indent  => 0, :skip_instruct => true,
-      :include => { :clients => { :only => :name } }
-    )
-
-    assert_equal "<firm>", xml.first(6)
-    assert xml.include?(%(<client><name>Summit</name></client>))
-    assert xml.include?(%(<clients type="array"><client>))
-  end
-
-  def test_to_xml_including_methods
-    xml = Company.new.to_xml(:methods => :arbitrary_method, :skip_instruct => true)
-    assert_equal "<company>", xml.first(9)
-    assert xml.include?(%(<arbitrary-method>I am Jack's profound disappointment</arbitrary-method>))
-  end
-
-  def test_to_xml_with_block
-    value = "Rockin' the block"
-    xml = Company.new.to_xml(:skip_instruct => true) do |_xml|
-      _xml.tag! "arbitrary-element", value
-    end
-    assert_equal "<company>", xml.first(9)
-    assert xml.include?(%(<arbitrary-element>#{value}</arbitrary-element>))
   end
 
   def test_to_param_should_return_string
