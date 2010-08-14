@@ -188,6 +188,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       resources :sheep
+      resources :taxis
 
       resources :clients do
         namespace :google do
@@ -963,6 +964,14 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/sheep/1', sheep_path(1)
       assert_equal '/sheep/new', new_sheep_path
       assert_equal '/sheep/1/edit', edit_sheep_path(1)
+    end
+  end
+  
+  def test_named_paths_for_resources_with_irregular_plural_of_the_plural
+    with_test_routes do
+      assert_equal '/taxis/1', taxi_path(1)
+      assert_equal '/taxis', taxis_path
+      assert_raise(NameError) { taxes_path }
     end
   end
 

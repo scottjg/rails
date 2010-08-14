@@ -511,7 +511,7 @@ module ActionDispatch
 
           # Checks for uncountable plurals, and appends "_index" if they're.
           def collection_name
-            singular == plural ? "#{plural}_index" : plural
+            singular == plural ? "#{name}_index" : name
           end
 
           def resource_scope
