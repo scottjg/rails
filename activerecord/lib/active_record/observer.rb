@@ -67,7 +67,7 @@ module ActiveRecord
   #
   # == Configuration
   #
-  # In order to activate an observer, list it in the <tt>config.active_record.observers</tt> configuration 
+  # In order to activate an observer, list it in the <tt>config.active_record.observers</tt> configuration
   # setting in your <tt>config/application.rb</tt> file.
   #
   #   config.active_record.observers = :comment_observer, :signup_observer
@@ -122,7 +122,7 @@ module ActiveRecord
       end
 
       def define_callbacks(klass)
-        existing_methods = klass.instance_methods.map(&:to_sym)
+        existing_methods = klass.instance_methods.map { |m| m.to_sym }
         observer = self
         observer_name = observer.class.name.underscore.gsub('/', '__')
 

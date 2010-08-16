@@ -67,7 +67,7 @@ module ActiveRecord
       preload +=  @includes_values unless eager_loading?
       preload.each {|associations| @klass.send(:preload_associations, @records, associations) }
 
-      # @readonly_value is true only if set explicitly. @implicit_readonly is true if there 
+      # @readonly_value is true only if set explicitly. @implicit_readonly is true if there
       # are JOINS and no explicit SELECT.
       readonly = @readonly_value.nil? ? @implicit_readonly : @readonly_value
       @records.each { |record| record.readonly! } if readonly
@@ -131,7 +131,7 @@ module ActiveRecord
     # ==== Parameters
     #
     # * +updates+ - A string, array, or hash representing the SET part of an SQL statement.
-    # * +conditions+ - A string, array, or hash representing the WHERE part of an SQL statement. 
+    # * +conditions+ - A string, array, or hash representing the WHERE part of an SQL statement.
     #   See conditions in the intro.
     # * +options+ - Additional options are <tt>:limit</tt> and <tt>:order</tt>, see the examples for usage.
     #
@@ -264,8 +264,8 @@ module ActiveRecord
     #   Post.delete_all("person_id = 5 AND (category = 'Something' OR category = 'Else')")
     #   Post.delete_all(["person_id = ? AND (category = ? OR category = ?)", 5, 'Something', 'Else'])
     #
-    # Both calls delete the affected posts all at once with a single DELETE statement. 
-    # If you need to destroy dependent associations or call your <tt>before_*</tt> or 
+    # Both calls delete the affected posts all at once with a single DELETE statement.
+    # If you need to destroy dependent associations or call your <tt>before_*</tt> or
     # +after_destroy+ callbacks, use the +destroy_all+ method instead.
     def delete_all(conditions = nil)
       conditions ? where(conditions).delete_all : arel.delete.tap { reset }
@@ -375,7 +375,7 @@ module ActiveRecord
 
     def references_eager_loaded_tables?
       # always convert table names to downcase as in Oracle quoted table names are in uppercase
-      joined_tables = (tables_in_string(arel.joins(arel)) + [table.name, table.table_alias]).compact.map(&:downcase).uniq
+      joined_tables = (tables_in_string(arel.joins(arel)) + [table.name, table.table_alias]).compact.map{ |t| t.downcase }.uniq
       (tables_in_string(to_sql) - joined_tables).any?
     end
 
@@ -383,7 +383,7 @@ module ActiveRecord
       return [] if string.blank?
       # always convert table names to downcase as in Oracle quoted table names are in uppercase
       # ignore raw_sql_ that is used by Oracle adapter as alias for limit/offset subqueries
-      string.scan(/([a-zA-Z_][\.\w]+).?\./).flatten.map(&:downcase).uniq - ['raw_sql_']
+      string.scan(/([a-zA-Z_][\.\w]+).?\./).flatten.map{ |s| s.downcase }.uniq - ['raw_sql_']
     end
 
   end

@@ -806,6 +806,9 @@ if ActiveRecord::Base.connection.supports_migrations?
 
         Topic.connection.change_column "topics", "written_on", :datetime, :null => false
         Topic.reset_column_information
+
+        Topic.connection.change_column "topics", "written_on", :datetime, :null => true
+        Topic.reset_column_information
       end
     end
 
@@ -1358,10 +1361,10 @@ if ActiveRecord::Base.connection.supports_migrations?
       ActiveRecord::Migrator.forward(MIGRATIONS_ROOT + "/valid")
       assert_equal(3, ActiveRecord::Migrator.current_version)
     end
-    
+
     def test_get_all_versions
       ActiveRecord::Migrator.migrate(MIGRATIONS_ROOT + "/valid")
-      assert_equal([1,2,3], ActiveRecord::Migrator.get_all_versions)      
+      assert_equal([1,2,3], ActiveRecord::Migrator.get_all_versions)
 
       ActiveRecord::Migrator.rollback(MIGRATIONS_ROOT + "/valid")
       assert_equal([1,2], ActiveRecord::Migrator.get_all_versions)
