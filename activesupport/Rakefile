@@ -1,4 +1,4 @@
-gem 'rdoc', '>= 2.5.9'
+gem 'rdoc', '>= 2.5.10'
 require 'rdoc'
 require 'rake/testtask'
 require 'rdoc/task'
@@ -9,6 +9,7 @@ Rake::TestTask.new do |t|
   t.libs << 'test'
   t.pattern = 'test/**/*_test.rb'
   t.warning = true
+  t.verbose = true
 end
 
 namespace :test do

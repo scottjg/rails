@@ -128,7 +128,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
           end
 
           member do
-            get  :some_path_with_name
+            get  'some_path_with_name'
             put  :accessible_projects
             post :resend, :generate_new_password
           end
@@ -336,6 +336,14 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       resources :content
+
+      namespace :transport do
+        resources :taxis
+      end
+
+      namespace :medical do
+        resource :taxis
+      end
 
       scope :constraints => { :id => /\d+/ } do
         get '/tickets', :to => 'tickets#index', :as => :tickets
@@ -1881,6 +1889,60 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       get '/except/sectors/1/companies/2/departments/3'
       assert_equal 'Not Found', @response.body
       assert_raise(NoMethodError) { except_sector_company_department_path(:sector_id => '1', :company_id => '2', :id => '3') }
+    end
+  end
+
+  def test_resources_are_not_pluralized
+    with_test_routes do
+      get '/transport/taxis'
+      assert_equal 'transport/taxis#index', @response.body
+      assert_equal '/transport/taxis', transport_taxis_path
+
+      get '/transport/taxis/new'
+      assert_equal 'transport/taxis#new', @response.body
+      assert_equal '/transport/taxis/new', new_transport_taxi_path
+
+      post '/transport/taxis'
+      assert_equal 'transport/taxis#create', @response.body
+
+      get '/transport/taxis/1'
+      assert_equal 'transport/taxis#show', @response.body
+      assert_equal '/transport/taxis/1', transport_taxi_path(:id => '1')
+
+      get '/transport/taxis/1/edit'
+      assert_equal 'transport/taxis#edit', @response.body
+      assert_equal '/transport/taxis/1/edit', edit_transport_taxi_path(:id => '1')
+
+      put '/transport/taxis/1'
+      assert_equal 'transport/taxis#update', @response.body
+
+      delete '/transport/taxis/1'
+      assert_equal 'transport/taxis#destroy', @response.body
+    end
+  end
+
+  def test_singleton_resources_are_not_singularized
+    with_test_routes do
+      get '/medical/taxis/new'
+      assert_equal 'medical/taxes#new', @response.body
+      assert_equal '/medical/taxis/new', new_medical_taxis_path
+
+      post '/medical/taxis'
+      assert_equal 'medical/taxes#create', @response.body
+
+      get '/medical/taxis'
+      assert_equal 'medical/taxes#show', @response.body
+      assert_equal '/medical/taxis', medical_taxis_path
+
+      get '/medical/taxis/edit'
+      assert_equal 'medical/taxes#edit', @response.body
+      assert_equal '/medical/taxis/edit', edit_medical_taxis_path
+
+      put '/medical/taxis'
+      assert_equal 'medical/taxes#update', @response.body
+
+      delete '/medical/taxis'
+      assert_equal 'medical/taxes#destroy', @response.body
     end
   end
 
