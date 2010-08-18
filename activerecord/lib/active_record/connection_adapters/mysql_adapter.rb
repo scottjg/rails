@@ -263,7 +263,6 @@ module ActiveRecord
           # See http://bugs.mysql.com/bug.php?id=33540 -- the workaround way to
           # reset the connection is to change the user to the same user.
           @connection.change_user(@config[:username], @config[:password], @config[:database])
-          configure_connection
         end
       end
 
@@ -596,21 +595,17 @@ module ActiveRecord
           @connection.options(Mysql::OPT_READ_TIMEOUT, @config[:read_timeout]) if @config[:read_timeout]
           @connection.options(Mysql::OPT_WRITE_TIMEOUT, @config[:write_timeout]) if @config[:write_timeout]
 
+          # By default, MySQL 'where id is null' selects the last inserted id.
+          # Turn this off. http://dev.rubyonrails.org/ticket/6778
+          variable_assignments = ['SQL_AUTO_IS_NULL=0']
+          encoding = @config[:encoding]
+          variable_assignments << "NAMES '#{encoding}'" if encoding
+          @connection.options(Mysql::INIT_COMMAND, "SET #{variable_assignments.join(', ')}")
+
           @connection.real_connect(*@connection_options)
 
           # reconnect must be set after real_connect is called, because real_connect sets it to false internally
           @connection.reconnect = !!@config[:reconnect] if @connection.respond_to?(:reconnect=)
-
-          configure_connection
-        end
-
-        def configure_connection
-          encoding = @config[:encoding]
-          execute("SET NAMES '#{encoding}'", :skip_logging) if encoding
-
-          # By default, MySQL 'where id is null' selects the last inserted id.
-          # Turn this off. http://dev.rubyonrails.org/ticket/6778
-          execute("SET SQL_AUTO_IS_NULL=0", :skip_logging)
         end
 
         def select(sql, name = nil)
