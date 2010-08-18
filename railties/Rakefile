@@ -9,7 +9,7 @@ require 'rbconfig'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
 PKG_BUILD       = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME        = 'rails'
+PKG_NAME        = 'railties'
 PKG_VERSION     = Rails::VERSION::STRING + PKG_BUILD
 PKG_FILE_NAME   = "#{PKG_NAME}-#{PKG_VERSION}"
 PKG_DESTINATION = ENV["RAILS_PKG_DESTINATION"] || "../#{PKG_NAME}"
@@ -305,7 +305,7 @@ PKG_FILES = FileList[
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = 'rails'
+  s.name = 'railties'
   s.version = PKG_VERSION
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
@@ -339,6 +339,11 @@ Rake::GemPackageTask.new(spec) do |pkg|
   pkg.gem_spec = spec
 end
 
+task :gemspec do
+  File.open(File.join(File.dirname(__FILE__), "#{spec.name}.gemspec"), "w") do |file|
+    file.puts spec.to_ruby
+  end
+end
 
 # Publishing -------------------------------------------------------
 desc "Publish the rails gem"
