@@ -66,6 +66,10 @@ module ActiveSupport
       message
     end
 
+    def <<(message)
+      add(Severity::INFO, message)
+    end
+
     for severity in Severity.constants
       class_eval <<-EOT, __FILE__, __LINE__
         def #{severity.downcase}(message = nil, progname = nil, &block)  # def debug(message = nil, progname = nil, &block)
