@@ -26,13 +26,18 @@ module ActionDispatch
           @constraints.each { |constraint|
             if constraint.respond_to?(:matches?) && !constraint.matches?(req)
               return [ 404, {'X-Cascade' => 'pass'}, [] ]
-            elsif constraint.respond_to?(:call) && !constraint.call(req)
+            elsif constraint.respond_to?(:call) && !constraint.call(*constraint_args(constraint, req))
               return [ 404, {'X-Cascade' => 'pass'}, [] ]
             end
           }
 
           @app.call(env)
         end
+
+        private
+          def constraint_args(constraint, request)
+            constraint.arity == 1 ? [request] : [request.symbolized_path_parameters, request]
+          end
       end
 
       class Mapping #:nodoc:
@@ -288,7 +293,7 @@ module ActionDispatch
             uri = URI.parse(path_proc.call(*params))
             uri.scheme ||= req.scheme
             uri.host   ||= req.host
-            uri.port   ||= req.port unless req.port == 80
+            uri.port   ||= req.port unless req.standard_port?
 
             body = %(<html><body>You are being <a href="#{ERB::Util.h(uri.to_s)}">redirected</a>.</body></html>)
 
@@ -473,7 +478,7 @@ module ActionDispatch
 
           def initialize(entities, options = {})
             @name       = entities.to_s
-            @path       = options.delete(:path) || @name
+            @path       = (options.delete(:path) || @name).to_s
             @controller = (options.delete(:controller) || @name).to_s
             @as         = options.delete(:as)
             @options    = options
@@ -537,7 +542,7 @@ module ActionDispatch
 
           def initialize(entities, options)
             @name       = entities.to_s
-            @path       = options.delete(:path) || @name
+            @path       = (options.delete(:path) || @name).to_s
             @controller = (options.delete(:controller) || plural).to_s
             @as         = options.delete(:as)
             @options    = options
@@ -586,10 +591,10 @@ module ActionDispatch
             end if parent_resource.actions.include?(:new)
 
             member_scope  do
+              get    :edit if parent_resource.actions.include?(:edit)
               get    :show if parent_resource.actions.include?(:show)
               put    :update if parent_resource.actions.include?(:update)
               delete :destroy if parent_resource.actions.include?(:destroy)
-              get    :edit if parent_resource.actions.include?(:edit)
             end
           end
 
@@ -616,10 +621,10 @@ module ActionDispatch
             end if parent_resource.actions.include?(:new)
 
             member_scope  do
+              get    :edit if parent_resource.actions.include?(:edit)
               get    :show if parent_resource.actions.include?(:show)
               put    :update if parent_resource.actions.include?(:update)
               delete :destroy if parent_resource.actions.include?(:destroy)
-              get    :edit if parent_resource.actions.include?(:edit)
             end
           end
 
@@ -772,6 +777,10 @@ module ActionDispatch
             if resources.length > 1
               resources.each { |r| send(method, r, options, &block) }
               return true
+            end
+
+            options.keys.each do |k|
+              (options[:constraints] ||= {})[k] = options.delete(k) if options[k].is_a?(Regexp)
             end
 
             scope_options = options.slice!(*RESOURCE_OPTIONS)

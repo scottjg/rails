@@ -154,7 +154,7 @@ module ActiveRecord
       else
         # Apply limit and order only if they're both present
         if @limit_value.present? == @order_values.present?
-          arel.update(@klass.send(:sanitize_sql_for_assignment, updates))
+          arel.update(Arel::SqlLiteral.new(@klass.send(:sanitize_sql_for_assignment, updates)))
         else
           except(:limit, :order).update_all(updates)
         end
@@ -316,16 +316,19 @@ module ActiveRecord
       @to_sql ||= arel.to_sql
     end
 
-    def scope_for_create
-      @scope_for_create ||= begin
-        @create_with_value || Hash[
-          @where_values.find_all { |w|
+    def where_values_hash
+          Hash[@where_values.find_all { |w|
             w.respond_to?(:operator) && w.operator == :==
           }.map { |where|
             [where.operand1.name,
              where.operand2.respond_to?(:value) ?
              where.operand2.value : where.operand2]
         }]
+    end
+
+    def scope_for_create
+      @scope_for_create ||= begin
+        @create_with_value || where_values_hash
       end
     end
 

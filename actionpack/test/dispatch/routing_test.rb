@@ -45,6 +45,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       match 'account/logout' => redirect("/logout"), :as => :logout_redirect
       match 'account/login', :to => redirect("/login")
+      match 'secure', :to => redirect("/secure/login")
 
       constraints(lambda { |req| true }) do
         match 'account/overview'
@@ -379,6 +380,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         end
       end
 
+      namespace :wiki do
+        resources :articles, :id => /[^\/]+/ do
+          resources :comments, :only => [:create, :new]
+        end
+      end
+
+      resources :wiki_pages, :path => :pages
+      resource :wiki_account, :path => :my_account
+
       scope :only => :show do
         namespace :only do
           resources :sectors, :only => :index do
@@ -412,6 +422,17 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
           end
         end
       end
+
+      resources :sections, :id => /.+/ do
+        get :preview, :on => :member
+      end
+
+      scope '/countries/:country', :constraints => lambda { |params, req| %[all France].include?(params[:country]) } do
+        match '/',       :to => 'countries#index'
+        match '/cities', :to => 'countries#cities'
+      end
+
+      match '/countries/:country/(*other)', :to => redirect{ |params, req| params[:other] ? "/countries/all/#{params[:other]}" : '/countries/all' }
 
       match '/:locale/*file.:format', :to => 'files#show', :file => /path\/to\/existing\/file/
     end
@@ -1946,9 +1967,84 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_greedy_resource_id_regexp_doesnt_match_edit_and_custom_action
+    with_test_routes do
+      get '/sections/1/edit'
+      assert_equal 'sections#edit', @response.body
+      assert_equal '/sections/1/edit', edit_section_path(:id => '1')
+
+      get '/sections/1/preview'
+      assert_equal 'sections#preview', @response.body
+      assert_equal '/sections/1/preview', preview_section_path(:id => '1')
+    end
+  end
+
+  def test_resource_constraints_are_pushed_to_scope
+    with_test_routes do
+      get '/wiki/articles/Ruby_on_Rails_3.0'
+      assert_equal 'wiki/articles#show', @response.body
+      assert_equal '/wiki/articles/Ruby_on_Rails_3.0', wiki_article_path(:id => 'Ruby_on_Rails_3.0')
+
+      get '/wiki/articles/Ruby_on_Rails_3.0/comments/new'
+      assert_equal 'wiki/comments#new', @response.body
+      assert_equal '/wiki/articles/Ruby_on_Rails_3.0/comments/new', new_wiki_article_comment_path(:article_id => 'Ruby_on_Rails_3.0')
+
+      post '/wiki/articles/Ruby_on_Rails_3.0/comments'
+      assert_equal 'wiki/comments#create', @response.body
+      assert_equal '/wiki/articles/Ruby_on_Rails_3.0/comments', wiki_article_comments_path(:article_id => 'Ruby_on_Rails_3.0')
+    end
+  end
+
+  def test_resources_path_can_be_a_symbol
+    with_test_routes do
+      get '/pages'
+      assert_equal 'wiki_pages#index', @response.body
+      assert_equal '/pages', wiki_pages_path
+
+      get '/pages/Ruby_on_Rails'
+      assert_equal 'wiki_pages#show', @response.body
+      assert_equal '/pages/Ruby_on_Rails', wiki_page_path(:id => 'Ruby_on_Rails')
+
+      get '/my_account'
+      assert_equal 'wiki_accounts#show', @response.body
+      assert_equal '/my_account', wiki_account_path
+    end
+  end
+
+  def test_redirect_https
+    with_test_routes do
+      with_https do
+        get '/secure'
+        verify_redirect 'https://www.example.com/secure/login'
+      end
+    end
+  end
+
+  def test_symbolized_path_parameters_is_not_stale
+    get '/countries/France'
+    assert_equal 'countries#index', @response.body
+
+    get '/countries/France/cities'
+    assert_equal 'countries#cities', @response.body
+
+    get '/countries/UK'
+    verify_redirect 'http://www.example.com/countries/all'
+
+    get '/countries/UK/cities'
+    verify_redirect 'http://www.example.com/countries/all/cities'
+  end
+
 private
   def with_test_routes
     yield
+  end
+
+  def with_https
+    old_https = https?
+    https!
+    yield
+  ensure
+    https!(old_https)
   end
 
   def verify_redirect(url, status=301)
