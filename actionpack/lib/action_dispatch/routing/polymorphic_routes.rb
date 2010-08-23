@@ -111,10 +111,6 @@ module ActionDispatch
           args.last.kind_of?(Hash) ? args.last.merge!(url_options) : args << url_options
         end
 
-        if namespace = record.class.parents.detect { |n| n.respond_to?(:_railtie) }
-          named_route.sub!(/#{namespace._railtie.railtie_name}_/, '')
-        end
-
         url_for _routes.url_helpers.__send__("hash_for_#{named_route}", *args)
       end
 
@@ -161,6 +157,7 @@ module ActionDispatch
               else
                 string << ActiveModel::Naming.plural(parent).singularize
                 string << "_"
+                remove_namespace(string, parent)
               end
             end
           end
@@ -169,12 +166,20 @@ module ActionDispatch
             route << "#{record}_"
           else
             route << ActiveModel::Naming.plural(record)
+            remove_namespace(route, record)
             route = route.singularize if inflection == :singular
             route << "_"
             route << "index_" if ActiveModel::Naming.uncountable?(record) && inflection == :plural
           end
 
           action_prefix(options) + route + routing_type(options).to_s
+        end
+
+        def remove_namespace(string, parent)
+          if namespace = parent.class.parents.detect { |n| n.respond_to?(:_railtie) }
+            string.sub!(/#{namespace._railtie.railtie_name}_/, '')
+          end
+          string
         end
 
         def extract_record(record_or_hash_or_array)
