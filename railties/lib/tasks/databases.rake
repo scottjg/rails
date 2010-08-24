@@ -117,15 +117,32 @@ namespace :db do
     end
   end
 
-  desc "Migrate the database through scripts in db/migrate and update db/schema.rb by invoking db:schema:dump. Target specific version with VERSION=x. Turn off output with VERBOSE=false."
-  task :migrate => :environment do
+  def migrate_db
     rems_select_db
     ActiveRecord::Migration.verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
     ActiveRecord::Migrator.migrate("db/migrate/", ENV["VERSION"] ? ENV["VERSION"].to_i : nil)
     Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
   end
 
+  desc "Migrate the database through scripts in db/migrate and update db/schema.rb by invoking db:schema:dump. Target specific version with VERSION=x. Turn off output with VERBOSE=false."
+  task :migrate => :environment do
+    migrate_db
+  end
+
   namespace :migrate do
+    desc 'Migrate all ls_db'
+    task :all_ls_db => :environment do
+      dbm = Rems::DbManager.instance
+      dbm.load_config $rails_config, ENV["RAILS_ENV"]
+
+      (dbm.ls_dbs.size-1).downto(0) do |index|
+        print "\n\n*********************************************** ls_db=#{index} : migration start\n"
+        ENV["ls_db"] = index.to_s
+        migrate_db
+        print "*********************************************** ls_db=#{index} : migration end\n"
+      end
+    end
+
     desc  'Rollbacks the database one migration and re migrate up. If you want to rollback more than one step, define STEP=x. Target specific version with VERSION=x.'
     task :redo => :environment do
       rems_select_db
