@@ -187,31 +187,31 @@ module ActionMailer #:nodoc:
   # with the filename +free_book.pdf+.
   #
   # = Inline Attachments
-  # 
-  # You can also specify that a file should be displayed inline with other HTML. This is useful 
+  #
+  # You can also specify that a file should be displayed inline with other HTML. This is useful
   # if you want to display a corporate logo or a photo.
-  # 
+  #
   #   class ApplicationMailer < ActionMailer::Base
   #     def welcome(recipient)
   #       attachments.inline['photo.png'] = File.read('path/to/photo.png')
   #       mail(:to => recipient, :subject => "Here is what we look like")
   #     end
   #   end
-  # 
+  #
   # And then to reference the image in the view, you create a <tt>welcome.html.erb</tt> file and
-  # make a call to +image_tag+ passing in the attachment you want to display and then call 
+  # make a call to +image_tag+ passing in the attachment you want to display and then call
   # +url+ on the attachment to get the relative content id path for the image source:
-  # 
+  #
   #   <h1>Please Don't Cringe</h1>
-  # 
+  #
   #   <%= image_tag attachments['photo.png'].url -%>
-  # 
+  #
   # As we are using Action View's +image_tag+ method, you can pass in any other options you want:
-  # 
+  #
   #   <h1>Please Don't Cringe</h1>
-  # 
+  #
   #   <%= image_tag attachments['photo.png'].url, :alt => 'Our Photo', :class => 'photo' -%>
-  # 
+  #
   # = Observing and Intercepting Mails
   #
   # Action Mailer provides hooks into the Mail observer and interceptor methods.  These allow you to
@@ -446,6 +446,33 @@ module ActionMailer #:nodoc:
       super
     end
 
+    class DeprecatedHeaderProxy < ActiveSupport::BasicObject
+      def initialize(message)
+        @message = message
+      end
+
+      def []=(key, value)
+        unless value.is_a?(::String)
+          ::ActiveSupport::Deprecation.warn("Using a non-String object for a header's value is deprecated. " \
+            "You specified #{value.inspect} (a #{value.class}) for #{key}", caller)
+
+          value = value.to_s
+        end
+
+        @message[key] = value
+      end
+
+      def headers(hash = {})
+        hash.each_pair do |k,v|
+          self[k] = v
+        end
+      end
+
+      def method_missing(meth, *args, &block)
+        @message.send(meth, *args, &block)
+      end
+    end
+
     # Allows you to pass random and unusual headers to the new +Mail::Message+ object
     # which will add them to itself.
     #
@@ -462,9 +489,9 @@ module ActionMailer #:nodoc:
     #   X-Special-Domain-Specific-Header: SecretValue
     def headers(args=nil)
       if args
-        @_message.headers(args)
+        DeprecatedHeaderProxy.new(@_message).headers(args)
       else
-        @_message
+        DeprecatedHeaderProxy.new(@_message)
       end
     end
 

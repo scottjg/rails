@@ -167,6 +167,7 @@ module ActionController
       @formats = nil
       @env.delete_if { |k, v| k =~ /^(action_dispatch|rack)\.request/ }
       @env.delete_if { |k, v| k =~ /^action_dispatch\.rescue/ }
+      @symbolized_path_params = nil
       @method = @request_method = nil
       @fullpath = @ip = @remote_ip = nil
       @env['action_dispatch.request.query_parameters'] = {}
@@ -311,7 +312,7 @@ module ActionController
         def tests(controller_class)
           self.controller_class = controller_class
         end
-        
+
         def controller_class=(new_class)
           prepare_controller_class(new_class) if new_class
           write_inheritable_attribute(:controller_class, new_class)

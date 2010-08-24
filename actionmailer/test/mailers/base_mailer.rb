@@ -10,6 +10,11 @@ class BaseMailer < ActionMailer::Base
     mail({:subject => "The first email on new API!"}.merge!(hash))
   end
 
+  def welcome_with_fixnum_header(hash = {})
+    headers['X-SPAM-COUNT'] = 2
+    mail({:template_name => "welcome", :subject => "The first email on new API!"}.merge!(hash))
+  end
+
   def welcome_with_headers(hash = {})
     headers hash
     mail
@@ -96,6 +101,13 @@ class BaseMailer < ActionMailer::Base
 
   def implicit_different_template(template_name='')
     mail(:template_name => template_name)
+  end
+
+  def implicit_different_template_with_file(template_name='')
+    mail do |format|
+      format.text { render :file => template_name }
+      format.html { render :file => template_name }
+    end
   end
 
   def explicit_different_template(template_name='')

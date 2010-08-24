@@ -26,13 +26,18 @@ module ActionDispatch
           @constraints.each { |constraint|
             if constraint.respond_to?(:matches?) && !constraint.matches?(req)
               return [ 404, {'X-Cascade' => 'pass'}, [] ]
-            elsif constraint.respond_to?(:call) && !constraint.call(req)
+            elsif constraint.respond_to?(:call) && !constraint.call(*constraint_args(constraint, req))
               return [ 404, {'X-Cascade' => 'pass'}, [] ]
             end
           }
 
           @app.call(env)
         end
+
+        private
+          def constraint_args(constraint, request)
+            constraint.arity == 1 ? [request] : [request.symbolized_path_parameters, request]
+          end
       end
 
       class Mapping #:nodoc:
@@ -288,7 +293,7 @@ module ActionDispatch
             uri = URI.parse(path_proc.call(*params))
             uri.scheme ||= req.scheme
             uri.host   ||= req.host
-            uri.port   ||= req.port unless req.port == 80
+            uri.port   ||= req.port unless req.standard_port?
 
             body = %(<html><body>You are being <a href="#{ERB::Util.h(uri.to_s)}">redirected</a>.</body></html>)
 
@@ -473,7 +478,7 @@ module ActionDispatch
 
           def initialize(entities, options = {})
             @name       = entities.to_s
-            @path       = options.delete(:path) || @name
+            @path       = (options.delete(:path) || @name).to_s
             @controller = (options.delete(:controller) || @name).to_s
             @as         = options.delete(:as)
             @options    = options
@@ -498,16 +503,14 @@ module ActionDispatch
           end
 
           def plural
-            name.to_s.pluralize
+            @plural ||= name.to_s
           end
 
           def singular
-            name.to_s.singularize
+            @singular ||= name.to_s.singularize
           end
 
-          def member_name
-            singular
-          end
+          alias :member_name :singular
 
           # Checks for uncountable plurals, and appends "_index" if they're.
           def collection_name
@@ -518,9 +521,7 @@ module ActionDispatch
             { :controller => controller }
           end
 
-          def collection_scope
-            path
-          end
+          alias :collection_scope :path
 
           def member_scope
             "#{path}/:id"
@@ -541,21 +542,25 @@ module ActionDispatch
 
           def initialize(entities, options)
             @name       = entities.to_s
-            @path       = options.delete(:path) || @name
+            @path       = (options.delete(:path) || @name).to_s
             @controller = (options.delete(:controller) || plural).to_s
             @as         = options.delete(:as)
             @options    = options
           end
 
-          def member_name
-            name
+          def plural
+            @plural ||= name.to_s.pluralize
           end
-          alias :collection_name :member_name
 
-          def member_scope
-            path
+          def singular
+            @singular ||= name.to_s
           end
-          alias :nested_scope :member_scope
+
+          alias :member_name :singular
+          alias :collection_name :singular
+
+          alias :member_scope :path
+          alias :nested_scope :path
         end
 
         def initialize(*args) #:nodoc:
@@ -586,10 +591,10 @@ module ActionDispatch
             end if parent_resource.actions.include?(:new)
 
             member_scope  do
+              get    :edit if parent_resource.actions.include?(:edit)
               get    :show if parent_resource.actions.include?(:show)
               put    :update if parent_resource.actions.include?(:update)
               delete :destroy if parent_resource.actions.include?(:destroy)
-              get    :edit if parent_resource.actions.include?(:edit)
             end
           end
 
@@ -616,10 +621,10 @@ module ActionDispatch
             end if parent_resource.actions.include?(:new)
 
             member_scope  do
+              get    :edit if parent_resource.actions.include?(:edit)
               get    :show if parent_resource.actions.include?(:show)
               put    :update if parent_resource.actions.include?(:update)
               delete :destroy if parent_resource.actions.include?(:destroy)
-              get    :edit if parent_resource.actions.include?(:edit)
             end
           end
 
@@ -721,10 +726,10 @@ module ActionDispatch
           path = options.delete(:path)
           action = args.first
 
-          if action.is_a?(Symbol)
+          if action.is_a?(Symbol) || (resource_method_scope? && action.to_s =~ /^[A-Za-z_]\w*$/)
             path = path_for_action(action, path)
-            options[:to] ||= action
-            options[:as]   = name_for_action(action, options[:as])
+            options[:action] ||= action
+            options[:as] = name_for_action(action, options[:as])
 
             with_exclusive_scope do
               return super(path, options)
@@ -771,6 +776,10 @@ module ActionDispatch
             if resources.length > 1
               resources.each { |r| send(method, r, options, &block) }
               return true
+            end
+
+            options.keys.each do |k|
+              (options[:constraints] ||= {})[k] = options.delete(k) if options[k].is_a?(Regexp)
             end
 
             scope_options = options.slice!(*RESOURCE_OPTIONS)
@@ -917,11 +926,11 @@ module ActionDispatch
 
           def prefix_name_for_action(action, as)
             if as.present?
-              "#{as}_"
+              as.to_s
             elsif as
-              ""
+              nil
             elsif !canonical_action?(action, @scope[:scope_level])
-              "#{action}_"
+              action.to_s
             end
           end
 
@@ -932,22 +941,19 @@ module ActionDispatch
             if parent_resource
               collection_name = parent_resource.collection_name
               member_name = parent_resource.member_name
-              name_prefix = "#{name_prefix}_" if name_prefix.present?
             end
 
-            case @scope[:scope_level]
+            name = case @scope[:scope_level]
             when :collection
-              "#{prefix}#{name_prefix}#{collection_name}"
+              [name_prefix, collection_name]
             when :new
-              "#{prefix}new_#{name_prefix}#{member_name}"
+              [:new, name_prefix, member_name]
             else
-              if shallow_scoping?
-                shallow_prefix = "#{@scope[:shallow_prefix]}_" if @scope[:shallow_prefix].present?
-                "#{prefix}#{shallow_prefix}#{member_name}"
-              else
-                "#{prefix}#{name_prefix}#{member_name}"
-              end
+              [shallow_scoping? ? @scope[:shallow_prefix] : name_prefix, member_name]
             end
+
+            name.unshift(prefix)
+            name.select(&:present?).join("_")
           end
       end
 

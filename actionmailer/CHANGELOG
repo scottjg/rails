@@ -1,3 +1,8 @@
+*Rails 3.0.0 [release candidate 2] (August 23rd, 2010)*
+
+* No material changes (see http://github.com/rails/rails/compare/v3.0.0_RC...v3.0.0_RC2 for gory details)
+
+
 *Rails 3.0.0 [release candidate] (July 26th, 2010)*
 
 * No material changes
@@ -181,7 +186,7 @@
 
 * ActionMailer::Base documentation rewrite. Closes #4991 [Kevin Clark, Marcel Molina Jr.]
 
-* Replace alias method chaining with Module#alias_method_chain. [Marcel Molina Jr.] 
+* Replace alias method chaining with Module#alias_method_chain. [Marcel Molina Jr.]
 
 * Replace Ruby's deprecated append_features in favor of included. [Marcel Molina Jr.]
 
@@ -327,7 +332,7 @@
 
 * Added that deliver_* will now return the email that was sent
 
-* Added that quoting to UTF-8 only happens if the characters used are in that range #955 [Jamis Buck] 
+* Added that quoting to UTF-8 only happens if the characters used are in that range #955 [Jamis Buck]
 
 * Fixed quoting for all address headers, not just to #955 [Jamis Buck]
 
@@ -366,7 +371,7 @@
       @body       = "Nothing to see here."
       @charset    = "iso-8859-1"
     end
-    
+
     def unencoded_subject(recipient)
       @recipients = recipient
       @subject    = "testing unencoded subject"
@@ -375,7 +380,7 @@
       @encode_subject = false
       @charset    = "iso-8859-1"
     end
-    
+
 
 *0.6.1* (January 18th, 2005)
 

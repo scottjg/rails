@@ -79,7 +79,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
     reserved_words = %w[application destroy plugin runner test]
     reserved_words.each do |reserved|
       content = capture(:stderr){ run_generator [File.join(destination_root, reserved)] }
-      assert_equal "Invalid application name #{reserved}. Please give a name which does not match one of the reserved rails words.\n", content      
+      assert_equal "Invalid application name #{reserved}. Please give a name which does not match one of the reserved rails words.\n", content
     end
   end
 
@@ -144,7 +144,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_config_another_database
     run_generator([destination_root, "-d", "mysql"])
     assert_file "config/database.yml", /mysql/
-    assert_file "Gemfile", /^gem\s+["']mysql["']$/
+    assert_file "Gemfile", /^gem\s+["']mysql2["']$/
   end
 
   def test_config_database_is_not_added_if_skip_active_record_is_given
