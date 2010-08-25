@@ -287,6 +287,15 @@ class IntegrationProcessTest < ActionController::IntegrationTest
     def redirect
       redirect_to :action => "get"
     end
+
+    def set_session_value_and_redirect
+      session[:foo] = "bar"
+      redirect_to :action => "print_session_value"
+    end
+
+    def print_session_value
+      render :text => session[:foo], :status => 200
+    end
   end
 
   FILES_DIR = File.dirname(__FILE__) + '/../fixtures/multipart'
@@ -442,6 +451,22 @@ class IntegrationProcessTest < ActionController::IntegrationTest
       assert_equal "", body
     end
   end
+
+  def test_session_preserved_between_requests
+    cookie_store_app = ActionController::Session::CookieStore.new(ActionController::Dispatcher.new, :key => "_foo_session_key", :secret => "x" * 30)
+    @integration_session = open_session(cookie_store_app)
+
+    with_test_route_set do
+      get '/set_session_value_and_redirect'
+      assert_equal 302, status
+
+      follow_redirect!
+      assert_equal '/print_session_value', path
+      assert_equal 200, status
+      assert_equal "bar", body
+    end
+  end
+
 
   private
     def with_test_route_set
