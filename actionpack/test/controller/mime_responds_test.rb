@@ -548,6 +548,7 @@ class InheritedRespondWithController < RespondWithController
   def index
     respond_with(resource) do |format|
       format.json { render :text => "JSON" }
+      format.xml { render :xml => "xml from block" }
     end
   end
 end
@@ -589,6 +590,11 @@ class RespondWithControllerTest < ActionController::TestCase
 
   def test_using_resource_with_block
     @request.accept = "*/*"
+    get :using_resource_with_block
+    assert_equal "text/csv", @response.content_type
+    assert_equal 'CSV', @response.body
+
+    @request.accept = "text/html"
     get :using_resource_with_block
     assert_equal "text/html", @response.content_type
     assert_equal 'Hello world!', @response.body
@@ -819,12 +825,20 @@ class RespondWithControllerTest < ActionController::TestCase
     assert_equal 406, @response.status
   end
 
-  def test_first_in_respond_to_has_higher_priority
+  def test_responds_in_block_has_higher_priority
     @controller = InheritedRespondWithController.new
     @request.accept = "*/*"
     get :index
+    assert_equal "application/json", @response.content_type
+    assert_equal "JSON", @response.body
+  end
+
+  def test_first_in_respond_with_block_has_higher_priority
+    @controller = InheritedRespondWithController.new
+    @request.accept = "application/xml"
+    get :index
     assert_equal "application/xml", @response.content_type
-    assert_equal "<name>david</name>", @response.body
+    assert_equal "xml from block", @response.body
   end
 
   def test_block_inside_respond_with_is_rendered

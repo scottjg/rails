@@ -259,9 +259,9 @@ module ActionController #:nodoc:
     #
     def retrieve_response_from_mimes(mimes=nil, &block)
       collector = Collector.new { default_render }
+      block.call(collector) if block_given?
       mimes ||= collect_mimes_from_class_level
       mimes.each { |mime| collector.send(mime) }
-      block.call(collector) if block_given?
 
       if format = request.negotiate_mime(collector.order)
         self.content_type ||= format.to_s
