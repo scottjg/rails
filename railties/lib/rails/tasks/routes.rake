@@ -17,13 +17,13 @@ task :routes => :environment do
     name = named_routes.send(key, route).to_s
 
     reqs = route.requirements.dup
-    reqs[:to] = route.app unless route.app.is_a?(ActionDispatch::Routing::RouteSet::Dispatcher)
+    reqs[:to] = route.app unless route.app.class.name.to_s =~ /^ActionDispatch::Routing/
     reqs = reqs.empty? ? "" : reqs.inspect
 
     {:name => name, :verb => route.verb.to_s, :path => route.path, :reqs => reqs}
   end
 
-  routes.reject! { |r| r[:path] == "/rails/info/properties" } # Skip the route if it's internal info route
+  routes.reject! { |r| r[:path] =~ %r{/rails/info/properties} } # Skip the route if it's internal info route
 
   name_width = routes.map{ |r| r[:name] }.map(&:length).max
   verb_width = routes.map{ |r| r[:verb] }.map(&:length).max

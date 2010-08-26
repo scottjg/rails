@@ -32,7 +32,7 @@ module ActiveRecord #:nodoc:
   # Active Record objects. The mapping that binds a given Active Record class to a certain
   # database table will happen automatically in most common cases, but can be overwritten for the uncommon ones.
   #
-  # See the mapping rules in table_name and the full example in link:files/README.html for more insight.
+  # See the mapping rules in table_name and the full example in link:files/activerecord/README_rdoc.html for more insight.
   #
   # == Creation
   #
@@ -876,7 +876,12 @@ module ActiveRecord #:nodoc:
       #     limit(10) # Fires "SELECT * FROM posts LIMIT 10"
       #   }
       #
-      def unscoped
+      # It is recommended to use block form of unscoped because chaining unscoped with <tt>named_scope</tt>
+      # does not work. Assuming that <tt>published</tt> is a <tt>named_scope</tt> following two statements are same.
+      #
+      # Post.unscoped.published 
+      # Post.published 
+      def unscoped #:nodoc:
         block_given? ? relation.scoping { yield } : relation
       end
 

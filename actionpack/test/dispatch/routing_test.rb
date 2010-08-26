@@ -40,6 +40,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         get  :new, :path => "build"
         post :create, :path => "create", :as => ""
         put  :update
+        get  :remove, :action => :destroy, :as => :remove
+      end
+
+      scope "pagemark", :controller => "pagemarks", :as => :pagemark do
+        get  "new", :path => "build"
+        post "create", :as => ""
+        put  "update"
         get  "remove", :action => :destroy, :as => :remove
       end
 
@@ -188,7 +195,9 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         end
       end
 
-      resources :sheep
+      resources :sheep do
+        get "_it", :on => :member
+      end
 
       resources :clients do
         namespace :google do
@@ -201,22 +210,28 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       resources :customers do
-        get "recent" => "customers#recent", :as => :recent, :on => :collection
-        get "profile" => "customers#profile", :as => :profile, :on => :member
-        post "preview" => "customers#preview", :as => :preview, :on => :new
+        get :recent, :on => :collection
+        get "profile", :on => :member
+        get "secret/profile" => "customers#secret", :on => :member
+        post "preview" => "customers#preview", :as => :another_preview, :on => :new
         resource :avatar do
-          get "thumbnail(.:format)" => "avatars#thumbnail", :as => :thumbnail, :on => :member
+          get "thumbnail" => "avatars#thumbnail", :as => :thumbnail, :on => :member
         end
         resources :invoices do
-          get "outstanding" => "invoices#outstanding", :as => :outstanding, :on => :collection
+          get "outstanding" => "invoices#outstanding", :on => :collection
           get "overdue", :to => :overdue, :on => :collection
           get "print" => "invoices#print", :as => :print, :on => :member
           post "preview" => "invoices#preview", :as => :preview, :on => :new
+          get "aged/:months", :on => :collection, :action => :aged, :as => :aged
         end
         resources :notes, :shallow => true do
           get "preview" => "notes#preview", :as => :preview, :on => :new
           get "print" => "notes#print", :as => :print, :on => :member
         end
+        get "inactive", :on => :collection
+        post "deactivate", :on => :member
+        get "old", :on => :collection, :as => :stale
+        get "export"
       end
 
       namespace :api do
@@ -642,19 +657,39 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     with_test_routes do
       get '/bookmark/build'
       assert_equal 'bookmarks#new', @response.body
-      assert_equal '/bookmark/build', new_bookmark_path
+      assert_equal '/bookmark/build', bookmark_new_path
 
       post '/bookmark/create'
       assert_equal 'bookmarks#create', @response.body
       assert_equal '/bookmark/create', bookmark_path
 
-      put '/bookmark'
+      put '/bookmark/update'
       assert_equal 'bookmarks#update', @response.body
-      assert_equal '/bookmark', update_bookmark_path
+      assert_equal '/bookmark/update', bookmark_update_path
 
       get '/bookmark/remove'
       assert_equal 'bookmarks#destroy', @response.body
       assert_equal '/bookmark/remove', bookmark_remove_path
+    end
+  end
+
+  def test_pagemarks
+    with_test_routes do
+      get '/pagemark/build'
+      assert_equal 'pagemarks#new', @response.body
+      assert_equal '/pagemark/build', pagemark_new_path
+
+      post '/pagemark/create'
+      assert_equal 'pagemarks#create', @response.body
+      assert_equal '/pagemark/create', pagemark_path
+
+      put '/pagemark/update'
+      assert_equal 'pagemarks#update', @response.body
+      assert_equal '/pagemark/update', pagemark_update_path
+
+      get '/pagemark/remove'
+      assert_equal 'pagemarks#destroy', @response.body
+      assert_equal '/pagemark/remove', pagemark_remove_path
     end
   end
 
@@ -992,6 +1027,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/sheep/1', sheep_path(1)
       assert_equal '/sheep/new', new_sheep_path
       assert_equal '/sheep/1/edit', edit_sheep_path(1)
+      assert_equal '/sheep/1/_it', _it_sheep_path(1)
     end
   end
 
@@ -1557,7 +1593,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     with_test_routes do
       assert_equal '/customers/recent', recent_customers_path
       assert_equal '/customers/1/profile', profile_customer_path(:id => '1')
-      assert_equal '/customers/new/preview', preview_new_customer_path
+      assert_equal '/customers/1/secret/profile', secret_profile_customer_path(:id => '1')
+      assert_equal '/customers/new/preview', another_preview_new_customer_path
       assert_equal '/customers/1/avatar/thumbnail.jpg', thumbnail_customer_avatar_path(:customer_id => '1', :format => :jpg)
       assert_equal '/customers/1/invoices/outstanding', outstanding_customer_invoices_path(:customer_id => '1')
       assert_equal '/customers/1/invoices/2/print', print_customer_invoice_path(:customer_id => '1', :id => '2')
@@ -1570,6 +1607,9 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
       get '/customers/1/invoices/overdue'
       assert_equal 'invoices#overdue', @response.body
+
+      get '/customers/1/secret/profile'
+      assert_equal 'customers#secret', @response.body
     end
   end
 
@@ -2032,6 +2072,30 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/countries/UK/cities'
     verify_redirect 'http://www.example.com/countries/all/cities'
+  end
+
+  def test_custom_resource_actions_defined_using_string
+    get '/customers/inactive'
+    assert_equal 'customers#inactive', @response.body
+    assert_equal '/customers/inactive', inactive_customers_path
+
+    post '/customers/1/deactivate'
+    assert_equal 'customers#deactivate', @response.body
+    assert_equal '/customers/1/deactivate', deactivate_customer_path(:id => '1')
+
+    get '/customers/old'
+    assert_equal 'customers#old', @response.body
+    assert_equal '/customers/old', stale_customers_path
+
+    get '/customers/1/invoices/aged/3'
+    assert_equal 'invoices#aged', @response.body
+    assert_equal '/customers/1/invoices/aged/3', aged_customer_invoices_path(:customer_id => '1', :months => '3')
+  end
+
+  def test_route_defined_in_resources_scope_level
+    get '/customers/1/export'
+    assert_equal 'customers#export', @response.body
+    assert_equal '/customers/1/export', customer_export_path(:customer_id => '1')
   end
 
 private

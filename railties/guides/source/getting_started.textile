@@ -194,15 +194,13 @@ In any case, Rails will create a folder in your working directory called <tt>blo
 
 h4. Installing the Required Gems
 
-Rails uses the "Bundler":http://www.github.com/carlhuda/bundler gem to populate the +vendor+ directory with all the gems your application depends on.  As we don't need any special gems beyond the default, we just need to do the following:
+Rails applications manage gem dependencies with "Bundler":http://www.github.com/carlhuda/bundler by default. As we don't need any other gems beyond the ones in the generated +Gemfile+ we can directly run
 
 <shell>
-As the root user:
-# gem install bundler
-# bundle install
+bundle install
 </shell>
 
-This will copy down the versions of all the gems you need to start a rails application.
+to have them ready.
 
 h4. Configuring a Database
 
@@ -235,7 +233,7 @@ If you choose to use MySQL instead of the shipped Sqlite3 database, your +config
 
 <yaml>
 development:
-  adapter: mysql
+  adapter: mysql2
   encoding: utf8
   database: blog_development
   pool: 5
@@ -487,6 +485,8 @@ After the console loads, you can use it to work with your application's models:
 </shell>
 
 This code shows creating a new +Post+ instance, attempting to save it and getting +false+ for a return value (indicating that the save failed), and inspecting the +errors+ of the post.
+
+When you're finished, type +exit+ and hit +return+ to exit the console.
 
 TIP: Unlike the development web server, the console does not automatically load your code afresh for each line. If you make changes to your models while the console is open, type +reload!+ at the console prompt to load them.
 
@@ -1015,7 +1015,7 @@ Once we have made the new comment, we send the user back to the original post us
 
 Now you can add posts and comments to your blog and have them show up in the right places.
 
-h3. Refactorization
+h3. Refactoring
 
 Now that we have Posts and Comments working, if we take a look at the +app/views/posts/show.html.erb+ template, it's getting long and awkward. We can use partials to clean this up.
 
@@ -1139,7 +1139,7 @@ Then you make the +app/views/posts/show.html.erb+ look like the following:
 <%= link_to 'Back to Posts', posts_path %> |
 </erb>
 
-The second render just defines the partial template we want to render, <tt>comments/form</tt>, Rails is smart enough to spot the forward slash in that string and realise that you want to render the <tt>_form.html.erb</tt> file in the <tt>app/views/comments</tt> directory.
+The second render just defines the partial template we want to render, <tt>comments/form</tt>, Rails is smart enough to spot the forward slash in that string and realize that you want to render the <tt>_form.html.erb</tt> file in the <tt>app/views/comments</tt> directory.
 
 The +@post+ object is available to any partials rendered in the view because we defined it as an instance variable.
 
@@ -1277,7 +1277,7 @@ Again, run the migration to create the database table:
 $ rake db:migrate
 </shell>
 
-Next, edit the +post.rb+ file to create the other side of the association, and to tell Rails (via the +accepts_nested_attributes+ macro) that you intend to edit tags via posts:
+Next, edit the +post.rb+ file to create the other side of the association, and to tell Rails (via the +accepts_nested_attributes_for+ macro) that you intend to edit tags via posts:
 
 <ruby>
 class Post < ActiveRecord::Base
@@ -1451,7 +1451,7 @@ h3. What's Next?
 
 Now that you've seen your first Rails application, you should feel free to update it and experiment on your own. But you don't have to do everything without help. As you need assistance getting up and running with Rails, feel free to consult these support resources:
 
-* The "Ruby On Rails guides":index.html
+* The "Ruby on Rails guides":index.html
 * The "Ruby on Rails mailing list":http://groups.google.com/group/rubyonrails-talk
 * The "#rubyonrails":irc://irc.freenode.net/#rubyonrails channel on irc.freenode.net
 * The "Rails Wiki":http://wiki.rubyonrails.org/

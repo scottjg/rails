@@ -1374,7 +1374,7 @@ the _version_ file contains this code (comments stripped):
   module ActionPack #:nodoc:
     module VERSION #:nodoc:
       MAJOR = 3
-      MINOR = 0
+      MINOR = 1
       TINY  = "0.beta1"
 
       STRING = [MAJOR, MINOR, TINY].join('.')
