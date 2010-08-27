@@ -482,4 +482,9 @@ class CallbacksTest < ActiveRecord::TestCase
     assert child.after_save_called
   end
 
+  def test_run_callbacks
+    david = ImmutableDeveloper.new
+    david.run_callbacks(:before_save)
+    assert david.cancelled?
+  end
 end
