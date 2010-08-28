@@ -251,6 +251,7 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_find_with_preloaded_associations
+    ActiveRecord::IdentityMap.without do
     assert_queries(2) do
       posts = Post.preload(:comments)
       assert posts.first.comments.first
@@ -276,9 +277,11 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.author
       assert posts.first.comments.first
     end
+    end
   end
 
   def test_find_with_included_associations
+    ActiveRecord::IdentityMap.without do
     assert_queries(2) do
       posts = Post.includes(:comments)
       assert posts.first.comments.first
@@ -298,6 +301,7 @@ class RelationTest < ActiveRecord::TestCase
       posts = Post.includes(:author, :comments).to_a
       assert posts.first.author
       assert posts.first.comments.first
+    end
     end
   end
 
@@ -494,8 +498,10 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_relation_merging_with_preload
+    ActiveRecord::IdentityMap.without do
     [Post.scoped & Post.preload(:author), Post.preload(:author) & Post.scoped].each do |posts|
       assert_queries(2) { assert posts.first.author }
+    end
     end
   end
 
