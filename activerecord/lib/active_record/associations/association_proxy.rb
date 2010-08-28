@@ -109,6 +109,7 @@ module ActiveRecord
       # Resets the \loaded flag to +false+ and sets the \target to +nil+.
       def reset
         @loaded = false
+        IdentityMap.remove(@target) if defined?(@target) && @target && IdentityMap.enabled?
         @target = nil
       end
 
@@ -234,7 +235,10 @@ module ActiveRecord
           return nil unless defined?(@loaded)
 
           if !loaded? and (!@owner.new_record? || foreign_key_present)
-            @target = find_target
+            if IdentityMap.enabled?
+              @target = IdentityMap.get(@reflection.class_name, @owner[@reflection.association_foreign_key])
+            end
+            @target ||= find_target
           end
 
           @loaded = true

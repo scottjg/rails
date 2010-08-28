@@ -140,6 +140,23 @@ module ActiveRecord
         CODE
       end
 
+      def define_non_cyclic_method(name, reflection, &block)
+        define_method(name) do |*args|
+          result = true; @_already_called ||= {}
+          # Loop prevention for validation of associations
+          unless @_already_called[[name, reflection.name]]
+            begin
+              @_already_called[[name, reflection.name]]=true
+              result = instance_eval(&block)
+            ensure
+              @_already_called[[name, reflection.name]]=false
+            end
+          end
+
+          result
+        end
+      end
+
       # Adds validation and save callbacks for the association as specified by
       # the +reflection+.
       #
@@ -160,16 +177,16 @@ module ActiveRecord
           if collection
             before_save :before_save_collection_association
 
-            define_method(save_method) { save_collection_association(reflection) }
+            define_non_cyclic_method(save_method, reflection) { save_collection_association(reflection) }
             # Doesn't use after_save as that would save associations added in after_create/after_update twice
             after_create save_method
             after_update save_method
           else
             if reflection.macro == :has_one
-              define_method(save_method) { save_has_one_association(reflection) }
+              define_non_cyclic_method(save_method, reflection) { save_has_one_association(reflection) }
               after_save save_method
             else
-              define_method(save_method) { save_belongs_to_association(reflection) }
+              define_non_cyclic_method(save_method, reflection) { save_belongs_to_association(reflection) }
               before_save save_method
             end
           end
@@ -177,7 +194,7 @@ module ActiveRecord
 
         if reflection.validate? && !method_defined?(validation_method)
           method = (collection ? :validate_collection_association : :validate_single_association)
-          define_method(validation_method) { send(method, reflection) }
+          define_non_cyclic_method(validation_method, reflection) { send(method, reflection) }
           validate validation_method
         end
       end
@@ -294,22 +311,27 @@ module ActiveRecord
         autosave = reflection.options[:autosave]
 
         if records = associated_records_to_validate_or_save(association, @new_record_before_save, autosave)
-          records.each do |record|
-            next if record.destroyed?
+          begin
+            records.each do |record|
+              next if record.destroyed?
 
-            if autosave && record.marked_for_destruction?
-              association.destroy(record)
-            elsif autosave != false && (@new_record_before_save || record.new_record?)
-              if autosave
-                saved = association.send(:insert_record, record, false, false)
-              else
-                association.send(:insert_record, record)
+              if autosave && record.marked_for_destruction?
+                association.destroy(record)
+              elsif autosave != false && (@new_record_before_save || record.new_record?)
+                if autosave
+                  saved = association.send(:insert_record, record, false, false)
+                else
+                  association.send(:insert_record, record)
+                end
+              elsif autosave
+                saved = record.save(:validate => false)
               end
-            elsif autosave
-              saved = record.save(:validate => false)
-            end
 
-            raise ActiveRecord::Rollback if saved == false
+              raise ActiveRecord::Rollback if saved == false
+            end
+          rescue
+            records.each {|x| IdentityMap.remove(x) } if IdentityMap.enabled?
+            raise
           end
         end
 
