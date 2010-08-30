@@ -6,12 +6,12 @@ module ActionDispatch
       attr_reader :args, :block
 
       def initialize(klass_or_name, *args, &block)
-        @ref = ActiveSupport::Dependencies::Reference.new(klass_or_name)
+        @ref = ActiveSupport::Dependencies::Constant.new(klass_or_name)
         @args, @block = args, block
       end
 
       def klass
-        @ref.get
+        @ref.qualified_const
       end
 
       def ==(middleware)
