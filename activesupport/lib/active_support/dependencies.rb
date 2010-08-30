@@ -549,7 +549,7 @@ module ActiveSupport
       # Adds the constant to object space.
       def activate
         parent.update
-        parent.constant.const_set(name, constant)
+        parent.constant.const_set(local_name, constant)
         ActiveSupport::Dependencies.autoloaded_constants << name
         constant
       end
