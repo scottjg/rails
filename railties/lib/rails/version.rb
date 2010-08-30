@@ -2,8 +2,8 @@ module Rails
   module VERSION #:nodoc:
     MAJOR = 3
     MINOR = 0
-    TINY  = 0
-    BUILD = "rc1.1"
+    TINY  = 1
+    BUILD = 'pre'
 
     STRING = [MAJOR, MINOR, TINY, BUILD].join('.')
   end
