@@ -8,11 +8,11 @@ module ActiveRecord
 
       ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) - [:joins, :where]).each do |method|
         value = r.send(:"#{method}_values")
-        if value.present?
+        unless value.empty?
           if method == :includes
             merged_relation = merged_relation.includes(value)
           else
-            merged_relation.send(:"#{method}_values=", value) 
+            merged_relation.send(:"#{method}_values=", value)
           end
         end
       end
@@ -22,8 +22,10 @@ module ActiveRecord
       merged_wheres = @where_values
 
       r.where_values.each do |w|
-        if w.is_a?(Arel::Predicates::Equality)
-          merged_wheres = merged_wheres.reject {|p| p.is_a?(Arel::Predicates::Equality) && p.operand1.name == w.operand1.name }
+        if w.respond_to?(:operator) && w.operator == :==
+          merged_wheres = merged_wheres.reject { |p|
+            p.respond_to?(:operator) && p.operator == :== && p.operand1.name == w.operand1.name
+          }
         end
 
         merged_wheres += [w]
