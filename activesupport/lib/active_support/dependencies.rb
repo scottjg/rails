@@ -493,9 +493,10 @@ module ActiveSupport
       end
 
       # Explicitly mark the constant as reloadable (see ActiveSupport::Dependencies::Hooks::Module#reloadable).
-      def reloadable!
+      def reloadable!(strategy = nil)
         return false if @reloadable
         Dependencies.explicitly_reloadable_constants << self
+        self.strategy = strategy if strategy
         @reloadable = true
       end
 
