@@ -1,9 +1,34 @@
-gem 'rdoc', '>= 2.5.9'
+gem 'rdoc', '>= 2.5.10'
 require 'rdoc'
 
 require 'rake'
 require 'rdoc/task'
 require 'rake/gempackagetask'
+
+# RDoc skips some files in the Rails tree due to its binary? predicate. This is a quick
+# hack for edge docs, until we decide which is the correct way to address this issue.
+# If not fixed in RDoc itself, via an option or something, we should probably move this
+# to railties and use it also in doc:rails.
+def hijack_rdoc!
+  require "rdoc/parser"
+  class << RDoc::Parser
+    def binary?(file)
+      s = File.read(file, 1024) or return false
+
+      if s[0, 2] == Marshal.dump('')[0, 2] then
+        true
+      elsif file =~ /erb\.rb$/ then
+        false
+      elsif s.index("\x00") then # ORIGINAL is s.scan(/<%|%>/).length >= 4 || s.index("\x00")
+        true
+      elsif 0.respond_to? :fdiv then
+        s.count("^ -~\t\r\n").fdiv(s.size) > 0.3
+      else # HACK 1.8.6
+        (s.count("^ -~\t\r\n").to_f / s.size) > 0.3
+      end
+    end
+  end
+end
 
 PROJECTS = %w(activesupport activemodel actionpack actionmailer activeresource activerecord railties)
 
@@ -63,6 +88,8 @@ end
 
 desc "Generate documentation for the Rails framework"
 RDoc::Task.new do |rdoc|
+  hijack_rdoc!
+
   rdoc.rdoc_dir = 'doc/rdoc'
   rdoc.title    = "Ruby on Rails Documentation"
 
@@ -90,6 +117,7 @@ RDoc::Task.new do |rdoc|
 
   rdoc.rdoc_files.include('actionpack/README.rdoc')
   rdoc.rdoc_files.include('actionpack/CHANGELOG')
+  rdoc.rdoc_files.include('actionpack/lib/abstract_controller/**/*.rb')
   rdoc.rdoc_files.include('actionpack/lib/action_controller/**/*.rb')
   rdoc.rdoc_files.include('actionpack/lib/action_dispatch/**/*.rb')
   rdoc.rdoc_files.include('actionpack/lib/action_view/**/*.rb')
@@ -116,12 +144,7 @@ task :rdoc do
   FileUtils.copy "activerecord/examples/associations.png", "doc/rdoc/files/examples/associations.png"
 end
 
-desc "Publish API docs for Rails as a whole and for each component"
-task :pdoc => :rdoc do
-  require 'rake/contrib/sshpublisher'
-  Rake::SshDirPublisher.new("rails@api.rubyonrails.org", "public_html/api", "doc/rdoc").upload
-end
-
+desc 'Bump all versions to match version.rb'
 task :update_versions do
   require File.dirname(__FILE__) + "/version"
 

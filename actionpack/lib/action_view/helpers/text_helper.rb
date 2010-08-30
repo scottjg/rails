@@ -10,6 +10,9 @@ module ActionView
     # your views. These helper methods extend Action View making them callable
     # within your template files.
     module TextHelper
+      extend ActiveSupport::Concern
+
+      include SanitizeHelper
       # The preferred method of outputting text in your views is to use the
       # <%= "text" %> eRuby syntax. The regular _puts_ and _print_ methods
       # do not operate as expected in an eRuby code block. If you absolutely must
@@ -459,7 +462,7 @@ module ActionView
           text.gsub(AUTO_LINK_RE) do
             scheme, href = $1, $&
             punctuation = []
-            
+
             if auto_linked?($`, $')
               # do not change string; URL is already linked
               href
@@ -504,7 +507,7 @@ module ActionView
             end
           end
         end
-        
+
         # Detects already linked context or position in the middle of a tag
         def auto_linked?(left, right)
           (left =~ AUTO_LINK_CRE[0] and right =~ AUTO_LINK_CRE[1]) or
