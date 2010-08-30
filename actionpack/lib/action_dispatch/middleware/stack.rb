@@ -11,7 +11,7 @@ module ActionDispatch
       end
 
       def klass
-        @ref.qualified_const
+        @ref.constant
       end
 
       def ==(middleware)
