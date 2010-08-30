@@ -391,7 +391,7 @@ module ActiveSupport
       def initialize(name) # :nodoc:
         @file         = nil
         @marked       = false
-        @unloadable   = nil
+        @reloadable   = nil
         @name         = name
         @last_reload  = 0
         @associations = Set.new
@@ -479,18 +479,18 @@ module ActiveSupport
         qualified_const_defined? and autoloaded_constants.include?(name)
       end
 
-      # Explicitly mark the constant as reloadable (see ActiveSupport::Dependencies::Hooks::Module#unloadable).
-      def unloadable!
-        return false if @unloadable
-        Dependencies.explicitly_unloadable_constants << self
-        @unloadable = true
+      # Explicitly mark the constant as reloadable (see ActiveSupport::Dependencies::Hooks::Module#reloadable).
+      def reloadable!
+        return false if @reloadable
+        Dependencies.explicitly_reloadable_constants << self
+        @reloadable = true
       end
 
       # Whether or not class is reloadable (explicitly or since it is autoloaded).
-      def unloadable?
-        return true if @unloadable or autoloaded?
-        return false unless @unloadable.nil?
-        @unloadable = Dependencies.explicitly_unloadable_constants.any? do |desc|
+      def reloadable?
+        return true if @reloadable or autoloaded?
+        return false unless @reloadable.nil?
+        @reloadable = Dependencies.explicitly_reloadable_constants.any? do |desc|
           Constant[desc] == self
         end
       end
@@ -675,11 +675,11 @@ module ActiveSupport
           raise
         end
 
-        # Mark the given constant as unloadable. Unloadable constants are removed each
+        # Mark the given constant as reloadable. Reloadable constants are removed each
         # time dependencies are cleared.
         #
         # Note that marking a constant for unloading need only be done once. Setup
-        # or init scripts may list each unloadable constant that may need unloading;
+        # or init scripts may list each reloadable constant that may need unloading;
         # each constant will be removed for every subsequent clear, as opposed to for
         # the first clear.
         #
@@ -688,9 +688,11 @@ module ActiveSupport
         #
         # Returns true if the constant was not previously marked for unloading, false
         # otherwise.
-        def unloadable(const_desc)
-          Constant[const_desc].unloadable!
+        def reloadable(const_desc, strategy = nil)
+          Constant[const_desc].reloadable!(strategy)
         end
+
+        alias unloadable reloadable
       end
 
       # Module included into Module to enable hooks and public API.
@@ -758,11 +760,11 @@ module ActiveSupport
           Constant[self].associate_with(const)
         end
 
-        # Mark this module/class as unloadable. Unloadable constants are removed each
+        # Mark this module/class as reloadable. Reloadable constants are removed each
         # time dependencies are cleared.
         #
         # Note that marking a constant for unloading need only be done once. Setup
-        # or init scripts may list each unloadable constant that may need unloading;
+        # or init scripts may list each reloadable constant that may need unloading;
         # each constant will be removed for every subsequent clear, as opposed to for
         # the first clear.
         #
@@ -771,8 +773,13 @@ module ActiveSupport
         #
         # Returns true if the constant was not previously marked for unloading, false
         # otherwise.
-        def unloadable(const_desc = self)
-          super(const_desc)
+        def reloadable(strategy = nil, const_desc = self)
+          super(const_desc, strategy)
+        end
+        
+        # Like reloadbale, but with argument order swaped for compatiblity reason.
+        def unloadable(const_desc = self, strategy = nil)
+          reloadable(strategy, const_desc)
         end
       end
 
@@ -835,8 +842,10 @@ module ActiveSupport
 
     # An array of constant names that need to be unloaded on every request. Used
     # to allow arbitrary constants to be marked for unloading.
-    mattr_accessor :explicitly_unloadable_constants
-    self.explicitly_unloadable_constants = []
+    mattr_accessor :explicitly_reloadable_constants
+    self.explicitly_reloadable_constants = []
+    alias explicitly_unloadable_constants= explicitly_reloadable_constants=
+    alias explicitly_unloadable_constants explicitly_reloadable_constants
 
     # The logger is used for generating information on the action run-time (including benchmarking) if available.
     # Can be set to nil for no logging. Compatible with both Ruby's own Logger and Log4r loggers.
@@ -917,15 +926,17 @@ module ActiveSupport
 
     # Remove the constants that have been autoloaded, and those that have been
     # marked for unloading.
-    def remove_unloadable_constants!
-      unloadable_constants.each { |const| Constant[const].remove }
+    def remove_reloadable_constants!
+      reloadable_constants.each { |const| Constant[const].remove }
       autoloaded_constants.clear
     end
 
     # List of all unloadble constants currently active.
-    def unloadable_constants
-      autoloaded_constants + explicitly_unloadable_constants
+    def reloadable_constants
+      autoloaded_constants + explicitly_reloadable_constants
     end
+
+    alias unloadable_constants reloadable_constants
 
     # See +Constant#remove+.
     def remove_constant(desc)
@@ -954,14 +965,14 @@ module ActiveSupport
       return mtime("#{file}#{ext}", nil) if ext
     end
 
-    # Removes all unloadable constants, increases +reload_count+ and schedules a reload.
+    # Removes all reloadable constants, increases +reload_count+ and schedules a reload.
     def clear
       log_call
       lock do
         loaded.clear
         self.default_strategy = to_strategy(default_strategy)
         self.reload_count += 1
-        remove_unloadable_constants!
+        remove_reloadable_constants!
         if mtimes.empty?
           history.each do |file|
             mtimes[file] = mtime(file)
@@ -974,7 +985,7 @@ module ActiveSupport
     # Preforms a +clear+ and removes all meta data (tracked files, last changes, constant map).
     def clear!
       log_call
-      [self, explicitly_unloadable_constants, mtimes, history, Constant.map, constant_watch_stack].each do |list|
+      [self, explicitly_reloadable_constants, mtimes, history, Constant.map, constant_watch_stack].each do |list|
         list.clear
       end
     end
