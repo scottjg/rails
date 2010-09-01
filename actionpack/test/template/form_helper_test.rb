@@ -12,6 +12,8 @@ class FormHelperTest < ActionView::TestCase
     def name
       "Santiago"
     end
+
+    attr_writer :language
   end
 
   def form_for(*)
@@ -165,7 +167,10 @@ class FormHelperTest < ActionView::TestCase
       '<input id="post_title" name="post[title]" size="30" type="text" value="Hello World" />', text_field("post", "title")
     )
     assert_dom_equal(
-      '<input id="post_title" name="post[title]" size="30" type="password" value="Hello World" />', password_field("post", "title")
+      '<input id="post_title" name="post[title]" size="30" type="password" />', password_field("post", "title")
+    )
+    assert_dom_equal(
+      '<input id="post_title" name="post[title]" size="30" type="password" value="Hello World" />', password_field("post", "title", :value => @post.title)
     )
     assert_dom_equal(
       '<input id="person_name" name="person[name]" size="30" type="password" />', password_field("person", "name")
@@ -255,6 +260,17 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal(
       '<input id="developer_name" name="developer[name]" size="30" type="text" value="Santiago" />', text_field("developer", "name")
     )
+  end
+
+  def test_text_field_on_a_model_with_undefined_attr_reader
+    @developer = Developer.new
+    @developer.language = 'ruby'
+    begin
+      text_field("developer", "language")
+    rescue NoMethodError => error
+      message = error.message
+    end
+    assert_equal "Model #{Developer} does not respond to language", message
   end
 
   def test_check_box
@@ -621,6 +637,18 @@ class FormHelperTest < ActionView::TestCase
       "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />" +
       "<input name='commit' id='post_submit' type='submit' value='Create post' />" +
       "</form>"
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_form_for_with_format
+    form_for(@post, :format => :json, :html => { :id => "edit_post_123", :class => "edit_post" }) do |f|
+      concat f.label(:title)
+    end
+
+    expected = whole_form("/posts/123.json", "edit_post_123" , "edit_post", :method => "put") do
+      "<label for='post_title'>Title</label>"
+    end
 
     assert_dom_equal expected, output_buffer
   end
@@ -1745,8 +1773,12 @@ class FormHelperTest < ActionView::TestCase
       "/posts"
     end
 
-    def post_path(post)
-      "/posts/#{post.id}"
+    def post_path(post, options = {})
+      if options[:format]
+        "/posts/#{post.id}.#{options[:format]}"
+      else
+        "/posts/#{post.id}"
+      end
     end
 
     def protect_against_forgery?

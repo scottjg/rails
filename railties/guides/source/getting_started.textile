@@ -149,9 +149,7 @@ Usually run this as the root user:
 # gem install rails
 </shell>
 
-NOTE. In the Rails 3.0.0-beta, you will need to manually install the dependencies for Rails itself as a bug in rubygems will cause these to not be installed, see the "3.0 Release Notes":3_0_release_notes.html for the commands to run.
-
-TIP. If you're working on Windows, you may find it easier to install "Instant Rails":http://instantrails.rubyforge.org/wiki/wiki.pl. Be aware, though, that Instant Rails releases tend to lag seriously behind the actual Rails version. Also, you will find that Rails development on Windows is overall less pleasant than on other operating systems. If at all possible, we suggest that you install a Linux virtual machine and use that for Rails development, instead of using Windows.
+TIP. If you're working on Windows, you should be aware that the vast majority of Rails development is done in Unix environments. While Ruby and Rails themselves install easily using for example "Ruby Installer":http://rubyinstaller.org/, the supporting ecosystem often assumes you are able to build C-based rubygems and work in a command window. If at all possible, we suggest that you install a Linux virtual machine and use that for Rails development, instead of using Windows.
 
 h4. Creating the Blog Application
 
@@ -194,7 +192,7 @@ In any case, Rails will create a folder in your working directory called <tt>blo
 
 h4. Installing the Required Gems
 
-Rails applications manage gem dependencies with "Bundler":http://www.github.com/carlhuda/bundler by default. As we don't need any other gems beyond the ones in the generated +Gemfile+ we can directly run
+Rails applications manage gem dependencies with "Bundler":http://gembundler.com/v1.0/index.html by default. As we don't need any other gems beyond the ones in the generated +Gemfile+ we can directly run
 
 <shell>
 bundle install
@@ -320,7 +318,7 @@ $ rm public/index.html
 
 We need to do this as Rails will deliver any static file in the +public+ directory in preference to any dynamic contact we generate from the controllers.
 
-Now, you have to tell Rails where your actual home page is located. Open the file +config/routes.rb+ in your editor. This is your application's _routing file_ which holds entries in a special DSL (domain-specific language) that tells Rails how to connect incoming requests to controllers and actions. This file contains many sample routes on commented lines, and one of them actually shows you how to connect the root of your site to a specific controller and action. Find the line beginning with +:root to+, uncomment it and change it like the following:
+Now, you have to tell Rails where your actual home page is located. Open the file +config/routes.rb+ in your editor. This is your application's _routing file_ which holds entries in a special DSL (domain-specific language) that tells Rails how to connect incoming requests to controllers and actions. This file contains many sample routes on commented lines, and one of them actually shows you how to connect the root of your site to a specific controller and action. Find the line beginning with +root :to+, uncomment it and change it like the following:
 
 <ruby>
 Blog::Application.routes.draw do
@@ -1056,8 +1054,7 @@ Then in the +app/views/posts/show.html.erb+ you can change it to look like the f
 </p>
 
 <h2>Comments</h2>
-<%= render :partial => "comments/comment",
-           :collection => @post.comments %>
+<%= render @post.comments %>
 
 <h2>Add a comment:</h2>
 <%= form_for([@post, @post.comments.build]) do |f| %>
@@ -1127,8 +1124,7 @@ Then you make the +app/views/posts/show.html.erb+ look like the following:
 </p>
 
 <h2>Comments</h2>
-<%= render :partial => "comments/comment",
-           :collection => @post.comments %>
+<%= render @post.comments %>
 
 <h2>Add a comment:</h2>
 <%= render "comments/form" %>
@@ -1381,8 +1377,7 @@ Finally, we will edit the <tt>app/views/posts/show.html.erb</tt> template to sho
 </p>
 
 <h2>Comments</h2>
-<%= render :partial => "comments/comment",
-           :collection => @post.comments %>
+<%= render @post.comments %>
 
 <h2>Add a comment:</h2>
 <%= render "comments/form" %>
@@ -1436,8 +1431,7 @@ Now you can edit the view in <tt>app/views/posts/show.html.erb</tt> to look like
 </p>
 
 <h2>Comments</h2>
-<%= render :partial => "comments/comment",
-           :collection => @post.comments %>
+<%= render @post.comments %>
 
 <h2>Add a comment:</h2>
 <%= render "comments/form" %>
@@ -1452,6 +1446,7 @@ h3. What's Next?
 Now that you've seen your first Rails application, you should feel free to update it and experiment on your own. But you don't have to do everything without help. As you need assistance getting up and running with Rails, feel free to consult these support resources:
 
 * The "Ruby on Rails guides":index.html
+* The "Ruby on Rails Tutorial":http://railstutorial.org/book
 * The "Ruby on Rails mailing list":http://groups.google.com/group/rubyonrails-talk
 * The "#rubyonrails":irc://irc.freenode.net/#rubyonrails channel on irc.freenode.net
 * The "Rails Wiki":http://wiki.rubyonrails.org/
@@ -1485,6 +1480,7 @@ h3. Changelog
 
 "Lighthouse ticket":http://rails.lighthouseapp.com/projects/16213-rails-guides/tickets/2
 
+* August 30, 2010: Minor editing after Rails 3 release by "Joost Baaij":http://www.spacebabies.nl
 * July 12, 2010: Fixes, editing and updating of code samples by "Jaime Iniesta":http://jaimeiniesta.com
 * May 16, 2010: Added a section on configuration gotchas to address common encoding problems that people might have by "Yehuda Katz":http://www.yehudakatz.com
 * April 30, 2010: Fixes, editing and updating of code samples by "Rohit Arondekar":http://rohitarondekar.com

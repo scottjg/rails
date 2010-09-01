@@ -202,6 +202,12 @@ module ActionView
       #     ...
       #   <% end %>
       #
+      # You can also set the answer format, like this:
+      #
+      #   <%= form_for(@post, :format => :json) do |f| %>
+      #     ...
+      #   <% end %>
+      #
       # If you have an object that needs to be represented as a different
       # parameter, like a Client that acts as a Person:
       #
@@ -332,7 +338,9 @@ module ActionView
 
         options[:html] ||= {}
         options[:html].reverse_merge!(html_options)
-        options[:url] ||= polymorphic_path(object_or_array)
+        options[:url] ||= options[:format] ? \
+          polymorphic_path(object_or_array, :format => options.delete(:format)) : \
+          polymorphic_path(object_or_array)
       end
 
       # Creates a scope around a specific model object like form_for, but
@@ -519,16 +527,18 @@ module ActionView
       #       Delete: <%= project_fields.check_box :_destroy %>
       #     <% end %>
       #   <% end %>
-      def fields_for(record_or_name_or_array, *args, &block)
+      def fields_for(record, record_object = nil, options = nil, &block)
         raise ArgumentError, "Missing block" unless block_given?
-        options = args.extract_options!
 
-        case record_or_name_or_array
+        options, record_object = record_object, nil if record_object.is_a?(Hash)
+        options ||= {}
+
+        case record
         when String, Symbol
-          object_name = record_or_name_or_array
-          object = args.first
+          object = record_object
+          object_name = record
         else
-          object = record_or_name_or_array
+          object = record
           object_name = ActiveModel::Naming.singular(object)
         end
 
@@ -624,19 +634,19 @@ module ActionView
       #
       # ==== Examples
       #   password_field(:login, :pass, :size => 20)
-      #   # => <input type="text" id="login_pass" name="login[pass]" size="20" value="#{@login.pass}" />
+      #   # => <input type="password" id="login_pass" name="login[pass]" size="20" />
       #
-      #   password_field(:account, :secret, :class => "form_input")
-      #   # => <input type="text" id="account_secret" name="account[secret]" value="#{@account.secret}" class="form_input" />
+      #   password_field(:account, :secret, :class => "form_input", :value => @account.secret)
+      #   # => <input type="password" id="account_secret" name="account[secret]" value="#{@account.secret}" class="form_input" />
       #
       #   password_field(:user, :password, :onchange => "if $('user[password]').length > 30 { alert('Your password needs to be shorter!'); }")
-      #   # => <input type="text" id="user_password" name="user[password]" value="#{@user.password}" onchange = "if $('user[password]').length > 30 { alert('Your password needs to be shorter!'); }"/>
+      #   # => <input type="password" id="user_password" name="user[password]" onchange = "if $('user[password]').length > 30 { alert('Your password needs to be shorter!'); }"/>
       #
       #   password_field(:account, :pin, :size => 20, :class => 'form_input')
-      #   # => <input type="text" id="account_pin" name="account[pin]" size="20" value="#{@account.pin}" class="form_input" />
+      #   # => <input type="password" id="account_pin" name="account[pin]" size="20" class="form_input" />
       #
       def password_field(object_name, method, options = {})
-        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("password", options)
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("password", { :value => nil }.merge!(options))
       end
 
       # Returns a hidden input tag tailored for accessing a specified attribute (identified by +method+) on an object
@@ -1006,9 +1016,14 @@ module ActionView
 
         def value_before_type_cast(object, method_name)
           unless object.nil?
-            object.respond_to?(method_name) ?
-            object.send(method_name) :
-            object.send(method_name + "_before_type_cast")
+            if object.respond_to?(method_name)
+              object.send(method_name)
+            # FIXME: this is AR dependent
+            elsif object.respond_to?(method_name + "_before_type_cast")
+              object.send(method_name + "_before_type_cast")
+            else
+              raise NoMethodError, "Model #{object.class} does not respond to #{method_name}"
+            end
           end
         end
 

@@ -7,9 +7,6 @@ require 'mailers/proc_mailer'
 require 'mailers/asset_mailer'
 
 class BaseTest < ActiveSupport::TestCase
-  # TODO Add some tests for implicity layout render and url helpers
-  # so we can get rid of old base tests altogether with old base.
-
   def teardown
     ActionMailer::Base.asset_host = nil
     ActionMailer::Base.assets_dir = nil
@@ -207,6 +204,12 @@ class BaseTest < ActiveSupport::TestCase
     I18n.backend.store_translations('en', :base_mailer => {:welcome => {:subject => "New Subject!"}})
     email = BaseMailer.welcome(:subject => nil)
     assert_equal "New Subject!", email.subject
+  end
+
+  test "translations are scoped properly" do
+    I18n.backend.store_translations('en', :base_mailer => {:email_with_translations => {:greet_user => "Hello %{name}!"}})
+    email = BaseMailer.email_with_translations
+    assert_equal 'Hello lifo!', email.body.encoded
   end
 
   # Implicit multipart
