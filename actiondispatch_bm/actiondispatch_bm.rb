@@ -35,29 +35,29 @@ new_static_admin  = ActionDispatch::Static.new(app, "admin")
 n = 10000
 
 puts "Get default file"
-Benchmark.bm do |x|
+Benchmark.bm(20) do |x|
   x.report("new     /         ") { n.times { get(static, '/') } }
   x.report("new     /blog     ") { n.times { get(static, '/blog') } }
   x.report("new     /admin    ") { n.times { get(static, '/admin') } }
 
   x.report("new (1) /         ") { n.times { get(new_static_public, '/') } }
-  x.report("new (1) /blog     ") { n.times { get(new_static_blog  , '/blog') } }
-  x.report("new (1) /admin    ") { n.times { get(new_static_admin , '/admin') } }
+  x.report("new (1) /blog     ") { n.times { get(new_static_blog  , '/') } }
+  x.report("new (1) /admin    ") { n.times { get(new_static_admin , '/') } }
 
   x.report("old public        ") { n.times { get(old_static_public, '/') } }
-  x.report("old blog          ") { n.times { get(old_static_blog  , '/blog') } }
-  x.report("old admin         ") { n.times { get(old_static_admin , '/admin') } }
+  x.report("old blog          ") { n.times { get(old_static_blog  , '/') } }
+  x.report("old admin         ") { n.times { get(old_static_admin , '/') } }
 end
 
 puts "Get existing html file"
-Benchmark.bm do |x|
+Benchmark.bm(30) do |x|
   x.report("new     /foo.html      ") { n.times { get(static, '/foo.html') } }
   x.report("new     /blog/bar.html ") { n.times { get(static, '/blog/bar.html') } }
   x.report("new     /admin/baz.html") { n.times { get(static, '/admin/baz.html') } }
 
   x.report("new (1) /foo.html      ") { n.times { get(new_static_public, '/foo.html') } }
-  x.report("new (1) /blog/bar.html ") { n.times { get(new_static_blog  , '/blog/bar.html') } }
-  x.report("new (1) /admin/baz.html") { n.times { get(new_static_admin , '/admin/baz.html') } }
+  x.report("new (1) /bar.html ") { n.times { get(new_static_blog  , '/bar.html') } }
+  x.report("new (1) /baz.html") { n.times { get(new_static_admin , '/baz.html') } }
 
   x.report("old foo.html           ") { n.times { get(old_static_public, '/foo.html') } }
   x.report("old bar.html           ") { n.times { get(old_static_blog  , '/bar.html') } }
@@ -65,14 +65,14 @@ Benchmark.bm do |x|
 end
 
 puts "404"
-Benchmark.bm do |x|
+Benchmark.bm(35) do |x|
   x.report("new     /non-existing.html      ") { n.times { get(static, '/non-existing.html') } }
   x.report("new     /blog/non-existing.html ") { n.times { get(static, '/blog/non-existing.html') } }
   x.report("new     /admin/non-existing.html") { n.times { get(static, '/admin/non-existing.html') } }
 
   x.report("new (1) /non-existing.html      ") { n.times { get(new_static_public, '/non-existing.html') } }
-  x.report("new (1) /blog/non-existing.html ") { n.times { get(new_static_blog  , '/blog/non-existing.html') } }
-  x.report("new (1) /admin/non-existing.html") { n.times { get(new_static_admin , '/admin/non-existing.html') } }
+  x.report("new (1) /non-existing.html ") { n.times { get(new_static_blog  , '/non-existing.html') } }
+  x.report("new (1) /non-existing.html") { n.times { get(new_static_admin , '/non-existing.html') } }
 
   x.report("old non-existing.html           ") { n.times { get(old_static_public, '/non-existing.html') } }
   x.report("old non-existing.html           ") { n.times { get(old_static_blog  , '/non-existing.html') } }
