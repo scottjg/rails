@@ -109,10 +109,6 @@ class MemoizableTest < ActiveSupport::TestCase
     assert_equal 1, @person.name_calls
   end
 
-  def test_memoized_methods
-    assert_equal %w{age is_developer? name name? update}, Person.memoized_methods.sort
-  end
-
   def test_memoization_with_punctuation
     assert_equal true, @person.name?
 
@@ -201,7 +197,6 @@ class MemoizableTest < ActiveSupport::TestCase
       company.extend ActiveSupport::Memoizable
       company.memoize :name
 
-      assert_equal %w{name}, company.memoized_methods
       assert_equal "37signals", company.name
       assert_equal 1, company.name_calls
       assert_equal "37signals", company.name

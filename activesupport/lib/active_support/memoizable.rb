@@ -22,43 +22,42 @@ module ActiveSupport
       end
 
       def memoize_all
-        prime_cache
+        prime_cache ".*"
       end
 
       def unmemoize_all
-        flush_cache
+        flush_cache ".*"
       end
 
       def prime_cache(*syms)
-        syms = self.class.memoized_methods if syms.empty?
         syms.each do |sym|
-          m = :"_unmemoized_#{sym}"
-          if method(m).arity == 0
-            __send__(sym)
-          else
-            ivar = ActiveSupport::Memoizable.memoized_ivar_for(sym)
-            instance_variable_set(ivar, {})
+          methods.each do |m|
+            if m.to_s =~ /^_unmemoized_(#{sym})/
+              if method(m).arity == 0
+                __send__($1)
+              else
+                ivar = ActiveSupport::Memoizable.memoized_ivar_for($1)
+                instance_variable_set(ivar, {})
+              end
+            end
           end
         end
       end
 
-      def flush_cache(*syms, &block)
-        syms = self.class.memoized_methods if syms.empty?
+      def flush_cache(*syms)
         syms.each do |sym|
-          ivar = ActiveSupport::Memoizable.memoized_ivar_for(sym)
-          instance_variable_get(ivar).clear if instance_variable_defined?(ivar)
+          (methods + private_methods + protected_methods).each do |m|
+            if m.to_s =~ /^_unmemoized_(#{sym.to_s.gsub(/\?\Z/, '\?')})/
+              ivar = ActiveSupport::Memoizable.memoized_ivar_for($1)
+              instance_variable_get(ivar).clear if instance_variable_defined?(ivar)
+            end
+          end
         end
       end
     end
 
-    def memoized_methods
-      @_memoized_methods ||= []
-    end
-
     def memoize(*symbols)
       symbols.each do |symbol|
-        memoized_methods.push(symbol.to_s).uniq!
-
         original_method = :"_unmemoized_#{symbol}"
         memoized_ivar = ActiveSupport::Memoizable.memoized_ivar_for(symbol)
 
