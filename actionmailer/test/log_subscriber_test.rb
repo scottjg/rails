@@ -12,10 +12,12 @@ class AMLogSubscriberTest < ActionMailer::TestCase
 
   class TestMailer < ActionMailer::Base
     def basic
-      recipients "somewhere@example.com"
-      subject    "basic"
-      from       "basic@example.com"
-      body       "Hello world"
+      mail({
+        :from     => "basic@example.com",
+        :to       => "somewhere@example.com",
+        :subject  => "basic",
+        :body     => "Hello world"
+      })
     end
 
     def receive(mail)
