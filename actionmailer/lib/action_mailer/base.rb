@@ -1,5 +1,4 @@
 require 'mail'
-require 'action_mailer/tmail_compat'
 require 'action_mailer/collector'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/object/blank'
@@ -345,7 +344,6 @@ module ActionMailer #:nodoc:
     @@protected_instance_variables = []
 
     helper  ActionMailer::MailHelper
-    include ActionMailer::OldApi
 
     delegate :register_observer, :to => Mail
     delegate :register_interceptor, :to => Mail
