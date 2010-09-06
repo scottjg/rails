@@ -128,8 +128,6 @@ module ActionMailer #:nodoc:
   #
   #   config.action_mailer.default_url_options = { :host => "example.com" }
   #
-  # Setting <tt>ActionMailer::Base.default_url_options</tt> directly is now deprecated, use the configuration
-  # option mentioned above to set the default host.
   #
   # If you do decide to set a default <tt>:host</tt> for your mailers you want to use the
   # <tt>:only_path => false</tt> option when using <tt>url_for</tt>. This will ensure that absolute URLs are
@@ -316,19 +314,6 @@ module ActionMailer #:nodoc:
   # * <tt>deliveries</tt> - Keeps an array of all the emails sent out through the Action Mailer with
   #   <tt>delivery_method :test</tt>. Most useful for unit and functional testing.
   #
-  # * <tt>default_charset</tt> - This is now deprecated, use the +default+ method above to
-  #   set the default +:charset+.
-  #
-  # * <tt>default_content_type</tt> - This is now deprecated, use the +default+ method above
-  #   to set the default +:content_type+.
-  #
-  # * <tt>default_mime_version</tt> - This is now deprecated, use the +default+ method above
-  #   to set the default +:mime_version+.
-  #
-  # * <tt>default_implicit_parts_order</tt> - This is now deprecated, use the +default+ method above
-  #   to set the default +:parts_order+.  Parts Order is used when a message is built implicitly
-  #   (i.e. multiple parts are assembled from templates which specify the content type in their
-  #   filenames) this variable controls how the parts are ordered.
   class Base < AbstractController::Base
     include DeliveryMethods
     abstract!
