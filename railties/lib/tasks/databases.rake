@@ -107,6 +107,7 @@ namespace :db do
 
   def rems_select_db
     ActiveRecord::Base.hijack_connection(:master)
+    ActiveRecord::Migration.master_db = true
     if ENV["ls_db"]
       dbm = Rems::DbManager.instance
       dbm.load_config $rails_config, ENV["RAILS_ENV"]
