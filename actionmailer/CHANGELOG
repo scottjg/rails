@@ -1,6 +1,6 @@
 *Rails 3.1.0 (unreleased)*
 
-* No changes
+* Old API was removed, all deprecations cleaned [Łukasz Strzałkowski]
 
 
 *Rails 3.0.0 (August 29, 2010)*
