@@ -8,6 +8,7 @@ require 'models/computer'
 require 'models/customer'
 require 'models/order'
 require 'models/post'
+require 'models/category'
 require 'models/author'
 require 'models/tag'
 require 'models/tagging'
@@ -84,9 +85,31 @@ class IdentityMapTest < ActiveRecord::TestCase
     assert_equal("Swistak Sreberkowiec", swistak.name)
   end
 
-  def test_loading_new_instance_should_remove_dirt
-    #assert_equal({'name' => ["Marcin Raczkowski", "Swistak Sreberkowiec"]}, swistak.changes)
-    #assert_equal("Swistak Sreberkowiec", swistak.name)
+#  def test_loading_new_instance_should_remove_dirt
+#    swistak = Subscriber.find(:first, :conditions => {:nick => 'swistak'})
+#    swistak.name = "Swistak Sreberkowiec"
+#    assert_equal(["name"], swistak.changed)
+#
+#    Subscriber.update_all({:name => "Swistak Sreberkowiec"}, {:nick => 'swistak'})
+#
+#    s = Subscriber.find('swistak')
+#
+#    assert !swistak.name_changed?
+#    assert_equal("Swistak Sreberkowiec", swistak.name)
+#  end
+
+  def test_working_with_cloning
+    assert_same(
+      Post.first,
+      Post.preload(:author).first
+    )
+    # QueryMethods uses clone on class to change class level attributes when
+    # using .includes .preload etc.
+    assert_same(
+      Client.first,
+      Client.includes(:firm).first,
+      "Cloning of class should produce the same result"
+    )
   end
 
   def test_has_many_associations
@@ -240,5 +263,14 @@ class IdentityMapTest < ActiveRecord::TestCase
   def test_find_with_joins_option_implies_readonly
     Developer.joins(', projects').each { |d| assert d.readonly? }
     Developer.joins(', projects').readonly(false).each { |d| assert d.readonly? }
+  end
+
+  def test_eager_association_loading_with_habtm
+    posts = Post.find(:all, :include => :categories, :order => "posts.id")
+    assert_equal 2, posts[0].categories.size
+    assert_equal 1, posts[1].categories.size
+    assert_equal 0, posts[2].categories.size
+    assert posts[0].categories.include?(categories(:technology))
+    assert posts[1].categories.include?(categories(:general))
   end
 end

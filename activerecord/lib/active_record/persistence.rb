@@ -278,7 +278,7 @@ module ActiveRecord
 
       self.id ||= new_id
 
-      IdentityMap.add(self)
+      IdentityMap.add(self) if IdentityMap.enabled?
 
       @new_record = false
       id
