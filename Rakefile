@@ -26,10 +26,12 @@ desc "Generate documentation for the Rails framework"
 Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_dir = 'doc/rdoc'
   rdoc.title    = "Ruby on Rails Documentation"
+  rdoc.main     = "railties/README"
 
   rdoc.options << '--line-numbers' << '--inline-source'
   rdoc.options << '-A cattr_accessor=object'
   rdoc.options << '--charset' << 'utf-8'
+  rdoc.options << '--main' << 'railties/README'
 
   rdoc.template = ENV['template'] ? "#{ENV['template']}.rb" : './doc/template/horo'
 
