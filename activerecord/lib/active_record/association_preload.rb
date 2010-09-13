@@ -193,11 +193,13 @@ module ActiveRecord
         conditions = "t0.#{reflection.primary_key_name} #{in_or_equals_for_ids(ids)}"
         conditions << append_conditions(reflection, preload_options)
 
-        associated_records = reflection.klass.unscoped.where([conditions, ids]).
-            includes(options[:include]).
-            joins("INNER JOIN #{connection.quote_table_name options[:join_table]} t0 ON #{reflection.klass.quoted_table_name}.#{reflection.klass.primary_key} = t0.#{reflection.association_foreign_key}").
-            select("#{options[:select] || table_name+'.*'}, t0.#{reflection.primary_key_name} as the_parent_record_id").
-            order(options[:order]).to_a
+        associated_records = ActiveRecord::IdentityMap.without do
+          reflection.klass.unscoped.where([conditions, ids]).
+              includes(options[:include]).
+              joins("INNER JOIN #{connection.quote_table_name options[:join_table]} t0 ON #{reflection.klass.quoted_table_name}.#{reflection.klass.primary_key} = t0.#{reflection.association_foreign_key}").
+              select("#{options[:select] || table_name+'.*'}, t0.#{reflection.primary_key_name} as the_parent_record_id").
+              order(options[:order]).to_a
+        end
 
         set_association_collection_records(id_to_record_map, reflection.name, associated_records, 'the_parent_record_id')
       end
