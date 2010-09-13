@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
   # needed for actionpack
   s.add_dependency('builder',       '~> 2.1.2')
   s.add_dependency('i18n',          '~> 0.4.1')
-  s.add_dependency('rack',          '~> 1.2.1')
+  s.add_dependency('rack',          '~> 1.1.0')
   s.add_dependency('rack-test',     '~> 0.5.4')
   s.add_dependency('rack-mount',    '~> 0.6.13')
   s.add_dependency('tzinfo',        '~> 0.3.23')
