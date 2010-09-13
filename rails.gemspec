@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.homepage          = 'http://www.rubyonrails.org'
   s.rubyforge_project = 'rails'
 
-  s.bindir             = 'bin'
+  s.bindir             = 'railties/bin'
   s.executables        = ['rails']
   s.default_executable = 'rails'
 
