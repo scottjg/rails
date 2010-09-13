@@ -1812,7 +1812,7 @@ module ActiveRecord #:nodoc:
         end
 
         # The optional scope argument is for the current <tt>:find</tt> scope.
-        def add_joins!(sql, joins, scope = :auto)
+        def add_joins!(sql, joins, scope = :auto, exclude = nil)
           scope = scope(:find) if :auto == scope
           merged_joins = scope && scope[:joins] && joins ? merge_joins(scope[:joins], joins) : (joins || scope && scope[:joins])
           case merged_joins
@@ -1820,8 +1820,9 @@ module ActiveRecord #:nodoc:
             if array_of_strings?(merged_joins)
               sql << merged_joins.join(' ') + " "
             else
-              join_dependency = ActiveRecord::Associations::ClassMethods::InnerJoinDependency.new(self, merged_joins, nil)
-              sql << " #{join_dependency.join_associations.collect { |assoc| assoc.association_join }.join} "
+              ja = ActiveRecord::Associations::ClassMethods::InnerJoinDependency.new(self, merged_joins, nil).join_associations
+              ja.reject! { |a| a.table_names_and_aliases.any? { |t| exclude.include?(t) } } if exclude
+              sql << " #{ja.map(&:association_join).join} "
             end
           when String
             sql << " #{merged_joins} "

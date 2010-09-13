@@ -1628,7 +1628,6 @@ module ActiveRecord
         def construct_finder_sql_with_included_associations(options, join_dependency)
           scope = scope(:find)
           sql = "SELECT #{column_aliases(join_dependency)} FROM #{(scope && scope[:from]) || options[:from] || quoted_table_name} "
-          sql << join_dependency.join_associations.collect{|join| join.association_join }.join
 
           recursively_scope = Proc.new do |scopes|
             if scope = scopes.pop
@@ -1638,7 +1637,10 @@ module ActiveRecord
             else
               scope = scope(:find)
 
-              add_joins!(sql, options[:joins], scope)
+              ja = join_dependency.join_associations
+              sql << ja.map(&:association_join).join
+
+              add_joins!(sql, options[:joins], scope, ja.map(&:table_names_and_aliases).flatten)
               add_conditions!(sql, options[:conditions], scope)
               add_limited_ids_condition!(sql, options, join_dependency) if !using_limitable_reflections?(join_dependency.reflections) && ((scope && scope[:limit]) || options[:limit])
 
@@ -1701,7 +1703,7 @@ module ActiveRecord
 
           if is_distinct
             sql << distinct_join_associations.collect { |assoc| assoc.association_join }.join
-            add_joins!(sql, options[:joins], scope)
+            add_joins!(sql, options[:joins], scope, distinct_join_associations.map(&:table_names_and_aliases).flatten)
           end
 
           add_conditions!(sql, options[:conditions], scope)
@@ -2084,7 +2086,7 @@ module ActiveRecord
               join = case reflection.macro
                 when :has_and_belongs_to_many
                   " #{join_type} %s ON %s.%s = %s.%s " % [
-                     table_alias_for(options[:join_table], aliased_join_table_name),
+                     join_table_name_and_alias,
                      connection.quote_table_name(aliased_join_table_name),
                      options[:foreign_key] || reflection.active_record.to_s.foreign_key,
                      connection.quote_table_name(parent.aliased_table_name),
@@ -2151,7 +2153,7 @@ module ActiveRecord
                       end
 
                       " #{join_type} %s ON (%s.%s = %s.%s%s%s%s) " % [
-                        table_alias_for(through_reflection.klass.table_name, aliased_join_table_name),
+                        join_table_name_and_alias,
                         connection.quote_table_name(parent.aliased_table_name),
                         connection.quote_column_name(parent.primary_key),
                         connection.quote_table_name(aliased_join_table_name),
@@ -2209,6 +2211,10 @@ module ActiveRecord
               join
             end
 
+            def table_names_and_aliases
+              [ table_name_and_alias, join_table_name_and_alias ].compact
+            end
+
             protected
 
               def aliased_table_name_for(name, suffix = nil)
@@ -2239,6 +2245,15 @@ module ActiveRecord
 
               def table_name_and_alias
                 table_alias_for table_name, @aliased_table_name
+              end
+
+              def join_table_name_and_alias
+                case reflection.macro
+                  when :has_and_belongs_to_many
+                    table_alias_for options[:join_table], aliased_join_table_name
+                  when :has_many, :has_one
+                    table_alias_for through_reflection.klass.table_name, aliased_join_table_name if reflection.options[:through]
+                end
               end
 
               def interpolate_sql(sql)

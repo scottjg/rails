@@ -859,4 +859,11 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_queries(2) { @tagging = Tagging.find(t.id, :include => :taggable) }
     assert_no_queries { assert ! @tagging.taggable }
   end
+
+  def test_association_in_include_and_join_not_joined_twice
+    options = { :include => [ :author, :comments ], :joins => :author, :conditions => "comments.id IS NOT NULL" }
+
+    assert_nothing_raised { Post.find(:all, options) }
+    assert_nothing_raised { Post.find(:all, options.merge(:limit => 10, :order => 'authors.id ASC')) }
+  end
 end
