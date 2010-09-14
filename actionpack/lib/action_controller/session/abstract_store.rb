@@ -179,7 +179,7 @@ module ActionController
         session_data = env[ENV_SESSION_KEY]
         options = env[ENV_SESSION_OPTIONS_KEY]
 
-        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded? || options[:expire_after]
+        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded?
           request = ActionController::Request.new(env)
 
           return response if (options[:secure] && !request.ssl?)
@@ -194,7 +194,7 @@ module ActionController
 
           request_cookies = env["rack.request.cookie_hash"]
 
-          if (request_cookies.nil? || request_cookies[@key] != sid) || options[:expire_after]
+          if (request_cookies.nil? || request_cookies[@key] != sid)
             cookie = {:value => sid}
             Rack::Utils.set_cookie_header!(response[1], @key, cookie.merge(options))
           end
