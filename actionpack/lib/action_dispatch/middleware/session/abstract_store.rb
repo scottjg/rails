@@ -151,7 +151,7 @@ module ActionDispatch
         session_data = env[ENV_SESSION_KEY]
         options = env[ENV_SESSION_OPTIONS_KEY]
 
-        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded? || options[:expire_after]
+        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded?
           session_data.send(:load!) if session_data.is_a?(AbstractStore::SessionHash) && !session_data.loaded?
 
           sid = options[:id] || generate_sid
