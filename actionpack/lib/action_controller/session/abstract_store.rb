@@ -130,7 +130,7 @@ module ActionController
         session_data = env[ENV_SESSION_KEY]
         options = env[ENV_SESSION_OPTIONS_KEY]
 
-        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.send(:loaded?) || options[:expire_after]
+        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.send(:loaded?)
           session_data.send(:load!) if session_data.is_a?(AbstractStore::SessionHash) && !session_data.send(:loaded?)
 
           sid = options[:id] || generate_sid
@@ -142,10 +142,6 @@ module ActionController
           cookie = Rack::Utils.escape(@key) + '=' + Rack::Utils.escape(sid)
           cookie << "; domain=#{options[:domain]}" if options[:domain]
           cookie << "; path=#{options[:path]}" if options[:path]
-          if options[:expire_after]
-            expiry = Time.now + options[:expire_after]
-            cookie << "; expires=#{expiry.httpdate}"
-          end
           cookie << "; Secure" if options[:secure]
           cookie << "; HttpOnly" if options[:httponly]
 
