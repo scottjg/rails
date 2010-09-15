@@ -75,7 +75,9 @@ module ActiveRecord
         def cache_sql(sql)
           result =
             if @query_cache.has_key?(sql)
-              log_info(sql, "CACHE", 0.0)
+              unless Rails.env.development? && sql =~ /SHOW FIELDS FROM|SHOW CREATE TABLE/ && ENV['LOG_SQL_META'].blank?
+                log_info(sql, "CACHE", 0.0)
+              end
               @query_cache[sql]
             else
               @query_cache[sql] = yield
