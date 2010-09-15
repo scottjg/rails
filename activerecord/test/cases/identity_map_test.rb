@@ -85,31 +85,12 @@ class IdentityMapTest < ActiveRecord::TestCase
     assert_equal("Swistak Sreberkowiec", swistak.name)
   end
 
-#  def test_loading_new_instance_should_remove_dirt
-#    swistak = Subscriber.find(:first, :conditions => {:nick => 'swistak'})
-#    swistak.name = "Swistak Sreberkowiec"
-#    assert_equal(["name"], swistak.changed)
-#
-#    Subscriber.update_all({:name => "Swistak Sreberkowiec"}, {:nick => 'swistak'})
-#
-#    s = Subscriber.find('swistak')
-#
-#    assert !swistak.name_changed?
-#    assert_equal("Swistak Sreberkowiec", swistak.name)
-#  end
+  def test_loading_new_instance_should_remove_dirt
+    swistak = Subscriber.find(:first, :conditions => {:nick => 'swistak'})
+    swistak.name = "Swistak Sreberkowiec"
 
-  def test_working_with_cloning
-    assert_same(
-      Post.first,
-      Post.preload(:author).first
-    )
-    # QueryMethods uses clone on class to change class level attributes when
-    # using .includes .preload etc.
-    assert_same(
-      Client.first,
-      Client.includes(:firm).first,
-      "Cloning of class should produce the same result"
-    )
+    assert_equal({'name' => ["Marcin Raczkowski", "Swistak Sreberkowiec"]}, swistak.changes)
+    assert_equal("Swistak Sreberkowiec", swistak.name)
   end
 
   def test_has_many_associations
