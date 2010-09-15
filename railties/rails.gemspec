@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'rails'
-  s.version = '2.3.8'
+  s.version = '2.3.9'
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick
@@ -9,11 +9,11 @@ Gem::Specification.new do |s|
   EOF
  
   s.add_dependency('rake', '>= 0.8.3')
-  # s.add_dependency('active_support',    '= 2.3.8')
-  # s.add_dependency('active_record',     '= 2.3.8')
-  # s.add_dependency('action_pack',       '= 2.3.8')
-  # s.add_dependency('action_mailer',     '= 2.3.8')
-  # s.add_dependency('active_resource',   '= 2.3.8')
+  # s.add_dependency('active_support',    '= 2.3.9')
+  # s.add_dependency('active_record',     '= 2.3.9')
+  # s.add_dependency('action_pack',       '= 2.3.9')
+  # s.add_dependency('action_mailer',     '= 2.3.9')
+  # s.add_dependency('active_resource',   '= 2.3.9')
  
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
