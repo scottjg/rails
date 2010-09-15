@@ -444,7 +444,7 @@ module ActiveSupport #:nodoc:
 
       qualified_name = qualified_name_for from_mod, const_name
       path_suffix = qualified_name.underscore
-      name_error = NameError.new("uninitialized constant #{qualified_name}. from_mod: #{from_mod}. const_name: #{const_name}. path_suffix: #{path_suffix}. load_paths: #{load_paths.inspect}.")
+      name_error = NameError.new("uninitialized constant #{qualified_name}. from_mod: #{from_mod}. const_name: #{const_name}. path_suffix: #{path_suffix}. autoload_paths: #{autoload_paths.inspect}.")
 
       file_path = search_for_file(path_suffix)
       if file_path && ! loaded.include?(File.expand_path(file_path)) # We found a matching file to load
