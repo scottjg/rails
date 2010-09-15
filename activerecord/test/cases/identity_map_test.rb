@@ -31,7 +31,7 @@ class IdentityMapTest < ActiveRecord::TestCase
   end
 
   def test_find_id_without_identity_map
-    IdentityMap.without do
+    ActiveRecord::IdentityMap.without do
       assert_not_same(Client.find(3), Client.find(3))
     end
   end
@@ -249,12 +249,17 @@ class IdentityMapTest < ActiveRecord::TestCase
     Developer.joins(', projects').readonly(false).each { |d| assert d.readonly? }
   end
 
-  def test_eager_association_loading_with_habtm
-    posts = Post.find(:all, :include => :categories, :order => "posts.id")
-    assert_equal 2, posts[0].categories.size
-    assert_equal 1, posts[1].categories.size
-    assert_equal 0, posts[2].categories.size
-    assert posts[0].categories.include?(categories(:technology))
-    assert posts[1].categories.include?(categories(:general))
+  def test_reload_object_if_save_failed
+    developer = Developer.first
+    developer.salary = 0
+
+    assert !developer.save
+
+    same_developer = Developer.first
+
+    assert_not_same  developer, same_developer
+    assert_not_equal 0, same_developer.salary
+    assert_not_equal developer.salary, same_developer.salary
   end
+
 end
