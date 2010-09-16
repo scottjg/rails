@@ -501,6 +501,15 @@ module ActiveRecord
         execute(add_column_sql)
       end
 
+      # allow MySQL to drop multiple columns in a single query
+      def remove_column(table_name, *column_names) #:nodoc:
+        unless column_names.empty?
+          column_drops = column_names.map{|c| "DROP COLUMN #{quote_column_name(c)}"}.join(", ")
+          execute "ALTER TABLE #{quote_table_name(table_name)} #{column_drops}"
+        end
+      end
+      alias :remove_columns :remove_column
+
       def change_column_default(table_name, column_name, default) #:nodoc:
         column = column_for(table_name, column_name)
         change_column table_name, column_name, column.sql_type, :default => default
