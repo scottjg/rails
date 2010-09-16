@@ -211,10 +211,12 @@ module ActiveRecord
 
           if merged_includes.any?
             join_dependency = ActiveRecord::Associations::ClassMethods::JoinDependency.new(self, merged_includes, joins)
-            sql << join_dependency.join_associations.collect{|join| join.association_join }.join
+            ja = join_dependency.join_associations
+            sql << ja.map(&:association_join).join
+            add_joins!(sql, options[:joins], scope, ja.map(&:table_names_and_aliases).flatten)
+          elsif joins.present?
+            sql << joins
           end
-
-          sql << joins unless joins.blank?
 
           add_conditions!(sql, options[:conditions], scope)
           add_limited_ids_condition!(sql, options, join_dependency) if join_dependency && !using_limitable_reflections?(join_dependency.reflections) && ((scope && scope[:limit]) || options[:limit])

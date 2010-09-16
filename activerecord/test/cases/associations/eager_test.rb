@@ -5,6 +5,7 @@ require 'models/tag'
 require 'models/comment'
 require 'models/author'
 require 'models/category'
+require 'models/categorization'
 require 'models/company'
 require 'models/person'
 require 'models/reader'
@@ -865,5 +866,10 @@ class EagerAssociationTest < ActiveRecord::TestCase
 
     assert_nothing_raised { Post.find(:all, options) }
     assert_nothing_raised { Post.find(:all, options.merge(:limit => 10, :order => 'authors.id ASC')) }
+
+    assert_nothing_raised do
+      assocs = { :author => :categorizations }
+      Post.count(:include => assocs, :joins => assocs, :conditions => 'categorizations.id IS NOT NULL')
+    end
   end
 end
