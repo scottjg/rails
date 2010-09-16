@@ -100,10 +100,13 @@ module ActionController #:nodoc:
         !request.content_type.nil? && request.content_type.verify_request?
       end
     
-      # Sets the token value for the current session.  Pass a <tt>:secret</tt> option
-      # in +protect_from_forgery+ to add a custom salt to the hash.
+      # Sets the token value for the user's browser
       def form_authenticity_token
-        session[:_csrf_token] ||= ActiveSupport::SecureRandom.base64(32)
+        cookies[:_csrf_token] ||= {
+          :value => ActiveSupport::SecureRandom.base64(32),
+          :httponly => true,
+        }
+        cookies[:_csrf_token]
       end
 
       def protect_against_forgery?
