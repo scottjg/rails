@@ -84,8 +84,10 @@ class CacheStoreSettingTest < ActiveSupport::TestCase
 
   def test_mem_cache_fragment_cache_store
     MemCache.expects(:new).with(%w[localhost], {})
-    store = ActiveSupport::Cache.lookup_store :mem_cache_store, "localhost"
-    assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+    ActiveSupport::Deprecation.silence do
+      store = ActiveSupport::Cache.lookup_store :mem_cache_store, "localhost"
+      assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+    end
   end
 
   def test_mem_cache_fragment_cache_store_with_given_mem_cache
@@ -105,14 +107,25 @@ class CacheStoreSettingTest < ActiveSupport::TestCase
 
   def test_mem_cache_fragment_cache_store_with_multiple_servers
     MemCache.expects(:new).with(%w[localhost 192.168.1.1], {})
-    store = ActiveSupport::Cache.lookup_store :mem_cache_store, "localhost", '192.168.1.1'
-    assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+    ActiveSupport::Deprecation.silence do
+      store = ActiveSupport::Cache.lookup_store :mem_cache_store, "localhost", '192.168.1.1'
+      assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+    end
   end
 
   def test_mem_cache_fragment_cache_store_with_options
     MemCache.expects(:new).with(%w[localhost 192.168.1.1], { :timeout => 10 })
-    store = ActiveSupport::Cache.lookup_store :mem_cache_store, "localhost", '192.168.1.1', :namespace => 'foo', :timeout => 10
-    assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+    ActiveSupport::Deprecation.silence do
+      store = ActiveSupport::Cache.lookup_store :mem_cache_store, "localhost", '192.168.1.1', :namespace => 'foo', :timeout => 10
+      assert_kind_of(ActiveSupport::Cache::MemCacheStore, store)
+      assert_equal 'foo', store.options[:namespace]
+    end
+  end
+
+  def test_dalli_fragment_cache_store_with_options
+    Dalli::Client.expects(:new).with(%w[localhost 192.168.1.1], { :marshal => false })
+    store = ActiveSupport::Cache.lookup_store :dalli_store, "localhost", '192.168.1.1', :namespace => 'foo', :marshal => false
+    assert_kind_of(ActiveSupport::Cache::DalliStore, store)
     assert_equal 'foo', store.options[:namespace]
   end
 
@@ -696,8 +709,45 @@ end
 uses_memcached 'memcached backed store' do
   class MemCacheStoreTest < ActiveSupport::TestCase
     def setup
-      @cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :expires_in => 60)
-      @peek = ActiveSupport::Cache.lookup_store(:mem_cache_store)
+      ActiveSupport::Deprecation.silence do
+        @cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :expires_in => 60)
+        @peek = ActiveSupport::Cache.lookup_store(:mem_cache_store)
+      end
+      @data = @cache.instance_variable_get(:@data)
+      @cache.clear
+      @cache.silence!
+      @cache.logger = Logger.new("/dev/null")
+    end
+
+    include CacheStoreBehavior
+    include LocalCacheBehavior
+    include CacheIncrementDecrementBehavior
+
+    def test_raw_values
+      ActiveSupport::Deprecation.silence do
+        cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
+        cache.clear
+        cache.write("foo", 2)
+        assert_equal "2", cache.read("foo")
+      end
+    end
+
+    def test_local_cache_raw_values
+      ActiveSupport::Deprecation.silence do
+        cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
+        cache.clear
+        cache.with_local_cache do
+          cache.write("foo", 2)
+          assert_equal "2", cache.read("foo")
+        end
+      end
+    end
+  end
+
+  class DalliStoreTest < ActiveSupport::TestCase
+    def setup
+      @cache = ActiveSupport::Cache.lookup_store(:dalli_store, :expires_in => 60)
+      @peek = ActiveSupport::Cache.lookup_store(:dalli_store)
       @data = @cache.instance_variable_get(:@data)
       @cache.clear
       @cache.silence!
@@ -710,21 +760,21 @@ uses_memcached 'memcached backed store' do
     include EncodedKeyCacheBehavior
 
     def test_raw_values
-      cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
+      cache = ActiveSupport::Cache.lookup_store(:dalli_store, :raw => true)
       cache.clear
       cache.write("foo", 2)
       assert_equal "2", cache.read("foo")
     end
 
     def test_raw_values_with_marshal
-      cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
+      cache = ActiveSupport::Cache.lookup_store(:dalli_store, :raw => true)
       cache.clear
       cache.write("foo", Marshal.dump([]))
       assert_equal [], cache.read("foo")
     end
 
     def test_local_cache_raw_values
-      cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
+      cache = ActiveSupport::Cache.lookup_store(:dalli_store, :raw => true)
       cache.clear
       cache.with_local_cache do
         cache.write("foo", 2)
@@ -733,7 +783,7 @@ uses_memcached 'memcached backed store' do
     end
 
     def test_local_cache_raw_values_with_marshal
-      cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
+      cache = ActiveSupport::Cache.lookup_store(:dalli_store, :raw => true)
       cache.clear
       cache.with_local_cache do
         cache.write("foo", Marshal.dump([]))

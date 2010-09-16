@@ -24,11 +24,12 @@ ENV['NO_RELOAD'] = '1'
 require 'active_support'
 
 def uses_memcached(test_name)
+  require 'dalli'
   require 'memcache'
   begin
-    MemCache.new('localhost:11211').stats
+    Dalli::Client.new('localhost:11211').stats
     yield
-  rescue MemCache::MemCacheError
+  rescue Dalli::DalliError
     $stderr.puts "Skipping #{test_name} tests. Start memcached and try again."
   end
 end
