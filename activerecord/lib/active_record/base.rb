@@ -56,6 +56,25 @@ module ActiveRecord #:nodoc:
   class StatementInvalid < ActiveRecordError
   end
 
+  # Parent class for all specific exceptions which wrap database driver exceptions
+  # provides access to the original exception also.
+  class WrappedDatabaseException < StatementInvalid
+    attr_reader :original_exception
+
+    def initialize(message, original_exception)
+      super(message)
+      @original_exception, = original_exception
+    end
+  end
+
+  # Raised when a record cannot be inserted because it would violate a uniqueness constraint.
+  class RecordNotUnique < WrappedDatabaseException
+  end
+
+  # Raised when a record cannot be inserted or updated because it references a non-existent record.
+  class InvalidForeignKey < WrappedDatabaseException
+  end
+
   # Raised when number of bind variables in statement given to <tt>:condition</tt> key (for example, when using +find+ method)
   # does not match number of expected variables.
   #
@@ -3211,6 +3230,10 @@ module ActiveRecord #:nodoc:
     include AutosaveAssociation, NestedAttributes
 
     include Aggregations, Transactions, Reflection, Batches, Calculations, Serialization
+
+    # UniqueConstraints needs to be included after Transactions, because we need #save_with_unique_constraints
+    # to rescue after the transaction has been resolved for postgres.
+    include UniqueConstraints
   end
 end
 

@@ -316,6 +316,13 @@ module ActiveRecord
         "INSERT INTO #{table_name} VALUES(NULL)"
       end
 
+      def index_for_record_not_unique(exception, table_name) #:nodoc:
+        if match = exception.message.match(/column(?:s)? (.*) (?:is|are) not unique/)
+          index_columns = match[1].split(', ')
+          indexes(table_name).detect { |i| i.columns == index_columns }
+        end
+      end
+
       protected
         def select(sql, name = nil) #:nodoc:
           execute(sql, name).map do |row|
@@ -436,6 +443,16 @@ module ActiveRecord
             'INTEGER PRIMARY KEY NOT NULL'.freeze
           end
         end
+
+        def translate_exception(exception, message)
+          case exception.message
+          when /column(s)? .* (is|are) not unique/
+            RecordNotUnique.new(message, exception)
+          else
+            super
+          end
+        end
+
     end
 
     class SQLite2Adapter < SQLiteAdapter # :nodoc:

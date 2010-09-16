@@ -588,6 +588,18 @@ module ActiveRecord
         where_sql
       end
 
+      def index_for_record_not_unique(exception, table_name) #:nodoc:
+        case exception.message
+        when /Duplicate entry.*for key (\d+)/
+          index_position = $1.to_i
+          # minus two b/c mysql message is one-based + rails excludes primary key index from indexes list
+          indexes(table_name)[index_position - 2]
+        when /Duplicate entry.*for key '(\w+)'/
+          index_name = $1
+          indexes(table_name).detect { |i| i.name == index_name }
+        end
+      end
+
       protected
         def quoted_columns_for_index(column_names, options = {})
           length = options[:length] if options.is_a?(Hash)
@@ -599,6 +611,17 @@ module ActiveRecord
             column_names.map {|name| "#{quote_column_name(name)}(#{length})"}
           else
             column_names.map {|name| quote_column_name(name) }
+          end
+        end
+
+        def translate_exception(exception, message)
+          case exception.errno
+          when 1062
+            RecordNotUnique.new(message, exception)
+          when 1452
+            InvalidForeignKey.new(message, exception)
+          else
+            super
           end
         end
 
