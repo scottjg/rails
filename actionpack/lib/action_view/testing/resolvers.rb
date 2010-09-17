@@ -13,6 +13,10 @@ module ActionView #:nodoc:
       @hash = hash
     end
 
+    def to_s
+      @hash.keys.join(', ')
+    end
+
   private
 
     def query(path, exts, formats)

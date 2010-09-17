@@ -77,17 +77,17 @@ module ActionView
         @view_paths = ActionView::Base.process_view_paths(paths)
       end
 
-      def find(name, prefix = nil, partial = false)
-        @view_paths.find(*args_for_lookup(name, prefix, partial))
+      def find(name, prefixes = [], partial = false)
+        @view_paths.find(*args_for_lookup(name, prefixes, partial))
       end
       alias :find_template :find
 
-      def find_all(name, prefix = nil, partial = false)
-        @view_paths.find_all(*args_for_lookup(name, prefix, partial))
+      def find_all(name, prefixes = [], partial = false)
+        @view_paths.find_all(*args_for_lookup(name, prefixes, partial))
       end
 
-      def exists?(name, prefix = nil, partial = false)
-        @view_paths.exists?(*args_for_lookup(name, prefix, partial))
+      def exists?(name, prefixes = [], partial = false)
+        @view_paths.exists?(*args_for_lookup(name, prefixes, partial))
       end
       alias :template_exists? :exists?
 
@@ -106,18 +106,25 @@ module ActionView
 
     protected
 
-      def args_for_lookup(name, prefix, partial) #:nodoc:
-        name, prefix = normalize_name(name, prefix)
-        [name, prefix, partial || false, @details, details_key]
+      def args_for_lookup(name, prefixes, partial) #:nodoc:
+        name, prefixes = normalize_name(name, prefixes)
+        [name, prefixes, partial || false, @details, details_key]
       end
 
       # Support legacy foo.erb names even though we now ignore .erb
       # as well as incorrectly putting part of the path in the template
       # name instead of the prefix.
-      def normalize_name(name, prefix) #:nodoc:
+      def normalize_name(name, prefixes) #:nodoc:
         name  = name.to_s.gsub(handlers_regexp, '')
         parts = name.split('/')
-        return parts.pop, [prefix, *parts].compact.join("/")
+        name  = parts.pop
+        prx = if not prefixes or prefixes.empty?
+                [parts.compact.join('/')]
+              else
+                prefixes.map {|prefix| [prefix, *parts].compact.join('/') }
+              end
+
+        return name, prx
       end
 
       def default_handlers #:nodoc:

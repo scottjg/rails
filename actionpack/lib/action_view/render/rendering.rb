@@ -40,10 +40,10 @@ module ActionView
       elsif options.key?(:text)
         Template::Text.new(options[:text], formats.try(:first))
       elsif options.key?(:file)
-        with_fallbacks { find_template(options[:file], options[:prefix]) }
+        with_fallbacks { find_template(options[:file]) }
       elsif options.key?(:template)
         options[:template].respond_to?(:render) ?
-          options[:template] : find_template(options[:template], options[:prefix])
+          options[:template] : find_template(options[:template], options[:prefixes])
       end
     end
 

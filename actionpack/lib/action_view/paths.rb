@@ -10,18 +10,20 @@ module ActionView #:nodoc:
       METHOD
     end
 
-    def find(path, prefix = nil, partial = false, details = {}, key = nil)
-      template = find_all(path, prefix, partial, details, key).first
-      raise MissingTemplate.new(self, "#{prefix}/#{path}", details, partial) unless template
-      template
+    def find(path, prefixes = [], partial = false, details = {}, key = nil)
+      template = find_all(path, prefixes, partial, details, key).first
+      template or raise MissingTemplate.new(self, "{#{prefixes.join(',')},}/#{path}", details, partial)
     end
 
-    def find_all(*args)
-      each do |resolver|
-        templates = resolver.find_all(*args)
-        return templates unless templates.empty?
+    def find_all(path, prefixes = [], *args)
+      templates = []
+      prefixes.each do |prefix|
+        each do |resolver|
+          templates << resolver.find_all(path, prefix, *args)
+        end
+        # return templates unless templates.flatten!.empty? XXX this was original behavior; turns this method into find_some, but probably makes it faster
       end
-      []
+      templates.flatten
     end
 
     def exists?(*args)
