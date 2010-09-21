@@ -57,10 +57,9 @@ class ActiveModelI18nTests < ActiveModel::TestCase
     assert_equal 'person model', Child.model_name.human
   end
   
-  def test_translated_model_names_with_ancestors_fallback
+  def test_translated_model_names_with_module
     I18n.backend.store_translations 'en', :activemodel => {:models => {:person_module => {:person => 'person model in module'} } }
     assert_equal 'person model in module', PersonModule::Person.model_name.human
-  end
-  
+  end  
 end
 
