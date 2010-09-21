@@ -446,7 +446,7 @@ EOM
     end
 
     def reset_session
-      session.destroy if session
+      session.destroy if session && session.respond_to?(:destroy)
       self.session = {}
     end
 
