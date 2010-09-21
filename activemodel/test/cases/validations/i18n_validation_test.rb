@@ -374,10 +374,14 @@ class I18nValidationTest < ActiveModel::TestCase
   # test class i18n scope with Module
 
   def test_model_with_module_i18n_scope
-      I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person_module => {:person => {:blank => 'generic blank'}}}}}
+      I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person_module => {:blank => 'generic blank from module'}}}}
       PersonModule::Person.validates_presence_of :title
       person = PersonModule::Person.new
       person.title = nil
+      person.valid?
+      assert_equal ['generic blank from module'], person.errors[:title]
+      
+      I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person_module => {:person => {:blank => 'generic blank'}}}}}
       person.valid?
       assert_equal ['generic blank'], person.errors[:title]
 

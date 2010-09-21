@@ -265,10 +265,17 @@ module ActiveModel
     def generate_message(attribute, type = :invalid, options = {})
       type = options.delete(:message) if options[:message].is_a?(Symbol)
 
-      defaults = @base.class.lookup_ancestors.map do |klass|
-        [ :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.attributes.#{attribute}.#{type}",
-          :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.#{type}" ]
+      default_attribute_types = []
+      default_types = []
+      @base.class.lookup_ancestors.each do |klass|
+        key_parts = klass.model_name.i18n_key.to_s.split('.')
+        while key_parts.size > 0
+          default_attribute_types << :"#{@base.class.i18n_scope}.errors.models.#{key_parts * '.'}.attributes.#{attribute}.#{type}"
+          default_types << :"#{@base.class.i18n_scope}.errors.models.#{key_parts * '.'}.#{type}"
+          key_parts.pop
+        end
       end
+      defaults = default_attribute_types + default_types
 
       defaults << options.delete(:message)
       defaults << :"#{@base.class.i18n_scope}.errors.messages.#{type}"

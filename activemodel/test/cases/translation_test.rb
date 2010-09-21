@@ -31,6 +31,16 @@ class ActiveModelI18nTests < ActiveModel::TestCase
     I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person => {:name => 'person name attribute'} } }
     assert_equal 'person name attribute', Child.human_attribute_name('name')
   end
+  
+  def test_transalted_model_attributes_with_module_fallback
+    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person_module => {:title => 'title attribute for module'} } }
+    assert_equal 'title attribute for module', PersonModule::Person.human_attribute_name('title')
+  end
+
+  def test_transalted_model_attributes_with_module
+    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person_module => { :person => {:title => 'title attribute for person'} } } }
+    assert_equal 'title attribute for person', PersonModule::Person.human_attribute_name('title')
+  end
 
   def test_translated_model_names
     I18n.backend.store_translations 'en', :activemodel => {:models => {:person => 'person model'} }
@@ -46,5 +56,11 @@ class ActiveModelI18nTests < ActiveModel::TestCase
     I18n.backend.store_translations 'en', :activemodel => {:models => {:person => 'person model'} }
     assert_equal 'person model', Child.model_name.human
   end
+  
+  def test_translated_model_names_with_ancestors_fallback
+    I18n.backend.store_translations 'en', :activemodel => {:models => {:person_module => {:person => 'person model in module'} } }
+    assert_equal 'person model in module', PersonModule::Person.model_name.human
+  end
+  
 end
 
