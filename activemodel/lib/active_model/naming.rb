@@ -31,7 +31,7 @@ module ActiveModel
                            @klass.respond_to?(:i18n_scope)
 
       defaults = @klass.lookup_ancestors.map do |klass|
-        klass.model_name.underscore.to_sym
+        klass.model_name.i18n_key
       end
 
       defaults << options.delete(:default) if options[:default]
@@ -39,6 +39,11 @@ module ActiveModel
 
       options.reverse_merge! :scope => [@klass.i18n_scope, :models], :count => 1, :default => defaults
       I18n.translate(defaults.shift, options)
+    end
+
+    # Returns an i18n key symbol for module.
+    def i18n_key
+      @_i18n_key ||= ActiveSupport::Inflector.underscore(self).tr('/', '.').to_sym
     end
 
     private
@@ -59,6 +64,9 @@ module ActiveModel
   #
   #   BookCover.model_name        # => "BookCover"
   #   BookCover.model_name.human  # => "Book cover"
+  #
+  #   BookCover.model_name.i18n_key              # => "book_cover"
+  #   BookModule::BookCover.model_name.i18n_key  # => "book_module.book_cover"
   #
   # Providing the functionality that ActiveModel::Naming provides in your object
   # is required to pass the Active Model Lint test.  So either extending the provided
