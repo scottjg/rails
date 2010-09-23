@@ -1,3 +1,4 @@
+require 'rake'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
 Gem::Specification.new do |s|
