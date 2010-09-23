@@ -1,27 +1,9 @@
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
-PKG_BUILD       = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME        = 'rails'
-PKG_VERSION     = Rails::VERSION::STRING + PKG_BUILD
-
-PKG_FILES = FileList[
-  '[a-zA-Z]*',
-  'bin/**/*', 
-  'builtin/**/*',
-  'configs/**/*', 
-  'doc/**/*', 
-  'dispatches/**/*', 
-  'environments/**/*', 
-  'helpers/**/*', 
-  'generators/**/*', 
-  'html/**/*', 
-  'lib/**/*'
-] - [ 'test' ]
-
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = 'rails'
-  s.version = PKG_VERSION
+  s.name = 'railties'
+  s.version = Rails::VERSION::STRING
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick
@@ -29,16 +11,28 @@ Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3')
-  s.add_dependency('activesupport',    '= 2.3.9' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.3.9' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.3.9' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.3.9' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.3.9' + PKG_BUILD)
+  s.add_dependency('activesupport',    '= 2.3.9')
+  s.add_dependency('activerecord',     '= 2.3.9')
+  s.add_dependency('actionpack',       '= 2.3.9')
+  s.add_dependency('actionmailer',     '= 2.3.9')
+  s.add_dependency('activeresource',   '= 2.3.9')
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
 
-  s.files = PKG_FILES
+  s.files = FileList[
+    '[a-zA-Z]*',
+    'bin/**/*', 
+    'builtin/**/*',
+    'configs/**/*', 
+    'doc/**/*', 
+    'dispatches/**/*', 
+    'environments/**/*', 
+    'helpers/**/*', 
+    'generators/**/*', 
+    'html/**/*', 
+    'lib/**/*'
+  ] - [ 'test' ]
   s.require_path = 'lib'
   s.bindir = "bin"                               # Use these for applications.
   s.executables = ["rails"]

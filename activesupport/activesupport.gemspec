@@ -2,14 +2,10 @@ require 'rubygems'
 
 require File.join(File.dirname(__FILE__), 'lib', 'active_support', 'version')
 
-PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME      = 'activesupport'
-PKG_VERSION   = ActiveSupport::VERSION::STRING + PKG_BUILD
-
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = PKG_NAME
-  s.version = PKG_VERSION
+  s.name = 'activesupport'
+  s.version = ActiveSupport::VERSION::STRING
   s.summary = "Support and utility classes used by the Rails framework."
   s.description = %q{Utility library which carries commonly used classes and goodies from the Rails framework}
 
