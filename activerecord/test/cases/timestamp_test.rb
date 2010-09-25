@@ -72,4 +72,18 @@ class TimestampTest < ActiveRecord::TestCase
   ensure
     Pet.belongs_to :owner, :touch => true
   end
+  
+  def test_saving_a_record_with_a_belongs_to_that_specifies_touching_a_specific_attribute_the_parent_should_still_update_the_parent_updated_at
+    Pet.belongs_to :owner, :touch => :happy_at
+
+    pet   = Pet.first
+    owner = pet.owner
+    previously_owner_updated_at = owner.updated_at
+    
+    pet.destroy
+    
+    assert previously_owner_updated_at != pet.owner.updated_at
+  ensure
+    Pet.belongs_to :owner, :touch => true
+  end
 end

@@ -1022,7 +1022,7 @@ module ActiveRecord
       #   If true, always save the associated object or destroy it if marked for destruction, when saving the parent object. Off by default.
       # [:touch]
       #   If true, the associated object will be touched (the updated_at/on attributes set to now) when this record is either saved or
-      #   destroyed. If you specify a symbol, that attribute will be updated with the current time instead of the updated_at/on attribute.
+      #   destroyed. If you specify a symbol, that attribute will be updated with the current time in addition to the updated_at/on attribute.
       #
       # Option examples:
       #   belongs_to :firm, :foreign_key => "client_of"
