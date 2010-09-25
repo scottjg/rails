@@ -14,7 +14,7 @@ module ApplicationTests
       app_file "lib/tasks/app.rake", <<-RUBY
         $task_loaded = Rake::Task.task_defined?("db:create:all")
       RUBY
-      
+
       require "#{app_path}/config/environment"
       ::Rails.application.load_tasks
       assert $task_loaded
@@ -32,6 +32,11 @@ module ApplicationTests
       RUBY
 
       assert_match "SuperMiddleware", Dir.chdir(app_path){ `rake middleware` }
+    end
+
+    def test_code_statistics_sanity
+      assert_match "Code LOC: 5     Test LOC: 0     Code to Test Ratio: 1:0.0",
+        Dir.chdir(app_path){ `rake stats` }
     end
   end
 end

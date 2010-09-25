@@ -6,9 +6,6 @@ require 'active_support/ordered_options'
 require 'action_view/log_subscriber'
 
 module ActionView #:nodoc:
-  class NonConcattingString < ActiveSupport::SafeBuffer
-  end
-
   # = Action View Base
   #
   # Action View templates can be written in three ways. If the template file has a <tt>.erb</tt> (or <tt>.rhtml</tt>) extension then it uses a mixture of ERb
@@ -156,7 +153,7 @@ module ActionView #:nodoc:
   #
   # This refreshes the sidebar, removes a person element and highlights the user list.
   #
-  # See the ActionView::Helpers::PrototypeHelper::GeneratorMethods documentation for more details.
+  # See the ActionView::Helpers::PrototypeHelper::JavaScriptGenerator::GeneratorMethods documentation for more details.
   class Base
     module Subclasses
     end
@@ -190,11 +187,6 @@ module ActionView #:nodoc:
              :flash, :action_name, :controller_name, :to => :controller
 
     delegate :logger, :to => :controller, :allow_nil => true
-
-    # TODO: HACK FOR RJS
-    def view_context
-      self
-    end
 
     def self.xss_safe? #:nodoc:
       true

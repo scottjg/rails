@@ -1,7 +1,6 @@
 require 'rack/mount'
 require 'forwardable'
 require 'active_support/core_ext/object/to_query'
-require 'action_dispatch/routing/deprecated_mapper'
 
 module ActionDispatch
   module Routing
@@ -158,10 +157,17 @@ module ActionDispatch
 
             # We use module_eval to avoid leaks
             @module.module_eval <<-END_EVAL, __FILE__, __LINE__ + 1
-              def #{selector}(options = nil)                                      # def hash_for_users_url(options = nil)
-                options ? #{options.inspect}.merge(options) : #{options.inspect}  #   options ? {:only_path=>false}.merge(options) : {:only_path=>false}
-              end                                                                 # end
-              protected :#{selector}                                              # protected :hash_for_users_url
+              def #{selector}(*args)
+                options = args.extract_options!
+
+                if args.any?
+                  options[:_positional_args] = args
+                  options[:_positional_keys] = #{route.segment_keys.inspect}
+                end
+
+                options ? #{options.inspect}.merge(options) : #{options.inspect}
+              end
+              protected :#{selector}
             END_EVAL
             helpers << selector
           end
@@ -185,21 +191,14 @@ module ActionDispatch
 
             @module.module_eval <<-END_EVAL, __FILE__, __LINE__ + 1
               def #{selector}(*args)
-                options =  #{hash_access_method}(args.extract_options!)
-
-                if args.any?
-                  options[:_positional_args] = args
-                  options[:_positional_keys] = #{route.segment_keys.inspect}
-                end
-
-                url_for(options)
+                url_for(#{hash_access_method}(*args))
               end
             END_EVAL
             helpers << selector
           end
       end
 
-      attr_accessor :set, :routes, :named_routes
+      attr_accessor :set, :routes, :named_routes, :default_scope
       attr_accessor :disable_clear_and_finalize, :resources_path_names
       attr_accessor :default_url_options, :request_class, :valid_conditions
 
@@ -211,7 +210,6 @@ module ActionDispatch
         self.routes = []
         self.named_routes = NamedRouteCollection.new
         self.resources_path_names = self.class.default_resources_path_names.dup
-        self.controller_namespaces = Set.new
         self.default_url_options = {}
 
         self.request_class = request_class
@@ -219,27 +217,35 @@ module ActionDispatch
         self.valid_conditions.delete(:id)
         self.valid_conditions.push(:controller, :action)
 
+        @append = []
         @disable_clear_and_finalize = false
         clear!
       end
 
       def draw(&block)
         clear! unless @disable_clear_and_finalize
-
-        mapper = Mapper.new(self)
-        if block.arity == 1
-          mapper.instance_exec(DeprecatedMapper.new(self), &block)
-        else
-          mapper.instance_exec(&block)
-        end
-
+        eval_block(block)
         finalize! unless @disable_clear_and_finalize
 
         nil
       end
 
+      def append(&block)
+        @append << block
+      end
+
+      def eval_block(block)
+        mapper = Mapper.new(self)
+        if default_scope
+          mapper.with_default_scope(default_scope, &block)
+        else
+          mapper.instance_exec(&block)
+        end
+      end
+
       def finalize!
         return if @finalized
+        @append.each { |blk| eval_block(blk) }
         @finalized = true
         @set.freeze
       end
@@ -259,6 +265,31 @@ module ActionDispatch
       def install_helpers(destinations = [ActionController::Base, ActionView::Base], regenerate_code = false)
         Array(destinations).each { |d| d.module_eval { include Helpers } }
         named_routes.install(destinations, regenerate_code)
+      end
+
+      module MountedHelpers
+      end
+
+      def mounted_helpers(name = :main_app)
+        define_mounted_helper(name) if name
+        MountedHelpers
+      end
+
+      def define_mounted_helper(name)
+        return if MountedHelpers.method_defined?(name)
+
+        routes = self
+        MountedHelpers.class_eval do
+          define_method "_#{name}" do
+            RoutesProxy.new(routes, self._routes_context)
+          end
+        end
+
+        MountedHelpers.class_eval <<-RUBY
+          def #{name}
+            @#{name} ||= _#{name}
+          end
+        RUBY
       end
 
       def url_helpers
@@ -283,7 +314,7 @@ module ActionDispatch
               singleton_class.send(:define_method, :_routes) { routes }
             end
 
-            define_method(:_routes) { routes }
+            define_method(:_routes) { @_routes || routes }
           end
 
           helpers
@@ -303,10 +334,9 @@ module ActionDispatch
       end
 
       class Generator #:nodoc:
-        attr_reader :options, :recall, :set, :script_name, :named_route
+        attr_reader :options, :recall, :set, :named_route
 
         def initialize(options, recall, set, extras = false)
-          @script_name = options.delete(:script_name)
           @named_route = options.delete(:use_route)
           @options     = options.dup
           @recall      = recall.dup
@@ -392,19 +422,18 @@ module ActionDispatch
         end
 
         def generate
-          error = ActionController::RoutingError.new("No route matches #{options.inspect}")
           path, params = @set.set.generate(:path_info, named_route, options, recall, opts)
 
-          raise error unless path
+          raise_routing_error unless path
 
           params.reject! {|k,v| !v }
 
           return [path, params.keys] if @extras
 
           path << "?#{params.to_query}" if params.any?
-          "#{script_name}#{path}"
+          path
         rescue Rack::Mount::RoutingError
-          raise error
+          raise_routing_error
         end
 
         def opts
@@ -419,6 +448,10 @@ module ActionDispatch
             end
           end
           {:parameterize => parameterize}
+        end
+
+        def raise_routing_error
+          raise ActionController::RoutingError.new("No route matches #{options.inspect}")
         end
 
         def different_controller?
@@ -450,7 +483,11 @@ module ActionDispatch
         Generator.new(options, recall, self, extras).generate
       end
 
-      RESERVED_OPTIONS = [:anchor, :params, :only_path, :host, :protocol, :port, :trailing_slash]
+      RESERVED_OPTIONS = [:anchor, :params, :only_path, :host, :protocol, :port, :trailing_slash, :script_name]
+
+      def _generate_prefix(options = {})
+        nil
+      end
 
       def url_for(options)
         finalize!
@@ -461,7 +498,6 @@ module ActionDispatch
         rewritten_url = ""
 
         path_segments = options.delete(:_path_segments)
-
         unless options[:only_path]
           rewritten_url << (options[:protocol] || "http")
           rewritten_url << "://" unless rewritten_url.match("://")
@@ -473,9 +509,12 @@ module ActionDispatch
           rewritten_url << ":#{options.delete(:port)}" if options.key?(:port)
         end
 
+        script_name = options.delete(:script_name)
+        path = (script_name.blank? ? _generate_prefix(options) : script_name).to_s
+
         path_options = options.except(*RESERVED_OPTIONS)
         path_options = yield(path_options) if block_given?
-        path = generate(path_options, path_segments || {})
+        path << generate(path_options, path_segments || {})
 
         # ROUTES TODO: This can be called directly, so script_name should probably be set in the routes
         rewritten_url << (options[:trailing_slash] ? path.sub(/\?|\z/) { "/" + $& } : path)
@@ -491,7 +530,7 @@ module ActionDispatch
 
       def recognize_path(path, environment = {})
         method = (environment[:method] || "GET").to_s.upcase
-        path = Rack::Mount::Utils.normalize_path(path)
+        path = Rack::Mount::Utils.normalize_path(path) unless path =~ %r{://}
 
         begin
           env = Rack::MockRequest.env_for(path, {:method => method})
@@ -499,7 +538,7 @@ module ActionDispatch
           raise ActionController::RoutingError, e.message
         end
 
-        req = Rack::Request.new(env)
+        req = @request_class.new(env)
         @set.recognize(req) do |route, matches, params|
           params.each do |key, value|
             if value.is_a?(String)
@@ -527,13 +566,8 @@ module ActionDispatch
           keys = options.delete(:_positional_keys)
           keys -= options.keys if args.size < keys.size - 1 # take format into account
 
-          args = args.zip(keys).inject({}) do |h, (v, k)|
-            h[k] = v
-            h
-          end
-
           # Tell url_for to skip default_url_options
-          options.merge!(args)
+          options.merge!(Hash[args.zip(keys).map { |v, k| [k, v] }])
         end
 
         def rewrite_authentication(options)

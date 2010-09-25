@@ -19,6 +19,22 @@ module RailtiesTest
       assert !Rails::Railtie.respond_to?(:config)
     end
 
+    test "Railtie provides railtie_name" do
+      begin
+        class ::Foo < Rails::Railtie ; end
+        assert_equal "foo", ::Foo.railtie_name
+      ensure
+        Object.send(:remove_const, :"Foo")
+      end
+    end
+
+    test "railtie_name can be set manualy" do
+      class Foo < Rails::Railtie
+        railtie_name "bar"
+      end
+      assert_equal "bar", Foo.railtie_name
+    end
+
     test "cannot inherit from a railtie" do
       class Foo < Rails::Railtie ; end
       assert_raise RuntimeError do
@@ -132,7 +148,7 @@ module RailtiesTest
       require "#{app_path}/config/environment"
       assert $ran_block
     end
-    
+
     test "we can change our environment if we want to" do
       begin
         original_env = Rails.env

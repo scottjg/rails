@@ -61,7 +61,15 @@ module ApplicationTests
 
       require "#{app_path}/config/environment"
       assert Foo.method_defined?(:foo_path)
+      assert Foo.method_defined?(:main_app)
       assert_equal ["notify"], Foo.action_methods
+    end
+
+    # AD
+    test "action_dispatch extensions are applied to ActionDispatch" do
+      add_to_config "config.action_dispatch.tld_length = 2"
+      require "#{app_path}/config/environment"
+      assert_equal 2, ActionDispatch::Http::URL.tld_length
     end
 
     # AS
@@ -98,17 +106,7 @@ module ApplicationTests
 
       require "#{app_path}/config/environment"
 
-      expects = [ActiveRecord::QueryCache, ActiveRecord::SessionStore]
-      middleware = Rails.application.config.middleware.map { |m| m.klass }
-      assert_equal expects, middleware & expects
-    end
-
-    test "database middleware initializes when allow concurrency is true" do
-      add_to_config "config.threadsafe!"
-
-      require "#{app_path}/config/environment"
-
-      expects = [ActiveRecord::ConnectionAdapters::ConnectionManagement, ActiveRecord::QueryCache]
+      expects = [ActiveRecord::ConnectionAdapters::ConnectionManagement, ActiveRecord::QueryCache, ActiveRecord::SessionStore]
       middleware = Rails.application.config.middleware.map { |m| m.klass }
       assert_equal expects, middleware & expects
     end

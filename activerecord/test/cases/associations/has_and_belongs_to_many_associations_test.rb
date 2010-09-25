@@ -109,8 +109,13 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     record = con.select_rows(sql).last
     assert_not_nil record[2]
     assert_not_nil record[3]
-    assert_match %r{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, record[2]
-    assert_match %r{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, record[3]
+    if current_adapter?(:Mysql2Adapter, :OracleAdapter)
+      assert_match %r{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, record[2].to_s(:db)
+      assert_match %r{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, record[3].to_s(:db)
+    else
+      assert_match %r{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, record[2]
+      assert_match %r{\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, record[3]
+    end
   end
 
   def test_should_record_timestamp_for_join_table_only_if_timestamp_should_be_recorded
@@ -420,7 +425,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_removing_associations_on_destroy
     david = DeveloperWithBeforeDestroyRaise.find(1)
     assert !david.projects.empty?
-    assert_nothing_raised { david.destroy }
+    assert_raise(RuntimeError) { david.destroy }
     assert david.projects.empty?
     assert DeveloperWithBeforeDestroyRaise.connection.select_all("SELECT * FROM developers_projects WHERE developer_id = 1").empty?
   end
@@ -562,16 +567,6 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal high_id_jamis, projects(:active_record).developers.find_by_name('Jamis')
   end
 
-  def test_dynamic_find_order_should_override_association_order
-    # Developers are ordered 'name DESC, id DESC'
-    low_id_jamis = developers(:jamis)
-    middle_id_jamis = developers(:poor_jamis)
-    high_id_jamis = projects(:active_record).developers.create(:name => 'Jamis')
-
-    assert_equal low_id_jamis, projects(:active_record).developers.find(:first, :conditions => "name = 'Jamis'", :order => 'id')
-    assert_equal low_id_jamis, projects(:active_record).developers.find_by_name('Jamis', :order => 'id')
-  end
-
   def test_dynamic_find_all_should_respect_association_order
     # Developers are ordered 'name DESC, id DESC'
     low_id_jamis = developers(:jamis)
@@ -582,14 +577,9 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal [high_id_jamis, middle_id_jamis, low_id_jamis], projects(:active_record).developers.find_all_by_name('Jamis')
   end
 
-  def test_dynamic_find_all_order_should_override_association_order
-    # Developers are ordered 'name DESC, id DESC'
-    low_id_jamis = developers(:jamis)
-    middle_id_jamis = developers(:poor_jamis)
-    high_id_jamis = projects(:active_record).developers.create(:name => 'Jamis')
-
-    assert_equal [low_id_jamis, middle_id_jamis, high_id_jamis], projects(:active_record).developers.find(:all, :conditions => "name = 'Jamis'", :order => 'id')
-    assert_equal [low_id_jamis, middle_id_jamis, high_id_jamis], projects(:active_record).developers.find_all_by_name('Jamis', :order => 'id')
+  def test_find_should_append_to_association_order
+    ordered_developers = projects(:active_record).developers.order('projects.id')
+    assert_equal ['developers.name desc, developers.id desc', 'projects.id'], ordered_developers.order_values
   end
 
   def test_dynamic_find_all_should_respect_association_limit
@@ -620,11 +610,10 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_find_in_association_with_options
-    developers = projects(:active_record).developers.find(:all)
+    developers = projects(:active_record).developers.all
     assert_equal 3, developers.size
 
-    assert_equal developers(:poor_jamis), projects(:active_record).developers.find(:first, :conditions => "salary < 10000")
-    assert_equal developers(:jamis),      projects(:active_record).developers.find(:first, :order => "salary DESC")
+    assert_equal developers(:poor_jamis), projects(:active_record).developers.where("salary < 10000").first
   end
 
   def test_replace_with_less

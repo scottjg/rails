@@ -116,6 +116,9 @@ class RequestTest < ActiveSupport::TestCase
     request = stub_request 'HTTP_HOST' => "dev.www.rubyonrails.co.uk"
     assert_equal %w( dev www ), request.subdomains(2)
 
+    request = stub_request 'HTTP_HOST' => "dev.www.rubyonrails.co.uk", :tld_length => 2
+    assert_equal %w( dev www ), request.subdomains
+
     request = stub_request 'HTTP_HOST' => "foobar.foobar.com"
     assert_equal %w( foobar ), request.subdomains
 
@@ -130,6 +133,32 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request 'HTTP_HOST' => nil
     assert_equal [], request.subdomains
+  end
+
+  test "standard_port" do
+    request = stub_request
+    assert_equal 80, request.standard_port
+
+    request = stub_request 'HTTPS' => 'on'
+    assert_equal 443, request.standard_port
+  end
+
+  test "standard_port?" do
+    request = stub_request
+    assert !request.ssl?
+    assert request.standard_port?
+
+    request = stub_request 'HTTPS' => 'on'
+    assert request.ssl?
+    assert request.standard_port?
+
+    request = stub_request 'HTTP_HOST' => 'www.example.org:8080'
+    assert !request.ssl?
+    assert !request.standard_port?
+
+    request = stub_request 'HTTP_HOST' => 'www.example.org:8443', 'HTTPS' => 'on'
+    assert request.ssl?
+    assert !request.standard_port?
   end
 
   test "port string" do
@@ -221,6 +250,16 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request 'HTTP_X_FORWARDED_PROTO' => 'https'
     assert request.ssl?
+  end
+
+  test "scheme returns https when proxied" do
+    request = stub_request 'rack.url_scheme' => 'http'
+    assert !request.ssl?
+    assert_equal 'http', request.scheme
+
+    request = stub_request 'rack.url_scheme' => 'http', 'HTTP_X_FORWARDED_PROTO' => 'https'
+    assert request.ssl?
+    assert_equal 'https', request.scheme
   end
 
   test "String request methods" do
@@ -428,7 +467,7 @@ class RequestTest < ActiveSupport::TestCase
 
     assert_equal "[FILTERED]", request.raw_post
     assert_equal "[FILTERED]", request.params["amount"]
-    assert_equal "1", request.params["step"]    
+    assert_equal "1", request.params["step"]
   end
 
 protected
@@ -436,7 +475,9 @@ protected
   def stub_request(env = {})
     ip_spoofing_check = env.key?(:ip_spoofing_check) ? env.delete(:ip_spoofing_check) : true
     ip_app = ActionDispatch::RemoteIp.new(Proc.new { }, ip_spoofing_check, @trusted_proxies)
+    tld_length = env.key?(:tld_length) ? env.delete(:tld_length) : 1
     ip_app.call(env)
+    ActionDispatch::Http::URL.tld_length = tld_length
     ActionDispatch::Request.new(env)
   end
 

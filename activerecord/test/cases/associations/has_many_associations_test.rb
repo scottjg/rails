@@ -13,6 +13,8 @@ require 'models/reader'
 require 'models/tagging'
 require 'models/invoice'
 require 'models/line_item'
+require 'models/car'
+require 'models/bulb'
 
 class HasManyAssociationsTestForCountWithFinderSql < ActiveRecord::TestCase
   class Invoice < ActiveRecord::Base
@@ -45,6 +47,23 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def setup
     Client.destroyed_client_ids.clear
+  end
+
+  def test_create_from_association_should_respect_default_scope
+    car = Car.create(:name => 'honda')
+    assert_equal 'honda', car.name
+
+    bulb = Bulb.create
+    assert_equal 'defaulty', bulb.name
+
+    bulb = car.bulbs.build
+    assert_equal 'defaulty', bulb.name
+
+    bulb = car.bulbs.create
+    assert_equal 'defaulty', bulb.name
+
+    bulb = car.bulbs.create(:name => 'exotic')
+    assert_equal 'exotic', bulb.name
   end
 
   def test_create_resets_cached_counters
@@ -128,6 +147,11 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 2, companies(:first_firm).limited_clients.find(:all, :limit => nil).size
   end
 
+  def test_find_should_append_to_association_order
+    ordered_clients =  companies(:first_firm).clients_sorted_desc.order('companies.id')
+    assert_equal ['id DESC', 'companies.id'], ordered_clients.order_values
+  end
+
   def test_dynamic_find_last_without_specified_order
     assert_equal companies(:second_client), companies(:first_firm).unsorted_clients.find_last_by_type('Client')
   end
@@ -137,19 +161,9 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal companies(:second_client), companies(:first_firm).clients_sorted_desc.find_by_type('Client')
   end
 
-  def test_dynamic_find_order_should_override_association_order
-    assert_equal companies(:first_client), companies(:first_firm).clients_sorted_desc.find(:first, :conditions => "type = 'Client'", :order => 'id')
-    assert_equal companies(:first_client), companies(:first_firm).clients_sorted_desc.find_by_type('Client', :order => 'id')
-  end
-
   def test_dynamic_find_all_should_respect_association_order
     assert_equal [companies(:second_client), companies(:first_client)], companies(:first_firm).clients_sorted_desc.find(:all, :conditions => "type = 'Client'")
     assert_equal [companies(:second_client), companies(:first_client)], companies(:first_firm).clients_sorted_desc.find_all_by_type('Client')
-  end
-
-  def test_dynamic_find_all_order_should_override_association_order
-    assert_equal [companies(:first_client), companies(:second_client)], companies(:first_firm).clients_sorted_desc.find(:all, :conditions => "type = 'Client'", :order => 'id')
-    assert_equal [companies(:first_client), companies(:second_client)], companies(:first_firm).clients_sorted_desc.find_all_by_type('Client', :order => 'id')
   end
 
   def test_dynamic_find_all_should_respect_association_limit
@@ -165,6 +179,15 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   def test_dynamic_find_all_should_respect_readonly_access
     companies(:first_firm).readonly_clients.find(:all).each { |c| assert_raise(ActiveRecord::ReadOnlyRecord) { c.save!  } }
     companies(:first_firm).readonly_clients.find(:all).each { |c| assert c.readonly? }
+  end
+
+  def test_dynamic_find_or_create_from_two_attributes_using_an_association
+    author = authors(:david)
+    number_of_posts = Post.count
+    another = author.posts.find_or_create_by_title_and_body("Another Post", "This is the Body")
+    assert_equal number_of_posts + 1, Post.count
+    assert_equal another, author.posts.find_or_create_by_title_and_body("Another Post", "This is the Body")
+    assert !another.new_record?
   end
 
   def test_cant_save_has_many_readonly_association
@@ -624,7 +647,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     # Should not be destroyed since the association is not dependent.
     assert_nothing_raised do
-      assert Client.find(client_id).firm.nil?
+      assert_nil Client.find(client_id).firm
     end
   end
 
@@ -649,7 +672,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal [client_id], Client.destroyed_client_ids[firm.id]
 
     # Should be destroyed since the association is dependent.
-    assert Client.find_by_id(client_id).nil?
+    assert_nil Client.find_by_id(client_id)
   end
 
   def test_clearing_an_exclusively_dependent_association_collection
@@ -990,19 +1013,9 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal Comment.find(10), authors(:david).comments_desc.find_by_type('SpecialComment')
   end
 
-  def test_dynamic_find_order_should_override_association_order_for_through
-    assert_equal Comment.find(3), authors(:david).comments_desc.find(:first, :conditions => "comments.type = 'SpecialComment'", :order => 'comments.id')
-    assert_equal Comment.find(3), authors(:david).comments_desc.find_by_type('SpecialComment', :order => 'comments.id')
-  end
-
   def test_dynamic_find_all_should_respect_association_order_for_through
     assert_equal [Comment.find(10), Comment.find(7), Comment.find(6), Comment.find(3)], authors(:david).comments_desc.find(:all, :conditions => "comments.type = 'SpecialComment'")
     assert_equal [Comment.find(10), Comment.find(7), Comment.find(6), Comment.find(3)], authors(:david).comments_desc.find_all_by_type('SpecialComment')
-  end
-
-  def test_dynamic_find_all_order_should_override_association_order_for_through
-    assert_equal [Comment.find(3), Comment.find(6), Comment.find(7), Comment.find(10)], authors(:david).comments_desc.find(:all, :conditions => "comments.type = 'SpecialComment'", :order => 'comments.id')
-    assert_equal [Comment.find(3), Comment.find(6), Comment.find(7), Comment.find(10)], authors(:david).comments_desc.find_all_by_type('SpecialComment', :order => 'comments.id')
   end
 
   def test_dynamic_find_all_should_respect_association_limit_for_through

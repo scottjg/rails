@@ -338,13 +338,12 @@ module ActiveRecord
 
       def uniq(collection = self)
         seen = Set.new
-        collection.inject([]) do |kept, record|
+        collection.map do |record|
           unless seen.include?(record.id)
-            kept << record
             seen << record.id
+            record
           end
-          kept
-        end
+        end.compact
       end
 
       # Replace this collection with +other_array+
@@ -422,7 +421,7 @@ module ActiveRecord
           match = DynamicFinderMatch.match(method)
           if match && match.creator?
             attributes = match.attribute_names
-            return send(:"find_by_#{attributes.join('and')}", *args) || create(Hash[attributes.zip(args)])
+            return send(:"find_by_#{attributes.join('_and_')}", *args) || create(Hash[attributes.zip(args)])
           end
 
           if @target.respond_to?(method) || (!@reflection.klass.respond_to?(method) && Class.respond_to?(method))
@@ -478,13 +477,10 @@ module ActiveRecord
           callback(:before_add, record)
           yield(record) if block_given?
           @target ||= [] unless loaded?
-          index = @target.index(record)
-          unless @reflection.options[:uniq] && index
-            if index
-              @target[index] = record
-            else
+          if index = @target.index(record)
+            @target[index] = record
+          else
              @target << record
-            end
           end
           callback(:after_add, record)
           set_inverse_instance(record, @owner)
@@ -495,7 +491,10 @@ module ActiveRecord
         def create_record(attrs)
           attrs.update(@reflection.options[:conditions]) if @reflection.options[:conditions].is_a?(Hash)
           ensure_owner_is_not_new
-          record = @reflection.klass.send(:with_scope, :create => construct_scope[:create]) do
+
+          scoped_where = scoped.where_values_hash
+          create_scope = scoped_where ? construct_scope[:create].merge(scoped_where) : construct_scope[:create]
+          record = @reflection.klass.send(:with_scope, :create => create_scope) do
             @reflection.build_association(attrs)
           end
           if block_given?

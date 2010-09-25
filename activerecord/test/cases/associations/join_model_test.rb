@@ -43,11 +43,21 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert_queries(1) { assert_equal 0, author.unique_categorized_posts.count(:title, :conditions => "title is NULL") }
     assert !authors(:mary).unique_categorized_posts.loaded?
   end
-  
+
+  def test_column_caching
+    # pre-heat our cache
+    Post.arel_table.columns
+    Comment.columns
+
+    Post.connection.column_calls = 0
+    2.times { Post.joins(:comments).to_a }
+    assert_equal 0, Post.connection.column_calls
+  end
+
   def test_has_many_uniq_through_find
     assert_equal 1, authors(:mary).unique_categorized_posts.find(:all).size
   end
-  
+
   def test_has_many_uniq_through_dynamic_find
     assert_equal 1, authors(:mary).unique_categorized_posts.find_all_by_title("So I was thinking").size
   end
@@ -297,7 +307,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert_equal [], posts(:thinking).authors
     assert_equal [authors(:mary)], posts(:authorless).authors
   end
-  
+
   def test_both_scoped_and_explicit_joins_should_be_respected
     assert_nothing_raised do
       Post.send(:with_scope, :find => {:joins => "left outer join comments on comments.id = posts.id"}) do
@@ -427,8 +437,8 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
 
   def test_has_many_through_uses_conditions_specified_on_the_has_many_association
     author = Author.find(:first)
-    assert !author.comments.blank?
-    assert author.nonexistant_comments.blank?
+    assert_present author.comments
+    assert_blank author.nonexistant_comments
   end
 
   def test_has_many_through_uses_correct_attributes
@@ -575,7 +585,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   def test_calculations_on_has_many_through_should_disambiguate_fields
     assert_nothing_raised { authors(:david).categories.maximum(:id) }
   end
-  
+
   def test_calculations_on_has_many_through_should_not_disambiguate_fields_unless_necessary
     assert_nothing_raised { authors(:david).categories.maximum("categories.id") }
   end
@@ -675,7 +685,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     end
     assert ! david.categories.loaded?
   end
-  
+
   def test_has_many_through_include_returns_false_for_non_matching_record_to_verify_scoping
     david = authors(:david)
     category = Category.create!(:name => 'Not Associated')

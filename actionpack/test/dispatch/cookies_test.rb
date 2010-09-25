@@ -47,6 +47,11 @@ class CookiesTest < ActionController::TestCase
       cookies["user_name"] = { :value => "david", :httponly => true }
       head :ok
     end
+    
+    def authenticate_with_secure
+      cookies["user_name"] = { :value => "david", :secure => true }
+      head :ok
+    end
 
     def set_permanent_cookie
       cookies.permanent[:user_name] = "Jamie"
@@ -126,6 +131,12 @@ class CookiesTest < ActionController::TestCase
   def test_setting_cookie_with_http_only
     get :authenticate_with_http_only
     assert_cookie_header "user_name=david; path=/; HttpOnly"
+    assert_equal({"user_name" => "david"}, @response.cookies)
+  end
+  
+  def test_setting_cookie_with_secure
+    get :authenticate_with_secure
+    assert_cookie_header "user_name=david; path=/; secure"
     assert_equal({"user_name" => "david"}, @response.cookies)
   end
 
@@ -230,6 +241,34 @@ class CookiesTest < ActionController::TestCase
     get :set_cookie_with_domain
     assert_response :success
     assert_cookie_header "user_name=rizwanreza; domain=.nextangle.com; path=/"
+  end
+
+  def test_cookie_with_all_domain_option_using_a_non_standard_tld
+    @request.host = "two.subdomains.nextangle.local"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; domain=.nextangle.local; path=/"
+  end
+
+  def test_cookie_with_all_domain_option_using_australian_style_tld
+    @request.host = "nextangle.com.au"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; domain=.nextangle.com.au; path=/"
+  end
+
+  def test_cookie_with_all_domain_option_using_uk_style_tld
+    @request.host = "nextangle.co.uk"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; domain=.nextangle.co.uk; path=/"
+  end
+
+  def test_cookie_with_all_domain_option_using_host_with_port
+    @request.host = "nextangle.local:3000"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; domain=.nextangle.local; path=/"
   end
 
   def test_deleting_cookie_with_all_domain_option

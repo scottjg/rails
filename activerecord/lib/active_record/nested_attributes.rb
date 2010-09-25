@@ -25,7 +25,7 @@ module ActiveRecord
     #
     # The attribute writer is named after the association, which means that
     # in the following example, two new methods are added to your model:
-    # 
+    #
     # <tt>author_attributes=(attributes)</tt> and
     # <tt>pages_attributes=(attributes)</tt>.
     #
@@ -78,7 +78,7 @@ module ActiveRecord
     #   member.avatar_attributes = { :id => '2', :_destroy => '1' }
     #   member.avatar.marked_for_destruction? # => true
     #   member.save
-    #   member.reload.avatar #=> nil
+    #   member.reload.avatar # => nil
     #
     # Note that the model will _not_ be destroyed until the parent is saved.
     #
@@ -180,7 +180,7 @@ module ActiveRecord
     #
     #   member.attributes = params['member']
     #   member.posts.detect { |p| p.id == 2 }.marked_for_destruction? # => true
-    #   member.posts.length #=> 2
+    #   member.posts.length # => 2
     #   member.save
     #   member.reload.posts.length # => 1
     #
@@ -190,6 +190,34 @@ module ActiveRecord
     # destruction, are saved and destroyed automatically and atomically when
     # the parent model is saved. This happens inside the transaction initiated
     # by the parents save method. See ActiveRecord::AutosaveAssociation.
+    #
+    # === Using with attr_accessible
+    #
+    # The use of <tt>attr_accessible</tt> can interfere with nested attributes
+    # if you're not careful. For example, if the <tt>Member</tt> model above
+    # was using <tt>attr_accessible</tt> like this:
+    #
+    #   attr_accessible :name
+    #
+    # You would need to modify it to look like this:
+    #
+    #   attr_accessible :name, :posts_attributes
+    #
+    # === Validating the presence of a parent model
+    #
+    # If you want to validate that a child record is associated with a parent
+    # record, you can use <tt>validates_presence_of</tt> and
+    # <tt>inverse_of</tt> as this example illustrates:
+    #
+    #   class Member < ActiveRecord::Base
+    #     has_many :posts, :inverse_of => :member
+    #     accepts_nested_attributes_for :posts
+    #   end
+    #
+    #   class Post < ActiveRecord::Base
+    #     belongs_to :member, :inverse_of => :posts
+    #     validates_presence_of :member
+    #   end
     module ClassMethods
       REJECT_ALL_BLANK_PROC = proc { |attributes| attributes.all? { |_, value| value.blank? } }
 
@@ -293,7 +321,7 @@ module ActiveRecord
 
       if check_existing_record && (record = send(association_name)) &&
           (options[:update_only] || record.id.to_s == attributes['id'].to_s)
-        assign_to_or_mark_for_destruction(record, attributes, options[:allow_destroy])
+        assign_to_or_mark_for_destruction(record, attributes, options[:allow_destroy]) unless call_reject_if(association_name, attributes)
 
       elsif attributes['id']
         existing_record = self.class.reflect_on_association(association_name).klass.find(attributes['id'])
@@ -358,7 +386,7 @@ module ActiveRecord
         association.to_a
       else
         attribute_ids = attributes_collection.map {|a| a['id'] || a[:id] }.compact
-        attribute_ids.present? ? association.all(:conditions => {association.primary_key => attribute_ids}) : []
+        attribute_ids.empty? ? [] : association.all(:conditions => {association.primary_key => attribute_ids})
       end
 
       attributes_collection.each do |attributes|
@@ -371,11 +399,11 @@ module ActiveRecord
 
         elsif existing_records.count == 0 #Existing record but not yet associated
           existing_record = self.class.reflect_on_association(association_name).klass.find(attributes['id'])
-          association.send(:add_record_to_target_with_callbacks, existing_record) unless association.loaded?
+          association.send(:add_record_to_target_with_callbacks, existing_record) if !association.loaded? && !call_reject_if(association_name, attributes)
           assign_to_or_mark_for_destruction(existing_record, attributes, options[:allow_destroy])
 
         elsif existing_record = existing_records.detect { |record| record.id.to_s == attributes['id'].to_s }
-          association.send(:add_record_to_target_with_callbacks, existing_record) unless association.loaded?
+          association.send(:add_record_to_target_with_callbacks, existing_record) if !association.loaded? && !call_reject_if(association_name, attributes)
           assign_to_or_mark_for_destruction(existing_record, attributes, options[:allow_destroy])
 
         end

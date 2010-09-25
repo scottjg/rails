@@ -7,7 +7,6 @@ require 'active_support/core_ext/module/attr_accessor_with_default'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/aliasing'
 require 'active_support/core_ext/object/blank'
-require 'active_support/core_ext/object/misc'
 require 'active_support/core_ext/object/to_query'
 require 'active_support/core_ext/object/duplicable'
 require 'set'
@@ -22,7 +21,7 @@ require 'active_resource/log_subscriber'
 module ActiveResource
   # ActiveResource::Base is the main class for mapping RESTful resources as models in a Rails application.
   #
-  # For an outline of what Active Resource is capable of, see link:files/vendor/rails/activeresource/README.html.
+  # For an outline of what Active Resource is capable of, see its {README}[link:files/activeresource/README_rdoc.html].
   #
   # == Automated mapping
   #
@@ -36,7 +35,7 @@ module ActiveResource
   #   end
   #
   # Now the Person class is mapped to RESTful resources located at <tt>http://api.people.com:3000/people/</tt>, and
-  # you can now use Active Resource's lifecycle methods to manipulate resources. In the case where you already have
+  # you can now use Active Resource's life cycle methods to manipulate resources. In the case where you already have
   # an existing model with the same name as the desired RESTful resource you can set the +element_name+ value.
   #
   #   class PersonResource < ActiveResource::Base
@@ -52,7 +51,7 @@ module ActiveResource
   #   end
   #
   #
-  # == Lifecycle methods
+  # == Life cycle methods
   #
   # Active Resource exposes methods for creating, finding, updating, and deleting resources
   # from REST web services.
@@ -71,12 +70,12 @@ module ActiveResource
   #
   #   ryan.destroy             # => true
   #
-  # As you can see, these are very similar to Active Record's lifecycle methods for database records.
+  # As you can see, these are very similar to Active Record's life cycle methods for database records.
   # You can read more about each of these methods in their respective documentation.
   #
   # === Custom REST methods
   #
-  # Since simple CRUD/lifecycle methods can't accomplish every task, Active Resource also supports
+  # Since simple CRUD/life cycle methods can't accomplish every task, Active Resource also supports
   # defining your own custom REST methods. To invoke them, Active Resource provides the <tt>get</tt>,
   # <tt>post</tt>, <tt>put</tt> and <tt>\delete</tt> methods where you can specify a custom REST method
   # name to invoke.
@@ -578,7 +577,7 @@ module ActiveResource
       # Default value is <tt>site.path</tt>.
       def prefix=(value = '/')
         # Replace :placeholders with '#{embedded options[:lookups]}'
-        prefix_call = value.gsub(/:\w+/) { |key| "\#{options[#{key}]}" }
+        prefix_call = value.gsub(/:\w+/) { |key| "\#{URI.escape options[#{key}].to_s}" }
 
         # Clear prefix parameters in case they have been cached
         @prefix_parameters = nil
@@ -590,8 +589,8 @@ module ActiveResource
             def prefix(options={}) "#{prefix_call}" end
           RUBY_EVAL
         end
-      rescue
-        logger.error "Couldn't set prefix: #{$!}\n  #{code}" if logger
+      rescue Exception => e
+        logger.error "Couldn't set prefix: #{e}\n  #{code}" if logger
         raise
       end
 
@@ -623,7 +622,7 @@ module ActiveResource
       #
       def element_path(id, prefix_options = {}, query_options = nil)
         prefix_options, query_options = split_options(prefix_options) if query_options.nil?
-        "#{prefix(prefix_options)}#{collection_name}/#{id}.#{format.extension}#{query_string(query_options)}"
+        "#{prefix(prefix_options)}#{collection_name}/#{URI.escape id.to_s}.#{format.extension}#{query_string(query_options)}"
       end
 
       # Gets the new element path for REST resources.
@@ -988,10 +987,7 @@ module ActiveResource
     #   not_ryan.hash            # => {:not => "an ARes instance"}
     def clone
       # Clone all attributes except the pk and any nested ARes
-      cloned = attributes.reject {|k,v| k == self.class.primary_key || v.is_a?(ActiveResource::Base)}.inject({}) do |attrs, (k, v)|
-        attrs[k] = v.clone
-        attrs
-      end
+      cloned = Hash[attributes.reject {|k,v| k == self.class.primary_key || v.is_a?(ActiveResource::Base)}.map { |k, v| [k, v.clone] }]
       # Form the new resource - bypass initialize of resource with 'new' as that will call 'load' which
       # attempts to convert hashes into member objects and arrays into collections of objects.  We want
       # the raw objects to be cloned so we bypass load by directly setting the attributes hash.
@@ -1223,10 +1219,10 @@ module ActiveResource
             when Array
               resource = find_or_create_resource_for_collection(key)
               value.map do |attrs|
-                if attrs.is_a?(String) || attrs.is_a?(Numeric)
-                  attrs.duplicable? ? attrs.dup : attrs
-                else
+                if attrs.is_a?(Hash)
                   resource.new(attrs)
+                else
+                  attrs.duplicable? ? attrs.dup : attrs
                 end
               end
             when Hash
@@ -1319,7 +1315,7 @@ module ActiveResource
       end
 
       def load_attributes_from_response(response)
-        if response['Content-Length'] != "0" && response.body.strip.size > 0
+        if !response['Content-Length'].blank? && response['Content-Length'] != "0" && !response.body.nil? && response.body.strip.size > 0
           load(self.class.format.decode(response.body))
         end
       end

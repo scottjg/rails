@@ -13,7 +13,7 @@ module ActionView
     module UrlHelper
       # This helper may be included in any class that includes the
       # URL helpers of a routes (routes.url_helpers). Some methods
-      # provided here will only work in the4 context of a request
+      # provided here will only work in the context of a request
       # (link_to_unless_current, for instance), which must be provided
       # as a method called #request on the context.
 
@@ -21,6 +21,10 @@ module ActionView
 
       include ActionDispatch::Routing::UrlFor
       include TagHelper
+
+      def _routes_context
+        controller
+      end
 
       # Need to map default url options to controller one.
       # def default_url_options(*args) #:nodoc:
@@ -235,13 +239,8 @@ module ActionView
           html_options = convert_options_to_data_attributes(options, html_options)
           url = url_for(options)
 
-          if html_options
-            html_options = html_options.stringify_keys
-            href = html_options['href']
-            tag_options = tag_options(html_options)
-          else
-            tag_options = nil
-          end
+          href = html_options['href']
+          tag_options = tag_options(html_options)
 
           href_attr = "href=\"#{html_escape(url)}\"" unless href
           "<a #{href_attr}#{tag_options}>#{html_escape(name || url)}</a>".html_safe
@@ -269,8 +268,9 @@ module ActionView
       # The +options+ hash accepts the same options as url_for.
       #
       # There are a few special +html_options+:
-      # * <tt>:method</tt> - Specifies the anchor name to be appended to the path.
-      # * <tt>:disabled</tt> - Specifies the anchor name to be appended to the path.
+      # * <tt>:method</tt> - Symbol of HTTP verb. Supported verbs are <tt>:post</tt>, <tt>:get</tt>,
+      #   <tt>:delete</tt> and <tt>:put</tt>. By default it will be <tt>:post</tt>.
+      # * <tt>:disabled</tt> - If set to true, it will generate a disabled button.
       # * <tt>:confirm</tt> - This will use the unobtrusive JavaScript driver to
       #   prompt with the question specified. If the user accepts, the link is
       #   processed normally, otherwise no action is taken.
@@ -367,8 +367,8 @@ module ActionView
       # "Go Back" link instead of a link to the comments page, we could do something like this...
       #
       #    <%=
-      #        link_to_unless_current("Comment", { :controller => 'comments', :action => 'new}) do
-      #           link_to("Go back", { :controller => 'posts', :action => 'index' })
+      #        link_to_unless_current("Comment", { :controller => "comments", :action => "new" }) do
+      #           link_to("Go back", { :controller => "posts", :action => "index" })
       #        end
       #     %>
       def link_to_unless_current(name, options = {}, html_options = {}, &block)
@@ -594,11 +594,6 @@ module ActionView
           end
 
           confirm = html_options.delete("confirm")
-
-          if html_options.key?("popup")
-            ActiveSupport::Deprecation.warn(":popup has been deprecated", caller)
-          end
-
           method, href = html_options.delete("method"), html_options['href']
 
           add_confirm_to_attributes!(html_options, confirm) if confirm

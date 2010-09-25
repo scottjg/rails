@@ -394,10 +394,6 @@ class NamedScopeTest < ActiveRecord::TestCase
     end
   end
 
-  def test_deprecated_named_scope_method
-    assert_deprecated('named_scope has been deprecated') { Topic.named_scope :deprecated_named_scope }
-  end
-
   def test_named_scopes_on_relations
     # Topic.replied
     approved_topics = Topic.scoped.approved.order('id DESC')
@@ -477,5 +473,11 @@ class DynamicScopeTest < ActiveRecord::TestCase
   def test_dynamic_scope
     assert_equal Post.scoped_by_author_id(1).find(1), Post.find(1)
     assert_equal Post.scoped_by_author_id_and_title(1, "Welcome to the weblog").first, Post.find(:first, :conditions => { :author_id => 1, :title => "Welcome to the weblog"})
+  end
+
+  def test_dynamic_scope_should_create_methods_after_hitting_method_missing
+    assert_blank Developer.methods.grep(/scoped_by_created_at/)
+    Developer.scoped_by_created_at(nil)
+    assert_present Developer.methods.grep(/scoped_by_created_at/)
   end
 end

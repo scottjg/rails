@@ -11,7 +11,7 @@ class MemCacheStoreTest < ActionController::IntegrationTest
       session[:foo] = "bar"
       head :ok
     end
-    
+
     def set_serialized_session_value
       session[:foo] = SessionAutoloadTest::Foo.new
       head :ok
@@ -174,7 +174,7 @@ class MemCacheStoreTest < ActionController::IntegrationTest
   private
     def with_test_route_set
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match ':action', :to => ::MemCacheStoreTest::TestController
         end
 

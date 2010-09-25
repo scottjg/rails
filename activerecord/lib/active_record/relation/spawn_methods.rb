@@ -5,10 +5,32 @@ module ActiveRecord
     def merge(r)
       merged_relation = clone
       return merged_relation unless r
+      return to_a & r if r.is_a?(Array)
 
-      ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) - [:joins, :where]).each do |method|
+      Relation::ASSOCIATION_METHODS.each do |method|
         value = r.send(:"#{method}_values")
-        merged_relation.send(:"#{method}_values=", value) if value.present?
+
+        unless value.empty?
+          if method == :includes
+            merged_relation = merged_relation.includes(value)
+          else
+            merged_relation.send(:"#{method}_values=", value)
+          end
+        end
+      end
+
+      (Relation::MULTI_VALUE_METHODS - [:joins, :where, :order]).each do |method|
+        value = r.send(:"#{method}_values")
+        merged_relation.send(:"#{method}_values=", merged_relation.send(:"#{method}_values") + value) if value.present?
+      end
+
+      order_value = r.order_values
+      if order_value.present?
+        if r.reorder_flag
+          merged_relation.order_values = order_value
+        else
+          merged_relation.order_values = merged_relation.order_values + order_value
+        end
       end
 
       merged_relation = merged_relation.joins(r.joins_values)
@@ -16,8 +38,8 @@ module ActiveRecord
       merged_wheres = @where_values
 
       r.where_values.each do |w|
-        if w.is_a?(Arel::Predicates::Equality)
-          merged_wheres = merged_wheres.reject {|p| p.is_a?(Arel::Predicates::Equality) && p.operand1.name == w.operand1.name }
+        if w.respond_to?(:operator) && w.operator == :==
+          merged_wheres = merged_wheres.reject {|p| p.respond_to?(:operator) && p.operator == :== && p.operand1.name == w.operand1.name }
         end
 
         merged_wheres += [w]
@@ -26,9 +48,8 @@ module ActiveRecord
       merged_relation.where_values = merged_wheres
 
       Relation::SINGLE_VALUE_METHODS.reject {|m| m == :lock}.each do |method|
-        unless (value = r.send(:"#{method}_value")).nil?
-          merged_relation.send(:"#{method}_value=", value)
-        end
+        value = r.send(:"#{method}_value")
+        merged_relation.send(:"#{method}_value=", value) unless value.nil?
       end
 
       merged_relation.lock_value = r.lock_value unless merged_relation.lock_value
@@ -44,12 +65,12 @@ module ActiveRecord
     def except(*skips)
       result = self.class.new(@klass, table)
 
-      (Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS).each do |method|
-        result.send(:"#{method}_values=", send(:"#{method}_values")) unless skips.include?(method)
+      ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) - skips).each do |method|
+        result.send(:"#{method}_values=", send(:"#{method}_values"))
       end
 
-      Relation::SINGLE_VALUE_METHODS.each do |method|
-        result.send(:"#{method}_value=", send(:"#{method}_value")) unless skips.include?(method)
+      (Relation::SINGLE_VALUE_METHODS - skips).each do |method|
+        result.send(:"#{method}_value=", send(:"#{method}_value"))
       end
 
       result
@@ -58,14 +79,12 @@ module ActiveRecord
     def only(*onlies)
       result = self.class.new(@klass, table)
 
-      onlies.each do |only|
-        if (Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS).include?(only)
-          result.send(:"#{only}_values=", send(:"#{only}_values"))
-        elsif Relation::SINGLE_VALUE_METHODS.include?(only)
-          result.send(:"#{only}_value=", send(:"#{only}_value"))
-        else
-          raise "Invalid argument : #{only}"
-        end
+      ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) & onlies).each do |method|
+        result.send(:"#{method}_values=", send(:"#{method}_values"))
+      end
+
+      (Relation::SINGLE_VALUE_METHODS & onlies).each do |method|
+        result.send(:"#{method}_value=", send(:"#{method}_value"))
       end
 
       result
@@ -79,19 +98,16 @@ module ActiveRecord
       return relation unless options
 
       options.assert_valid_keys(VALID_FIND_OPTIONS)
+      finders = options.dup
+      finders.delete_if { |key, value| value.nil? }
 
-      [:joins, :select, :group, :having, :limit, :offset, :from, :lock, :readonly].each do |finder|
-        relation = relation.send(finder, options[finder]) if options.has_key?(finder)
+      ([:joins, :select, :group, :order, :having, :limit, :offset, :from, :lock, :readonly] & finders.keys).each do |finder|
+        relation = relation.send(finder, finders[finder])
       end
 
-      # Give precedence to newly-applied orders and groups to play nicely with with_scope
-      [:group, :order].each do |finder|
-        relation.send("#{finder}_values=", Array.wrap(options[finder]) + relation.send("#{finder}_values")) if options.has_key?(finder)
-      end
-
-      relation = relation.where(options[:conditions]) if options.has_key?(:conditions)
-      relation = relation.includes(options[:include]) if options.has_key?(:include)
-      relation = relation.extending(options[:extend]) if options.has_key?(:extend)
+      relation = relation.where(finders[:conditions]) if options.has_key?(:conditions)
+      relation = relation.includes(finders[:include]) if options.has_key?(:include)
+      relation = relation.extending(finders[:extend]) if options.has_key?(:extend)
 
       relation
     end

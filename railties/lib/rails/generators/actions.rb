@@ -1,5 +1,4 @@
 require 'open-uri'
-require 'active_support/deprecation'
 require 'rbconfig'
 
 module Rails
@@ -52,20 +51,6 @@ module Rails
       def gem(*args)
         options = args.extract_options!
         name, version = args
-
-        # Deal with deprecated options
-        { :env => :group, :only => :group,
-          :lib => :require, :require_as => :require }.each do |old, new|
-          next unless options[old]
-          options[new] = options.delete(old)
-          ActiveSupport::Deprecation.warn "#{old.inspect} option in gem is deprecated, use #{new.inspect} instead"
-        end
-
-        # Deal with deprecated source
-        if source = options.delete(:source)
-          ActiveSupport::Deprecation.warn ":source option in gem is deprecated, use add_source method instead"
-          add_source(source)
-        end
 
         # Set the message to be shown in logs. Uses the git repo if one is given,
         # otherwise use name (version).
@@ -242,7 +227,7 @@ module Rails
       def rake(command, options={})
         log :rake, command
         env  = options[:env] || 'development'
-        sudo = options[:sudo] && Config::CONFIG['host_os'] !~ /mswin|mingw/ ? 'sudo ' : ''
+        sudo = options[:sudo] && RbConfig::CONFIG['host_os'] !~ /mswin|mingw/ ? 'sudo ' : ''
         in_root { run("#{sudo}#{extify(:rake)} #{command} RAILS_ENV=#{env}", :verbose => false) }
       end
 
@@ -257,16 +242,6 @@ module Rails
         in_root { run("#{extify(:capify)} .", :verbose => false) }
       end
 
-      # Add Rails to /vendor/rails
-      #
-      # ==== Example
-      #
-      #   freeze!
-      #
-      def freeze!(args={})
-        ActiveSupport::Deprecation.warn "freeze! is deprecated since your rails app now comes bundled with Rails by default, please check your Gemfile"
-      end
-
       # Make an entry in Rails routing file config/routes.rb
       #
       # === Example
@@ -275,7 +250,7 @@ module Rails
       #
       def route(routing_code)
         log :route, routing_code
-        sentinel = /\.routes\.draw do(\s*\|map\|)?\s*$/
+        sentinel = /\.routes\.draw do(?:\s*\|map\|)?\s*$/
 
         in_root do
           inject_into_file 'config/routes.rb', "\n  #{routing_code}\n", { :after => sentinel, :verbose => false }
@@ -309,7 +284,7 @@ module Rails
         # Add an extension to the given name based on the platform.
         #
         def extify(name)
-          if Config::CONFIG['host_os'] =~ /mswin|mingw/
+          if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
             "#{name}.bat"
           else
             name

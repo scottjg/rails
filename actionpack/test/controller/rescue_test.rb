@@ -149,7 +149,7 @@ class RescueController < ActionController::Base
 
   def missing_template
   end
-  
+
   def io_error_in_view
     raise ActionView::TemplateError.new(nil, {}, IOError.new('this is io error'))
   end
@@ -371,7 +371,7 @@ class RescueTest < ActionController::IntegrationTest
   private
     def with_test_routing
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match 'foo', :to => ::RescueTest::TestController.action(:foo)
           match 'invalid', :to => ::RescueTest::TestController.action(:invalid)
           match 'b00m', :to => ::RescueTest::TestController.action(:b00m)

@@ -19,11 +19,11 @@ module ActiveRecord
         begin
           require 'mysql'
         rescue LoadError
-          raise "!!! Missing the mysql gem. Add it to your Gemfile: gem 'mysql', '2.8.1'"
+          raise "!!! Missing the mysql2 gem. Add it to your Gemfile: gem 'mysql2'"
         end
 
         unless defined?(Mysql::Result) && Mysql::Result.method_defined?(:each_hash)
-          raise "!!! Outdated mysql gem. Upgrade to 2.8.1 or later. In your Gemfile: gem 'mysql', '2.8.1'"
+          raise "!!! Outdated mysql gem. Upgrade to 2.8.1 or later. In your Gemfile: gem 'mysql', '2.8.1'. Or use gem 'mysql2'"
         end
       end
 
@@ -31,6 +31,7 @@ module ActiveRecord
       mysql.ssl_set(config[:sslkey], config[:sslcert], config[:sslca], config[:sslcapath], config[:sslcipher]) if config[:sslca] || config[:sslkey]
 
       default_flags = Mysql.const_defined?(:CLIENT_MULTI_RESULTS) ? Mysql::CLIENT_MULTI_RESULTS : 0
+      default_flags |= Mysql::CLIENT_FOUND_ROWS if Mysql.const_defined?(:CLIENT_FOUND_ROWS)
       options = [host, username, password, database, port, socket, default_flags]
       ConnectionAdapters::MysqlAdapter.new(mysql, logger, options, config)
     end
@@ -275,10 +276,12 @@ module ActiveRecord
         rows = []
         result.each { |row| rows << row }
         result.free
+        @connection.more_results && @connection.next_result    # invoking stored procedures with CLIENT_MULTI_RESULTS requires this to tidy up else connection will be dropped
         rows
       end
 
-      # Executes a SQL query and returns a MySQL::Result object. Note that you have to free the Result object after you're done using it.
+      # Executes an SQL query and returns a MySQL::Result object. Note that you have to free
+      # the Result object after you're done using it.
       def execute(sql, name = nil) #:nodoc:
         if name == :skip_logging
           @connection.query(sql)
@@ -355,10 +358,10 @@ module ActiveRecord
           sql = "SHOW TABLES"
         end
 
-        select_all(sql).inject("") do |structure, table|
+        select_all(sql).map do |table|
           table.delete('Table_type')
-          structure += select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")["Create Table"] + ";\n\n"
-        end
+          select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")["Create Table"] + ";\n\n"
+        end.join("")
       end
 
       def recreate_database(name, options = {}) #:nodoc:
@@ -617,6 +620,7 @@ module ActiveRecord
           rows = []
           result.each_hash { |row| rows << row }
           result.free
+          @connection.more_results && @connection.next_result    # invoking stored procedures with CLIENT_MULTI_RESULTS requires this to tidy up else connection will be dropped
           rows
         end
 

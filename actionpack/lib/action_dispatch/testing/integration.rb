@@ -1,6 +1,7 @@
 require 'stringio'
 require 'uri'
 require 'active_support/core_ext/kernel/singleton_class'
+require 'active_support/core_ext/object/try'
 require 'rack/test'
 require 'test/unit/assertions'
 
@@ -114,8 +115,8 @@ module ActionDispatch
       end
     end
 
-    # An integration Session instance represents a set of requests and responses
-    # performed sequentially by some virtual user. Because you can instantiate
+    # An instance of this class represents a set of requests and responses
+    # performed sequentially by a test process. Because you can instantiate
     # multiple sessions and run them side-by-side, you can also mimic (to some
     # limited extent) multiple simultaneous users interacting with your system.
     #
@@ -256,17 +257,19 @@ module ActionDispatch
             end
           end
 
+          port = host.split(':')[1]
+
           env = {
             :method => method,
             :params => parameters,
 
             "SERVER_NAME"     => host.split(':')[0],
-            "SERVER_PORT"     => (https? ? "443" : "80"),
+            "SERVER_PORT"     => (port ? port : (https? ? "443" : "80")),
             "HTTPS"           => https? ? "on" : "off",
             "rack.url_scheme" => https? ? "https" : "http",
 
             "REQUEST_URI"    => path,
-            "HTTP_HOST"      => host,
+            "HTTP_HOST"      => [host, port].compact.join(':'),
             "REMOTE_ADDR"    => remote_addr,
             "CONTENT_TYPE"   => "application/x-www-form-urlencoded",
             "HTTP_ACCEPT"    => accept
@@ -319,7 +322,7 @@ module ActionDispatch
           reset! unless @integration_session
           # reset the html_document variable, but only for new get/post calls
           @html_document = nil unless %w(cookies assigns).include?(method)
-          returning @integration_session.__send__(method, *args) do
+          @integration_session.__send__(method, *args).tap do
             copy_session_variables!
           end
         end
@@ -362,7 +365,7 @@ module ActionDispatch
       def method_missing(sym, *args, &block)
         reset! unless @integration_session
         if @integration_session.respond_to?(sym)
-          returning @integration_session.__send__(sym, *args, &block) do
+          @integration_session.__send__(sym, *args, &block).tap do
             copy_session_variables!
           end
         else
@@ -372,12 +375,12 @@ module ActionDispatch
     end
   end
 
-  # An IntegrationTest is one that spans multiple controllers and actions,
+  # An test that spans multiple controllers and actions,
   # tying them all together to ensure they work together as expected. It tests
   # more completely than either unit or functional tests do, exercising the
   # entire stack, from the dispatcher to the database.
   #
-  # At its simplest, you simply extend IntegrationTest and write your tests
+  # At its simplest, you simply extend <tt>IntegrationTest</tt> and write your tests
   # using the get/post methods:
   #
   #   require "test_helper"
@@ -402,7 +405,7 @@ module ActionDispatch
   # However, you can also have multiple session instances open per test, and
   # even extend those instances with assertions and methods to create a very
   # powerful testing DSL that is specific for your application. You can even
-  # reference any named routes you happen to have defined!
+  # reference any named routes you happen to have defined.
   #
   #   require "test_helper"
   #

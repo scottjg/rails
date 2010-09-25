@@ -22,9 +22,9 @@ module ActiveSupport
   #   end
   #
   #   event = @events.first
-  #   event.name      #=> :render
-  #   event.duration  #=> 10 (in milliseconds)
-  #   event.payload   #=> { :extra => :information }
+  #   event.name      # => :render
+  #   event.duration  # => 10 (in milliseconds)
+  #   event.payload   # => { :extra => :information }
   #
   # When subscribing to Notifications, you can pass a pattern, to only consume
   # events that match the pattern:
@@ -45,7 +45,7 @@ module ActiveSupport
 
     class << self
       attr_writer :notifier
-      delegate :publish, :unsubscribe, :to => :notifier
+      delegate :publish, :to => :notifier
 
       def instrument(name, payload = {})
         if @instrumenters[name]

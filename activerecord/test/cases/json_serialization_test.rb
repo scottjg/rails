@@ -82,6 +82,13 @@ class JsonSerializationTest < ActiveRecord::TestCase
     assert_match %r{"label":"Has cheezburger"}, methods_json
     assert_match %r{"favorite_quote":"Constraints are liberating"}, methods_json
   end
+
+  def test_serializable_hash_should_not_modify_options_in_argument
+    options = { :only => :name }
+    @contact.serializable_hash(options)
+
+    assert_nil options[:except]
+  end
 end
 
 class DatabaseConnectedJsonEncodingTest < ActiveRecord::TestCase
@@ -204,7 +211,7 @@ class DatabaseConnectedJsonEncodingTest < ActiveRecord::TestCase
 
   def test_should_be_able_to_encode_relation
     authors_relation = Author.where(:id => [@david.id, @mary.id])
-    
+
     json = ActiveSupport::JSON.encode authors_relation, :only => :name
     assert_equal '[{"author":{"name":"David"}},{"author":{"name":"Mary"}}]', json
   end

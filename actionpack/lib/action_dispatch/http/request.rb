@@ -15,6 +15,8 @@ module ActionDispatch
     include ActionDispatch::Http::Upload
     include ActionDispatch::Http::URL
 
+    LOCALHOST = [/^127\.0\.0\.\d{1,3}$/, "::1", /^0:0:0:0:0:0:0:1(%.*)?$/].freeze
+
     %w[ AUTH_TYPE GATEWAY_INTERFACE
         PATH_TRANSLATED REMOTE_HOST
         REMOTE_IDENT REMOTE_USER REMOTE_ADDR
@@ -134,11 +136,11 @@ module ActionDispatch
       super.to_i
     end
 
-    # Returns true if the request's "X-Requested-With" header contains
-    # "XMLHttpRequest". (The Prototype Javascript library sends this header with
-    # every Ajax request.)
+    # Returns true if the "X-Requested-With" header contains "XMLHttpRequest"
+    # (case-insensitive). All major JavaScript libraries send this header with
+    # every Ajax request.
     def xml_http_request?
-      !(@env['HTTP_X_REQUESTED_WITH'] !~ /XMLHttpRequest/i)
+      @env['HTTP_X_REQUESTED_WITH'] =~ /XMLHttpRequest/i
     end
     alias :xhr? :xml_http_request?
 
@@ -147,8 +149,16 @@ module ActionDispatch
     end
 
     # Which IP addresses are "trusted proxies" that can be stripped from
-    # the right-hand-side of X-Forwarded-For
-    TRUSTED_PROXIES = /^127\.0\.0\.1$|^(10|172\.(1[6-9]|2[0-9]|30|31)|192\.168)\./i
+    # the right-hand-side of X-Forwarded-For.
+    #
+    # http://en.wikipedia.org/wiki/Private_network#Private_IPv4_address_spaces.
+    TRUSTED_PROXIES = %r{
+      ^127\.0\.0\.1$                | # localhost
+      ^(10                          | # private IP 10.x.x.x
+        172\.(1[6-9]|2[0-9]|3[0-1]) | # private IP in the range 172.16.0.0 .. 172.31.255.255
+        192\.168                      # private IP 192.168.x.x
+       )\.
+    }x
 
     # Determines originating IP address.  REMOTE_ADDR is the standard
     # but will fail if the user is behind a proxy.  HTTP_CLIENT_IP and/or
@@ -230,6 +240,11 @@ module ActionDispatch
       @env['X-HTTP_AUTHORIZATION'] ||
       @env['X_HTTP_AUTHORIZATION'] ||
       @env['REDIRECT_X_HTTP_AUTHORIZATION']
+    end
+
+    # True if the request came from localhost, 127.0.0.1.
+    def local?
+      LOCALHOST.any? { |local_ip| local_ip === remote_addr && local_ip === remote_ip }
     end
   end
 end

@@ -58,16 +58,16 @@ begin
           metric.send(mode) { __send__ @method_name }
         rescue ::Test::Unit::AssertionFailedError => e
           add_failure(e.message, e.backtrace)
-        rescue StandardError, ScriptError
-          add_error($!)
+        rescue StandardError, ScriptError => e
+          add_error(e)
         ensure
           begin
             teardown
             run_callbacks :teardown, :enumerator => :reverse_each
           rescue ::Test::Unit::AssertionFailedError => e
             add_failure(e.message, e.backtrace)
-          rescue StandardError, ScriptError
-            add_error($!)
+          rescue StandardError, ScriptError => e
+            add_error(e)
           end
         end
 
@@ -178,7 +178,7 @@ begin
             RubyProf.pause
             profile_options[:runs].to_i.times { run_test(@metric, :profile) }
             @data = RubyProf.stop
-            @total = @data.threads.values.sum(0) { |method_infos| method_infos.sort.last.total_time }
+            @total = @data.threads.values.sum(0) { |method_infos| method_infos.max.total_time }
           end
 
           def report
@@ -207,10 +207,14 @@ begin
             def output_filename(printer_class)
               suffix =
                 case printer_class.name.demodulize
-                  when 'FlatPrinter'; 'flat.txt'
-                  when 'GraphPrinter'; 'graph.txt'
-                  when 'GraphHtmlPrinter'; 'graph.html'
-                  when 'CallTreePrinter'; 'tree.txt'
+                  when 'FlatPrinter';                 'flat.txt'
+                  when 'FlatPrinterWithLineNumbers';  'flat_line_numbers.txt'
+                  when 'GraphPrinter';                'graph.txt'
+                  when 'GraphHtmlPrinter';            'graph.html'
+                  when 'GraphYamlPrinter';            'graph.yml'
+                  when 'CallTreePrinter';             'tree.txt'
+                  when 'CallStackPrinter';            'stack.html'
+                  when 'DotPrinter';                  'graph.dot'
                   else printer_class.name.sub(/Printer$/, '').underscore
                 end
 

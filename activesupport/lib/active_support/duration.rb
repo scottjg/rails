@@ -3,9 +3,9 @@ require 'active_support/core_ext/array/conversions'
 require 'active_support/core_ext/object/acts_like'
 
 module ActiveSupport
-  # Provides accurate date and time measurements using Date#advance and 
-  # Time#advance, respectively. It mainly supports the methods on Numeric,
-  # such as in this example:
+  # Provides accurate date and time measurements using Date#advance and
+  # Time#advance, respectively. It mainly supports the methods on Numeric.
+  # Example:
   #
   #   1.month.ago       # equivalent to Time.now.advance(:months => -1)
   class Duration < BasicObject
@@ -99,7 +99,7 @@ module ActiveSupport
     private
 
       def method_missing(method, *args, &block) #:nodoc:
-        value.send(method, *args)
+        value.send(method, *args, &block)
       end
   end
 end

@@ -1,5 +1,6 @@
 require 'cases/helper'
 require 'models/contact'
+require 'models/automobile'
 require 'active_support/core_ext/object/instance_variables'
 
 class Contact
@@ -89,7 +90,7 @@ class JsonSerializationTest < ActiveModel::TestCase
     assert_match %r{"preferences":\{"shows":"anime"\}}, json
   end
 
-  test "methds are called on object" do
+  test "methods are called on object" do
     # Define methods on fixture.
     def @contact.label; "Has cheezburger"; end
     def @contact.favorite_quote; "Constraints are liberating"; end
@@ -102,4 +103,45 @@ class JsonSerializationTest < ActiveModel::TestCase
     assert_match %r{"label":"Has cheezburger"}, methods_json
     assert_match %r{"favorite_quote":"Constraints are liberating"}, methods_json
   end
+
+  test "should return OrderedHash for errors" do
+    car = Automobile.new
+
+    # run the validation
+    car.valid?
+
+    hash = ActiveSupport::OrderedHash.new
+    hash[:make]  = "can't be blank"
+    hash[:model] = "is too short (minimum is 2 characters)"
+    assert_equal hash.to_json, car.errors.to_json
+  end
+
+  test "serializable_hash should not modify options passed in argument" do
+    options = { :except => :name }
+    @contact.serializable_hash(options)
+
+    assert_nil options[:only]
+    assert_equal :name, options[:except]
+  end
+
+  test "as_json should return a hash" do
+    json = @contact.as_json
+
+    assert_kind_of Hash, json
+    assert_kind_of Hash, json['contact']
+    %w(name age created_at awesome preferences).each do |field|
+      assert_equal @contact.send(field), json['contact'][field]
+    end
+  end
+
+  test "custom as_json should be honored when generating json" do
+    def @contact.as_json(options); { :name => name, :created_at => created_at }; end
+    json = @contact.to_json
+
+    assert_match %r{"name":"Konata Izumi"}, json
+    assert_match %r{"created_at":#{ActiveSupport::JSON.encode(Time.utc(2006, 8, 1))}}, json
+    assert_no_match %r{"awesome":}, json
+    assert_no_match %r{"preferences":}, json
+  end
+
 end

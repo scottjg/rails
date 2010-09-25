@@ -7,7 +7,7 @@ module Fun
     # :ported:
     def hello_world
     end
-    
+
     def nested_partial_with_form_builder
       render :partial => ActionView::Helpers::FormBuilder.new(:post, nil, view_context, {}, Proc.new {})
     end
@@ -486,6 +486,10 @@ class TestController < ActionController::Base
 
   def head_with_custom_header
     head :x_custom_header => "something"
+  end
+
+  def head_with_www_authenticate_header
+    head 'WWW-Authenticate' => 'something'
   end
 
   def head_with_status_code_first
@@ -1113,20 +1117,20 @@ class RenderTest < ActionController::TestCase
 
   def test_head_with_location_header
     get :head_with_location_header
-    assert @response.body.blank?
+    assert_blank @response.body
     assert_equal "/foo", @response.headers["Location"]
     assert_response :ok
   end
 
   def test_head_with_location_object
     with_routing do |set|
-      set.draw do |map|
+      set.draw do
         resources :customers
         match ':controller/:action'
       end
 
       get :head_with_location_object
-      assert @response.body.blank?
+      assert_blank @response.body
       assert_equal "http://www.nextangle.com/customers/1", @response.headers["Location"]
       assert_response :ok
     end
@@ -1134,8 +1138,15 @@ class RenderTest < ActionController::TestCase
 
   def test_head_with_custom_header
     get :head_with_custom_header
-    assert @response.body.blank?
+    assert_blank @response.body
     assert_equal "something", @response.headers["X-Custom-Header"]
+    assert_response :ok
+  end
+
+  def test_head_with_www_authenticate_header
+    get :head_with_www_authenticate_header
+    assert_blank @response.body
+    assert_equal "something", @response.headers["WWW-Authenticate"]
     assert_response :ok
   end
 
@@ -1234,7 +1245,7 @@ class RenderTest < ActionController::TestCase
     assert_match(/<label/, @response.body)
     assert_template('test/_labelling_form')
   end
-  
+
   def test_nested_partial_with_form_builder
     @controller = Fun::GamesController.new
     get :nested_partial_with_form_builder
@@ -1414,7 +1425,7 @@ class EtagRenderTest < ActionController::TestCase
     assert_equal 200, @response.status.to_i
     assert_not_nil @response.last_modified
     assert_nil @response.etag
-    assert @response.body.present?
+    assert_present @response.body
   end
 
   def test_render_with_etag
@@ -1499,7 +1510,7 @@ class LastModifiedRenderTest < ActionController::TestCase
     @request.if_modified_since = @last_modified
     get :conditional_hello
     assert_equal 304, @response.status.to_i
-    assert @response.body.blank?, @response.body
+    assert_blank @response.body
     assert_equal @last_modified, @response.headers['Last-Modified']
   end
 
@@ -1514,7 +1525,7 @@ class LastModifiedRenderTest < ActionController::TestCase
     @request.if_modified_since = 'Thu, 16 Jul 2008 00:00:00 GMT'
     get :conditional_hello
     assert_equal 200, @response.status.to_i
-    assert !@response.body.blank?
+    assert_present @response.body
     assert_equal @last_modified, @response.headers['Last-Modified']
   end
 

@@ -44,7 +44,7 @@ module ActionView
       include ActionView::Helpers
 
       attr_accessor :controller, :output_buffer, :rendered
-      
+
       module ClassMethods
         def tests(helper_class)
           self.helper_class = helper_class
@@ -74,6 +74,11 @@ module ActionView
           @helper_class ||= determine_default_helper_class(name)
         end
 
+        def new(*)
+          include_helper_modules!
+          super
+        end
+
       private
 
         def include_helper_modules!
@@ -89,7 +94,6 @@ module ActionView
         @output_buffer = ActiveSupport::SafeBuffer.new
         @rendered = ''
 
-        self.class.send(:include_helper_modules!)
         make_test_case_available_to_view!
         say_no_to_protect_against_forgery!
       end
@@ -185,11 +189,7 @@ module ActionView
       end
 
       def _assigns
-        _instance_variables.inject({}) do |hash, var|
-          name = var[1..-1].to_sym
-          hash[name] = instance_variable_get(var)
-          hash
-        end
+        _instance_variables.map { |var| [var[1..-1].to_sym, instance_variable_get(var)] }
       end
 
       def _routes

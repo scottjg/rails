@@ -12,8 +12,16 @@ $:.unshift(File.dirname(__FILE__) + '/fixtures/alternate_helpers')
 
 ENV['TMPDIR'] = File.join(File.dirname(__FILE__), 'tmp')
 
-if defined?(Encoding.default_internal)
-  Encoding.default_internal = "UTF-8"
+require 'active_support/core_ext/kernel/reporting'
+
+require 'active_support/core_ext/string/encoding'
+if "ruby".encoding_aware?
+  # These are the normal settings that will be set up by Railties
+  # TODO: Have these tests support other combinations of these values
+  silence_warnings do
+    Encoding.default_internal = "UTF-8"
+    Encoding.default_external = "UTF-8"
+  end
 end
 
 require 'test/unit'
@@ -39,14 +47,6 @@ end
 require 'pp' # require 'pp' early to prevent hidden_methods from not picking up the pretty-print methods until too late
 
 module Rails
-end
-
-# Monkey patch the old routes initialization to be silenced.
-class ActionDispatch::Routing::DeprecatedMapper
-  def initialize_with_silencer(*args)
-    ActiveSupport::Deprecation.silence { initialize_without_silencer(*args) }
-  end
-  alias_method_chain :initialize, :silencer
 end
 
 ActiveSupport::Dependencies.hook!
@@ -120,14 +120,12 @@ module ActiveSupport
     # Hold off drawing routes until all the possible controller classes
     # have been loaded.
     setup_once do
-      SharedTestRoutes.draw do |map|
-        # FIXME: match ':controller(/:action(/:id))'
-        map.connect ':controller/:action/:id'
+      SharedTestRoutes.draw do
+        match ':controller(/:action)'
       end
 
-      ActionController::IntegrationTest.app.routes.draw do |map|
-        # FIXME: match ':controller(/:action(/:id))'
-        map.connect ':controller/:action/:id'
+      ActionController::IntegrationTest.app.routes.draw do
+        match ':controller(/:action)'
       end
     end
   end
@@ -218,7 +216,7 @@ class ActionController::IntegrationTest < ActiveSupport::TestCase
   end
 
   def with_autoload_path(path)
-    path = File.join(File.dirname(__FILE__), "fixtures", path)  
+    path = File.join(File.dirname(__FILE__), "fixtures", path)
     if ActiveSupport::Dependencies.autoload_paths.include?(path)
       yield
     else

@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'controller/fake_controllers'
+require 'active_support/ordered_hash'
 
 class TestTest < ActionController::TestCase
   class TestController < ActionController::Base
@@ -134,17 +135,22 @@ XML
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
     @request.env['PATH_INFO'] = nil
+    @routes = ActionDispatch::Routing::RouteSet.new.tap do |r|
+      r.draw do
+        match ':controller(/:action(/:id))'
+      end
+    end
   end
 
   def test_raw_post_handling
-    params = {:page => {:name => 'page name'}, 'some key' => 123}
+    params = ActiveSupport::OrderedHash[:page, {:name => 'page name'}, 'some key', 123]
     post :render_raw_post, params.dup
 
     assert_equal params.to_query, @response.body
   end
 
   def test_body_stream
-    params = { :page => { :name => 'page name' }, 'some key' => 123 }
+    params = ActiveSupport::OrderedHash[:page, { :name => 'page name' }, 'some key', 123]
 
     post :render_body, params.dup
 
@@ -453,18 +459,26 @@ XML
 
   def test_assert_routing_with_method
     with_routing do |set|
-      set.draw { |map| map.resources(:content) }
+      set.draw { resources(:content) }
       assert_routing({ :method => 'post', :path => 'content' }, { :controller => 'content', :action => 'create' })
     end
   end
 
   def test_assert_routing_in_module
-    assert_routing 'admin/user', :controller => 'admin/user', :action => 'index'
+    with_routing do |set|
+      set.draw do
+        namespace :admin do
+          match 'user' => 'user#index'
+        end
+      end
+
+      assert_routing 'admin/user', :controller => 'admin/user', :action => 'index'
+    end
   end
-  
+
   def test_assert_routing_with_glob
     with_routing do |set|
-      set.draw { |map| match('*path' => "pages#show") }
+      set.draw { match('*path' => "pages#show") }
       assert_routing('/company/about', { :controller => 'pages', :action => 'show', :path => 'company/about' })
     end
   end
@@ -486,7 +500,7 @@ XML
 
   def test_array_path_parameter_handled_properly
     with_routing do |set|
-      set.draw do |map|
+      set.draw do
         match 'file/*path', :to => 'test_test/test#test_params'
         match ':controller/:action'
       end
@@ -545,7 +559,15 @@ XML
     assert_equal "bar", @request.params[:foo]
     @request.recycle!
     post :no_op
-    assert @request.params[:foo].blank?
+    assert_blank @request.params[:foo]
+  end
+
+  def test_symbolized_path_params_reset_after_request
+    get :test_params, :id => "foo"
+    assert_equal "foo", @request.symbolized_path_parameters[:id]
+    @request.recycle!
+    get :test_params
+    assert_nil @request.symbolized_path_parameters[:id]
   end
 
   def test_should_have_knowledge_of_client_side_cookie_state_even_if_they_are_not_set
@@ -652,13 +674,6 @@ XML
       assert_redirected_to 'created resource'
     end
   end
-
-  def test_binary_content_works_with_send_file
-    get :test_send_file
-    assert_deprecated do
-      assert_nothing_raised(NoMethodError) { @response.binary_content }
-    end
-  end
 end
 
 class InferringClassNameTest < ActionController::TestCase
@@ -693,7 +708,7 @@ class NamedRoutesControllerTest < ActionController::TestCase
 
   def test_should_be_able_to_use_named_routes_before_a_request_is_done
     with_routing do |set|
-      set.draw { |map| resources :contents }
+      set.draw { resources :contents }
       assert_equal 'http://test.host/contents/new', new_content_url
       assert_equal 'http://test.host/contents/1', content_url(:id => 1)
     end

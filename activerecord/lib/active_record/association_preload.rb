@@ -9,8 +9,8 @@ module ActiveRecord
     # Implements the details of eager loading of Active Record associations.
     # Application developers should not use this module directly.
     #
-    # ActiveRecord::Base is extended with this module. The source code in
-    # ActiveRecord::Base references methods defined in this module.
+    # <tt>ActiveRecord::Base</tt> is extended with this module. The source code in
+    # <tt>ActiveRecord::Base</tt> references methods defined in this module.
     #
     # Note that 'eager loading' and 'preloading' are actually the same thing.
     # However, there are two different eager loading strategies.
@@ -55,7 +55,7 @@ module ActiveRecord
       # == Parameters
       # +records+ is an array of ActiveRecord::Base. This array needs not be flat,
       # i.e. +records+ itself may also contain arrays of records. In any case,
-      # +preload_associations+ will preload the associations all records by
+      # +preload_associations+ will preload the all associations records by
       # flattening +records+.
       #
       # +associations+ specifies one or more associations that you want to
@@ -110,8 +110,8 @@ module ActiveRecord
       def preload_one_association(records, association, preload_options={})
         class_to_reflection = {}
         # Not all records have the same class, so group then preload
-        # group on the reflection itself so that if various subclass share the same association then we do not split them
-        # unnecessarily
+        # group on the reflection itself so that if various subclass share the same association then
+        # we do not split them unnecessarily
         records.group_by { |record| class_to_reflection[record.class] ||= record.class.reflections[association]}.each do |reflection, _records|
           raise ConfigurationError, "Association named '#{ association }' was not found; perhaps you misspelled it?" unless reflection
 
@@ -149,7 +149,8 @@ module ActiveRecord
         seen_keys = {}
         associated_records.each do |associated_record|
           #this is a has_one or belongs_to: there should only be one record.
-          #Unfortunately we can't (in portable way) ask the database for 'all records where foo_id in (x,y,z), but please
+          #Unfortunately we can't (in portable way) ask the database for
+          #'all records where foo_id in (x,y,z), but please
           # only one row per distinct foo_id' so this where we enforce that
           next if seen_keys[associated_record[key].to_s]
           seen_keys[associated_record[key].to_s] = true
@@ -162,7 +163,7 @@ module ActiveRecord
 
         id_to_record_map.each do |id, records|
           next if seen_keys.include?(id.to_s)
-          records.each {|record| record.send("set_#{reflection_name}_target", nil) }            
+          records.each {|record| record.send("set_#{reflection_name}_target", nil) }
         end
       end
 
@@ -208,23 +209,20 @@ module ActiveRecord
         records.each {|record| record.send("set_#{reflection.name}_target", nil)}
         if options[:through]
           through_records = preload_through_records(records, reflection, options[:through])
-          through_reflection = reflections[options[:through]]
-          through_primary_key = through_reflection.primary_key_name
+
           unless through_records.empty?
+            through_reflection = reflections[options[:through]]
+            through_primary_key = through_reflection.primary_key_name
             source = reflection.source_reflection.name
             through_records.first.class.preload_associations(through_records, source)
             if through_reflection.macro == :belongs_to
-              rev_id_to_record_map, rev_ids = construct_id_map(records, through_primary_key)
-              rev_primary_key = through_reflection.klass.primary_key
-              through_records.each do |through_record|
-                add_preloaded_record_to_collection(rev_id_to_record_map[through_record[rev_primary_key].to_s],
-                                                   reflection.name, through_record.send(source))
-              end
-            else
-              through_records.each do |through_record|
-                add_preloaded_record_to_collection(id_to_record_map[through_record[through_primary_key].to_s],
-                                                   reflection.name, through_record.send(source))
-              end
+              id_to_record_map    = construct_id_map(records, through_primary_key).first
+              through_primary_key = through_reflection.klass.primary_key
+            end
+
+            through_records.each do |through_record|
+              add_preloaded_record_to_collection(id_to_record_map[through_record[through_primary_key].to_s],
+                                                 reflection.name, through_record.send(source))
             end
           end
         else
@@ -242,7 +240,6 @@ module ActiveRecord
 
         if options[:through]
           through_records = preload_through_records(records, reflection, options[:through])
-          through_reflection = reflections[options[:through]]
           unless through_records.empty?
             source = reflection.source_reflection.name
             through_records.first.class.preload_associations(through_records, source, options)
@@ -260,7 +257,6 @@ module ActiveRecord
 
       def preload_through_records(records, reflection, through_association)
         through_reflection = reflections[through_association]
-        through_primary_key = through_reflection.primary_key_name
 
         through_records = []
         if reflection.options[:source_type]
@@ -300,37 +296,32 @@ module ActiveRecord
         options = reflection.options
         primary_key_name = reflection.primary_key_name
 
+        klasses_and_ids = {}
+
         if options[:polymorphic]
           polymorph_type = options[:foreign_type]
-          klasses_and_ids = {}
 
-          # Construct a mapping from klass to a list of ids to load and a mapping of those ids back to their parent_records
+          # Construct a mapping from klass to a list of ids to load and a mapping of those ids back
+          # to their parent_records
           records.each do |record|
             if klass = record.send(polymorph_type)
               klass_id = record.send(primary_key_name)
               if klass_id
                 id_map = klasses_and_ids[klass] ||= {}
-                id_list_for_klass_id = (id_map[klass_id.to_s] ||= [])
-                id_list_for_klass_id << record
+                (id_map[klass_id.to_s] ||= []) << record
               end
             end
           end
-          klasses_and_ids = klasses_and_ids.to_a
         else
           id_map = {}
           records.each do |record|
             key = record.send(primary_key_name)
-            if key
-              mapped_records = (id_map[key.to_s] ||= [])
-              mapped_records << record
-            end
+            (id_map[key.to_s] ||= []) << record if key
           end
-          klasses_and_ids = [[reflection.klass.name, id_map]]
+          klasses_and_ids[reflection.klass.name] = id_map unless id_map.empty?
         end
 
-        klasses_and_ids.each do |klass_and_id|
-          klass_name, id_map = *klass_and_id
-          next if id_map.empty?
+        klasses_and_ids.each do |klass_name, id_map|
           klass = klass_name.constantize
 
           table_name = klass.quoted_table_name
@@ -370,7 +361,7 @@ module ActiveRecord
         conditions << append_conditions(reflection, preload_options)
 
         find_options = {
-          :select => preload_options[:select] || options[:select] || "#{table_name}.*",
+          :select => preload_options[:select] || options[:select] || Arel::SqlLiteral.new("#{table_name}.*"),
           :include => preload_options[:include] || options[:include],
           :conditions => [conditions, ids],
           :joins => options[:joins],

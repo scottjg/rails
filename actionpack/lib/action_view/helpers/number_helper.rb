@@ -186,14 +186,7 @@ module ActionView
       #  number_with_delimiter(12345678.05, :locale => :fr)     # => 12 345 678,05
       #  number_with_delimiter(98765432.98, :delimiter => " ", :separator => ",")
       #  # => 98 765 432,98
-      #
-      # You can still use <tt>number_with_delimiter</tt> with the old API that accepts the
-      # +delimiter+ as its optional second and the +separator+ as its
-      # optional third parameter:
-      #  number_with_delimiter(12345678, " ")                     # => 12 345 678
-      #  number_with_delimiter(12345678.05, ".", ",")             # => 12.345.678,05
-      def number_with_delimiter(number, *args)
-        options = args.extract_options!
+      def number_with_delimiter(number, options = {})
         options.symbolize_keys!
 
         begin
@@ -207,14 +200,6 @@ module ActionView
         end
 
         defaults = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
-
-        unless args.empty?
-          ActiveSupport::Deprecation.warn('number_with_delimiter takes an option hash ' +
-            'instead of separate delimiter and precision arguments.', caller)
-          options[:delimiter] ||= args[0] if args[0]
-          options[:separator] ||= args[1] if args[1]
-        end
-
         options = options.reverse_merge(defaults)
 
         parts = number.to_s.split('.')
@@ -249,13 +234,7 @@ module ActionView
       #  number_with_precision(389.32314, :precision => 4, :significant => true)    # => 389.3
       #  number_with_precision(1111.2345, :precision => 2, :separator => ',', :delimiter => '.')
       #  # => 1.111,23
-      #
-      # You can still use <tt>number_with_precision</tt> with the old API that accepts the
-      # +precision+ as its optional second parameter:
-      #   number_with_precision(111.2345, 2)   # => 111.23
-      def number_with_precision(number, *args)
-
-        options = args.extract_options!
+      def number_with_precision(number, options = {})
         options.symbolize_keys!
 
         number = begin
@@ -272,13 +251,6 @@ module ActionView
         precision_defaults = I18n.translate(:'number.precision.format', :locale => options[:locale], :default => {})
         defaults           = defaults.merge(precision_defaults)
 
-        #Backwards compatibility
-        unless args.empty?
-          ActiveSupport::Deprecation.warn('number_with_precision takes an option hash ' +
-            'instead of a separate precision argument.', caller)
-          options[:precision] ||= args[0] if args[0]
-        end
-
         options = options.reverse_merge(defaults)  # Allow the user to unset default values: Eg.: :significant => false
         precision = options.delete :precision
         significant = options.delete :significant
@@ -288,7 +260,7 @@ module ActionView
           if number == 0
             digits, rounded_number = 1, 0
           else
-            digits = (Math.log10(number) + 1).floor
+            digits = (Math.log10(number.abs) + 1).floor
             rounded_number = BigDecimal.new((number / 10 ** (digits - precision)).to_s).round.to_f * 10 ** (digits - precision)
           end
           precision = precision - digits
@@ -337,13 +309,7 @@ module ActionView
       # <tt>:strip_insignificant_zeros</tt> to +false+ to change that):
       #  number_to_human_size(1234567890123, :precision => 5)        # => "1.1229 TB"
       #  number_to_human_size(524288000, :precision=>5)              # => "500 MB"
-      #
-      # You can still use <tt>number_to_human_size</tt> with the old API that accepts the
-      # +precision+ as its optional second parameter:
-      #  number_to_human_size(1234567, 1)    # => 1 MB
-      #  number_to_human_size(483989, 2)     # => 470 KB
-      def number_to_human_size(number, *args)
-        options = args.extract_options!
+      def number_to_human_size(number, options = {})
         options.symbolize_keys!
 
         number = begin
@@ -359,12 +325,6 @@ module ActionView
         defaults = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
         human    = I18n.translate(:'number.human.format', :locale => options[:locale], :default => {})
         defaults = defaults.merge(human)
-
-        unless args.empty?
-          ActiveSupport::Deprecation.warn('number_to_human_size takes an option hash ' +
-            'instead of a separate precision argument.', caller)
-          options[:precision] ||= args[0] if args[0]
-        end
 
         options = options.reverse_merge(defaults)
         #for backwards compatibility with those that didn't add strip_insignificant_zeros to their locale files
@@ -499,7 +459,7 @@ module ActionView
           raise ArgumentError, ":units must be a Hash or String translation scope."
         end.keys.map{|e_name| DECIMAL_UNITS.invert[e_name] }.sort_by{|e| -e}
 
-        number_exponent = Math.log10(number).floor
+        number_exponent = number != 0 ? Math.log10(number.abs).floor : 0
         display_exponent = unit_exponents.find{|e| number_exponent >= e }
         number  /= 10 ** display_exponent
 

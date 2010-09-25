@@ -9,7 +9,7 @@ module ActiveRecord
   #   +id+ (numeric primary key),
   #   +session_id+ (text, or longtext if your session data exceeds 65K), and
   #   +data+ (text or longtext; careful if your session data exceeds 65KB).
-  # 
+  #
   # The +session_id+ column should always be indexed for speedy lookups.
   # Session data is marshaled to the +data+ column in Base64 format.
   # If the data you write is larger than the column's size limit,
@@ -49,8 +49,32 @@ module ActiveRecord
   # The example SqlBypass class is a generic SQL session store.  You may
   # use it as a basis for high-performance database-specific stores.
   class SessionStore < ActionDispatch::Session::AbstractStore
+    module ClassMethods # :nodoc:
+      def marshal(data)
+        ActiveSupport::Base64.encode64(Marshal.dump(data)) if data
+      end
+
+      def unmarshal(data)
+        Marshal.load(ActiveSupport::Base64.decode64(data)) if data
+      end
+
+      def drop_table!
+        connection.drop_table table_name
+      end
+
+      def create_table!
+        connection.create_table(table_name) do |t|
+          t.string session_id_column, :limit => 255
+          t.text data_column_name
+        end
+        connection.add_index table_name, session_id_column, :unique => true
+      end
+    end
+
     # The default Active Record class.
     class Session < ActiveRecord::Base
+      extend ClassMethods
+
       ##
       # :singleton-method:
       # Customizable data column name.  Defaults to 'data'.
@@ -69,28 +93,6 @@ module ActiveRecord
         def find_by_session_id(session_id)
           setup_sessid_compatibility!
           find_by_session_id(session_id)
-        end
-
-        def marshal(data)
-          ActiveSupport::Base64.encode64(Marshal.dump(data)) if data
-        end
-
-        def unmarshal(data)
-          Marshal.load(ActiveSupport::Base64.decode64(data)) if data
-        end
-
-        def create_table!
-          connection.execute <<-end_sql
-            CREATE TABLE #{table_name} (
-              id INTEGER PRIMARY KEY,
-              #{connection.quote_column_name(session_id_column)} TEXT UNIQUE,
-              #{connection.quote_column_name(data_column_name)} TEXT(255)
-            )
-          end_sql
-        end
-
-        def drop_table!
-          connection.execute "DROP TABLE #{table_name}"
         end
 
         private
@@ -173,6 +175,8 @@ module ActiveRecord
     # binary session data in a +text+ column.  For higher performance,
     # store in a +blob+ column instead and forgo the Base64 encoding.
     class SqlBypass
+      extend ClassMethods
+
       ##
       # :singleton-method:
       # Use the ActiveRecord::Base.connection by default.
@@ -197,6 +201,9 @@ module ActiveRecord
       @@data_column = 'data'
 
       class << self
+        alias :data_column_name :data_column
+
+        remove_method :connection
         def connection
           @@connection ||= ActiveRecord::Base.connection
         end
@@ -206,28 +213,6 @@ module ActiveRecord
           if record = connection.select_one("SELECT * FROM #{@@table_name} WHERE #{@@session_id_column}=#{connection.quote(session_id)}")
             new(:session_id => session_id, :marshaled_data => record['data'])
           end
-        end
-
-        def marshal(data)
-          ActiveSupport::Base64.encode64(Marshal.dump(data)) if data
-        end
-
-        def unmarshal(data)
-          Marshal.load(ActiveSupport::Base64.decode64(data)) if data
-        end
-
-        def create_table!
-          connection.execute <<-end_sql
-            CREATE TABLE #{table_name} (
-              id INTEGER PRIMARY KEY,
-              #{connection.quote_column_name(session_id_column)} TEXT UNIQUE,
-              #{connection.quote_column_name(data_column)} TEXT
-            )
-          end_sql
-        end
-
-        def drop_table!
-          connection.execute "DROP TABLE #{table_name}"
         end
       end
 
@@ -287,12 +272,13 @@ module ActiveRecord
       end
 
       def destroy
-        unless @new_record
-          @@connection.delete <<-end_sql, 'Destroy session'
-            DELETE FROM #{@@table_name}
-            WHERE #{@@connection.quote_column_name(@@session_id_column)}=#{@@connection.quote(session_id)}
-          end_sql
-        end
+        return if @new_record
+
+        connect = connection
+        connect.delete <<-end_sql, 'Destroy session'
+          DELETE FROM #{table_name}
+          WHERE #{connect.quote_column_name(session_id_column)}=#{connect.quote(session_id)}
+        end_sql
       end
     end
 
@@ -301,11 +287,12 @@ module ActiveRecord
     cattr_accessor :session_class
     self.session_class = Session
 
-    SESSION_RECORD_KEY = 'rack.session.record'.freeze
+    SESSION_RECORD_KEY = 'rack.session.record'
 
     private
       def get_session(env, sid)
         Base.silence do
+          sid ||= generate_sid
           session = find_session(sid)
           env[SESSION_RECORD_KEY] = session
           [sid, session.data]
@@ -328,7 +315,7 @@ module ActiveRecord
 
         sid
       end
-      
+
       def destroy(env)
         if sid = current_session_id(env)
           Base.silence do

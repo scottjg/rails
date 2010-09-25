@@ -1,9 +1,16 @@
 module ActionDispatch
   module Http
     module URL
+      mattr_accessor :tld_length
+
       # Returns the complete URL used for this request.
       def url
         protocol + host_with_port + fullpath
+      end
+
+      # Returns 'https' if this is an SSL request and 'http' otherwise.
+      def scheme
+        ssl? ? 'https' : 'http'
       end
 
       # Returns 'https://' if this is an SSL request and 'http://' otherwise.
@@ -53,6 +60,11 @@ module ActionDispatch
         end
       end
 
+      # Returns whether this request is using the standard port
+      def standard_port?
+        port == standard_port
+      end
+
       # Returns a \port suffix like ":8080" if the \port number of this request
       # is not the default HTTP \port 80 or HTTPS \port 443.
       def port_string
@@ -75,21 +87,14 @@ module ActionDispatch
       # returned for "dev.www.rubyonrails.org". You can specify a different <tt>tld_length</tt>,
       # such as 2 to catch <tt>["www"]</tt> instead of <tt>["www", "rubyonrails"]</tt>
       # in "www.rubyonrails.co.uk".
-      def subdomains(tld_length = 1)
+      def subdomains(tld_length = @@tld_length)
         return [] unless named_host?(host)
         parts = host.split('.')
         parts[0..-(tld_length+2)]
       end
 
-      def subdomain(tld_length = 1)
+      def subdomain(tld_length = @@tld_length)
         subdomains(tld_length).join('.')
-      end
-
-      # Returns the request URI, accounting for server idiosyncrasies.
-      # WEBrick includes the full URL. IIS leaves REQUEST_URI blank.
-      def request_uri
-        ActiveSupport::Deprecation.warn "Using #request_uri is deprecated. Use fullpath instead.", caller
-        fullpath
       end
 
     private

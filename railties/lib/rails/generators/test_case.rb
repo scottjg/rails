@@ -1,6 +1,7 @@
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/hash/reverse_merge'
+require 'active_support/core_ext/kernel/reporting'
 require 'rails/generators'
 require 'fileutils'
 
@@ -51,7 +52,7 @@ module Rails
       # Sets default arguments on generator invocation. This can be overwritten when
       # invoking it.
       #
-      #   arguments %w(app_name --skip-activerecord)
+      #   arguments %w(app_name --skip-active-record)
       #
       def self.arguments(array)
         self.default_arguments = array
@@ -64,25 +65,6 @@ module Rails
       def self.destination(path)
         self.destination_root = path
       end
-
-      # Captures the given stream and returns it:
-      #
-      #   stream = capture(:stdout){ puts "Cool" }
-      #   stream #=> "Cool\n"
-      #
-      def capture(stream)
-        begin
-          stream = stream.to_s
-          eval "$#{stream} = StringIO.new"
-          yield
-          result = eval("$#{stream}").string
-        ensure
-          eval("$#{stream} = #{stream.upcase}")
-        end
-
-        result
-      end
-      alias :silence :capture
 
       # Asserts a given file exists. You need to supply an absolute path or a path relative
       # to the configured destination:
@@ -214,8 +196,8 @@ module Rails
       #     destination File.expand_path("../tmp", File.dirname(__FILE__))
       #     teardown :cleanup_destination_root
       #
-      #     test "database.yml is not created when skipping activerecord" do
-      #       run_generator %w(myapp --skip-activerecord)
+      #     test "database.yml is not created when skipping Active Record" do
+      #       run_generator %w(myapp --skip-active-record)
       #       assert_no_file "config/database.yml"
       #     end
       #   end

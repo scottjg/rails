@@ -4,6 +4,18 @@ require 'controller/fake_models'
 class FormHelperTest < ActionView::TestCase
   tests ActionView::Helpers::FormHelper
 
+  class Developer
+    def name_before_type_cast
+      "David"
+    end
+
+    def name
+      "Santiago"
+    end
+
+    attr_writer :language
+  end
+
   def form_for(*)
     @output_buffer = super
   end
@@ -63,15 +75,39 @@ class FormHelperTest < ActionView::TestCase
     @post.body        = "Back to the hill and over it again!"
     @post.secret      = 1
     @post.written_on  = Date.new(2004, 6, 15)
+
+    @blog_post = Blog::Post.new("And his name will be forty and four.", 44)
   end
+
+  Routes = ActionDispatch::Routing::RouteSet.new
+  Routes.draw do
+    resources :posts do
+      resources :comments
+    end
+
+    namespace :admin do
+      resources :posts do
+        resources :comments
+      end
+    end
+
+    match "/foo", :to => "controller#action"
+    root :to => "main#index"
+  end
+
+  def _routes
+    Routes
+  end
+
+  include Routes.url_helpers
 
   def url_for(object)
     @url_for_options = object
-    if object.is_a?(Hash)
-      "http://www.example.com"
-    else
-      super
+    if object.is_a?(Hash) && object[:use_route].blank? && object[:controller].blank?
+      object.merge!(:controller => "main", :action => "index")
     end
+    object
+    super
   end
 
   def test_label
@@ -106,6 +142,13 @@ class FormHelperTest < ActionView::TestCase
   def test_label_with_locales_symbols
     old_locale, I18n.locale = I18n.locale, :label
     assert_dom_equal('<label for="post_body">Write entire text here</label>', label(:post, :body))
+  ensure
+    I18n.locale = old_locale
+  end
+
+  def test_label_with_locales_and_options
+    old_locale, I18n.locale = I18n.locale, :label
+    assert_dom_equal('<label for="post_body" class="post_body">Write entire text here</label>', label(:post, :body, :class => 'post_body'))
   ensure
     I18n.locale = old_locale
   end
@@ -148,7 +191,10 @@ class FormHelperTest < ActionView::TestCase
       '<input id="post_title" name="post[title]" size="30" type="text" value="Hello World" />', text_field("post", "title")
     )
     assert_dom_equal(
-      '<input id="post_title" name="post[title]" size="30" type="password" value="Hello World" />', password_field("post", "title")
+      '<input id="post_title" name="post[title]" size="30" type="password" />', password_field("post", "title")
+    )
+    assert_dom_equal(
+      '<input id="post_title" name="post[title]" size="30" type="password" value="Hello World" />', password_field("post", "title", :value => @post.title)
     )
     assert_dom_equal(
       '<input id="person_name" name="person[name]" size="30" type="password" />', password_field("person", "name")
@@ -231,6 +277,24 @@ class FormHelperTest < ActionView::TestCase
   def test_text_field_with_custom_type
     assert_dom_equal '<input id="user_email" size="30" name="user[email]" type="email" />',
       text_field("user", "email", :type => "email")
+  end
+
+  def test_text_field_from_a_user_defined_method
+    @developer = Developer.new
+    assert_dom_equal(
+      '<input id="developer_name" name="developer[name]" size="30" type="text" value="Santiago" />', text_field("developer", "name")
+    )
+  end
+
+  def test_text_field_on_a_model_with_undefined_attr_reader
+    @developer = Developer.new
+    @developer.language = 'ruby'
+    begin
+      text_field("developer", "language")
+    rescue NoMethodError => error
+      message = error.message
+    end
+    assert_equal "Model #{Developer} does not respond to language", message
   end
 
   def test_check_box
@@ -576,6 +640,12 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
+  def test_form_for_requires_block
+    assert_raises(ArgumentError) do
+      form_for(:post, @post, :html => { :id => 'create-post' })
+    end
+  end
+
   def test_form_for
     assert_deprecated do
       form_for(:post, @post, :html => { :id => 'create-post' }) do |f|
@@ -588,7 +658,7 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =
-      "<form accept-charset='UTF-8' action='http://www.example.com' id='create-post' method='post'>" +
+      "<form accept-charset='UTF-8' action='/' id='create-post' method='post'>" +
       snowman +
       "<label for='post_title'>The Title</label>" +
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
@@ -601,9 +671,75 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_for_with_file_field_generate_multipart
+    Post.send :attr_accessor, :file
+
+    assert_deprecated do
+      form_for(:post, @post, :html => { :id => 'create-post' }) do |f|
+        concat f.file_field(:file)
+      end
+    end
+
+    expected =
+      "<form accept-charset='UTF-8' action='/' id='create-post' method='post' enctype='multipart/form-data'>" +
+      snowman +
+      "<input name='post[file]' type='file' id='post_file' />" +
+      "</form>"
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_fields_for_with_file_field_generate_multipart
+    Comment.send :attr_accessor, :file
+
+    assert_deprecated do
+      form_for(:post, @post) do |f|
+        concat f.fields_for(:comment, @post) { |c|
+          concat c.file_field(:file)
+        }
+      end
+    end
+
+    expected =
+      "<form accept-charset='UTF-8' action='/' method='post' enctype='multipart/form-data'>" +
+      snowman +
+      "<input name='post[comment][file]' type='file' id='post_comment_file' />" +
+      "</form>"
+
+    assert_dom_equal expected, output_buffer
+  end
+
+
+  def test_form_for_with_format
+    form_for(@post, :format => :json, :html => { :id => "edit_post_123", :class => "edit_post" }) do |f|
+      concat f.label(:title)
+    end
+
+    expected = whole_form("/posts/123.json", "edit_post_123" , "edit_post", :method => "put") do
+      "<label for='post_title'>Title</label>"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_form_for_with_isolated_namespaced_model
+    form_for(@blog_post) do |f|
+      concat f.text_field :title
+      concat f.submit('Edit post')
+    end
+
+    expected =
+      "<form accept-charset='UTF-8' action='/posts/44' method='post'>" +
+      snowman +
+      "<label for='post_title'>The Title</label>" +
+      "<input name='post[title]' size='30' type='text' id='post_title' value='And his name will be forty and four.' />" +
+      "<input name='commit' id='post_submit' type='submit' value='Edit post' />" +
+      "</form>"
+  end
+
   def test_form_for_with_symbol_object_name
     form_for(@post, :as => "other_name", :html => { :id => 'create-post' }) do |f|
-      concat f.label(:title)
+      concat f.label(:title, :class => 'post_title')
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -611,7 +747,7 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =  whole_form("/posts/123", "create-post", "other_name_edit", :method => "put") do
-      "<label for='other_name_title'>Title</label>" +
+      "<label for='other_name_title' class='post_title'>Title</label>" +
       "<input name='other_name[title]' size='30' id='other_name_title' value='Hello World' type='text' />" +
       "<textarea name='other_name[body]' id='other_name_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='other_name[secret]' value='0' type='hidden' />" +
@@ -631,7 +767,7 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =  whole_form("http://www.example.com", "create-post", nil, "put") do
+    expected =  whole_form("/", "create-post", nil, "put") do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
@@ -650,7 +786,7 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =  whole_form("http://www.example.com", "create-post", nil, :method => "put", :remote => true) do
+    expected =  whole_form("/", "create-post", nil, :method => "put", :remote => true) do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
@@ -669,7 +805,7 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
-    expected =  whole_form("http://www.example.com", nil, nil, :remote => true) do
+    expected =  whole_form("/", nil, nil, :remote => true) do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
@@ -686,7 +822,7 @@ class FormHelperTest < ActionView::TestCase
       concat f.check_box(:secret)
     end
 
-    expected =  whole_form("http://www.example.com", "create-post") do
+    expected =  whole_form("/", "create-post") do
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
@@ -1426,7 +1562,7 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =
-      "<form accept-charset='UTF-8' action='http://www.example.com' id='create-post' method='post'>" +
+      "<form accept-charset='UTF-8' action='/' id='create-post' method='post'>" +
       snowman +
       "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
@@ -1450,7 +1586,7 @@ class FormHelperTest < ActionView::TestCase
     end
 
     expected =
-      whole_form("http://www.example.com", "create-post") do
+      whole_form("/", "create-post") do
         "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
         "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
         "<input name='post[comment][name]' type='text' id='post_comment_name' value='new comment' size='30' />"
@@ -1489,12 +1625,12 @@ class FormHelperTest < ActionView::TestCase
 
   def snowman(method = nil)
     txt =  %{<div style="margin:0;padding:0;display:inline">}
-    txt << %{<input name="_snowman" type="hidden" value="&#9731;" />}
+    txt << %{<input name="utf8" type="hidden" value="&#x2713;" />}
     txt << %{<input name="_method" type="hidden" value="#{method}" />} if method
     txt << %{</div>}
   end
 
-  def form_text(action = "http://www.example.com", id = nil, html_class = nil, remote = nil)
+  def form_text(action = "/", id = nil, html_class = nil, remote = nil)
     txt =  %{<form accept-charset="UTF-8" action="#{action}"}
     txt << %{ data-remote="true"} if remote
     txt << %{ class="#{html_class}"} if html_class
@@ -1502,7 +1638,7 @@ class FormHelperTest < ActionView::TestCase
     txt << %{ method="post">}
   end
 
-  def whole_form(action = "http://www.example.com", id = nil, html_class = nil, options = nil)
+  def whole_form(action = "/", id = nil, html_class = nil, options = nil)
     contents = block_given? ? yield : ""
 
     if options.is_a?(Hash)
@@ -1603,7 +1739,7 @@ class FormHelperTest < ActionView::TestCase
     assert_deprecated do
       form_for(:post, @post, :html => {:id => 'some_form', :class => 'some_class'}) do |f| end
     end
-    expected = whole_form("http://www.example.com", "some_form", "some_class")
+    expected = whole_form("/", "some_form", "some_class")
 
     assert_dom_equal expected, output_buffer
   end
@@ -1658,14 +1794,14 @@ class FormHelperTest < ActionView::TestCase
     @comment.save
     form_for([@post, @comment]) {}
 
-    expected = whole_form(comment_path(@post, @comment), "edit_comment_1", "edit_comment", "put")
+    expected = whole_form(post_comment_path(@post, @comment), "edit_comment_1", "edit_comment", "put")
     assert_dom_equal expected, output_buffer
   end
 
   def test_form_for_with_new_object_in_list
     form_for([@post, @comment]) {}
 
-    expected = whole_form(comments_path(@post), "new_comment", "new_comment")
+    expected = whole_form(post_comments_path(@post), "new_comment", "new_comment")
     assert_dom_equal expected, output_buffer
   end
 
@@ -1673,14 +1809,14 @@ class FormHelperTest < ActionView::TestCase
     @comment.save
     form_for([:admin, @post, @comment]) {}
 
-    expected = whole_form(admin_comment_path(@post, @comment), "edit_comment_1", "edit_comment", "put")
+    expected = whole_form(admin_post_comment_path(@post, @comment), "edit_comment_1", "edit_comment", "put")
     assert_dom_equal expected, output_buffer
   end
 
   def test_form_for_with_new_object_and_namespace_in_list
     form_for([:admin, @post, @comment]) {}
 
-    expected = whole_form(admin_comments_path(@post), "new_comment", "new_comment")
+    expected = whole_form(admin_post_comments_path(@post), "new_comment", "new_comment")
     assert_dom_equal expected, output_buffer
   end
 
@@ -1697,34 +1833,6 @@ class FormHelperTest < ActionView::TestCase
   end
 
   protected
-    def comments_path(post)
-      "/posts/#{post.id}/comments"
-    end
-    alias_method :post_comments_path, :comments_path
-
-    def comment_path(post, comment)
-      "/posts/#{post.id}/comments/#{comment.id}"
-    end
-    alias_method :post_comment_path, :comment_path
-
-    def admin_comments_path(post)
-      "/admin/posts/#{post.id}/comments"
-    end
-    alias_method :admin_post_comments_path, :admin_comments_path
-
-    def admin_comment_path(post, comment)
-      "/admin/posts/#{post.id}/comments/#{comment.id}"
-    end
-    alias_method :admin_post_comment_path, :admin_comment_path
-
-    def posts_path
-      "/posts"
-    end
-
-    def post_path(post)
-      "/posts/#{post.id}"
-    end
-
     def protect_against_forgery?
       false
     end

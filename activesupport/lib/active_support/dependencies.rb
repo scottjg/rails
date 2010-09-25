@@ -63,51 +63,78 @@ module ActiveSupport #:nodoc:
     mattr_accessor :log_activity
     self.log_activity = false
 
-    class WatchStack < Array
+    # The WatchStack keeps a stack of the modules being watched as files are loaded.
+    # If a file in the process of being loaded (parent.rb) triggers the load of
+    # another file (child.rb) the stack will ensure that child.rb handles the new
+    # constants.
+    #
+    # If child.rb is being autoloaded, its constants will be added to
+    # autoloaded_constants. If it was being `require`d, they will be discarded.
+    #
+    # This is handled by walking back up the watch stack and adding the constants
+    # found by child.rb to the list of original constants in parent.rb
+    class WatchStack < Hash
+      # @watching is a stack of lists of constants being watched. For instance,
+      # if parent.rb is autoloaded, the stack will look like [[Object]]. If parent.rb
+      # then requires namespace/child.rb, the stack will look like [[Object], [Namespace]].
+
       def initialize
-        @mutex = Mutex.new
+        @watching = []
+        super { |h,k| h[k] = [] }
       end
 
-      def self.locked(*methods)
-        methods.each { |m| class_eval "def #{m}(*) lock { super } end", __FILE__, __LINE__ }
-      end
-
-      def get(key)
-        (val = assoc(key)) ? val[1] : []
-      end
-
-      locked :concat, :each, :delete_if, :<<
-
-      def new_constants_for(frames)
+      # return a list of new constants found since the last call to watch_namespaces
+      def new_constants
         constants = []
-        frames.each do |mod_name, prior_constants|
-          mod = Inflector.constantize(mod_name) if Dependencies.qualified_const_defined?(mod_name)
+
+        # Grab the list of namespaces that we're looking for new constants under
+        @watching.last.each do |namespace|
+          # Retrieve the constants that were present under the namespace when watch_namespaces
+          # was originally called
+          original_constants = self[namespace].last
+
+          mod = Inflector.constantize(namespace) if Dependencies.qualified_const_defined?(namespace)
           next unless mod.is_a?(Module)
 
-          new_constants = mod.local_constant_names - prior_constants
-          get(mod_name).concat(new_constants)
+          # Get a list of the constants that were added
+          new_constants = mod.local_constant_names - original_constants
 
+          # self[namespace] returns an Array of the constants that are being evaluated
+          # for that namespace. For instance, if parent.rb requires child.rb, the first
+          # element of self[Object] will be an Array of the constants that were present
+          # before parent.rb was required. The second element will be an Array of the
+          # constants that were present before child.rb was required.
+          self[namespace].each do |namespace_constants|
+            namespace_constants.concat(new_constants)
+          end
+
+          # Normalize the list of new constants, and add them to the list we will return
           new_constants.each do |suffix|
-            constants << ([mod_name, suffix] - ["Object"]).join("::")
+            constants << ([namespace, suffix] - ["Object"]).join("::")
           end
         end
         constants
+      ensure
+        # A call to new_constants is always called after a call to watch_namespaces
+        pop_modules(@watching.pop)
       end
 
       # Add a set of modules to the watch stack, remembering the initial constants
-      def add_modules(modules)
-        list = modules.map do |desc|
-          name = Dependencies.to_constant_name(desc)
-          consts = Dependencies.qualified_const_defined?(name) ?
-            Inflector.constantize(name).local_constant_names : []
-          [name, consts]
+      def watch_namespaces(namespaces)
+        watching = []
+        namespaces.map do |namespace|
+          module_name = Dependencies.to_constant_name(namespace)
+          original_constants = Dependencies.qualified_const_defined?(module_name) ?
+            Inflector.constantize(module_name).local_constant_names : []
+
+          watching << module_name
+          self[module_name] << original_constants
         end
-        concat(list)
-        list
+        @watching << watching
       end
 
-      def lock
-        @mutex.synchronize { yield self }
+      def pop_modules(modules)
+        modules.each { |mod| self[mod].pop }
       end
     end
 
@@ -484,7 +511,12 @@ module ActiveSupport #:nodoc:
     end
 
     # Remove the constants that have been autoloaded, and those that have been
-    # marked for unloading.
+    # marked for unloading. Before each constant is removed a callback is sent
+    # to its class/module if it implements +before_remove_const+.
+    #
+    # The callback implementation should be restricted to cleaning up caches, etc.
+    # as the enviroment will be in an inconsistent state, e.g. other constants
+    # may have already been unloaded and not accessible.
     def remove_unloadable_constants!
       autoloaded_constants.each { |const| remove_constant const }
       autoloaded_constants.clear
@@ -556,14 +588,15 @@ module ActiveSupport #:nodoc:
     # and will be removed immediately.
     def new_constants_in(*descs)
       log_call(*descs)
-      watch_frames = constant_watch_stack.add_modules(descs)
 
+      constant_watch_stack.watch_namespaces(descs)
       aborting = true
+
       begin
         yield # Now yield to the code that is to define new constants.
         aborting = false
       ensure
-        new_constants = constant_watch_stack.new_constants_for(watch_frames)
+        new_constants = constant_watch_stack.new_constants
 
         log "New constants: #{new_constants * ', '}"
         return new_constants unless aborting
@@ -573,9 +606,6 @@ module ActiveSupport #:nodoc:
       end
 
       return []
-    ensure
-      # Remove the stack frames that we added.
-      watch_frames.each {|f| constant_watch_stack.delete(f) } if watch_frames.present?
     end
 
     class LoadingModule #:nodoc:
@@ -592,7 +622,7 @@ module ActiveSupport #:nodoc:
     # Convert the provided const desc to a qualified constant name (as a string).
     # A module, class, symbol, or string may be provided.
     def to_constant_name(desc) #:nodoc:
-      name = case desc
+      case desc
         when String then desc.sub(/^::/, '')
         when Symbol then desc.to_s
         when Module
@@ -611,6 +641,8 @@ module ActiveSupport #:nodoc:
       parent = Inflector.constantize(names * '::')
 
       log "removing constant #{const}"
+      constantized = constantize(const)
+      constantized.before_remove_const if constantized.respond_to?(:before_remove_const)
       parent.instance_eval { remove_const to_remove }
 
       return true
@@ -618,7 +650,7 @@ module ActiveSupport #:nodoc:
 
     protected
       def log_call(*args)
-        if logger && log_activity
+        if log_activity?
           arg_str = args.collect { |arg| arg.inspect } * ', '
           /in `([a-z_\?\!]+)'/ =~ caller(1).first
           selector = $1 || '<unknown>'
@@ -627,9 +659,11 @@ module ActiveSupport #:nodoc:
       end
 
       def log(msg)
-        if logger && log_activity
-          logger.debug "Dependencies: #{msg}"
-        end
+        logger.debug "Dependencies: #{msg}" if log_activity?
+      end
+
+      def log_activity?
+        logger && log_activity
       end
   end
 end

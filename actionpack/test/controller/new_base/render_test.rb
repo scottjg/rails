@@ -37,15 +37,27 @@ module Render
 
   class RenderTest < Rack::TestCase
     test "render with blank" do
-      get "/render/blank_render"
+      with_routing do |set|
+        set.draw do
+          match ":controller", :action => 'index'
+        end
 
-      assert_body "Hello world!"
-      assert_status 200
+        get "/render/blank_render"
+
+        assert_body "Hello world!"
+        assert_status 200
+      end
     end
 
     test "rendering more than once raises an exception" do
-      assert_raises(AbstractController::DoubleRenderError) do
-        get "/render/double_render", {}, "action_dispatch.show_exceptions" => false
+      with_routing do |set|
+        set.draw do
+          match ":controller", :action => 'index'
+        end
+
+        assert_raises(AbstractController::DoubleRenderError) do
+          get "/render/double_render", {}, "action_dispatch.show_exceptions" => false
+        end
       end
     end
   end
@@ -65,7 +77,7 @@ module Render
       end
     end
   end
-  
+
   class TestVariousObjectsAvailableInView < Rack::TestCase
     test "The request object is accessible in the view" do
       get "/render/blank_render/access_request"

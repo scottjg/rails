@@ -29,7 +29,7 @@ class WebServiceTest < ActionController::IntegrationTest
   def test_check_parameters
     with_test_route_set do
       get "/"
-      assert @controller.response.body.blank?
+      assert_blank @controller.response.body
     end
   end
 
@@ -161,7 +161,7 @@ class WebServiceTest < ActionController::IntegrationTest
   def test_use_xml_ximple_with_empty_request
     with_test_route_set do
       assert_nothing_raised { post "/", "", {'CONTENT_TYPE' => 'application/xml'} }
-      assert @controller.response.body.blank?
+      assert_blank @controller.response.body
     end
   end
 
@@ -254,7 +254,7 @@ class WebServiceTest < ActionController::IntegrationTest
 
     def with_test_route_set
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match '/', :to => 'web_service_test/test#assign_parameters'
         end
         yield

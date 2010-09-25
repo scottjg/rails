@@ -110,8 +110,8 @@ module ActiveRecord
       #
       #   Also note that this just sets the primary key in the table. You additionally
       #   need to configure the primary key in the model via the +set_primary_key+ macro.
-      #   Models do NOT auto-detect the primary key from their table definition. 
-      #   
+      #   Models do NOT auto-detect the primary key from their table definition.
+      #
       # [<tt>:options</tt>]
       #   Any extra options you want appended to the table definition.
       # [<tt>:temporary</tt>]
@@ -327,6 +327,8 @@ module ActiveRecord
       #
       # Note: SQLite doesn't support index length
       def add_index(table_name, column_name, options = {})
+        options[:name] = options[:name].to_s if options.key?(:name)
+
         column_names = Array.wrap(column_name)
         index_name   = index_name(table_name, :column => column_names)
 
@@ -338,12 +340,10 @@ module ActiveRecord
         end
 
         if index_name.length > index_name_length
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{index_name_length} characters. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{index_name_length} characters"
         end
         if index_name_exists?(table_name, index_name, false)
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' already exists. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
         end
         quoted_column_names = quoted_columns_for_index(column_names, options).join(", ")
 
@@ -363,8 +363,7 @@ module ActiveRecord
       def remove_index(table_name, options = {})
         index_name = index_name(table_name, options)
         unless index_name_exists?(table_name, index_name, true)
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' does not exist. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' does not exist"
         end
         remove_index!(table_name, index_name)
       end
@@ -448,7 +447,7 @@ module ActiveRecord
         version = version.to_i
         sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
 
-        migrated = select_values("SELECT version FROM #{sm_table}").map(&:to_i)
+        migrated = select_values("SELECT version FROM #{sm_table}").map { |v| v.to_i }
         versions = Dir["#{migrations_path}/[0-9]*_*.rb"].map do |filename|
           filename.split('/').last.split('_').first.to_i
         end
