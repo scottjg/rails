@@ -153,7 +153,7 @@ module ActionView #:nodoc:
   #
   # This refreshes the sidebar, removes a person element and highlights the user list.
   #
-  # See the ActionView::Helpers::PrototypeHelper::GeneratorMethods documentation for more details.
+  # See the ActionView::Helpers::PrototypeHelper::JavaScriptGenerator::GeneratorMethods documentation for more details.
   class Base
     module Subclasses
     end
@@ -188,11 +188,6 @@ module ActionView #:nodoc:
 
     delegate :logger, :to => :controller, :allow_nil => true
 
-    # TODO: HACK FOR RJS
-    def view_context
-      self
-    end
-
     def self.xss_safe? #:nodoc:
       true
     end
@@ -214,8 +209,7 @@ module ActionView #:nodoc:
         @_request = controller.request if controller.respond_to?(:request)
       end
 
-      config = controller && controller.respond_to?(:config) ? controller.config : {}
-      @_config = ActiveSupport::InheritableOptions.new(config)
+      @_config = controller && controller.respond_to?(:config) ? controller.config.inheritable_copy : {}
 
       @_content_for  = Hash.new { |h,k| h[k] = ActiveSupport::SafeBuffer.new }
       @_virtual_path = nil

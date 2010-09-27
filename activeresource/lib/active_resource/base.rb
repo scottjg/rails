@@ -166,6 +166,7 @@ module ActiveResource
   #   # GET http://api.people.com:3000/people/999.xml
   #   ryan = Person.find(999) # 404, raises ActiveResource::ResourceNotFound
   #
+  #
   # <tt>404</tt> is just one of the HTTP error response codes that Active Resource will handle with its own exception. The
   # following HTTP response codes will also result in these exceptions:
   #
@@ -193,6 +194,16 @@ module ActiveResource
   #   rescue ActiveResource::ResourceConflict, ActiveResource::ResourceInvalid
   #     redirect_to :action => 'new'
   #   end
+  #
+  # When a GET is requested for a nested resource and you don't provide the prefix_param
+  # an ActiveResource::MissingPrefixParam will be raised.
+  #
+  #  class Comment < ActiveResource::Base
+  #   self.site = "http://someip.com/posts/:post_id/"
+  #  end
+  #
+  #  Comment.find(1)
+  #  # => ActiveResource::MissingPrefixParam: post_id prefix_option is missing
   #
   # === Validation errors
   #
@@ -589,8 +600,8 @@ module ActiveResource
             def prefix(options={}) "#{prefix_call}" end
           RUBY_EVAL
         end
-      rescue
-        logger.error "Couldn't set prefix: #{$!}\n  #{code}" if logger
+      rescue Exception => e
+        logger.error "Couldn't set prefix: #{e}\n  #{code}" if logger
         raise
       end
 
@@ -621,6 +632,8 @@ module ActiveResource
       #   # => /posts/5/comments/1.xml?active=1
       #
       def element_path(id, prefix_options = {}, query_options = nil)
+        check_prefix_options(prefix_options)
+
         prefix_options, query_options = split_options(prefix_options) if query_options.nil?
         "#{prefix(prefix_options)}#{collection_name}/#{URI.escape id.to_s}.#{format.extension}#{query_string(query_options)}"
       end
@@ -663,6 +676,7 @@ module ActiveResource
       #   # => /posts/5/comments.xml?active=1
       #
       def collection_path(prefix_options = {}, query_options = nil)
+        check_prefix_options(prefix_options)
         prefix_options, query_options = split_options(prefix_options) if query_options.nil?
         "#{prefix(prefix_options)}#{collection_name}.#{format.extension}#{query_string(query_options)}"
       end
@@ -678,7 +692,7 @@ module ActiveResource
       # Returns the new resource instance.
       #
       def build(attributes = {})
-        attrs = connection.get("#{new_element_path}").merge(attributes)
+        attrs = self.format.decode(connection.get("#{new_element_path}").body).merge(attributes)
         self.new(attrs)
       end
 
@@ -842,6 +856,14 @@ module ActiveResource
       end
 
       private
+
+        def check_prefix_options(prefix_options)
+          p_options = HashWithIndifferentAccess.new(prefix_options)
+          prefix_parameters.each do |p|
+            raise(MissingPrefixParam, "#{p} prefix_option is missing") if p_options[p].blank?
+          end
+        end
+
         # Find every resource
         def find_every(options)
           begin
@@ -850,11 +872,11 @@ module ActiveResource
               instantiate_collection(get(from, options[:params]))
             when String
               path = "#{from}#{query_string(options[:params])}"
-              instantiate_collection(connection.get(path, headers) || [])
+              instantiate_collection(format.decode(connection.get(path, headers).body) || [])
             else
               prefix_options, query_options = split_options(options[:params])
               path = collection_path(prefix_options, query_options)
-              instantiate_collection( (connection.get(path, headers) || []), prefix_options )
+              instantiate_collection( (format.decode(connection.get(path, headers).body) || []), prefix_options )
             end
           rescue ActiveResource::ResourceNotFound
             # Swallowing ResourceNotFound exceptions and return nil - as per
@@ -870,7 +892,7 @@ module ActiveResource
             instantiate_record(get(from, options[:params]))
           when String
             path = "#{from}#{query_string(options[:params])}"
-            instantiate_record(connection.get(path, headers))
+            instantiate_record(format.decode(connection.get(path, headers).body))
           end
         end
 
@@ -878,7 +900,7 @@ module ActiveResource
         def find_single(scope, options)
           prefix_options, query_options = split_options(options[:params])
           path = element_path(scope, prefix_options, query_options)
-          instantiate_record(connection.get(path, headers), prefix_options)
+          instantiate_record(format.decode(connection.get(path, headers).body), prefix_options)
         end
 
         def instantiate_collection(collection, prefix_options = {})
@@ -886,7 +908,7 @@ module ActiveResource
         end
 
         def instantiate_record(record, prefix_options = {})
-          new(record).tap do |resource|
+          new(record, true).tap do |resource|
             resource.prefix_options = prefix_options
           end
         end
@@ -959,9 +981,10 @@ module ActiveResource
     #
     #   my_other_course = Course.new(:name => "Philosophy: Reason and Being", :lecturer => "Ralph Cling")
     #   my_other_course.save
-    def initialize(attributes = {})
+    def initialize(attributes = {}, persisted = false)
       @attributes     = {}.with_indifferent_access
       @prefix_options = {}
+      @persisted = persisted
       load(attributes)
     end
 
@@ -987,10 +1010,7 @@ module ActiveResource
     #   not_ryan.hash            # => {:not => "an ARes instance"}
     def clone
       # Clone all attributes except the pk and any nested ARes
-      cloned = attributes.reject {|k,v| k == self.class.primary_key || v.is_a?(ActiveResource::Base)}.inject({}) do |attrs, (k, v)|
-        attrs[k] = v.clone
-        attrs
-      end
+      cloned = Hash[attributes.reject {|k,v| k == self.class.primary_key || v.is_a?(ActiveResource::Base)}.map { |k, v| [k, v.clone] }]
       # Form the new resource - bypass initialize of resource with 'new' as that will call 'load' which
       # attempts to convert hashes into member objects and arrays into collections of objects.  We want
       # the raw objects to be cloned so we bypass load by directly setting the attributes hash.
@@ -1014,7 +1034,7 @@ module ActiveResource
     #   is_new.new? # => false
     #
     def new?
-      id.nil?
+      !persisted?
     end
     alias :new_record? :new?
 
@@ -1031,7 +1051,7 @@ module ActiveResource
     #   not_persisted.persisted? # => true
     #
     def persisted?
-      !new?
+      @persisted
     end
 
     # Gets the <tt>\id</tt> attribute of the resource.
@@ -1318,8 +1338,9 @@ module ActiveResource
       end
 
       def load_attributes_from_response(response)
-        if response['Content-Length'] != "0" && response.body.strip.size > 0
+        if !response['Content-Length'].blank? && response['Content-Length'] != "0" && !response.body.nil? && response.body.strip.size > 0
           load(self.class.format.decode(response.body))
+          @persisted = true
         end
       end
 
@@ -1353,8 +1374,9 @@ module ActiveResource
         namespaces = module_names[0, module_names.size-1].map do |module_name|
           receiver = receiver.const_get(module_name)
         end
-        if namespace = namespaces.reverse.detect { |ns| ns.const_defined?(resource_name) }
-          return namespace.const_get(resource_name)
+        const_args = RUBY_VERSION < "1.9" ? [resource_name] : [resource_name, false]
+        if namespace = namespaces.reverse.detect { |ns| ns.const_defined?(*const_args) }
+          return namespace.const_get(*const_args)
         else
           raise NameError
         end
@@ -1370,8 +1392,9 @@ module ActiveResource
           self.class.const_get(resource_name)
         end
       rescue NameError
-        if self.class.const_defined?(resource_name)
-          resource = self.class.const_get(resource_name)
+        const_args = RUBY_VERSION < "1.9" ? [resource_name] : [resource_name, false]
+        if self.class.const_defined?(*const_args)
+          resource = self.class.const_get(*const_args)
         else
           resource = self.class.const_set(resource_name, Class.new(ActiveResource::Base))
         end

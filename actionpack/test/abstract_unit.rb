@@ -49,14 +49,6 @@ require 'pp' # require 'pp' early to prevent hidden_methods from not picking up 
 module Rails
 end
 
-# Monkey patch the old routes initialization to be silenced.
-class ActionDispatch::Routing::DeprecatedMapper
-  def initialize_with_silencer(*args)
-    ActiveSupport::Deprecation.silence { initialize_without_silencer(*args) }
-  end
-  alias_method_chain :initialize, :silencer
-end
-
 ActiveSupport::Dependencies.hook!
 
 # Show backtraces for deprecated behavior for quicker cleanup.
@@ -128,14 +120,12 @@ module ActiveSupport
     # Hold off drawing routes until all the possible controller classes
     # have been loaded.
     setup_once do
-      SharedTestRoutes.draw do |map|
-        # FIXME: match ':controller(/:action(/:id))'
-        map.connect ':controller/:action/:id'
+      SharedTestRoutes.draw do
+        match ':controller(/:action)'
       end
 
-      ActionController::IntegrationTest.app.routes.draw do |map|
-        # FIXME: match ':controller(/:action(/:id))'
-        map.connect ':controller/:action/:id'
+      ActionDispatch::IntegrationTest.app.routes.draw do
+        match ':controller(/:action)'
       end
     end
   end
@@ -173,9 +163,7 @@ class ActionDispatch::IntegrationTest < ActiveSupport::TestCase
   setup do
     @routes = SharedTestRoutes
   end
-end
 
-class ActionController::IntegrationTest < ActiveSupport::TestCase
   def self.build_app(routes = nil)
     RoutedRackApp.new(routes || ActionDispatch::Routing::RouteSet.new) do |middleware|
       middleware.use "ActionDispatch::ShowExceptions"
@@ -242,7 +230,7 @@ class ActionController::IntegrationTest < ActiveSupport::TestCase
 end
 
 # Temporary base class
-class Rack::TestCase < ActionController::IntegrationTest
+class Rack::TestCase < ActionDispatch::IntegrationTest
   def self.testing(klass = nil)
     if klass
       @testing = "/#{klass.name.underscore}".sub!(/_controller$/, '')
@@ -284,11 +272,27 @@ class Rack::TestCase < ActionController::IntegrationTest
   end
 end
 
-class ActionController::Base
-  def self.test_routes(&block)
-    routes = ActionDispatch::Routing::RouteSet.new
-    routes.draw(&block)
-    include routes.url_helpers
+module ActionController
+  class Base
+    include ActionController::Testing
+    # This stub emulates the Railtie including the URL helpers from a Rails application
+    include SharedTestRoutes.url_helpers
+
+    self.view_paths = FIXTURE_LOAD_PATH
+
+    def self.test_routes(&block)
+      routes = ActionDispatch::Routing::RouteSet.new
+      routes.draw(&block)
+      include routes.url_helpers
+    end
+  end
+
+  class TestCase
+    include ActionDispatch::TestProcess
+
+    setup do
+      @routes = SharedTestRoutes
+    end
   end
 end
 
@@ -302,28 +306,5 @@ module ActionView
     setup do
       @routes = SharedTestRoutes
     end
-  end
-end
-
-module ActionController
-  class Base
-    include ActionController::Testing
-  end
-
-  Base.view_paths = FIXTURE_LOAD_PATH
-
-  class TestCase
-    include ActionDispatch::TestProcess
-
-    setup do
-      @routes = SharedTestRoutes
-    end
-  end
-end
-
-# This stub emulates the Railtie including the URL helpers from a Rails application
-module ActionController
-  class Base
-    include SharedTestRoutes.url_helpers
   end
 end

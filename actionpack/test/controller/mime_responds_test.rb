@@ -784,8 +784,8 @@ class RespondWithControllerTest < ActionController::TestCase
     get :using_resource_with_collection
     assert_equal "application/xml", @response.content_type
     assert_equal 200, @response.status
-    assert_match /<name>david<\/name>/, @response.body
-    assert_match /<name>jamis<\/name>/, @response.body
+    assert_match(/<name>david<\/name>/, @response.body)
+    assert_match(/<name>jamis<\/name>/, @response.body)
   end
 
   def test_using_resource_with_action
@@ -876,7 +876,7 @@ class RespondWithControllerTest < ActionController::TestCase
   private
     def with_test_route_set
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           resources :customers
           resources :quiz_stores do
             resources :customers

@@ -112,7 +112,7 @@ module ActionView
       @controller.controller_path = 'test'
 
       @customers = [stub(:name => 'Eloy'), stub(:name => 'Manfred')]
-      assert_match /Hello: EloyHello: Manfred/, render(:partial => 'test/from_helper')
+      assert_match(/Hello: EloyHello: Manfred/, render(:partial => 'test/from_helper'))
     end
   end
 
@@ -172,7 +172,7 @@ module ActionView
 
     test "is able to use named routes" do
       with_routing do |set|
-        set.draw { |map| resources :contents }
+        set.draw { resources :contents }
         assert_equal 'http://test.host/contents/new', new_content_url
         assert_equal 'http://test.host/contents/1',   content_url(:id => 1)
       end
@@ -180,7 +180,7 @@ module ActionView
 
     test "named routes can be used from helper included in view" do
       with_routing do |set|
-        set.draw { |map| resources :contents }
+        set.draw { resources :contents }
         _helpers.module_eval do
           def render_from_helper
             new_content_url
@@ -201,7 +201,7 @@ module ActionView
       @controller.controller_path = "test"
 
       @customers = [stub(:name => 'Eloy'), stub(:name => 'Manfred')]
-      assert_match /Hello: EloyHello: Manfred/, render(:file => 'test/list')
+      assert_match(/Hello: EloyHello: Manfred/, render(:file => 'test/list'))
     end
 
     test "is able to render partials from templates and also use instance variables after view has been referenced" do
@@ -210,7 +210,7 @@ module ActionView
       view
 
       @customers = [stub(:name => 'Eloy'), stub(:name => 'Manfred')]
-      assert_match /Hello: EloyHello: Manfred/, render(:file => 'test/list')
+      assert_match(/Hello: EloyHello: Manfred/, render(:file => 'test/list'))
     end
 
   end
@@ -251,6 +251,19 @@ module ActionView
       assert_raise ActiveSupport::TestCase::Assertion, /Somebody else.*David/m do
         assert_template :partial => "_partial_for_use_in_layout", :locals => { :name => "Somebody Else" }
       end
+    end
+  end
+
+  module AHelperWithInitialize
+    def initialize(*)
+      super
+      @called_initialize = true
+    end
+  end
+
+  class AHelperWithInitializeTest < ActionView::TestCase
+    test "the helper's initialize was actually called" do
+      assert @called_initialize
     end
   end
 end

@@ -211,7 +211,7 @@ module ActionView
       # If you have an object that needs to be represented as a different
       # parameter, like a Client that acts as a Person:
       #
-      #   <%= form_for(@post, :as => :client do |f| %>
+      #   <%= form_for(@post, :as => :client) do |f| %>
       #     ...
       #   <% end %>
       #
@@ -228,8 +228,8 @@ module ActionView
       #    ...
       #   <% end %>
       #
-      # Where +@document = Document.find(params[:id])+ and
-      # +@comment = Comment.new+.
+      # Where <tt>@document = Document.find(params[:id])</tt> and
+      # <tt>@comment = Comment.new</tt>.
       #
       # === Unobtrusive JavaScript
       #
@@ -293,31 +293,28 @@ module ActionView
       #
       # If you don't need to attach a form to a model instance, then check out
       # FormTagHelper#form_tag.
-      def form_for(record_or_name_or_array, *args, &proc)
+      def form_for(record, options = nil, &proc)
         raise ArgumentError, "Missing block" unless block_given?
 
-        options = args.extract_options!
+        options ||= {}
+        options[:html] ||= {}
 
-        case record_or_name_or_array
+        case record
         when String, Symbol
-          ActiveSupport::Deprecation.warn("Using form_for(:name, @resource) is deprecated. Please use form_for(@resource, :as => :name) instead.", caller) unless args.empty?
-          object_name = record_or_name_or_array
-        when Array
-          object = record_or_name_or_array.last
-          object_name = options[:as] || ActiveModel::Naming.singular(object)
-          apply_form_for_options!(record_or_name_or_array, options)
-          args.unshift object
+          object_name = record
+          object      = nil
         else
-          object = record_or_name_or_array
-          object_name = options[:as] || ActiveModel::Naming.singular(object)
-          apply_form_for_options!([object], options)
-          args.unshift object
+          object      = record.is_a?(Array) ? record.last : record
+          object_name = options[:as] || ActiveModel::Naming.param_key(object)
+          apply_form_for_options!(record, options)
         end
 
-        (options[:html] ||= {})[:remote] = true if options.delete(:remote)
-
-        output = form_tag(options.delete(:url) || {}, options.delete(:html) || {})
-        output << fields_for(object_name, *(args << options), &proc)
+        options[:html][:remote] = options.delete(:remote)
+        builder = options[:parent_builder] = instantiate_builder(object_name, object, options, &proc)
+        fields_for = fields_for(object_name, object, options, &proc)
+        default_options = builder.multipart? ? { :multipart => true } : {}
+        output = form_tag(options.delete(:url) || {}, default_options.merge!(options.delete(:html)))
+        output << fields_for
         output.safe_concat('</form>')
       end
 
@@ -325,23 +322,17 @@ module ActionView
         object = object_or_array.is_a?(Array) ? object_or_array.last : object_or_array
         object = convert_to_model(object)
 
-        html_options =
-          if object.respond_to?(:persisted?) && object.persisted?
-            { :class  => options[:as] ? "#{options[:as]}_edit" : dom_class(object, :edit),
-              :id => options[:as] ? "#{options[:as]}_edit" : dom_id(object, :edit),
-              :method => :put }
-          else
-            { :class  => options[:as] ? "#{options[:as]}_new" : dom_class(object, :new),
-              :id => options[:as] ? "#{options[:as]}_new" : dom_id(object),
-              :method => :post }
-          end
+        as = options[:as]
+        action, method = object.respond_to?(:persisted?) && object.persisted? ? [:edit, :put] : [:new, :post]
+        options[:html].reverse_merge!(
+          :class  => as ? "#{as}_#{action}" : dom_class(object, action),
+          :id     => as ? "#{as}_#{action}" : dom_id(object, action),
+          :method => method
+        )
 
-        options[:html] ||= {}
-        options[:html].reverse_merge!(html_options)
-        options[:url] ||= options[:format] ? \
-          polymorphic_path(object_or_array, :format => options.delete(:format)) : \
-          polymorphic_path(object_or_array)
+        options[:url] ||= polymorphic_path(object_or_array, :format => options.delete(:format))
       end
+      private :apply_form_for_options!
 
       # Creates a scope around a specific model object like form_for, but
       # doesn't create the form tags themselves. This makes fields_for suitable
@@ -528,22 +519,7 @@ module ActionView
       #     <% end %>
       #   <% end %>
       def fields_for(record, record_object = nil, options = nil, &block)
-        raise ArgumentError, "Missing block" unless block_given?
-
-        options, record_object = record_object, nil if record_object.is_a?(Hash)
-        options ||= {}
-
-        case record
-        when String, Symbol
-          object = record_object
-          object_name = record
-        else
-          object = record
-          object_name = ActiveModel::Naming.singular(object)
-        end
-
-        builder = options[:builder] || ActionView::Base.default_form_builder
-        capture(builder.new(object_name, object, self, options, block), &block)
+        capture(instantiate_builder(record, record_object, options, &block), &block)
       end
 
       # Returns a label tag tailored for labelling an input field for a specified attribute (identified by +method+) on an object
@@ -667,10 +643,12 @@ module ActionView
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("hidden", options)
       end
 
-      # Returns an file upload input tag tailored for accessing a specified attribute (identified by +method+) on an object
+      # Returns a file upload input tag tailored for accessing a specified attribute (identified by +method+) on an object
       # assigned to the template (identified by +object+). Additional options on the input tag can be passed as a
       # hash with +options+. These options will be tagged onto the HTML as an HTML element attribute as in the example
       # shown.
+      #
+      # Using this method inside a +form_for+ block will set the enclosing form's encoding to <tt>multipart/form-data</tt>.
       #
       # ==== Examples
       #   file_field(:user, :avatar)
@@ -847,6 +825,25 @@ module ActionView
       def range_field(object_name, method, options = {})
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_number_field_tag("range", options)
       end
+
+      private
+
+        def instantiate_builder(record, record_object = nil, options = nil, &block)
+          options, record_object = record_object, nil if record_object.is_a?(Hash)
+          options ||= {}
+
+          case record
+          when String, Symbol
+            object = record_object
+            object_name = record
+          else
+            object = record
+            object_name = ActiveModel::Naming.param_key(object)
+          end
+
+          builder = options[:builder] || ActionView::Base.default_form_builder
+          builder.new(object_name, object, self, options, block)
+        end
     end
 
     module InstanceTagMethods #:nodoc:
@@ -855,9 +852,9 @@ module ActionView
 
       attr_reader :method_name, :object_name
 
-      DEFAULT_FIELD_OPTIONS     = { "size" => 30 }.freeze
-      DEFAULT_RADIO_OPTIONS     = { }.freeze
-      DEFAULT_TEXT_AREA_OPTIONS = { "cols" => 40, "rows" => 20 }.freeze
+      DEFAULT_FIELD_OPTIONS     = { "size" => 30 }
+      DEFAULT_RADIO_OPTIONS     = { }
+      DEFAULT_TEXT_AREA_OPTIONS = { "cols" => 40, "rows" => 20 }
 
       def initialize(object_name, method_name, template_object, object = nil)
         @object_name, @method_name = object_name.to_s.dup, method_name.to_s.dup
@@ -1111,6 +1108,14 @@ module ActionView
 
       attr_accessor :object_name, :object, :options
 
+      attr_reader :multipart, :parent_builder
+      alias :multipart? :multipart
+
+      def multipart=(multipart)
+        @multipart = multipart
+        parent_builder.multipart = multipart if parent_builder
+      end
+
       def self.model_name
         @model_name ||= Struct.new(:partial_path).new(name.demodulize.underscore.sub!(/_builder$/, ''))
       end
@@ -1122,6 +1127,7 @@ module ActionView
       def initialize(object_name, object, template, options, proc)
         @nested_child_index = {}
         @object_name, @object, @template, @options, @proc = object_name, object, template, options, proc
+        @parent_builder = options[:parent_builder]
         @default_options = @options ? @options.slice(:index) : {}
         if @object_name.to_s.match(/\[\]$/)
           if object ||= @template.instance_variable_get("@#{Regexp.last_match.pre_match}") and object.respond_to?(:to_param)
@@ -1130,9 +1136,10 @@ module ActionView
             raise ArgumentError, "object[] naming but object param and @object var don't exist or don't respond to to_param: #{object.inspect}"
           end
         end
+        @multipart = nil
       end
 
-      (field_helpers - %w(label check_box radio_button fields_for hidden_field)).each do |selector|
+      (field_helpers - %w(label check_box radio_button fields_for hidden_field file_field)).each do |selector|
         class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
           def #{selector}(method, options = {})  # def text_field(method, options = {})
             @template.send(                      #   @template.send(
@@ -1154,27 +1161,23 @@ module ActionView
           index = ""
         end
 
-        if options[:builder]
-          args << {} unless args.last.is_a?(Hash)
-          args.last[:builder] ||= options[:builder]
-        end
+        args << {} unless args.last.is_a?(Hash)
+        args.last[:builder] ||= options[:builder]
+        args.last[:parent_builder] = self
 
         case record_or_name_or_array
         when String, Symbol
           if nested_attributes_association?(record_or_name_or_array)
             return fields_for_with_nested_attributes(record_or_name_or_array, args, block)
           else
-            name = "#{object_name}#{index}[#{record_or_name_or_array}]"
+            name = record_or_name_or_array
           end
-        when Array
-          object = record_or_name_or_array.last
-          name = "#{object_name}#{index}[#{ActiveModel::Naming.singular(object)}]"
-          args.unshift(object)
         else
-          object = record_or_name_or_array
-          name = "#{object_name}#{index}[#{ActiveModel::Naming.singular(object)}]"
+          object = record_or_name_or_array.is_a?(Array) ? record_or_name_or_array.last : record_or_name_or_array
+          name   = ActiveModel::Naming.param_key(object)
           args.unshift(object)
         end
+        name = "#{object_name}#{index}[#{name}]"
 
         @template.fields_for(name, *args, &block)
       end
@@ -1196,6 +1199,10 @@ module ActionView
         @template.hidden_field(@object_name, method, objectify_options(options))
       end
 
+      def file_field(method, options = {})
+        self.multipart = true
+        @template.file_field(@object_name, method, objectify_options(options))
+      end
       # Add the submit button for the given form. When no value is given, it checks
       # if the object is a new resource or not to create the proper label:
       #
@@ -1230,7 +1237,7 @@ module ActionView
       end
 
       def emitted_hidden_id?
-        @emitted_hidden_id
+        @emitted_hidden_id ||= nil
       end
 
       private
@@ -1239,7 +1246,7 @@ module ActionView
         end
 
         def submit_default_value
-          object = @object.respond_to?(:to_model) ? @object.to_model : @object
+          object = convert_to_model(@object)
           key    = object ? (object.persisted? ? :update : :create) : :submit
 
           model = if object.class.respond_to?(:model_name)
@@ -1264,7 +1271,7 @@ module ActionView
           name = "#{object_name}[#{association_name}_attributes]"
           options = args.extract_options!
           association = args.shift
-          association = association.to_model if association.respond_to?(:to_model)
+          association = convert_to_model(association)
 
           if association.respond_to?(:persisted?)
             association = [association] if @object.send(association_name).is_a?(Array)
@@ -1285,7 +1292,7 @@ module ActionView
         end
 
         def fields_for_nested_model(name, object, options, block)
-          object = object.to_model if object.respond_to?(:to_model)
+          object = convert_to_model(object)
 
           if object.persisted?
             @template.fields_for(name, object, options) do |builder|
@@ -1300,6 +1307,10 @@ module ActionView
         def nested_child_index(name)
           @nested_child_index[name] ||= -1
           @nested_child_index[name] += 1
+        end
+
+        def convert_to_model(object)
+          object.respond_to?(:to_model) ? object.to_model : object
         end
     end
   end

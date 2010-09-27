@@ -1,6 +1,6 @@
 require 'abstract_unit'
 
-class MultipartParamsParsingTest < ActionController::IntegrationTest
+class MultipartParamsParsingTest < ActionDispatch::IntegrationTest
   class TestController < ActionController::Base
     class << self
       attr_accessor :last_request_parameters
@@ -156,7 +156,7 @@ class MultipartParamsParsingTest < ActionController::IntegrationTest
 
     def with_test_routing
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match ':action', :to => 'multipart_params_parsing_test/test'
         end
         yield

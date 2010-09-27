@@ -1,6 +1,6 @@
 require 'active_record_unit'
 
-class ActiveRecordStoreTest < ActionController::IntegrationTest
+class ActiveRecordStoreTest < ActionDispatch::IntegrationTest
   class TestController < ActionController::Base
     def no_session_access
       head :ok
@@ -198,7 +198,7 @@ class ActiveRecordStoreTest < ActionController::IntegrationTest
 
     def with_test_route_set(options = {})
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match ':action', :to => 'active_record_store_test/test'
         end
 

@@ -1,6 +1,6 @@
 require 'abstract_unit'
 
-class XmlParamsParsingTest < ActionController::IntegrationTest
+class XmlParamsParsingTest < ActionDispatch::IntegrationTest
   class TestController < ActionController::Base
     class << self
       attr_accessor :last_request_parameters
@@ -96,7 +96,7 @@ class XmlParamsParsingTest < ActionController::IntegrationTest
   private
     def with_test_routing
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match ':action', :to => ::XmlParamsParsingTest::TestController
         end
         yield

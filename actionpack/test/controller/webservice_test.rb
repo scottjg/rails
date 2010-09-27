@@ -1,6 +1,6 @@
 require 'abstract_unit'
 
-class WebServiceTest < ActionController::IntegrationTest
+class WebServiceTest < ActionDispatch::IntegrationTest
   class TestController < ActionController::Base
     def assign_parameters
       if params[:full]
@@ -254,7 +254,7 @@ class WebServiceTest < ActionController::IntegrationTest
 
     def with_test_route_set
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match '/', :to => 'web_service_test/test#assign_parameters'
         end
         yield

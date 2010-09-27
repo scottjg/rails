@@ -93,9 +93,9 @@ module ActionController
   # * ActiveRecord::SessionStore - Sessions are stored in your database, which works better than PStore with multiple app servers and,
   #   unlike CookieStore, hides your session contents from the user. To use ActiveRecord::SessionStore, set
   #
-  #     config.action_controller.session_store = :active_record_store
+  #     MyApplication::Application.config.session_store :active_record_store
   #
-  #   in your <tt>config/environment.rb</tt> and run <tt>rake db:sessions:create</tt>.
+  #   in your <tt>config/initializers/session_store.rb</tt> and run <tt>script/rails g session_migration</tt>.
   #
   # == Responses
   #
@@ -147,6 +147,8 @@ module ActionController
   #   end
   #
   # In this case, after saving our new entry to the database, the user is redirected to the <tt>show</tt> method which is then executed.
+  #
+  # Learn more about <tt>redirect_to</tt> and what options you have in ActionController::Redirecting.
   #
   # == Calling multiple redirects or renders
   #
@@ -220,11 +222,6 @@ module ActionController
 
     # Rails 2.x compatibility
     include ActionController::Compatibility
-
-    def self.inherited(klass)
-      super
-      klass.helper :all if klass.superclass == ActionController::Base
-    end
 
     ActiveSupport.run_load_hooks(:action_controller, self)
   end

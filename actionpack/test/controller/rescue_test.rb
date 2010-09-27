@@ -311,7 +311,7 @@ class RescueControllerTest < ActionController::TestCase
   end
 end
 
-class RescueTest < ActionController::IntegrationTest
+class RescueTest < ActionDispatch::IntegrationTest
   class TestController < ActionController::Base
     class RecordInvalid < StandardError
       def message
@@ -371,7 +371,7 @@ class RescueTest < ActionController::IntegrationTest
   private
     def with_test_routing
       with_routing do |set|
-        set.draw do |map|
+        set.draw do
           match 'foo', :to => ::RescueTest::TestController.action(:foo)
           match 'invalid', :to => ::RescueTest::TestController.action(:invalid)
           match 'b00m', :to => ::RescueTest::TestController.action(:b00m)

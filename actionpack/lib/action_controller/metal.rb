@@ -12,7 +12,7 @@ module ActionController
   #
   class MiddlewareStack < ActionDispatch::MiddlewareStack #:nodoc:
     class Middleware < ActionDispatch::MiddlewareStack::Middleware #:nodoc:
-      def initialize(klass, *args)
+      def initialize(klass, *args, &block)
         options = args.extract_options!
         @only   = Array(options.delete(:only)).map(&:to_s)
         @except = Array(options.delete(:except)).map(&:to_s)
@@ -52,7 +52,11 @@ module ActionController
   class Metal < AbstractController::Base
     abstract!
 
-    attr_internal :env
+    attr_internal_writer :env
+
+    def env
+      @_env ||= {}
+    end
 
     # Returns the last part of the controller's name, underscored, without the ending
     # <tt>Controller</tt>. For instance, PostsController returns <tt>posts</tt>.
@@ -81,6 +85,8 @@ module ActionController
     def initialize(*)
       @_headers = {"Content-Type" => "text/html"}
       @_status = 200
+      @_request = nil
+      @_response = nil
       super
     end
 
@@ -95,7 +101,7 @@ module ActionController
     # Basic implementations for content_type=, location=, and headers are
     # provided to reduce the dependency on the RackDelegation module
     # in Renderer and Redirector.
-    
+
     def content_type=(type)
       headers["Content-Type"] = type.to_s
     end
@@ -145,8 +151,8 @@ module ActionController
       super
     end
 
-    def self.use(*args)
-      middleware_stack.use(*args)
+    def self.use(*args, &block)
+      middleware_stack.use(*args, &block)
     end
 
     def self.middleware

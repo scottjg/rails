@@ -141,6 +141,8 @@ module ActionController #:nodoc:
       end
 
       class ActionCachePath
+        include UriParser
+
         attr_reader :path, :extension
 
         # If +infer_extension+ is true, the cache path extension is looked up from the request's
@@ -161,7 +163,7 @@ module ActionController #:nodoc:
         def normalize!(path)
           path << 'index' if path[-1] == ?/
           path << ".#{extension}" if extension and !path.ends_with?(extension)
-          URI.unescape(path)
+          uri_parser.unescape(path)
         end
       end
     end

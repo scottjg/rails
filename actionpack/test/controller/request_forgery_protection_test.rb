@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'digest/sha1'
+require 'active_support/core_ext/string/strip'
 
 # common controller actions
 module RequestForgeryProtectionActions
@@ -16,7 +17,7 @@ module RequestForgeryProtectionActions
   end
 
   def meta
-    render :inline => "<%= csrf_meta_tag %>"
+    render :inline => "<%= csrf_meta_tags %>"
   end
 
   def rescue_action(e) raise e end
@@ -54,26 +55,25 @@ module RequestForgeryProtectionTests
     ActionController::Base.request_forgery_protection_token = nil
   end
 
-
   def test_should_render_form_with_token_tag
-     get :index
-     assert_select 'form>div>input[name=?][value=?]', 'authenticity_token', @token
-   end
+    get :index
+    assert_select 'form>div>input[name=?][value=?]', 'authenticity_token', @token
+  end
 
-   def test_should_render_button_to_with_token_tag
-     get :show_button
-     assert_select 'form>div>input[name=?][value=?]', 'authenticity_token', @token
-   end
+  def test_should_render_button_to_with_token_tag
+    get :show_button
+    assert_select 'form>div>input[name=?][value=?]', 'authenticity_token', @token
+  end
 
-   def test_should_allow_get
-     get :index
-     assert_response :success
-   end
+  def test_should_allow_get
+    get :index
+    assert_response :success
+  end
 
-   def test_should_allow_post_without_token_on_unsafe_action
-     post :unsafe
-     assert_response :success
-   end
+  def test_should_allow_post_without_token_on_unsafe_action
+    post :unsafe
+    assert_response :success
+  end
 
   def test_should_not_allow_html_post_without_token
     @request.env['CONTENT_TYPE'] = Mime::URL_ENCODED_FORM.to_s
@@ -219,7 +219,10 @@ class RequestForgeryProtectionControllerTest < ActionController::TestCase
   test 'should emit a csrf-token meta tag' do
     ActiveSupport::SecureRandom.stubs(:base64).returns(@token + '<=?')
     get :meta
-    assert_equal %(<meta name="csrf-param" content="authenticity_token"/>\n<meta name="csrf-token" content="cf50faa3fe97702ca1ae&lt;=?"/>), @response.body
+    assert_equal <<-METAS.strip_heredoc.chomp, @response.body
+      <meta name="csrf-param" content="authenticity_token"/>
+      <meta name="csrf-token" content="cf50faa3fe97702ca1ae&lt;=?"/>
+    METAS
   end
 end
 

@@ -13,7 +13,7 @@ module ActionView
     module UrlHelper
       # This helper may be included in any class that includes the
       # URL helpers of a routes (routes.url_helpers). Some methods
-      # provided here will only work in the4 context of a request
+      # provided here will only work in the context of a request
       # (link_to_unless_current, for instance), which must be provided
       # as a method called #request on the context.
 
@@ -21,6 +21,10 @@ module ActionView
 
       include ActionDispatch::Routing::UrlFor
       include TagHelper
+
+      def _routes_context
+        controller
+      end
 
       # Need to map default url options to controller one.
       # def default_url_options(*args) #:nodoc:
@@ -91,7 +95,7 @@ module ActionView
       #   # => javascript:history.back()
       def url_for(options = {})
         options ||= {}
-        url = case options
+        case options
         when String
           options
         when Hash
@@ -102,8 +106,6 @@ module ActionView
         else
           polymorphic_path(options)
         end
-
-        url
       end
 
       # Creates a link tag of the given +name+ using a URL created by the set
@@ -264,7 +266,7 @@ module ActionView
       # The +options+ hash accepts the same options as url_for.
       #
       # There are a few special +html_options+:
-      # * <tt>:method</tt> - Symbol of HTTP verb. Supported verbs are <tt>:post</tt>, <tt>:get</tt>, 
+      # * <tt>:method</tt> - Symbol of HTTP verb. Supported verbs are <tt>:post</tt>, <tt>:get</tt>,
       #   <tt>:delete</tt> and <tt>:put</tt>. By default it will be <tt>:post</tt>.
       # * <tt>:disabled</tt> - If set to true, it will generate a disabled button.
       # * <tt>:confirm</tt> - This will use the unobtrusive JavaScript driver to
@@ -582,25 +584,24 @@ module ActionView
 
       private
         def convert_options_to_data_attributes(options, html_options)
-          html_options = {} if html_options.nil?
-          html_options = html_options.stringify_keys
+          if html_options.nil?
+            link_to_remote_options?(options) ? {'data-remote' => 'true'} : {}
+          else
+            html_options = html_options.stringify_keys
+            html_options['data-remote'] = 'true' if link_to_remote_options?(options) || link_to_remote_options?(html_options)
 
-          if (options.is_a?(Hash) && options.key?('remote') && options.delete('remote')) || (html_options.is_a?(Hash) && html_options.key?('remote') && html_options.delete('remote'))
-            html_options['data-remote'] = 'true'
+            confirm = html_options.delete('confirm')
+            method  = html_options.delete('method')
+
+            add_confirm_to_attributes!(html_options, confirm) if confirm
+            add_method_to_attributes!(html_options, method)   if method
+
+            html_options
           end
+        end
 
-          confirm = html_options.delete("confirm")
-
-          if html_options.key?("popup")
-            ActiveSupport::Deprecation.warn(":popup has been deprecated", caller)
-          end
-
-          method, href = html_options.delete("method"), html_options['href']
-
-          add_confirm_to_attributes!(html_options, confirm) if confirm
-          add_method_to_attributes!(html_options, method)   if method
-
-          html_options
+        def link_to_remote_options?(options)
+          options.is_a?(Hash) && options.key?('remote') && options.delete('remote')
         end
 
         def add_confirm_to_attributes!(html_options, confirm)
