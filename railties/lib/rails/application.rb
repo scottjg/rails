@@ -71,11 +71,6 @@ module Rails
       $LOAD_PATH.unshift(path) if File.exists?(path)
     end
 
-    def require_environment! #:nodoc:
-      environment = paths.config.environment.to_a.first
-      require environment if environment
-    end
-
     def eager_load! #:nodoc:
       railties.all(&:eager_load!)
       super

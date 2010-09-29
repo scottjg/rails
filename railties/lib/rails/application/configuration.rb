@@ -60,7 +60,6 @@ module Rails
         @paths ||= begin
           paths = super
           paths.config.database     "config/database.yml"
-          paths.config.environment  "config/environment.rb"
           paths.lib.templates       "lib/templates"
           paths.log                 "log/#{Rails.env}.log"
           paths.tmp                 "tmp"

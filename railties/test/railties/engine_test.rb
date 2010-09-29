@@ -160,7 +160,7 @@ module RailtiesTest
       assert Rails.application.config.app_yaffle_loaded
     end
 
-    test "it loads its environment file" do
+    test "it loads its environments/ENV.rb file and it can also load environment.rb" do
       @plugin.write "lib/bukkits.rb", <<-RUBY
         class Bukkits
           class Engine < ::Rails::Engine
@@ -174,9 +174,17 @@ module RailtiesTest
         end
       RUBY
 
-      boot_rails
+      @plugin.write "config/environment.rb", <<-RUBY
+        Bukkits::Engine.configure do
+          config.environment_rb_loaded = true
+        end
+      RUBY
 
+      boot_rails
       assert Bukkits::Engine.config.environment_loaded
+
+      Bukkits::Engine.require_environment!
+      assert Bukkits::Engine.config.environment_rb_loaded
     end
 
     test "it passes router in env" do

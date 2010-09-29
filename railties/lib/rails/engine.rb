@@ -425,6 +425,11 @@ module Rails
       load(seed_file) if File.exist?(seed_file)
     end
 
+    def require_environment! #:nodoc:
+      environment = paths.config.environment.to_a.first
+      require environment if environment && File.exists?(environment)
+    end
+
     # Add configured load paths to ruby load paths and remove duplicates.
     initializer :set_load_path, :before => :bootstrap_hook do
       _all_load_paths.reverse_each do |path|
