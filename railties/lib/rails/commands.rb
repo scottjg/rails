@@ -12,7 +12,7 @@ command = aliases[command] || command
 
 case command
 when 'generate', 'destroy', 'plugin', 'benchmarker', 'profiler'
-  require APP_PATH
+  require defined?(ENGINE_PATH) ? ENGINE_PATH : APP_PATH
   Rails.application.require_environment!
   require "rails/commands/#{command}"
 
