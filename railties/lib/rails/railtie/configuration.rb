@@ -16,6 +16,19 @@ module Rails
         @@app_middleware ||= Rails::Configuration::MiddlewareStackProxy.new
       end
 
+      # This allows you to modify application's generators from Railties.
+      #
+      # Values set on app_generators will become defaults for applicaiton, unless
+      # application overwrites them.
+      def app_generators
+        @@app_generators ||= Rails::Configuration::Generators.new
+        if block_given?
+          yield @@app_generators
+        else
+          @@app_generators
+        end
+      end
+
       # Holds generators configuration:
       #
       #   config.generators do |g|
@@ -28,13 +41,10 @@ module Rails
       #
       #   config.generators.colorize_logging = false
       #
-      def generators
-        @@generators ||= Rails::Configuration::Generators.new
-        if block_given?
-          yield @@generators
-        else
-          @@generators
-        end
+      def generators(&block)
+        message = "Using generators for modifying application's generators has been deprecated. Please use app_generators instead."
+        ActiveSupport::Deprecation.warn(message) if show_generators_deprecation?
+        app_generators(&block)
       end
 
       def before_configuration(&block)
@@ -66,6 +76,10 @@ module Rails
       end
 
     private
+
+      def show_generators_deprecation?
+        true
+      end
 
       def method_missing(name, *args, &blk)
         if name.to_s =~ /=$/

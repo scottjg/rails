@@ -131,6 +131,12 @@ module Rails
           @session_options = args.shift || {}
         end
       end
+
+    private
+
+      def show_generators_deprecation?
+        false
+      end
     end
   end
 end

@@ -25,6 +25,27 @@ module ApplicationTests
       yield app_const.config
     end
 
+    test "using generators in railties throws deprecation warning" do
+      require "active_support/testing/deprecation"
+      self.class.send(:include, ActiveSupport::Testing::Deprecation)
+
+      require "#{app_path}/config/environment"
+
+      assert_deprecated do
+        class Foo < ::Rails::Railtie
+          config.generators do |g|
+            g.template_engine :haml
+          end
+        end
+      end
+
+      assert_not_deprecated do
+        Rails.application.config.generators do |g|
+          g.template_engine :erb
+        end
+      end
+    end
+
     test "generators default values" do
       with_bare_config do |c|
         assert_equal(true, c.generators.colorize_logging)
