@@ -103,7 +103,7 @@ module ActionView
       end
 
       def render(options = {}, local_assigns = {}, &block)
-        view.assign(_assigns)
+        view.assign(user_defined_ivar_map)
         @rendered << output = view.render(options, local_assigns, &block)
         output
       end
@@ -169,15 +169,19 @@ module ActionView
 
       alias_method :_view, :view
 
-      EXCLUDE_IVARS = %w{
+      INTERNAL_IVARS = %w{
+        @__name__
         @_assertion_wrapped
+        @_assertions
         @_result
+        @_routes
         @controller
         @layouts
         @locals
         @method_name
         @output_buffer
         @partials
+        @passed
         @rendered
         @request
         @routes
@@ -187,16 +191,20 @@ module ActionView
         @view_context_class
       }
 
-      def _instance_variables
-        instance_variables.map(&:to_s) - EXCLUDE_IVARS
+      def _user_defined_ivars
+        instance_variables.map(&:to_s) - INTERNAL_IVARS
+      end
+
+      def user_defined_ivar_map
+        _user_defined_ivars.inject({}) do |hash, var|
+          hash.merge(var.sub('@','').to_sym => instance_variable_get(var))
+        end
       end
 
       def _assigns
-        _instance_variables.inject({}) do |hash, var|
-          name = var[1..-1].to_sym
-          hash[name] = instance_variable_get(var)
-          hash
-        end
+        ActiveSupport::Deprecation.warn "ActionView::TestCase#_assigns is deprecated and will be removed in future versions. " <<
+          "Please use user_defined_ivar_map instead."
+        user_defined_ivar_map
       end
 
       def _routes
