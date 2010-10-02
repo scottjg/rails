@@ -133,7 +133,7 @@ module ActionView
   end
 
   class UserDefinedIvarMapTest < ActionView::TestCase
-    test "user_defined_ivars returns a Hash of user defined ivars" do
+    test "user_defined_ivar_map returns a Hash of user defined ivars" do
       @a = 'b'
       @c = 'd'
       assert_equal({:a => 'b', :c => 'd'}, user_defined_ivar_map)
