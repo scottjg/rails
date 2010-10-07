@@ -1,0 +1,1 @@
+This is a fork of rails v2.3.8 with some crucial patches added, primarily for the convenience of bundler installs from git.
