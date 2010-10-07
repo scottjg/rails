@@ -95,7 +95,15 @@ module ActiveSupport #:nodoc:
             begin
               Dependencies.load_missing_constant self, const_name
             rescue NameError
-              parent.send :const_missing, const_name
+  #            parent.send :const_missing, const_name
+  # PATCH lighthouse #2283
+  # https://rails.lighthouseapp.com/projects/8994-ruby-on-rails/tickets/2283
+               if parent.const_defined?(const_name)
+                 parent.const_get(const_name)
+               else
+                 parent.send :const_missing, const_name
+               end
+
             end
           rescue NameError => e
             # Make sure that the name we are missing is the one that caused the error
@@ -414,7 +422,9 @@ module ActiveSupport #:nodoc:
         raise ArgumentError, "A copy of #{from_mod} has been removed from the module tree but is still active!"
       end
 
-      raise ArgumentError, "#{from_mod} is not missing constant #{const_name}!" if uninherited_const_defined?(from_mod, const_name)
+# PATCH lighthouse 2283 and remove initializer monkeypatch
+#      raise ArgumentError, "#{from_mod} is not missing constant #{const_name}!" if uninherited_const_defined?(from_mod, const_name)
+      return from_mod.const_get(const_name) if uninherited_const_defined?(from_mod, const_name)
 
       qualified_name = qualified_name_for from_mod, const_name
       path_suffix = qualified_name.underscore
