@@ -2005,13 +2005,18 @@ module ActiveRecord #:nodoc:
           attributes
         end
 
-        # Similar in purpose to +expand_hash_conditions_for_aggregates+.
-        def expand_attribute_names_for_aggregates(attribute_names)
+        # Similar in purpose to +expand_hash_conditions_for_aggregates_and_associations+.
+        def expand_attribute_names_for_aggregates_and_associations(attribute_names)
           expanded_attribute_names = []
           attribute_names.each do |attribute_name|
-            unless (aggregation = reflect_on_aggregation(attribute_name.to_sym)).nil?
+            if aggregation = reflect_on_aggregation(attribute_name.to_sym)
               aggregate_mapping(aggregation).each do |field_attr, aggregate_attr|
                 expanded_attribute_names << field_attr
+              end
+            elsif (association = reflect_on_association(attribute_name.to_sym)) && association.belongs_to?
+              expanded_attribute_names << association.association_foreign_key
+              if association.options[:polymorphic]
+                expanded_attribute_names << association.options[:foreign_type]
               end
             else
               expanded_attribute_names << attribute_name
@@ -2021,7 +2026,7 @@ module ActiveRecord #:nodoc:
         end
 
         def all_attributes_exists?(attribute_names)
-          attribute_names = expand_attribute_names_for_aggregates(attribute_names)
+          attribute_names = expand_attribute_names_for_aggregates_and_associations(attribute_names)
           attribute_names.all? { |name| column_methods_hash.include?(name.to_sym) }
         end
 
@@ -2291,19 +2296,22 @@ module ActiveRecord #:nodoc:
 
         # Accepts a hash of SQL conditions and replaces those attributes
         # that correspond to a +composed_of+ relationship with their expanded
-        # aggregate attribute values.
+        # aggregate attribute values.  Also replaces attributes that correspond
+        # to a +belongs_to+ association with their expanded foreign key attributes.
+        #
         # Given:
         #     class Person < ActiveRecord::Base
         #       composed_of :address, :class_name => "Address",
         #         :mapping => [%w(address_street street), %w(address_city city)]
+        #       belongs_to :site
         #     end
         # Then:
-        #     { :address => Address.new("813 abc st.", "chicago") }
-        #       # => { :address_street => "813 abc st.", :address_city => "chicago" }
-        def expand_hash_conditions_for_aggregates(attrs)
+        #     { :address => Address.new("813 abc st.", "chicago"), :site => Site.find(89) }
+        #       # => { :address_street => "813 abc st.", :address_city => "chicago", :site_id => 89 }
+        def expand_hash_conditions_for_aggregates_and_associations(attrs)
           expanded_attrs = {}
           attrs.each do |attr, value|
-            unless (aggregation = reflect_on_aggregation(attr.to_sym)).nil?
+            if aggregation = reflect_on_aggregation(attr.to_sym)
               mapping = aggregate_mapping(aggregation)
               mapping.each do |field_attr, aggregate_attr|
                 if mapping.size == 1 && !value.respond_to?(aggregate_attr)
@@ -2312,12 +2320,18 @@ module ActiveRecord #:nodoc:
                   expanded_attrs[field_attr] = value.send(aggregate_attr)
                 end
               end
+            elsif (association = reflect_on_association(attr.to_sym)) && association.belongs_to?
+              expanded_attrs[association.association_foreign_key] = value.id
+              if association.options[:polymorphic]
+                expanded_attrs[association.options[:foreign_type]] = value.class.base_class.name
+              end
             else
               expanded_attrs[attr] = value
             end
           end
           expanded_attrs
         end
+
 
         # Sanitizes a hash of attribute/value pairs into SQL conditions for a WHERE clause.
         #   { :name => "foo'bar", :group_id => 4 }
@@ -2334,7 +2348,7 @@ module ActiveRecord #:nodoc:
         #   { :address => Address.new("123 abc st.", "chicago") }
         #     # => "address_street='123 abc st.' and address_city='chicago'"
         def sanitize_sql_hash_for_conditions(attrs, default_table_name = quoted_table_name)
-          attrs = expand_hash_conditions_for_aggregates(attrs)
+          attrs = expand_hash_conditions_for_aggregates_and_associations(attrs)
 
           conditions = attrs.map do |attr, value|
             table_name = default_table_name

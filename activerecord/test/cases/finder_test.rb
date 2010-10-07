@@ -11,6 +11,7 @@ require 'models/developer'
 require 'models/customer'
 require 'models/job'
 require 'models/categorization'
+require 'models/polymorphic_price'
 
 class DynamicFinderMatchTest < ActiveRecord::TestCase
   def test_find_no_match
@@ -380,6 +381,18 @@ class FinderTest < ActiveRecord::TestCase
     assert_nil topic.last_read
   end
 
+  def test_hash_condition_find_with_belongs_to_object
+    author = Author.create! :name => "Fred"
+    post = Post.create! :author => author, :title => "Fred's post"
+    assert_equal post, Post.find(:first, :conditions => { :author => author })
+  end
+  
+  def test_hash_condition_find_with_polymorphic_belongs_to_object
+    post = Post.create! :title => "The monetization of blogging"
+    price = PolymorphicPrice.create! :sellable => post
+    assert_equal price, PolymorphicPrice.find(:first, :conditions => { :sellable => post })
+  end
+
   def test_hash_condition_find_with_aggregate_having_one_mapping
     balance = customers(:david).balance
     assert_kind_of Money, balance
@@ -617,6 +630,18 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal customers(:david), found_customer
   end
 
+  def test_find_by_attribute_that_is_belongs_to_object
+    author = Author.create! :name => "Fred"
+    post = Post.create! :author => author, :title => "Fred's post"
+    assert_equal post, Post.find_by_author(author)
+  end
+  
+  def test_find_by_attribute_that_is_polymorphic_belongs_to_object
+    post = Post.create! :title => "The monetization of blogging"
+    price = PolymorphicPrice.create! :sellable => post
+    assert_equal price, PolymorphicPrice.find_by_sellable(post)
+  end
+  
   def test_dynamic_finder_on_one_attribute_with_conditions_caches_method
     # ensure this test can run independently of order
     class << Account; self; end.send(:remove_method, :find_by_credit_limit) if Account.public_methods.any? { |m| m.to_s == 'find_by_credit_limit' }
