@@ -254,7 +254,7 @@ class ActionCacheTest < ActionController::TestCase
     get :index
     cached_time = content_to_cache
     assert_equal cached_time, @response.body
-    assert fragment_exist?('hostname.com/action_caching_test')
+    assert fragment_exist?('hostname.com/action_caching_test?format=all')
     reset!
 
     get :index
@@ -265,7 +265,7 @@ class ActionCacheTest < ActionController::TestCase
     get :destroy
     cached_time = content_to_cache
     assert_equal cached_time, @response.body
-    assert !fragment_exist?('hostname.com/action_caching_test/destroy')
+    assert !fragment_exist?('hostname.com/action_caching_test/destroy?format=all')
     reset!
 
     get :destroy
@@ -276,26 +276,26 @@ class ActionCacheTest < ActionController::TestCase
     get :with_layout
     cached_time = content_to_cache
     assert_not_equal cached_time, @response.body
-    assert fragment_exist?('hostname.com/action_caching_test/with_layout')
+    assert fragment_exist?('hostname.com/action_caching_test/with_layout?format=all')
     reset!
 
     get :with_layout
     assert_not_equal cached_time, @response.body
 
-    assert_equal @response.body, read_fragment('hostname.com/action_caching_test/with_layout')
+    assert_equal @response.body, read_fragment('hostname.com/action_caching_test/with_layout?format=all')
   end
 
   def test_action_cache_with_layout_and_layout_cache_false
     get :layout_false
     cached_time = content_to_cache
     assert_not_equal cached_time, @response.body
-    assert fragment_exist?('hostname.com/action_caching_test/layout_false')
+    assert fragment_exist?('hostname.com/action_caching_test/layout_false?format=all')
     reset!
 
     get :layout_false
     assert_not_equal cached_time, @response.body
 
-    assert_equal cached_time, read_fragment('hostname.com/action_caching_test/layout_false')
+    assert_equal cached_time, read_fragment('hostname.com/action_caching_test/layout_false?format=all')
   end
 
   def test_action_cache_conditional_options
@@ -309,8 +309,8 @@ class ActionCacheTest < ActionController::TestCase
 
   def test_action_cache_with_store_options
     MockTime.expects(:now).returns(12345).once
-    @controller.expects(:read_fragment).with('hostname.com/action_caching_test', :expires_in => 1.hour).once
-    @controller.expects(:write_fragment).with('hostname.com/action_caching_test', '12345.0', :expires_in => 1.hour).once
+    @controller.expects(:read_fragment).with('hostname.com/action_caching_test?format=all', :expires_in => 1.hour).once
+    @controller.expects(:write_fragment).with('hostname.com/action_caching_test?format=all', '12345.0', :expires_in => 1.hour).once
     get :index
   end
 
@@ -441,8 +441,8 @@ class ActionCacheTest < ActionController::TestCase
 
   def test_correct_content_type_is_returned_for_cache_hit
     # run it twice to cache it the first time
-    get :index, :id => 'content-type.xml'
-    get :index, :id => 'content-type.xml'
+    get :index, :id => 'content-type.xml', :format => 'xml'
+    get :index, :id => 'content-type.xml', :format => 'xml'
     assert_equal 'application/xml', @response.content_type
   end
 
