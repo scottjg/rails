@@ -95,18 +95,14 @@ module ActionController #:nodoc:
         def before(controller)
           cache_path = ActionCachePath.new(controller, path_options_for(controller, @options.slice(:cache_path)))
           responder = MimeResponds::Responder.new(controller)
-          # To which types can we respond from cache?  Best Answer: query cache store.  Cheap Answer: use static config.
-          # OPTIMIZE: Query cache store to determine which types can be responded to from cache.
           types = @options[:store_options][:cache_types] || [:any]
-          types.each do |type|
-            responder.send(type) do
-              path = cache_path.path(controller.response.template.template_format.to_sym)
-              if cache = controller.read_fragment(path, @options[:store_options])
-                controller.rendered_action_cache = true
-                options = { :text => cache }
-                options.merge!(:layout => true) if cache_layout?
-                controller.__send__(:render, options)
-              end
+          responder.any(*types) do
+            path = cache_path.path(controller.response.template.template_format.to_sym)
+            if cache = controller.read_fragment(path, @options[:store_options])
+              controller.rendered_action_cache = true
+              options = { :text => cache }
+              options.merge!(:layout => true) if cache_layout?
+              controller.__send__(:render, options)
             end
           end
           responder.respond
