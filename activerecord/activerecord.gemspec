@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{activerecord}
-  s.version = "2.3.5.adgear"
+  s.version = "2.3.9.adgear"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["David Heinemeier Hansson"]
@@ -24,12 +24,12 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<activesupport>, ["= 2.3.5.adgear"])
+      s.add_runtime_dependency(%q<activesupport>, ["= 2.3.9.adgear"])
     else
-      s.add_dependency(%q<activesupport>, ["= 2.3.5.adgear"])
+      s.add_dependency(%q<activesupport>, ["= 2.3.9.adgear"])
     end
   else
-    s.add_dependency(%q<activesupport>, ["= 2.3.5.adgear"])
+    s.add_dependency(%q<activesupport>, ["= 2.3.9.adgear"])
   end
 end
 
