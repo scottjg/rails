@@ -38,7 +38,7 @@ module ActiveSupport
 
       def prime_cache(*syms)
         syms.each do |sym|
-          methods.each do |m|
+          (methods + private_methods + protected_methods).each do |m|
             if m.to_s =~ /^_unmemoized_(#{sym})/
               if method(m).arity == 0
                 __send__($1)
