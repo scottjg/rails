@@ -101,6 +101,22 @@ class MemoizableTest < ActiveSupport::TestCase
       @count += 1
     end
     memoize :counter
+
+    protected
+
+    def protected_counter
+      @protected_counter ||= 0
+      @protected_counter += 1
+    end
+    memoize :protected_counter
+
+    private
+
+    def private_counter
+      @private_counter ||= 0
+      @private_counter += 1
+    end
+    memoize :private_counter
   end
 
   def setup
@@ -171,6 +187,8 @@ class MemoizableTest < ActiveSupport::TestCase
   def test_memoize_all
     @calculator.memoize_all
     assert @calculator.instance_variable_defined?(:@_memoized_counter)
+    assert @calculator.instance_variable_defined?(:@_memoized_protected_counter)
+    assert @calculator.instance_variable_defined?(:@_memoized_private_counter)
   end
 
   def test_memoization_cache_is_different_for_each_instance
