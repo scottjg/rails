@@ -19,9 +19,15 @@ class MimeTypeTest < Test::Unit::TestCase
   def test_parse_with_q
     accept = "text/xml,application/xhtml+xml,text/yaml; q=0.3,application/xml,text/html; q=0.8,image/png,text/plain; q=0.5,application/pdf,*/*; q=0.2"
     expect = [Mime::HTML, Mime::XML, Mime::PNG, Mime::PDF, Mime::TEXT, Mime::YAML, Mime::ALL]
+  end
+
+  # Accept header (which is valid even if it is pointless) send with user HTTP_USER_AGENT: searchdnabot/Nutch-1.0
+  def test_parse_single_with_q
+    accept = "*/*;q=0.1"
+    expect = [Mime::ALL]
     assert_equal expect, Mime::Type.parse(accept)
   end
-  
+
   # Accept header send with user HTTP_USER_AGENT: Sunrise/0.42j (Windows XP)
   def test_parse_crappy_broken_acceptlines
     accept = "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/*,,*/*;q=0.5"
