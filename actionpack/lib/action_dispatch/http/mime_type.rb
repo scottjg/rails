@@ -105,7 +105,7 @@ module Mime
 
       def parse(accept_header)
         if accept_header !~ /,/
-          [Mime::Type.lookup(accept_header)]
+          [Mime::Type.lookup(accept_header.split(';').first)]
         else
           # keep track of creation order to keep the subsequent sort stable
           list = []
