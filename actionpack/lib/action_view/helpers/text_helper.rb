@@ -171,8 +171,14 @@ module ActionView
       #
       #   pluralize(0, 'person')
       #   # => 0 people
-      def pluralize(count, singular, plural = nil)
-        "#{count || 0} " + ((count == 1 || count =~ /^1(\.0+)?$/) ? singular : (plural || singular.pluralize))
+      def pluralize(count, singular, plural = nil, *args)
+        options = args.extract_options!
+        unless args.empty?
+          options[:omit_number] = args[0] || false
+        end
+        options.reverse_merge!(:omit_number => false)
+        count_text = ptions[:omit_number] ? "" : "#{count || 0} "
+        count_text + ((count == 1 || count =~ /^1(\.0+)?$/) ? singular : (plural || singular.pluralize))
       end
 
       # Wraps the +text+ into lines no longer than +line_width+ width. This method
