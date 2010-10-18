@@ -108,10 +108,11 @@ module Mime
 
       def parse(accept_header)
         if accept_header !~ /,/
-          if accept_header =~ TRAILING_STAR_REGEXP
+          param = accept_header.split(';').first
+          if param =~ TRAILING_STAR_REGEXP
             parse_data_with_trailing_star($1)
           else
-            [Mime::Type.lookup(accept_header)]
+            [Mime::Type.lookup(param)]
           end
         else
           # keep track of creation order to keep the subsequent sort stable
