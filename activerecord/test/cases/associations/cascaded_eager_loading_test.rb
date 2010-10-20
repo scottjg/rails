@@ -45,6 +45,12 @@ class CascadedEagerLoadingTest < ActiveRecord::TestCase
     assert_equal people(:michael), Person.eager_load(:primary_contact => :primary_contact).where('primary_contacts_people_2.first_name = ?', 'Susan').order('people.id').first
   end
 
+  def test_cascaded_eager_association_loading_with_join_for_count
+    categories = Category.joins(:categorizations).includes([{:posts=>:comments}, :authors])
+
+    assert_nothing_raised { categories.count }
+  end
+
   def test_eager_association_loading_with_join_for_count
     authors = Author.joins(:special_posts).includes([:posts, :categorizations])
 
