@@ -138,13 +138,14 @@ module ActionController
       end
 
       DEFAULT_OPTIONS = {
-        :key =>           '_session_id',
-        :path =>          '/',
-        :domain =>        nil,
-        :expire_after =>  nil,
-        :secure =>        false,
-        :httponly =>      true,
-        :cookie_only =>   true
+        :key =>                 '_session_id',
+        :path =>                '/',
+        :domain =>              nil,
+        :expire_after =>        nil,
+        :cookie_expire_after => nil,
+        :secure =>              false,
+        :httponly =>            true,
+        :cookie_only =>         true
       }
 
       def initialize(app, options = {})
@@ -179,7 +180,7 @@ module ActionController
         session_data = env[ENV_SESSION_KEY]
         options = env[ENV_SESSION_OPTIONS_KEY]
 
-        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded? || options[:expire_after]
+        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded? || options[:cookie_expire_after]
           request = ActionController::Request.new(env)
 
           return response if (options[:secure] && !request.ssl?)
@@ -194,12 +195,12 @@ module ActionController
 
           request_cookies = env["rack.request.cookie_hash"]
 
-          if (request_cookies.nil? || request_cookies[@key] != sid) || options[:expire_after]
+          if (request_cookies.nil? || request_cookies[@key] != sid) || options[:cookie_expire_after]
             cookie = Rack::Utils.escape(@key) + '=' + Rack::Utils.escape(sid)
             cookie << "; domain=#{options[:domain]}" if options[:domain]
             cookie << "; path=#{options[:path]}" if options[:path]
-            if options[:expire_after]
-              expiry = Time.now + options[:expire_after]
+            if options[:cookie_expire_after]
+              expiry = Time.now + options[:cookie_expire_after]
               cookie << "; expires=#{expiry.httpdate}"
             end
             cookie << "; secure" if options[:secure]
