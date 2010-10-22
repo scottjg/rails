@@ -90,6 +90,21 @@ class ModulesTest < ActiveRecord::TestCase
     assert_equal 'companies', MyApplication::Business::Prefixed::Firm.table_name, 'explicit table_name for ActiveRecord model in module with table_name_prefix should not be prefixed'
   end
 
+  def test_set_table_name_with_prefix_option
+    MyApplication::Business::Prefixed::Company.set_table_name :custom_table_name, :prefix => true
+    assert_equal 'prefixed_custom_table_name', MyApplication::Business::Prefixed::Company.table_name
+
+    MyApplication::Business::Prefixed::Company.table_name_prefix = ''
+
+    MyApplication::Business::Prefixed::Company.set_table_name :custom_table_name
+    assert_equal 'custom_table_name', MyApplication::Business::Prefixed::Company.table_name
+
+    MyApplication::Business::Prefixed::Company.set_table_name :custom_table_name, :prefix => false
+    assert_equal 'custom_table_name', MyApplication::Business::Prefixed::Company.table_name
+
+    MyApplication::Business::Prefixed::Company.reset_table_name
+  end
+
   def test_module_table_name_prefix_with_global_prefix
     classes = [ MyApplication::Business::Company,
                 MyApplication::Business::Firm,

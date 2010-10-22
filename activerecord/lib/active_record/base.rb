@@ -603,13 +603,20 @@ module ActiveRecord #:nodoc:
       end
 
       # Sets the table name. If the value is nil or false  then the value returned by the given
-      # block is used.
+      # block is used. Accepts a boolean to include the module's table prefix in +options+.
       #
       #   class Project < ActiveRecord::Base
       #     set_table_name "project"
       #   end
-      def set_table_name(value = nil, &block)
+      #
+      #   Example using :prefix in +options which respects the module's namespace:
+      #
+      #   class Prefixed::Project < ActiveRecord::Base
+      #     set_table_name "project", :prefix => true
+      #   end
+      def set_table_name(value = nil, options={}, &block)
         @quoted_table_name = nil
+        value = (options.is_a?(Hash) && options[:prefix]) ? "#{full_table_name_prefix}#{value}" : value
         define_attr_method :table_name, value, &block
       end
       alias :table_name= :set_table_name
