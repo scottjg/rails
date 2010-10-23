@@ -2,6 +2,7 @@ require "cases/helper"
 require 'models/post'
 require 'models/comment'
 require 'models/author'
+require 'models/category'
 require 'models/categorization'
 require 'models/company'
 require 'models/topic'
@@ -43,6 +44,12 @@ class CascadedEagerLoadingTest < ActiveRecord::TestCase
       Person.eager_load(:primary_contact => :primary_contact).where('primary_contacts_people_2.first_name = ?', 'Susan').order('people.id').all
     end
     assert_equal people(:michael), Person.eager_load(:primary_contact => :primary_contact).where('primary_contacts_people_2.first_name = ?', 'Susan').order('people.id').first
+  end
+
+  def test_cascaded_eager_association_loading_with_twice_includes
+    categories = Category.includes(:posts).includes({:posts=>:comments}).where("posts.id is not null")
+    assert_nothing_raised { categories.count }
+    assert_nothing_raised { categories.all }
   end
 
   def test_cascaded_eager_association_loading_with_join_for_count
