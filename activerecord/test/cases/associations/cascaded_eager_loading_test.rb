@@ -52,6 +52,11 @@ class CascadedEagerLoadingTest < ActiveRecord::TestCase
     assert_nothing_raised { categories.all }
   end
 
+  def test_cascaded_eager_association_loading_with_twice_includes_edge_cases
+    assert_nothing_raised { Category.includes({:posts=>:author}).includes({:posts=>:comments}).where("posts.id is not null").all }
+    assert_nothing_raised { Category.includes(:posts, :categorizations).includes({:posts=>:comments }).where("posts.id is not null").all}
+  end
+
   def test_cascaded_eager_association_loading_with_join_for_count
     categories = Category.joins(:categorizations).includes([{:posts=>:comments}, :authors])
 
