@@ -1840,7 +1840,7 @@ module ActiveRecord
 
           def initialize(base, associations, joins)
             @joins                 = [JoinBase.new(base, joins)]
-            @associations          = associations
+            @associations          = {}
             @reflections           = []
             @base_records_hash     = {}
             @base_records_in_order = []
@@ -1920,25 +1920,54 @@ module ActiveRecord
 
           protected
 
+          def cache_joined_association(association)
+              associations = []
+              parent = association.parent
+              while parent != join_base
+                associations.unshift(parent.reflection.name)
+               parent = parent.parent
+              end
+              ref = @associations
+              associations.each do |key|
+                ref = ref[key]
+              end
+              ref[association.reflection.name] ||= {}
+            end
+
+
             def build(associations, parent = nil, join_class = Arel::InnerJoin)
               parent ||= @joins.last
               case associations
                 when Symbol, String
                   reflection = parent.reflections[associations.to_s.intern] or
                   raise ConfigurationError, "Association named '#{ associations }' was not found; perhaps you misspelled it?"
-                  @reflections << reflection
-                  @joins << build_join_association(reflection, parent).with_join_class(join_class)
+                  unless join_association = find_join_association(reflection, parent)
+                    @reflections << reflection
+                    join_association = build_join_association(reflection, parent)
+                    join_association.with_join_class(join_class)
+                    @joins<< join_association
+                    cache_joined_association(join_association)
+                  end
+                  join_association
                 when Array
                   associations.each do |association|
                     build(association, parent, join_class)
                   end
                 when Hash
                   associations.keys.sort{|a,b|a.to_s<=>b.to_s}.each do |name|
-                    build(name, parent, join_class)
-                    build(associations[name], nil, join_class)
+                    build(associations[name], build(name, parent, join_class), join_class)
                   end
                 else
                   raise ConfigurationError, associations.inspect
+              end
+            end
+
+            def find_join_association(name_or_reflection, parent)
+              case name_or_reflection
+              when Symbol, String
+                join_associations.detect {|j| (j.reflection.name == name_or_reflection.to_s.intern) && (j.parent == parent)}
+              else
+                join_associations.detect {|j| (j.reflection == name_or_reflection) && (j.parent == parent)}
               end
             end
 
@@ -2020,8 +2049,7 @@ module ActiveRecord
 
             def ==(other)
               other.class == self.class &&
-              other.active_record == active_record &&
-              other.table_joins == table_joins
+              other.active_record == active_record
             end
 
             def aliased_prefix
