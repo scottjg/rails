@@ -1,3 +1,4 @@
+unless Object.const_defined?(:Rake)
   ####################################################################
   # Mixin for creating easily cloned objects.
   #
@@ -20,7 +21,7 @@
       sibling.freeze if frozen?
       sibling
     end
-  end
+  end unless Object.const_defined?(:Cloneable)
 
 
   ###########################################################################
@@ -410,21 +411,23 @@
         new(*args)
       end
     end
-  end # FileList
+  end unless Object.const_defined?(:FileList)
+  
+end # unless rake
 
-require 'date'
-require 'rbconfig'
-require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
+#require 'date'
+#require 'rbconfig'
+#require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
+#
+#PKG_BUILD       = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
+#PKG_NAME        = 'rails'
+#PKG_VERSION     = Rails::VERSION::STRING + PKG_BUILD
+#PKG_FILE_NAME   = "#{PKG_NAME}-#{PKG_VERSION}"
+#PKG_DESTINATION = ENV["RAILS_PKG_DESTINATION"] || "../#{PKG_NAME}"
+#
+#RELEASE_NAME  = "REL #{PKG_VERSION}"
 
-PKG_BUILD       = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME        = 'rails'
-PKG_VERSION     = Rails::VERSION::STRING + PKG_BUILD
-PKG_FILE_NAME   = "#{PKG_NAME}-#{PKG_VERSION}"
-PKG_DESTINATION = ENV["RAILS_PKG_DESTINATION"] || "../#{PKG_NAME}"
-
-RELEASE_NAME  = "REL #{PKG_VERSION}"
-
-PKG_FILES = FileList[
+files = FileList[
   '[a-zA-Z]*',
   'bin/**/*', 
   'builtin/**/*',
@@ -441,7 +444,7 @@ PKG_FILES = FileList[
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'rails'
-  s.version = PKG_VERSION
+  s.version = '2.3.10'#PKG_VERSION
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick
@@ -449,16 +452,16 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3')
-  s.add_dependency('activesupport',    '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.3.10' + PKG_BUILD)
+  s.add_dependency('activesupport',    '= 2.3.10')# + PKG_BUILD)
+  s.add_dependency('activerecord',     '= 2.3.10')# + PKG_BUILD)
+  s.add_dependency('actionpack',       '= 2.3.10')# + PKG_BUILD)
+  s.add_dependency('actionmailer',     '= 2.3.10')# + PKG_BUILD)
+  s.add_dependency('activeresource',   '= 2.3.10')# + PKG_BUILD)
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
 
-  s.files = PKG_FILES
+  s.files = files
   s.require_path = 'lib'
   s.bindir = "bin"                               # Use these for applications.
   s.executables = ["rails"]
