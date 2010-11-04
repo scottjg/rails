@@ -704,11 +704,9 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
     end
 
     def read_yaml_fixture_files
-      yaml_string = ""
-      Dir["#{@fixture_path}/**/*.yml"].select { |f| test(?f, f) }.each do |subfixture_path|
-        yaml_string << IO.read(subfixture_path)
-      end
-      yaml_string << IO.read(yaml_file_path)
+      yaml_string = (Dir["#{@fixture_path}/**/*.yml"].select { |f|
+        File.file?(f)
+      } + [yaml_file_path]).map { |file_path| IO.read(file_path) }.join
 
       if yaml = parse_yaml_string(yaml_string)
         # If the file is an ordered map, extract its children.
@@ -827,12 +825,12 @@ module ActiveRecord
       setup :setup_fixtures
       teardown :teardown_fixtures
 
-      superclass_delegating_accessor :fixture_path
-      superclass_delegating_accessor :fixture_table_names
-      superclass_delegating_accessor :fixture_class_names
-      superclass_delegating_accessor :use_transactional_fixtures
-      superclass_delegating_accessor :use_instantiated_fixtures   # true, false, or :no_instances
-      superclass_delegating_accessor :pre_loaded_fixtures
+      class_attribute :fixture_path
+      class_attribute :fixture_table_names
+      class_attribute :fixture_class_names
+      class_attribute :use_transactional_fixtures
+      class_attribute :use_instantiated_fixtures   # true, false, or :no_instances
+      class_attribute :pre_loaded_fixtures
 
       self.fixture_table_names = []
       self.use_transactional_fixtures = true

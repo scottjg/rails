@@ -40,6 +40,13 @@ module ActionController
       ActiveSupport::Notifications.unsubscribe("!render_template.action_view")
     end
 
+    def process(*args)
+      @partials = Hash.new(0)
+      @templates = Hash.new(0)
+      @layouts = Hash.new(0)
+      super
+    end
+
     # Asserts that the request was rendered with the appropriate template file or partials.
     #
     # ==== Examples
@@ -127,7 +134,7 @@ module ActionController
     class Result < ::Array #:nodoc:
       def to_s() join '/' end
       def self.new_escaped(strings)
-        new strings.collect {|str| URI.unescape str}
+        new strings.collect {|str| uri_parser.unescape str}
       end
     end
 
@@ -187,20 +194,23 @@ module ActionController
     end
   end
 
-  class TestSession < ActionDispatch::Session::AbstractStore::SessionHash #:nodoc:
-    DEFAULT_OPTIONS = ActionDispatch::Session::AbstractStore::DEFAULT_OPTIONS
+  class TestSession < Rack::Session::Abstract::SessionHash #:nodoc:
+    DEFAULT_OPTIONS = Rack::Session::Abstract::ID::DEFAULT_OPTIONS
 
     def initialize(session = {})
+      @env, @by = nil, nil
       replace(session.stringify_keys)
       @loaded = true
     end
 
-    def exists?; true; end
+    def exists?
+      true
+    end
   end
 
   # Superclass for ActionController functional tests. Functional tests allow you to
   # test a single controller action per test method. This should not be confused with
-  # integration tests (see ActionController::IntegrationTest), which are more like
+  # integration tests (see ActionDispatch::IntegrationTest), which are more like
   # "stories" that can involve multiple controllers and multiple actions (i.e. multiple
   # different HTTP requests).
   #
@@ -394,7 +404,7 @@ module ActionController
         parameters ||= {}
         @request.assign_parameters(@routes, @controller.class.name.underscore.sub(/_controller$/, ''), action.to_s, parameters)
 
-        @request.session = ActionController::TestSession.new(session) unless session.nil?
+        @request.session = ActionController::TestSession.new(session) if session
         @request.session["flash"] = @request.flash.update(flash || {})
         @request.session["flash"].sweep
 
@@ -417,7 +427,7 @@ module ActionController
 
         @request.env.delete('PATH_INFO')
 
-        if @controller
+        if defined?(@controller) && @controller
           @controller.request = @request
           @controller.params = {}
         end
@@ -462,9 +472,11 @@ module ActionController
     # The exception is stored in the exception accessor for further inspection.
     module RaiseActionExceptions
       def self.included(base)
-        base.class_eval do
-          attr_accessor :exception
-          protected :exception, :exception=
+        unless base.method_defined?(:exception) && base.method_defined?(:exception=)
+          base.class_eval do
+            attr_accessor :exception
+            protected :exception, :exception=
+          end
         end
       end
 

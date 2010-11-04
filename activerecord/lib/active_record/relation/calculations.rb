@@ -14,9 +14,9 @@ module ActiveRecord
     #
     # * <tt>:conditions</tt>: An SQL fragment like "administrator = 1" or [ "user_name = ?", username ].
     #   See conditions in the intro to ActiveRecord::Base.
-    # * <tt>:joins</tt>: Either an SQL fragment for additional joins like "LEFT JOIN comments ON comments.post_id = id" 
+    # * <tt>:joins</tt>: Either an SQL fragment for additional joins like "LEFT JOIN comments ON comments.post_id = id"
     #   (rarely needed) or named associations in the same form used for the <tt>:include</tt> option, which will
-    #   perform an INNER JOIN on the associated table(s). If the value is a string, then the records 
+    #   perform an INNER JOIN on the associated table(s). If the value is a string, then the records
     #   will be returned read-only since they will have attributes that do not correspond to the table's columns.
     #   Pass <tt>:readonly => false</tt> to override.
     # * <tt>:include</tt>: Named associations that should be loaded alongside using LEFT OUTER JOINs.
@@ -175,28 +175,39 @@ module ActiveRecord
       end
 
       distinct = options[:distinct] || distinct
-      column_name = :all if column_name.blank? && operation == "count"
 
       if @group_values.any?
-        return execute_grouped_calculation(operation, column_name)
+        execute_grouped_calculation(operation, column_name, distinct)
       else
-        return execute_simple_calculation(operation, column_name, distinct)
+        execute_simple_calculation(operation, column_name, distinct)
       end
+    end
+
+    def aggregate_column(column_name)
+      if @klass.column_names.include?(column_name.to_s)
+        Arel::Attribute.new(@klass.unscoped.table, column_name)
+      else
+        Arel.sql(column_name == :all ? "*" : column_name.to_s)
+      end
+    end
+
+    def operation_over_aggregate_column(column, operation, distinct)
+      operation == 'count' ? column.count(distinct) : column.send(operation)
     end
 
     def execute_simple_calculation(operation, column_name, distinct) #:nodoc:
-      column = if @klass.column_names.include?(column_name.to_s)
-        Arel::Attribute.new(@klass.unscoped, column_name)
-      else
-        Arel::SqlLiteral.new(column_name == :all ? "*" : column_name.to_s)
-      end
+      column = aggregate_column(column_name)
 
       # Postgresql doesn't like ORDER BY when there are no GROUP BY
-      relation = except(:order).select(operation == 'count' ? column.count(distinct) : column.send(operation))
+      relation = except(:order)
+      select_value = operation_over_aggregate_column(column, operation, distinct)
+
+      relation.select_values = [select_value]
+
       type_cast_calculated_value(@klass.connection.select_value(relation.to_sql), column_for(column_name), operation)
     end
 
-    def execute_grouped_calculation(operation, column_name) #:nodoc:
+    def execute_grouped_calculation(operation, column_name, distinct) #:nodoc:
       group_attr      = @group_values.first
       association     = @klass.reflect_on_association(group_attr.to_sym)
       associated      = association && association.macro == :belongs_to # only count belongs_to associations
@@ -206,33 +217,31 @@ module ActiveRecord
 
       group = @klass.connection.adapter_name == 'FrontBase' ? group_alias : group_field
 
-      aggregate_alias = column_alias_for(operation, column_name)
-
-      select_statement = if operation == 'count' && column_name == :all
-        "COUNT(*) AS count_all"
+      if operation == 'count' && column_name == :all
+        aggregate_alias = 'count_all'
       else
-        Arel::Attribute.new(@klass.unscoped, column_name).send(operation).as(aggregate_alias).to_sql
+        aggregate_alias = column_alias_for(operation, column_name)
       end
 
-      select_statement <<  ", #{group_field} AS #{group_alias}"
-
-      relation = except(:group).select(select_statement).group(group)
+      relation = except(:group).group(group)
+      relation.select_values = [
+        operation_over_aggregate_column(aggregate_column(column_name), operation, distinct).as(aggregate_alias),
+        "#{group_field} AS #{group_alias}"
+      ]
 
       calculated_data = @klass.connection.select_all(relation.to_sql)
 
       if association
         key_ids     = calculated_data.collect { |row| row[group_alias] }
         key_records = association.klass.base_class.find(key_ids)
-        key_records = key_records.inject({}) { |hsh, r| hsh.merge(r.id => r) }
+        key_records = Hash[key_records.map { |r| [r.id, r] }]
       end
 
-      calculated_data.inject(ActiveSupport::OrderedHash.new) do |all, row|
-        key   = type_cast_calculated_value(row[group_alias], group_column)
-        key   = key_records[key] if associated
-        value = row[aggregate_alias]
-        all[key] = type_cast_calculated_value(value, column_for(column_name), operation)
-        all
-      end
+      ActiveSupport::OrderedHash[calculated_data.map do |row|
+        key = type_cast_calculated_value(row[group_alias], group_column)
+        key = key_records[key] if associated
+        [key, type_cast_calculated_value(row[aggregate_alias], column_for(column_name), operation)]
+      end]
     end
 
     # Converts the given keys to the value that the database adapter returns as
@@ -268,7 +277,7 @@ module ActiveRecord
           else type_cast_using_column(value, column)
         end
       else
-        value
+        type_cast_using_column(value, column)
       end
     end
 

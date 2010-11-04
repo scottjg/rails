@@ -149,6 +149,27 @@ module CallbacksTest
     end
   end
 
+  class AfterSaveConditionalPerson < Record
+    after_save Proc.new { |r| r.history << [:after_save, :string1] }
+    after_save Proc.new { |r| r.history << [:after_save, :string2] }
+    def save
+      run_callbacks :save
+    end
+  end
+
+  class AfterSaveConditionalPersonCallbackTest < Test::Unit::TestCase
+    def test_after_save_runs_in_the_reverse_order
+      person = AfterSaveConditionalPerson.new
+      person.save
+      assert_equal [
+        [:after_save, :string2],
+        [:after_save, :string1]
+      ], person.history
+    end
+  end
+
+
+
   class ConditionalPerson < Record
     # proc
     before_save Proc.new { |r| r.history << [:before_save, :proc] }, :if => Proc.new { |r| true }
@@ -352,6 +373,8 @@ module CallbacksTest
     end
   end
 
+
+
   class ResetCallbackTest < Test::Unit::TestCase
     def test_save_conditional_person
       person = CleanPerson.new
@@ -524,4 +547,31 @@ module CallbacksTest
       assert_equal "ACTION", obj.stuff
     end
   end
+
+  class WriterSkipper < Person
+    attr_accessor :age
+    skip_callback :save, :before, :before_save_method, :if => lambda {self.age > 21}
+  end
+
+  class WriterCallbacksTest < Test::Unit::TestCase
+    def test_skip_writer
+      writer = WriterSkipper.new
+      writer.age = 18
+      assert_equal [], writer.history
+      writer.save
+      assert_equal [
+        [:before_save, :symbol],
+        [:before_save, :string],
+        [:before_save, :proc],
+        [:before_save, :object],
+        [:before_save, :block],
+        [:after_save, :block],
+        [:after_save, :object],
+        [:after_save, :proc],
+        [:after_save, :string],
+        [:after_save, :symbol]
+      ], writer.history
+    end
+  end
+  
 end

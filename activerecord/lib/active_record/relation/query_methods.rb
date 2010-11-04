@@ -6,104 +6,142 @@ module ActiveRecord
     extend ActiveSupport::Concern
 
     attr_accessor :includes_values, :eager_load_values, :preload_values,
-                  :select_values, :group_values, :order_values, :joins_values, :where_values, :having_values,
+                  :select_values, :group_values, :order_values, :joins_values,
+                  :where_values, :having_values, :bind_values,
                   :limit_value, :offset_value, :lock_value, :readonly_value, :create_with_value, :from_value
 
     def includes(*args)
-      args.reject! { |a| a.blank? }
-      clone.tap {|r| r.includes_values = (r.includes_values + args).flatten.uniq if args.present? }
+      args.reject! {|a| a.blank? }
+
+      return clone if args.empty?
+
+      relation = clone
+      relation.includes_values = (relation.includes_values + args).flatten.uniq
+      relation
     end
 
     def eager_load(*args)
-      clone.tap {|r| r.eager_load_values += args if args.present? }
+      relation = clone
+      relation.eager_load_values += args unless args.blank?
+      relation
     end
 
     def preload(*args)
-      clone.tap {|r| r.preload_values += args if args.present? }
+      relation = clone
+      relation.preload_values += args unless args.blank?
+      relation
     end
 
-    def select(*args)
+    def select(value = Proc.new)
       if block_given?
-        to_a.select {|*block_args| yield(*block_args) }
+        to_a.select {|*block_args| value.call(*block_args) }
       else
-        clone.tap {|r| r.select_values += args if args.present? }
+        relation = clone
+        relation.select_values += Array.wrap(value)
+        relation
       end
     end
 
     def group(*args)
-      clone.tap {|r| r.group_values += args.flatten if args.present? }
+      relation = clone
+      relation.group_values += args.flatten unless args.blank?
+      relation
     end
 
     def order(*args)
-      clone.tap {|r| r.order_values += args if args.present? }
-    end
-
-    def reorder(*args)
-      clone.tap {|r| r.order_values = args if args.present? }
+      relation = clone
+      relation.order_values += args.flatten unless args.blank?
+      relation
     end
 
     def joins(*args)
+      relation = clone
+
       args.flatten!
-      clone.tap {|r| r.joins_values += args if args.present? }
+      relation.joins_values += args unless args.blank?
+
+      relation
+    end
+
+    def bind(value)
+      relation = clone
+      relation.bind_values += [value]
+      relation
     end
 
     def where(opts, *rest)
-      value = build_where(opts, rest)
-      copy = clone
-      copy.where_values += Array.wrap(value) if value
-      copy
+      relation = clone
+      relation.where_values += build_where(opts, rest) unless opts.blank?
+      relation
     end
 
     def having(*args)
-      value = build_where(*args)
-      clone.tap {|r| r.having_values += Array.wrap(value) if value.present? }
+      relation = clone
+      relation.having_values += build_where(*args) unless args.blank?
+      relation
     end
 
-    def limit(value = true)
-      copy = clone
-      copy.limit_value = value
-      copy
+    def limit(value)
+      relation = clone
+      relation.limit_value = value
+      relation
     end
 
-    def offset(value = true)
-      clone.tap {|r| r.offset_value = value }
+    def offset(value)
+      relation = clone
+      relation.offset_value = value
+      relation
     end
 
     def lock(locks = true)
+      relation = clone
+
       case locks
       when String, TrueClass, NilClass
-        clone.tap {|r| r.lock_value = locks || true }
+        relation.lock_value = locks || true
       else
-        clone.tap {|r| r.lock_value = false }
+        relation.lock_value = false
       end
+
+      relation
     end
 
     def readonly(value = true)
-      clone.tap {|r| r.readonly_value = value }
+      relation = clone
+      relation.readonly_value = value
+      relation
     end
 
-    def create_with(value = true)
-      clone.tap {|r| r.create_with_value = value }
+    def create_with(value)
+      relation = clone
+      relation.create_with_value = value
+      relation
     end
 
-    def from(value = true)
-      clone.tap {|r| r.from_value = value }
+    def from(value)
+      relation = clone
+      relation.from_value = value
+      relation
     end
 
-    def extending(*modules, &block)
-      modules << Module.new(&block) if block_given?
-      clone.tap {|r| r.send(:apply_modules, *modules) }
+    def extending(*modules)
+      modules << Module.new(&Proc.new) if block_given?
+
+      return self if modules.empty?
+
+      relation = clone
+      relation.send(:apply_modules, modules.flatten)
+      relation
     end
 
     def reverse_order
-      order_clause = arel.order_clauses.join(', ')
-      relation = except(:order)
+      order_clause = arel.order_clauses
 
-      order = order_clause.blank? ?
+      order = order_clause.empty? ?
         "#{@klass.table_name}.#{@klass.primary_key} DESC" :
-        reverse_sql_order(order_clause)
+        reverse_sql_order(order_clause).join(', ')
 
-      relation.order Arel::SqlLiteral.new order
+      except(:order).order(Arel::SqlLiteral.new(order))
     end
 
     def arel
@@ -111,24 +149,23 @@ module ActiveRecord
     end
 
     def custom_join_sql(*joins)
-      arel = table
+      arel = table.select_manager
+
       joins.each do |join|
         next if join.blank?
 
         @implicit_readonly = true
 
         case join
-        when Hash, Array, Symbol
-          if array_of_strings?(join)
-            join_string = join.join(' ')
-            arel = arel.join(Arel::SqlLiteral.new(join_string))
-          end
+        when Array
+          join = Arel.sql(join.join(' ')) if array_of_strings?(join)
         when String
-          arel = arel.join(Arel::SqlLiteral.new(join))
-        else
-          arel = arel.join(join)
+          join = Arel.sql(join)
         end
+
+        arel.join(join)
       end
+
       arel.joins(arel)
     end
 
@@ -138,23 +175,18 @@ module ActiveRecord
       arel = build_joins(arel, @joins_values) unless @joins_values.empty?
 
       (@where_values - ['']).uniq.each do |where|
-        case where
-        when Arel::SqlLiteral
-          arel = arel.where(where)
-        else
-          sql = where.is_a?(String) ? where : where.to_sql
-          arel = arel.where(Arel::SqlLiteral.new("(#{sql})"))
-        end
+        where = Arel.sql(where) if String === where
+        arel = arel.where(Arel::Nodes::Grouping.new(where))
       end
 
-      arel = arel.having(*@having_values.uniq.select{|h| h.present?}) unless @having_values.empty?
+      arel = arel.having(*@having_values.uniq.reject{|h| h.blank?}) unless @having_values.empty?
 
       arel = arel.take(@limit_value) if @limit_value
       arel = arel.skip(@offset_value) if @offset_value
 
-      arel = arel.group(*@group_values.uniq.select{|g| g.present?}) unless @group_values.empty?
+      arel = arel.group(*@group_values.uniq.reject{|g| g.blank?}) unless @group_values.empty?
 
-      arel = arel.order(*@order_values.uniq.select{|o| o.present?}) unless @order_values.empty?
+      arel = arel.order(*@order_values.uniq.reject{|o| o.blank?}) unless @order_values.empty?
 
       arel = build_select(arel, @select_values.uniq)
 
@@ -164,25 +196,24 @@ module ActiveRecord
       arel
     end
 
+    private
+
     def build_where(opts, other = [])
       case opts
       when String, Array
-        @klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))
+        [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
         attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
-        PredicateBuilder.new(table.engine).build_from_hash(attributes, table)
+        PredicateBuilder.build_from_hash(table.engine, attributes, table)
       else
-        opts
+        [opts]
       end
     end
 
-    private
-
     def build_joins(relation, joins)
-      joined_associations = []
       association_joins = []
 
-      joins = @joins_values.map {|j| j.respond_to?(:strip) ? j.strip : j}.uniq
+      joins = joins.map {|j| j.respond_to?(:strip) ? j.strip : j}.uniq
 
       joins.each do |join|
         association_joins << join if [Hash, Array, Symbol].include?(join.class) && !array_of_strings?(join)
@@ -199,22 +230,8 @@ module ActiveRecord
 
       @implicit_readonly = true unless association_joins.empty? && stashed_association_joins.empty?
 
-      to_join = []
-
       join_dependency.join_associations.each do |association|
-        if (association_relation = association.relation).is_a?(Array)
-          to_join << [association_relation.first, association.join_class, association.association_join.first]
-          to_join << [association_relation.last, association.join_class, association.association_join[1..-1]]
-        else
-          to_join << [association_relation, association.join_class, association.association_join]
-        end
-      end
-
-      to_join.each do |tj|
-        unless joined_associations.detect {|ja| ja[0] == tj[0] && ja[1] == tj[1] && ja[2] == tj[2] }
-          joined_associations << tj
-          relation = relation.join(tj[0], tj[1]).on(*tj[2])
-        end
+        relation = association.join_to(relation)
       end
 
       relation.join(custom_joins)
@@ -223,34 +240,23 @@ module ActiveRecord
     def build_select(arel, selects)
       unless selects.empty?
         @implicit_readonly = false
-        # TODO: fix this ugly hack, we should refactor the callers to get an ARel compatible array.
-        # Before this change we were passing to ARel the last element only, and ARel is capable of handling an array
-        if selects.all? {|s| s.is_a?(String) || !s.is_a?(Arel::Expression) } && !(selects.last =~ /^COUNT\(/)
-          arel.project(*selects)
-        else
-          arel.project(selects.last)
-        end
+        arel.project(*selects)
       else
-        arel.project(Arel::SqlLiteral.new(@klass.quoted_table_name + '.*'))
+        arel.project(Arel.sql(@klass.quoted_table_name + '.*'))
       end
     end
 
     def apply_modules(modules)
-      values = Array.wrap(modules)
-      @extensions += values if values.present?
-      values.each {|extension| extend(extension) }
+      unless modules.empty?
+        @extensions += modules
+        modules.each {|extension| extend(extension) }
+      end
     end
 
     def reverse_sql_order(order_query)
-      order_query.split(',').each { |s|
-        if s.match(/\s(asc|ASC)$/)
-          s.gsub!(/\s(asc|ASC)$/, ' DESC')
-        elsif s.match(/\s(desc|DESC)$/)
-          s.gsub!(/\s(desc|DESC)$/, ' ASC')
-        else
-          s.concat(' DESC')
-        end
-      }.join(',')
+      order_query.join(', ').split(',').collect do |s|
+        s.gsub!(/\sasc\Z/i, ' DESC') || s.gsub!(/\sdesc\Z/i, ' ASC') || s.concat(' DESC')
+      end
     end
 
     def array_of_strings?(o)

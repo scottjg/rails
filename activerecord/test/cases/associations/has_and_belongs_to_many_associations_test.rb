@@ -425,7 +425,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_removing_associations_on_destroy
     david = DeveloperWithBeforeDestroyRaise.find(1)
     assert !david.projects.empty?
-    assert_nothing_raised { david.destroy }
+    assert_raise(RuntimeError) { david.destroy }
     assert david.projects.empty?
     assert DeveloperWithBeforeDestroyRaise.connection.select_all("SELECT * FROM developers_projects WHERE developer_id = 1").empty?
   end
@@ -567,16 +567,6 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal high_id_jamis, projects(:active_record).developers.find_by_name('Jamis')
   end
 
-  def test_dynamic_find_order_should_override_association_order
-    # Developers are ordered 'name DESC, id DESC'
-    low_id_jamis = developers(:jamis)
-    middle_id_jamis = developers(:poor_jamis)
-    high_id_jamis = projects(:active_record).developers.create(:name => 'Jamis')
-
-    assert_equal low_id_jamis, projects(:active_record).developers.find(:first, :conditions => "name = 'Jamis'", :order => 'id')
-    assert_equal low_id_jamis, projects(:active_record).developers.find_by_name('Jamis', :order => 'id')
-  end
-
   def test_dynamic_find_all_should_respect_association_order
     # Developers are ordered 'name DESC, id DESC'
     low_id_jamis = developers(:jamis)
@@ -587,14 +577,9 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal [high_id_jamis, middle_id_jamis, low_id_jamis], projects(:active_record).developers.find_all_by_name('Jamis')
   end
 
-  def test_dynamic_find_all_order_should_override_association_order
-    # Developers are ordered 'name DESC, id DESC'
-    low_id_jamis = developers(:jamis)
-    middle_id_jamis = developers(:poor_jamis)
-    high_id_jamis = projects(:active_record).developers.create(:name => 'Jamis')
-
-    assert_equal [low_id_jamis, middle_id_jamis, high_id_jamis], projects(:active_record).developers.find(:all, :conditions => "name = 'Jamis'", :order => 'id')
-    assert_equal [low_id_jamis, middle_id_jamis, high_id_jamis], projects(:active_record).developers.find_all_by_name('Jamis', :order => 'id')
+  def test_find_should_append_to_association_order
+    ordered_developers = projects(:active_record).developers.order('projects.id')
+    assert_equal ['developers.name desc, developers.id desc', 'projects.id'], ordered_developers.order_values
   end
 
   def test_dynamic_find_all_should_respect_association_limit
@@ -625,11 +610,10 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_find_in_association_with_options
-    developers = projects(:active_record).developers.find(:all)
+    developers = projects(:active_record).developers.all
     assert_equal 3, developers.size
 
-    assert_equal developers(:poor_jamis), projects(:active_record).developers.find(:first, :conditions => "salary < 10000")
-    assert_equal developers(:jamis),      projects(:active_record).developers.find(:first, :order => "salary DESC")
+    assert_equal developers(:poor_jamis), projects(:active_record).developers.where("salary < 10000").first
   end
 
   def test_replace_with_less
@@ -864,4 +848,20 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_queries(0) { david.projects.columns; david.projects.columns }
   end
 
+  def test_attributes_are_being_set_when_initialized_from_habm_association_with_where_clause
+    new_developer = projects(:action_controller).developers.where(:name => "Marcelo").build
+    assert_equal new_developer.name, "Marcelo"
+  end
+
+  def test_attributes_are_being_set_when_initialized_from_habm_association_with_multiple_where_clauses
+    new_developer = projects(:action_controller).developers.where(:name => "Marcelo").where(:salary => 90_000).build
+    assert_equal new_developer.name, "Marcelo"
+    assert_equal new_developer.salary, 90_000
+  end
+
+  def test_include_method_in_has_and_belongs_to_many_association_should_return_true_for_instance_added_with_build
+    project = Project.new
+    developer = project.developers.build
+    assert project.developers.include?(developer)
+  end
 end

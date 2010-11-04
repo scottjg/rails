@@ -225,6 +225,8 @@ The debugger used by Rails, +ruby-debug+, comes as a gem. To install it, just ru
 $ sudo gem install ruby-debug
 </shell>
 
+TIP: If you are using Ruby 1.9, you can install a compatible version of +ruby-debug+ by running +sudo gem install ruby-debug19+
+
 In case you want to download a particular version or get the source code, refer to the "project's page on rubyforge":http://rubyforge.org/projects/ruby-debug/.
 
 Rails has had built-in support for ruby-debug since Rails 2.0. Inside any Rails application you can invoke the debugger by calling the +debugger+ method.
@@ -250,15 +252,13 @@ Make sure you have started your web server with the option +--debugger+:
 
 <shell>
 ~/PathTo/rails_project$ rails server --debugger
-=> Booting Mongrel (use 'rails server webrick' to force WEBrick)
+=> Booting WEBrick
 => Rails 3.0.0 application starting on http://0.0.0.0:3000
 => Debugger enabled
 ...
 </shell>
 
 TIP: In development mode, you can dynamically +require \'ruby-debug\'+ instead of restarting the server, if it was started without +--debugger+.
-
-In order to use Rails debugging you'll need to be running either *WEBrick* or *Mongrel*. For the moment, no alternative servers are supported.
 
 h4. The Shell
 

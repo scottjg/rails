@@ -383,14 +383,61 @@ module ActiveRecord
           connection.send(method, *arguments, &block)
         end
       end
+
+      def copy(destination, sources, options = {})
+        copied = []
+
+        destination_migrations = ActiveRecord::Migrator.migrations(destination)
+        last = destination_migrations.last
+        sources.each do |name, path|
+          source_migrations = ActiveRecord::Migrator.migrations(path)
+
+          source_migrations.each do |migration|
+            source = File.read(migration.filename)
+            source = "# This migration comes from #{name} (originally #{migration.version})\n#{source}"
+
+            if duplicate = destination_migrations.detect { |m| m.name == migration.name }
+              options[:on_skip].call(name, migration) if File.read(duplicate.filename) != source && options[:on_skip]
+              next
+            end
+
+            migration.version = next_migration_number(last ? last.version + 1 : 0).to_i
+            new_path = File.join(destination, "#{migration.version}_#{migration.name.underscore}.rb")
+            old_path, migration.filename = migration.filename, new_path
+            last = migration
+
+            FileUtils.cp(old_path, migration.filename)
+            copied << migration
+            options[:on_copy].call(name, migration, old_path) if options[:on_copy]
+            destination_migrations << migration
+          end
+        end
+
+        copied
+      end
+
+      def next_migration_number(number)
+        if ActiveRecord::Base.timestamped_migrations
+          [Time.now.utc.strftime("%Y%m%d%H%M%S"), "%.14d" % number].max
+        else
+          "%.3d" % number
+        end
+      end
     end
   end
 
   # MigrationProxy is used to defer loading of the actual migration classes
   # until they are needed
-  class MigrationProxy
+  class MigrationProxy < Struct.new(:name, :version, :filename)
 
-    attr_accessor :name, :version, :filename
+    def initialize(name, version, filename)
+      super
+      @migration = nil
+    end
+
+    def basename
+      File.basename(filename)
+    end
 
     delegate :migrate, :announce, :write, :to=>:migration
 
@@ -409,6 +456,8 @@ module ActiveRecord
 
   class Migrator#:nodoc:
     class << self
+      attr_writer :migrations_path
+
       def migrate(migrations_path, target_version = nil)
         case
           when target_version.nil?
@@ -441,10 +490,6 @@ module ActiveRecord
         self.new(direction, migrations_path, target_version).run
       end
 
-      def migrations_path
-        'db/migrate'
-      end
-
       def schema_migrations_table_name
         Base.table_name_prefix + 'schema_migrations' + Base.table_name_suffix
       end
@@ -466,6 +511,33 @@ module ActiveRecord
       def proper_table_name(name)
         # Use the Active Record objects own table_name, or pre/suffix from ActiveRecord::Base if name is a symbol/string
         name.table_name rescue "#{ActiveRecord::Base.table_name_prefix}#{name}#{ActiveRecord::Base.table_name_suffix}"
+      end
+
+      def migrations_path
+        @migrations_path ||= 'db/migrate'
+      end
+
+      def migrations(path)
+        files = Dir["#{path}/[0-9]*_*.rb"]
+
+        seen = Hash.new false
+
+        migrations = files.map do |file|
+          version, name = file.scan(/([0-9]+)_([_a-z0-9]*).rb/).first
+
+          raise IllegalMigrationNameError.new(file) unless version
+          version = version.to_i
+          name = name.camelize
+
+          raise DuplicateMigrationVersionError.new(version) if seen[version]
+          raise DuplicateMigrationNameError.new(name) if seen[name]
+
+          seen[version] = seen[name] = true
+
+          MigrationProxy.new(name, version, file)
+        end
+
+        migrations.sort_by(&:version)
       end
 
       private
@@ -509,7 +581,7 @@ module ActiveRecord
       current = migrations.detect { |m| m.version == current_version }
       target = migrations.detect { |m| m.version == @target_version }
 
-      if target.nil? && !@target_version.nil? && @target_version > 0
+      if target.nil? && @target_version && @target_version > 0
         raise UnknownMigrationVersionError.new(@target_version)
       end
 
@@ -518,16 +590,18 @@ module ActiveRecord
       runnable = migrations[start..finish]
 
       # skip the last migration if we're headed down, but not ALL the way down
-      runnable.pop if down? && !target.nil?
+      runnable.pop if down? && target
 
       runnable.each do |migration|
         Base.logger.info "Migrating to #{migration.name} (#{migration.version})" if Base.logger
 
+        seen = migrated.include?(migration.version.to_i)
+
         # On our way up, we skip migrating the ones we've already migrated
-        next if up? && migrated.include?(migration.version.to_i)
+        next if up? && seen
 
         # On our way down, we skip reverting the ones we've never migrated
-        if down? && !migrated.include?(migration.version.to_i)
+        if down? && !seen
           migration.announce 'never migrated, skipping'; migration.write
           next
         end
@@ -546,30 +620,7 @@ module ActiveRecord
 
     def migrations
       @migrations ||= begin
-        files = Dir["#{@migrations_path}/[0-9]*_*.rb"]
-
-        migrations = files.inject([]) do |klasses, file|
-          version, name = file.scan(/([0-9]+)_([_a-z0-9]*).rb/).first
-
-          raise IllegalMigrationNameError.new(file) unless version
-          version = version.to_i
-
-          if klasses.detect { |m| m.version == version }
-            raise DuplicateMigrationVersionError.new(version)
-          end
-
-          if klasses.detect { |m| m.name == name.camelize }
-            raise DuplicateMigrationNameError.new(name.camelize)
-          end
-
-          migration = MigrationProxy.new
-          migration.name     = name.camelize
-          migration.version  = version
-          migration.filename = file
-          klasses << migration
-        end
-
-        migrations = migrations.sort_by { |m| m.version }
+        migrations = self.class.migrations(@migrations_path)
         down? ? migrations.reverse : migrations
       end
     end

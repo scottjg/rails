@@ -151,10 +151,10 @@ module ActiveRecord
       #
       # See also TableDefinition#column for details on how to create columns.
       def create_table(table_name, options = {})
-        table_definition = TableDefinition.new(self)
-        table_definition.primary_key(options[:primary_key] || Base.get_primary_key(table_name.to_s.singularize)) unless options[:id] == false
+        td = table_definition
+        td.primary_key(options[:primary_key] || Base.get_primary_key(table_name.to_s.singularize)) unless options[:id] == false
 
-        yield table_definition if block_given?
+        yield td if block_given?
 
         if options[:force] && table_exists?(table_name)
           drop_table(table_name, options)
@@ -162,7 +162,7 @@ module ActiveRecord
 
         create_sql = "CREATE#{' TEMPORARY' if options[:temporary]} TABLE "
         create_sql << "#{quote_table_name(table_name)} ("
-        create_sql << table_definition.to_sql
+        create_sql << td.to_sql
         create_sql << ") #{options[:options]}"
         execute create_sql
       end
@@ -327,25 +327,21 @@ module ActiveRecord
       #
       # Note: SQLite doesn't support index length
       def add_index(table_name, column_name, options = {})
-        options[:name] = options[:name].to_s if options.key?(:name)
-
         column_names = Array.wrap(column_name)
         index_name   = index_name(table_name, :column => column_names)
 
         if Hash === options # legacy support, since this param was a string
           index_type = options[:unique] ? "UNIQUE" : ""
-          index_name = options[:name] || index_name
+          index_name = options[:name].to_s if options.key?(:name)
         else
           index_type = options
         end
 
         if index_name.length > index_name_length
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{index_name_length} characters. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{index_name_length} characters"
         end
         if index_name_exists?(table_name, index_name, false)
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' already exists. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
         end
         quoted_column_names = quoted_columns_for_index(column_names, options).join(", ")
 
@@ -365,8 +361,7 @@ module ActiveRecord
       def remove_index(table_name, options = {})
         index_name = index_name(table_name, options)
         unless index_name_exists?(table_name, index_name, true)
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' does not exist. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' does not exist"
         end
         remove_index!(table_name, index_name)
       end
@@ -407,6 +402,7 @@ module ActiveRecord
       # as there's no way to determine the correct answer in that case.
       def index_name_exists?(table_name, index_name, default)
         return default unless respond_to?(:indexes)
+        index_name = index_name.to_s
         indexes(table_name).detect { |i| i.name == index_name }
       end
 
@@ -538,6 +534,11 @@ module ActiveRecord
         def options_include_default?(options)
           options.include?(:default) && !(options[:null] == false && options[:default].nil?)
         end
+
+      private
+      def table_definition
+        TableDefinition.new(self)
+      end
     end
   end
 end

@@ -61,8 +61,6 @@ module ActiveModel
   #   p.errors.full_messages  # => ["name can not be nil"]
   #   # etc..
   class Errors < ActiveSupport::OrderedHash
-    include DeprecatedErrorMethods
-
     CALLBACKS_OPTIONS = [:if, :unless, :on, :allow_nil, :allow_blank]
 
     # Pass in the instance of the object that is using the errors object.
@@ -191,13 +189,6 @@ module ActiveModel
 
     # Will add an error message to each of the attributes in +attributes+ that is empty.
     def add_on_empty(attributes, options = {})
-      if options && !options.is_a?(Hash)
-        options = { :message => options }
-        ActiveSupport::Deprecation.warn \
-          "ActiveModel::Errors#add_on_empty(attributes, custom_message) has been deprecated.\n" +
-          "Instead of passing a custom_message pass an options Hash { :message => custom_message }."
-      end
-
       [attributes].flatten.each do |attribute|
         value = @base.send(:read_attribute_for_validation, attribute)
         is_empty = value.respond_to?(:empty?) ? value.empty? : false
@@ -207,13 +198,6 @@ module ActiveModel
 
     # Will add an error message to each of the attributes in +attributes+ that is blank (using Object#blank?).
     def add_on_blank(attributes, options = {})
-      if options && !options.is_a?(Hash)
-        options = { :message => options }
-        ActiveSupport::Deprecation.warn \
-          "ActiveModel::Errors#add_on_blank(attributes, custom_message) has been deprecated.\n" +
-          "Instead of passing a custom_message pass an options Hash { :message => custom_message }."
-      end
-
       [attributes].flatten.each do |attribute|
         value = @base.send(:read_attribute_for_validation, attribute)
         add(attribute, :blank, options) if value.blank?
@@ -281,16 +265,9 @@ module ActiveModel
     def generate_message(attribute, type = :invalid, options = {})
       type = options.delete(:message) if options[:message].is_a?(Symbol)
 
-      if options[:default]
-        ActiveSupport::Deprecation.warn \
-          "Giving :default as validation option to errors.add has been deprecated.\n" +
-          "Please use :message instead."
-        options[:message] = options.delete(:default)
-      end
-
       defaults = @base.class.lookup_ancestors.map do |klass|
-        [ :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.underscore}.attributes.#{attribute}.#{type}",
-          :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.underscore}.#{type}" ]
+        [ :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.attributes.#{attribute}.#{type}",
+          :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.#{type}" ]
       end
 
       defaults << options.delete(:message)

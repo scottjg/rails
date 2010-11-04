@@ -1,5 +1,4 @@
 require 'fileutils'
-require 'uri'
 require 'active_support/core_ext/class/attribute_accessors'
 
 module ActionController #:nodoc:
@@ -99,7 +98,7 @@ module ActionController #:nodoc:
 
         private
           def page_cache_file(path)
-            name = (path.empty? || path == "/") ? "/index" : URI.unescape(path.chomp('/'))
+            name = (path.empty? || path == "/") ? "/index" : URI.parser.unescape(path.chomp('/'))
             name << page_cache_extension unless (name.split('/').last || name).include? '.'
             return name
           end
@@ -135,7 +134,7 @@ module ActionController #:nodoc:
       # If no options are provided, the requested url is used. Example:
       #   cache_page "I'm the cached content", :controller => "lists", :action => "show"
       def cache_page(content = nil, options = nil)
-        return unless self.class.perform_caching && caching_allowed
+        return unless self.class.perform_caching && caching_allowed?
 
         path = case options
           when Hash
@@ -149,10 +148,6 @@ module ActionController #:nodoc:
         self.class.cache_page(content || response.body, path)
       end
 
-      private
-        def caching_allowed
-          request.get? && response.status.to_i == 200
-        end
     end
   end
 end

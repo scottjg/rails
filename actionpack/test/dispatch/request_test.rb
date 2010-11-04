@@ -45,9 +45,9 @@ class RequestTest < ActiveSupport::TestCase
     e = assert_raise(ActionDispatch::RemoteIp::IpSpoofAttackError) {
       request.remote_ip
     }
-    assert_match /IP spoofing attack/, e.message
-    assert_match /HTTP_X_FORWARDED_FOR="1.1.1.1"/, e.message
-    assert_match /HTTP_CLIENT_IP="2.2.2.2"/, e.message
+    assert_match(/IP spoofing attack/, e.message)
+    assert_match(/HTTP_X_FORWARDED_FOR="1.1.1.1"/, e.message)
+    assert_match(/HTTP_CLIENT_IP="2.2.2.2"/, e.message)
 
     # turn IP Spoofing detection off.
     # This is useful for sites that are aimed at non-IP clients.  The typical
@@ -115,6 +115,9 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request 'HTTP_HOST' => "dev.www.rubyonrails.co.uk"
     assert_equal %w( dev www ), request.subdomains(2)
+
+    request = stub_request 'HTTP_HOST' => "dev.www.rubyonrails.co.uk", :tld_length => 2
+    assert_equal %w( dev www ), request.subdomains
 
     request = stub_request 'HTTP_HOST' => "foobar.foobar.com"
     assert_equal %w( foobar ), request.subdomains
@@ -382,6 +385,18 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal({"bar" => 2}, request.query_parameters)
   end
 
+  test "parameters still accessible after rack parse error" do
+    mock_rack_env = { "QUERY_STRING" => "x[y]=1&x[y][][w]=2", "rack.input" => "foo" }
+    request = nil
+    begin
+      request = stub_request(mock_rack_env) 
+      request.parameters
+    rescue TypeError => e
+      # rack will raise a TypeError when parsing this query string
+    end
+    assert_equal({}, request.parameters)
+  end
+
   test "formats with accept header" do
     request = stub_request 'HTTP_ACCEPT' => 'text/html'
     request.expects(:parameters).at_least_once.returns({})
@@ -471,8 +486,11 @@ protected
 
   def stub_request(env = {})
     ip_spoofing_check = env.key?(:ip_spoofing_check) ? env.delete(:ip_spoofing_check) : true
+    @trusted_proxies ||= nil
     ip_app = ActionDispatch::RemoteIp.new(Proc.new { }, ip_spoofing_check, @trusted_proxies)
+    tld_length = env.key?(:tld_length) ? env.delete(:tld_length) : 1
     ip_app.call(env)
+    ActionDispatch::Http::URL.tld_length = tld_length
     ActionDispatch::Request.new(env)
   end
 

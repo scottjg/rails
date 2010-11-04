@@ -341,10 +341,11 @@ module ActionMailer #:nodoc:
     include AbstractController::Translation
     include AbstractController::AssetPaths
 
-    helper  ActionMailer::MailHelper
+    cattr_reader :protected_instance_variables
+    @@protected_instance_variables = []
 
+    helper  ActionMailer::MailHelper
     include ActionMailer::OldApi
-    include ActionMailer::DeprecatedApi
 
     delegate :register_observer, :to => Mail
     delegate :register_interceptor, :to => Mail
@@ -360,7 +361,6 @@ module ActionMailer #:nodoc:
     }.freeze
 
     class << self
-
       def mailer_name
         @mailer_name ||= name.underscore
       end
@@ -409,7 +409,7 @@ module ActionMailer #:nodoc:
     protected
 
       def set_payload_for_mail(payload, mail) #:nodoc:
-        payload[:mailer]     = self.name
+        payload[:mailer]     = name
         payload[:message_id] = mail.message_id
         payload[:subject]    = mail.subject
         payload[:to]         = mail.to
@@ -421,11 +421,8 @@ module ActionMailer #:nodoc:
       end
 
       def method_missing(method, *args) #:nodoc:
-        if action_methods.include?(method.to_s)
-          new(method, *args).message
-        else
-          super
-        end
+        return super unless respond_to?(method)
+        new(method, *args).message
       end
     end
 
@@ -444,6 +441,10 @@ module ActionMailer #:nodoc:
     def process(*args) #:nodoc:
       lookup_context.skip_default_locale!
       super
+    end
+
+    def mailer_name
+      self.class.mailer_name
     end
 
     # Allows you to pass random and unusual headers to the new +Mail::Message+ object
@@ -719,28 +720,6 @@ module ActionMailer #:nodoc:
       part = Mail::Part.new(response)
       container.add_part(part)
     end
-
-    module DeprecatedUrlOptions
-      def default_url_options
-        deprecated_url_options
-      end
-
-      def default_url_options=(val)
-        deprecated_url_options
-      end
-
-      def deprecated_url_options
-        raise "You can no longer call ActionMailer::Base.default_url_options " \
-              "directly. You need to set config.action_mailer.default_url_options. " \
-              "If you are using ActionMailer standalone, you need to include the " \
-              "routing url_helpers directly."
-      end
-    end
-
-    # This module will complain if the user tries to set default_url_options
-    # directly instead of through the config object. In Action Mailer's Railtie,
-    # we include the router's url_helpers, which will override this module.
-    extend DeprecatedUrlOptions
 
     ActiveSupport.run_load_hooks(:action_mailer, self)
   end

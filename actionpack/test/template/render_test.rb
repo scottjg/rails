@@ -69,8 +69,6 @@ module RenderTestCases
   end
 
   def test_render_update
-    # TODO: You should not have to stub out template because template is self!
-    @view.instance_variable_set(:@template, @view)
     assert_equal 'alert("Hello, World!");', @view.render(:update) { |page| page.alert('Hello, World!') }
   end
 
@@ -116,7 +114,7 @@ module RenderTestCases
   end
 
   def test_render_sub_template_with_errors
-    @view.render(:file => "test/sub_template_raise")
+    @view.render(:template => "test/sub_template_raise")
     flunk "Render did not raise Template::Error"
   rescue ActionView::Template::Error => e
     assert_match %r!method.*doesnt_exist!, e.message
@@ -125,8 +123,23 @@ module RenderTestCases
     assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
   end
 
+  def test_render_file_with_errors
+    @view.render(:file => File.expand_path("test/_raise", FIXTURE_LOAD_PATH))
+    flunk "Render did not raise Template::Error"
+  rescue ActionView::Template::Error => e
+    assert_match %r!method.*doesnt_exist!, e.message
+    assert_equal "", e.sub_template_message
+    assert_equal "1", e.line_number
+    assert_equal "1: <%= doesnt_exist %>", e.annoted_source_code.strip
+    assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
+  end
+
   def test_render_object
     assert_equal "Hello: david", @view.render(:partial => "test/customer", :object => Customer.new("david"))
+  end
+
+  def test_render_object_with_array
+    assert_equal "[1, 2, 3]", @view.render(:partial => "test/object_inspector", :object => [1, 2, 3])
   end
 
   def test_render_partial_collection
@@ -234,15 +247,6 @@ module RenderTestCases
       @view.render(:file => "test/hello_world.erb", :layout => "layouts/yield_with_render_inline_inside")
   end
 
-
-  # TODO: Move to deprecated_tests.rb
-  def test_render_with_nested_layout_deprecated
-    assert_deprecated do
-      assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
-        @view.render(:file => "test/deprecated_nested_layout.erb", :layout => "layouts/yield")
-    end
-  end
-
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout.erb", :layout => "layouts/yield")
@@ -330,10 +334,11 @@ class LazyViewRenderTest < ActiveSupport::TestCase
     end
 
     def with_external_encoding(encoding)
-      old, Encoding.default_external = Encoding.default_external, encoding
+      old = Encoding.default_external
+      silence_warnings { Encoding.default_external = encoding }
       yield
     ensure
-      Encoding.default_external = old
+      silence_warnings { Encoding.default_external = old }
     end
   end
 end

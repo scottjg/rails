@@ -1,7 +1,6 @@
 require 'rails/initializable'
 require 'rails/configuration'
 require 'active_support/inflector'
-require 'active_support/deprecation'
 
 module Rails
   # Railtie is the core of the Rails Framework and provides several hooks to extend
@@ -84,7 +83,7 @@ module Rails
   #
   #   class MyRailtie < Rails::Railtie
   #     # Customize the ORM
-  #     config.generators.orm :my_railtie_orm
+  #     config.app_generators.orm :my_railtie_orm
   #
   #     # Add a to_prepare block which is executed once in production
   #     # and before each request in development
@@ -131,23 +130,17 @@ module Rails
     ABSTRACT_RAILTIES = %w(Rails::Railtie Rails::Plugin Rails::Engine Rails::Application)
 
     class << self
+      private :new
+
       def subclasses
         @subclasses ||= []
       end
 
       def inherited(base)
         unless base.abstract_railtie?
-          base.send(:include, self::Configurable)
+          base.send(:include, Railtie::Configurable)
           subclasses << base
         end
-      end
-
-      def railtie_name(*)
-        ActiveSupport::Deprecation.warn "railtie_name is deprecated and has no effect", caller
-      end
-
-      def log_subscriber(*)
-        ActiveSupport::Deprecation.warn "log_subscriber is deprecated and has no effect", caller
       end
 
       def rake_tasks(&blk)
@@ -171,6 +164,22 @@ module Rails
       def abstract_railtie?
         ABSTRACT_RAILTIES.include?(name)
       end
+
+      def railtie_name(name = nil)
+        @railtie_name = name.to_s if name
+        @railtie_name ||= generate_railtie_name(self.name)
+      end
+
+      protected
+        def generate_railtie_name(class_or_module)
+          ActiveSupport::Inflector.underscore(class_or_module).gsub("/", "_")
+        end
+    end
+
+    delegate :railtie_name, :to => "self.class"
+
+    def config
+      @config ||= Railtie::Configuration.new
     end
 
     def eager_load!
@@ -182,6 +191,13 @@ module Rails
 
     def load_tasks
       self.class.rake_tasks.each(&:call)
+
+      # load also tasks from all superclasses
+      klass = self.class.superclass
+      while klass.respond_to?(:rake_tasks)
+        klass.rake_tasks.each { |t| self.instance_exec(&t) }
+        klass = klass.superclass
+      end
     end
 
     def load_generators

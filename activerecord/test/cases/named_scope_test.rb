@@ -125,6 +125,12 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal posts_with_authors_at_address_titles, Post.with_authors_at_address(address).find(:all, :select => 'title')
   end
 
+  def test_scope_with_object
+    objects = Topic.with_object
+    assert_operator objects.length, :>, 0
+    assert objects.all?(&:approved?), 'all objects should be approved'
+  end
+
   def test_extensions
     assert_equal 1, Topic.anonymous_extension.one
     assert_equal 2, Topic.named_extension.two
@@ -392,10 +398,6 @@ class NamedScopeTest < ActiveRecord::TestCase
       ActiveRecord::Base.logger.expects(:warn)
       Topic.scope(reserved_method)
     end
-  end
-
-  def test_deprecated_named_scope_method
-    assert_deprecated('named_scope has been deprecated') { Topic.named_scope :deprecated_named_scope }
   end
 
   def test_named_scopes_on_relations

@@ -275,6 +275,17 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal 2, Account.count(:firm_id, :conditions => "credit_limit = 50 AND firm_id IS NOT NULL")
   end
 
+  def test_should_count_field_in_joined_table
+    assert_equal 5, Account.count('companies.id', :joins => :firm)
+    assert_equal 4, Account.count('companies.id', :joins => :firm, :distinct => true)
+  end
+
+  def test_should_count_field_in_joined_table_with_group_by
+    c = Account.count('companies.id', :group => 'accounts.firm_id', :joins => :firm)
+
+    [1,6,2,9].each { |firm_id| assert c.keys.include?(firm_id) }
+  end
+
   def test_count_with_no_parameters_isnt_deprecated
     assert_not_deprecated { Account.count }
   end
@@ -336,4 +347,12 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal Account.count(:all), Company.count(:all, :from => 'accounts')
   end
 
+  def test_distinct_is_honored_when_used_with_count_operation_after_group
+    # Count the number of authors for approved topics
+    approved_topics_count = Topic.group(:approved).count(:author_name)[true]
+    assert_equal approved_topics_count, 3
+    # Count the number of distinct authors for approved Topics
+    distinct_authors_for_approved_count = Topic.group(:approved).count(:author_name, :distinct => true)[true]
+    assert_equal distinct_authors_for_approved_count, 2
+  end
 end

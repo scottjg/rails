@@ -540,7 +540,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
   def test_eager_has_many_with_association_inheritance
     post = Post.find(4, :include => [ :special_comments ])
     post.special_comments.each do |special_comment|
-      assert_equal "SpecialComment", special_comment.class.to_s
+      assert special_comment.is_a?(SpecialComment)
     end
   end
 

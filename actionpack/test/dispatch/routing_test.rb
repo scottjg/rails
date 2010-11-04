@@ -442,6 +442,25 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         get :preview, :on => :member
       end
 
+      scope :as => "routes" do
+        get "/c/:id", :as => :collision, :to => "collision#show"
+        get "/collision", :to => "collision#show"
+        get "/no_collision", :to => "collision#show", :as => nil
+
+        get "/fc/:id", :as => :forced_collision, :to => "forced_collision#show"
+        get "/forced_collision", :as => :forced_collision, :to => "forced_collision#show"
+      end
+
+      match '/purchases/:token/:filename',
+        :to => 'purchases#fetch',
+        :token => /[[:alnum:]]{10}/,
+        :filename => /(.+)/,
+        :as => :purchase
+
+      resources :lists, :id => /([A-Za-z0-9]{25})|default/ do
+        resources :todos, :id => /\d+/
+      end
+
       scope '/countries/:country', :constraints => lambda { |params, req| %[all France].include?(params[:country]) } do
         match '/',       :to => 'countries#index'
         match '/cities', :to => 'countries#cities'
@@ -453,7 +472,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
-  class TestAltApp < ActionController::IntegrationTest
+  class TestAltApp < ActionDispatch::IntegrationTest
     class AltRequest
       def initialize(env)
         @env = env
@@ -1195,14 +1214,6 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/', root_path
       get '/'
       assert_equal 'projects#index', @response.body
-    end
-  end
-
-  def test_index
-    with_test_routes do
-      assert_equal '/info', info_path
-      get '/info'
-      assert_equal 'projects#info', @response.body
     end
   end
 
@@ -2098,6 +2109,67 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal '/customers/1/export', customer_export_path(:customer_id => '1')
   end
 
+  def test_named_character_classes_in_regexp_constraints
+    get '/purchases/315004be7e/Ruby_on_Rails_3.pdf'
+    assert_equal 'purchases#fetch', @response.body
+    assert_equal '/purchases/315004be7e/Ruby_on_Rails_3.pdf', purchase_path(:token => '315004be7e', :filename => 'Ruby_on_Rails_3.pdf')
+  end
+
+  def test_nested_resource_constraints
+    get '/lists/01234012340123401234fffff'
+    assert_equal 'lists#show', @response.body
+    assert_equal '/lists/01234012340123401234fffff', list_path(:id => '01234012340123401234fffff')
+
+    get '/lists/01234012340123401234fffff/todos/1'
+    assert_equal 'todos#show', @response.body
+    assert_equal '/lists/01234012340123401234fffff/todos/1', list_todo_path(:list_id => '01234012340123401234fffff', :id => '1')
+
+    get '/lists/2/todos/1'
+    assert_equal 'Not Found', @response.body
+    assert_raises(ActionController::RoutingError){ list_todo_path(:list_id => '2', :id => '1') }
+  end
+
+  def test_named_routes_collision_is_avoided_unless_explicitly_given_as
+    assert_equal "/c/1", routes_collision_path(1)
+    assert_equal "/forced_collision", routes_forced_collision_path
+  end
+
+  def test_explicitly_avoiding_the_named_route
+    assert !respond_to?(:routes_no_collision_path)
+  end
+
+  def test_controller_name_with_leading_slash_raise_error
+    assert_raise(ArgumentError) do
+      self.class.stub_controllers do |routes|
+        routes.draw { get '/feeds/:service', :to => '/feeds#show' }
+      end
+    end
+
+    assert_raise(ArgumentError) do
+      self.class.stub_controllers do |routes|
+        routes.draw { get '/feeds/:service', :controller => '/feeds', :action => 'show' }
+      end
+    end
+
+    assert_raise(ArgumentError) do
+      self.class.stub_controllers do |routes|
+        routes.draw { get '/api/feeds/:service', :to => '/api/feeds#show' }
+      end
+    end
+
+    assert_raise(ArgumentError) do
+      self.class.stub_controllers do |routes|
+        routes.draw { controller("/feeds") { get '/feeds/:service', :to => :show } }
+      end
+    end
+
+    assert_raise(ArgumentError) do
+      self.class.stub_controllers do |routes|
+        routes.draw { resources :feeds, :controller => '/feeds' }
+      end
+    end
+  end
+
 private
   def with_test_routes
     yield
@@ -2119,5 +2191,98 @@ private
 
   def expected_redirect_body(url)
     %(<html><body>You are being <a href="#{ERB::Util.h(url)}">redirected</a>.</body></html>)
+  end
+end
+
+class TestAppendingRoutes < ActionDispatch::IntegrationTest
+  def simple_app(resp)
+    lambda { |e| [ 200, { 'Content-Type' => 'text/plain' }, [resp] ] }
+  end
+
+  setup do
+    s = self
+    @app = ActionDispatch::Routing::RouteSet.new
+    @app.append do
+      match '/hello'   => s.simple_app('fail')
+      match '/goodbye' => s.simple_app('goodbye')
+    end
+
+    @app.draw do
+      match '/hello' => s.simple_app('hello')
+    end
+  end
+
+  def test_goodbye_should_be_available
+    get '/goodbye'
+    assert_equal 'goodbye', @response.body
+  end
+
+  def test_hello_should_not_be_overwritten
+    get '/hello'
+    assert_equal 'hello', @response.body
+  end
+
+  def test_missing_routes_are_still_missing
+    get '/random'
+    assert_equal 404, @response.status
+  end
+end
+
+class TestDefaultScope < ActionDispatch::IntegrationTest
+  module ::Blog
+    class PostsController < ActionController::Base
+      def index
+        render :text => "blog/posts#index"
+      end
+    end
+  end
+
+  DefaultScopeRoutes = ActionDispatch::Routing::RouteSet.new
+  DefaultScopeRoutes.default_scope = {:module => :blog}
+  DefaultScopeRoutes.draw do
+    resources :posts
+  end
+
+  def app
+    DefaultScopeRoutes
+  end
+
+  include DefaultScopeRoutes.url_helpers
+
+  def test_default_scope
+    get '/posts'
+    assert_equal "blog/posts#index", @response.body
+  end
+end
+
+class TestHttpMethods < ActionDispatch::IntegrationTest
+  RFC2616 = %w(OPTIONS GET HEAD POST PUT DELETE TRACE CONNECT)
+  RFC2518 = %w(PROPFIND PROPPATCH MKCOL COPY MOVE LOCK UNLOCK)
+  RFC3253 = %w(VERSION-CONTROL REPORT CHECKOUT CHECKIN UNCHECKOUT MKWORKSPACE UPDATE LABEL MERGE BASELINE-CONTROL MKACTIVITY)
+  RFC3648 = %w(ORDERPATCH)
+  RFC3744 = %w(ACL)
+  RFC5323 = %w(SEARCH)
+  RFC5789 = %w(PATCH)
+
+  def simple_app(response)
+    lambda { |env| [ 200, { 'Content-Type' => 'text/plain' }, [response] ] }
+  end
+
+  setup do
+    s = self
+    @app = ActionDispatch::Routing::RouteSet.new
+
+    @app.draw do
+      (RFC2616 + RFC2518 + RFC3253 + RFC3648 + RFC3744 + RFC5323 + RFC5789).each do |method|
+        match '/' => s.simple_app(method), :via => method.underscore.to_sym
+      end
+    end
+  end
+
+  (RFC2616 + RFC2518 + RFC3253 + RFC3648 + RFC3744 + RFC5323 + RFC5789).each do |method|
+    test "request method #{method.underscore} can be matched" do
+      get '/', nil, 'REQUEST_METHOD' => method
+      assert_equal method, @response.body
+    end
   end
 end

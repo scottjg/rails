@@ -39,25 +39,25 @@ module ActiveRecord
         def set_inverse_instance(record, instance)
           return if record.nil? || !we_can_set_the_inverse_on_this?(record)
           inverse_relationship = @reflection.polymorphic_inverse_of(record.class)
-          unless inverse_relationship.nil?
+          if inverse_relationship
             record.send(:"set_#{inverse_relationship.name}_target", instance)
           end
+        end
+
+        def construct_find_scope
+          { :conditions => conditions }
         end
 
         def find_target
           return nil if association_class.nil?
 
-          target =
-            if @reflection.options[:conditions]
-              association_class.find(
-                @owner[@reflection.primary_key_name],
-                :select     => @reflection.options[:select],
-                :conditions => conditions,
-                :include    => @reflection.options[:include]
-              )
-            else
-              association_class.find(@owner[@reflection.primary_key_name], :select => @reflection.options[:select], :include => @reflection.options[:include])
-            end
+          target = association_class.send(:with_scope, :find => @scope[:find]) do
+            association_class.find(
+              @owner[@reflection.primary_key_name],
+              :select  => @reflection.options[:select],
+              :include => @reflection.options[:include]
+            )
+          end
           set_inverse_instance(target, @owner)
           target
         end

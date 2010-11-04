@@ -4,13 +4,15 @@ module ActiveModel
   module Validations
     class ConfirmationValidator < EachValidator
       def validate_each(record, attribute, value)
-        confirmed = record.send(:"#{attribute}_confirmation")
-        return if confirmed.nil? || value == confirmed
-        record.errors.add(attribute, :confirmation, options)
+        if (confirmed = record.send("#{attribute}_confirmation")) && (value != confirmed)
+          record.errors.add(attribute, :confirmation, options)
+        end
       end
 
       def setup(klass)
-        klass.send(:attr_accessor, *attributes.map { |attribute| :"#{attribute}_confirmation" })
+        klass.send(:attr_accessor, *attributes.map do |attribute|
+          :"#{attribute}_confirmation" unless klass.method_defined?(:"#{attribute}_confirmation")
+        end.compact)
       end
     end
 

@@ -63,3 +63,9 @@ alt_thank_you:
   post_id: 8
   body: Thank you for the post
   type: Comment
+
+sub_special_comment:
+  id: 12
+  post_id: 4
+  body: Sub special comment
+  type: SubSpecialComment

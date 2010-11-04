@@ -218,16 +218,6 @@ module ActiveRecord
   # needs to be aware of it because an ordinary +save+ will raise such exception
   # instead of quietly returning +false+.
   #
-  # == Debugging callbacks
-  #
-  # To list the methods and procs registered with a particular callback, append <tt>_callback_chain</tt> to
-  # the callback name that you wish to list and send that to your class from the Rails console:
-  #
-  #   >> Topic.after_save_callback_chain
-  #   => [#<ActiveSupport::Callbacks::Callback:0x3f6a448
-  #       @method=#<Proc:0x03f9a42c@/Users/foo/bar/app/models/topic.rb:43>, kind:after_save, identifiernil,
-  #       options{}]
-  #
   module Callbacks
     extend ActiveSupport::Concern
 
@@ -246,29 +236,12 @@ module ActiveRecord
       define_model_callbacks :save, :create, :update, :destroy
     end
 
-    module ClassMethods
-      def method_added(meth)
-        super
-        if CALLBACKS.include?(meth.to_sym)
-          ActiveSupport::Deprecation.warn("Base##{meth} has been deprecated, please use Base.#{meth} :method instead", caller[0,1])
-          send(meth.to_sym, meth.to_sym)
-        end
-      end
-    end
-
     def destroy #:nodoc:
       _run_destroy_callbacks { super }
     end
 
     def touch(*) #:nodoc:
       _run_touch_callbacks { super }
-    end
-
-    def deprecated_callback_method(symbol) #:nodoc:
-      if respond_to?(symbol, true)
-        ActiveSupport::Deprecation.warn("Overwriting #{symbol} in your models has been deprecated, please use Base##{symbol} :method_name instead")
-        send(symbol)
-      end
     end
 
   private

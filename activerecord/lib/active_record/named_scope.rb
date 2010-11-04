@@ -97,14 +97,14 @@ module ActiveRecord
       #
       #   Article.published.new.published    # => true
       #   Article.published.create.published # => true
-      def scope(name, scope_options = {}, &block)
+      def scope(name, scope_options = {})
         name = name.to_sym
         valid_scope_name?(name)
 
-        extension = Module.new(&block) if block_given?
+        extension = Module.new(&Proc.new) if block_given?
 
         scopes[name] = lambda do |*args|
-          options = scope_options.is_a?(Proc) ? scope_options.call(*args) : scope_options
+          options = scope_options.respond_to?(:call) ? scope_options.call(*args) : scope_options
 
           relation = if options.is_a?(Hash)
             scoped.apply_finder_options(options)
@@ -118,11 +118,6 @@ module ActiveRecord
         end
 
         singleton_class.send(:redefine_method, name, &scopes[name])
-      end
-
-      def named_scope(*args, &block)
-        ActiveSupport::Deprecation.warn("Base.named_scope has been deprecated, please use Base.scope instead", caller)
-        scope(*args, &block)
       end
 
     protected

@@ -14,23 +14,20 @@ module Rails
       @options   = generator.options
     end
 
-    private
-      %w(template copy_file directory empty_directory inside
-         empty_directory_with_gitkeep create_file chmod shebang).each do |method|
-        class_eval <<-RUBY, __FILE__, __LINE__ + 1
-          def #{method}(*args, &block)
-            @generator.send(:#{method}, *args, &block)
-          end
-        RUBY
-      end
+  private
 
-      # TODO: Remove once this is fully in place
-      def method_missing(meth, *args, &block)
-        STDERR.puts "Calling #{meth} with #{args.inspect} with #{block}"
-        @generator.send(meth, *args, &block)
-      end
+    def method_missing(meth, *args, &block)
+      @generator.send(meth, *args, &block)
+    end
   end
 
+  # The application builder allows you to override elements of the application
+  # generator without being forced to reverse the operations of the default
+  # generator.
+  #
+  # This allows you to override entire operations, like the creation of the
+  # Gemfile, README, or javascript files, without needing to know exactly
+  # what those operations do so you can create another template action.
   class AppBuilder
     def rakefile
       template "Rakefile"
@@ -111,12 +108,20 @@ module Rails
     end
 
     def javascripts
-      unless options[:skip_prototype]
-        directory "public/javascripts"
-      else
-        empty_directory_with_gitkeep "public/javascripts"
-        create_file "public/javascripts/application.js"
+      empty_directory "public/javascripts"
+          
+      unless options[:skip_javascript]
+        copy_file "public/javascripts/#{@options[:javascript]}.js"
+        copy_file "public/javascripts/#{@options[:javascript]}_ujs.js", "public/javascripts/rails.js"
+        
+        if options[:prototype]
+          copy_file "public/javascripts/controls.js"
+          copy_file "public/javascripts/dragdrop.js"
+          copy_file "public/javascripts/effects.js"
+        end
       end
+      
+      copy_file "public/javascripts/application.js"
     end
 
     def script
@@ -155,6 +160,7 @@ module Rails
 
     class AppGenerator < Base
       DATABASES = %w( mysql oracle postgresql sqlite3 frontbase ibm_db )
+      JAVASCRIPTS = %w( prototype jquery )
 
       attr_accessor :rails_template
       add_shebang_option!
@@ -163,6 +169,9 @@ module Rails
 
       class_option :database,           :type => :string, :aliases => "-d", :default => "sqlite3",
                                         :desc => "Preconfigure for selected database (options: #{DATABASES.join('/')})"
+
+      class_option :javascript,         :type => :string, :aliases => "-j", :default => "prototype",
+                                        :desc => "Preconfigure for selected javascript library (options: #{JAVASCRIPTS.join('/')})"
 
       class_option :builder,            :type => :string, :aliases => "-b",
                                         :desc => "Path to an application builder (can be a filesystem path or URL)"
@@ -185,8 +194,8 @@ module Rails
       class_option :skip_test_unit,     :type => :boolean, :aliases => "-T", :default => false,
                                         :desc => "Skip Test::Unit files"
 
-      class_option :skip_prototype,     :type => :boolean, :aliases => "-J", :default => false,
-                                        :desc => "Skip Prototype files"
+      class_option :skip_javascript,    :type => :boolean, :aliases => "-J", :default => false,
+                                        :desc => "Skip javascript files"
 
       class_option :skip_git,           :type => :boolean, :aliases => "-G", :default => false,
                                         :desc => "Skip Git ignores and keeps"
@@ -207,6 +216,10 @@ module Rails
 
         if !options[:skip_active_record] && !DATABASES.include?(options[:database])
           raise Error, "Invalid value for --database option. Supported for preconfiguration are: #{DATABASES.join(", ")}."
+        end
+        
+        if !options[:skip_javascript] && !JAVASCRIPTS.include?(options[:javascript])
+          raise Error, "Invalid value for --javascript option. Supported for preconfiguration are: #{JAVASCRIPTS.join(", ")}."
         end
       end
 
@@ -272,7 +285,7 @@ module Rails
         build(:stylesheets)
       end
 
-      def create_prototype_files
+      def create_javascript_files
         build(:javascripts)
       end
 
@@ -353,18 +366,21 @@ module Rails
       end
 
       def app_name
-        @app_name ||= File.basename(destination_root)
+        @app_name ||= defined_app_const_base? ? defined_app_name : File.basename(destination_root)
       end
-      
-      alias_method :defined_app_name, :app_name
+
+      def defined_app_name
+        defined_app_const_base.underscore
+      end
 
       def defined_app_const_base
         Rails.respond_to?(:application) && defined?(Rails::Application) &&
           Rails.application.is_a?(Rails::Application) && Rails.application.class.name.sub(/::Application$/, "")
       end
 
+      alias :defined_app_const_base? :defined_app_const_base
+
       def app_const_base
-        defined_app_name # ensures the correct app_name if it's already defined
         @app_const_base ||= defined_app_const_base || app_name.gsub(/\W/, '_').squeeze('_').camelize
       end
 

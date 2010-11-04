@@ -110,7 +110,7 @@ Active Resource provides a framework for managing the connection between busines
 
 h5. Active Support
 
-Active Support is an extensive collection of utility classes and standard Ruby library extensions that are used in the Rails, both by the core code and by your applications.
+Active Support is an extensive collection of utility classes and standard Ruby library extensions that are used in Rails, both by the core code and by your applications.
 
 h5. Railties
 
@@ -149,9 +149,7 @@ Usually run this as the root user:
 # gem install rails
 </shell>
 
-NOTE. In the Rails 3.0.0-beta, you will need to manually install the dependencies for Rails itself as a bug in rubygems will cause these to not be installed, see the "3.0 Release Notes":3_0_release_notes.html for the commands to run.
-
-TIP. If you're working on Windows, you may find it easier to install "Instant Rails":http://instantrails.rubyforge.org/wiki/wiki.pl. Be aware, though, that Instant Rails releases tend to lag seriously behind the actual Rails version. Also, you will find that Rails development on Windows is overall less pleasant than on other operating systems. If at all possible, we suggest that you install a Linux virtual machine and use that for Rails development, instead of using Windows.
+TIP. If you're working on Windows, you should be aware that the vast majority of Rails development is done in Unix environments. While Ruby and Rails themselves install easily using for example "Ruby Installer":http://rubyinstaller.org/, the supporting ecosystem often assumes you are able to build C-based rubygems and work in a command window. If at all possible, we suggest that you install a Linux virtual machine and use that for Rails development, instead of using Windows.
 
 h4. Creating the Blog Application
 
@@ -177,7 +175,7 @@ In any case, Rails will create a folder in your working directory called <tt>blo
 
 |_.File/Folder|_.Purpose|
 |Gemfile|This file allows you to specify what gem dependencies are needed for your Rails application.|
-|README.rdoc|This is a brief instruction manual for your application. Use it to tell others what your application does, how to set it up, and so on.|
+|README|This is a brief instruction manual for your application. Use it to tell others what your application does, how to set it up, and so on.|
 |Rakefile|This file contains batch jobs that can be run from the terminal.|
 |app/|Contains the controllers, models, and views for your application. You'll focus on this folder for the remainder of this guide.|
 |config/|Configure your application's runtime rules, routes, database, and more.|
@@ -197,7 +195,7 @@ h4. Installing the Required Gems
 Rails applications manage gem dependencies with "Bundler":http://gembundler.com/v1.0/index.html by default. As we don't need any other gems beyond the ones in the generated +Gemfile+ we can directly run
 
 <shell>
-bundle install
+# bundle install
 </shell>
 
 to have them ready.
@@ -284,7 +282,7 @@ You actually have a functional Rails application already. To see it, you need to
 $ rails server
 </shell>
 
-This will fire up an instance of the Mongrel web server by default (Rails can also use several other web servers). To see your application in action, open a browser window and navigate to "http://localhost:3000":http://localhost:3000. You should see Rails' default information page:
+This will fire up an instance of the WEBrick web server by default (Rails can also use several other web servers). To see your application in action, open a browser window and navigate to "http://localhost:3000":http://localhost:3000. You should see Rails' default information page:
 
 !images/rails_welcome.png(Welcome Aboard screenshot)!
 
@@ -318,7 +316,7 @@ The first step to doing this is to delete the default page from your application
 $ rm public/index.html
 </shell>
 
-We need to do this as Rails will deliver any static file in the +public+ directory in preference to any dynamic contact we generate from the controllers.
+We need to do this as Rails will deliver any static file in the +public+ directory in preference to any dynamic content we generate from the controllers.
 
 Now, you have to tell Rails where your actual home page is located. Open the file +config/routes.rb+ in your editor. This is your application's _routing file_ which holds entries in a special DSL (domain-specific language) that tells Rails how to connect incoming requests to controllers and actions. This file contains many sample routes on commented lines, and one of them actually shows you how to connect the root of your site to a specific controller and action. Find the line beginning with +root :to+, uncomment it and change it like the following:
 
@@ -354,7 +352,7 @@ NOTE. While scaffolding will get you up and running quickly, the "one size fits 
 The scaffold generator will build 15 files in your application, along with some folders, and edit one more. Here's a quick overview of what it creates:
 
 |_.File                                       |_.Purpose|
-|db/migrate/20100207214725_create_posts.rb.rb    |Migration to create the posts table in your database (your name will include a different timestamp)|
+|db/migrate/20100207214725_create_posts.rb    |Migration to create the posts table in your database (your name will include a different timestamp)|
 |app/models/post.rb                           |The Post model|
 |test/fixtures/posts.yml                      |Dummy posts for use in testing|
 |app/controllers/posts_controller.rb          |The Posts controller|
@@ -561,7 +559,7 @@ The view is only part of the story of how HTML is displayed in your web browser.
   <title>Blog</title>
   <%= stylesheet_link_tag :all %>
   <%= javascript_include_tag :defaults %>
-  <%= csrf_meta_tag %>
+  <%= csrf_meta_tags %>
 </head>
 <body style="background: #EEEEEE;">
 
@@ -729,7 +727,6 @@ After finding the requested post, Rails uses the +edit.html.erb+ view to display
 
 <%= link_to 'Show', @post %> |
 <%= link_to 'Back', posts_path %>
-<% end %>
 </erb>
 
 Again, as with the +new+ action, the +edit+ action is using the +form+ partial, this time however, the form will do a PUT action to the PostsController and the submit button will display "Update Post"
@@ -1482,6 +1479,7 @@ h3. Changelog
 
 "Lighthouse ticket":http://rails.lighthouseapp.com/projects/16213-rails-guides/tickets/2
 
+* August 30, 2010: Minor editing after Rails 3 release by "Joost Baaij":http://www.spacebabies.nl
 * July 12, 2010: Fixes, editing and updating of code samples by "Jaime Iniesta":http://jaimeiniesta.com
 * May 16, 2010: Added a section on configuration gotchas to address common encoding problems that people might have by "Yehuda Katz":http://www.yehudakatz.com
 * April 30, 2010: Fixes, editing and updating of code samples by "Rohit Arondekar":http://rohitarondekar.com

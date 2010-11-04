@@ -44,6 +44,16 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert !authors(:mary).unique_categorized_posts.loaded?
   end
 
+  def test_column_caching
+    # pre-heat our cache
+    Post.arel_table.columns
+    Comment.columns
+
+    Post.connection.column_calls = 0
+    2.times { Post.joins(:comments).to_a }
+    assert_equal 0, Post.connection.column_calls
+  end
+
   def test_has_many_uniq_through_find
     assert_equal 1, authors(:mary).unique_categorized_posts.find(:all).size
   end
@@ -396,7 +406,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     author = Author.find :first, :conditions => ['name = ?', 'David'], :include => :comments, :order => 'comments.id'
     SpecialComment.new; VerySpecialComment.new
     assert_no_queries do
-      assert_equal [1,2,3,5,6,7,8,9,10], author.comments.collect(&:id)
+      assert_equal [1,2,3,5,6,7,8,9,10,12], author.comments.collect(&:id)
     end
   end
 
@@ -498,7 +508,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
 
   def test_has_many_through_collection_size_doesnt_load_target_if_not_loaded
     author = authors(:david)
-    assert_equal 9, author.comments.size
+    assert_equal 10, author.comments.size
     assert !author.comments.loaded?
   end
 

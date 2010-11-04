@@ -17,7 +17,7 @@ module ActiveModel
 
           def initialize(name, serializable, raw_value=nil)
             @name, @serializable = name, serializable
-            @value = value || @serializable.send(name)
+            @value = raw_value || @serializable.send(name)
             @type  = compute_type
           end
 
@@ -76,10 +76,9 @@ module ActiveModel
         end
 
         def serializable_methods
-          Array.wrap(options[:methods]).inject([]) do |methods, name|
-            methods << self.class::MethodAttribute.new(name.to_s, @serializable) if @serializable.respond_to?(name.to_s)
-            methods
-          end
+          Array.wrap(options[:methods]).map do |name|
+            self.class::MethodAttribute.new(name.to_s, @serializable) if @serializable.respond_to?(name.to_s)
+          end.compact
         end
 
         def serialize

@@ -6,9 +6,6 @@ require 'active_support/ordered_options'
 require 'action_view/log_subscriber'
 
 module ActionView #:nodoc:
-  class NonConcattingString < ActiveSupport::SafeBuffer
-  end
-
   # = Action View Base
   #
   # Action View templates can be written in three ways. If the template file has a <tt>.erb</tt> (or <tt>.rhtml</tt>) extension then it uses a mixture of ERb
@@ -156,12 +153,9 @@ module ActionView #:nodoc:
   #
   # This refreshes the sidebar, removes a person element and highlights the user list.
   #
-  # See the ActionView::Helpers::PrototypeHelper::GeneratorMethods documentation for more details.
+  # See the ActionView::Helpers::PrototypeHelper::JavaScriptGenerator::GeneratorMethods documentation for more details.
   class Base
-    module Subclasses
-    end
-
-    include Helpers, Rendering, Partials, Layouts, ::ERB::Util, Context
+    include Helpers, Rendering, Partials, ::ERB::Util, Context
 
     # Specify whether RJS responses should be wrapped in a try/catch block
     # that alert()s the caught exception (and then re-raises it).
@@ -180,21 +174,15 @@ module ActionView #:nodoc:
       delegate :logger, :to => 'ActionController::Base', :allow_nil => true
     end
 
-    attr_accessor :base_path, :assigns, :template_extension, :lookup_context
-    attr_internal :captures, :request, :controller, :template, :config
+    attr_accessor :_template
+    attr_internal :request, :controller, :config, :assigns, :lookup_context
 
-    delegate :find_template, :template_exists?, :formats, :formats=, :locale, :locale=,
-             :view_paths, :view_paths=, :with_fallbacks, :update_details, :with_layout_format, :to => :lookup_context
+    delegate :formats, :formats=, :locale, :locale=, :view_paths, :view_paths=, :to => :lookup_context
 
-    delegate :request_forgery_protection_token, :template, :params, :session, :cookies, :response, :headers,
+    delegate :request_forgery_protection_token, :params, :session, :cookies, :response, :headers,
              :flash, :action_name, :controller_name, :to => :controller
 
     delegate :logger, :to => :controller, :allow_nil => true
-
-    # TODO: HACK FOR RJS
-    def view_context
-      self
-    end
 
     def self.xss_safe? #:nodoc:
       true
@@ -206,31 +194,38 @@ module ActionView #:nodoc:
     end
 
     def assign(new_assigns) # :nodoc:
-      self.assigns = new_assigns.each { |key, value| instance_variable_set("@#{key}", value) }
+      @_assigns = new_assigns.each { |key, value| instance_variable_set("@#{key}", value) }
     end
 
     def initialize(lookup_context = nil, assigns_for_first_render = {}, controller = nil, formats = nil) #:nodoc:
       assign(assigns_for_first_render)
-      self.helpers = self.class.helpers || Module.new
+      self.helpers = Module.new unless self.class.helpers
 
-      if @_controller = controller
-        @_request = controller.request if controller.respond_to?(:request)
-      end
-
-      config = controller && controller.respond_to?(:config) ? controller.config : {}
-      @_config = ActiveSupport::InheritableOptions.new(config)
-
+      @_config = {}
       @_content_for  = Hash.new { |h,k| h[k] = ActiveSupport::SafeBuffer.new }
       @_virtual_path = nil
       @output_buffer = nil
 
-      @lookup_context = lookup_context.is_a?(ActionView::LookupContext) ?
+      if @_controller = controller
+        @_request = controller.request if controller.respond_to?(:request)
+        @_config  = controller.config.inheritable_copy if controller.respond_to?(:config)
+      end
+
+      @_lookup_context = lookup_context.is_a?(ActionView::LookupContext) ?
         lookup_context : ActionView::LookupContext.new(lookup_context)
-      @lookup_context.formats = formats if formats
+      @_lookup_context.formats = formats if formats
+    end
+
+    def store_content_for(key, value)
+      @_content_for[key] = value
     end
 
     def controller_path
       @controller_path ||= controller && controller.controller_path
+    end
+
+    def controller_prefix
+      @controller_prefix ||= controller && controller._prefix
     end
 
     ActiveSupport.run_load_hooks(:action_view, self)

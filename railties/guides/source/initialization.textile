@@ -141,7 +141,7 @@ Here the only two gems we need are +rails+ and +sqlite3-ruby+, so it seems. This
 * activesupport-3.0.0.gem
 * arel-0.4.0.gem
 * builder-2.1.2.gem
-* bundler-1.0.0.gem
+* bundler-1.0.3.gem
 * erubis-2.6.6.gem
 * i18n-0.4.1.gem
 * mail-2.2.5.gem
@@ -848,7 +848,7 @@ h5. +require "active_record"+
 
 TODO: Why are +activesupport_path+ and +activemodel_path+ defined here?
 
-The first three requires require ActiveSupport, Active Model and ARel in that order:
+The first three requires require ActiveSupport, Active Model and Arel in that order:
 
 <ruby>
   require 'active_support'
@@ -1376,8 +1376,9 @@ the _version_ file contains this code (comments stripped):
       MAJOR = 3
       MINOR = 1
       TINY  = 0
+      BUILD = "beta"
 
-      STRING = [MAJOR, MINOR, TINY].join('.')
+      STRING = [MAJOR, MINOR, TINY, BUILD].join('.')
     end
   end
 </ruby>
@@ -1437,7 +1438,7 @@ Afterwards this includes the +ActiveSupport::Benchmarkable+ which is used for be
   end
 </ruby>
 
-The "documentation":http://api.rails.info/classes/ActiveSupport/Benchmarkable.html#M000607 is great about explaining what precisely this does. (TODO: replace link with real documentation link when it becomes available.)
+The "documentation":http://api.rubyonrails.org/classes/ActiveSupport/Benchmarkable.html is great about explaining what precisely this does.
 
 This module is also included into Active Record and +AbstractController+, meaning you can also use the +benchmark+ method in these methods.
 
@@ -3069,7 +3070,7 @@ The +Rails::Plugin::Configuration+ class may be a bit difficult to find at first
 
 <ruby>
   module Rails
-    class Plugin < Railtie
+    class Plugin < Engine
       ...
     end
   end

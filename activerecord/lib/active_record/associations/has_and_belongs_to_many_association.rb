@@ -24,7 +24,7 @@ module ActiveRecord
 
       protected
         def construct_find_options!(options)
-          options[:joins]      = Arel::SqlLiteral.new @join_sql
+          options[:joins]      = Arel::SqlLiteral.new(@scope[:find][:joins])
           options[:readonly]   = finding_with_ambiguous_select?(options[:select] || @reflection.options[:select])
           options[:select]   ||= (@reflection.options[:select] || Arel::SqlLiteral.new('*'))
         end
@@ -49,23 +49,20 @@ module ActiveRecord
             timestamps = record_timestamp_columns(record)
             timezone   = record.send(:current_time_from_proper_timezone) if timestamps.any?
 
-            attributes = columns.inject({}) do |attrs, column|
+            attributes = Hash[columns.map do |column|
               name = column.name
-              case name.to_s
+              value = case name.to_s
                 when @reflection.primary_key_name.to_s
-                  attrs[relation[name]] = @owner.id
+                  @owner.id
                 when @reflection.association_foreign_key.to_s
-                  attrs[relation[name]] = record.id
+                  record.id
                 when *timestamps
-                  attrs[relation[name]] = timezone
+                  timezone
                 else
-                  if record.has_attribute?(name)
-                    value = @owner.send(:quote_value, record[name], column)
-                    attrs[relation[name]] = value unless value.nil?
-                  end
+                  @owner.send(:quote_value, record[name], column) if record.has_attribute?(name)
               end
-              attrs
-            end
+              [relation[name], value] unless value.nil?
+            end]
 
             relation.insert(attributes)
           end
@@ -79,31 +76,30 @@ module ActiveRecord
           else
             relation = Arel::Table.new(@reflection.options[:join_table])
             relation.where(relation[@reflection.primary_key_name].eq(@owner.id).
-              and(relation[@reflection.association_foreign_key].in(records.map { |x| x.id }))
+              and(relation[@reflection.association_foreign_key].in(records.map { |x| x.id }.compact))
             ).delete
           end
         end
-
-        def construct_sql
-          if @reflection.options[:finder_sql]
-            @finder_sql = interpolate_sql(@reflection.options[:finder_sql])
-          else
-            @finder_sql = "#{@owner.connection.quote_table_name @reflection.options[:join_table]}.#{@reflection.primary_key_name} = #{owner_quoted_id} "
-            @finder_sql << " AND (#{conditions})" if conditions
-          end
-
-          @join_sql = "INNER JOIN #{@owner.connection.quote_table_name @reflection.options[:join_table]} ON #{@reflection.quoted_table_name}.#{@reflection.klass.primary_key} = #{@owner.connection.quote_table_name @reflection.options[:join_table]}.#{@reflection.association_foreign_key}"
-
-          construct_counter_sql
+        
+        def construct_joins
+          "INNER JOIN #{@owner.connection.quote_table_name @reflection.options[:join_table]} ON #{@reflection.quoted_table_name}.#{@reflection.klass.primary_key} = #{@owner.connection.quote_table_name @reflection.options[:join_table]}.#{@reflection.association_foreign_key}"
         end
 
-        def construct_scope
-          { :find => {  :conditions => @finder_sql,
-                        :joins => @join_sql,
-                        :readonly => false,
-                        :order => @reflection.options[:order],
-                        :include => @reflection.options[:include],
-                        :limit => @reflection.options[:limit] } }
+        def construct_conditions
+          sql = "#{@owner.connection.quote_table_name @reflection.options[:join_table]}.#{@reflection.primary_key_name} = #{owner_quoted_id} "
+          sql << " AND (#{conditions})" if conditions
+          sql
+        end
+
+        def construct_find_scope
+          {
+            :conditions => construct_conditions,
+            :joins      => construct_joins,
+            :readonly   => false,
+            :order      => @reflection.options[:order],
+            :include    => @reflection.options[:include],
+            :limit      => @reflection.options[:limit]
+          }
         end
 
         # Join tables with additional columns on top of the two foreign keys must be considered
