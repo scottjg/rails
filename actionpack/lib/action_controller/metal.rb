@@ -12,7 +12,7 @@ module ActionController
   #
   class MiddlewareStack < ActionDispatch::MiddlewareStack #:nodoc:
     class Middleware < ActionDispatch::MiddlewareStack::Middleware #:nodoc:
-      def initialize(klass, *args)
+      def initialize(klass, *args, &block)
         options = args.extract_options!
         @only   = Array(options.delete(:only)).map(&:to_s)
         @except = Array(options.delete(:except)).map(&:to_s)
@@ -112,6 +112,11 @@ module ActionController
       headers["Location"] = url
     end
 
+    # basic url_for that can be overridden for more robust functionality
+    def url_for(string)
+      string
+    end
+
     def status
       @_status
     end
@@ -147,8 +152,8 @@ module ActionController
       super
     end
 
-    def self.use(*args)
-      middleware_stack.use(*args)
+    def self.use(*args, &block)
+      middleware_stack.use(*args, &block)
     end
 
     def self.middleware

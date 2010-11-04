@@ -1,6 +1,7 @@
 require 'erb'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/object/blank'
+require 'active_support/inflector'
 
 module ActionDispatch
   module Routing
@@ -62,7 +63,6 @@ module ActionDispatch
             if using_match_shorthand?(path_without_format, @options)
               to_shorthand    = @options[:to].blank?
               @options[:to] ||= path_without_format[1..-1].sub(%r{/([^/]*)$}, '#\1')
-              @options[:as] ||= Mapper.normalize_name(path_without_format)
             end
 
             @options.merge!(default_controller_and_action(to_shorthand))
@@ -113,6 +113,15 @@ module ActionDispatch
             @requirements ||= (@options[:constraints].is_a?(Hash) ? @options[:constraints] : {}).tap do |requirements|
               requirements.reverse_merge!(@scope[:constraints]) if @scope[:constraints]
               @options.each { |k, v| requirements[k] = v if v.is_a?(Regexp) }
+
+              requirements.each do |_, requirement|
+                if requirement.source =~ %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
+                  raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
+                end
+                if requirement.multiline?
+                  raise ArgumentError, "Regexp multiline option not allowed in routing requirements: #{requirement.inspect}"
+                end
+              end
             end
           end
 
@@ -138,6 +147,10 @@ module ActionDispatch
 
               unless controller.is_a?(Regexp) || to_shorthand
                 controller = [@scope[:module], controller].compact.join("/").presence
+              end
+
+              if controller.is_a?(String) && controller =~ %r{\A/}
+                raise ArgumentError, "controller name should not start with a slash"
               end
 
               controller = controller.to_s unless controller.is_a?(Regexp)
@@ -174,8 +187,8 @@ module ActionDispatch
 
           def request_method_condition
             if via = @options[:via]
-              via = Array(via).map { |m| m.to_s.upcase }
-              { :request_method => Regexp.union(*via) }
+              via = Array(via).map { |m| m.to_s.dasherize.upcase }
+              { :request_method => %r[^#{via.join('|')}$] }
             else
               { }
             end
@@ -226,10 +239,24 @@ module ActionDispatch
           @set = set
         end
 
+        # You can specify what Rails should route "/" to with the root method:
+        #
+        #   root :to => 'pages#main'
+        #
+        # You should put the root route at the end of <tt>config/routes.rb</tt>.
         def root(options = {})
           match '/', options.reverse_merge(:as => :root)
         end
 
+        # When you set up a regular route, you supply a series of symbols that
+        # Rails maps to parts of an incoming HTTP request.
+        #
+        #   match ':controller/:action/:id/:user_id'
+        #
+        # Two of these symbols are special: :controller maps to the name of a
+        # controller in your application, and :action maps to the name of an
+        # action within that controller. Anything other than :controller or
+        # :action will be available to the action as part of params.
         def match(path, options=nil)
           mapping = Mapping.new(@set, @scope, path, options || {}).to_route
           @set.add_route(*mapping)
@@ -258,22 +285,29 @@ module ActionDispatch
       end
 
       module HttpHelpers
+        # Define a route that only recognizes HTTP GET.
         def get(*args, &block)
           map_method(:get, *args, &block)
         end
 
+        # Define a route that only recognizes HTTP POST.
         def post(*args, &block)
           map_method(:post, *args, &block)
         end
 
+        # Define a route that only recognizes HTTP PUT.
         def put(*args, &block)
           map_method(:put, *args, &block)
         end
 
+        # Define a route that only recognizes HTTP DELETE.
         def delete(*args, &block)
           map_method(:delete, *args, &block)
         end
 
+        # Redirect any path to another path:
+        #
+        #   match "/stories" => redirect("/posts")
         def redirect(*args, &block)
           options = args.last.is_a?(Hash) ? args.pop : {}
 
@@ -314,12 +348,72 @@ module ActionDispatch
           end
       end
 
+      # You may wish to organize groups of controllers under a namespace.
+      # Most commonly, you might group a number of administrative controllers
+      # under an +admin+ namespace. You would place these controllers under
+      # the app/controllers/admin directory, and you can group them together
+      # in your router:
+      #
+      #   namespace "admin" do
+      #     resources :posts, :comments
+      #   end
+      # 
+      # This will create a number of routes for each of the posts and comments
+      # controller. For Admin::PostsController, Rails will create:
+      # 
+      #   GET	    /admin/photos
+      #   GET	    /admin/photos/new
+      #   POST	  /admin/photos
+      #   GET	    /admin/photos/1
+      #   GET	    /admin/photos/1/edit
+      #   PUT	    /admin/photos/1
+      #   DELETE  /admin/photos/1
+      # 
+      # If you want to route /photos (without the prefix /admin) to
+      # Admin::PostsController, you could use
+      # 
+      #   scope :module => "admin" do
+      #     resources :posts, :comments
+      #   end
+      #
+      # or, for a single case
+      # 
+      #   resources :posts, :module => "admin"
+      # 
+      # If you want to route /admin/photos to PostsController
+      # (without the Admin:: module prefix), you could use
+      # 
+      #   scope "/admin" do
+      #     resources :posts, :comments
+      #   end
+      #
+      # or, for a single case
+      # 
+      #   resources :posts, :path => "/admin"
+      #
+      # In each of these cases, the named routes remain the same as if you did
+      # not use scope. In the last case, the following paths map to
+      # PostsController:
+      # 
+      #   GET	    /admin/photos
+      #   GET	    /admin/photos/new
+      #   POST	  /admin/photos
+      #   GET	    /admin/photos/1
+      #   GET	    /admin/photos/1/edit
+      #   PUT	    /admin/photos/1
+      #   DELETE  /admin/photos/1
       module Scoping
         def initialize(*args) #:nodoc:
           @scope = {}
           super
         end
 
+        # Used to route <tt>/photos</tt> (without the prefix <tt>/admin</tt>)
+        # to Admin::PostsController:
+        #
+        #   scope :module => "admin" do
+        #     resources :posts
+        #   end
         def scope(*args)
           options = args.extract_options!
           options = options.dup
@@ -441,6 +535,37 @@ module ActionDispatch
           end
       end
 
+      # Resource routing allows you to quickly declare all of the common routes
+      # for a given resourceful controller. Instead of declaring separate routes
+      # for your +index+, +show+, +new+, +edit+, +create+, +update+ and +destroy+
+      # actions, a resourceful route declares them in a single line of code:
+      #
+      #  resources :photos
+      #
+      # Sometimes, you have a resource that clients always look up without
+      # referencing an ID. A common example, /profile always shows the profile of
+      # the currently logged in user. In this case, you can use a singular resource
+      # to map /profile (rather than /profile/:id) to the show action.
+      #
+      #  resource :profile
+      #
+      # It's common to have resources that are logically children of other
+      # resources:
+      #
+      #   resources :magazines do
+      #     resources :ads
+      #   end
+      #
+      # You may wish to organize groups of controllers under a namespace. Most
+      # commonly, you might group a number of administrative controllers under
+      # an +admin+ namespace. You would place these controllers under the
+      # app/controllers/admin directory, and you can group them together in your
+      # router:
+      #
+      #   namespace "admin" do
+      #     resources :posts, :comments
+      #   end
+      #
       module Resources
         # CANONICAL_ACTIONS holds all actions that does not need a prefix or
         # a path appended since they fit properly in their scope level.
@@ -549,6 +674,24 @@ module ActionDispatch
           @scope[:path_names].merge!(options)
         end
 
+        # Sometimes, you have a resource that clients always look up without
+        # referencing an ID. A common example, /profile always shows the
+        # profile of the currently logged in user. In this case, you can use
+        # a singular resource to map /profile (rather than /profile/:id) to
+        # the show action:
+        #
+        #   resource :geocoder
+        #
+        # creates six different routes in your application, all mapping to
+        # the GeoCoders controller (note that the controller is named after
+        # the plural):
+        #
+        #   GET     /geocoder/new
+        #   POST    /geocoder
+        #   GET     /geocoder
+        #   GET     /geocoder/edit
+        #   PUT     /geocoder
+        #   DELETE  /geocoder
         def resource(*resources, &block)
           options = resources.extract_options!
 
@@ -559,15 +702,15 @@ module ActionDispatch
           resource_scope(SingletonResource.new(resources.pop, options)) do
             yield if block_given?
 
-            collection_scope do
+            collection do
               post :create
             end if parent_resource.actions.include?(:create)
 
-            new_scope do
+            new do
               get :new
             end if parent_resource.actions.include?(:new)
 
-            member_scope  do
+            member do
               get    :edit if parent_resource.actions.include?(:edit)
               get    :show if parent_resource.actions.include?(:show)
               put    :update if parent_resource.actions.include?(:update)
@@ -578,6 +721,22 @@ module ActionDispatch
           self
         end
 
+        # In Rails, a resourceful route provides a mapping between HTTP verbs
+        # and URLs and controller actions. By convention, each action also maps
+        # to particular CRUD operations in a database. A single entry in the
+        # routing file, such as
+        #
+        #   resources :photos
+        #
+        # creates seven different routes in your application, all mapping to
+        # the Photos controller:
+        #
+        #   GET     /photos/new
+        #   POST    /photos
+        #   GET     /photos/:id
+        #   GET     /photos/:id/edit
+        #   PUT     /photos/:id
+        #   DELETE  /photos/:id
         def resources(*resources, &block)
           options = resources.extract_options!
 
@@ -588,16 +747,16 @@ module ActionDispatch
           resource_scope(Resource.new(resources.pop, options)) do
             yield if block_given?
 
-            collection_scope do
+            collection do
               get  :index if parent_resource.actions.include?(:index)
               post :create if parent_resource.actions.include?(:create)
             end
 
-            new_scope do
+            new do
               get :new
             end if parent_resource.actions.include?(:new)
 
-            member_scope  do
+            member do
               get    :edit if parent_resource.actions.include?(:edit)
               get    :show if parent_resource.actions.include?(:show)
               put    :update if parent_resource.actions.include?(:update)
@@ -608,23 +767,50 @@ module ActionDispatch
           self
         end
 
+        # To add a route to the collection:
+        #
+        #   resources :photos do
+        #     collection do
+        #       get 'search'
+        #     end
+        #   end
+        #
+        # This will enable Rails to recognize paths such as <tt>/photos/search</tt>
+        # with GET, and route to the search action of PhotosController. It will also
+        # create the <tt>search_photos_url</tt> and <tt>search_photos_path</tt>
+        # route helpers.
         def collection
-          unless @scope[:scope_level] == :resources
-            raise ArgumentError, "can't use collection outside resources scope"
+          unless resource_scope?
+            raise ArgumentError, "can't use collection outside resource(s) scope"
           end
 
-          collection_scope do
-            yield
+          with_scope_level(:collection) do
+            scope(parent_resource.collection_scope) do
+              yield
+            end
           end
         end
 
+        # To add a member route, add a member block into the resource block:
+        #
+        #   resources :photos do
+        #     member do
+        #       get 'preview'
+        #     end
+        #   end
+        #
+        # This will recognize <tt>/photos/1/preview</tt> with GET, and route to the
+        # preview action of PhotosController. It will also create the
+        # <tt>preview_photo_url</tt> and <tt>preview_photo_path</tt> helpers.
         def member
           unless resource_scope?
             raise ArgumentError, "can't use member outside resource(s) scope"
           end
 
-          member_scope do
-            yield
+          with_scope_level(:member) do
+            scope(parent_resource.member_scope) do
+              yield
+            end
           end
         end
 
@@ -633,8 +819,10 @@ module ActionDispatch
             raise ArgumentError, "can't use new outside resource(s) scope"
           end
 
-          new_scope do
-            yield
+          with_scope_level(:new) do
+            scope(parent_resource.new_scope(action_path(:new))) do
+              yield
+            end
           end
         end
 
@@ -708,9 +896,14 @@ module ActionDispatch
 
           if action.to_s =~ /^[\w\/]+$/
             options[:action] ||= action unless action.to_s.include?("/")
-            options[:as] = name_for_action(action, options[:as])
           else
-            options[:as] = name_for_action(options[:as])
+            action = nil
+          end
+
+          if options.key?(:as) && !options[:as]
+            options.delete(:as)
+          else
+            options[:as] = name_for_action(options[:as], action)
           end
 
           super(path, options)
@@ -740,6 +933,11 @@ module ActionDispatch
               return true
             end
 
+            if resource_scope?
+              nested { send(method, resources.pop, options, &block) }
+              return true
+            end
+
             options.keys.each do |k|
               (options[:constraints] ||= {})[k] = options.delete(k) if options[k].is_a?(Regexp)
             end
@@ -754,13 +952,6 @@ module ActionDispatch
 
             unless action_options?(options)
               options.merge!(scope_action_options) if scope_action_options?
-            end
-
-            if resource_scope?
-              nested do
-                send(method, resources.pop, options, &block)
-              end
-              return true
             end
 
             false
@@ -816,30 +1007,6 @@ module ActionDispatch
             end
           end
 
-          def new_scope
-            with_scope_level(:new) do
-              scope(parent_resource.new_scope(action_path(:new))) do
-                yield
-              end
-            end
-          end
-
-          def collection_scope
-            with_scope_level(:collection) do
-              scope(parent_resource.collection_scope) do
-                yield
-              end
-            end
-          end
-
-          def member_scope
-            with_scope_level(:member) do
-              scope(parent_resource.member_scope) do
-                yield
-              end
-            end
-          end
-
           def nested_options
             {}.tap do |options|
               options[:as] = parent_resource.member_name
@@ -848,11 +1015,11 @@ module ActionDispatch
           end
 
           def id_constraint?
-            @scope[:id].is_a?(Regexp) || (@scope[:constraints] && @scope[:constraints][:id].is_a?(Regexp))
+            @scope[:constraints] && @scope[:constraints][:id].is_a?(Regexp)
           end
 
           def id_constraint
-            @scope[:id] || @scope[:constraints][:id]
+            @scope[:constraints][:id]
           end
 
           def canonical_action?(action, flag)
@@ -878,18 +1045,16 @@ module ActionDispatch
             path || @scope[:path_names][name.to_sym] || name.to_s
           end
 
-          def prefix_name_for_action(action, as)
-            if as.present?
+          def prefix_name_for_action(as, action)
+            if as
               as.to_s
-            elsif as
-              nil
             elsif !canonical_action?(action, @scope[:scope_level])
               action.to_s
             end
           end
 
-          def name_for_action(action, as=nil)
-            prefix = prefix_name_for_action(action, as)
+          def name_for_action(as, action)
+            prefix = prefix_name_for_action(as, action)
             prefix = Mapper.normalize_name(prefix) if prefix
             name_prefix = @scope[:as]
 
@@ -913,7 +1078,8 @@ module ActionDispatch
               [name_prefix, member_name, prefix]
             end
 
-            name.select(&:present?).join("_").presence
+            candidate = name.select(&:present?).join("_").presence
+            candidate unless as.nil? && @set.routes.find { |r| r.name == candidate }
           end
       end
 

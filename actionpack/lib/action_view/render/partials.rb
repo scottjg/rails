@@ -26,6 +26,36 @@ module ActionView
   # This would first render "advertiser/_account.erb" with @buyer passed in as the local variable +account+, then
   # render "advertiser/_ad.erb" and pass the local variable +ad+ to the template for display.
   #
+  # == The :as and :object options
+  #
+  # By default PartialRenderer uses the template name for the local name of the object passed into the template.
+  # These examples are effectively the same:
+  # 
+  #   <%= render :partial => "contract", :locals => { :contract  => @contract } %>
+  # 
+  #   <%= render :partial => "contract" %>
+  #
+  # By specifying the :as option we can change the way the local variable is namedin the template.
+  # These examples are effectively the same:
+  # 
+  #   <%= render :partial => "contract", :as => :agreement
+  # 
+  #   <%= render :partial => "contract", :locals => { :agreement => @contract }
+  #
+  # The :object option can be used to directly specify which object is rendered into the partial.
+  # 
+  # Revisiting a previous example we could have written this code.
+  # 
+  #   <%= render :partial => "account", :object => @buyer %>
+  #
+  #   <% for ad in @advertisements %>
+  #     <%= render :partial => "ad", :object => ad %>
+  #   <% end %>
+  # 
+  # The :object and :as options can be used together. We might have a partial which we have named genericly,
+  # such as 'form'. Using :object and :as together helps us.
+  # 
+  #   <%= render :partial => "form", :object => @contract, :as => :contract %>
   # == Rendering a collection of partials
   #
   # The example of partial use describes a familiar pattern where a template needs to iterate over an array and
@@ -38,6 +68,13 @@ module ActionView
   # This will render "advertiser/_ad.erb" and pass the local variable +ad+ to the template for display. An
   # iteration counter will automatically be made available to the template with a name of the form
   # +partial_name_counter+. In the case of the example above, the template would be fed +ad_counter+.
+  #
+  # The :as option may be used when rendering partials.
+  # 
+  # Also, you can specify a partial which will be render as a spacer between each element by passing partial name to
+  # +:spacer_template+. The following example will render "advertiser/_ad_divider.erb" between each ad partial.
+  #
+  #   <%= render :partial => "ad", :collection => @advertisements, :spacer_template => "ad_divider" %>
   #
   # NOTE: Due to backwards compatibility concerns, the collection can't be one of hashes. Normally you'd also
   # just keep domain objects, like Active Records, in there.
@@ -200,7 +237,7 @@ module ActionView
         else
           @object = partial
 
-          if @collection = collection
+          if @collection = collection_from_object || collection
             paths = @collection_paths = @collection.map { |o| partial_path(o) }
             @path = paths.uniq.size == 1 ? paths.first : nil
           else
@@ -299,10 +336,14 @@ module ActionView
     private
 
       def collection
+        if @options.key?(:collection)
+          @options[:collection] || []
+        end
+      end
+
+      def collection_from_object
         if @object.respond_to?(:to_ary)
           @object
-        elsif @options.key?(:collection)
-          @options[:collection] || []
         end
       end
 

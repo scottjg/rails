@@ -4,18 +4,6 @@ require 'controller/fake_models'
 class FormHelperTest < ActionView::TestCase
   tests ActionView::Helpers::FormHelper
 
-  class Developer
-    def name_before_type_cast
-      "David"
-    end
-
-    def name
-      "Santiago"
-    end
-
-    attr_writer :language
-  end
-
   def form_for(*)
     @output_buffer = super
   end
@@ -250,24 +238,6 @@ class FormHelperTest < ActionView::TestCase
   def test_text_field_with_custom_type
     assert_dom_equal '<input id="user_email" size="30" name="user[email]" type="email" />',
       text_field("user", "email", :type => "email")
-  end
-
-  def test_text_field_from_a_user_defined_method
-    @developer = Developer.new
-    assert_dom_equal(
-      '<input id="developer_name" name="developer[name]" size="30" type="text" value="Santiago" />', text_field("developer", "name")
-    )
-  end
-
-  def test_text_field_on_a_model_with_undefined_attr_reader
-    @developer = Developer.new
-    @developer.language = 'ruby'
-    begin
-      text_field("developer", "language")
-    rescue NoMethodError => error
-      message = error.message
-    end
-    assert_equal "Model #{Developer} does not respond to language", message
   end
 
   def test_check_box
@@ -638,6 +608,18 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_for_with_format
+    form_for(@post, :format => :json, :html => { :id => "edit_post_123", :class => "edit_post" }) do |f|
+      concat f.label(:title)
+    end
+
+    expected = whole_form("/posts/123.json", "edit_post_123" , "edit_post", :method => "put") do
+      "<label for='post_title'>Title</label>"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_form_for_with_symbol_object_name
     form_for(@post, :as => "other_name", :html => { :id => 'create-post' }) do |f|
       concat f.label(:title, :class => 'post_title')
@@ -673,6 +655,20 @@ class FormHelperTest < ActionView::TestCase
       "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
       "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+  
+  def test_form_for_with_search_field
+    # Test case for bug which would emit an "object" attribute
+    # when used with form_for using a search_field form helper
+    form_for(Post.new, :url => "/search", :html => { :id => 'search-post' }) do |f|
+      concat f.search_field(:title)
+    end
+
+    expected =  whole_form("/search", "search-post", "new_post") do
+      "<input name='post[title]' size='30' type='search' id='post_title' />"
     end
 
     assert_dom_equal expected, output_buffer
@@ -1758,11 +1754,16 @@ class FormHelperTest < ActionView::TestCase
       "/posts"
     end
 
-    def post_path(post)
-      "/posts/#{post.id}"
+    def post_path(post, options = {})
+      if options[:format]
+        "/posts/#{post.id}.#{options[:format]}"
+      else
+        "/posts/#{post.id}"
+      end
     end
 
     def protect_against_forgery?
       false
     end
+
 end

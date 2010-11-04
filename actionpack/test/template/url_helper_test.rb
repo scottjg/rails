@@ -76,10 +76,31 @@ class UrlHelperTest < ActiveSupport::TestCase
     )
   end
 
+  def test_button_to_with_javascript_disable_with
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\"><div><input data-disable-with=\"Greeting...\" type=\"submit\" value=\"Hello\" /></div></form>",
+      button_to("Hello", "http://www.example.com", :disable_with => "Greeting...")
+    )
+  end
+
   def test_button_to_with_remote_and_javascript_confirm
     assert_dom_equal(
       "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\" data-remote=\"true\"><div><input data-confirm=\"Are you sure?\" type=\"submit\" value=\"Hello\" /></div></form>",
       button_to("Hello", "http://www.example.com", :remote => true, :confirm => "Are you sure?")
+    )
+  end
+
+  def test_button_to_with_remote_and_javascript_disable_with
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\" data-remote=\"true\"><div><input data-disable-with=\"Greeting...\" type=\"submit\" value=\"Hello\" /></div></form>",
+      button_to("Hello", "http://www.example.com", :remote => true, :disable_with => "Greeting...")
+    )
+  end
+
+  def test_button_to_with_remote_and_javascript_confirm_and_javascript_disable_with
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\" data-remote=\"true\"><div><input data-disable-with=\"Greeting...\" data-confirm=\"Are you sure?\" type=\"submit\" value=\"Hello\" /></div></form>",
+      button_to("Hello", "http://www.example.com", :remote => true, :confirm => "Are you sure?", :disable_with => "Greeting...")
     )
   end
 
@@ -249,12 +270,7 @@ class UrlHelperTest < ActiveSupport::TestCase
 
     assert_equal "<strong>Showing</strong>",
       link_to_unless(true, "Showing", url_hash) { |name|
-        "<strong>#{name}</strong>"
-      }
-
-    assert_equal "<strong>Showing</strong>",
-      link_to_unless(true, "Showing", url_hash) { |name|
-        "<strong>#{name}</strong>"
+        "<strong>#{name}</strong>".html_safe
       }
 
     assert_equal "test",
@@ -420,6 +436,10 @@ class UrlHelperControllerTest < ActionController::TestCase
       match 'url_helper_controller_test/url_helper/normalize_recall_params',
         :to => UrlHelperController.action(:normalize_recall),
         :as => :normalize_recall_params
+
+      match '/url_helper_controller_test/url_helper/override_url_helper/default',
+        :to => 'url_helper_controller_test/url_helper#override_url_helper',
+        :as => :override_url_helper
     end
 
     def show
@@ -455,6 +475,15 @@ class UrlHelperControllerTest < ActionController::TestCase
     end
 
     def rescue_action(e) raise e end
+
+    def override_url_helper
+      render :inline => '<%= override_url_helper_path %>'
+    end
+
+    def override_url_helper_path
+      '/url_helper_controller_test/url_helper/override_url_helper/override'
+    end
+    helper_method :override_url_helper_path
   end
 
   tests UrlHelperController
@@ -513,6 +542,11 @@ class UrlHelperControllerTest < ActionController::TestCase
 
     get :show, :name => '123'
     assert_equal 'ok', @response.body
+  end
+
+  def test_url_helper_can_be_overriden
+    get :override_url_helper
+    assert_equal '/url_helper_controller_test/url_helper/override_url_helper/override', @response.body
   end
 end
 

@@ -32,6 +32,11 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal 5, Post.where(:id => post_authors).size
   end
 
+  def test_dynamic_finder
+    x = Post.where('author_id = ?', 1)
+    assert x.klass.respond_to?(:find_by_id), '@klass should handle dynamic finders'
+  end
+
   def test_multivalue_where
     posts = Post.where('author_id = ? AND id = ?', 1, 1)
     assert_equal 1, posts.to_a.size
@@ -131,9 +136,11 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_finding_with_reorder
-    topics = Topic.order('author_name').order('title').reorder('id')
-    assert_equal 4, topics.to_a.size
-    assert_equal topics(:first).title, topics.first.title
+    assert_deprecated do
+      topics = Topic.order('author_name').order('title').reorder('id')
+      assert_equal 4, topics.to_a.size
+      assert_equal topics(:first).title, topics.first.title
+    end
   end
 
   def test_finding_with_order_and_take
@@ -465,6 +472,10 @@ class RelationTest < ActiveRecord::TestCase
     assert davids.loaded?
   end
 
+  def test_select_argument_error
+    assert_raises(ArgumentError) { Developer.select }
+  end
+
   def test_relation_merging
     devs = Developer.where("salary >= 80000") & Developer.limit(2) & Developer.order('id ASC').where("id < 3")
     assert_equal [developers(:david), developers(:jamis)], devs.to_a
@@ -495,6 +506,11 @@ class RelationTest < ActiveRecord::TestCase
     end
   end
 
+  def test_relation_merging_with_joins
+    comments = Comment.joins(:post).where(:body => 'Thank you for the welcome') & Post.where(:body => 'Such a lovely day')
+    assert_equal 1, comments.count
+  end
+
   def test_count
     posts = Post.scoped
 
@@ -521,7 +537,7 @@ class RelationTest < ActiveRecord::TestCase
     posts = Post.scoped
 
     assert_equal [0], posts.select('comments_count').where('id is not null').group('id').order('id').count.values.uniq
-    assert_equal 7, posts.where('id is not null').select('comments_count').count
+    assert_equal 0, posts.where('id is not null').select('comments_count').count
 
     assert_equal 8, posts.select('comments_count').count('id')
     assert_equal 0, posts.select('comments_count').count
@@ -643,6 +659,17 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Post.all, all_posts.all
   end
 
+  def test_only
+    relation = Post.where(:author_id => 1).order('id ASC').limit(1)
+    assert_equal [posts(:welcome)], relation.all
+
+    author_posts = relation.only(:where)
+    assert_equal Post.where(:author_id => 1).all, author_posts.all
+
+    all_posts = relation.only(:limit)
+    assert_equal Post.limit(1).all.first, all_posts.first
+  end
+
   def test_anonymous_extension
     relation = Post.where(:author_id => 1).order('id ASC').extending do
       def author
@@ -664,7 +691,28 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Post.order(Post.arel_table[:title]).all, Post.order("title").all
   end
 
-  def test_relations_limit_with_conditions_or_limit
-    assert_equal Post.limit(2).size, Post.limit(2).all.size
+  def test_order_with_find_with_order
+    assert_equal 'zyke', Car.order('name desc').find(:first, :order => 'id').name
   end
+
+  def test_default_scope_order_with_named_scope_order
+    assert_equal 'zyke', Car.order_using_new_style.limit(1).first.name
+    assert_equal 'zyke', Car.order_using_old_style.limit(1).first.name
+  end
+
+  def test_order_using_scoping
+    car = Car.order('id DESC').scoping do
+      Car.find(:first, :order => 'id asc')
+    end
+    assert_equal 'zyke', car.name
+  end
+
+  def test_intersection_with_array
+    relation = Author.where(:name => "David")
+    rails_author = relation.first
+
+    assert_equal [rails_author], [rails_author] & relation
+    assert_equal [rails_author], relation & [rails_author]
+  end
+
 end

@@ -202,6 +202,12 @@ module ActionView
       #     ...
       #   <% end %>
       #
+      # You can also set the answer format, like this:
+      #
+      #   <%= form_for(@post, :format => :json) do |f| %>
+      #     ...
+      #   <% end %>
+      #
       # If you have an object that needs to be represented as a different
       # parameter, like a Client that acts as a Person:
       #
@@ -332,7 +338,9 @@ module ActionView
 
         options[:html] ||= {}
         options[:html].reverse_merge!(html_options)
-        options[:url] ||= polymorphic_path(object_or_array)
+        options[:url] ||= options[:format] ? \
+          polymorphic_path(object_or_array, :format => options.delete(:format)) : \
+          polymorphic_path(object_or_array)
       end
 
       # Creates a scope around a specific model object like form_for, but
@@ -803,7 +811,7 @@ module ActionView
           options["incremental"] = true unless options.has_key?("incremental")
         end
 
-        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("search", options)
+        InstanceTag.new(object_name, method, self, options.delete("object")).to_input_field_tag("search", options)
       end
 
       # Returns a text_field of type "tel".
@@ -1006,14 +1014,9 @@ module ActionView
 
         def value_before_type_cast(object, method_name)
           unless object.nil?
-            if object.respond_to?(method_name)
-              object.send(method_name)
-            # FIXME: this is AR dependent
-            elsif object.respond_to?(method_name + "_before_type_cast")
-              object.send(method_name + "_before_type_cast")
-            else
-              raise NoMethodError, "Model #{object.class} does not respond to #{method_name}"
-            end
+            object.respond_to?(method_name + "_before_type_cast") ?
+            object.send(method_name + "_before_type_cast") :
+            object.send(method_name)
           end
         end
 

@@ -76,7 +76,9 @@ module ActiveRecord
       @records
     end
 
-    def as_json(options = nil) to_a end #:nodoc:
+    def as_json(options = nil) #:nodoc:
+      to_a.as_json(options)
+    end
 
     # Returns size of the records.
     def size
@@ -317,18 +319,23 @@ module ActiveRecord
     end
 
     def where_values_hash
-          Hash[@where_values.find_all { |w|
-            w.respond_to?(:operator) && w.operator == :==
-          }.map { |where|
-            [where.operand1.name,
-             where.operand2.respond_to?(:value) ?
-             where.operand2.value : where.operand2]
-        }]
+      Hash[@where_values.find_all { |w|
+        w.respond_to?(:operator) && w.operator == :== && w.left.relation.name == table_name
+      }.map { |where|
+        [
+          where.left.name,
+          where.right.respond_to?(:value) ? where.right.value : where.right
+        ]
+      }]
     end
 
     def scope_for_create
       @scope_for_create ||= begin
-        @create_with_value || where_values_hash
+        if @create_with_value
+          @create_with_value.reverse_merge(where_values_hash)
+        else
+          where_values_hash
+        end
       end
     end
 
@@ -360,15 +367,6 @@ module ActiveRecord
         scoping { @klass.send(method, *args, &block) }
       elsif arel.respond_to?(method)
         arel.send(method, *args, &block)
-      elsif match = DynamicFinderMatch.match(method)
-        attributes = match.attribute_names
-        super unless @klass.send(:all_attributes_exists?, attributes)
-
-        if match.finder?
-          find_by_attributes(match, attributes, *args)
-        elsif match.instantiator?
-          find_or_instantiator_by_attributes(match, attributes, *args, &block)
-        end
       else
         super
       end

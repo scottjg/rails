@@ -438,7 +438,7 @@ module ActiveRecord #:nodoc:
 
       delegate :find, :first, :last, :all, :destroy, :destroy_all, :exists?, :delete, :delete_all, :update, :update_all, :to => :scoped
       delegate :find_each, :find_in_batches, :to => :scoped
-      delegate :select, :group, :order, :reorder, :limit, :joins, :where, :preload, :eager_load, :includes, :from, :lock, :readonly, :having, :create_with, :to => :scoped
+      delegate :select, :group, :order, :reorder, :except, :limit, :offset, :joins, :where, :preload, :eager_load, :includes, :from, :lock, :readonly, :having, :create_with, :to => :scoped
       delegate :count, :average, :minimum, :maximum, :sum, :calculate, :to => :scoped
 
       # Executes a custom SQL query against your database and returns all the results.  The results will
@@ -608,7 +608,7 @@ module ActiveRecord #:nodoc:
       # Defines the column name for use with single table inheritance. Use
       # <tt>set_inheritance_column</tt> to set a different value.
       def inheritance_column
-        @inheritance_column ||= "type".freeze
+        @inheritance_column ||= "type"
       end
 
       # Lazy-set the sequence name to the connection's default.  This method
@@ -684,7 +684,7 @@ module ActiveRecord #:nodoc:
 
       # Returns a hash of column objects for the table associated with this class.
       def columns_hash
-        @columns_hash ||= columns.inject({}) { |hash, column| hash[column.name] = column; hash }
+        @columns_hash ||= Hash[columns.map { |column| [column.name, column] }]
       end
 
       # Returns an array of column names as strings.
@@ -855,7 +855,7 @@ module ActiveRecord #:nodoc:
           if self == ActiveRecord::Base
             Arel::Table.engine
           else
-            connection_handler.connection_pools[name] ? Arel::Sql::Engine.new(self) : superclass.arel_engine
+            connection_handler.connection_pools[name] ? self : superclass.arel_engine
           end
         end
       end
@@ -890,6 +890,10 @@ module ActiveRecord #:nodoc:
         Thread.current[key] = Thread.current[key].presence || self.default_scoping.dup
       end
 
+      def before_remove_const #:nodoc:
+        reset_scoped_methods
+      end
+
       private
 
         def relation #:nodoc:
@@ -901,21 +905,9 @@ module ActiveRecord #:nodoc:
         # single-table inheritance model that makes it possible to create
         # objects of different types from the same table.
         def instantiate(record)
-          object = find_sti_class(record[inheritance_column]).allocate
-
-          object.instance_variable_set(:@attributes, record)
-          object.instance_variable_set(:@attributes_cache, {})
-          object.instance_variable_set(:@new_record, false)
-          object.instance_variable_set(:@readonly, false)
-          object.instance_variable_set(:@destroyed, false)
-          object.instance_variable_set(:@marked_for_destruction, false)
-          object.instance_variable_set(:@previously_changed, {})
-          object.instance_variable_set(:@changed_attributes, {})
-
-          object.send(:_run_find_callbacks)
-          object.send(:_run_initialize_callbacks)
-
-          object
+          model = find_sti_class(record[inheritance_column]).allocate
+          model.init_with('attributes' => record)
+          model
         end
 
         def find_sti_class(type_name)
@@ -939,7 +931,7 @@ module ActiveRecord #:nodoc:
         end
 
         def construct_finder_arel(options = {}, scope = nil)
-          relation = options.is_a?(Hash) ? unscoped.apply_finder_options(options) : unscoped.merge(options)
+          relation = options.is_a?(Hash) ? unscoped.apply_finder_options(options) : options
           relation = scope.merge(relation) if scope
           relation
         end
@@ -1039,8 +1031,9 @@ module ActiveRecord #:nodoc:
         end
 
         def all_attributes_exists?(attribute_names)
-          attribute_names = expand_attribute_names_for_aggregates(attribute_names)
-          attribute_names.all? { |name| column_methods_hash.include?(name.to_sym) }
+          expand_attribute_names_for_aggregates(attribute_names).all? { |name|
+            column_methods_hash.include?(name.to_sym)
+          }
         end
 
       protected
@@ -1096,9 +1089,9 @@ module ActiveRecord #:nodoc:
 
           if method_scoping.is_a?(Hash)
             # Dup first and second level of hash (method and params).
-            method_scoping = method_scoping.inject({}) do |hash, (method, params)|
-              hash[method] = (params == true) ? params : params.dup
-              hash
+            method_scoping = method_scoping.dup
+            method_scoping.each do |method, params|
+              method_scoping[method] = params.dup unless params == true
             end
 
             method_scoping.assert_valid_keys([ :find, :create ])
@@ -1167,11 +1160,16 @@ MSG
         #   Article.new.published    # => true
         #   Article.create.published # => true
         def default_scope(options = {})
+          reset_scoped_methods
           self.default_scoping << construct_finder_arel(options, default_scoping.pop)
         end
 
         def current_scoped_methods #:nodoc:
           scoped_methods.last
+        end
+
+        def reset_scoped_methods #:nodoc:
+          Thread.current[:"#{self}_scoped_methods"] = nil
         end
 
         # Returns the class type of the record using the current module as a prefix. So descendants of
@@ -1404,10 +1402,7 @@ MSG
 
         ensure_proper_type
 
-        if scope = self.class.send(:current_scoped_methods)
-          create_with = scope.scope_for_create
-          create_with.each { |att,value| self.send("#{att}=", value) } if create_with
-        end
+        populate_with_current_scope_attributes
         self.attributes = attributes unless attributes.nil?
 
         result = yield self if block_given?
@@ -1436,10 +1431,25 @@ MSG
         @new_record = true
         ensure_proper_type
 
-        if scope = self.class.send(:current_scoped_methods)
-          create_with = scope.scope_for_create
-          create_with.each { |att,value| self.send("#{att}=", value) } if create_with
-        end
+        populate_with_current_scope_attributes
+      end
+
+      # Initialize an empty model object from +coder+.  +coder+ must contain
+      # the attributes necessary for initializing an empty model object.  For
+      # example:
+      #
+      #   class Post < ActiveRecord::Base
+      #   end
+      #
+      #   post = Post.allocate
+      #   post.init_with('attributes' => { 'title' => 'hello world' })
+      #   post.title # => 'hello world'
+      def init_with(coder)
+        @attributes = coder['attributes']
+        @attributes_cache, @previously_changed, @changed_attributes = {}, {}, {}
+        @new_record = @readonly = @destroyed = @marked_for_destruction = false
+        _run_find_callbacks
+        _run_initialize_callbacks
       end
 
       # Returns a String, which Action Pack uses for constructing an URL to this
@@ -1697,8 +1707,8 @@ MSG
             if include_readonly_attributes || (!include_readonly_attributes && !self.class.readonly_attributes.include?(name))
               value = read_attribute(name)
 
-              if value && ((self.class.serialized_attributes.has_key?(name) && (value.acts_like?(:date) || value.acts_like?(:time))) || value.is_a?(Hash) || value.is_a?(Array))
-                value = value.to_yaml
+              if value && self.class.serialized_attributes.key?(name)
+                value = YAML.dump value
               end
               attrs[self.class.arel_table[name]] = value
             end
@@ -1805,10 +1815,7 @@ MSG
       end
 
       def quote_columns(quoter, hash)
-        hash.inject({}) do |quoted, (name, value)|
-          quoted[quoter.quote_column_name(name)] = value
-          quoted
-        end
+        Hash[hash.map { |name, value| [quoter.quote_column_name(name), value] }]
       end
 
       def quoted_comma_pair_list(quoter, hash)
@@ -1830,6 +1837,13 @@ MSG
       def object_from_yaml(string)
         return string unless string.is_a?(String) && string =~ /^---/
         YAML::load(string) rescue string
+      end
+
+      def populate_with_current_scope_attributes
+        if scope = self.class.send(:current_scoped_methods)
+          create_with = scope.scope_for_create
+          create_with.each { |att,value| self.respond_to?(:"#{att}=") && self.send("#{att}=", value) } if create_with
+        end
       end
   end
 

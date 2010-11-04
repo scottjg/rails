@@ -327,25 +327,21 @@ module ActiveRecord
       #
       # Note: SQLite doesn't support index length
       def add_index(table_name, column_name, options = {})
-        options[:name] = options[:name].to_s if options.key?(:name)
-
         column_names = Array.wrap(column_name)
         index_name   = index_name(table_name, :column => column_names)
 
         if Hash === options # legacy support, since this param was a string
           index_type = options[:unique] ? "UNIQUE" : ""
-          index_name = options[:name] || index_name
+          index_name = options[:name].to_s if options.key?(:name)
         else
           index_type = options
         end
 
         if index_name.length > index_name_length
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{index_name_length} characters. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{index_name_length} characters"
         end
         if index_name_exists?(table_name, index_name, false)
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' already exists. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
         end
         quoted_column_names = quoted_columns_for_index(column_names, options).join(", ")
 
@@ -365,8 +361,7 @@ module ActiveRecord
       def remove_index(table_name, options = {})
         index_name = index_name(table_name, options)
         unless index_name_exists?(table_name, index_name, true)
-          @logger.warn("Index name '#{index_name}' on table '#{table_name}' does not exist. Skipping.")
-          return
+          raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' does not exist"
         end
         remove_index!(table_name, index_name)
       end
@@ -407,6 +402,7 @@ module ActiveRecord
       # as there's no way to determine the correct answer in that case.
       def index_name_exists?(table_name, index_name, default)
         return default unless respond_to?(:indexes)
+        index_name = index_name.to_s
         indexes(table_name).detect { |i| i.name == index_name }
       end
 

@@ -69,6 +69,24 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_use_table_engine_for_quoting_where
+    relation = Topic.where(Topic.arel_table[:id].eq(1))
+    engine = relation.table.engine
+
+    fakepool = Class.new(Struct.new(:spec)) {
+      def with_connection; yield self; end
+      def connection_pool; self; end
+      def quote_table_name(*args); raise "lol quote_table_name"; end
+    }
+
+    relation.table.engine = fakepool.new(engine.connection_pool.spec)
+
+    error = assert_raises(RuntimeError) { relation.to_a }
+    assert_match('lol', error.message)
+  ensure
+    relation.table.engine = engine
+  end
+
   def test_preserving_time_objects
     assert_kind_of(
       Time, Topic.find(1).bonus_time,
@@ -909,9 +927,13 @@ class BasicsTest < ActiveRecord::TestCase
   MyObject = Struct.new :attribute1, :attribute2
 
   def test_serialized_attribute
+    Topic.serialize("content", MyObject)
+
     myobj = MyObject.new('value1', 'value2')
     topic = Topic.create("content" => myobj)
-    Topic.serialize("content", MyObject)
+    assert_equal(myobj, topic.content)
+
+    topic.reload
     assert_equal(myobj, topic.content)
   end
 
@@ -1139,18 +1161,18 @@ class BasicsTest < ActiveRecord::TestCase
     scoped_developers = Developer.send(:with_scope, :find => { :limit => 1 }) do
       Developer.find(:all, :order => 'salary DESC')
     end
-    # Test scope order + find order, find has priority
+    # Test scope order + find order, order has priority
     scoped_developers = Developer.send(:with_scope, :find => { :limit => 3, :order => 'id DESC' }) do
       Developer.find(:all, :order => 'salary ASC')
     end
     assert scoped_developers.include?(developers(:poor_jamis))
-    assert scoped_developers.include?(developers(:david))
+    assert ! scoped_developers.include?(developers(:david))
     assert ! scoped_developers.include?(developers(:jamis))
     assert_equal 3, scoped_developers.size
 
     # Test without scoped find conditions to ensure we get the right thing
-    developers = Developer.find(:all, :order => 'id', :limit => 1)
-    assert scoped_developers.include?(developers(:david))
+    assert ! scoped_developers.include?(Developer.find(1))
+    assert scoped_developers.include?(Developer.find(11))
   end
 
   def test_scoped_find_limit_offset_including_has_many_association
@@ -1413,6 +1435,22 @@ class BasicsTest < ActiveRecord::TestCase
     assert_raises NoMethodError do
       ActiveRecord::Base.send :compute_type, 'InvalidModel'
     end
+  end
+
+  def test_default_scope_is_reset
+    Object.const_set :UnloadablePost, Class.new(ActiveRecord::Base)
+    UnloadablePost.table_name = 'posts'
+    UnloadablePost.class_eval do
+      default_scope order('posts.comments_count ASC')
+    end
+    UnloadablePost.scoped_methods # make Thread.current[:UnloadablePost_scoped_methods] not nil
+
+    UnloadablePost.unloadable
+    assert_not_nil Thread.current[:UnloadablePost_scoped_methods]
+    ActiveSupport::Dependencies.remove_unloadable_constants!
+    assert_nil Thread.current[:UnloadablePost_scoped_methods]
+  ensure
+    Object.class_eval{ remove_const :UnloadablePost } if defined?(UnloadablePost)
   end
 
   protected

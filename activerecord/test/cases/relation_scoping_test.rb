@@ -161,7 +161,7 @@ class NestedRelationScopingTest < ActiveRecord::TestCase
   def test_merge_inner_scope_has_priority
     Developer.limit(5).scoping do
       Developer.limit(10).scoping do
-        assert_equal 10, Developer.count
+        assert_equal 10, Developer.all.size
       end
     end
   end
@@ -363,14 +363,32 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal "David", klass.first.name
     assert_equal 100000,  klass.first.salary
   end
+
+  def test_default_scope_called_twice_in_different_place_merges_where_clause
+    Developer.destroy_all
+    Developer.create!(:name => "David", :salary => 80000)
+    Developer.create!(:name => "David", :salary => 100000)
+    Developer.create!(:name => "Brian", :salary => 100000)
+
+    klass = Class.new(Developer)
+    klass.class_eval do
+      default_scope where("name = 'David'")
+      default_scope where("salary = 100000")
+    end
+
+    assert_equal 1,       klass.count
+    assert_equal "David", klass.first.name
+    assert_equal 100000,  klass.first.salary
+  end
+
   def test_method_scope
-    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.salary }
+    expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.salary }
     received = DeveloperOrderedBySalary.all_ordered_by_name.collect { |dev| dev.salary }
     assert_equal expected, received
   end
 
   def test_nested_scope
-    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.salary }
+    expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.salary }
     received = DeveloperOrderedBySalary.send(:with_scope, :find => { :order => 'name DESC'}) do
       DeveloperOrderedBySalary.find(:all).collect { |dev| dev.salary }
     end
@@ -378,15 +396,35 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_named_scope_overwrites_default
-    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.name }
+    expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.name }
     received = DeveloperOrderedBySalary.by_name.find(:all).collect { |dev| dev.name }
     assert_equal expected, received
   end
 
-  def test_named_scope_reorders_default
-    expected = Developer.find(:all, :order => 'name DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.reordered_by_name.find(:all).collect { |dev| dev.name }
+  def test_reorder_overrides_default_scope_order
+    assert_deprecated do
+      expected = Developer.order('name DESC').collect { |dev| dev.name }
+      received = DeveloperOrderedBySalary.reorder('name DESC').collect { |dev| dev.name }
+      assert_equal expected, received
+    end
+  end
+
+  def test_except_and_order_overrides_default_scope_order
+    expected = Developer.order('name DESC').collect { |dev| dev.name }
+    received = DeveloperOrderedBySalary.except(:order).order('name DESC').collect { |dev| dev.name }
     assert_equal expected, received
+  end
+
+  def test_except_and_order_overrides_default_scope_order
+    expected = Developer.order('name DESC').collect { |dev| dev.name }
+    received = DeveloperOrderedBySalary.except(:order).order('name DESC').collect { |dev| dev.name }
+    assert_equal expected, received
+  end
+
+  def test_reordered_scope_overrides_default_scope_order
+    not_expected = DeveloperOrderedBySalary.first # Jamis -> name DESC
+    received = DeveloperOrderedBySalary.reordered_by_name.first # David -> name
+    assert not_expected.id != received.id
   end
 
   def test_nested_exclusive_scope
@@ -397,8 +435,8 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal expected, received
   end
 
-  def test_overwriting_default_scope
-    expected = Developer.find(:all, :order => 'salary').collect { |dev| dev.salary }
+  def test_order_in_default_scope_should_prevail
+    expected = Developer.find(:all, :order => 'salary desc').collect { |dev| dev.salary }
     received = DeveloperOrderedBySalary.find(:all, :order => 'salary').collect { |dev| dev.salary }
     assert_equal expected, received
   end
@@ -417,5 +455,11 @@ class DefaultScopingTest < ActiveRecord::TestCase
   def test_create_attribute_overwrites_default_values
     assert_equal nil, PoorDeveloperCalledJamis.create!(:salary => nil).salary
     assert_equal 50000, PoorDeveloperCalledJamis.create!(:name => 'David').salary
+  end
+
+  def test_scope_composed_by_limit_and_then_offset_is_equal_to_scope_composed_by_offset_and_then_limit
+    posts_limit_offset = Post.limit(3).offset(2)
+    posts_offset_limit = Post.offset(2).limit(3)
+    assert_equal posts_limit_offset, posts_offset_limit
   end
 end

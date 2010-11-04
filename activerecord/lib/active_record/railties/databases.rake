@@ -45,8 +45,8 @@ namespace :db do
             # Create the SQLite database
             ActiveRecord::Base.establish_connection(config)
             ActiveRecord::Base.connection
-          rescue
-            $stderr.puts $!, *($!.backtrace)
+          rescue Exception => e
+            $stderr.puts e, *(e.backtrace)
             $stderr.puts "Couldn't create database for #{config.inspect}"
           end
         end
@@ -86,13 +86,13 @@ namespace :db do
           end
         end
       when 'postgresql'
-        @encoding = config[:encoding] || ENV['CHARSET'] || 'utf8'
+        @encoding = config['encoding'] || ENV['CHARSET'] || 'utf8'
         begin
           ActiveRecord::Base.establish_connection(config.merge('database' => 'postgres', 'schema_search_path' => 'public'))
           ActiveRecord::Base.connection.create_database(config['database'], config.merge('encoding' => @encoding))
           ActiveRecord::Base.establish_connection(config)
-        rescue
-          $stderr.puts $!, *($!.backtrace)
+        rescue Exception => e
+          $stderr.puts e, *(e.backtrace)
           $stderr.puts "Couldn't create database for #{config.inspect}"
         end
       end
@@ -335,7 +335,7 @@ namespace :db do
       if File.exists?(file)
         load(file)
       else
-        abort %{#{file} doesn't exist yet. Run "rake db:migrate" to create it then try again. If you do not intend to use a database, you should instead alter #{Rails.root}/config/boot.rb to limit the frameworks that will be loaded}
+        abort %{#{file} doesn't exist yet. Run "rake db:migrate" to create it then try again. If you do not intend to use a database, you should instead alter #{Rails.root}/config/application.rb to limit the frameworks that will be loaded}
       end
     end
   end
@@ -369,7 +369,7 @@ namespace :db do
         db_string = firebird_db_string(abcs[Rails.env])
         sh "isql -a #{db_string} > #{Rails.root}/db/#{Rails.env}_structure.sql"
       else
-        raise "Task not supported by '#{abcs["test"]["adapter"]}'"
+        raise "Task not supported by '#{abcs[Rails.env]["adapter"]}'"
       end
 
       if ActiveRecord::Base.connection.supports_migrations?

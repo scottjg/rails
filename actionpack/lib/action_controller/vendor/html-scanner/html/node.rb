@@ -38,18 +38,14 @@ module HTML #:nodoc:
     private
 
       def keys_to_strings(hash)
-        hash.keys.inject({}) do |h,k|
-          h[k.to_s] = hash[k]
-          h
-        end
+        Hash[hash.keys.map {|k| [k.to_s, hash[k]]}]
       end
 
       def keys_to_symbols(hash)
-        hash.keys.inject({}) do |h,k|
+        Hash[hash.keys.map do |k|
           raise "illegal key #{k.inspect}" unless k.respond_to?(:to_sym)
-          h[k.to_sym] = hash[k]
-          h
-        end
+          [k.to_sym, hash[k]]
+        end]
       end
   end
 
@@ -77,9 +73,7 @@ module HTML #:nodoc:
 
     # Return a textual representation of the node.
     def to_s
-      s = ""
-      @children.each { |child| s << child.to_s }
-      s
+      @children.join()
     end
 
     # Return false (subclasses must override this to provide specific matching
