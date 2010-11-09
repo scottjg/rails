@@ -1859,6 +1859,10 @@ MSG
     include Aggregations, Transactions, Reflection, Serialization
 
     NilClass.add_whiner(self) if NilClass.respond_to?(:add_whiner)
+
+    # UniqueConstraints needs to be included after Transactions, because we need #save_with_unique_constraints
+    # to rescue after the transaction has been resolved for postgres.
+    include UniqueConstraints
   end
 end
 

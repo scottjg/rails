@@ -78,6 +78,7 @@ module ActiveRecord
     autoload :SessionStore
     autoload :Timestamp
     autoload :Transactions
+    autoload :UniqueConstraints, 'active_record/unique_constraints'
     autoload :Validations
   end
 
