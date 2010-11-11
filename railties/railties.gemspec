@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
 
-  s.files = FileList[
+  s.files = [
     '[a-zA-Z]*',
     'bin/**/*', 
     'builtin/**/*',
@@ -32,7 +32,7 @@ Gem::Specification.new do |s|
     'generators/**/*', 
     'html/**/*', 
     'lib/**/*'
-  ] - [ 'test' ]
+  ].map {|globber| Dir.glob(globber) }.flatten - [ 'test' ]
   s.require_path = 'lib'
   s.bindir = "bin"                               # Use these for applications.
   s.executables = ["rails"]
