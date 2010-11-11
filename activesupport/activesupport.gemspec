@@ -1,5 +1,3 @@
-require 'rubygems'
-
 require File.join(File.dirname(__FILE__), 'lib', 'active_support', 'version')
 
 Gem::Specification.new do |s|

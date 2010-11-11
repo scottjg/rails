@@ -1,5 +1,3 @@
-require 'rubygems'
-
 require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
 fixtures = File.join(File.dirname(__FILE__), 'test', 'fixtures')
 
