@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.rubyforge_project = "actionmailer"
   s.homepage = "http://www.rubyonrails.org"
 
-  s.add_dependency('actionpack', '= 2.3.9')
+  s.add_dependency('actionpack', '= 2.3.10')
 
   s.has_rdoc = true
   s.requirements << 'none'

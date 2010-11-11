@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.has_rdoc = true
   s.requirements << 'none'
 
-  s.add_dependency('activesupport', '= 2.3.9')
+  s.add_dependency('activesupport', '= 2.3.10')
   s.add_dependency('rack', '~> 1.1.0')
 
   s.require_path = 'lib'
