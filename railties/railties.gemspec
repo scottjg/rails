@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.add_dependency('activerecord',     '= 2.3.10')
   s.add_dependency('actionpack',       '= 2.3.10')
   s.add_dependency('actionmailer',     '= 2.3.10')
-  # s.add_dependency('activeresource',   '= 2.3.10')
+  s.add_dependency('activeresource',   '= 2.3.10')
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
