@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
+version = "2.3.10"
 
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
@@ -11,11 +11,11 @@ Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3')
-  s.add_dependency('activesupport',    '= 2.3.10')
-  s.add_dependency('activerecord',     '= 2.3.10')
-  s.add_dependency('actionpack',       '= 2.3.10')
-  s.add_dependency('actionmailer',     '= 2.3.10')
-  s.add_dependency('activeresource',   '= 2.3.10')
+  s.add_dependency('activesupport',    "= #{version}")
+  s.add_dependency('activerecord',     "= #{version}")
+  s.add_dependency('actionpack',       "= #{version}")
+  s.add_dependency('actionmailer',     "= #{version}")
+  s.add_dependency('activeresource',   "= #{version}")
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
