@@ -1,10 +1,10 @@
-require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
 fixtures = File.join(File.dirname(__FILE__), 'test', 'fixtures')
+version = "2.3.10"
 
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'activerecord'
-  s.version = ActiveRecord::VERSION::STRING
+  s.version = version
   s.summary = "Implements the ActiveRecord pattern for ORM."
   s.description = %q{Implements the ActiveRecord pattern (Fowler, PoEAA) for ORM. It ties database tables and classes together for business objects, like Customer or Subscription, that can find, save, and destroy themselves without resorting to manual SQL.}
 
@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
     s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   end
 
-  s.add_dependency('activesupport', '= 2.3.10')
+  s.add_dependency('activesupport', "= #{version}")
 
   s.files.delete fixtures + "/fixture_database.sqlite"
   s.files.delete fixtures + "/fixture_database_2.sqlite"
