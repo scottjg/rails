@@ -2,7 +2,7 @@ require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = 'rails'
+  s.name = 'railties'
   s.version = Rails::VERSION::STRING
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
