@@ -63,6 +63,25 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
     assert posts(:thinking).reload.people(true).include?(new_person)
   end
+  
+  def test_associating_existing_twice
+    assert_queries(2) { posts(:thinking); people(:david) }
+
+    assert_equal posts(:thinking).people.count,0
+    assert_equal posts(:thinking).people.map(&:id).count,0
+
+    2.times do |i|
+      puts (posts(:thinking).people << people(:david)).inspect
+    end
+    
+    people = posts(:thinking).people
+    assert_equal people(:david), people[0]
+    assert_equal people(:david), people[1]
+    assert_equal 2, posts(:thinking).people.count
+    assert_equal 2, posts(:thinking).people.map(&:id).count
+
+    assert posts(:thinking).reload.people(true).include?(people(:david))
+  end
 
   def test_associate_new_by_building
     assert_queries(1) { posts(:thinking) }

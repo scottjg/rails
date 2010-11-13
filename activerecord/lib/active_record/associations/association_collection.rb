@@ -470,7 +470,7 @@ module ActiveRecord
           callback(:before_add, record)
           yield(record) if block_given?
           @target ||= [] unless loaded?
-          if index = @target.index(record)
+          if (index = @target.index(record)) && @reflection.options[:uniq]
             @target[index] = record
           else
              @target << record
