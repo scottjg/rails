@@ -69,6 +69,8 @@ module ActiveRecord
     autoload :NamedScope
     autoload :NestedAttributes
     autoload :Observer
+    autoload :Operator
+    autoload :OperatorMethods
     autoload :Persistence
     autoload :QueryCache
     autoload :Reflection

@@ -27,6 +27,8 @@ module ActiveRecord
             attribute.in(value)
           when ActiveRecord::Base
             attribute.eq(value.quoted_id)
+          when ActiveRecord::Operator
+            attribute.send(value.operator, *value.values)
           when Class
             # FIXME: I think we need to deprecate this behavior
             attribute.eq(value.name)
