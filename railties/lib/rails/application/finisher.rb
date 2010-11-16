@@ -49,7 +49,7 @@ module Rails
       # Force routes to be loaded just at the end and add it to to_prepare callbacks
       initializer :set_routes_reloader do |app|
         reloader = lambda { app.routes_reloader.execute_if_updated }
-        reloader.call
+        reloader.call if config.action_dispatch.reload_routes
         ActionDispatch::Callbacks.to_prepare(&reloader)
       end
 
