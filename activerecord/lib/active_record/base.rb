@@ -736,15 +736,12 @@ module ActiveRecord #:nodoc:
       def lookup_ancestors #:nodoc:
         klass = self
         classes = [klass]
+        return classes if klass == ActiveRecord::Base
+
         while klass != klass.base_class
           classes << klass = klass.superclass
         end
         classes
-      rescue
-        # OPTIMIZE this rescue is to fix this test: ./test/cases/reflection_test.rb:56:in `test_human_name_for_column'
-        # Apparently the method base_class causes some trouble.
-        # It now works for sure.
-        [self]
       end
 
       # Set the i18n scope to overwrite ActiveModel.
@@ -1286,7 +1283,7 @@ MSG
         #   ["name='%s' and group_id='%s'", "foo'bar", 4]  returns  "name='foo''bar' and group_id='4'"
         def sanitize_sql_array(ary)
           statement, *values = ary
-          if values.first.is_a?(Hash) and statement =~ /:\w+/
+          if values.first.is_a?(Hash) && statement =~ /:\w+/
             replace_named_bind_variables(statement, values.first)
           elsif statement.include?('?')
             replace_bind_variables(statement, values)
