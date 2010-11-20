@@ -23,15 +23,13 @@ module ActiveSupport
 
     # Returns the backtrace after all filters and silencers has been run against it. Filters run first, then silencers.
     def clean(backtrace, kind = :silent)
-      filtered = filter(backtrace)
-
       case kind
       when :silent
-        silence(filtered)
+        silence(filter(backtrace))
       when :noise
-        noise(filtered)
+        noise(filter(backtrace))
       else
-        filtered
+        filter(backtrace)
       end
     end
 
