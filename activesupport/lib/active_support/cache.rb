@@ -57,14 +57,13 @@ module ActiveSupport
 
       case store
       when Symbol
-        store_class_name = store.to_s.camelize
         store_class =
           begin
             require "active_support/cache/#{store}"
           rescue LoadError => e
             raise "Could not find cache store adapter for #{store} (#{e})"
           else
-            ActiveSupport::Cache.const_get(store_class_name)
+            ActiveSupport::Cache.const_get(store.to_s.camelize)
           end
         store_class.new(*parameters)
       when nil
@@ -485,7 +484,7 @@ module ActiveSupport
         # called. If the key is a Hash, then keys will be sorted alphabetically.
         def expanded_key(key) # :nodoc:
           if key.respond_to?(:cache_key)
-            key = key.cache_key.to_s
+            key.cache_key.to_s
           elsif key.is_a?(Array)
             if key.size > 1
               key.collect{|element| expanded_key(element)}.to_param
@@ -493,19 +492,17 @@ module ActiveSupport
               key.first.to_param
             end
           elsif key.is_a?(Hash)
-            key = key.to_a.sort{|a,b| a.first.to_s <=> b.first.to_s}.collect{|k,v| "#{k}=#{v}"}.to_param
+            key.to_a.sort{|a,b| a.first.to_s <=> b.first.to_s}.collect{|k,v| "#{k}=#{v}"}.to_param
           else
-            key = key.to_param
+            key.to_param
           end
         end
 
         # Prefix a key with the namespace. Namespace and key will be delimited with a colon.
         def namespaced_key(key, options)
-          key = expanded_key(key)
           namespace = options[:namespace] if options
           prefix = namespace.is_a?(Proc) ? namespace.call : namespace
-          key = "#{prefix}:#{key}" if prefix
-          key
+          prefix ? "#{prefix}:#{expanded_key(key)}" : expanded_key(key)
         end
 
         def instrument(operation, key, options = nil)
@@ -589,11 +586,7 @@ module ActiveSupport
       # Check if the entry is expired. The +expires_in+ parameter can override the
       # value set when the entry was created.
       def expired?
-        if @expires_in && @created_at + @expires_in <= Time.now.to_f
-          true
-        else
-          false
-        end
+        !@expires_in.nil? && @created_at + @expires_in <= Time.now.to_f
       end
 
       # Set a new time when the entry will expire.
