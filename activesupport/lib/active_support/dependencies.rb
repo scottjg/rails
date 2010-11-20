@@ -410,10 +410,7 @@ module ActiveSupport #:nodoc:
     # Does the provided path_suffix correspond to an autoloadable module?
     # Instead of returning a boolean, the autoload base for this module is returned.
     def autoloadable_module?(path_suffix)
-      autoload_paths.each do |load_path|
-        return load_path if File.directory? File.join(load_path, path_suffix)
-      end
-      nil
+      autoload_paths.detect { |load_path| File.directory? File.join(load_path, path_suffix) }
     end
 
     def load_once_path?(path)
