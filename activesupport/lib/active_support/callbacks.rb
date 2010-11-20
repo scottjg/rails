@@ -161,11 +161,9 @@ module ActiveSupport
       end
 
       def _compile_per_key_options
-        key_options  = _compile_options(@per_key)
-
         @klass.class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
           def _one_time_conditions_valid_#{@callback_id}?
-            true #{key_options[0]}
+            true #{_compile_options(@per_key)[0]}
           end
         RUBY_EVAL
       end
@@ -321,8 +319,7 @@ module ActiveSupport
           RUBY_EVAL
         elsif filter.respond_to?(:before) && filter.respond_to?(:after) && kind == :around
           def filter.around(context)
-            should_continue = before(context)
-            yield if should_continue
+            yield if before(context)
             after(context)
           end
         end
@@ -388,8 +385,6 @@ module ActiveSupport
       # key. See #define_callbacks for more information.
       #
       def __define_runner(symbol) #:nodoc:
-        body = send("_#{symbol}_callbacks").compile(nil)
-
         silence_warnings do
           undef_method "_run_#{symbol}_callbacks" if method_defined?("_run_#{symbol}_callbacks")
           class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
@@ -403,7 +398,7 @@ module ActiveSupport
 
                 send(name, &blk)
               else
-                #{body}
+                #{send("_#{symbol}_callbacks").compile(nil)}
               end
             end
             private :_run_#{symbol}_callbacks
@@ -436,8 +431,7 @@ module ActiveSupport
         filters.unshift(block) if block
 
         ([self] + ActiveSupport::DescendantsTracker.descendants(self)).each do |target|
-          chain = target.send("_#{name}_callbacks")
-          yield target, chain.dup, type, filters, options
+          yield target, send("_#{name}_callbacks").dup, type, filters, options
           target.__define_runner(name)
         end
       end
