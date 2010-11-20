@@ -65,7 +65,7 @@ module ActiveSupport
   # these from +Host+ directly including +Foo+ in +Bar+:
   #
   #   module Bar
-  #     include Foo 
+  #     include Foo
   #     def self.included(base)
   #       base.method_injected_by_foo
   #     end
@@ -112,7 +112,7 @@ module ActiveSupport
     def append_features(base)
       if base.instance_variable_defined?("@_dependencies")
         base.instance_variable_get("@_dependencies") << self
-        return false
+        false
       else
         return false if base < self
         @_dependencies.each { |dep| base.send(:include, dep) }
