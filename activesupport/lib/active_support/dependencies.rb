@@ -296,8 +296,7 @@ module ActiveSupport #:nodoc:
     end
 
     def depend_on(file_name, swallow_load_errors = false, message = "No such file to load -- %s.rb")
-      path = search_for_file(file_name)
-      require_or_load(path || file_name)
+      require_or_load(search_for_file(file_name) || file_name)
     rescue LoadError => load_error
       unless swallow_load_errors
         if file_name = load_error.message[/ -- (.*?)(\.rb)?$/, 1]
@@ -321,7 +320,7 @@ module ActiveSupport #:nodoc:
       log_call file_name, const_path
       file_name = $1 if file_name =~ /^(.*)\.rb$/
       expanded = File.expand_path(file_name)
-      return if loaded.include?(expanded)
+      return if loaded.include?(File.expand_path(file_name))
 
       # Record that we've seen this file *before* loading it to avoid an
       # infinite loop with mutual dependencies.
@@ -334,9 +333,9 @@ module ActiveSupport #:nodoc:
           # Enable warnings iff this file has not been loaded before and
           # warnings_on_first_load is set.
           load_args = ["#{file_name}.rb"]
-          load_args << const_path unless const_path.nil?
+          load_args << const_path if const_path
 
-          if !warnings_on_first_load or history.include?(expanded)
+          if !warnings_on_first_load || history.include?(expanded)
             result = load_file(*load_args)
           else
             enable_warnings { result = load_file(*load_args) }
@@ -352,14 +351,12 @@ module ActiveSupport #:nodoc:
 
       # Record history *after* loading so first load gets warnings.
       history << expanded
-      return result
+      result
     end
 
     # Is the provided constant path defined?
     def qualified_const_defined?(path)
-      names = path.sub(/^::/, '').to_s.split('::')
-
-      names.inject(Object) do |mod, name|
+      path.sub(/^::/, '').to_s.split('::').inject(Object) do |mod, name|
         return false unless local_const_defined?(mod, name)
         mod.const_get name
       end
