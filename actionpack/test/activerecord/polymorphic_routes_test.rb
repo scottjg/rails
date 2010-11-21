@@ -510,5 +510,323 @@ class PolymorphicRoutesTest < ActionController::TestCase
       yield
     end
   end
+end
 
+class ExtProject < Project; end
+class ExtTask < Task; end
+class ExtStep < Step; end
+
+class PolymorphicRoutesWithStiFallbacksTest < ActionController::TestCase
+  include ActionDispatch::Routing::PolymorphicRoutes
+
+  attr_reader :view, :project, :ext_project, :task, :ext_task, :step, :ext_step
+
+  def setup
+    @view = ActionView::Base.new('')
+    @project = Project.create
+    @ext_project = ExtProject.create
+    @task = Task.create
+    @ext_task = ExtTask.create
+    @step = Step.create
+    @ext_step = ExtStep.create
+    super
+  end
+
+  def teardown
+    NamedRouteCall.cache.clear
+    super
+  end
+
+  test '1 1 1: uses admin_ext_project_ext_task_ext_steps_url if defined (with class)' do
+    view.expects(:admin_ext_project_ext_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '1 1 1: uses admin_ext_project_ext_task_ext_steps_url if defined (with new record)' do
+    view.expects(:admin_ext_project_ext_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '1 1 1: uses admin_ext_project_ext_task_ext_step_url if defined' do
+    view.expects(:admin_ext_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '1 1 1: uses new_admin_ext_project_ext_task_ext_step_url if defined (with class)' do
+    view.expects(:new_admin_ext_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '1 1 1: uses new_admin_ext_project_ext_task_ext_step_url if defined (with new record)' do
+    view.expects(:new_admin_ext_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '1 1 1: uses new_admin_ext_project_ext_task_ext_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_ext_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '1 1 1: uses edit_admin_ext_project_ext_task_ext_step_url if defined' do
+    view.expects(:edit_admin_ext_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '1 1 0: uses admin_ext_project_ext_task_steps_url if defined (with class)' do
+    view.expects(:admin_ext_project_ext_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '1 1 0: uses admin_ext_project_ext_task_steps_url if defined (with new record)' do
+    view.expects(:admin_ext_project_ext_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '1 1 0: uses admin_ext_project_ext_task_step_url if defined' do
+    view.expects(:admin_ext_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '1 1 0: uses new_admin_ext_project_ext_task_step_url if defined (with class)' do
+    view.expects(:new_admin_ext_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '1 1 0: uses new_admin_ext_project_ext_task_step_url if defined (with new record)' do
+    view.expects(:new_admin_ext_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '1 1 0: uses new_admin_ext_project_ext_task_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_ext_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '1 1 0: uses edit_admin_ext_project_ext_task_step_url if defined' do
+    view.expects(:edit_admin_ext_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '1 0 1: uses admin_ext_project_task_ext_steps_url if defined (with class)' do
+    view.expects(:admin_ext_project_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '1 0 1: uses admin_ext_project_task_ext_steps_url if defined (with new record)' do
+    view.expects(:admin_ext_project_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '1 0 1: uses admin_ext_project_task_ext_step_url if defined' do
+    view.expects(:admin_ext_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '1 0 1: uses new_admin_ext_project_task_ext_step_url if defined (with class)' do
+    view.expects(:new_admin_ext_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '1 0 1: uses new_admin_ext_project_task_ext_step_url if defined (with new record)' do
+    view.expects(:new_admin_ext_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '1 0 1: uses new_admin_ext_project_task_ext_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_ext_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '1 0 1: uses edit_admin_ext_project_task_ext_step_url if defined' do
+    view.expects(:edit_admin_ext_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '1 0 0: uses admin_ext_project_task_steps_url if defined (with class)' do
+    view.expects(:admin_ext_project_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '1 0 0: uses admin_ext_project_task_steps_url if defined (with new record)' do
+    view.expects(:admin_ext_project_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '1 0 0: uses admin_ext_project_task_step_url if defined' do
+    view.expects(:admin_ext_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '1 0 0: uses new_admin_ext_project_task_step_url if defined (with class)' do
+    view.expects(:new_admin_ext_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '1 0 0: uses new_admin_ext_project_task_step_url if defined (with new record)' do
+    view.expects(:new_admin_ext_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '1 0 0: uses new_admin_ext_project_task_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_ext_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '1 0 0: uses edit_admin_ext_project_task_step_url if defined' do
+    view.expects(:edit_admin_ext_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '0 1 1: uses admin_project_ext_task_ext_steps_url if defined (with class)' do
+    view.expects(:admin_project_ext_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '0 1 1: uses admin_project_ext_task_ext_steps_url if defined (with new record)' do
+    view.expects(:admin_project_ext_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '0 1 1: uses admin_project_ext_task_ext_step_url if defined' do
+    view.expects(:admin_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '0 1 1: uses new_admin_project_ext_task_ext_step_url if defined (with class)' do
+    view.expects(:new_admin_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '0 1 1: uses new_admin_project_ext_task_ext_step_url if defined (with new record)' do
+    view.expects(:new_admin_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '0 1 1: uses new_admin_project_ext_task_ext_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '0 1 1: uses edit_admin_project_ext_task_ext_step_url if defined' do
+    view.expects(:edit_admin_project_ext_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '0 1 0: uses admin_project_ext_task_steps_url if defined (with class)' do
+    view.expects(:admin_project_ext_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '0 1 0: uses admin_project_ext_task_steps_url if defined (with new record)' do
+    view.expects(:admin_project_ext_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '0 1 0: uses admin_project_ext_task_step_url if defined' do
+    view.expects(:admin_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '0 1 0: uses new_admin_project_ext_task_step_url if defined (with class)' do
+    view.expects(:new_admin_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '0 1 0: uses new_admin_project_ext_task_step_url if defined (with new record)' do
+    view.expects(:new_admin_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '0 1 0: uses new_admin_project_ext_task_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '0 1 0: uses edit_admin_project_ext_task_step_url if defined' do
+    view.expects(:edit_admin_project_ext_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '0 0 1: uses admin_project_task_ext_steps_url if defined (with class)' do
+    view.expects(:admin_project_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '0 0 1: uses admin_project_task_ext_steps_url if defined (with new record)' do
+    view.expects(:admin_project_task_ext_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '0 0 1: uses admin_project_task_ext_step_url if defined' do
+    view.expects(:admin_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '0 0 1: uses new_admin_project_task_ext_step_url if defined (with class)' do
+    view.expects(:new_admin_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '0 0 1: uses new_admin_project_task_ext_step_url if defined (with new record)' do
+    view.expects(:new_admin_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '0 0 1: uses new_admin_project_task_ext_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '0 0 1: uses edit_admin_project_task_ext_step_url if defined' do
+    view.expects(:edit_admin_project_task_ext_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test '0 0 0: uses admin_project_task_steps_url if defined (with class)' do
+    view.expects(:admin_project_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep])
+  end
+
+  test '0 0 0: uses admin_project_task_steps_url if defined (with new record)' do
+    view.expects(:admin_project_task_steps_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new])
+  end
+
+  test '0 0 0: uses admin_project_task_step_url if defined' do
+    view.expects(:admin_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step])
+  end
+
+  test '0 0 0: uses new_admin_project_task_step_url if defined (with class)' do
+    view.expects(:new_admin_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep], :action => :new)
+  end
+
+  test '0 0 0: uses new_admin_project_task_step_url if defined (with new record)' do
+    view.expects(:new_admin_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ExtStep.new], :action => :new)
+  end
+
+  test '0 0 0: uses new_admin_project_task_step_url if defined (with persisted record)' do
+    view.expects(:new_admin_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :new)
+  end
+
+  test '0 0 0: uses edit_admin_project_task_step_url if defined' do
+    view.expects(:edit_admin_project_task_step_url)
+    view.polymorphic_url([:admin, ext_project, ext_task, ext_step], :action => :edit)
+  end
+
+
+  test 'build_named_route_call returns the default method name if no other permutation applies (will then yield the no method error in polymorphic_url)' do
+    objects = [:admin, project, task, step]
+    assert_equal 'admin_project_task_step_url', view.send(:build_named_route_call, objects, :singular)
+  end
 end
