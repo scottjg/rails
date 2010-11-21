@@ -145,32 +145,9 @@ module ActionDispatch
           options[:routing_type] || :url
         end
 
-        def build_named_route_call(records, inflection, options = {})
-          unless records.is_a?(Array)
-            record = extract_record(records)
-            route  = []
-          else
-            record = records.pop
-            route = records.map do |parent|
-              if parent.is_a?(Symbol) || parent.is_a?(String)
-                parent
-              else
-                ActiveModel::Naming.plural(parent).singularize
-              end
-            end
-          end
-
-          if record.is_a?(Symbol) || record.is_a?(String)
-            route << record
-          else
-            route << ActiveModel::Naming.plural(record)
-            route = [route.join("_").singularize] if inflection == :singular
-            route << "index" if ActiveModel::Naming.uncountable?(record) && inflection == :plural
-          end
-
-          route << routing_type(options)
-
-          action_prefix(options) + route.join("_")
+        def build_named_route_call(objects, inflection, options = {})
+          objects = objects[:id] if objects.is_a?(Hash)
+          NamedRouteCall.method_name(self, Array.wrap(objects), inflection, options)
         end
 
         def extract_record(record_or_hash_or_array)
@@ -178,6 +155,111 @@ module ActionDispatch
             when Array; record_or_hash_or_array.last
             when Hash;  record_or_hash_or_array[:id]
             else        record_or_hash_or_array
+          end
+        end
+
+        class NamedRouteCall < Array
+          mattr_accessor :cache
+          self.cache = {}
+
+          class << self
+            def method_name(view, objects, inflection, options = {})
+              key = cache_key(objects, inflection, options)
+              cache[key] ||= begin
+                NamedRouteCall.new(objects, inflection, options).detect do |method|
+                  view.respond_to?(method)
+                end
+              end
+            end
+
+            def cache_key(objects, inflection, options)
+              objects = objects + [inflection, options[:action], options[:routing_type]]
+              objects.compact.map do |object|
+                case object
+                when String, Symbol
+                  object
+                when Class
+                  object.name
+                else
+                  "<#{object.class.name}>"
+                end
+              end
+            end
+          end
+
+          attr_reader :objects, :inflection, :action_prefix, :routing_type
+
+          def initialize(objects, inflection, options = {})
+            @objects       = objects
+            @inflection    = inflection
+            @action_prefix = options[:action]
+            @routing_type  = options[:routing_type] || :url
+          end
+
+          def detect
+            while method = build
+              return method if yield(method)
+            end
+            return first
+          end
+
+          def build
+            if permutation = permutations.shift
+              self << method_name(permutation)
+              self.last
+            end
+          end
+
+          def method_name(permutation)
+            permutation = pluralize(permutation)
+            permutation << 'index' if uncountable?(permutation.last) && inflection == :plural
+            permutation.unshift(action_prefix).push(routing_type).compact.join('_')
+          end
+
+          def pluralize(objects)
+            objects.each_with_index do |object, ix|
+              objects[ix] = if Symbol === object || String === object
+                object
+              elsif ix < objects.count - 1 || inflection == :singular
+                ActiveModel::Naming.plural(object).singularize
+              else
+                ActiveModel::Naming.plural(object)
+              end
+            end
+            objects
+          end
+
+          def permutations
+            @permutations ||= if classes.size == 1
+              classes.first.map { |klass| [klass] }
+            else
+              classes.inject(classes.shift) { |a, b| a.product(b) }.map(&:flatten)
+            end
+          end
+
+          def classes
+            @classes ||= objects.map do |object|
+              case object
+              when Symbol, String
+                [object.to_s]
+              when Class
+                ancestry(object)
+              else
+                ancestry(object.class)
+              end
+            end
+          end
+
+          def ancestry(model)
+            [model].tap do |ancestry|
+              while ancestry.last.respond_to?(:superclass) && ancestry.last.superclass != ActiveRecord::Base
+                ancestry << ancestry.last.superclass
+              end
+            end
+          end
+
+          def uncountable?(string)
+            string.is_a?(String) && string.singularize == string.pluralize
           end
         end
     end
