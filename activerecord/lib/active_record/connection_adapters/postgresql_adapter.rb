@@ -107,6 +107,9 @@ module ActiveRecord
             # UUID type
             when 'uuid'
               :string
+            # TSVector type
+            when 'tsvector'
+              :tsvector
             # Small and big integer types
             when /^(?:small|big)int$/
               :integer
@@ -206,7 +209,8 @@ module ActiveRecord
         :date        => { :name => "date" },
         :binary      => { :name => "bytea" },
         :boolean     => { :name => "boolean" },
-        :xml         => { :name => "xml" }
+        :xml         => { :name => "xml" },
+        :tsvector    => { :name => "tsvector" }
       }
 
       # Returns 'PostgreSQL' as adapter name for identification purposes.
