@@ -13,6 +13,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  class FavoritesRedirector
+    def self.call(params, request)
+      request.url_with(:path => "/products/#{params.delete(:product)}", :params => params)
+    end
+  end
+
   stub_controllers do |routes|
     Routes = routes
     Routes.draw do
@@ -53,6 +59,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       match 'account/logout' => redirect("/logout"), :as => :logout_redirect
       match 'account/login', :to => redirect("/login")
       match 'secure', :to => redirect("/secure/login")
+
+      match 'mobile', :to => redirect(:subdomain => 'mobile')
+      match 'documentation', :to => redirect(:domain => 'example-documentation.com', :path => '')
+
+      match 'favorites/:product', :to => redirect(FavoritesRedirector)
 
       constraints(lambda { |req| true }) do
         match 'account/overview'
@@ -664,6 +675,27 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     with_test_routes do
       get '/account/proc_req'
       verify_redirect 'http://www.example.com/GET'
+    end
+  end
+
+  def test_redirect_hash_with_subdomain
+    with_test_routes do
+      get '/mobile'
+      verify_redirect 'http://mobile.example.com/mobile'
+    end
+  end
+
+  def test_redirect_hash_with_domain_and_path
+    with_test_routes do
+      get '/documentation'
+      verify_redirect 'http://www.example-documentation.com'
+    end
+  end
+
+  def test_redirect_class
+    with_test_routes do
+      get '/favorites/my-little-pony'
+      verify_redirect 'http://www.example.com/products/my-little-pony'
     end
   end
 

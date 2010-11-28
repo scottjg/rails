@@ -210,6 +210,25 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal "/of/some/uri",               request.path_info
   end
 
+  test "url_with" do
+    request = stub_request({
+      'HTTP_HOST' => 'rubyonrails.org:80',
+      'SCRIPT_NAME' => '',
+      'PATH_INFO' => '/path/of/some/uri',
+      'QUERY_STRING' => 'mapped=1',
+      'rack.input' => 'foo'
+    })
+
+    assert_equal "http://api.rubyonrails.org/path/of/some/uri?mapped=1", request.url_with(:subdomain => 'api')
+    assert_equal "http://ror.org/path/of/some/uri?mapped=1", request.url_with(:domain => 'ror.org')
+    assert_equal "http://rubyonrails.org?mapped=1", request.url_with(:path => '')
+    assert_equal "http://rubyonrails.org/path/of/some/uri?mapped=1#map", request.url_with(:anchor => 'map')
+    assert_equal "https://rubyonrails.org/path/of/some/uri?mapped=1", request.url_with(:protocol => 'https')
+    assert_equal "http://rubyonrails.org:8080/path/of/some/uri?mapped=1", request.url_with(:port => '8080')
+    assert_equal "http://rubyonrails.org/path/of/some/uri?rails=great", request.url_with(:params => { 'rails' => 'great' })
+
+    assert_equal "https://api.rubyonrails.org/path/of/some/uri?mapped=1", request.url_with(:subdomain => 'api', :protocol => 'https')
+  end
 
   test "host with default port" do
     request = stub_request 'HTTP_HOST' => 'rubyonrails.org:80'

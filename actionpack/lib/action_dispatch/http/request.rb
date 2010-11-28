@@ -137,6 +137,45 @@ module ActionDispatch
       super + fullpath
     end
 
+    # Returns the complete URL with parts of the url changed based on the options
+    # passed in:
+    # * <tt>:protocol</tt> - The protocol to connect to. Defaults to 'http'.
+    # * <tt>:host</tt> - Specifies the host the link should be targeted at.
+    # * <tt>:subdomain</tt> - Specifies the subdomain of the link, using the +tld_length+
+    #   to split the domain from the host.
+    # * <tt>:domain</tt> - Specifies the domain of the link, using the +tld_length+
+    #   to split the subdomain from the host.
+    # * <tt>:tld_length</tt> - Number of labels the TLD id composed of, only used if
+    #   <tt>:subdomain</tt> or <tt>:domain</tt> are supplied. Defaults to
+    #   <tt>ActionDispatch::Http::URL.tld_length</tt>, which in turn defaults to 1.
+    # * <tt>:port</tt> - Optionally specify the port to connect to.
+    # * <tt>:anchor</tt> - An anchor name to be appended to the path.
+    def url_with(options = {})
+      host_string = options[:host] || host
+
+      computed_host = nil
+      if options[:subdomain] || options[:domain]
+        tld_length = options[:tld_length] || ActionDispatch::Http::URL.tld_length
+        parts = []
+        parts << (options[:subdomain] || ActionDispatch::Http::URL.extract_subdomain(host_string, tld_length))
+        parts << (options[:domain] || ActionDispatch::Http::URL.extract_domain(host_string, tld_length))
+        computed_host = parts.reject { |part| part.blank? }.join('.')
+      end
+
+      params = options[:params] || parameters.except(:action, :controller)
+      params.reject! {|k,v| !v }
+
+      url = ""
+      url << (options[:protocol] || protocol)
+      url << "://" unless url.match("://")
+      url << (computed_host      || host_string)
+      url << (options[:port] ? ":#{options[:port]}" : port_string)
+      url << (options[:path]     || path_info)
+      url << "?#{params.to_query}" unless params.empty?
+      url << (options[:anchor] ? "##{options[:anchor]}" : '')
+      url
+    end
+
     def forgery_whitelisted?
       get? || xhr? || content_mime_type.nil? || !content_mime_type.verify_request?
     end
