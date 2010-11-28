@@ -25,9 +25,9 @@ module ActionDispatch
       end
 
 
-      # Returns the complete URL used for this request.
+      # Returns the protocol, host and post.
       def url
-        protocol + host_with_port + fullpath
+        protocol + host_with_port
       end
 
       # Returns 'https://' if this is an SSL request and 'http://' otherwise.

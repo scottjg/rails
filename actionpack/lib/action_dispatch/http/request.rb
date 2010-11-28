@@ -132,6 +132,11 @@ module ActionDispatch
       @fullpath ||= super
     end
 
+    # Returns the complete URL used for this request.
+    def url
+      super + fullpath
+    end
+
     def forgery_whitelisted?
       get? || xhr? || content_mime_type.nil? || !content_mime_type.verify_request?
     end
