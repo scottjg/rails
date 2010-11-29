@@ -66,6 +66,18 @@ module ActionDispatch
             end
 
             @options.merge!(default_controller_and_action(to_shorthand))
+
+            requirements.each do |name, requirement|
+              # segment_keys.include?(k.to_s) || k == :controller
+              next unless Regexp === requirement && !constraints[name]
+
+              if requirement.source =~ %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
+                raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
+              end
+              if requirement.multiline?
+                raise ArgumentError, "Regexp multiline option not allowed in routing requirements: #{requirement.inspect}"
+              end
+            end
           end
 
           # match "account/overview"
@@ -113,15 +125,6 @@ module ActionDispatch
             @requirements ||= (@options[:constraints].is_a?(Hash) ? @options[:constraints] : {}).tap do |requirements|
               requirements.reverse_merge!(@scope[:constraints]) if @scope[:constraints]
               @options.each { |k, v| requirements[k] = v if v.is_a?(Regexp) }
-
-              requirements.each do |_, requirement|
-                if requirement.source =~ %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
-                  raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
-                end
-                if requirement.multiline?
-                  raise ArgumentError, "Regexp multiline option not allowed in routing requirements: #{requirement.inspect}"
-                end
-              end
             end
           end
 
@@ -445,8 +448,6 @@ module ActionDispatch
           super
         end
 
-        # Used to route <tt>/photos</tt> (without the prefix <tt>/admin</tt>)
-        # to Admin::PostsController:
         # === Supported options
         # [:module]
         #   If you want to route /posts (without the prefix /admin) to
@@ -552,13 +553,13 @@ module ActionDispatch
         #
         # This generates the following routes:
         #
-        #     admin_posts GET    /admin/posts(.:format)          {:action=>"index", :controller=>"admin/posts"}
-        #     admin_posts POST   /admin/posts(.:format)          {:action=>"create", :controller=>"admin/posts"}
-        #  new_admin_post GET    /admin/posts/new(.:format)      {:action=>"new", :controller=>"admin/posts"}
-        # edit_admin_post GET    /admin/posts/:id/edit(.:format) {:action=>"edit", :controller=>"admin/posts"}
-        #      admin_post GET    /admin/posts/:id(.:format)      {:action=>"show", :controller=>"admin/posts"}
-        #      admin_post PUT    /admin/posts/:id(.:format)      {:action=>"update", :controller=>"admin/posts"}
-        #      admin_post DELETE /admin/posts/:id(.:format)      {:action=>"destroy", :controller=>"admin/posts"}
+        #      admin_posts GET    /admin/posts(.:format)          {:action=>"index", :controller=>"admin/posts"}
+        #      admin_posts POST   /admin/posts(.:format)          {:action=>"create", :controller=>"admin/posts"}
+        #   new_admin_post GET    /admin/posts/new(.:format)      {:action=>"new", :controller=>"admin/posts"}
+        #  edit_admin_post GET    /admin/posts/:id/edit(.:format) {:action=>"edit", :controller=>"admin/posts"}
+        #       admin_post GET    /admin/posts/:id(.:format)      {:action=>"show", :controller=>"admin/posts"}
+        #       admin_post PUT    /admin/posts/:id(.:format)      {:action=>"update", :controller=>"admin/posts"}
+        #       admin_post DELETE /admin/posts/:id(.:format)      {:action=>"destroy", :controller=>"admin/posts"}
         # === Supported options
         #
         # The +:path+, +:as+, +:module+, +:shallow_path+ and +:shallow_prefix+ all default to the name of the namespace.
@@ -932,6 +933,22 @@ module ActionDispatch
         #   GET     /photos/:id/edit
         #   PUT     /photos/:id
         #   DELETE  /photos/:id
+        #
+        # Resources can also be nested infinitely by using this block syntax:
+        #
+        #   resources :photos do
+        #     resources :comments
+        #   end
+        #
+        # This generates the following comments routes:
+        #
+        #   GET     /photos/:id/comments/new
+        #   POST    /photos/:id/comments
+        #   GET     /photos/:id/comments/:id
+        #   GET     /photos/:id/comments/:id/edit
+        #   PUT     /photos/:id/comments/:id
+        #   DELETE  /photos/:id/comments/:id
+        #
         # === Supported options
         # [:path_names]
         #   Allows you to change the paths of the seven default actions.
@@ -940,6 +957,21 @@ module ActionDispatch
         #     resources :posts, :path_names => { :new => "brand_new" }
         #
         #   The above example will now change /posts/new to /posts/brand_new
+        #
+        # [:module]
+        #   Set the module where the controller can be found. Defaults to nothing.
+        #
+        #     resources :posts, :module => "admin"
+        #
+        #   All requests to the posts resources will now go to +Admin::PostsController+.
+        #
+        # [:path]
+        #
+        #  Set a path prefix for this resource.
+        #
+        #     resources :posts, :path => "admin"
+        #
+        #  All actions for this resource will now be at +/admin/posts+.
         def resources(*resources, &block)
           options = resources.extract_options!
 
@@ -1262,6 +1294,8 @@ module ActionDispatch
             name_prefix = @scope[:as]
 
             if parent_resource
+              return nil if as.nil? && action.nil?
+
               collection_name = parent_resource.collection_name
               member_name = parent_resource.member_name
             end
