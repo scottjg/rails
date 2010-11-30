@@ -143,7 +143,7 @@ module ActiveSupport
         end
 
         def normalized_key(key)
-          Digest::MD5.hexdigest(key)
+          Digest::SHA2.hexdigest(key)
         end
     end
   end
