@@ -1541,7 +1541,7 @@ module ActiveRecord
           :finder_sql, :counter_sql,
           :before_add, :after_add, :before_remove, :after_remove,
           :extend, :readonly,
-          :validate, :accessible
+          :validate, :accessible, :inverse_of
         ]
 
         def create_has_many_reflection(association_id, options, &extension)
@@ -1556,7 +1556,7 @@ module ActiveRecord
         @@valid_keys_for_has_one_association = [
           :class_name, :foreign_key, :remote, :select, :conditions, :order,
           :include, :dependent, :counter_cache, :extend, :as, :readonly,
-          :validate, :primary_key, :accessible
+          :validate, :primary_key, :accessible, :inverse_of
         ]
 
         def create_has_one_reflection(association_id, options)
@@ -1576,7 +1576,7 @@ module ActiveRecord
         @@valid_keys_for_belongs_to_association = [
           :class_name, :primary_key, :foreign_key, :foreign_type, :remote, :select, :conditions,
           :include, :dependent, :counter_cache, :extend, :polymorphic, :readonly,
-          :validate, :touch, :accessible
+          :validate, :touch, :accessible, :inverse_of
         ]
 
         def create_belongs_to_reflection(association_id, options)
