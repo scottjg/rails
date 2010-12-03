@@ -105,6 +105,27 @@ class QueryStringParsingTest < ActionController::IntegrationTest
     )
   end
 
+  test "query string with single quotes" do
+    assert_parses(
+      { "search" => "'keyword'" },
+      "search='keyword'"
+    )
+  end
+
+  test "query string with double quotes" do
+    assert_parses(
+      { "search" => "\"keyword\"" },
+      "search=\"keyword\""
+    )
+  end
+
+  test "query string with many quotes" do
+    assert_parses(
+      { "quote" => "\"And stop saying 'okay' all the time. Okay?\"\n\"Okay.\"\n\"Good.\"" },
+      "quote=\"And%20stop%20saying%20'okay'%20all%20the%20time.%20Okay?\"\n\"Okay.\"\n\"Good.\""
+    )
+  end
+
   private
     def assert_parses(expected, actual)
       with_routing do |set|
