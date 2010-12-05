@@ -158,7 +158,7 @@ module ActionController #:nodoc:
       if get?
         display resource
       elsif has_errors?
-        display resource.errors, :status => :unprocessable_entity
+        controller.render format => resource.errors, :status => :unprocessable_entity
       elsif post?
         display resource, :status => :created, :location => api_location
       elsif has_empty_resource_definition?
