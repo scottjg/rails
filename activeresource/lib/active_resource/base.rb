@@ -495,12 +495,25 @@ module ActiveResource
         @timeout = timeout
       end
 
+      def open_timeout=(open_timeout)
+        @connection = nil
+        @open_timeout = open_timeout
+      end
+
       # Gets the number of seconds after which requests to the REST API should time out.
       def timeout
         if defined?(@timeout)
           @timeout
         elsif superclass != Object && superclass.timeout
           superclass.timeout
+        end
+      end
+
+      def open_timeout
+        if defined?(@open_timeout)
+          @open_timeout
+        else
+          30
         end
       end
 
@@ -540,6 +553,7 @@ module ActiveResource
           @connection.password = password if password
           @connection.auth_type = auth_type if auth_type
           @connection.timeout = timeout if timeout
+          @connection.open_timeout = open_timeout if open_timeout
           @connection.ssl_options = ssl_options if ssl_options
           @connection
         else
