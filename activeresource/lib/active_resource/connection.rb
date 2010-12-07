@@ -17,7 +17,7 @@ module ActiveResource
       :head => 'Accept'
     }
 
-    attr_reader :site, :user, :password, :auth_type, :timeout, :proxy, :ssl_options
+    attr_reader :site, :user, :password, :auth_type, :timeout, :proxy, :ssl_options, :open_timeout
     attr_accessor :format
 
     class << self
@@ -34,6 +34,13 @@ module ActiveResource
       @uri_parser = URI.const_defined?(:Parser) ? URI::Parser.new : URI
       self.site = site
       self.format = format
+      @timeout = 60
+      @open_timeout = 60
+    end
+
+    # Set the number of seconds for HTTP to wait for an open socket with the server
+    def open_timeout=(timeout)
+      @open_timeout = timeout
     end
 
     # Set URI for remote service.
@@ -169,7 +176,7 @@ module ActiveResource
 
         # Net::HTTP timeouts default to 60 seconds.
         if @timeout
-          http.open_timeout = @timeout
+          http.open_timeout = @open_timeout
           http.read_timeout = @timeout
         end
 
