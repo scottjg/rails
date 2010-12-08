@@ -149,6 +149,13 @@ module ActionView
       #   fields you pass to +url_for+ or +link_to+. In particular you may pass
       #   here a named route directly as well. Defaults to the current action.
       # * <tt>:html</tt> - Optional HTML attributes for the form tag.
+      # * <tt>:emit_hidden_id</tt> - Indicates whether a hidden input field
+      #   is automatically emitted for the :id of nested models. This can be
+      #   skipped by setting this option to false, or by manually emitting a
+      #   hidden field for :id. The automatically emitted field will be appended
+      #   to the result of fields_for calls. Can be overidden for selected
+      #   nested models by specifying :emit_hidden_id when calling fields_for.
+      #   Defaults to true.
       #
       # Also note that +form_for+ doesn't create an exclusive scope. It's still
       # possible to use both the stand-alone FormHelper methods and methods
@@ -293,6 +300,31 @@ module ActionView
       #
       # If you don't need to attach a form to a model instance, then check out
       # FormTagHelper#form_tag.
+      #
+      # === Hidden id field
+      #
+      # field_for automatically appends a hidden input field for the nested
+      # model id. This can be skipped by setting the :emit_hidden_id option to
+      # false, or by manually emitting a hidden field for :id. This option can
+      # also be passed to form_for to affect all nested models. Defaults to true.
+      #
+      # The following form disables emitting for all nested models but
+      # reactivates it for tasks:
+      #
+      #   <%= form_for @person, :emit_hidden_id => false do |person_form| %>
+      #     <%= person_form.fields_for :projects do |project_fields| %>
+      #       <%= project_fields.hidden_field :id %>
+      #       Name: <%= project_fields.text_field :name %>
+      #     <% end %>
+      #
+      #     <%= person_form.fields_for :roles do |role_fields| %>
+      #       Role: <%= role_fields.text_field :name %>
+      #     <% end %>
+      #
+      #     <%= person_form.fields_for :tasks, :emit_hidden_id => true do |task_fields| %>
+      #       Task: <%= role_fields.text_field :name %>
+      #     <% end %>
+      #   <% end %>
       def form_for(record_or_name_or_array, *args, &proc)
         raise ArgumentError, "Missing block" unless block_given?
 
@@ -543,7 +575,7 @@ module ActionView
         builder = options[:builder] || ActionView::Base.default_form_builder
         builder = builder.new(object_name, object, self, options, block)
         output  = capture(builder, &block)
-        output.concat builder.hidden_field(:id) if output && options[:hidden_field_id] && !builder.emitted_hidden_id?
+        output.concat builder.hidden_field(:id) if output && options[:hidden_field_id] && builder.emit_hidden_id?
         output
       end
 
@@ -1118,6 +1150,7 @@ module ActionView
       def initialize(object_name, object, template, options, proc)
         @nested_child_index = {}
         @object_name, @object, @template, @options, @proc = object_name, object, template, options, proc
+        @emit_hidden_id = options.has_key?(:emit_hidden_id) ? !!options[:emit_hidden_id] : true
         @default_options = @options ? @options.slice(:index) : {}
         if @object_name.to_s.match(/\[\]$/)
           if object ||= @template.instance_variable_get("@#{Regexp.last_match.pre_match}") and object.respond_to?(:to_param)
@@ -1150,10 +1183,9 @@ module ActionView
           index = ""
         end
 
-        if options[:builder]
-          args << {} unless args.last.is_a?(Hash)
-          args.last[:builder] ||= options[:builder]
-        end
+        args << {} unless args.last.is_a?(Hash)
+        args.last[:builder] ||= options[:builder] if options[:builder]
+        args.last[:emit_hidden_id] = @emit_hidden_id unless args.last.has_key?(:emit_hidden_id)
 
         case record_or_name_or_array
         when String, Symbol
@@ -1188,7 +1220,7 @@ module ActionView
       end
 
       def hidden_field(method, options = {})
-        @emitted_hidden_id = true if method == :id
+        @emit_hidden_id = false if method == :id
         @template.hidden_field(@object_name, method, objectify_options(options))
       end
 
@@ -1225,8 +1257,8 @@ module ActionView
         @template.submit_tag(value, options.reverse_merge(:id => "#{object_name}_submit"))
       end
 
-      def emitted_hidden_id?
-        @emitted_hidden_id
+      def emit_hidden_id?
+        @emit_hidden_id
       end
 
       private
