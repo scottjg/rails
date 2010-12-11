@@ -426,6 +426,36 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal(expected, email_field("user", "address"))
   end
 
+  def test_date_field
+    expected = %{<input id="user_birthday" size="30" name="user[birthday]" type="date" />}
+    assert_dom_equal(expected, date_field("user", "birthday"))
+  end
+
+  def test_month_field
+    expected = %{<input id="promotion_period" size="30" name="promotion[period]" type="month" />}
+    assert_dom_equal(expected, month_field("promotion", "period"))
+  end
+
+  def test_week_field
+    expected = %{<input id="weekly_report_term" size="30" name="weekly_report[term]" type="week" />}
+    assert_dom_equal(expected, week_field("weekly_report", "term"))
+  end
+
+  def test_time_field
+    expected = %{<input id="meal_served_at" size="30" name="meal[served_at]" type="time" />}
+    assert_dom_equal(expected, time_field("meal", "served_at"))
+  end
+
+  def test_datetime_field
+    expected = %{<input id="todo_due_at" size="30" name="todo[due_at]" type="datetime" />}
+    assert_dom_equal(expected, datetime_field("todo", "due_at"))
+  end
+
+  def test_datetime_local_field
+    expected = %{<input id="event_when" size="30" name="event[when]" type="datetime-local" />}
+    assert_dom_equal(expected, datetime_local_field("event", "when"))
+  end
+
   def test_number_field
     expected = %{<input name="order[quantity]" size="30" max="9" id="order_quantity" type="number" min="1" />}
     assert_dom_equal(expected, number_field("order", "quantity", :in => 1...10))

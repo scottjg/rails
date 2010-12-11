@@ -844,6 +844,36 @@ module ActionView
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("email", options)
       end
 
+      # Returns a text_field of type "date".
+      def date_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("date", options)
+      end
+
+      # Returns a text_field of type "month".
+      def month_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("month", options)
+      end
+
+      # Returns a text_field of type "week".
+      def week_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("week", options)
+      end
+
+      # Returns a text_field of type "time".
+      def time_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("time", options)
+      end
+
+      # Returns a text_field of type "datetime".
+      def datetime_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("datetime", options)
+      end
+
+      # Returns a text_field of type "datetime-local".
+      def datetime_local_field(object_name, method, options = {})
+        InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("datetime-local", options)
+      end
+
       # Returns an input tag of type "number".
       #
       # ==== Options
