@@ -86,6 +86,7 @@ end
 
 class String
   alias safe_concat concat
+  alias safe_append= concat
 
   def as_str
     self
