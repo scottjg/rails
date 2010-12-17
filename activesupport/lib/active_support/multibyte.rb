@@ -53,5 +53,5 @@ end
 
 require 'active_support/multibyte/chars'
 require 'active_support/multibyte/exceptions'
-require 'active_support/multibyte/unicode_database'
+require 'active_support/multibyte/unicode'
 require 'active_support/multibyte/utils'
