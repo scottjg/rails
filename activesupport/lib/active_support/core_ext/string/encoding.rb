@@ -1,13 +1,15 @@
 module ActiveSupport #:nodoc:
   module CoreExtensions #:nodoc:
-    class String
-      if defined?(Encoding) && "".respond_to?(:encode)
-        def encoding_aware?
-          true
-        end
-      else
-        def encoding_aware?
-          false
+    module String
+      module Encoding
+        if defined?(Encoding) && "".respond_to?(:encode)
+          def encoding_aware?
+            true
+          end
+        else
+          def encoding_aware?
+            false
+          end
         end
       end
     end
