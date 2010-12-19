@@ -1,5 +1,3 @@
-require "active_support/multibyte"
-
 module ActiveSupport #:nodoc:
   module CoreExtensions #:nodoc:
     module String #:nodoc:
