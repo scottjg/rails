@@ -29,6 +29,14 @@ class DateExtCalculationsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_to_time_when_zone_default_is_set
+    with_env_tz 'UTC' do
+      with_tz_default ActiveSupport::TimeZone['US/Eastern'] do # UTC -5
+        assert_equal "2000-01-01 00:00:00 EST", Date.new(2000, 1, 1).to_time.strftime("%Y-%m-%d %H:%M:%S %Z")
+      end
+    end
+  end
+
   def test_to_datetime
     assert_equal DateTime.civil(2005, 2, 21), Date.new(2005, 2, 21).to_datetime
     assert_equal 0, Date.new(2005, 2, 21).to_datetime.offset # use UTC offset
