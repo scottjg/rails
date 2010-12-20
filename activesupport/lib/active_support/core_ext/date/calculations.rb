@@ -36,10 +36,11 @@ class Date
       ::Date.current.tomorrow
     end
 
-    # Returns Time.zone.today when config.time_zone is set, otherwise just returns Date.today.
+    # Returns Time.zone.today when config.time_zone is set, otherwise just returns Time.now.to_date.
     def current
-      ::Time.zone_default ? ::Time.zone.today : ::Date.today
+      ::Time.zone_default ? ::Time.zone.today : ::Time.now.to_date
     end
+    silence_warnings { alias :today :current }
   end
 
   # Returns true if the Date object's date lies in the past. Otherwise returns false.
