@@ -202,6 +202,7 @@ module ActiveRecord
               if through_reflection.options[:as] # has_many :through against a polymorphic join
                 jt_conditions <<
                 join_table["#{through_reflection.options[:as]}_type"].
+                  #in(sti_names(parent.active_record))
                   eq(parent.active_record.base_class.name)
               end
             end
@@ -229,6 +230,7 @@ module ActiveRecord
 
                 jt_conditions <<
                 join_table[reflection.source_reflection.options[:foreign_type]].
+                  #in(sti_names(reflection.options[:source_type].to_s.constantize))
                   eq(reflection.options[:source_type])
               else
                 second_key = source_reflection.primary_key_name
@@ -269,6 +271,10 @@ module ActiveRecord
               relation,
               target_table[primary_key].eq(parent_table[foreign_key])
             )
+          end
+
+          def sti_names(klass)
+            ([klass] + klass.descendants).map { |m| m.sti_name }
           end
         end
       end

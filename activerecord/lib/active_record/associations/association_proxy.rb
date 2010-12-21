@@ -176,7 +176,7 @@ module ActiveRecord
         def set_belongs_to_association_for(record)
           if @reflection.options[:as]
             record["#{@reflection.options[:as]}_id"]   = @owner.id if @owner.persisted?
-            record["#{@reflection.options[:as]}_type"] = @owner.class.base_class.name.to_s
+            record["#{@reflection.options[:as]}_type"] = @owner.class.name
           else
             if @owner.persisted?
               primary_key = @reflection.options[:primary_key] || :id

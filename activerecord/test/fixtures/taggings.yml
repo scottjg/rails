@@ -9,7 +9,7 @@ thinking_general:
   id: 2
   tag_id: 1
   taggable_id: 2
-  taggable_type: Post
+  taggable_type: SpecialPost
 
 fake:
   id: 3

@@ -25,7 +25,8 @@ module ActiveRecord
       end
 
       def construct_create_scope
-        construct_owner_attributes(@reflection)
+        {}
+        #construct_owner_attributes(@reflection)
       end
 
       def aliased_through_table
@@ -38,23 +39,29 @@ module ActiveRecord
 
       # Build SQL conditions from attributes, qualified by table name.
       def construct_conditions
-        table = aliased_through_table
-        conditions = construct_owner_attributes(@reflection.through_reflection).map do |attr, value|
-          table[attr].eq(value)
-        end
-        conditions << Arel.sql(sql_conditions) if sql_conditions
-        table.create_and(conditions)
+        conditions = construct_owner_conditions(aliased_through_table, @reflection.through_reflection)
+        conditions = conditions.and(Arel.sql(sql_conditions)) if sql_conditions
+        conditions
       end
 
-      # Associate attributes pointing to owner
-      def construct_owner_attributes(reflection)
-        if as = reflection.options[:as]
-          { "#{as}_id"   => @owner[reflection.active_record_primary_key],
-            "#{as}_type" => @owner.class.base_class.name }
-        elsif reflection.macro == :belongs_to
-          { reflection.klass.primary_key => @owner[reflection.primary_key_name] }
+      # Conditions pointing to owner
+      def construct_owner_conditions(table, reflection)
+        if reflection.macro == :belongs_to
+          table[reflection.klass.primary_key].
+          eq(@owner[reflection.primary_key_name])
         else
-          { reflection.primary_key_name => @owner[reflection.active_record_primary_key] }
+          conditions =
+            table[reflection.primary_key_name].
+            eq(@owner[reflection.active_record_primary_key])
+
+          if reflection.options[:as]
+            conditions = conditions.and(
+              table["#{reflection.options[:as]}_type"].
+              in(sti_names(@owner.class))
+            )
+          end
+
+          conditions
         end
       end
 
@@ -77,19 +84,21 @@ module ActiveRecord
           reflection_primary_key = @reflection.source_reflection.options[:primary_key] ||
                                    @reflection.klass.primary_key
           source_primary_key     = @reflection.source_reflection.primary_key_name
+
           if @reflection.options[:source_type]
-            column = @reflection.source_reflection.options[:foreign_type]
-            conditions <<
-              right[column].eq(@reflection.options[:source_type])
+            column    = @reflection.source_reflection.options[:foreign_type]
+            sti_names = sti_names(@reflection.options[:source_type].to_s.constantize)
+
+            conditions << right[column].in(sti_names)
           end
         else
           reflection_primary_key = @reflection.source_reflection.primary_key_name
           source_primary_key     = @reflection.source_reflection.options[:primary_key] ||
                                    @reflection.through_reflection.klass.primary_key
           if @reflection.source_reflection.options[:as]
-            column = "#{@reflection.source_reflection.options[:as]}_type"
-            conditions <<
-              left[column].eq(@reflection.through_reflection.klass.name)
+            column    = "#{@reflection.source_reflection.options[:as]}_type"
+            sti_names = sti_names(@reflection.through_reflection.klass)
+            conditions << left[column].in(sti_names)
           end
         end
 
@@ -106,10 +115,11 @@ module ActiveRecord
         # TODO: revisit this to allow it for deletion, supposing dependent option is supported
         raise ActiveRecord::HasManyThroughCantAssociateThroughHasOneOrManyReflection.new(@owner, @reflection) if [:has_one, :has_many].include?(@reflection.source_reflection.macro)
 
-        join_attributes = construct_owner_attributes(@reflection.through_reflection).merge(@reflection.source_reflection.primary_key_name => associate.id)
+        #join_attributes = construct_owner_attributes(@reflection.through_reflection).merge(@reflection.source_reflection.primary_key_name => associate.id)
+        join_attributes = { @reflection.source_reflection.primary_key_name => associate.id }
 
         if @reflection.options[:source_type]
-          join_attributes.merge!(@reflection.source_reflection.options[:foreign_type] => associate.class.base_class.name)
+          join_attributes.merge!(@reflection.source_reflection.options[:foreign_type] => associate.class.name)
         end
 
         if @reflection.through_reflection.options[:conditions].is_a?(Hash)
@@ -157,6 +167,10 @@ module ActiveRecord
 
       def build_sti_condition
         @reflection.through_reflection.klass.send(:type_condition).to_sql
+      end
+
+      def sti_names(klass)
+        ([klass] + klass.descendants).map { |m| m.sti_name }
       end
 
       alias_method :sql_conditions, :conditions

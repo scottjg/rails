@@ -262,8 +262,9 @@ module ActiveRecord
 
       def preload_through_records(records, reflection, through_association)
         if reflection.options[:source_type]
-          interface = reflection.source_reflection.options[:foreign_type]
-          preload_options = {:conditions => ["#{connection.quote_column_name interface} = ?", reflection.options[:source_type]]}
+          interface = connection.quote_column_name(reflection.source_reflection.options[:foreign_type])
+          sti_names = in_for_sti(reflection.options[:source_type].constantize)
+          preload_options = { :conditions => "#{interface} #{sti_names}" }
 
           records.compact!
           records.first.class.preload_associations(records, through_association, preload_options)
@@ -352,7 +353,7 @@ module ActiveRecord
         table_name = reflection.klass.quoted_table_name
 
         if interface = reflection.options[:as]
-          conditions = "#{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_id"} #{in_or_equals_for_ids(ids)} and #{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_type"} = '#{self.base_class.sti_name}'"
+          conditions = "#{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_id"} #{in_or_equals_for_ids(ids)} and #{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_type"} #{in_for_sti(self)}"
         else
           foreign_key = reflection.primary_key_name
           conditions = "#{reflection.klass.quoted_table_name}.#{foreign_key} #{in_or_equals_for_ids(ids)}"
@@ -387,6 +388,11 @@ module ActiveRecord
 
       def in_or_equals_for_ids(ids)
         ids.size > 1 ? "IN (?)" : "= ?"
+      end
+
+      def in_for_sti(klass)
+        sti_names  = ([klass] + klass.descendants).map { |m| quote_value(m.sti_name) }
+        "IN (#{sti_names.join(',')})"
       end
 
       # Some databases impose a limit on the number of ids in a list (in Oracle its 1000)
