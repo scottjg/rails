@@ -711,6 +711,24 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert_equal [9, 10, new_comment.id], authors(:david).sti_post_comments.map(&:id).sort
   end
 
+  def test_polymorphic_has_many_through_with_double_sti_on_join_model
+    tag  = tags(:special)
+    post = posts(:thinking)
+
+    tag.polytagged_posts << post
+    tag.reload
+
+    assert_equal 1, tag.polytaggings.length
+
+    tagging = tag.polytaggings.first
+
+    assert_equal 'SpecialTag',  tagging.polytag_type
+    assert_equal 'SpecialPost', tagging.taggable_type
+
+    assert_equal tag,  tagging.polytag
+    assert_equal post, tagging.taggable
+  end
+
   private
     # create dynamic Post models to allow different dependency options
     def find_post_with_dependency(post_id, association, association_name, dependency)

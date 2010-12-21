@@ -520,10 +520,13 @@ ActiveRecord::Schema.define do
   create_table :tags, :force => true do |t|
     t.column :name, :string
     t.column :taggings_count, :integer, :default => 0
+    t.string :type
   end
 
   create_table :taggings, :force => true do |t|
     t.column :tag_id, :integer
+    t.integer :polytag_id
+    t.string  :polytag_type
     t.column :super_tag_id, :integer
     t.column :taggable_type, :string
     t.column :taggable_id, :integer

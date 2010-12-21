@@ -5,3 +5,8 @@ general:
 misc:
   id: 2
   name: Misc
+
+special:
+  id: 3
+  type: SpecialTag
+  name: Special
