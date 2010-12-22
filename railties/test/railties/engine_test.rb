@@ -769,6 +769,66 @@ module RailtiesTest
       assert_match %r{bukkits/javascripts/foo.js}, last_response.body
     end
 
+    test "expansions inside engine" do
+      add_to_config("config.action_dispatch.show_exceptions = false")
+
+      @plugin.write "lib/bukkits.rb", <<-RUBY
+        module Bukkits
+          class Engine < ::Rails::Engine
+            isolate_namespace Bukkits
+
+            initializer 'assets' do
+              js_expansions = { :foo => ['foo'] }
+              css_expansions = { :foo => ['foo'] }
+              ActionView::Helpers::AssetTagHelper.register_javascript_expansion(js_expansions)
+              ActionView::Helpers::AssetTagHelper.register_stylesheet_expansion(css_expansions)
+            end
+          end
+        end
+      RUBY
+
+      @plugin.write "public/stylesheets/foo.css", ""
+      @plugin.write "public/javascripts/foo.js", ""
+
+      @plugin.write "app/views/layouts/bukkits/application.html.erb", <<-RUBY
+        <%= stylesheet_link_tag :foo %>
+        <%= javascript_include_tag :foo %>
+        <%= yield %>
+      RUBY
+
+      @plugin.write "app/controllers/bukkits/home_controller.rb", <<-RUBY
+        module Bukkits
+          class HomeController < ActionController::Base
+            def index
+              render :text => "Good morning!", :layout => "bukkits/application"
+            end
+          end
+        end
+      RUBY
+
+      @plugin.write "config/routes.rb", <<-RUBY
+        Bukkits::Engine.routes.draw do
+          match "/home" => "home#index"
+        end
+      RUBY
+
+      app_file "config/routes.rb", <<-RUBY
+        Rails.application.routes.draw do
+          mount Bukkits::Engine => "/bukkits"
+        end
+      RUBY
+
+      require 'rack/test'
+      extend Rack::Test::Methods
+
+      boot_rails
+
+      get "/bukkits/home"
+
+      assert_match %r{bukkits/stylesheets/foo.css}, last_response.body
+      assert_match %r{bukkits/javascripts/foo.js}, last_response.body
+    end
+
   private
     def app
       Rails.application
