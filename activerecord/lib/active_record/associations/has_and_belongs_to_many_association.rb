@@ -13,28 +13,6 @@ module ActiveRecord
       def create!(attributes = {})
         create_record(attributes) { |record| insert_record(record, true) }
       end
-      
-      def columns
-        @reflection.columns(@reflection.options[:join_table], "#{@reflection.options[:join_table]} Columns")
-      end
-
-      def reset_column_information
-        @reflection.reset_column_information
-      end
-
-      def columns
-        @reflection.columns(@reflection.options[:join_table], "#{@reflection.options[:join_table]} Columns")
-      end
-
-      def reset_column_information
-        @reflection.reset_column_information
-      end
-
-      def has_primary_key?
-        return @has_primary_key unless @has_primary_key.nil?
-        @has_primary_key = (@owner.connection.supports_primary_key? &&
-          @owner.connection.primary_key(@reflection.options[:join_table]))
-      end
 
       def columns
         @reflection.columns(@reflection.options[:join_table], "#{@reflection.options[:join_table]} Columns")

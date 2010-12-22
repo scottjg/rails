@@ -1000,16 +1000,7 @@ class RenderTest < ActionController::TestCase
   end
 
   def test_render_xml
-    assert_deprecated do
-      get :render_xml_hello
-    end
-
-    assert_equal "<html>\n  <p>Hello David</p>\n<p>This is grand!</p>\n</html>\n", @response.body
-    assert_equal "application/xml", @response.content_type
-  end
-
-  def test_render_xml_as_string_template
-    get :render_xml_hello_as_string_template
+    get :render_xml_hello
     assert_equal "<html>\n  <p>Hello David</p>\n<p>This is grand!</p>\n</html>\n", @response.body
     assert_equal "application/xml", @response.content_type
   end
@@ -1050,10 +1041,7 @@ class RenderTest < ActionController::TestCase
   end
 
   def test_render_xml_with_layouts
-    assert_deprecated do
-      get :builder_layout_test
-    end
-
+    get :builder_layout_test
     assert_equal "<wrapper>\n<html>\n  <p>Hello </p>\n<p>This is grand!</p>\n</html>\n</wrapper>\n", @response.body
   end
 
@@ -1612,6 +1600,7 @@ class ExpiresInRenderTest < ActionController::TestCase
   end
 end
 
+
 class EtagRenderTest < ActionController::TestCase
   tests TestController
 
@@ -1685,10 +1674,7 @@ class EtagRenderTest < ActionController::TestCase
   end
 
   def test_etag_should_govern_renders_with_layouts_too
-    assert_deprecated do
-      get :builder_layout_test
-    end
-
+    get :builder_layout_test
     assert_equal "<wrapper>\n<html>\n  <p>Hello </p>\n<p>This is grand!</p>\n</html>\n</wrapper>\n", @response.body
     assert_equal etag_for("<wrapper>\n<html>\n  <p>Hello </p>\n<p>This is grand!</p>\n</html>\n</wrapper>\n"), @response.headers['ETag']
   end

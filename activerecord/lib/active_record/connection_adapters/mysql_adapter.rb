@@ -323,11 +323,7 @@ module ActiveRecord
       def execute(sql, name = nil) #:nodoc:
         log(sql, name) { @connection.query(sql) }
       rescue ActiveRecord::StatementInvalid => exception
-        if exception.message =~ /server has gone away/i
-          warn "Server timed out, retrying"
-          reconnect!
-          retry
-        elsif exception.message.split(":").first =~ /Packets out of order/
+        if exception.message.split(":").first =~ /Packets out of order/
           raise ActiveRecord::StatementInvalid, "'Packets out of order' error was received from the database. Please update your mysql bindings (gem install mysql) and read http://dev.mysql.com/doc/mysql/en/password-hashing.html for more information.  If you're on Windows, use the Instant Rails installer to get the updated mysql bindings."
         else
           raise

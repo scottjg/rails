@@ -386,7 +386,6 @@ module ActionView
         end
       end
 
-      private
       # Creates a Cycle object whose _to_s_ method cycles through elements of an
       # array every time it is called. This can be used for example, to alternate
       # classes for table rows.  You can use named cycles to allow nesting in loops.
