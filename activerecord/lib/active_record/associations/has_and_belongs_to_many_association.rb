@@ -8,7 +8,7 @@ module ActiveRecord
       def create!(attributes = {})
         create_record(attributes) { |record| insert_record(record, true) }
       end
-      
+
       def columns
         @reflection.columns(@reflection.options[:join_table], "#{@reflection.options[:join_table]} Columns")
       end

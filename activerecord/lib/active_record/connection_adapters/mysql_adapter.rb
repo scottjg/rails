@@ -150,6 +150,7 @@ module ActiveRecord
     # * <tt>:password</tt> - Defaults to nothing.
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
     # * <tt>:encoding</tt> - (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection.
+    # * <tt>:reconnect</tt> - Defaults to false (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html).
     # * <tt>:sslca</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslkey</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslcert</tt> - Necessary to use MySQL with an SSL connection.
@@ -308,11 +309,7 @@ module ActiveRecord
       def execute(sql, name = nil) #:nodoc:
         log(sql, name) { @connection.query(sql) }
       rescue ActiveRecord::StatementInvalid => exception
-        if exception.message =~ /server has gone away/i
-          warn "Server timed out, retrying"
-          reconnect!
-          retry
-        elsif exception.message.split(":").first =~ /Packets out of order/
+        if exception.message.split(":").first =~ /Packets out of order/
           raise ActiveRecord::StatementInvalid, "'Packets out of order' error was received from the database. Please update your mysql bindings (gem install mysql) and read http://dev.mysql.com/doc/mysql/en/password-hashing.html for more information.  If you're on Windows, use the Instant Rails installer to get the updated mysql bindings."
         else
           raise
@@ -538,8 +535,6 @@ module ActiveRecord
 
       private
         def connect
-          @connection.reconnect = true if @connection.respond_to?(:reconnect=)
-
           encoding = @config[:encoding]
           if encoding
             @connection.options(Mysql::SET_CHARSET_NAME, encoding) rescue nil
@@ -550,6 +545,10 @@ module ActiveRecord
           end
 
           @connection.real_connect(*@connection_options)
+
+          # reconnect must be set after real_connect is called, because real_connect sets it to false internally
+          @connection.reconnect = !!@config[:reconnect] if @connection.respond_to?(:reconnect=)
+
           configure_connection
         end
 

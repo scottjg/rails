@@ -157,42 +157,43 @@ class CGI::Session::CookieStore
     # CGI likes to make you hack.
     def write_cookie(options)
       cookie = CGI::Cookie.new(@cookie_options.merge(options))
-      if write_cookie?(cookie)
-        @session.cgi.send :instance_variable_set, '@output_cookies', [cookie]
-      end
+      @session.cgi.send :instance_variable_set, '@output_cookies', [cookie]
     end
-
-    def securely_write_cookie?(cookie)
-      !cookie.secure || @session.cgi.env_table['HTTP_X_FORWARDED_PROTO'].to_s.include?('https')
-    end
-
-  if Rails.test? || (Rails.development? && ENV['GH_SSL'].blank?)
-    def write_cookie?(cookie)
-      if ApplicationController.test_ssl_requirement
-        securely_write_cookie?(cookie)
-      else
-        true
-      end
-    end
-  else
-    alias write_cookie? securely_write_cookie?
-  end
 
     # Clear cookie value so subsequent new_session doesn't reload old data.
     def clear_old_cookie_value
       @session.cgi.cookies[@cookie_options['name']].clear
     end
     
-    # constant-time comparison algorithm to prevent timing attacks
-    def secure_compare(a, b)
-      if a.length == b.length
-        result = 0
-        for i in 0..(a.length - 1)
-          result |= a[i] ^ b[i]
+    if "foo".respond_to?(:force_encoding)
+      # constant-time comparison algorithm to prevent timing attacks
+      def secure_compare(a, b)
+        a = a.dup.force_encoding(Encoding::BINARY)
+        b = b.dup.force_encoding(Encoding::BINARY)
+    
+        if a.length == b.length
+          result = 0
+          for i in 0..(a.length - 1)
+            result |= a[i].ord ^ b[i].ord
+          end
+          result == 0
+        else
+          false
         end
-        result == 0
-      else
-        false
+      end
+    else
+      # For 1.8
+      def secure_compare(a, b)
+        if a.length == b.length
+          result = 0
+          for i in 0..(a.length - 1)
+            result |= a[i] ^ b[i]
+          end
+          result == 0
+        else
+          false
+        end
       end
     end
+
 end
