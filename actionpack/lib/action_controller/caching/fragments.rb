@@ -36,6 +36,7 @@ module ActionController #:nodoc:
 
       def fragment_for(buffer, name = {}, options = nil, &block) #:nodoc:
         if perform_caching
+          # GITHUB
           if (cache = read_fragment(name, options)) && cache.is_a?(String)
             buffer.safe_concat(cache.html_safe)
           else

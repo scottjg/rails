@@ -1,6 +1,7 @@
 module ActionController
   module Routing
     class Segment #:nodoc:
+      # GITHUB: add / to reserved list
       RESERVED_PCHAR = ':@&=+$,;/'
       SAFE_PCHAR = "#{URI::REGEXP::PATTERN::UNRESERVED}#{RESERVED_PCHAR}"
       if RUBY_VERSION >= '1.9'

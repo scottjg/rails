@@ -212,6 +212,7 @@ module ActiveRecord
         def method_missing(method, *args, &block)
           if load_target
             if @target.respond_to?(method)
+              # GITHUB
               method == :to_a ? Array(@target) : @target.send(method, *args, &block)
             else
               super

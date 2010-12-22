@@ -332,6 +332,8 @@ module ActionView
       end
 
 
+      # GITHUB: bring over auto_link from Rails 3
+      #
       # Turns all URLs and e-mail addresses into clickable links. The <tt>:link</tt> option
       # will limit what should be linked. You can add HTML attributes to the links using
       # <tt>:html</tt>. Possible values for <tt>:link</tt> are <tt>:all</tt> (default),

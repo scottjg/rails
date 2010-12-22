@@ -4,6 +4,8 @@ require 'optparse'
 
 include_password = false
 options = {}
+
+# GITHUB
 execute_query = nil
 
 OptionParser.new do |opt|
@@ -12,6 +14,7 @@ OptionParser.new do |opt|
     include_password = true
   end
 
+  # GITHUB
   opt.on("-e", "--execute QUERY", "Execute QUERY and exit instead of loading interactive console") do |query|
     execute_query = query
   end
@@ -65,6 +68,7 @@ when /^mysql/
     args << "-p"
   end
 
+  # GITHUB
   if execute_query
     args << "--execute"
     args << execute_query

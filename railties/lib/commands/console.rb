@@ -16,6 +16,8 @@ libs << %( -r "#{RAILS_ROOT}/config/environment")
 libs << " -r console_app"
 libs << " -r console_sandbox" if options[:sandbox]
 libs << " -r console_with_helpers"
+
+# GITHUB
 libs << " -r #{RAILS_ROOT}/config/console" if File.exist?("#{RAILS_ROOT}/config/console.rb")
 
 if options[:debugger]
