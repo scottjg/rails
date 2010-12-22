@@ -8,5 +8,10 @@ module ActionDispatch
     config.action_dispatch.ip_spoofing_check = true
     config.action_dispatch.show_exceptions = true
     config.action_dispatch.best_standards_support = true
+    config.action_dispatch.tld_length = 1
+    
+    initializer "action_dispatch.configure" do |app|
+      ActionDispatch::Http::URL.tld_length = app.config.action_dispatch.tld_length
+    end
   end
 end
