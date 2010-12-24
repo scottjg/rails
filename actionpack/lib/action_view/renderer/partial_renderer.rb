@@ -76,7 +76,7 @@ module ActionView
       end
 
       object ||= locals[as]
-      locals[as] = object
+      locals[as] = object if object
 
       content = @template.render(view, locals) do |*name|
         view._layout_for(*name, &block)
@@ -108,7 +108,7 @@ module ActionView
         locals << @variable_counter if @collection
         find_template(path, locals)
       end
-    end 
+    end
 
     def find_template(path=@path, locals=@locals.keys)
       prefix = @view.controller_prefix unless path.include?(?/)

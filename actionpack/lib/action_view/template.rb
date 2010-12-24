@@ -281,7 +281,7 @@ module ActionView
         # encoding of the code
         source = <<-end_src
           def #{method_name}(local_assigns)
-            _old_output_buffer = @output_buffer;#{locals_code};#{code}
+            _old_output_buffer = @output_buffer;#{locals_code}#{code}
           ensure
             @output_buffer = _old_output_buffer
           end
@@ -329,7 +329,7 @@ module ActionView
       end
 
       def locals_code #:nodoc:
-        @locals.map { |key| "#{key} = local_assigns[:#{key}];" }.join
+        @locals.map { |key| "eval('#{key} = local_assigns[:#{key}]') if local_assigns[:#{key}];" }.join
       end
 
       def method_name #:nodoc:
