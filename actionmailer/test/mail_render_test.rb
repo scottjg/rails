@@ -27,13 +27,6 @@ class RenderMailer < ActionMailer::Base
     from       "tester@example.com"
   end
 
-  def included_old_subtemplate(recipient)
-    recipients recipient
-    subject    "Including another template in the one being rendered"
-    from       "tester@example.com"
-    body       render(:inline => "Hello, <%= render \"subtemplate\" %>", :body => { :world => "Earth" })
-  end
-
   def initialize_defaults(method_name)
     super
     mailer_name "test_mailer"
@@ -71,22 +64,22 @@ class RenderHelperTest < Test::Unit::TestCase
 
   def test_inline_template
     mail = RenderMailer.create_inline_template(@recipient)
-    assert_equal "Hello, Earth", mail.body.strip
+    assert_equal "Hello, Earth", mail.body.to_s.strip
   end
 
   def test_file_template
     mail = RenderMailer.create_file_template(@recipient)
-    assert_equal "Hello there, \n\nMr. test@localhost", mail.body.strip
+    assert_equal "Hello there, \n\nMr. test@localhost", mail.body.to_s.strip
   end
 
   def test_rxml_template
     mail = RenderMailer.deliver_rxml_template(@recipient)
-    assert_equal "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<test/>", mail.body.strip
+    assert_equal "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<test/>", mail.body.to_s.strip
   end
 
   def test_included_subtemplate
     mail = RenderMailer.deliver_included_subtemplate(@recipient)
-    assert_equal "Hey Ho, let's go!", mail.body.strip
+    assert_equal "Hey Ho, let's go!", mail.parts[0].body.to_s.strip
   end
 end
 
@@ -105,12 +98,12 @@ class FirstSecondHelperTest < Test::Unit::TestCase
 
   def test_ordering
     mail = FirstMailer.create_share(@recipient)
-    assert_equal "first mail", mail.body.strip
+    assert_equal "first mail", mail.body.to_s.strip
     mail = SecondMailer.create_share(@recipient)
-    assert_equal "second mail", mail.body.strip
+    assert_equal "second mail", mail.body.to_s.strip
     mail = FirstMailer.create_share(@recipient)
-    assert_equal "first mail", mail.body.strip
+    assert_equal "first mail", mail.body.to_s.strip
     mail = SecondMailer.create_share(@recipient)
-    assert_equal "second mail", mail.body.strip
+    assert_equal "second mail", mail.body.to_s.strip
   end
 end

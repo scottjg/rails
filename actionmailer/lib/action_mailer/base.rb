@@ -230,7 +230,7 @@ module ActionMailer #:nodoc:
   # * <tt>deliveries</tt> - Keeps an array of all the emails sent out through the Action Mailer with <tt>delivery_method :test</tt>. Most useful
   #   for unit and functional testing.
   #
-  # * <tt>default_charset</tt> - The default charset used for the body and to encode the subject. Defaults to UTF-8. You can also
+  # * <tt>default_charset</tt> - The default charset used for the body and to encode the subject. Defaults to utf-8. You can also
   #   pick a different charset from inside a method with +charset+.
   #
   # * <tt>default_content_type</tt> - The default content type used for the main part of the message. Defaults to "text/plain". You
@@ -414,8 +414,7 @@ module ActionMailer #:nodoc:
       #   end
       def receive(raw_email)
         logger.info "Received mail:\n #{raw_email}" unless logger.nil?
-        mail = TMail::Mail.parse(raw_email)
-        mail.base64_decode
+        mail = Mail.new(raw_email)
         new.receive(mail)
       end
 
@@ -453,7 +452,7 @@ module ActionMailer #:nodoc:
     end
 
     # Initialize the mailer via the given +method_name+. The body will be
-    # rendered and a new TMail::Mail object created.
+    # rendered and a new Mail::Message object created.
     def create!(method_name, *parameters) #:nodoc:
       initialize_defaults(method_name)
       __send__(method_name, *parameters)
@@ -471,7 +470,7 @@ module ActionMailer #:nodoc:
             # Skip unless template has a multipart format
             next unless template && template.multipart?
 
-            @parts << Part.new(
+            @parts << Mail::Part.new(
               :content_type => template.content_type,
               :disposition => "inline",
               :charset => charset,
@@ -496,7 +495,7 @@ module ActionMailer #:nodoc:
         # we shift it onto the front of the parts and set the body to nil (so
         # that create_mail doesn't try to render it in addition to the parts).
         if !@parts.empty? && String === @body
-          @parts.unshift Part.new(:charset => charset, :body => @body)
+          @parts.unshift Mail::Part.new(:charset => charset, :body => @body)
           @body = nil
         end
       end
@@ -506,10 +505,10 @@ module ActionMailer #:nodoc:
       @mime_version ||= "1.0" if !@parts.empty?
 
       # build the mail object itself
-      @mail = create_mail
+      create_mail
     end
 
-    # Delivers a TMail::Mail object. By default, it delivers the cached mail
+    # Delivers a Mail::Message object. By default, it delivers the cached mail
     # object (from the <tt>create!</tt> method). If no cached mail object exists, and
     # no alternate has been given as the parameter, this will fail.
     def deliver!(mail = @mail)
@@ -540,6 +539,7 @@ module ActionMailer #:nodoc:
         @default_template_name = @action_name = @template
         @mailer_name ||= self.class.name.underscore
         @parts ||= []
+        @attachments ||= []
         @headers ||= {}
         @body ||= {}
         @mime_version = @@default_mime_version.dup if @@default_mime_version
@@ -606,8 +606,8 @@ module ActionMailer #:nodoc:
         order = order.collect { |s| s.downcase }
 
         parts = parts.sort do |a, b|
-          a_ct = a.content_type.downcase
-          b_ct = b.content_type.downcase
+          a_ct = a.header[:content_type].string rescue ''
+          b_ct = b.header[:content_type].string rescue ''
 
           a_in = order.include? a_ct
           b_in = order.include? b_ct
@@ -632,9 +632,10 @@ module ActionMailer #:nodoc:
       end
 
       def create_mail
-        m = TMail::Mail.new
+        m = Mail.new
 
-        m.subject,     = quote_any_if_necessary(charset, subject)
+        m.charset      = charset if charset
+        m.subject      = quote_if_necessary(subject, charset)
         m.to, m.from   = quote_any_address_if_necessary(charset, recipients, from)
         m.bcc          = quote_address_if_necessary(bcc, charset) unless bcc.nil?
         m.cc           = quote_address_if_necessary(cc, charset) unless cc.nil?
@@ -642,40 +643,40 @@ module ActionMailer #:nodoc:
         m.mime_version = mime_version unless mime_version.nil?
         m.date         = sent_on.to_time rescue sent_on if sent_on
 
-        headers.each { |k, v| m[k] = v }
-
-        real_content_type, ctype_attrs = parse_content_type
+        headers.each {|k,v| m[k] = v }
 
         if @parts.empty?
-          m.set_content_type(real_content_type, nil, ctype_attrs)
           m.body = normalize_new_lines(body)
         else
           if String === body
-            part = TMail::Mail.new
-            part.body = normalize_new_lines(body)
-            part.set_content_type(real_content_type, nil, ctype_attrs)
-            part.set_content_disposition "inline"
-            m.parts << part
+            part = Mail::Part.new(normalize_new_lines(body))
+            @parts << part
           end
-
-          @parts.each do |p|
-            part = (TMail::Mail === p ? p : p.to_mail(self))
-            m.parts << part
-          end
-
-          if real_content_type =~ /multipart/
-            ctype_attrs.delete "charset"
-            m.set_content_type(real_content_type, nil, ctype_attrs)
-          end
+          @parts.each { |part| m.add_part part }
         end
 
+        # attachments
+        @attachments.each_with_index do |attach, idx|
+          attach[:filename] ||= "attachment_#{idx}"
+          m.add_file attach
+        end
+
+        # set an explicit content_type on the mail if missing or it was declared on self
+        # do this after adding parts since Mail usually sets it for us
+        if m['content-type'].nil? ||
+          ( self.content_type != @@default_content_type && self.content_type != m[:content_type].string )
+          mboundary, mcharset = m.boundary, m.charset
+          m['content-type'] = self.content_type
+          m['content-type'].parameters[:boundary] = mboundary if mboundary
+          m['content-type'].parameters[:charset] = mcharset if mcharset
+        end
         @mail = m
       end
 
       def perform_delivery_smtp(mail)
         destinations = mail.destinations
-        mail.ready_to_send
-        sender = (mail['return-path'] && mail['return-path'].spec) || Array(mail.from).first
+        mail.ready_to_send!
+        sender = mail['return-path'] || Array(mail.from).first
 
         smtp = Net::SMTP.new(smtp_settings[:address], smtp_settings[:port])
         smtp.enable_starttls_auto if smtp_settings[:enable_starttls_auto] && smtp.respond_to?(:enable_starttls_auto)

@@ -16,9 +16,9 @@ class TestHelperMailerTest < ActionMailer::TestCase
   end
 
   def test_setup_creates_the_expected_mailer
-    assert @expected.is_a?(TMail::Mail)
+    assert @expected.is_a?(Mail::Message)
     assert_equal "1.0", @expected.mime_version
-    assert_equal "text/plain", @expected.content_type
+    assert_equal "text/plain; charset=utf-8", @expected.content_type
   end
 
   def test_mailer_class_is_correctly_inferred
@@ -123,7 +123,7 @@ class AnotherTestHelperMailerTest < ActionMailer::TestCase
   end
 
   def test_setup_shouldnt_conflict_with_mailer_setup
-    assert @expected.is_a?(TMail::Mail)
+    assert @expected.is_a?(Mail::Message)
     assert_equal 'a value', @test_var
   end
 end

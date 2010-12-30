@@ -32,17 +32,17 @@ rescue LoadError
 end
 
 require 'action_view'
+require 'mail'
 
 module ActionMailer
   def self.load_all!
-    [Base, Part, ::Text::Format, ::Net::SMTP]
+    [Base, ::Text::Format, ::Net::SMTP]
   end
 
   autoload :AdvAttrAccessor, 'action_mailer/adv_attr_accessor'
   autoload :Base, 'action_mailer/base'
-  autoload :Helpers, 'action_mailer/helpers'
-  autoload :Part, 'action_mailer/part'
   autoload :PartContainer, 'action_mailer/part_container'
+  autoload :Helpers, 'action_mailer/helpers'
   autoload :Quoting, 'action_mailer/quoting'
   autoload :TestCase, 'action_mailer/test_case'
   autoload :TestHelper, 'action_mailer/test_helper'
@@ -58,5 +58,3 @@ module Net
 end
 
 autoload :MailHelper, 'action_mailer/mail_helper'
-
-require 'action_mailer/vendor/tmail'
