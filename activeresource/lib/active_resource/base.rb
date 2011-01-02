@@ -366,7 +366,7 @@ module ActiveResource
           return
         end
 
-        raise ArgumentError, "Expected a hash" unless the_schema.kind_of? Hash
+        raise ArgumentError, "Expected an iterable key value pair" unless (the_schema.respond_to?(:each) && the_schema.method(:each).arity==2)
 
         schema do
           the_schema.each {|k,v| attribute(k,v) }
