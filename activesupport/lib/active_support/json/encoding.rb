@@ -36,8 +36,8 @@ module ActiveSupport
       class Encoder
         attr_reader :options
 
-        def initialize(options = nil)
-          @options = options
+        def initialize(options_or_state = nil)
+          @options = options_or_state.respond_to?(:to_h) ? options_or_state.to_h : options_or_state
           @seen = []
         end
 

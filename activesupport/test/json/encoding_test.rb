@@ -127,6 +127,11 @@ class TestJSONEncoding < Test::Unit::TestCase
     assert_raise(ActiveSupport::JSON::Encoding::CircularReferenceError) { ActiveSupport::JSON.encode(a) }
   end
 
+  def test_no_exception_raised_with_json_pure
+    require 'json/pure/generator'
+    assert_equal "[]", JSON::Pure::Generator::State.new.generate([])
+  end
+
   def test_hash_key_identifiers_are_always_quoted
     values = {0 => 0, 1 => 1, :_ => :_, "$" => "$", "a" => "a", :A => :A, :A0 => :A0, "A0B" => "A0B"}
     assert_equal %w( "$" "A" "A0" "A0B" "_" "a" "0" "1" ).sort, object_keys(ActiveSupport::JSON.encode(values))
