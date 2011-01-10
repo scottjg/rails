@@ -597,9 +597,9 @@ module ActiveRecord
           name = name.camelize
 
           raise DuplicateMigrationVersionError.new(version) if seen[version]
-          raise DuplicateMigrationNameError.new(name) if seen[name]
+          raise DuplicateMigrationNameError.new("#{name}: \n\t#{file}\n\t#{seen[name]}") if seen[name]
 
-          seen[version] = seen[name] = true
+          seen[version] = seen[name] = file
 
           MigrationProxy.new(name, version, file)
         end
