@@ -1,5 +1,12 @@
 = Action Mailer -- Easy email delivery and testing
 
+NOTE: This is a special version of ActionMailer v2.3.8 which has been migrated
+away from the vendored TMail gem and onto the newer Mail gem. This migration
+required special patching of both gems, and they can only be used in conjunction
+with each other. The latest of these special gems are aviable from my github account
+(username: stepchud), and they each are given their own branch which named in an obvious
+way to make it clear this is not the 'master' or main version of the gem. - stepchud
+
 Action Mailer is a framework for designing email-service layers. These layers
 are used to consolidate code for sending out forgotten passwords, welcome
 wishes on signup, invoices for billing, and any other use case that requires
