@@ -22,5 +22,5 @@ Gem::Specification.new do |s|
   s.rdoc_options.concat ['--main',  'README.rdoc']
 
   s.add_dependency('activesupport', version)
-  s.add_dependency('activemodel',   version)
+#  s.add_dependency('activemodel',   version)
 end

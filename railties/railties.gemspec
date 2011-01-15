@@ -19,8 +19,10 @@ Gem::Specification.new do |s|
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
 
-  s.add_dependency('rake',          '>= 0.8.7')
-  s.add_dependency('thor',          '~> 0.14.4')
-  s.add_dependency('activesupport', version)
-  s.add_dependency('actionpack',    version)
+  s.add_dependency('rake', '>= 0.8.3')
+  s.add_dependency('activesupport',    version)
+  s.add_dependency('activerecord',     version)
+  s.add_dependency('actionpack',       version)
+  s.add_dependency('actionmailer',     version)
+  s.add_dependency('activeresource',   version)
 end
