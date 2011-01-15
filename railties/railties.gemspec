@@ -2,7 +2,7 @@ version = File.read(File.expand_path("../../RAILS_VERSION", __FILE__)).strip
 
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
-  s.name        = 'railties'
+  s.name        = 'rails'
   s.version     = version
   s.summary     = 'Tools for creating, working with, and running Rails applications.'
   s.description = 'Rails internals: application bootup, plugins, generators, and rake tasks.'
