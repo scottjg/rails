@@ -15,5 +15,9 @@ class SecureRandomTest < Test::Unit::TestCase
 
   def test_random_number
     assert ActiveSupport::SecureRandom.random_number(5000) < 5000
+
+    100.times do
+      assert ActiveSupport::SecureRandom.random_number(5) < 5
+    end
   end
 end
