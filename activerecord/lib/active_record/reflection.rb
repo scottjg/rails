@@ -21,15 +21,16 @@ module ActiveRecord
     # classes.
     module ClassMethods
       def create_reflection(macro, name, options, active_record)
+        name_id = name.to_sym
         case macro
           when :has_many, :belongs_to, :has_one, :has_and_belongs_to_many
             klass = options[:through] ? ThroughReflection : AssociationReflection
-            reflection = klass.new(macro, name, options, active_record)
+            reflection = klass.new(macro, name_id, options, active_record)
           when :composed_of
-            reflection = AggregateReflection.new(macro, name, options, active_record)
+            reflection = AggregateReflection.new(macro, name_id, options, active_record)
         end
 
-        self.reflections = self.reflections.merge(name => reflection)
+        self.reflections = self.reflections.merge(name_id => reflection)
         reflection
       end
 
@@ -67,7 +68,8 @@ module ActiveRecord
       #   Invoice.reflect_on_association(:line_items).macro  # returns :has_many
       #
       def reflect_on_association(association)
-        reflections[association].is_a?(AssociationReflection) ? reflections[association] : nil
+        association_id = association.to_sym
+        reflections[association_id].is_a?(AssociationReflection) ? reflections[association_id] : nil
       end
 
       # Returns an array of AssociationReflection objects for all associations which have <tt>:autosave</tt> enabled.
