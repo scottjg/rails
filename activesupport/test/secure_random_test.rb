@@ -17,6 +17,12 @@ class SecureRandomTest < Test::Unit::TestCase
     assert ActiveSupport::SecureRandom.random_number(5000) < 5000
 
     100.times do
+      candidate = ActiveSupport::SecureRandom.random_number(2)
+      assert candidate < 2
+      assert candidate >= 0
+    end
+
+    100.times do
       assert ActiveSupport::SecureRandom.random_number(5) < 5
     end
   end
