@@ -1,3 +1,4 @@
+require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/object/blank'
 
 module ActiveRecord
@@ -12,7 +13,7 @@ module ActiveRecord
           raise "You cannot include Dirty after Timestamp"
         end
 
-        superclass_delegating_accessor :partial_updates
+        class_attribute :partial_updates
         self.partial_updates = true
       end
 
@@ -88,7 +89,7 @@ module ActiveRecord
       end
 
       def clone_with_time_zone_conversion_attribute?(attr, old)
-        old.class.name == "Time" && time_zone_aware_attributes && !skip_time_zone_conversion_for_attributes.include?(attr.to_sym)
+        old.class.name == "Time" && time_zone_aware_attributes && !self.skip_time_zone_conversion_for_attributes.include?(attr.to_sym)
       end
     end
   end

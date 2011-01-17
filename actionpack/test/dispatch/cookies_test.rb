@@ -48,6 +48,11 @@ class CookiesTest < ActionController::TestCase
       head :ok
     end
 
+    def authenticate_with_secure
+      cookies["user_name"] = { :value => "david", :secure => true }
+      head :ok
+    end
+
     def set_permanent_cookie
       cookies.permanent[:user_name] = "Jamie"
       head :ok
@@ -87,6 +92,16 @@ class CookiesTest < ActionController::TestCase
 
     def delete_cookie_with_domain
       cookies.delete(:user_name, :domain => :all)
+      head :ok
+    end
+
+    def symbol_key
+      cookies[:user_name] = "david"
+      head :ok
+    end
+
+    def string_key
+      cookies['user_name'] = "david"
       head :ok
     end
   end
@@ -129,6 +144,26 @@ class CookiesTest < ActionController::TestCase
     assert_equal({"user_name" => "david"}, @response.cookies)
   end
 
+  def test_setting_cookie_with_secure
+    @request.env["HTTPS"] = "on"
+    get :authenticate_with_secure
+    assert_cookie_header "user_name=david; path=/; secure"
+    assert_equal({"user_name" => "david"}, @response.cookies)
+  end
+
+  def test_setting_cookie_with_secure_in_development
+    Rails.env.stubs(:development?).returns(true)
+    get :authenticate_with_secure
+    assert_cookie_header "user_name=david; path=/; secure"
+    assert_equal({"user_name" => "david"}, @response.cookies)
+  end
+
+  def test_not_setting_cookie_with_secure
+    get :authenticate_with_secure
+    assert_not_cookie_header "user_name=david; path=/; secure"
+    assert_not_equal({"user_name" => "david"}, @response.cookies)
+  end
+
   def test_multiple_cookies
     get :set_multiple_cookies
     assert_equal 2, @response.cookies.size
@@ -158,8 +193,8 @@ class CookiesTest < ActionController::TestCase
 
   def test_permanent_cookie
     get :set_permanent_cookie
-    assert_match /Jamie/, @response.headers["Set-Cookie"]
-    assert_match %r(#{20.years.from_now.utc.year}), @response.headers["Set-Cookie"]
+    assert_match(/Jamie/, @response.headers["Set-Cookie"])
+    assert_match(%r(#{20.years.from_now.utc.year}), @response.headers["Set-Cookie"])
   end
 
   def test_signed_cookie
@@ -174,7 +209,7 @@ class CookiesTest < ActionController::TestCase
 
   def test_permanent_signed_cookie
     get :set_permanent_signed_cookie
-    assert_match %r(#{20.years.from_now.utc.year}), @response.headers["Set-Cookie"]
+    assert_match(%r(#{20.years.from_now.utc.year}), @response.headers["Set-Cookie"])
     assert_equal 100, @controller.send(:cookies).signed[:remember_me]
   end
 
@@ -260,10 +295,39 @@ class CookiesTest < ActionController::TestCase
     assert_cookie_header "user_name=rizwanreza; domain=.nextangle.local; path=/"
   end
 
+  def test_cookie_with_all_domain_option_using_localhost
+    @request.host = "localhost"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; path=/"
+  end
+
+  def test_cookie_with_all_domain_option_using_ipv4_address
+    @request.host = "192.168.1.1"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; path=/"
+  end
+
+  def test_cookie_with_all_domain_option_using_ipv6_address
+    @request.host = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    get :set_cookie_with_domain
+    assert_response :success
+    assert_cookie_header "user_name=rizwanreza; path=/"
+  end
+
   def test_deleting_cookie_with_all_domain_option
     get :delete_cookie_with_domain
     assert_response :success
     assert_cookie_header "user_name=; domain=.nextangle.com; path=/; expires=Thu, 01-Jan-1970 00:00:00 GMT"
+  end
+
+  def test_cookies_hash_is_indifferent_access
+    [:symbol_key, :string_key].each do |cookie_key|
+      get cookie_key
+      assert_equal "david", cookies[:user_name]
+      assert_equal "david", cookies['user_name']
+    end
   end
 
   private
@@ -273,6 +337,15 @@ class CookiesTest < ActionController::TestCase
         assert_equal expected.split("\n").sort, header.split("\n").sort
       else
         assert_equal expected.split("\n"), header
+      end
+    end
+
+    def assert_not_cookie_header(expected)
+      header = @response.headers["Set-Cookie"]
+      if header.respond_to?(:to_str)
+        assert_not_equal expected.split("\n").sort, header.split("\n").sort
+      else
+        assert_not_equal expected.split("\n"), header
       end
     end
 end

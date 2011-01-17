@@ -70,7 +70,7 @@ module ActiveRecord
             result[self.class.locking_column] ||= 0
           end
 
-          return result
+          result
         end
 
         def update(attribute_names = @attributes.keys) #:nodoc:
@@ -87,11 +87,13 @@ module ActiveRecord
           begin
             relation = self.class.unscoped
 
-            affected_rows = relation.where(
+            stmt = relation.where(
               relation.table[self.class.primary_key].eq(quoted_id).and(
-                relation.table[self.class.locking_column].eq(quote_value(previous_value))
+                relation.table[lock_col].eq(quote_value(previous_value))
               )
-            ).arel.update(arel_attributes_values(false, false, attribute_names))
+            ).arel.compile_update(arel_attributes_values(false, false, attribute_names))
+
+            affected_rows = connection.update stmt.to_sql
 
             unless affected_rows == 1
               raise ActiveRecord::StaleObjectError, "Attempted to update a stale object: #{self.class.name}"
@@ -109,13 +111,11 @@ module ActiveRecord
         def destroy #:nodoc:
           return super unless locking_enabled?
 
-          unless new_record?
-            lock_col = self.class.locking_column
-            previous_value = send(lock_col).to_i
-
+          if persisted?
             table = self.class.arel_table
-            predicate = table[self.class.primary_key].eq(id)
-            predicate = predicate.and(table[self.class.locking_column].eq(previous_value))
+            lock_col = self.class.locking_column
+            predicate = table[self.class.primary_key].eq(id).
+              and(table[lock_col].eq(send(lock_col).to_i))
 
             affected_rows = self.class.unscoped.where(predicate).delete_all
 

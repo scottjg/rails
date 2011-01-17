@@ -3,7 +3,7 @@ require 'active_support/core_ext/array/wrap'
 module ActiveRecord
   # = Active Record Callbacks
   #
-  # Callbacks are hooks into the lifecycle of an Active Record object that allow you to trigger logic
+  # Callbacks are hooks into the life cycle of an Active Record object that allow you to trigger logic
   # before or after an alteration of the object state. This can be used to make sure that associated and
   # dependent objects are deleted when +destroy+ is called (by overwriting +before_destroy+) or to massage attributes
   # before they're validated (by overwriting +before_validation+). As an example of the callbacks initiated, consider
@@ -26,7 +26,7 @@ module ActiveRecord
   # <tt>after_rollback</tt>.
   #
   # That's a total of ten callbacks, which gives you immense power to react and prepare for each state in the
-  # Active Record lifecycle. The sequence for calling <tt>Base#save</tt> for an existing record is similar,
+  # Active Record life cycle. The sequence for calling <tt>Base#save</tt> for an existing record is similar,
   # except that each <tt>_on_create</tt> callback is replaced by the corresponding <tt>_on_update</tt> callback.
   #
   # Examples:
@@ -218,16 +218,6 @@ module ActiveRecord
   # needs to be aware of it because an ordinary +save+ will raise such exception
   # instead of quietly returning +false+.
   #
-  # == Debugging callbacks
-  #
-  # To list the methods and procs registered with a particular callback, append <tt>_callback_chain</tt> to
-  # the callback name that you wish to list and send that to your class from the Rails console:
-  #
-  #   >> Topic.after_save_callback_chain
-  #   => [#<ActiveSupport::Callbacks::Callback:0x3f6a448
-  #       @method=#<Proc:0x03f9a42c@/Users/foo/bar/app/models/topic.rb:43>, kind:after_save, identifiernil,
-  #       options{}]
-  #
   module Callbacks
     extend ActiveSupport::Concern
 
@@ -235,7 +225,7 @@ module ActiveRecord
       :after_initialize, :after_find, :after_touch, :before_validation, :after_validation,
       :before_save, :around_save, :after_save, :before_create, :around_create,
       :after_create, :before_update, :around_update, :after_update,
-      :before_destroy, :around_destroy, :after_destroy
+      :before_destroy, :around_destroy, :after_destroy, :after_commit, :after_rollback
     ]
 
     included do
@@ -246,29 +236,12 @@ module ActiveRecord
       define_model_callbacks :save, :create, :update, :destroy
     end
 
-    module ClassMethods
-      def method_added(meth)
-        super
-        if CALLBACKS.include?(meth.to_sym)
-          ActiveSupport::Deprecation.warn("Base##{meth} has been deprecated, please use Base.#{meth} :method instead", caller[0,1])
-          send(meth.to_sym, meth.to_sym)
-        end
-      end
-    end
-
     def destroy #:nodoc:
       _run_destroy_callbacks { super }
     end
 
     def touch(*) #:nodoc:
       _run_touch_callbacks { super }
-    end
-
-    def deprecated_callback_method(symbol) #:nodoc:
-      if respond_to?(symbol, true)
-        ActiveSupport::Deprecation.warn("Overwriting #{symbol} in your models has been deprecated, please use Base##{symbol} :method_name instead")
-        send(symbol)
-      end
     end
 
   private

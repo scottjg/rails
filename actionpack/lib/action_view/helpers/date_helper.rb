@@ -1,6 +1,7 @@
-require "date"
+require 'date'
 require 'action_view/helpers/tag_helper'
 require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/object/with_options'
 
 module ActionView
   module Helpers
@@ -214,20 +215,9 @@ module ActionView
       #   # Creates a time select tag that, when POSTed, will be stored in the post variable in the sunrise attribute
       #   time_select("post", "sunrise")
       #
-      #   # Creates a time select tag that, when POSTed, will be stored in the order variable in the submitted
-      #   # attribute
-      #   time_select("order", "submitted")
-      #
-      #   # Creates a time select tag that, when POSTed, will be stored in the mail variable in the sent_at attribute
-      #   time_select("mail", "sent_at")
-      #
       #   # Creates a time select tag with a seconds field that, when POSTed, will be stored in the post variables in
       #   # the sunrise attribute.
       #   time_select("post", "start_time", :include_seconds => true)
-      #
-      #   # Creates a time select tag with a seconds field that, when POSTed, will be stored in the entry variables in
-      #   # the submission_time attribute.
-      #   time_select("entry", "submission_time", :include_seconds => true)
       #
       #   # You can set the :minute_step to 15 which will give you: 00, 15, 30 and 45.
       #   time_select 'game', 'game_time', {:minute_step => 15}
@@ -751,10 +741,8 @@ module ActionView
         #  => [nil, "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         #           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         def translated_month_names
-          begin
-            key = @options[:use_short_month] ? :'date.abbr_month_names' : :'date.month_names'
-            I18n.translate(key, :locale => @options[:locale])
-          end
+          key = @options[:use_short_month] ? :'date.abbr_month_names' : :'date.month_names'
+          I18n.translate(key, :locale => @options[:locale])
         end
 
         # Lookup month name for number
@@ -781,9 +769,7 @@ module ActionView
         memoize :date_order
 
         def translated_date_order
-          begin
-            I18n.translate(:'date.order', :locale => @options[:locale]) || []
-          end
+          I18n.translate(:'date.order', :locale => @options[:locale]) || []
         end
 
         # Build full select tag from date type and options
@@ -837,15 +823,14 @@ module ActionView
         #  prompt_option_tag(:month, :prompt => 'Select month')
         #  => "<option value="">Select month</option>"
         def prompt_option_tag(type, options)
-          default_options = {:year => false, :month => false, :day => false, :hour => false, :minute => false, :second => false}
-
-          case options
-          when Hash
-            prompt = default_options.merge(options)[type.to_sym]
-          when String
-            prompt = options
-          else
-            prompt = I18n.translate(('datetime.prompts.' + type.to_s).to_sym, :locale => @options[:locale])
+          prompt = case options
+            when Hash
+              default_options = {:year => false, :month => false, :day => false, :hour => false, :minute => false, :second => false}
+              default_options.merge!(options)[type.to_sym]
+            when String
+              options
+            else
+              I18n.translate(:"datetime.prompts.#{type}", :locale => @options[:locale])
           end
 
           prompt ? content_tag(:option, prompt, :value => '') : ''
@@ -897,6 +882,8 @@ module ActionView
         # Returns the separator for a given datetime component
         def separator(type)
           case type
+            when :year
+              @options[:discard_year] ? "" : @options[:date_separator]
             when :month
               @options[:discard_month] ? "" : @options[:date_separator]
             when :day
@@ -927,6 +914,7 @@ module ActionView
       private
         def datetime_selector(options, html_options)
           datetime = value(object) || default_datetime(options)
+          @auto_index ||= nil
 
           options = options.dup
           options[:field_name]           = @method_name

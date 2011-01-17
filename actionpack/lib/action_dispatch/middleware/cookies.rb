@@ -7,7 +7,7 @@ module ActionDispatch
     end
   end
 
-  # Cookies are read and written through ActionController#cookies.
+  # \Cookies are read and written through ActionController#cookies.
   #
   # The cookies being read are the ones received along with the request, the cookies
   # being written will be sent out with the response. Reading a cookie does not get
@@ -16,15 +16,31 @@ module ActionDispatch
   # Examples for writing:
   #
   #   # Sets a simple session cookie.
+  #   # This cookie will be deleted when the user's browser is closed.
   #   cookies[:user_name] = "david"
+  #
+  #   # Assign an array of values to a cookie.
+  #   cookies[:lat_lon] = [47.68, -122.37]
   #
   #   # Sets a cookie that expires in 1 hour.
   #   cookies[:login] = { :value => "XJ-122", :expires => 1.hour.from_now }
+  #
+  #   # Sets a signed cookie, which prevents a user from tampering with its value.
+  #   # The cookie is signed by your app's <tt>config.secret_token</tt> value.
+  #   # Rails generates this value by default when you create a new Rails app.
+  #   cookies.signed[:user_id] = current_user.id
+  #
+  #   # Sets a "permanent" cookie (which expires in 20 years from now).
+  #   cookies.permanent[:login] = "XJ-122"
+  #
+  #   # You can also chain these methods:
+  #   cookies.permanent.signed[:login] = "XJ-122"
   #
   # Examples for reading:
   #
   #   cookies[:user_name] # => "david"
   #   cookies.size        # => 2
+  #   cookies[:lat_lon]   # => [47.68, -122.37]
   #
   # Example for deleting:
   #
@@ -55,7 +71,7 @@ module ActionDispatch
   #     :domain => :all # Allow the cookie for the top most level
   #                       domain and subdomains.
   #
-  # * <tt>:expires</tt> - The time at which this cookie expires, as a Time object.
+  # * <tt>:expires</tt> - The time at which this cookie expires, as a \Time object.
   # * <tt>:secure</tt> - Whether this cookie is a only transmitted to HTTPS servers.
   #   Default is +false+.
   # * <tt>:httponly</tt> - Whether this cookie is accessible via scripting or
@@ -89,17 +105,19 @@ module ActionDispatch
       def self.build(request)
         secret = request.env[TOKEN_KEY]
         host = request.host
+        secure = request.ssl?
 
-        new(secret, host).tap do |hash|
+        new(secret, host, secure).tap do |hash|
           hash.update(request.cookies)
         end
       end
 
-      def initialize(secret = nil, host = nil)
+      def initialize(secret = nil, host = nil, secure = false)
         @secret = secret
         @set_cookies = {}
         @delete_cookies = {}
         @host = host
+        @secure = secure
 
         super()
       end
@@ -113,8 +131,11 @@ module ActionDispatch
         options[:path] ||= "/"
 
         if options[:domain] == :all
-          @host =~ DOMAIN_REGEXP
-          options[:domain] = ".#{$1}.#{$2}"
+          # if host is not ip and matches domain regexp
+          # (ip confirms to domain regexp so we explicitly check for ip)
+          options[:domain] = if (@host !~ /^[\d.]+$/) && (@host =~ DOMAIN_REGEXP)
+            ".#{$1}.#{$2}"
+          end
         end
       end
 
@@ -184,9 +205,15 @@ module ActionDispatch
       end
 
       def write(headers)
-        @set_cookies.each { |k, v| ::Rack::Utils.set_cookie_header!(headers, k, v) }
+        @set_cookies.each { |k, v| ::Rack::Utils.set_cookie_header!(headers, k, v) if write_cookie?(v) }
         @delete_cookies.each { |k, v| ::Rack::Utils.delete_cookie_header!(headers, k, v) }
       end
+
+      private
+
+        def write_cookie?(cookie)
+          @secure || !cookie[:secure] || defined?(Rails.env) && Rails.env.development?
+        end
     end
 
     class PermanentCookieJar < CookieJar #:nodoc:
@@ -258,7 +285,7 @@ module ActionDispatch
             "integrity hash for cookie session data. Use " +
             "config.secret_token = \"some secret phrase of at " +
             "least #{SECRET_MIN_LENGTH} characters\"" +
-            "in config/application.rb"
+            "in config/initializers/secret_token.rb"
         end
 
         if secret.length < SECRET_MIN_LENGTH

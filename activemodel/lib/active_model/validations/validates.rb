@@ -28,7 +28,7 @@ module ActiveModel
       #   class EmailValidator < ActiveModel::EachValidator
       #     def validate_each(record, attribute, value)
       #       record.errors[attribute] << (options[:message] || "is not an email") unless
-      #         value =~ /^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$/i
+      #         value =~ /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\z/i
       #     end
       #   end
       #
@@ -48,21 +48,30 @@ module ActiveModel
       #
       #     class TitleValidator < ActiveModel::EachValidator
       #       def validate_each(record, attribute, value)
-      #         record.errors[attribute] << "must start with 'the'" unless =~ /^the/i
+      #         record.errors[attribute] << "must start with 'the'" unless value =~ /\Athe/i
       #       end
       #     end
       #
       #     validates :name, :title => true
       #   end
       #
-      # The validators hash can also handle regular expressions, ranges and arrays:
+      # Additionally validator classes may be in another namespace and still used within any class.
+      #
+      #   validates :name, :'file/title' => true
+      #
+      # The validators hash can also handle regular expressions, ranges, 
+      # arrays and strings in shortcut form, e.g.
       #
       #   validates :email, :format => /@/
       #   validates :gender, :inclusion => %w(male female)
       #   validates :password, :length => 6..20
       #
-      # Finally, the options :if, :unless, :on, :allow_blank and :allow_nil can be given
-      # to one specific validator:
+      # When using shortcut form, ranges and arrays are passed to your
+      # validator's initializer as +options[:in]+ while other types including
+      # regular expressions and strings are passed as +options[:with]+
+      #
+      # Finally, the options +:if+, +:unless+, +:on+, +:allow_blank+ and +:allow_nil+ can be given
+      # to one specific validator, as a hash:
       #
       #   validates :password, :presence => { :if => :password_required? }, :confirmation => true
       #
@@ -81,8 +90,10 @@ module ActiveModel
         defaults.merge!(:attributes => attributes)
 
         validations.each do |key, options|
+          key = "#{key.to_s.camelize}Validator"
+
           begin
-            validator = const_get("#{key.to_s.camelize}Validator")
+            validator = key.include?('::') ? key.constantize : const_get(key)
           rescue NameError
             raise ArgumentError, "Unknown validator: '#{key}'"
           end
@@ -99,10 +110,10 @@ module ActiveModel
           {}
         when Hash
           options
-        when Regexp
-          { :with => options }
         when Range, Array
           { :in => options }
+        else
+          { :with => options }
         end
       end
     end

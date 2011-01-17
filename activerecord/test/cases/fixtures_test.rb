@@ -13,6 +13,7 @@ require 'models/category'
 require 'models/parrot'
 require 'models/pirate'
 require 'models/treasure'
+require 'models/traffic_light'
 require 'models/matey'
 require 'models/ship'
 require 'models/book'
@@ -24,7 +25,7 @@ class FixturesTest < ActiveRecord::TestCase
   self.use_instantiated_fixtures = true
   self.use_transactional_fixtures = false
 
-  fixtures :topics, :developers, :accounts, :tasks, :categories, :funny_jokes, :binaries
+  fixtures :topics, :developers, :accounts, :tasks, :categories, :funny_jokes, :binaries, :traffic_lights
 
   FIXTURES = %w( accounts binaries companies customers
                  developers developers_projects entrants
@@ -58,7 +59,7 @@ class FixturesTest < ActiveRecord::TestCase
   end
 
   def test_inserts
-    topics = create_fixtures("topics")
+    create_fixtures("topics")
     first_row = ActiveRecord::Base.connection.select_one("SELECT * FROM topics WHERE author_name = 'David'")
     assert_equal("The First Topic", first_row["title"])
 
@@ -114,7 +115,7 @@ class FixturesTest < ActiveRecord::TestCase
   end
 
   def test_insert_with_datetime
-    topics = create_fixtures("tasks")
+    create_fixtures("tasks")
     first = Task.find(1)
     assert first
   end
@@ -204,6 +205,10 @@ class FixturesTest < ActiveRecord::TestCase
     data.freeze
     assert_equal data, @flowers.data
   end
+
+  def test_serialized_fixtures
+    assert_equal ["Green", "Red", "Orange"], traffic_lights(:uk).state
+  end
 end
 
 if Account.connection.respond_to?(:reset_pk_sequence!)
@@ -240,7 +245,7 @@ if Account.connection.respond_to?(:reset_pk_sequence!)
 
     def test_create_fixtures_resets_sequences_when_not_cached
       @instances.each do |instance|
-        max_id = create_fixtures(instance.class.table_name).inject(0) do |_max_id, (name, fixture)|
+        max_id = create_fixtures(instance.class.table_name).inject(0) do |_max_id, (_, fixture)|
           fixture_id = fixture['id'].to_i
           fixture_id > _max_id ? fixture_id : _max_id
         end

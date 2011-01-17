@@ -13,11 +13,6 @@ require 'active_record'
 require 'active_support/dependencies'
 require 'connection'
 
-begin
-  require 'ruby-debug'
-rescue LoadError
-end
-
 # Show backtraces for deprecated behavior for quicker cleanup.
 ActiveSupport::Deprecation.debug = true
 
@@ -31,8 +26,35 @@ def current_adapter?(*types)
   end
 end
 
+def in_memory_db?
+  current_adapter?(:SQLiteAdapter) &&
+  ActiveRecord::Base.connection_pool.spec.config[:database] == ":memory:"
+end
+
+def supports_savepoints?
+  ActiveRecord::Base.connection.supports_savepoints?
+end
+
+def with_env_tz(new_tz = 'US/Eastern')
+  old_tz, ENV['TZ'] = ENV['TZ'], new_tz
+  yield
+ensure
+  old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
+end
+
+def with_active_record_default_timezone(zone)
+  old_zone, ActiveRecord::Base.default_timezone = ActiveRecord::Base.default_timezone, zone
+  yield
+ensure
+  ActiveRecord::Base.default_timezone = old_zone
+end
+
 ActiveRecord::Base.connection.class.class_eval do
   IGNORED_SQL = [/^PRAGMA/, /^SELECT currval/, /^SELECT CAST/, /^SELECT @@IDENTITY/, /^SELECT @@ROWCOUNT/, /^SAVEPOINT/, /^ROLLBACK TO SAVEPOINT/, /^RELEASE SAVEPOINT/, /SHOW FIELDS/]
+
+  # FIXME: this needs to be refactored so specific database can add their own
+  # ignored SQL.  This ignored SQL is for Oracle.
+  IGNORED_SQL.concat [/^select .*nextval/i, /^SAVEPOINT/, /^ROLLBACK TO/, /^\s*select .* from ((all|user)_tab_columns|(all|user)_triggers|(all|user)_constraints)/im]
 
   def execute_with_query_record(sql, name = nil, &block)
     $queries_executed ||= []
@@ -41,7 +63,27 @@ ActiveRecord::Base.connection.class.class_eval do
   end
 
   alias_method_chain :execute, :query_record
+
+  def exec_query_with_query_record(sql, name = nil, binds = [], &block)
+    $queries_executed ||= []
+    $queries_executed << sql unless IGNORED_SQL.any? { |r| sql =~ r }
+    exec_query_without_query_record(sql, name, binds, &block)
+  end
+
+  alias_method_chain :exec_query, :query_record
 end
+
+ActiveRecord::Base.connection.class.class_eval {
+  attr_accessor :column_calls
+
+  def columns_with_calls(*args)
+    @column_calls ||= 0
+    @column_calls += 1
+    columns_without_calls(*args)
+  end
+
+  alias_method_chain :columns, :calls
+}
 
 unless ENV['FIXTURE_DEBUG']
   module ActiveRecord::TestFixtures::ClassMethods
@@ -67,11 +109,11 @@ class ActiveSupport::TestCase
   end
 end
 
-# silence verbose schema loading
-original_stdout = $stdout
-$stdout = StringIO.new
+def load_schema
+  # silence verbose schema loading
+  original_stdout = $stdout
+  $stdout = StringIO.new
 
-begin
   adapter_name = ActiveRecord::Base.connection.adapter_name.downcase
   adapter_specific_schema_file = SCHEMA_ROOT + "/#{adapter_name}_specific_schema.rb"
 
@@ -82,4 +124,23 @@ begin
   end
 ensure
   $stdout = original_stdout
+end
+
+load_schema
+
+class << Time
+  unless method_defined? :now_before_time_travel
+    alias_method :now_before_time_travel, :now
+  end
+
+  def now
+    (@now ||= nil) || now_before_time_travel
+  end
+
+  def travel_to(time, &block)
+    @now = time
+    block.call
+  ensure
+    @now = nil
+  end
 end

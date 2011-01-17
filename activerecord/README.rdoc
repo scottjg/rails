@@ -70,7 +70,7 @@ A short rundown of some of the major features:
   {Learn more}[link:classes/ActiveRecord/Validations.html]
 
 
-* Callbacks available for the entire lifecycle (instantiation, saving, destroying, validating, etc.)
+* Callbacks available for the entire life cycle (instantiation, saving, destroying, validating, etc.)
 
    class Person < ActiveRecord::Base
      before_destroy :invalidate_payment_plan
@@ -84,7 +84,7 @@ A short rundown of some of the major features:
 
    class CommentObserver < ActiveRecord::Observer
      def after_create(comment) # is called just after Comment#save
-       Notifications.deliver_new_comment("david@loudthinking.com", comment)
+       CommentMailer.new_comment_email("david@loudthinking.com", comment)
      end
    end
 
@@ -128,7 +128,7 @@ A short rundown of some of the major features:
 
     # connect to MySQL with authentication
     ActiveRecord::Base.establish_connection(
-      :adapter  => "mysql",
+      :adapter  => "mysql2",
       :host     => "localhost",
       :username => "me",
       :password => "secret",

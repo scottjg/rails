@@ -34,6 +34,11 @@ module ActiveModel
         @observers ||= []
       end
 
+      # Gets the current observer instances.
+      def observer_instances
+        @observer_instances ||= []
+      end
+
       # Instantiate the global Active Record observers.
       def instantiate_observers
         observers.each { |o| instantiate_observer(o) }
@@ -43,20 +48,17 @@ module ActiveModel
         unless observer.respond_to? :update
           raise ArgumentError, "observer needs to respond to `update'"
         end
-        @observer_instances ||= []
-        @observer_instances << observer
+        observer_instances << observer
       end
 
       def notify_observers(*arg)
-        if defined? @observer_instances
-          for observer in @observer_instances
-            observer.update(*arg)
-          end
+        for observer in observer_instances
+          observer.update(*arg)
         end
       end
 
       def count_observers
-        @observer_instances.size
+        observer_instances.size
       end
 
       protected
@@ -93,7 +95,7 @@ module ActiveModel
 
   # == Active Model Observers
   #
-  # Observer classes respond to lifecycle callbacks to implement trigger-like
+  # Observer classes respond to life cycle callbacks to implement trigger-like
   # behavior outside the original class. This is a great way to reduce the
   # clutter that normally comes when the model class is burdened with
   # functionality that doesn't pertain to the core responsibility of the

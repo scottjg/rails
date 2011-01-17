@@ -61,8 +61,6 @@ module ActiveModel
   #   p.errors.full_messages  # => ["name can not be nil"]
   #   # etc..
   class Errors < ActiveSupport::OrderedHash
-    include DeprecatedErrorMethods
-
     CALLBACKS_OPTIONS = [:if, :unless, :on, :allow_nil, :allow_blank]
 
     # Pass in the instance of the object that is using the errors object.
@@ -149,7 +147,7 @@ module ActiveModel
     def empty?
       all? { |k, v| v && v.empty? }
     end
-
+    alias_method :blank?, :empty?
     # Returns an xml formatted representation of the Errors hash.
     #
     #   p.errors.add(:name, "can't be blank")
@@ -167,7 +165,13 @@ module ActiveModel
 
     # Returns an ActiveSupport::OrderedHash that can be used as the JSON representation for this object.
     def as_json(options=nil)
-      self
+      to_hash
+    end
+
+    def to_hash
+      hash = ActiveSupport::OrderedHash.new
+      each { |k, v| (hash[k] ||= []) << v }
+      hash
     end
 
     # Adds +message+ to the error messages on +attribute+, which will be returned on a call to
@@ -191,13 +195,6 @@ module ActiveModel
 
     # Will add an error message to each of the attributes in +attributes+ that is empty.
     def add_on_empty(attributes, options = {})
-      if options && !options.is_a?(Hash)
-        options = { :message => options }
-        ActiveSupport::Deprecation.warn \
-          "ActiveModel::Errors#add_on_empty(attributes, custom_message) has been deprecated.\n" +
-          "Instead of passing a custom_message pass an options Hash { :message => custom_message }."
-      end
-
       [attributes].flatten.each do |attribute|
         value = @base.send(:read_attribute_for_validation, attribute)
         is_empty = value.respond_to?(:empty?) ? value.empty? : false
@@ -207,13 +204,6 @@ module ActiveModel
 
     # Will add an error message to each of the attributes in +attributes+ that is blank (using Object#blank?).
     def add_on_blank(attributes, options = {})
-      if options && !options.is_a?(Hash)
-        options = { :message => options }
-        ActiveSupport::Deprecation.warn \
-          "ActiveModel::Errors#add_on_blank(attributes, custom_message) has been deprecated.\n" +
-          "Instead of passing a custom_message pass an options Hash { :message => custom_message }."
-      end
-
       [attributes].flatten.each do |attribute|
         value = @base.send(:read_attribute_for_validation, attribute)
         add(attribute, :blank, options) if value.blank?
@@ -281,16 +271,9 @@ module ActiveModel
     def generate_message(attribute, type = :invalid, options = {})
       type = options.delete(:message) if options[:message].is_a?(Symbol)
 
-      if options[:default]
-        ActiveSupport::Deprecation.warn \
-          "ActiveModel::Errors#generate_message(attributes, custom_message) has been deprecated.\n" +
-          "Use ActiveModel::Errors#generate_message(attributes, :message => 'your message') instead."
-        options[:message] = options.delete(:default)
-      end
-
       defaults = @base.class.lookup_ancestors.map do |klass|
-        [ :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.underscore}.attributes.#{attribute}.#{type}",
-          :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.underscore}.#{type}" ]
+        [ :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.attributes.#{attribute}.#{type}",
+          :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.#{type}" ]
       end
 
       defaults << options.delete(:message)

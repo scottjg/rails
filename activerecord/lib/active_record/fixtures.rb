@@ -615,14 +615,9 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
             fk_name = (association.options[:foreign_key] || "#{association.name}_id").to_s
 
             if association.name.to_s != fk_name && value = row.delete(association.name.to_s)
-              if association.options[:polymorphic]
-                if value.sub!(/\s*\(([^\)]*)\)\s*$/, "")
-                  target_type = $1
-                  target_type_name = (association.options[:foreign_type] || "#{association.name}_type").to_s
-
-                  # support polymorphic belongs_to as "label (Type)"
-                  row[target_type_name] = target_type
-                end
+              if association.options[:polymorphic] && value.sub!(/\s*\(([^\)]*)\)\s*$/, "")
+                # support polymorphic belongs_to as "label (Type)"
+                row[association.foreign_type] = $1
               end
 
               row[fk_name] = Fixtures.identify(value)
@@ -634,7 +629,7 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
 
               targets.each do |target|
                 join_fixtures["#{label}_#{target}"] = Fixture.new(
-                  { association.primary_key_name => row[primary_key_name],
+                  { association.foreign_key             => row[primary_key_name],
                     association.association_foreign_key => Fixtures.identify(target) },
                   nil, @connection)
               end
@@ -704,11 +699,9 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
     end
 
     def read_yaml_fixture_files
-      yaml_string = ""
-      Dir["#{@fixture_path}/**/*.yml"].select { |f| test(?f, f) }.each do |subfixture_path|
-        yaml_string << IO.read(subfixture_path)
-      end
-      yaml_string << IO.read(yaml_file_path)
+      yaml_string = (Dir["#{@fixture_path}/**/*.yml"].select { |f|
+        File.file?(f)
+      } + [yaml_file_path]).map { |file_path| IO.read(file_path) }.join
 
       if yaml = parse_yaml_string(yaml_string)
         # If the file is an ordered map, extract its children.
@@ -827,12 +820,12 @@ module ActiveRecord
       setup :setup_fixtures
       teardown :teardown_fixtures
 
-      superclass_delegating_accessor :fixture_path
-      superclass_delegating_accessor :fixture_table_names
-      superclass_delegating_accessor :fixture_class_names
-      superclass_delegating_accessor :use_transactional_fixtures
-      superclass_delegating_accessor :use_instantiated_fixtures   # true, false, or :no_instances
-      superclass_delegating_accessor :pre_loaded_fixtures
+      class_attribute :fixture_path
+      class_attribute :fixture_table_names
+      class_attribute :fixture_class_names
+      class_attribute :use_transactional_fixtures
+      class_attribute :use_instantiated_fixtures   # true, false, or :no_instances
+      class_attribute :pre_loaded_fixtures
 
       self.fixture_table_names = []
       self.use_transactional_fixtures = true

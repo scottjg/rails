@@ -73,7 +73,7 @@ module ActiveSupport
 
     # Returns a <tt>Time.local()</tt> instance of the simultaneous time in your system's <tt>ENV['TZ']</tt> zone
     def localtime
-      utc.getlocal
+      utc.respond_to?(:getlocal) ? utc.getlocal : utc.to_time.getlocal
     end
     alias_method :getlocal, :localtime
 
@@ -138,11 +138,7 @@ module ActiveSupport
     end
 
     def to_yaml(options = {})
-      if options.kind_of?(YAML::Emitter)
-        utc.to_yaml(options)
-      else
-        time.to_yaml(options).gsub('Z', formatted_offset(true, 'Z'))
-      end
+      utc.to_yaml(options)
     end
 
     def httpdate

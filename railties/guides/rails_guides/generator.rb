@@ -32,7 +32,7 @@
 #
 #     Separate many using commas:
 #
-#       # generates only
+#       # generates only association_basics.html and migrations.html
 #       ONLY=assoc,migrations ruby rails_guides.rb
 #
 #     Note that if you are working on a guide generation will by default process
@@ -207,10 +207,28 @@ module RailsGuides
     # with code blocks by hand.
     def with_workaround_for_notextile(body)
       code_blocks = []
+
       body.gsub!(%r{<(yaml|shell|ruby|erb|html|sql|plain)>(.*?)</\1>}m) do |m|
-        es = ERB::Util.h($2)
-        css_class = ['erb', 'shell'].include?($1) ? 'html' : $1
-        code_blocks << %{<div class="code_container"><code class="#{css_class}">#{es}</code></div>}
+        brush = case $1
+          when 'ruby', 'sql', 'plain'
+            $1
+          when 'erb'
+            'ruby; html-script: true'
+          when 'html'
+            'xml' # html is understood, but there are .xml rules in the CSS
+          else
+            'plain'
+        end
+
+        code_blocks.push(<<HTML)
+<notextile>
+<div class="code_container">
+<pre class="brush: #{brush}; gutter: false; toolbar: false">
+#{ERB::Util.h($2).strip}
+</pre>
+</div>
+</notextile>
+HTML
         "\ndirty_workaround_for_notextile_#{code_blocks.size - 1}\n"
       end
 
@@ -237,8 +255,9 @@ module RailsGuides
         end
       end
 
-      # Also, footnotes are rendered as paragraphs this way.
+      # Footnotes.
       anchors += Set.new(html.scan(/<p\s+class="footnote"\s+id="([^"]+)/).flatten)
+      anchors += Set.new(html.scan(/<sup\s+class="footnote"\s+id="([^"]+)/).flatten)
       return anchors
     end
 

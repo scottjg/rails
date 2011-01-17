@@ -48,7 +48,7 @@ class Pirate < ActiveRecord::Base
   end
 
   def reject_empty_ships_on_create(attributes)
-    attributes.delete('_reject_me_if_new').present? && new_record?
+    attributes.delete('_reject_me_if_new').present? && !persisted?
   end
 
   attr_accessor :cancel_save_from_callback
@@ -77,4 +77,8 @@ class Pirate < ActiveRecord::Base
     def log(record, callback)
       ship_log << "#{callback}_#{record.class.name.downcase}_#{record.id || '<new>'}"
     end
+end
+
+class DestructivePirate < Pirate
+  has_one :dependent_ship, :class_name => 'Ship', :foreign_key => :pirate_id, :dependent => :destroy
 end

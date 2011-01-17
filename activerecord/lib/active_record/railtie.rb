@@ -13,10 +13,14 @@ module ActiveRecord
   class Railtie < Rails::Railtie
     config.active_record = ActiveSupport::OrderedOptions.new
 
-    config.generators.orm :active_record, :migration => true,
-                                          :timestamps => true
+    config.app_generators.orm :active_record, :migration => true,
+                                              :timestamps => true
 
-    config.app_middleware.insert_after "::ActionDispatch::Callbacks", "ActiveRecord::QueryCache"
+    config.app_middleware.insert_after "::ActionDispatch::Callbacks",
+      "ActiveRecord::QueryCache"
+
+    config.app_middleware.insert_after "::ActionDispatch::Callbacks",
+      "ActiveRecord::ConnectionAdapters::ConnectionManagement"
 
     rake_tasks do
       load "active_record/railties/databases.rake"
@@ -65,19 +69,10 @@ module ActiveRecord
     end
 
     initializer "active_record.set_dispatch_hooks", :before => :set_clear_dependencies_hook do |app|
-      unless app.config.cache_classes
-        ActiveSupport.on_load(:active_record) do
-          ActionDispatch::Callbacks.after do
-            ActiveRecord::Base.clear_reloadable_connections!
-          end
+      ActiveSupport.on_load(:active_record) do
+        ActionDispatch::Reloader.to_cleanup do
+          ActiveRecord::Base.clear_reloadable_connections!
         end
-      end
-    end
-
-    initializer "active_record.add_concurrency_middleware" do |app|
-      if app.config.allow_concurrency
-        app.config.middleware.insert_after "::ActionDispatch::Callbacks",
-          "ActiveRecord::ConnectionAdapters::ConnectionManagement"
       end
     end
 
@@ -85,7 +80,7 @@ module ActiveRecord
       ActiveSupport.on_load(:active_record) do
         instantiate_observers
 
-        ActionDispatch::Callbacks.to_prepare(:activerecord_instantiate_observers) do
+        ActionDispatch::Reloader.to_prepare do
           ActiveRecord::Base.instantiate_observers
         end
       end

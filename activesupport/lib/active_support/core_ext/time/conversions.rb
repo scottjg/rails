@@ -1,4 +1,4 @@
-require 'active_support/inflector'
+require 'active_support/inflector/methods'
 require 'active_support/core_ext/time/publicize_conversion_methods'
 require 'active_support/values/time_zone'
 
@@ -19,8 +19,8 @@ class Time
   #
   #   time = Time.now                     # => Thu Jan 18 06:10:17 CST 2007
   #
-  #   time.to_formatted_s(:time)          # => "06:10:17"
-  #   time.to_s(:time)                    # => "06:10:17"
+  #   time.to_formatted_s(:time)          # => "06:10"
+  #   time.to_s(:time)                    # => "06:10"
   #
   #   time.to_formatted_s(:db)            # => "2007-01-18 06:10:17"
   #   time.to_formatted_s(:number)        # => "20070118061017"

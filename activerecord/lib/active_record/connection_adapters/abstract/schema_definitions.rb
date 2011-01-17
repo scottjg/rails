@@ -114,6 +114,11 @@ module ActiveRecord
         type_cast(default)
       end
 
+      # Used to convert from Strings to BLOBs
+      def string_to_binary(value)
+        self.class.string_to_binary(value)
+      end
+
       class << self
         # Used to convert from Strings to BLOBs
         def string_to_binary(value)
@@ -268,6 +273,10 @@ module ActiveRecord
     # for generating a number of table creation or table changing SQL statements.
     class ColumnDefinition < Struct.new(:base, :name, :type, :limit, :precision, :scale, :default, :null) #:nodoc:
 
+      def string_to_binary(value)
+        value
+      end
+
       def sql_type
         base.type_to_sql(type.to_sym, limit, precision, scale) rescue type
       end
@@ -318,21 +327,13 @@ module ActiveRecord
         @base = base
       end
 
-      #Handles non supported datatypes - e.g. XML
-      def method_missing(symbol, *args)
-        if symbol.to_s == 'xml'
-          xml_column_fallback(args)
-        else
-          super
-        end
-      end
+      def xml(*args)
+        raise NotImplementedError unless %w{
+          sqlite mysql mysql2
+        }.include? @base.adapter_name.downcase
 
-      def xml_column_fallback(*args)
-        case @base.adapter_name.downcase
-        when 'sqlite', 'mysql'
-          options = args.extract_options!
-          column(args[0], :text, options)
-        end
+        options = args.extract_options!
+        column(args[0], :text, options)
       end
 
       # Appends a primary key definition to the table definition.

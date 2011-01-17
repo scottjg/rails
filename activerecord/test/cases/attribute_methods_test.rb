@@ -86,6 +86,15 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert !topic.respond_to?(:nothingness)
   end
 
+  # Syck calls respond_to? before actually calling initialize
+  def test_respond_to_with_allocated_object
+    topic = Topic.allocate
+    assert !topic.respond_to?("nothingness")
+    assert !topic.respond_to?(:nothingness)
+    assert_respond_to topic, "title"
+    assert_respond_to topic, :title
+  end
+
   def test_array_content
     topic = Topic.new
     topic.content = %w( one two three )
@@ -96,14 +105,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_read_attributes_before_type_cast
     category = Category.new({:name=>"Test categoty", :type => nil})
-    category_attrs = {"name"=>"Test categoty", "type" => nil, "categorizations_count" => nil}
+    category_attrs = {"name"=>"Test categoty", "id" => nil, "type" => nil, "categorizations_count" => nil}
     assert_equal category_attrs , category.attributes_before_type_cast
   end
 
   if current_adapter?(:MysqlAdapter)
     def test_read_attributes_before_type_cast_on_boolean
       bool = Boolean.create({ "value" => false })
-      assert_equal "0", bool.reload.attributes_before_type_cast["value"]
+      assert_equal 0, bool.reload.attributes_before_type_cast["value"]
     end
   end
 
@@ -112,7 +121,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       developer = Developer.find(:first)
       # Oracle adapter returns Time before type cast
       unless current_adapter?(:OracleAdapter)
-        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"]
+        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s
       else
         assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s(:db)
 
@@ -120,9 +129,9 @@ class AttributeMethodsTest < ActiveRecord::TestCase
         assert_equal developer.created_at_before_type_cast, "345643456"
         assert_equal developer.created_at, nil
 
-        developer.created_at = "2010-03-21T21:23:32+01:00"
-        assert_equal developer.created_at_before_type_cast, "2010-03-21T21:23:32+01:00"
-        assert_equal developer.created_at, Time.parse("2010-03-21T21:23:32+01:00")
+        developer.created_at = "2010-03-21 21:23:32"
+        assert_equal developer.created_at_before_type_cast.to_s, "2010-03-21 21:23:32"
+        assert_equal developer.created_at, Time.parse("2010-03-21 21:23:32")
       end
     end
   end
@@ -236,6 +245,12 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     # puts topic.inspect
     assert topic.approved?, "approved should be true"
     # puts ""
+  end
+
+  def test_read_overridden_attribute
+    topic = Topic.new(:title => 'a')
+    def topic.title() 'b' end
+    assert_equal 'a', topic[:title]
   end
 
   def test_query_attribute_string
@@ -419,12 +434,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     Topic.instance_variable_set "@cached_attributes", nil
   end
 
-  def test_time_related_columns_are_actually_cached
-    column_types = %w(datetime timestamp time date).map(&:to_sym)
-    column_names = Topic.columns.select{|c| column_types.include?(c.type) }.map(&:name)
-
-    assert_equal column_names.sort, Topic.cached_attributes.sort
-    assert_equal time_related_columns_on_topic.sort, Topic.cached_attributes.sort
+  def test_cacheable_columns_are_actually_cached
+    assert_equal cached_columns.sort, Topic.cached_attributes.sort
   end
 
   def test_accessing_cached_attributes_caches_the_converted_values_and_nothing_else
@@ -435,8 +446,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert cache.empty?
 
     all_columns = Topic.columns.map(&:name)
-    cached_columns = time_related_columns_on_topic
-    uncached_columns =  all_columns - cached_columns
+    uncached_columns = all_columns - cached_columns
 
     all_columns.each do |attr_name|
       attribute_gets_cached = Topic.cache_attribute?(attr_name)
@@ -546,7 +556,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = @target.new(:title => "The pros and cons of programming naked.")
     assert !topic.respond_to?(:title)
     exception = assert_raise(NoMethodError) { topic.title }
-    assert_equal "Attempt to call private method", exception.message
+    assert_match %r(^Attempt to call private method), exception.message
     assert_equal "I'm private", topic.send(:title)
   end
 
@@ -556,7 +566,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = @target.new
     assert !topic.respond_to?(:title=)
     exception = assert_raise(NoMethodError) { topic.title = "Pants"}
-    assert_equal "Attempt to call private method", exception.message
+    assert_match %r(^Attempt to call private method), exception.message
     topic.send(:title=, "Very large pants")
   end
 
@@ -566,14 +576,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = @target.new(:title => "Isaac Newton's pants")
     assert !topic.respond_to?(:title?)
     exception = assert_raise(NoMethodError) { topic.title? }
-    assert_equal "Attempt to call private method", exception.message
+    assert_match %r(^Attempt to call private method), exception.message
     assert topic.send(:title?)
   end
 
   def test_bulk_update_respects_access_control
     privatize("title=(value)")
 
-    assert_raise(ActiveRecord::UnknownAttributeError) { topic = @target.new(:title => "Rants about pants") }
+    assert_raise(ActiveRecord::UnknownAttributeError) { @target.new(:title => "Rants about pants") }
     assert_raise(ActiveRecord::UnknownAttributeError) { @target.new.attributes = { :title => "Ants in pants" } }
   end
 
@@ -594,8 +604,16 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
 
   private
+  def cached_columns
+    @cached_columns ||= (time_related_columns_on_topic + serialized_columns_on_topic).map(&:name)
+  end
+
   def time_related_columns_on_topic
-    Topic.columns.select{|c| [:time, :date, :datetime, :timestamp].include?(c.type)}.map(&:name)
+    Topic.columns.select { |c| [:time, :date, :datetime, :timestamp].include?(c.type) }
+  end
+
+  def serialized_columns_on_topic
+    Topic.columns.select { |c| Topic.serialized_attributes.include?(c.name) }
   end
 
   def in_time_zone(zone)

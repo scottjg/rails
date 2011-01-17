@@ -14,8 +14,8 @@ module ActiveRecord
     # Example:
     #   Account.transaction do
     #     # select * from accounts where name = 'shugo' limit 1 for update
-    #     shugo = Account.find(:first, :conditions => "name = 'shugo'", :lock => true)
-    #     yuko = Account.find(:first, :conditions => "name = 'yuko'", :lock => true)
+    #     shugo = Account.where("name = 'shugo'").lock(true).first
+    #     yuko = Account.where("name = 'shugo'").lock(true).first
     #     shugo.balance -= 100
     #     shugo.save!
     #     yuko.balance += 100
@@ -26,7 +26,7 @@ module ActiveRecord
     # This may be better if you don't need to lock every row. Example:
     #   Account.transaction do
     #     # select * from accounts where ...
-    #     accounts = Account.find(:all, :conditions => ...)
+    #     accounts = Account.where(...).all
     #     account1 = accounts.detect { |account| ... }
     #     account2 = accounts.detect { |account| ... }
     #     # select * from accounts where id=? for update
@@ -47,7 +47,7 @@ module ActiveRecord
       # or pass true for "FOR UPDATE" (the default, an exclusive row lock).  Returns
       # the locked record.
       def lock!(lock = true)
-        reload(:lock => lock) unless new_record?
+        reload(:lock => lock) if persisted?
         self
       end
     end
