@@ -169,18 +169,11 @@ module ActiveSupport
       #
       def self.random_number(n=0)
         if 0 < n
-          hex = n.to_s(16)
-          hex = '0' + hex if (hex.length & 1) == 1
-          bin = [hex].pack("H*")
-          mask = bin[0]
-          mask |= mask >> 1
-          mask |= mask >> 2
-          mask |= mask >> 4
+          length = Math.log2(n).ceil
           begin
-            rnd = SecureRandom.random_bytes(bin.length)
-            rnd[0] = rnd[0] & mask
-          end until rnd < bin
-          rnd.unpack("H*")[0].hex
+            candidate = SecureRandom.random_bytes(length).unpack("H*").first.hex
+          end until candidate < n
+          candidate
         else
           # assumption: Float::MANT_DIG <= 64
           i64 = SecureRandom.random_bytes(8).unpack("Q")[0]
