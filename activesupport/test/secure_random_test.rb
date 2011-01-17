@@ -16,11 +16,12 @@ class SecureRandomTest < Test::Unit::TestCase
   def test_random_number
     assert ActiveSupport::SecureRandom.random_number(5000) < 5000
 
+    flip_buckets = Hash.new{ 0 }
     100.times do
       candidate = ActiveSupport::SecureRandom.random_number(2)
-      assert candidate < 2
-      assert candidate >= 0
+      flip_buckets[candidate] += 1
     end
+    assert_equal 100, flip_buckets[0] + flip_buckets[1]
 
     100.times do
       assert ActiveSupport::SecureRandom.random_number(5) < 5
