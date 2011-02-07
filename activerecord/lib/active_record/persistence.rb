@@ -264,6 +264,7 @@ module ActiveRecord
       end
 
       attributes_values = arel_attributes_values
+      attributes_values.delete_if{|k, v| k == self.class.arel_table[:tsTimestamp]}
 
       new_id = if attributes_values.empty?
         self.class.unscoped.insert connection.empty_insert_statement_value
