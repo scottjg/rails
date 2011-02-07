@@ -16,6 +16,12 @@ class MimeTypeTest < Test::Unit::TestCase
     assert_equal expect, Mime::Type.parse(accept)
   end
 
+  def test_parse_with_text_star
+    accept = "text/*"
+    expect = [Mime::JSON, Mime::XML, Mime::ICS, Mime::HTML, Mime::CSS, Mime::CSV, Mime::JS, Mime::YAML, Mime::TEXT]
+    assert_equal expect, Mime::Type.parse(accept)
+  end
+
   def test_parse_with_q
     accept = "text/xml,application/xhtml+xml,text/yaml; q=0.3,application/xml,text/html; q=0.8,image/png,text/plain; q=0.5,application/pdf,*/*; q=0.2"
     expect = [Mime::HTML, Mime::XML, Mime::PNG, Mime::PDF, Mime::TEXT, Mime::YAML, Mime::ALL]
