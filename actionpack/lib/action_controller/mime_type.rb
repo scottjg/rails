@@ -62,6 +62,8 @@ module Mime
     end
 
     class << self
+      TRAILING_STAR_REGEXP = /(text|application)\/\*/
+
       def lookup(string)
         LOOKUP[string]
       end
@@ -87,14 +89,20 @@ module Mime
 
       def parse(accept_header)
         if accept_header !~ /,/
-          [Mime::Type.lookup(accept_header.split(';').first)]
+          param = accept_header.split(';').first
+          if param =~ TRAILING_STAR_REGEXP
+            parse_data_with_trailing_star($1)
+          else
+            [Mime::Type.lookup(param)]
+          end
+
         else
           # keep track of creation order to keep the subsequent sort stable
           list = []
-          accept_header.split(/,/).each_with_index do |header, index| 
-            params, q = header.split(/;\s*q=/)       
+          accept_header.split(/,/).each_with_index do |header, index|
+            params, q = header.split(/;\s*q=/)
             if params
-              params.strip!          
+              params.strip!
               list << AcceptItem.new(index, params, q) unless params.empty?
             end
           end
@@ -142,21 +150,31 @@ module Mime
           list
         end
       end
+
+      # input: 'text'
+      # returned value:  [Mime::JSON, Mime::XML, Mime::ICS, Mime::HTML, Mime::CSS, Mime::CSV, Mime::JS, Mime::YAML, Mime::TEXT]
+      #
+      # input: 'application'
+      # returned value: [Mime::HTML, Mime::JS, Mime::XML, Mime::YAML, Mime::ATOM, Mime::JSON, Mime::RSS, Mime::URL_ENCODED_FORM
+      def parse_data_with_trailing_star(input)
+        keys = LOOKUP.keys.select{|k| k.include?(input)}
+        LOOKUP.values_at(*keys).uniq
+      end
     end
     
     def initialize(string, symbol = nil, synonyms = [])
       @symbol, @synonyms = symbol, synonyms
       @string = string
     end
-    
+
     def to_s
       @string
     end
-    
+
     def to_str
       to_s
     end
-    
+
     def to_sym
       @symbol || @string.to_sym
     end
@@ -168,11 +186,11 @@ module Mime
         super
       end
     end
-    
+
     def ==(mime_type)
       return false if mime_type.blank?
-      (@synonyms + [ self ]).any? do |synonym| 
-        synonym.to_s == mime_type.to_s || synonym.to_sym == mime_type.to_sym 
+      (@synonyms + [ self ]).any? do |synonym|
+        synonym.to_s == mime_type.to_s || synonym.to_sym == mime_type.to_sym
       end
     end
 
