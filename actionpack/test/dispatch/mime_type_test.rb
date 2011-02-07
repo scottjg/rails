@@ -22,6 +22,12 @@ class MimeTypeTest < ActiveSupport::TestCase
     assert_equal expect, Mime::Type.parse(accept)
   end
 
+  test "parse with text star" do
+    accept = "text/*"
+    expect = [Mime::JSON, Mime::XML, Mime::ICS, Mime::HTML, Mime::CSS, Mime::CSV, Mime::JS, Mime::YAML, Mime::TEXT]
+    assert_equal expect, Mime::Type.parse(accept)
+  end
+
   # Accept header (which is valid even if it is pointless) send with user HTTP_USER_AGENT: searchdnabot/Nutch-1.0
   test "parse single header with q" do
     accept = "text/html; q=0.1"

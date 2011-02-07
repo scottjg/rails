@@ -80,6 +80,8 @@ module Mime
     end
 
     class << self
+      TRAILING_STAR_REGEXP = /(text|application)\/\*/
+
       def lookup(string)
         LOOKUP[string]
       end
@@ -105,7 +107,12 @@ module Mime
 
       def parse(accept_header)
         if accept_header !~ /,/
-          [Mime::Type.lookup(accept_header.split(';').first)]
+          param = accept_header.split(';').first
+          if param =~ TRAILING_STAR_REGEXP
+            parse_data_with_trailing_star($1)
+          else
+            [Mime::Type.lookup(param)]
+          end
         else
           # keep track of creation order to keep the subsequent sort stable
           list = []
@@ -159,6 +166,16 @@ module Mime
           list.map! { |i| Mime::Type.lookup(i.name) }.uniq!
           list
         end
+      end
+
+      # input: 'text'
+      # returned value:  [Mime::JSON, Mime::XML, Mime::ICS, Mime::HTML, Mime::CSS, Mime::CSV, Mime::JS, Mime::YAML, Mime::TEXT]
+      #
+      # input: 'application'
+      # returned value: [Mime::HTML, Mime::JS, Mime::XML, Mime::YAML, Mime::ATOM, Mime::JSON, Mime::RSS, Mime::URL_ENCODED_FORM
+      def parse_data_with_trailing_star(input)
+        keys = LOOKUP.keys.select{|k| k.include?(input)}
+        LOOKUP.values_at(*keys).uniq
       end
     end
 
