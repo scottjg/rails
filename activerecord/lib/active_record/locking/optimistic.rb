@@ -78,10 +78,9 @@ module ActiveRecord
           return 0 if attribute_names.empty?
 
           lock_col = self.class.locking_column
-          previous_value = send(lock_col).to_i
-          send(lock_col + '=', previous_value + 1)
+          previous_value = read_attribute(lock_col) #.to_i
 
-          attribute_names += [lock_col]
+          attribute_names -= [lock_col]
           attribute_names.uniq!
 
           begin
@@ -89,7 +88,7 @@ module ActiveRecord
 
             affected_rows = relation.where(
               relation.table[self.class.primary_key].eq(quoted_id).and(
-                relation.table[self.class.locking_column].eq(quote_value(previous_value))
+                relation.table[self.class.locking_column].eq(previous_value)
               )
             ).arel.update(arel_attributes_values(false, false, attribute_names))
 
@@ -129,7 +128,7 @@ module ActiveRecord
         end
 
       module ClassMethods
-        DEFAULT_LOCKING_COLUMN = 'lock_version'
+        DEFAULT_LOCKING_COLUMN = 'tsTimestamp'
 
         # Is optimistic locking enabled for this table? Returns true if the
         # +lock_optimistically+ flag is set to true (which it is, by default)
