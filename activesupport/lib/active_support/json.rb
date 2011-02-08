@@ -1,4 +1,3 @@
-=begin
 module ActiveSupport
   # If true, use ISO 8601 format for dates and times. Otherwise, fall back to the Active Support legacy format.
   mattr_accessor :use_standard_json_time_format
@@ -22,29 +21,3 @@ end
 
 require 'active_support/json/encoding'
 require 'active_support/json/decoding'
-=end
-
-require 'active_support/json/encoders/date'
-require 'active_support/json/encoders/date_time'
-require 'active_support/json/encoders/time'
-
-module ActiveSupport
-  # If true, use ISO 8601 format for dates and times.
-  # Otherwise, fall back to the Active Support legacy format.
-  mattr_accessor :use_standard_json_time_format
-
-  module JSON
-    extend self
-
-    def encode(value, options = {})
-      Yajl::Encoder.encode(value)
-    end
-
-    def decode(json)
-      Yajl::Parser.parse(json)
-    end
-  end
-end
-
-
-require 'yajl/json_gem'
