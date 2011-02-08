@@ -226,17 +226,23 @@ module ActiveRecord #:nodoc:
 
     class Attribute < ActiveModel::Serializers::Xml::Serializer::Attribute #:nodoc:
       def compute_type
-        klass = @serializable.class
-        type = if klass.serialized_attributes.key?(name)
-                 super
-               elsif klass.columns_hash.key?(name)
-                 klass.columns_hash[name].type
-               else
-                 NilClass
-               end
+        case
+          when @serializable.class.serialized_attributes.has_key?(name)
+            type = super
+          when @serializable.class.columns_hash.has_key?(name)
+            type = @serializable.class.columns_hash[name].type
+          else
+            type = NilClass
+        end
 
-        { :text => :string,
-          :time => :datetime }[type] || type
+        case type
+        when :text
+          :string
+        when :time
+          :datetime
+        else
+          type
+        end
       end
       protected :compute_type
     end
