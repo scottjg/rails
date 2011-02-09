@@ -79,6 +79,16 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :categories, :posts, :categories_posts, :developers, :projects, :developers_projects,
            :parrots, :pirates, :treasures, :price_estimates, :tags, :taggings
 
+  # Silence deprecation warnings to avoid the warning about attributes on the join table, which
+  # would otherwise appear in most of these tests.
+  def setup
+    ActiveSupport::Deprecation.silenced = true
+  end
+
+  def teardown
+    ActiveSupport::Deprecation.silenced = false
+  end
+
   def setup_data_for_habtm_case
     ActiveRecord::Base.connection.execute('delete from countries_treaties')
 
@@ -251,10 +261,10 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     no_of_projects = Project.count
     aredridel = Developer.new("name" => "Aredridel")
     aredridel.projects.concat([Project.find(1), p = Project.new("name" => "Projekt")])
-    assert !aredridel.persisted?
-    assert !p.persisted?
+    assert aredridel.new_record?
+    assert p.new_record?
     assert aredridel.save
-    assert aredridel.persisted?
+    assert !aredridel.new_record?
     assert_equal no_of_devels+1, Developer.count
     assert_equal no_of_projects+1, Project.count
     assert_equal 2, aredridel.projects.size
@@ -288,9 +298,9 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal devel.projects.last, proj
     assert devel.projects.loaded?
 
-    assert !proj.persisted?
+    assert proj.new_record?
     devel.save
-    assert proj.persisted?
+    assert !proj.new_record?
     assert_equal devel.projects.last, proj
     assert_equal Developer.find(1).projects.sort_by(&:id).last, proj  # prove join table is updated
   end
@@ -300,10 +310,10 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     proj1 = devel.projects.build(:name => "Make bed")
     proj2 = devel.projects.build(:name => "Lie in it")
     assert_equal devel.projects.last, proj2
-    assert !proj2.persisted?
+    assert proj2.new_record?
     devel.save
-    assert devel.persisted?
-    assert proj2.persisted?
+    assert !devel.new_record?
+    assert !proj2.new_record?
     assert_equal devel.projects.last, proj2
     assert_equal Developer.find_by_name("Marcel").projects.last, proj2  # prove join table is updated
   end
@@ -316,7 +326,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal devel.projects.last, proj
     assert !devel.projects.loaded?
 
-    assert proj.persisted?
+    assert !proj.new_record?
     assert_equal Developer.find(1).projects.sort_by(&:id).last, proj  # prove join table is updated
   end
 
@@ -325,10 +335,10 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     proj1 = devel.projects.build(:name => "Make bed")
     proj2 = devel.projects.build(:name => "Lie in it")
     assert_equal devel.projects.last, proj2
-    assert !proj2.persisted?
+    assert proj2.new_record?
     devel.save
-    assert devel.persisted?
-    assert proj2.persisted?
+    assert !devel.new_record?
+    assert !proj2.new_record?
     assert_equal devel.projects.last, proj2
     assert_equal Developer.find_by_name("Marcel").projects.last, proj2  # prove join table is updated
   end
@@ -343,7 +353,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     # in Oracle '' is saved as null therefore need to save ' ' in not null column
     another_post = categories(:general).post_with_conditions.create(:body => ' ')
 
-    assert        another_post.persisted?
+    assert        !another_post.new_record?
     assert_equal  'Yet Another Testing Title', another_post.title
   end
 
@@ -863,5 +873,14 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     project = Project.new
     developer = project.developers.build
     assert project.developers.include?(developer)
+  end
+end
+
+class HasAndBelongsToManyAssociationsDeprecationTest < ActiveRecord::TestCase
+  fixtures :developers
+
+  def test_attributes_on_join_table_deprecated
+    jamis = developers(:jamis)
+    assert_deprecated { jamis.projects }
   end
 end

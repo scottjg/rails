@@ -171,7 +171,7 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
     @ship.destroy
     @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger' }
 
-    assert !@pirate.ship.persisted?
+    assert @pirate.ship.new_record?
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
   end
 
@@ -192,7 +192,7 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
   def test_should_replace_an_existing_record_if_there_is_no_id
     @pirate.reload.ship_attributes = { :name => 'Davy Jones Gold Dagger' }
 
-    assert !@pirate.ship.persisted?
+    assert @pirate.ship.new_record?
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
     assert_equal 'Nights Dirty Lightning', @ship.name
   end
@@ -264,7 +264,7 @@ class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
   def test_should_also_work_with_a_HashWithIndifferentAccess
     @pirate.ship_attributes = HashWithIndifferentAccess.new(:id => @ship.id, :name => 'Davy Jones Gold Dagger')
 
-    assert @pirate.ship.persisted?
+    assert !@pirate.ship.new_record?
     assert_equal 'Davy Jones Gold Dagger', @pirate.ship.name
   end
 
@@ -356,7 +356,7 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     @pirate.destroy
     @ship.reload.pirate_attributes = { :catchphrase => 'Arr' }
 
-    assert !@ship.pirate.persisted?
+    assert @ship.pirate.new_record?
     assert_equal 'Arr', @ship.pirate.catchphrase
   end
 
@@ -377,7 +377,7 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
   def test_should_replace_an_existing_record_if_there_is_no_id
     @ship.reload.pirate_attributes = { :catchphrase => 'Arr' }
 
-    assert !@ship.pirate.persisted?
+    assert @ship.pirate.new_record?
     assert_equal 'Arr', @ship.pirate.catchphrase
     assert_equal 'Aye', @pirate.catchphrase
   end
@@ -466,7 +466,7 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     @pirate.delete
     @ship.reload.attributes = { :update_only_pirate_attributes => { :catchphrase => 'Arr' } }
 
-    assert !@ship.update_only_pirate.persisted?
+    assert @ship.update_only_pirate.new_record?
   end
 
   def test_should_update_existing_when_update_only_is_true_and_no_id_is_given
@@ -604,10 +604,10 @@ module NestedAttributesOnACollectionAssociationTests
       association_getter => { 'foo' => { :name => 'Grace OMalley' }, 'bar' => { :name => 'Privateers Greed' }}
     }
 
-    assert !@pirate.send(@association_name).first.persisted?
+    assert @pirate.send(@association_name).first.new_record?
     assert_equal 'Grace OMalley', @pirate.send(@association_name).first.name
 
-    assert !@pirate.send(@association_name).last.persisted?
+    assert @pirate.send(@association_name).last.new_record?
     assert_equal 'Privateers Greed', @pirate.send(@association_name).last.name
   end
 
@@ -827,7 +827,7 @@ class TestNestedAttributesWithNonStandardPrimaryKeys < ActiveRecord::TestCase
   fixtures :owners, :pets
 
   def setup
-    Owner.accepts_nested_attributes_for :pets
+    Owner.accepts_nested_attributes_for :pets, :allow_destroy => true
 
     @owner = owners(:ashley)
     @pet1, @pet2 = pets(:chew), pets(:mochi)
@@ -844,6 +844,19 @@ class TestNestedAttributesWithNonStandardPrimaryKeys < ActiveRecord::TestCase
     @owner.update_attributes(@params)
     assert_equal ['Foo', 'Bar'], @owner.pets.map(&:name)
   end
+
+  def test_attr_accessor_of_child_should_be_value_provided_during_update_attributes
+    @owner = owners(:ashley)
+    @pet1 = pets(:chew)
+    assert_equal nil, $current_user
+    attributes = {:pets_attributes => { "1"=> { :id => @pet1.id,
+                                                :name => "Foo2",
+                                                :current_user => "John",
+                                                :_destroy=>true }}}
+    @owner.update_attributes(attributes)
+    assert_equal 'John', $after_destroy_callback_output
+  end
+
 end
 
 class TestHasOneAutosaveAssociationWhichItselfHasAutosaveAssociations < ActiveRecord::TestCase

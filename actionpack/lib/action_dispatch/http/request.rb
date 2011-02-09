@@ -141,8 +141,9 @@ module ActionDispatch
     end
 
     def forgery_whitelisted?
-      get? || xhr? || content_mime_type.nil? || !content_mime_type.verify_request?
+      get?
     end
+    deprecate :forgery_whitelisted? => "it is just an alias for 'get?' now, update your code"
 
     def media_type
       content_mime_type.to_s
@@ -216,7 +217,7 @@ module ActionDispatch
     # TODO This should be broken apart into AD::Request::Session and probably
     # be included by the session middleware.
     def reset_session
-      session.destroy if session
+      session.destroy if session && session.respond_to?(:destroy)
       self.session = {}
       @env['action_dispatch.request.flash_hash'] = nil
     end

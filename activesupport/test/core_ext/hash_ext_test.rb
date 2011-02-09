@@ -4,8 +4,18 @@ require 'bigdecimal'
 require 'active_support/core_ext/string/access'
 require 'active_support/ordered_hash'
 require 'active_support/core_ext/object/conversions'
+require 'active_support/inflections'
 
 class HashExtTest < Test::Unit::TestCase
+  class IndifferentHash < HashWithIndifferentAccess
+  end
+  
+  class SubclassingArray < Array
+  end
+
+  class SubclassingHash < Hash
+  end
+
   def setup
     @strings = { 'a' => 1, 'b' => 2 }
     @symbols = { :a  => 1, :b  => 2 }
@@ -97,6 +107,11 @@ class HashExtTest < Test::Unit::TestCase
     assert_equal @strings, @symbols.with_indifferent_access.dup.stringify_keys!
     assert_equal @strings, @strings.with_indifferent_access.dup.stringify_keys!
     assert_equal @strings, @mixed.with_indifferent_access.dup.stringify_keys!
+  end
+
+  def test_hash_subclass
+    flash = { "foo" => SubclassingHash.new.tap { |h| h["bar"] = "baz" } }.with_indifferent_access
+    assert_kind_of SubclassingHash, flash["foo"]
   end
 
   def test_indifferent_assorted
@@ -247,6 +262,20 @@ class HashExtTest < Test::Unit::TestCase
   def test_indifferent_hash_with_array_of_hashes
     hash = { "urls" => { "url" => [ { "address" => "1" }, { "address" => "2" } ] }}.with_indifferent_access
     assert_equal "1", hash[:urls][:url].first[:address]
+  end
+  
+  def test_should_preserve_array_subclass_when_value_is_array
+    array = SubclassingArray.new
+    array << { "address" => "1" }
+    hash = { "urls" => { "url" => array }}.with_indifferent_access
+    assert_equal SubclassingArray, hash[:urls][:url].class
+  end
+  
+  def test_should_preserve_array_class_when_hash_value_is_frozen_array
+    array = SubclassingArray.new
+    array << { "address" => "1" }
+    hash = { "urls" => { "url" => array.freeze }}.with_indifferent_access
+    assert_equal SubclassingArray, hash[:urls][:url].class
   end
 
   def test_stringify_and_symbolize_keys_on_indifferent_preserves_hash
