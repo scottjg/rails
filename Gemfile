@@ -1,11 +1,15 @@
 source 'http://rubygems.org'
 
-gem "rails", :path => File.dirname(__FILE__)
+gemspec
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
-gem "rdoc",  ">= 2.5.10"
-gem "horo",  ">= 1.0.2"
+
+group :doc do
+  gem "rdoc",  "~> 3.4"
+  gem "horo",  "= 1.0.3"
+  gem "RedCloth", "~> 4.2"
+end
 
 # for perf tests
 gem "faker"
@@ -15,9 +19,6 @@ gem "addressable"
 # AS
 gem "memcache-client", ">= 1.8.5"
 
-# AM
-gem "text-format", "~> 1.0.0"
-
 platforms :mri_18 do
   gem "system_timer"
   gem "ruby-debug", ">= 0.10.3"
@@ -25,16 +26,17 @@ platforms :mri_18 do
 end
 
 platforms :mri_19 do
-  gem "ruby-debug19"
+  # TODO: Remove the conditional when ruby-debug19 supports Ruby >= 1.9.3
+  gem "ruby-debug19" if RUBY_VERSION < "1.9.3"
 end
 
 platforms :ruby do
   gem 'json'
   gem 'yajl-ruby'
-  gem "nokogiri", ">= 1.4.3.1"
+  gem "nokogiri", ">= 1.4.4"
 
   # AR
-  gem "sqlite3-ruby", "~> 1.3.1", :require => 'sqlite3'
+  gem "sqlite3", "~> 1.3.3"
 
   group :db do
     gem "pg", ">= 0.9.0"

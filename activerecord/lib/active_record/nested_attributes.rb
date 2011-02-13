@@ -295,7 +295,7 @@ module ActiveRecord
           (options[:update_only] || record.id.to_s == attributes['id'].to_s)
         assign_to_or_mark_for_destruction(record, attributes, options[:allow_destroy]) unless call_reject_if(association_name, attributes)
 
-      elsif attributes['id']
+      elsif !attributes['id'].blank?
         raise_nested_attributes_record_not_found(association_name, attributes['id'])
 
       elsif !reject_new_record?(association_name, attributes)
@@ -385,11 +385,8 @@ module ActiveRecord
     # Updates a record with the +attributes+ or marks it for destruction if
     # +allow_destroy+ is +true+ and has_destroy_flag? returns +true+.
     def assign_to_or_mark_for_destruction(record, attributes, allow_destroy)
-      if has_destroy_flag?(attributes) && allow_destroy
-        record.mark_for_destruction
-      else
-        record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
-      end
+      record.attributes = attributes.except(*UNASSIGNABLE_KEYS)
+      record.mark_for_destruction if has_destroy_flag?(attributes) && allow_destroy
     end
 
     # Determines if a hash contains a truthy _destroy key.

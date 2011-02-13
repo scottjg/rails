@@ -149,7 +149,7 @@ module ActiveModel
     def empty?
       all? { |k, v| v && v.empty? }
     end
-
+    alias_method :blank?, :empty?
     # Returns an xml formatted representation of the Errors hash.
     #
     #   p.errors.add(:name, "can't be blank")
@@ -167,7 +167,13 @@ module ActiveModel
 
     # Returns an ActiveSupport::OrderedHash that can be used as the JSON representation for this object.
     def as_json(options=nil)
-      self
+      to_hash
+    end
+
+    def to_hash
+      hash = ActiveSupport::OrderedHash.new
+      each { |k, v| (hash[k] ||= []) << v }
+      hash
     end
 
     # Adds +message+ to the error messages on +attribute+, which will be returned on a call to

@@ -13,11 +13,24 @@ require 'models/bird'
 require 'models/car'
 require 'models/engine'
 require 'models/tyre'
+require 'models/minivan'
 
 
 class RelationTest < ActiveRecord::TestCase
   fixtures :authors, :topics, :entrants, :developers, :companies, :developers_projects, :accounts, :categories, :categorizations, :posts, :comments,
-    :taggings, :cars
+    :taggings, :cars, :minivans
+
+  def test_do_not_double_quote_string_id
+    van = Minivan.last
+    assert van
+    assert_equal van.id, Minivan.where(:minivan_id => van).to_a.first.minivan_id
+  end
+
+  def test_do_not_double_quote_string_id_with_array
+    van = Minivan.last
+    assert van
+    assert_equal van, Minivan.where(:minivan_id => [van]).to_a.first
+  end
 
   def test_two_named_scopes_with_includes_should_not_drop_any_include
     car = Car.incl_engines.incl_tyres.first
@@ -419,6 +432,52 @@ class RelationTest < ActiveRecord::TestCase
   def test_find_in_empty_array
     authors = Author.scoped.where(:id => [])
     assert_blank authors.all
+  end
+
+  def test_where_with_ar_object
+    author = Author.first
+    authors = Author.scoped.where(:id => author)
+    assert_equal 1, authors.all.length
+  end
+
+  def test_find_with_list_of_ar
+    author = Author.first
+    authors = Author.find([author])
+    assert_equal author, authors.first
+  end
+
+  class Mary < Author; end
+
+  def test_find_by_classname
+    Author.create!(:name => Mary.name)
+    assert_equal 1, Author.where(:name => Mary).size
+  end
+
+  def test_find_by_id_with_list_of_ar
+    author = Author.first
+    authors = Author.find_by_id([author])
+    assert_equal author, authors
+  end
+
+  def test_find_all_using_where_twice_should_or_the_relation
+    david = authors(:david)
+    relation = Author.unscoped
+    relation = relation.where(:name => david.name)
+    relation = relation.where(:name => 'Santiago')
+    relation = relation.where(:id => david.id)
+    assert_equal [david], relation.all
+  end
+
+  def test_find_all_with_multiple_ors
+    david = authors(:david)
+    relation = [
+      { :name => david.name },
+      { :name => 'Santiago' },
+      { :name => 'tenderlove' },
+    ].inject(Author.unscoped) do |memo, param|
+      memo.where(param)
+    end
+    assert_equal [david], relation.all
   end
 
   def test_exists

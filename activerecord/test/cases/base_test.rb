@@ -48,6 +48,53 @@ class Boolean < ActiveRecord::Base; end
 class BasicsTest < ActiveRecord::TestCase
   fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts
 
+  unless current_adapter?(:PostgreSQLAdapter,:OracleAdapter,:SQLServerAdapter)
+    def test_limit_with_comma
+      assert_nothing_raised do
+        Topic.limit("1,2").all
+      end
+    end
+  end
+
+  def test_limit_without_comma
+    assert_nothing_raised do
+      assert_equal 1, Topic.limit("1").all.length
+    end
+
+    assert_nothing_raised do
+      assert_equal 1, Topic.limit(1).all.length
+    end
+  end
+
+  def test_invalid_limit
+    assert_raises(ArgumentError) do
+      Topic.limit("asdfadf").all
+    end
+  end
+
+  def test_limit_should_sanitize_sql_injection_for_limit_without_comas
+    assert_raises(ArgumentError) do
+      Topic.limit("1 select * from schema").all
+    end
+  end
+
+  def test_limit_should_sanitize_sql_injection_for_limit_with_comas
+    assert_raises(ArgumentError) do
+      Topic.limit("1, 7 procedure help()").all
+    end
+  end
+
+  unless current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter)
+    def test_limit_should_allow_sql_literal
+      assert_equal 1, Topic.limit(Arel.sql('2-1')).all.length
+    end
+  end
+
+  def test_select_symbol
+    topic_ids = Topic.select(:id).map(&:id).sort
+    assert_equal Topic.find(:all).map(&:id).sort, topic_ids
+  end
+
   def test_table_exists
     assert !NonExistentTable.table_exists?
     assert Topic.table_exists?
@@ -386,6 +433,15 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_equality_of_new_records
     assert_not_equal Topic.new, Topic.new
+  end
+
+  def test_equality_of_destroyed_records
+    topic_1 = Topic.new(:title => 'test_1')
+    topic_1.save
+    topic_2 = Topic.find(topic_1.id)
+    topic_1.destroy
+    assert_equal topic_1, topic_2
+    assert_equal topic_2, topic_1
   end
 
   def test_hashing
@@ -975,6 +1031,22 @@ class BasicsTest < ActiveRecord::TestCase
     Topic.serialize(:content)
   end
 
+  def test_serialized_boolean_value_true
+    Topic.serialize(:content)
+    topic = Topic.new(:content => true)
+    assert topic.save
+    topic = topic.reload
+    assert_equal topic.content, true
+  end
+
+  def test_serialized_boolean_value_false
+    Topic.serialize(:content)
+    topic = Topic.new(:content => false)
+    assert topic.save
+    topic = topic.reload
+    assert_equal topic.content, false
+  end
+
   def test_quote
     author_name = "\\ \001 ' \n \\n \""
     topic = Topic.create('author_name' => author_name)
@@ -1184,8 +1256,10 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_scoped_find_order_including_has_many_association
-    developers = Developer.send(:with_scope, :find => { :order => 'developers.salary DESC', :include => :projects }) do
-      Developer.find(:all)
+    developers = ActiveSupport::Deprecation.silence do
+      Developer.send(:with_scope, :find => { :order => 'developers.salary DESC', :include => :projects }) do
+        Developer.find(:all)
+      end
     end
     assert developers.size >= 2
     for i in 1...developers.size

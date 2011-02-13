@@ -47,7 +47,7 @@ class LookupContextTest < ActiveSupport::TestCase
   end
 
   test "handles */* formats" do
-    @lookup_context.formats = [:"*/*"]
+    @lookup_context.formats = ["*/*"]
     assert_equal Mime::SET, @lookup_context.formats
   end
 
@@ -73,7 +73,7 @@ class LookupContextTest < ActiveSupport::TestCase
       assert_equal :pt, I18n.locale
       assert_equal :pt, @lookup_context.locale
     ensure
-      I18n.config = I18n.config.i18n_config
+      I18n.config = I18n.config.original_config
     end
 
     assert_equal :pt, I18n.locale

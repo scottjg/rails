@@ -338,7 +338,7 @@ module Rails
 
       def set_default_accessors!
         self.rails_template = case options[:template]
-          when /^http:\/\//
+          when /^https?:\/\//
             options[:template]
           when String
             File.expand_path(options[:template], Dir.pwd)
@@ -398,16 +398,10 @@ module Rails
         case options[:database]
         when "oracle"     then "ruby-oci8"
         when "postgresql" then "pg"
-        when "sqlite3"    then "sqlite3-ruby"
+        when "sqlite3"    then "sqlite3"
         when "frontbase"  then "ruby-frontbase"
         when "mysql"      then "mysql2"
         else options[:database]
-        end
-      end
-
-      def require_for_database
-        case options[:database]
-        when "sqlite3" then "sqlite3"
         end
       end
 

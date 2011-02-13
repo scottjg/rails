@@ -79,6 +79,16 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :categories, :posts, :categories_posts, :developers, :projects, :developers_projects,
            :parrots, :pirates, :treasures, :price_estimates, :tags, :taggings
 
+  # Silence deprecation warnings to avoid the warning about attributes on the join table, which
+  # would otherwise appear in most of these tests.
+  def setup
+    ActiveSupport::Deprecation.silenced = true
+  end
+
+  def teardown
+    ActiveSupport::Deprecation.silenced = false
+  end
+
   def setup_data_for_habtm_case
     ActiveRecord::Base.connection.execute('delete from countries_treaties')
 
@@ -425,7 +435,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_removing_associations_on_destroy
     david = DeveloperWithBeforeDestroyRaise.find(1)
     assert !david.projects.empty?
-    assert_raise(RuntimeError) { david.destroy }
+    david.destroy
     assert david.projects.empty?
     assert DeveloperWithBeforeDestroyRaise.connection.select_all("SELECT * FROM developers_projects WHERE developer_id = 1").empty?
   end
@@ -863,5 +873,14 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     project = Project.new
     developer = project.developers.build
     assert project.developers.include?(developer)
+  end
+end
+
+class HasAndBelongsToManyAssociationsDeprecationTest < ActiveRecord::TestCase
+  fixtures :developers
+
+  def test_attributes_on_join_table_deprecated
+    jamis = developers(:jamis)
+    assert_deprecated { jamis.projects }
   end
 end

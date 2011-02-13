@@ -86,6 +86,15 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert !topic.respond_to?(:nothingness)
   end
 
+  # Syck calls respond_to? before actually calling initialize
+  def test_respond_to_with_allocated_object
+    topic = Topic.allocate
+    assert !topic.respond_to?("nothingness")
+    assert !topic.respond_to?(:nothingness)
+    assert_respond_to topic, "title"
+    assert_respond_to topic, :title
+  end
+
   def test_array_content
     topic = Topic.new
     topic.content = %w( one two three )
@@ -107,24 +116,23 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
   end
 
-  unless current_adapter?(:Mysql2Adapter)
-    def test_read_attributes_before_type_cast_on_datetime
-      developer = Developer.find(:first)
-      # Oracle adapter returns Time before type cast
-      unless current_adapter?(:OracleAdapter)
-        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"]
-      else
-        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s(:db)
-
-        developer.created_at = "345643456"
-        assert_equal developer.created_at_before_type_cast, "345643456"
-        assert_equal developer.created_at, nil
-
-        developer.created_at = "2010-03-21 21:23:32"
-        assert_equal developer.created_at_before_type_cast, "2010-03-21 21:23:32"
-        assert_equal developer.created_at, Time.parse("2010-03-21 21:23:32")
-      end
+  def test_read_attributes_before_type_cast_on_datetime
+    developer = Developer.find(:first)
+    if current_adapter?(:Mysql2Adapter, :OracleAdapter)
+      # Mysql2 and Oracle adapters keep the value in Time instance
+      assert_equal developer.created_at.to_s(:db), developer.attributes_before_type_cast["created_at"].to_s(:db)
+    else
+      assert_equal developer.created_at.to_s(:db), developer.attributes_before_type_cast["created_at"].to_s
     end
+
+    developer.created_at = "345643456"
+
+    assert_equal developer.created_at_before_type_cast, "345643456"
+    assert_equal developer.created_at, nil
+
+    developer.created_at = "2010-03-21 21:23:32"
+    assert_equal developer.created_at_before_type_cast, "2010-03-21 21:23:32"
+    assert_equal developer.created_at, Time.parse("2010-03-21 21:23:32")
   end
 
   def test_hash_content
@@ -448,6 +456,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
         assert uncached_columns.include?(attr_name)
         assert !cache.include?(attr_name)
       end
+    end
+  end
+
+  def test_write_nil_to_time_attributes
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new
+      record.written_on = nil
+      assert_nil record.written_on
     end
   end
 

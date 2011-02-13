@@ -487,6 +487,10 @@ class RespondWithController < ActionController::Base
     respond_with(resource)
   end
 
+  def using_hash_resource
+    respond_with({:result => resource})
+  end
+
   def using_resource_with_block
     respond_with(resource) do |format|
       format.csv { render :text => "CSV" }
@@ -552,6 +556,17 @@ class InheritedRespondWithController < RespondWithController
   end
 end
 
+class RenderJsonRespondWithController < RespondWithController
+  clear_respond_to
+  respond_to :json
+
+  def index
+    respond_with(resource) do |format|
+      format.json { render :json => RenderJsonTestException.new('boom') }
+    end
+  end
+end
+
 class EmptyRespondWithController < ActionController::Base
   def index
     respond_with(Customer.new("david", 13))
@@ -585,6 +600,18 @@ class RespondWithControllerTest < ActionController::TestCase
     assert_raise ActionView::MissingTemplate do
       get :using_resource
     end
+  end
+
+  def test_using_hash_resource
+    @request.accept = "application/xml"
+    get :using_hash_resource
+    assert_equal "application/xml", @response.content_type
+    assert_equal "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<hash>\n  <name>david</name>\n</hash>\n", @response.body
+
+    @request.accept = "application/json"
+    get :using_hash_resource
+    assert_equal "application/json", @response.content_type
+    assert_equal %Q[{"result":["david",13]}], @response.body
   end
 
   def test_using_resource_with_block
@@ -851,6 +878,14 @@ class RespondWithControllerTest < ActionController::TestCase
     @request.accept = "application/json"
     get :index
     assert_equal "JSON", @response.body
+  end
+
+  def test_render_json_object_responds_to_str_still_produce_json
+    @controller = RenderJsonRespondWithController.new
+    @request.accept = "application/json"
+    get :index, :format => :json
+    assert_match(/"message":"boom"/, @response.body)
+    assert_match(/"error":"RenderJsonTestException"/, @response.body)
   end
 
   def test_no_double_render_is_raised
