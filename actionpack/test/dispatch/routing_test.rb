@@ -13,6 +13,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  class YoutubeFavoritesRedirector
+    def self.call(params, request)
+      "http://www.youtube.com/watch?v=#{params[:youtube_id]}"
+    end
+  end
+
   stub_controllers do |routes|
     Routes = routes
     Routes.draw do
@@ -53,6 +59,16 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       match 'account/logout' => redirect("/logout"), :as => :logout_redirect
       match 'account/login', :to => redirect("/login")
       match 'secure', :to => redirect("/secure/login")
+
+      match 'mobile', :to => redirect(:subdomain => 'mobile')
+      match 'documentation', :to => redirect(:domain => 'example-documentation.com', :path => '')
+      match 'new_documentation', :to => redirect(:path => '/documentation/new')
+      match 'super_new_documentation', :to => redirect(:host => 'super-docs.com')
+
+      match 'stores/:name',        :to => redirect(:subdomain => 'stores', :path => '/%{name}')
+      match 'stores/:name(*rest)', :to => redirect(:subdomain => 'stores', :path => '/%{name}%{rest}')
+
+      match 'youtube_favorites/:youtube_id/:name', :to => redirect(YoutubeFavoritesRedirector)
 
       constraints(lambda { |req| true }) do
         match 'account/overview'
@@ -155,6 +171,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       resources :replies do
+        collection do
+          get 'page/:page' => 'replies#index', :page => %r{\d+}
+          get ':page' => 'replies#index', :page => %r{\d+}
+        end
+
         new do
           post :preview
         end
@@ -180,6 +201,14 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
           resources :teams do
             resources :players
             resource :captain
+          end
+        end
+      end
+
+      scope '/hello' do
+        shallow do
+          resources :notes do
+            resources :trackbacks
           end
         end
       end
@@ -659,6 +688,55 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     with_test_routes do
       get '/account/proc_req'
       verify_redirect 'http://www.example.com/GET'
+    end
+  end
+
+  def test_redirect_hash_with_subdomain
+    with_test_routes do
+      get '/mobile'
+      verify_redirect 'http://mobile.example.com/mobile'
+    end
+  end
+
+  def test_redirect_hash_with_domain_and_path
+    with_test_routes do
+      get '/documentation'
+      verify_redirect 'http://www.example-documentation.com'
+    end
+  end
+
+  def test_redirect_hash_with_path
+    with_test_routes do
+      get '/new_documentation'
+      verify_redirect 'http://www.example.com/documentation/new'
+    end
+  end
+
+  def test_redirect_hash_with_host
+    with_test_routes do
+      get '/super_new_documentation?section=top'
+      verify_redirect 'http://super-docs.com/super_new_documentation?section=top'
+    end
+  end
+
+  def test_redirect_hash_path_substitution
+    with_test_routes do
+      get '/stores/iernest'
+      verify_redirect 'http://stores.example.com/iernest'
+    end
+  end
+
+  def test_redirect_hash_path_substitution_with_catch_all
+    with_test_routes do
+      get '/stores/iernest/products'
+      verify_redirect 'http://stores.example.com/iernest/products'
+    end
+  end
+
+  def test_redirect_class
+    with_test_routes do
+      get '/youtube_favorites/oHg5SJYRHA0/rick-rolld'
+      verify_redirect 'http://www.youtube.com/watch?v=oHg5SJYRHA0'
     end
   end
 
@@ -1241,6 +1319,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_dynamically_generated_helpers_on_collection_do_not_clobber_resources_url_helper
+    with_test_routes do
+      assert_equal '/replies', replies_path
+    end
+  end
+
   def test_scoped_controller_with_namespace_and_action
     with_test_routes do
       assert_equal '/account/twitter/callback', account_callback_path("twitter")
@@ -1597,6 +1681,60 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       post '/comments/3/preview'
       assert_equal 'comments#preview', @response.body
       assert_equal '/comments/3/preview', preview_comment_path(:id => '3')
+    end
+  end
+
+  def test_shallow_nested_resources_within_scope
+    with_test_routes do
+
+      get '/hello/notes/1/trackbacks'
+      assert_equal 'trackbacks#index', @response.body
+      assert_equal '/hello/notes/1/trackbacks', note_trackbacks_path(:note_id => 1)
+
+      get '/hello/notes/1/edit'
+      assert_equal 'notes#edit', @response.body
+      assert_equal '/hello/notes/1/edit', edit_note_path(:id => '1')
+
+      get '/hello/notes/1/trackbacks/new'
+      assert_equal 'trackbacks#new', @response.body
+      assert_equal '/hello/notes/1/trackbacks/new', new_note_trackback_path(:note_id => 1)
+
+      get '/hello/trackbacks/1'
+      assert_equal 'trackbacks#show', @response.body
+      assert_equal '/hello/trackbacks/1', trackback_path(:id => '1')
+
+      get '/hello/trackbacks/1/edit'
+      assert_equal 'trackbacks#edit', @response.body
+      assert_equal '/hello/trackbacks/1/edit', edit_trackback_path(:id => '1')
+
+      put '/hello/trackbacks/1'
+      assert_equal 'trackbacks#update', @response.body
+
+      post '/hello/notes/1/trackbacks'
+      assert_equal 'trackbacks#create', @response.body
+
+      delete '/hello/trackbacks/1'
+      assert_equal 'trackbacks#destroy', @response.body
+
+      get '/hello/notes'
+      assert_equal 'notes#index', @response.body
+
+      post '/hello/notes'
+      assert_equal 'notes#create', @response.body
+
+      get '/hello/notes/new'
+      assert_equal 'notes#new', @response.body
+      assert_equal '/hello/notes/new', new_note_path
+
+      get '/hello/notes/1'
+      assert_equal 'notes#show', @response.body
+      assert_equal '/hello/notes/1', note_path(:id => 1)
+
+      put '/hello/notes/1'
+      assert_equal 'notes#update', @response.body
+
+      delete '/hello/notes/1'
+      assert_equal 'notes#destroy', @response.body
     end
   end
 

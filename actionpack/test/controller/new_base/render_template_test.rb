@@ -4,15 +4,16 @@ module RenderTemplate
   class WithoutLayoutController < ActionController::Base
 
     self.view_paths = [ActionView::FixtureResolver.new(
-      "test/basic.html.erb"      => "Hello from basic.html.erb",
-      "shared.html.erb"          => "Elastica",
-      "locals.html.erb"          => "The secret is <%= secret %>",
-      "xml_template.xml.builder" => "xml.html do\n  xml.p 'Hello'\nend",
-      "with_raw.html.erb"        => "Hello <%=raw '<strong>this is raw</strong>' %>",
-      "test/with_json.html.erb"  => "<%= render :template => 'test/with_json.json' %>",
-      "test/with_json.json.erb"  => "<%= render :template => 'test/final' %>",
-      "test/final.json.erb"      => "{ final: json }",
-      "test/with_error.html.erb" => "<%= idontexist %>"
+      "test/basic.html.erb"        => "Hello from basic.html.erb",
+      "shared.html.erb"            => "Elastica",
+      "locals.html.erb"            => "The secret is <%= secret %>",
+      "xml_template.xml.builder"   => "xml.html do\n  xml.p 'Hello'\nend",
+      "with_raw.html.erb"          => "Hello <%=raw '<strong>this is raw</strong>' %>",
+      "with_implicit_raw.html.erb" => "Hello <%== '<strong>this is also raw</strong>' %>",
+      "test/with_json.html.erb"    => "<%= render :template => 'test/with_json.json' %>",
+      "test/with_json.json.erb"    => "<%= render :template => 'test/final' %>",
+      "test/final.json.erb"        => "{ final: json }",
+      "test/with_error.html.erb"   => "<%= idontexist %>"
     )]
 
     def index
@@ -49,6 +50,10 @@ module RenderTemplate
 
     def with_raw
       render :template => "with_raw"
+    end
+
+    def with_implicit_raw
+      render :template => "with_implicit_raw"
     end
 
     def with_error
@@ -98,6 +103,11 @@ module RenderTemplate
       get :with_raw
 
       assert_body "Hello <strong>this is raw</strong>"
+      assert_status 200
+
+      get :with_implicit_raw
+
+      assert_body "Hello <strong>this is also raw</strong>"
       assert_status 200
     end
 

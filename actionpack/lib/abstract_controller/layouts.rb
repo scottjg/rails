@@ -235,13 +235,10 @@ module AbstractController
         controller_path
       end
 
-      # Takes the specified layout and creates a _layout method to be called
-      # by _default_layout
+      # Creates a _layout method to be called by _default_layout .
       #
-      # If there is no explicit layout specified:
-      # If a layout is found in the view paths with the controller's
-      # name, return that string. Otherwise, use the superclass'
-      # layout (which might also be implied)
+      # If a layout is not explicitly mentioned then look for a layout with the controller's name.
+      # if nothing is found then try same procedure to find super class's layout.
       def _write_layout_method
         remove_possible_method(:_layout)
 
@@ -268,11 +265,11 @@ module AbstractController
           raise ArgumentError, "Layouts must be specified as a String, Symbol, false, or nil"
         when nil
           if name
-            _prefix = "layouts" unless _implied_layout_name =~ /\blayouts/
+            _prefixes = _implied_layout_name =~ /\blayouts/ ? [] : ["layouts"]
 
             self.class_eval <<-RUBY, __FILE__, __LINE__ + 1
               def _layout
-                if template_exists?("#{_implied_layout_name}", #{_prefix.inspect})
+                if template_exists?("#{_implied_layout_name}", #{_prefixes.inspect})
                   "#{_implied_layout_name}"
                 else
                   super

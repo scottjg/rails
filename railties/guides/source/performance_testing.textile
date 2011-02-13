@@ -60,8 +60,8 @@ Let's assume your application has the following controller and model:
 
 <ruby>
 # routes.rb
-map.root :controller => 'home'
-map.resources :posts
+root :to => 'home#index'
+resources :posts
 
 # home_controller.rb
 class HomeController < ApplicationController
@@ -398,7 +398,7 @@ $ rails benchmarker 'Item.first' 'Item.last'
 
 h4. +profiler+
 
-+profiler+ is a wrapper around http://ruby-prof.rubyforge.org/[ruby-prof] gem.
++profiler+ is a wrapper around the "ruby-prof":http://ruby-prof.rubyforge.org gem.
 
 Usage:
 
@@ -436,7 +436,7 @@ h4. Model
 Project.benchmark("Creating project") do
   project = Project.create("name" => "stuff")
   project.create_manager("name" => "David")
-  project.milestones << Milestone.find(:all)
+  project.milestones << Milestone.all
 end
 </ruby>
 
@@ -523,8 +523,6 @@ Rails has been lucky to have two startups dedicated to Rails specific performanc
 * "Scout":http://scoutapp.com
 
 h3. Changelog
-
-"Lighthouse ticket":http://rails.lighthouseapp.com/projects/16213-rails-guides/tickets/4
 
 * January 9, 2009: Complete rewrite by "Pratik":credits.html#lifo
 * September 6, 2008: Initial version by Matthew Bergman

@@ -8,6 +8,7 @@ require 'models/topic'
 require 'models/company'
 require 'models/category'
 require 'models/reply'
+require 'models/contact'
 
 class AttributeMethodsTest < ActiveRecord::TestCase
   fixtures :topics, :developers, :companies, :computers
@@ -86,6 +87,15 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert !topic.respond_to?(:nothingness)
   end
 
+  # Syck calls respond_to? before actually calling initialize
+  def test_respond_to_with_allocated_object
+    topic = Topic.allocate
+    assert !topic.respond_to?("nothingness")
+    assert !topic.respond_to?(:nothingness)
+    assert_respond_to topic, "title"
+    assert_respond_to topic, :title
+  end
+
   def test_array_content
     topic = Topic.new
     topic.content = %w( one two three )
@@ -96,7 +106,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_read_attributes_before_type_cast
     category = Category.new({:name=>"Test categoty", :type => nil})
-    category_attrs = {"name"=>"Test categoty", "type" => nil, "categorizations_count" => nil}
+    category_attrs = {"name"=>"Test categoty", "id" => nil, "type" => nil, "categorizations_count" => nil}
     assert_equal category_attrs , category.attributes_before_type_cast
   end
 
@@ -107,24 +117,23 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
   end
 
-  unless current_adapter?(:Mysql2Adapter)
-    def test_read_attributes_before_type_cast_on_datetime
-      developer = Developer.find(:first)
-      # Oracle adapter returns Time before type cast
-      unless current_adapter?(:OracleAdapter)
-        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s
-      else
-        assert_equal developer.created_at.to_s(:db) , developer.attributes_before_type_cast["created_at"].to_s(:db)
-
-        developer.created_at = "345643456"
-        assert_equal developer.created_at_before_type_cast, "345643456"
-        assert_equal developer.created_at, nil
-
-        developer.created_at = "2010-03-21 21:23:32"
-        assert_equal developer.created_at_before_type_cast.to_s, "2010-03-21 21:23:32"
-        assert_equal developer.created_at, Time.parse("2010-03-21 21:23:32")
-      end
+  def test_read_attributes_before_type_cast_on_datetime
+    developer = Developer.find(:first)
+    if current_adapter?(:Mysql2Adapter, :OracleAdapter)
+      # Mysql2 and Oracle adapters keep the value in Time instance
+      assert_equal developer.created_at.to_s(:db), developer.attributes_before_type_cast["created_at"].to_s(:db)
+    else
+      assert_equal developer.created_at.to_s(:db), developer.attributes_before_type_cast["created_at"].to_s
     end
+
+    developer.created_at = "345643456"
+
+    assert_equal developer.created_at_before_type_cast, "345643456"
+    assert_equal developer.created_at, nil
+
+    developer.created_at = "2010-03-21 21:23:32"
+    assert_equal developer.created_at_before_type_cast, "2010-03-21 21:23:32"
+    assert_equal developer.created_at, Time.parse("2010-03-21 21:23:32")
   end
 
   def test_hash_content
@@ -236,6 +245,12 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     # puts topic.inspect
     assert topic.approved?, "approved should be true"
     # puts ""
+  end
+
+  def test_read_overridden_attribute
+    topic = Topic.new(:title => 'a')
+    def topic.title() 'b' end
+    assert_equal 'a', topic[:title]
   end
 
   def test_query_attribute_string
@@ -446,6 +461,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_write_nil_to_time_attributes
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new
+      record.written_on = nil
+      assert_nil record.written_on
+    end
+  end
+
   def test_time_attributes_are_retrieved_in_current_time_zone
     in_time_zone "Pacific Time (US & Canada)" do
       utc_time = Time.utc(2008, 1, 1)
@@ -568,7 +591,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   def test_bulk_update_respects_access_control
     privatize("title=(value)")
 
-    assert_raise(ActiveRecord::UnknownAttributeError) { topic = @target.new(:title => "Rants about pants") }
+    assert_raise(ActiveRecord::UnknownAttributeError) { @target.new(:title => "Rants about pants") }
     assert_raise(ActiveRecord::UnknownAttributeError) { @target.new.attributes = { :title => "Ants in pants" } }
   end
 
@@ -587,6 +610,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     Object.send(:undef_method, :title) # remove test method from object
   end
 
+  def test_list_of_serialized_attributes
+    assert_equal %w(content), Topic.serialized_attributes.keys
+    assert_equal %w(preferences), Contact.serialized_attributes.keys
+  end
 
   private
   def cached_columns

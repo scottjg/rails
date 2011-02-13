@@ -59,10 +59,12 @@ module ActiveRecord
       end
 
       def drop_table!
+        connection_pool.clear_table_cache!(table_name)
         connection.drop_table table_name
       end
 
       def create_table!
+        connection_pool.clear_table_cache!(table_name)
         connection.create_table(table_name) do |t|
           t.string session_id_column, :limit => 255
           t.text data_column_name
@@ -321,6 +323,7 @@ module ActiveRecord
         if sid = current_session_id(env)
           Base.silence do
             get_session_model(env, sid).destroy
+            env[SESSION_RECORD_KEY] = nil
           end
         end
 

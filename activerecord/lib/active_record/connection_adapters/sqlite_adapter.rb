@@ -62,6 +62,10 @@ module ActiveRecord
         sqlite_version >= '2.0.0'
       end
 
+      def supports_savepoints?
+        sqlite_version >= '3.6.8'
+      end
+
       # Returns +true+ when the connection adapter supports prepared statement
       # caching, otherwise returns +false+
       def supports_statement_cache?
@@ -143,13 +147,16 @@ module ActiveRecord
 
       # DATABASE STATEMENTS ======================================
 
-      def exec(sql, name = nil, binds = [])
-        log(sql, name) do
+      def exec_query(sql, name = nil, binds = [])
+        log(sql, name, binds) do
 
           # Don't cache statements without bind values
           if binds.empty?
-            stmt = @connection.prepare(sql)
-            cols = stmt.columns
+            stmt    = @connection.prepare(sql)
+            cols    = stmt.columns
+            records = stmt.to_a
+            stmt.close
+            stmt = records
           else
             cache = @statements[sql] ||= {
               :stmt => @connection.prepare(sql)
@@ -186,7 +193,19 @@ module ActiveRecord
       alias :create :insert_sql
 
       def select_rows(sql, name = nil)
-        exec(sql, name).rows
+        exec_query(sql, name).rows
+      end
+
+      def create_savepoint
+        execute("SAVEPOINT #{current_savepoint_name}")
+      end
+
+      def rollback_to_savepoint
+        execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+      end
+
+      def release_savepoint
+        execute("RELEASE SAVEPOINT #{current_savepoint_name}")
       end
 
       def begin_db_transaction #:nodoc:
@@ -210,24 +229,33 @@ module ActiveRecord
           WHERE type = 'table' AND NOT name = 'sqlite_sequence'
         SQL
 
-        exec(sql, name).map do |row|
+        exec_query(sql, name).map do |row|
           row['name']
         end
       end
 
       def columns(table_name, name = nil) #:nodoc:
         table_structure(table_name).map do |field|
+          case field["dflt_value"]
+          when /^null$/i
+            field["dflt_value"] = nil
+          when /^'(.*)'$/
+            field["dflt_value"] = $1.gsub(/''/, "'")
+          when /^"(.*)"$/
+            field["dflt_value"] = $1.gsub(/""/, '"')
+          end
+
           SQLiteColumn.new(field['name'], field['dflt_value'], field['type'], field['notnull'].to_i == 0)
         end
       end
 
       def indexes(table_name, name = nil) #:nodoc:
-        exec("PRAGMA index_list(#{quote_table_name(table_name)})", name).map do |row|
+        exec_query("PRAGMA index_list(#{quote_table_name(table_name)})", name).map do |row|
           IndexDefinition.new(
             table_name,
             row['name'],
             row['unique'] != 0,
-            exec("PRAGMA index_info('#{row['name']}')").map { |col|
+            exec_query("PRAGMA index_info('#{row['name']}')").map { |col|
               col['name']
             })
         end
@@ -241,11 +269,11 @@ module ActiveRecord
       end
 
       def remove_index!(table_name, index_name) #:nodoc:
-        exec "DROP INDEX #{quote_column_name(index_name)}"
+        exec_query "DROP INDEX #{quote_column_name(index_name)}"
       end
 
       def rename_table(name, new_name)
-        exec "ALTER TABLE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}"
+        exec_query "ALTER TABLE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}"
       end
 
       # See: http://www.sqlite.org/lang_altertable.html
@@ -282,7 +310,7 @@ module ActiveRecord
 
       def change_column_null(table_name, column_name, null, default = nil)
         unless null || default.nil?
-          exec("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+          exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
         end
         alter_table(table_name) do |definition|
           definition[column_name].null = null
@@ -314,16 +342,11 @@ module ActiveRecord
 
       protected
         def select(sql, name = nil, binds = []) #:nodoc:
-          result = exec(sql, name, binds)
-          columns = result.columns.map { |column|
-            column.sub(/^"?\w+"?\./, '')
-          }
-
-          result.rows.map { |row| Hash[columns.zip(row)] }
+          exec_query(sql, name, binds).to_a
         end
 
         def table_structure(table_name)
-          structure = @connection.table_info(quote_table_name(table_name))
+          structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})").to_hash
           raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           structure
         end
@@ -399,11 +422,11 @@ module ActiveRecord
           quoted_columns = columns.map { |col| quote_column_name(col) } * ','
 
           quoted_to = quote_table_name(to)
-          exec("SELECT * FROM #{quote_table_name(from)}").each do |row|
+          exec_query("SELECT * FROM #{quote_table_name(from)}").each do |row|
             sql = "INSERT INTO #{quoted_to} (#{quoted_columns}) VALUES ("
             sql << columns.map {|col| quote row[column_mappings[col]]} * ', '
             sql << ')'
-            exec sql
+            exec_query sql
           end
         end
 

@@ -96,6 +96,7 @@ module ActiveRecord
       became.instance_variable_set("@attributes_cache", @attributes_cache)
       became.instance_variable_set("@new_record", new_record?)
       became.instance_variable_set("@destroyed", destroyed?)
+      became.type = klass.name unless self.class.descends_from_active_record?
       became
     end
 
@@ -223,6 +224,7 @@ module ActiveRecord
     def touch(name = nil)
       attributes = timestamp_attributes_for_update_in_model
       attributes << name if name
+
       unless attributes.empty?
         current_time = current_time_from_proper_timezone
         changes = {}
@@ -230,6 +232,8 @@ module ActiveRecord
         attributes.each do |column|
           changes[column.to_s] = write_attribute(column.to_s, current_time)
         end
+
+        changes[self.class.locking_column] = increment_lock if locking_enabled?
 
         @changed_attributes.except!(*changes.keys)
         primary_key = self.class.primary_key
@@ -249,17 +253,19 @@ module ActiveRecord
     def update(attribute_names = @attributes.keys)
       attributes_with_values = arel_attributes_values(false, false, attribute_names)
       return 0 if attributes_with_values.empty?
-      self.class.unscoped.where(self.class.arel_table[self.class.primary_key].eq(id)).arel.update(attributes_with_values)
+      klass = self.class
+      stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(attributes_with_values)
+      klass.connection.update stmt.to_sql
     end
 
     # Creates a record with values matching those of the instance attributes
     # and returns its id.
     def create
-      if self.id.nil? && connection.prefetch_primary_key?(self.class.table_name)
+      if id.nil? && connection.prefetch_primary_key?(self.class.table_name)
         self.id = connection.next_sequence_value(self.class.sequence_name)
       end
 
-      attributes_values = arel_attributes_values
+      attributes_values = arel_attributes_values(!id.nil?)
 
       new_id = if attributes_values.empty?
         self.class.unscoped.insert connection.empty_insert_statement_value
@@ -279,7 +285,7 @@ module ActiveRecord
     # that instances loaded from the database would.
     def attributes_from_column_definition
       Hash[self.class.columns.map do |column|
-        [column.name, column.default] unless column.name == self.class.primary_key
+        [column.name, column.default]
       end]
     end
   end

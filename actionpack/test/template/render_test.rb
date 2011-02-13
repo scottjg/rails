@@ -146,7 +146,12 @@ module RenderTestCases
     assert_equal "Hello: davidHello: mary", @view.render(:partial => "test/customer", :collection => [ Customer.new("david"), Customer.new("mary") ])
   end
 
-  def test_render_partial_collection_as
+  def test_render_partial_collection_as_by_string
+    assert_equal "david david davidmary mary mary",
+      @view.render(:partial => "test/customer_with_var", :collection => [ Customer.new("david"), Customer.new("mary") ], :as => 'customer')
+  end
+
+  def test_render_partial_collection_as_by_symbol
     assert_equal "david david davidmary mary mary",
       @view.render(:partial => "test/customer_with_var", :collection => [ Customer.new("david"), Customer.new("mary") ], :as => :customer)
   end
@@ -204,6 +209,11 @@ module RenderTestCases
     @view.formats = nil
   end
 
+  def test_render_layout_with_block_and_other_partial_inside
+    render = @view.render(:layout => "test/layout_with_partial_and_yield.html.erb") { "Yield!" }
+    assert_equal "Before\npartial html\nYield!\nAfter\n", render
+  end
+
   def test_render_inline
     assert_equal "Hello, World!", @view.render(:inline => "Hello, World!")
   end
@@ -219,6 +229,20 @@ module RenderTestCases
   CustomHandler = lambda do |template|
     "@output_buffer = ''\n" +
       "@output_buffer << 'source: #{template.source.inspect}'\n"
+  end
+
+  WithViewHandler = lambda do |template, view|
+    %'"#{template.class} #{view.class}"'
+  end
+
+  def test_render_inline_with_render_from_to_proc
+    ActionView::Template.register_template_handler :ruby_handler, :source.to_proc
+    assert_equal '3', @view.render(:inline => "(1 + 2).to_s", :type => :ruby_handler)
+  end
+
+  def test_render_inline_with_template_handler_with_view
+    ActionView::Template.register_template_handler :with_view, WithViewHandler
+    assert_equal 'ActionView::Template ActionView::Base', @view.render(:inline => "Hello, World!", :type => :with_view)
   end
 
   def test_render_inline_with_compilable_custom_type
@@ -245,6 +269,51 @@ module RenderTestCases
   def test_render_with_layout_which_has_render_inline
     assert_equal %(welcome\nHello world!\n),
       @view.render(:file => "test/hello_world.erb", :layout => "layouts/yield_with_render_inline_inside")
+  end
+
+  def test_render_with_layout_which_renders_another_partial
+    assert_equal %(partial html\nHello world!\n),
+      @view.render(:file => "test/hello_world.erb", :layout => "layouts/yield_with_render_partial_inside")
+  end
+
+  def test_render_layout_with_block_and_yield
+    assert_equal %(Content from block!\n),
+      @view.render(:layout => "layouts/yield_only") { "Content from block!" }
+  end
+
+  def test_render_layout_with_block_and_yield_with_params
+    assert_equal %(Yield! Content from block!\n),
+      @view.render(:layout => "layouts/yield_with_params") { |param| "#{param} Content from block!" }
+  end
+
+  def test_render_layout_with_block_which_renders_another_partial_and_yields
+    assert_equal %(partial html\nContent from block!\n),
+      @view.render(:layout => "layouts/partial_and_yield") { "Content from block!" }
+  end
+
+  def test_render_partial_and_layout_without_block_with_locals
+    assert_equal %(Before (Foo!)\npartial html\nAfter),
+      @view.render(:partial => 'test/partial', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
+  end
+
+  def test_render_partial_and_layout_without_block_with_locals_and_rendering_another_partial
+    assert_equal %(Before (Foo!)\npartial html\npartial with partial\n\nAfter),
+      @view.render(:partial => 'test/partial_with_partial', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
+  end
+
+  def test_render_layout_with_a_nested_render_layout_call
+    assert_equal %(Before (Foo!)\nBefore (Bar!)\npartial html\nAfter\npartial with layout\n\nAfter),
+      @view.render(:partial => 'test/partial_with_layout', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
+  end
+
+  def test_render_layout_with_a_nested_render_layout_call_using_block_with_render_partial
+    assert_equal %(Before (Foo!)\nBefore (Bar!)\n\n  partial html\n\nAfterpartial with layout\n\nAfter),
+      @view.render(:partial => 'test/partial_with_layout_block_partial', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
+  end
+
+  def test_render_layout_with_a_nested_render_layout_call_using_block_with_render_content
+    assert_equal %(Before (Foo!)\nBefore (Bar!)\n\n  Content from inside layout!\n\nAfterpartial with layout\n\nAfter),
+      @view.render(:partial => 'test/partial_with_layout_block_content', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
   end
 
   def test_render_with_nested_layout

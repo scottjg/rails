@@ -63,7 +63,7 @@ class QueryCacheTest < ActiveRecord::TestCase
       # Oracle adapter returns count() as Fixnum or Float
       if current_adapter?(:OracleAdapter)
         assert_kind_of Numeric, Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
-      elsif current_adapter?(:SQLite3Adapter) && SQLite3::Version::VERSION > '1.2.5' || current_adapter?(:Mysql2Adapter) || current_adapter?(:MysqlAdapter)
+      elsif current_adapter?(:SQLite3Adapter) && SQLite3::VERSION > '1.2.5' || current_adapter?(:Mysql2Adapter) || current_adapter?(:MysqlAdapter)
         # Future versions of the sqlite3 adapter will return numeric
         assert_instance_of Fixnum,
          Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
@@ -133,7 +133,6 @@ class QueryCacheExpiryTest < ActiveRecord::TestCase
   def test_cache_is_expired_by_habtm_delete
     ActiveRecord::Base.connection.expects(:clear_query_cache).times(2)
     ActiveRecord::Base.cache do
-      c = Category.find(1)
       p = Post.find(1)
       assert p.categories.any?
       p.categories.delete_all

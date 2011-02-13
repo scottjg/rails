@@ -35,7 +35,6 @@ module Rails
   #
   class Application < Engine
     autoload :Bootstrap,      'rails/application/bootstrap'
-    autoload :Configurable,   'rails/application/configurable'
     autoload :Configuration,  'rails/application/configuration'
     autoload :Finisher,       'rails/application/finisher'
     autoload :Railties,       'rails/application/railties'
@@ -139,6 +138,10 @@ module Rails
 
   protected
 
+    def default_asset_path
+      nil
+    end
+
     def default_middleware_stack
       ActionDispatch::MiddlewareStack.new.tap do |middleware|
         rack_cache = config.action_controller.perform_caching && config.action_dispatch.rack_cache
@@ -146,14 +149,18 @@ module Rails
         require "action_dispatch/http/rack_cache" if rack_cache
         middleware.use ::Rack::Cache, rack_cache  if rack_cache
 
-        middleware.use ::ActionDispatch::Static, config.static_asset_paths if config.serve_static_assets
+        if config.serve_static_assets
+          asset_paths = ActiveSupport::OrderedHash[config.static_asset_paths.to_a.reverse]
+          middleware.use ::ActionDispatch::Static, asset_paths
+        end
         middleware.use ::Rack::Lock unless config.allow_concurrency
         middleware.use ::Rack::Runtime
         middleware.use ::Rails::Rack::Logger
         middleware.use ::ActionDispatch::ShowExceptions, config.consider_all_requests_local if config.action_dispatch.show_exceptions
         middleware.use ::ActionDispatch::RemoteIp, config.action_dispatch.ip_spoofing_check, config.action_dispatch.trusted_proxies
         middleware.use ::Rack::Sendfile, config.action_dispatch.x_sendfile_header
-        middleware.use ::ActionDispatch::Callbacks, !config.cache_classes
+        middleware.use ::ActionDispatch::Reloader unless config.cache_classes
+        middleware.use ::ActionDispatch::Callbacks
         middleware.use ::ActionDispatch::Cookies
 
         if config.session_store

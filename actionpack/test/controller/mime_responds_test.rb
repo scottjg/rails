@@ -2,6 +2,14 @@ require 'abstract_unit'
 require 'controller/fake_models'
 require 'active_support/core_ext/hash/conversions'
 
+class StarStarMimeController < ActionController::Base
+  layout nil
+
+  def index
+    render
+  end
+end
+
 class RespondToController < ActionController::Base
   layout :set_layout
 
@@ -89,7 +97,6 @@ class RespondToController < ActionController::Base
     end
   end
 
-  Mime::Type.register("text/x-mobile", :mobile)
 
   def custom_constant_handling
     respond_to do |type|
@@ -126,7 +133,6 @@ class RespondToController < ActionController::Base
     end
   end
 
-  Mime::Type.register_alias("text/html", :iphone)
 
   def iphone_with_html_response_type
     request.format = :iphone if request.env["HTTP_ACCEPT"] == "text/iphone"
@@ -160,16 +166,43 @@ class RespondToController < ActionController::Base
     end
 end
 
+class StarStarMimeControllerTest < ActionController::TestCase
+  tests StarStarMimeController
+
+  def test_javascript_with_format
+    @request.accept = "text/javascript"
+    get :index, :format => 'js'
+    assert_match "function addition(a,b){ return a+b; }", @response.body
+  end
+
+  def test_javascript_with_no_format
+    @request.accept = "text/javascript"
+    get :index
+    assert_match "function addition(a,b){ return a+b; }", @response.body
+  end
+
+  def test_javascript_with_no_format_only_star_star
+    @request.accept = "*/*"
+    get :index
+    assert_match "function addition(a,b){ return a+b; }", @response.body
+  end
+
+end
+
 class RespondToControllerTest < ActionController::TestCase
   tests RespondToController
 
   def setup
     super
     @request.host = "www.example.com"
+    Mime::Type.register_alias("text/html", :iphone)
+    Mime::Type.register("text/x-mobile", :mobile)
   end
 
   def teardown
     super
+    Mime::Type.unregister(:iphone)
+    Mime::Type.unregister(:mobile)
   end
 
   def test_html
@@ -214,6 +247,16 @@ class RespondToControllerTest < ActionController::TestCase
     @request.accept = "text/javascript, text/html"
     xhr :get, :just_xml
     assert_response 406
+  end
+
+  def test_json_or_yaml_with_leading_star_star
+    @request.accept = "*/*, application/json"
+    get :json_xml_or_html
+    assert_equal 'HTML', @response.body
+
+    @request.accept = "*/* , application/json"
+    get :json_xml_or_html
+    assert_equal 'HTML', @response.body
   end
 
   def test_json_or_yaml
@@ -487,6 +530,10 @@ class RespondWithController < ActionController::Base
     respond_with(resource)
   end
 
+  def using_hash_resource
+    respond_with({:result => resource})
+  end
+
   def using_resource_with_block
     respond_with(resource) do |format|
       format.csv { render :text => "CSV" }
@@ -518,7 +565,7 @@ class RespondWithController < ActionController::Base
 
   def using_resource_with_action
     respond_with(resource, :action => :foo) do |format|
-      format.html { raise ActionView::MissingTemplate.new([], "foo/bar", {}, false) }
+      format.html { raise ActionView::MissingTemplate.new([], "bar", ["foo"], {}, false) }
     end
   end
 
@@ -552,6 +599,17 @@ class InheritedRespondWithController < RespondWithController
   end
 end
 
+class RenderJsonRespondWithController < RespondWithController
+  clear_respond_to
+  respond_to :json
+
+  def index
+    respond_with(resource) do |format|
+      format.json { render :json => RenderJsonTestException.new('boom') }
+    end
+  end
+end
+
 class EmptyRespondWithController < ActionController::Base
   def index
     respond_with(Customer.new("david", 13))
@@ -564,10 +622,14 @@ class RespondWithControllerTest < ActionController::TestCase
   def setup
     super
     @request.host = "www.example.com"
+    Mime::Type.register_alias('text/html', :iphone)
+    Mime::Type.register('text/x-mobile', :mobile)
   end
 
   def teardown
     super
+    Mime::Type.unregister(:iphone)
+    Mime::Type.unregister(:mobile)
   end
 
   def test_using_resource
@@ -585,6 +647,18 @@ class RespondWithControllerTest < ActionController::TestCase
     assert_raise ActionView::MissingTemplate do
       get :using_resource
     end
+  end
+
+  def test_using_hash_resource
+    @request.accept = "application/xml"
+    get :using_hash_resource
+    assert_equal "application/xml", @response.content_type
+    assert_equal "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<hash>\n  <name>david</name>\n</hash>\n", @response.body
+
+    @request.accept = "application/json"
+    get :using_hash_resource
+    assert_equal "application/json", @response.content_type
+    assert_equal %Q[{"result":{"name":"david","id":13}}], @response.body
   end
 
   def test_using_resource_with_block
@@ -853,6 +927,14 @@ class RespondWithControllerTest < ActionController::TestCase
     assert_equal "JSON", @response.body
   end
 
+  def test_render_json_object_responds_to_str_still_produce_json
+    @controller = RenderJsonRespondWithController.new
+    @request.accept = "application/json"
+    get :index, :format => :json
+    assert_match(/"message":"boom"/, @response.body)
+    assert_match(/"error":"RenderJsonTestException"/, @response.body)
+  end
+
   def test_no_double_render_is_raised
     @request.accept = "text/html"
     assert_raise ActionView::MissingTemplate do
@@ -936,6 +1018,12 @@ class MimeControllerLayoutsTest < ActionController::TestCase
   def setup
     super
     @request.host = "www.example.com"
+    Mime::Type.register_alias("text/html", :iphone)
+  end
+
+  def teardown
+    super
+    Mime::Type.unregister(:iphone)
   end
 
   def test_missing_layout_renders_properly

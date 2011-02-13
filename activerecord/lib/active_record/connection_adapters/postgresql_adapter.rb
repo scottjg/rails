@@ -398,16 +398,13 @@ module ActiveRecord
       # Set the authorized user for this session
       def session_auth=(user)
         clear_cache!
-        exec "SET SESSION AUTHORIZATION #{user}"
+        exec_query "SET SESSION AUTHORIZATION #{user}"
       end
 
       # REFERENTIAL INTEGRITY ====================================
 
       def supports_disable_referential_integrity?() #:nodoc:
-        version = query("SHOW server_version")[0][0].split('.')
-        version[0].to_i >= 8 && version[1].to_i >= 1
-      rescue
-        return false
+        postgresql_version >= 80100
       end
 
       def disable_referential_integrity #:nodoc:
@@ -532,10 +529,10 @@ module ActiveRecord
         Arel.sql("$#{current_values.length + 1}")
       end
 
-      def exec(sql, name = 'SQL', binds = [])
+      def exec_query(sql, name = 'SQL', binds = [])
         return exec_no_cache(sql, name) if binds.empty?
 
-        log(sql, name) do
+        log(sql, name, binds) do
           unless @statements.key? sql
             nextkey = "a#{@statements.length + 1}"
             @connection.prepare nextkey, sql
@@ -714,8 +711,8 @@ module ActiveRecord
       # Returns the list of all column definitions for a table.
       def columns(table_name, name = nil)
         # Limit, precision, and scale are all handled by the superclass.
-        column_definitions(table_name).collect do |name, type, default, notnull|
-          PostgreSQLColumn.new(name, default, type, notnull == 'f')
+        column_definitions(table_name).collect do |column_name, type, default, notnull|
+          PostgreSQLColumn.new(column_name, default, type, notnull == 'f')
         end
       end
 
@@ -789,7 +786,7 @@ module ActiveRecord
       def pk_and_sequence_for(table) #:nodoc:
         # First try looking for a sequence with a dependency on the
         # given table's primary key.
-        result = query(<<-end_sql, 'PK and serial sequence')[0]
+        result = exec_query(<<-end_sql, 'PK and serial sequence').rows.first
           SELECT attr.attname, seq.relname
           FROM pg_class      seq,
                pg_attribute  attr,
@@ -932,12 +929,12 @@ module ActiveRecord
       # requires that the ORDER BY include the distinct column.
       #
       #   distinct("posts.id", "posts.created_at desc")
-      def distinct(columns, order_by) #:nodoc:
-        return "DISTINCT #{columns}" if order_by.blank?
+      def distinct(columns, orders) #:nodoc:
+        return "DISTINCT #{columns}" if orders.empty?
 
         # Construct a clean list of column names from the ORDER BY clause, removing
         # any ASC/DESC modifiers
-        order_columns = order_by.split(',').collect { |s| s.split.first }
+        order_columns = orders.collect { |s| s =~ /^(.+)\s+(ASC|DESC)\s*$/i ? $1 : s }
         order_columns.delete_if { |c| c.blank? }
         order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
@@ -956,8 +953,12 @@ module ActiveRecord
             else
               # Mimic PGconn.server_version behavior
               begin
-                query('SELECT version()')[0][0] =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-                ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+                if query('SELECT version()')[0][0] =~ /PostgreSQL ([0-9.]+)/
+                  major, minor, tiny = $1.split(".")
+                  (major.to_i * 10000) + (minor.to_i * 100) + tiny.to_i
+                else
+                  0
+                end
               rescue
                 0
               end
@@ -1040,7 +1041,7 @@ module ActiveRecord
         # Executes a SELECT query and returns the results, performing any data type
         # conversions that are required to be performed here instead of in PostgreSQLColumn.
         def select(sql, name = nil, binds = [])
-          exec(sql, name, binds).to_a
+          exec_query(sql, name, binds).to_a
         end
 
         def select_raw(sql, name = nil)
@@ -1070,7 +1071,7 @@ module ActiveRecord
         #  - format_type includes the column size constraint, e.g. varchar(50)
         #  - ::regclass is a function that gives the id for a table name
         def column_definitions(table_name) #:nodoc:
-          query <<-end_sql
+          exec_query(<<-end_sql).rows
             SELECT a.attname, format_type(a.atttypid, a.atttypmod), d.adsrc, a.attnotnull
               FROM pg_attribute a LEFT JOIN pg_attrdef d
                 ON a.attrelid = d.adrelid AND a.attnum = d.adnum

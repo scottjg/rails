@@ -155,7 +155,7 @@ module Rails
     # commands.
     def self.invoke(namespace, args=ARGV, config={})
       names = namespace.to_s.split(':')
-      if klass = find_by_namespace(names.pop, names.shift)
+      if klass = find_by_namespace(names.pop, names.any? && names.join(':'))
         args << "--help" if args.empty? && klass.arguments.any? { |a| a.required? }
         klass.start(args, config)
       else
@@ -228,6 +228,7 @@ module Rails
       rails = groups.delete("rails")
       rails.map! { |n| n.sub(/^rails:/, '') }
       rails.delete("app")
+      rails.delete("plugin_new")
       print_list("rails", rails)
 
       hidden_namespaces.each {|n| groups.delete(n.to_s) }
@@ -301,6 +302,7 @@ module Rails
         $LOAD_PATH.each do |base|
           Dir[File.join(base, "{rails/generators,generators}", "**", "*_generator.rb")].each do |path|
             begin
+              path = path.sub("#{base}/", "")
               require path
             rescue Exception => e
               # No problem

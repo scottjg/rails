@@ -89,7 +89,7 @@ module ActiveRecord
   #   post = Post.create(:title => 'ruby rocks')
   #   post.comments.create(:body => 'hello world')
   #   post.comments[0].body = 'hi everyone'
-  #   post.save # => saves both post and comment, with 'hi everyone' as title
+  #   post.save # => saves both post and comment, with 'hi everyone' as body
   #
   # Destroying one of the associated models as part of the parent's save action
   # is as simple as marking it for destruction:
@@ -306,6 +306,8 @@ module ActiveRecord
           records.each do |record|
             next if record.destroyed?
 
+            saved = true
+
             if autosave && record.marked_for_destruction?
               association.destroy(record)
             elsif autosave != false && (@new_record_before_save || record.new_record?)
@@ -318,7 +320,7 @@ module ActiveRecord
               saved = record.save(:validate => false)
             end
 
-            raise ActiveRecord::Rollback if saved == false
+            raise ActiveRecord::Rollback unless saved
           end
         end
 
@@ -343,8 +345,8 @@ module ActiveRecord
           association.destroy
         else
           key = reflection.options[:primary_key] ? send(reflection.options[:primary_key]) : id
-          if autosave != false && (new_record? || association.new_record? || association[reflection.primary_key_name] != key || autosave)
-            association[reflection.primary_key_name] = key
+          if autosave != false && (new_record? || association.new_record? || association[reflection.foreign_key] != key || autosave)
+            association[reflection.foreign_key] = key
             saved = association.save(:validate => !autosave)
             raise ActiveRecord::Rollback if !saved && autosave
             saved
@@ -363,11 +365,12 @@ module ActiveRecord
         if autosave && association.marked_for_destruction?
           association.destroy
         elsif autosave != false
-          saved = association.save(:validate => !autosave) if association.new_record? || autosave
+          saved = association.save(:validate => !autosave) if association.new_record? || (autosave && association.changed_for_autosave?)
 
           if association.updated?
             association_id = association.send(reflection.options[:primary_key] || :id)
-            self[reflection.primary_key_name] = association_id
+            self[reflection.foreign_key] = association_id
+            association.loaded!
           end
 
           saved if autosave

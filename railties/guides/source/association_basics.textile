@@ -65,7 +65,7 @@ To learn more about the different types of associations, read the next section o
 
 h3. The Types of Associations
 
-In Rails, an _association_ is a connection between two Active Record models. Associations are implemented using macro-style calls, so that you can declaratively add features to your models. For example, by declaring that one model +belongs_to+ another, you instruct Rails to maintain Primary Key–Foreign Key information between instances of the two models, and you also get a number of utility methods added to your model. Rails supports six types of association:
+In Rails, an _association_ is a connection between two Active Record models. Associations are implemented using macro-style calls, so that you can declaratively add features to your models. For example, by declaring that one model +belongs_to+ another, you instruct Rails to maintain Primary Key–Foreign Key information between instances of the two models, and you also get a number of utility methods added to your model. Rails supports six types of associations:
 
 * +belongs_to+
 * +has_one+
@@ -550,6 +550,8 @@ build_customer
 create_customer
 </ruby>
 
+NOTE: When initializing a new +has_one+ or +belongs_to+ association you must use the +build_+ prefix to build the association, rather than the +association.build+ method that would be used for +has_many+ or +has_and_belongs_to_many+ associations. To create one, use the +create_+ prefix.
+
 h6(#belongs_to-association). <tt><em>association</em>(force_reload = false)</tt>
 
 The <tt><em>association</em></tt> method returns the associated object, if any. If no associated object is found, it returns +nil+.
@@ -816,6 +818,8 @@ account=
 build_account
 create_account
 </ruby>
+
+NOTE: When initializing a new +has_one+ or +belongs_to+ association you must use the +build_+ prefix to build the association, rather than the +association.build+ method that would be used for +has_many+ or +has_and_belongs_to_many+ associations. To create one, use the +create_+ prefix.
 
 h6(#has_one-association). <tt><em>association</em>(force_reload = false)</tt>
 
@@ -1131,7 +1135,7 @@ h6(#has_many-collection-find). <tt><em>collection</em>.find(...)</tt>
 The <tt><em>collection</em>.find</tt> method finds objects within the collection. It uses the same syntax and options as +ActiveRecord::Base.find+.
 
 <ruby>
-@open_orders = @customer.orders.find(:all, :conditions => "open = 1")
+@open_orders = @customer.orders.all(:conditions => "open = 1")
 </ruby>
 
 NOTE: Starting Rails 3, supplying options to +ActiveRecord::Base.find+ method is discouraged. Use <tt><em>collection</em>.where</tt> instead when you need to pass conditions.
@@ -1560,7 +1564,7 @@ h6(#has_and_belongs_to_many-collection-find). <tt><em>collection</em>.find(...)<
 The <tt><em>collection</em>.find</tt> method finds objects within the collection. It uses the same syntax and options as +ActiveRecord::Base.find+. It also adds the additional condition that the object must be in the collection.
 
 <ruby>
-@new_assemblies = @part.assemblies.find(:all,
+@new_assemblies = @part.assemblies.all(
   :conditions => ["created_at > ?", 2.days.ago])
 </ruby>
 
@@ -1875,8 +1879,6 @@ Extensions can refer to the internals of the association proxy using these three
 * +proxy_target+ returns the associated object for +belongs_to+ or +has_one+, or the collection of associated objects for +has_many+ or +has_and_belongs_to_many+.
 
 h3. Changelog
-
-"Lighthouse ticket":http://rails.lighthouseapp.com/projects/16213-rails-guides/tickets/11
 
 * April 7, 2010: Fixed document to validate XHTML 1.0 Strict. "Jaime Iniesta":http://jaimeiniesta.com
 * April 19, 2009: Added +:touch+ option to +belongs_to+ associations by "Mike Gunderloy":credits.html#mgunderloy

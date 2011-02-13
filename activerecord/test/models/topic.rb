@@ -45,6 +45,10 @@ class Topic < ActiveRecord::Base
 
   has_many :replies, :dependent => :destroy, :foreign_key => "parent_id"
   has_many :replies_with_primary_key, :class_name => "Reply", :dependent => :destroy, :primary_key => "title", :foreign_key => "parent_title"
+
+  has_many :unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :silly_unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+
   serialize :content
 
   before_create  :default_written_on
@@ -89,7 +93,7 @@ class Topic < ActiveRecord::Base
     end
 
     def set_email_address
-      if self.new_record?
+      unless self.persisted?
         self.author_email_address = 'test@test.com'
       end
     end
