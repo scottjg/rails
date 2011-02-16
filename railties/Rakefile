@@ -25,7 +25,7 @@ task :default => :test
 ## This is required until the regular test task
 ## below passes.  It's not ideal, but at least
 ## we can see the failures
-task :test do 
+task :test do
   Dir['test/**/*_test.rb'].all? do |file|
     ruby = File.join(*RbConfig::CONFIG.values_at('bindir', 'RUBY_INSTALL_NAME'))
     system(ruby, '-Itest', file)
@@ -40,7 +40,7 @@ Rake::TestTask.new("regular_test") do |t|
 end
 
 
-BASE_DIRS = %w( 
+BASE_DIRS = %w(
   app
   config/environments
   config/initializers
@@ -160,7 +160,7 @@ end
 # Copy Ties Content -----------------------------------------------------------------------
 
 desc "Make copies of all the default content of ties"
-task :copy_ties_content => [ 
+task :copy_ties_content => [
   :copy_rootfiles, :copy_dispatches, :copy_html_files, :copy_application,
   :copy_configs, :copy_binfiles, :copy_test_helpers, :copy_app_doc_readme ]
 
@@ -189,7 +189,7 @@ task :copy_configs do
   socket = nil
   require 'erb'
   File.open("#{PKG_DESTINATION}/config/database.yml", 'w') {|f| f.write ERB.new(IO.read("configs/databases/sqlite3.yml"), nil, '-').result(binding)}
-  
+
   cp "configs/routes.rb", "#{PKG_DESTINATION}/config/routes.rb"
 
   cp "configs/initializers/backtrace_silencers.rb", "#{PKG_DESTINATION}/config/initializers/backtrace_silencers.rb"
@@ -290,15 +290,15 @@ end
 
 PKG_FILES = FileList[
   '[a-zA-Z]*',
-  'bin/**/*', 
+  'bin/**/*',
   'builtin/**/*',
-  'configs/**/*', 
-  'doc/**/*', 
-  'dispatches/**/*', 
-  'environments/**/*', 
-  'helpers/**/*', 
-  'generators/**/*', 
-  'html/**/*', 
+  'configs/**/*',
+  'doc/**/*',
+  'dispatches/**/*',
+  'environments/**/*',
+  'helpers/**/*',
+  'generators/**/*',
+  'html/**/*',
   'lib/**/*'
 ] - [ 'test' ]
 
@@ -313,19 +313,11 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3')
-<<<<<<< HEAD
-  s.add_dependency('activesupport',    '= 2.3.8.1' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.3.8.1' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.3.8.1' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.3.8.1' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.3.8.1' + PKG_BUILD)
-=======
-  s.add_dependency('activesupport',    '= 2.3.11' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.3.11' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.3.11' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.3.11' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.3.11' + PKG_BUILD)
->>>>>>> 2-3-stable
+  s.add_dependency('activesupport',    '= 2.3.11.1' + PKG_BUILD)
+  s.add_dependency('activerecord',     '= 2.3.11.1' + PKG_BUILD)
+  s.add_dependency('actionpack',       '= 2.3.11.1' + PKG_BUILD)
+  s.add_dependency('actionmailer',     '= 2.3.11.1' + PKG_BUILD)
+  s.add_dependency('activeresource',   '= 2.3.11.1' + PKG_BUILD)
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
@@ -349,7 +341,7 @@ end
 
 # Publishing -------------------------------------------------------
 desc "Publish the rails gem"
-task :pgem => [:gem] do 
+task :pgem => [:gem] do
   Rake::SshFilePublisher.new("gems.rubyonrails.org", "/u/sites/gems/gems", "pkg", "#{PKG_FILE_NAME}.gem").upload
   `ssh gems.rubyonrails.org '/u/sites/gems/gemupdate.sh'`
 end
