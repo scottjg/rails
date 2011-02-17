@@ -463,6 +463,36 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal(expected, email_field_tag("address"))
   end
 
+  def test_date_field_tag
+    expected = %{<input id="birthday" name="birthday" type="date" />}
+    assert_dom_equal(expected, date_field_tag("birthday"))
+  end
+
+  def test_month_field_tag
+    expected = %{<input id="promotion_period" name="promotion_period" type="month" />}
+    assert_dom_equal(expected, month_field_tag("promotion_period"))
+  end
+
+  def test_week_field_tag
+    expected = %{<input id="report_term" name="report_term" type="week" />}
+    assert_dom_equal(expected, week_field_tag("report_term"))
+  end
+
+  def test_time_field_tag
+    expected = %{<input id="served_at" name="served_at" type="time" />}
+    assert_dom_equal(expected, time_field_tag("served_at"))
+  end
+
+  def test_datetime_field_tag
+    expected = %{<input id="due_at" name="due_at" type="datetime" />}
+    assert_dom_equal(expected, datetime_field_tag("due_at"))
+  end
+
+  def test_datetime_local_field_tag
+    expected = %{<input id="when" name="when" type="datetime-local" />}
+    assert_dom_equal(expected, datetime_local_field_tag("when"))
+  end
+
   def test_number_field_tag
     expected = %{<input name="quantity" max="9" id="quantity" type="number" min="1" />}
     assert_dom_equal(expected, number_field_tag("quantity", nil, :in => 1...10))
