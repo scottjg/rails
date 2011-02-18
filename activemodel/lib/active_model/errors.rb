@@ -299,7 +299,10 @@ module ActiveModel
           :"#{@base.class.i18n_scope}.errors.models.#{klass.model_name.i18n_key}.#{type}" ]
       end
 
-      defaults << options.delete(:message)
+      message = options.delete(:message)
+      message = message.call(@base) if message.is_a?(Proc)
+
+      defaults << message
       defaults << :"#{@base.class.i18n_scope}.errors.messages.#{type}"
       defaults << :"errors.attributes.#{attribute}.#{type}"
       defaults << :"errors.messages.#{type}"

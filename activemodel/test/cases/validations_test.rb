@@ -231,6 +231,14 @@ class ValidationsTest < ActiveModel::TestCase
     assert_equal ["NO BLANKS HERE"], t.errors[:title]
   end
 
+  def test_validation_with_message_as_proc_that_takes_a_record_as_a_parameter
+    Topic.validates_presence_of(:title, :message => proc { |record| "You have failed me for the last time, #{record.author_name}." })
+
+    t = Topic.new(:author_name => 'Admiral')
+    assert t.invalid?
+    assert_equal ["You have failed me for the last time, Admiral."], t.errors[:title]
+  end
+
   def test_list_of_validators_for_model
     Topic.validates_presence_of :title
     Topic.validates_length_of :title, :minimum => 2
