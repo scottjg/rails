@@ -110,7 +110,7 @@ module ActiveRecord
 
           unless new_record?
             lock_col = self.class.locking_column
-            previous_value = send(lock_col).to_i
+            previous_value = read_attribute(lock_col) #.to_i
 
             table = self.class.arel_table
             predicate = table[self.class.primary_key].eq(id)
