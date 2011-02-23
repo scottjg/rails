@@ -411,6 +411,13 @@ module ActiveRecord
       def initialize_schema_migrations_table
         sm_table = ActiveRecord::Migrator.schema_migrations_table_name
 
+        # If Postgresql is used then add schema name to table name
+        # table_exists? methods in PostgreSQLAdapter assumes table name
+        # in format "schema_name.table_name"
+        if ActiveRecord::Base.connection.adapter_name == "PostgreSQL"
+          sm_table = get_postgres_table_name(sm_table)
+        end
+
         unless table_exists?(sm_table)
           create_table(sm_table, :id => false) do |schema_migrations_table|
             schema_migrations_table.column :version, :string, :null => false
@@ -516,6 +523,16 @@ module ActiveRecord
         remove_column table_name, :created_at
       end
 
+      def get_postgres_table_name(table_name)
+        # Add schema name to table name if current schema is blank or current schema is default schema i.e 'public'
+        current_schema =  ActiveRecord::Base.connection.schema_search_path
+        if current_schema.blank? || current_schema.split(",").last == "public"
+          table_name
+        else
+          current_schema + "." + table_name
+        end
+      end
+
       protected
         # Overridden by the mysql adapter for supporting index lengths
         def quoted_columns_for_index(column_names, options = {})
@@ -572,3 +589,4 @@ module ActiveRecord
     end
   end
 end
+
