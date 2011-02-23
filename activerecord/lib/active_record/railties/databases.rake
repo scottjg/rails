@@ -410,7 +410,7 @@ namespace :db do
     end
 
     # desc "Recreate the test database from the current environment's database schema"
-    task :clone do
+    task :clone => :environment do
       Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
       Rake::Task["db:structure:dump"].invoke if ActiveRecord::Base.schema_format == :sql
       Rake::Task["db:test:load"].invoke
