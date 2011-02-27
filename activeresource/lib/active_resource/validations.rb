@@ -94,12 +94,7 @@ module ActiveResource
     # Loads the set of remote errors into the object's Errors based on the
     # content-type of the error-block received
     def load_remote_errors(remote_errors, save_cache = false ) #:nodoc:
-      case self.class.format
-      when ActiveResource::Formats[:xml]
-        errors.from_xml(remote_errors.response.body, save_cache)
-      when ActiveResource::Formats[:json]
-        errors.from_json(remote_errors.response.body, save_cache)
-      end
+      errors.send "from_#{self.class.format.extension}", remote_errors.response.body, save_cache
     end
 
     # Checks for errors on an object (i.e., is resource.errors empty?).
