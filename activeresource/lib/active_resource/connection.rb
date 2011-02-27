@@ -6,6 +6,23 @@ require 'time'
 require 'uri'
 
 module ActiveResource
+  
+  # Uses Net::HTTP.
+  class NetHTTPProvider
+    
+    def open
+      if(@proxy)
+        Net::HTTP.new(@site.host, @site.port, @proxy.host, @proxy.port, @proxy.user, @proxy.password)
+      else
+        Net::HTTP.new(@site.host, @site.port)
+      end
+    end
+    
+    def proxy=(proxy)
+      @proxy = proxy.is_a?(URI) ? proxy : URI.parser.parse(proxy)
+    end
+  end
+  
   # Class to handle connections to remote web services.
   # This class is used by ActiveResource::Base to interface with REST
   # services.
@@ -34,6 +51,7 @@ module ActiveResource
       @user = @password = nil
       self.site = site
       self.format = format
+      @provider = NetHTTPProvider.new
     end
 
     # Set URI for remote service.
@@ -45,9 +63,9 @@ module ActiveResource
 
     # Set the proxy for remote service.
     def proxy=(proxy)
-      @proxy = proxy.is_a?(URI) ? proxy : URI.parser.parse(proxy)
+      @provider.proxy = proxy
     end
-
+    
     # Sets the user for remote service.
     def user=(user)
       @user = user
@@ -68,9 +86,14 @@ module ActiveResource
       @timeout = timeout
     end
 
-    # Hash of options applied to Net::HTTP instance when +site+ protocol is 'https'.
+    # Hash of options applied to connection instance when +site+ protocol is 'https'.
     def ssl_options=(opts={})
       @ssl_options = opts
+    end
+
+    # Sets the connection provider.
+    def provider=(provider)
+      @provider = provider
     end
 
     # Executes a GET request.
@@ -150,18 +173,10 @@ module ActiveResource
         end
       end
 
-      # Creates new Net::HTTP instance for communication with the
-      # remote service and resources.
+      # Creates a new connection instance for communication with the
+      # remote service and resources and configures it.
       def http
-        configure_http(new_http)
-      end
-
-      def new_http
-        if @proxy
-          Net::HTTP.new(@site.host, @site.port, @proxy.host, @proxy.port, @proxy.user, @proxy.password)
-        else
-          Net::HTTP.new(@site.host, @site.port)
-        end
+        configure_http(@provider.open)
       end
 
       def configure_http(http)
