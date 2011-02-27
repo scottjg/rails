@@ -359,7 +359,7 @@ module ActiveResource
       # strings.
       #
       def schema=(the_schema)
-        unless the_schema.present?
+        if the_schema.blank?
           # purposefully nulling out the schema
           @schema = nil
           @known_attributes = []
@@ -934,7 +934,7 @@ module ActiveResource
 
         # Builds the query string for the request.
         def query_string(options)
-          "?#{options.to_query}" unless options.nil? || options.empty?
+          "?#{options.to_query}" if options.present?
         end
 
         # split an option hash into two hashes, one containing the prefix options,
