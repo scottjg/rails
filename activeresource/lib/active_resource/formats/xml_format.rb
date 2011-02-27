@@ -21,6 +21,11 @@ module ActiveResource
         from_xml_data(Hash.from_xml(xml))
       end
 
+      # Grabs errors from an XML response.
+      def decode_errors(xml)
+        Array.wrap(Hash.from_xml(xml)['errors']['error']) rescue []
+      end
+
       private
         # Manipulate from_xml Hash, because xml_simple is not exactly what we
         # want for Active Resource.

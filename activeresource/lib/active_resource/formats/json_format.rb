@@ -20,6 +20,12 @@ module ActiveResource
       def decode(json)
         ActiveSupport::JSON.decode(json)
       end
+
+      # Grabs errors from a json response.
+      def decode_errors(json)
+        Array.wrap(ActiveSupport::JSON.decode(json)['errors']) rescue []
+      end
+
     end
   end
 end

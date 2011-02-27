@@ -8,6 +8,7 @@ module ActiveResource
   # Active Resource validation is reported to and from this object, which is used by Base#save
   # to determine whether the object in a valid state to be saved. See usage example in Validations.
   class Errors < ActiveModel::Errors
+    
     # Grabs errors from an array of messages (like ActiveRecord::Validations)
     # The second parameter directs the errors cache to be cleared (default)
     # or not (by passing true)
@@ -24,18 +25,7 @@ module ActiveResource
         self[:base] << message if attr_message.nil?
       end
     end
-
-    # Grabs errors from a json response.
-    def from_json(json, save_cache = false)
-      array = Array.wrap(ActiveSupport::JSON.decode(json)['errors']) rescue []
-      from_array array, save_cache
-    end
-
-    # Grabs errors from an XML response.
-    def from_xml(xml, save_cache = false)
-      array = Array.wrap(Hash.from_xml(xml)['errors']['error']) rescue []
-      from_array array, save_cache
-    end
+    
   end
 
   # Module to support validation and errors with Active Resource objects. The module overrides
@@ -94,7 +84,8 @@ module ActiveResource
     # Loads the set of remote errors into the object's Errors based on the
     # content-type of the error-block received
     def load_remote_errors(remote_errors, save_cache = false ) #:nodoc:
-      errors.send "from_#{self.class.format.extension}", remote_errors.response.body, save_cache
+      array = self.class.format.decode_errors remote_errors.response.body
+      errors.from_array array, save_cache
     end
 
     # Checks for errors on an object (i.e., is resource.errors empty?).
