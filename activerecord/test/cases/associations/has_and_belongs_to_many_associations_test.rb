@@ -415,6 +415,16 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 2, active_record.developers_by_sql(true).size
   end
 
+  def test_deleting_with_sql_with_deprecated_interpolation
+    david = Developer.find(1)
+    active_record = Project.find(1)
+    active_record.developers.reload
+    assert_equal 3, active_record.developers_by_sql_deprecated.size
+
+    active_record.developers_by_sql_deprecated.delete(david)
+    assert_equal 2, active_record.developers_by_sql_deprecated(true).size
+  end
+
   def test_deleting_array_with_sql
     active_record = Project.find(1)
     active_record.developers.reload
@@ -435,7 +445,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_removing_associations_on_destroy
     david = DeveloperWithBeforeDestroyRaise.find(1)
     assert !david.projects.empty?
-    assert_raise(RuntimeError) { david.destroy }
+    david.destroy
     assert david.projects.empty?
     assert DeveloperWithBeforeDestroyRaise.connection.select_all("SELECT * FROM developers_projects WHERE developer_id = 1").empty?
   end
@@ -837,7 +847,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   unless current_adapter?(:PostgreSQLAdapter)
     def test_count_with_finder_sql
       assert_equal 3, projects(:active_record).developers_with_finder_sql.count
-      assert_equal 3, projects(:active_record).developers_with_multiline_finder_sql.count
+      assert_equal 3, projects(:active_record).developers_with_deprecated_multiline_finder_sql.count
     end
   end
 

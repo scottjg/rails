@@ -171,7 +171,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       resources :posts, :only => [:index, :show] do
-        resources :comments, :except => :destroy
+        namespace :admin do
+          root :to => "index#index"
+        end
+        resources :comments, :except => :destroy do
+          get "views" => "comments#views", :as => :views
+        end
       end
 
       resource  :past, :only => :destroy
@@ -2227,6 +2232,18 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         routes.draw { match 'page/:id' => 'pages#show', :id => /\w+/m }
       end
     end
+  end
+
+  def test_nested_route_in_nested_resource
+    get "/posts/1/comments/2/views"
+    assert_equal "comments#views", @response.body
+    assert_equal "/posts/1/comments/2/views", post_comment_views_path(:post_id => '1', :comment_id => '2')
+  end
+
+  def test_root_in_deeply_nested_scope
+    get "/posts/1/admin"
+    assert_equal "admin/index#index", @response.body
+    assert_equal "/posts/1/admin", post_admin_root_path(:post_id => '1')
   end
 
 private

@@ -21,18 +21,22 @@ module ActionDispatch
           @app, @constraints, @request = app, constraints, request
         end
 
-        def call(env)
+        def matches?(env)
           req = @request.new(env)
 
           @constraints.each { |constraint|
             if constraint.respond_to?(:matches?) && !constraint.matches?(req)
-              return [ 404, {'X-Cascade' => 'pass'}, [] ]
+              return false
             elsif constraint.respond_to?(:call) && !constraint.call(*constraint_args(constraint, req))
-              return [ 404, {'X-Cascade' => 'pass'}, [] ]
+              return false
             end
           }
 
-          @app.call(env)
+          return true
+        end
+
+        def call(env)
+          matches?(env) ? @app.call(env) : [ 404, {'X-Cascade' => 'pass'}, [] ]
         end
 
         private
@@ -778,6 +782,14 @@ module ActionDispatch
       #     resources :posts, :comments
       #   end
       #
+      # By default the :id parameter doesn't accept dots. If you need to
+      # use dots as part of the :id parameter add a constraint which
+      # overrides this restriction, e.g:
+      #
+      #   resources :articles, :id => /[^\/]+/
+      #
+      # This allows any character other than a slash as part of your :id.
+      #
       module Resources
         # CANONICAL_ACTIONS holds all actions that does not need a prefix or
         # a path appended since they fit properly in their scope level.
@@ -983,11 +995,11 @@ module ActionDispatch
         #
         # [:path]
         #
-        #  Set a path prefix for this resource.
+        #   Set a path prefix for this resource.
         #
         #     resources :posts, :path => "admin"
         #
-        #  All actions for this resource will now be at +/admin/posts+.
+        #   All actions for this resource will now be at +/admin/posts+.
         def resources(*resources, &block)
           options = resources.extract_options!
 
@@ -1319,7 +1331,7 @@ module ActionDispatch
 
             name = case @scope[:scope_level]
             when :nested
-              [member_name, prefix]
+              [name_prefix, prefix]
             when :collection
               [prefix, name_prefix, collection_name]
             when :new

@@ -48,9 +48,11 @@ class Boolean < ActiveRecord::Base; end
 class BasicsTest < ActiveRecord::TestCase
   fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts
 
-  def test_limit_with_comma
-    assert_nothing_raised do
-      Topic.limit("1,2").all
+  unless current_adapter?(:PostgreSQLAdapter,:OracleAdapter,:SQLServerAdapter)
+    def test_limit_with_comma
+      assert_nothing_raised do
+        Topic.limit("1,2").all
+      end
     end
   end
 
@@ -79,6 +81,12 @@ class BasicsTest < ActiveRecord::TestCase
   def test_limit_should_sanitize_sql_injection_for_limit_with_comas
     assert_raises(ArgumentError) do
       Topic.limit("1, 7 procedure help()").all
+    end
+  end
+
+  unless current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter)
+    def test_limit_should_allow_sql_literal
+      assert_equal 1, Topic.limit(Arel.sql('2-1')).all.length
     end
   end
 
@@ -1185,12 +1193,6 @@ class BasicsTest < ActiveRecord::TestCase
                         :distinct => true)
     end
     assert_equal res6, res7
-  end
-
-  def test_interpolate_sql
-    assert_nothing_raised { Category.new.send(:interpolate_sql, 'foo@bar') }
-    assert_nothing_raised { Category.new.send(:interpolate_sql, 'foo bar) baz') }
-    assert_nothing_raised { Category.new.send(:interpolate_sql, 'foo bar} baz') }
   end
 
   def test_scoped_find_conditions
