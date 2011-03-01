@@ -6,7 +6,7 @@ module ActionView
       # for forms to use. Place this in your head.
       def csrf_meta_tag
         if protect_against_forgery?
-          %(<meta name="csrf-param" content="#{h(request_forgery_protection_token)}"/>\n<meta name="csrf-token" content="#{h(form_authenticity_token)}"/>).html_safe
+          %(<meta name="csrf-param" content="#{h(request_forgery_protection_token)}"/>\n<meta name="csrf-token" content="#{h(form_authenticity_token)}"/>)
         end
       end
     end
