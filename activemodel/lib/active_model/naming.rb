@@ -14,7 +14,7 @@ module ActiveModel
       @human = ActiveSupport::Inflector.humanize(@element).freeze
       @collection = ActiveSupport::Inflector.tableize(self).freeze
       @partial_path = "#{@collection}/#{@element}".freeze
-      @i18n_key = ActiveSupport::Inflector.underscore(self).tr('/', '.').to_sym
+      @i18n_key = ActiveSupport::Inflector.underscore(self).to_sym
     end
 
     # Transform the model name into a more humane format, using I18n. By default,
