@@ -83,7 +83,7 @@ module Rails
       specification.dependencies.reject do |dependency|
         dependency.type == :development
       end.map do |dependency|
-        GemDependency.new(dependency.name, :requirement => dependency.version_requirements)
+        GemDependency.new(dependency.name, :requirement => dependency.requirement)
       end
     end
 
@@ -102,7 +102,7 @@ module Rails
                   "can't activate #{@dep}, already activated #{existing_spec.full_name}"
           end
           # we're stuck with it, so change to match
-          version_requirements = Gem::Requirement.create("=#{existing_spec.version}")
+          requirement = Gem::Requirement.create("=#{existing_spec.version}")
           existing_spec
         else
           # new load
@@ -115,8 +115,9 @@ module Rails
       @spec = s
     end
 
+    alias :requirement_withouth_ignore_default :requirement
     def requirement
-      r = version_requirements
+      r = requirement_withouth_ignore_default
       (r == Gem::Requirement.default) ? nil : r
     end
 
