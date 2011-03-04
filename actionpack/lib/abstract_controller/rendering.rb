@@ -135,6 +135,17 @@ module AbstractController
         parent_prefixes = self.class.parent_prefixes
         parent_prefixes.dup.unshift(controller_path)
       end
+
+      if template_inheritance?
+        parent_controller = self.class.superclass
+
+        until parent_controller.abstract?
+          @_prefixes << parent_controller.controller_path
+          parent_controller = parent_controller.superclass
+        end
+      end
+
+      @_prefixes
     end
 
     private
@@ -182,6 +193,11 @@ module AbstractController
     end
 
     def _process_options(options)
+    end
+
+    def template_inheritance?
+      # is there a better way to check for config option being set?
+      config.template_inheritance.nil? ? true : config.template_inheritance
     end
   end
 end

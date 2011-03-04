@@ -21,7 +21,7 @@ module ActionView #:nodoc:
           return templates unless templates.empty?
         end
       end
-      []
+      templates.flatten
     end
 
     def exists?(*args)
