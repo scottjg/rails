@@ -66,3 +66,5 @@ to proceed. {Join us}[http://contributors.rubyonrails.org]!
 == License
 
 Ruby on \Rails is released under the MIT license.
+
+Added by James
