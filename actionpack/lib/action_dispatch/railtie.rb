@@ -10,6 +10,8 @@ module ActionDispatch
     config.action_dispatch.best_standards_support = true
     config.action_dispatch.tld_length = 1
     config.action_dispatch.rack_cache = {:metastore => "rails:/", :entitystore => "rails:/", :verbose => true}
+    config.action_dispatch.dump_session_on_error = true
+    config.action_dispatch.dump_environment_on_error = false
 
     initializer "action_dispatch.configure" do |app|
       ActionDispatch::Http::URL.tld_length = app.config.action_dispatch.tld_length
