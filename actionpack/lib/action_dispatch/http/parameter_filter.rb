@@ -35,7 +35,7 @@ module ActionDispatch
               elsif value.is_a?(Array)
                 value = value.map { |v| v.is_a?(Hash) ? filter(v) : v }
               elsif blocks.present?
-                key = key.dup
+                key = key.dup if key.duplicable?
                 value = value.dup if value.duplicable?
                 blocks.each { |b| b.call(key, value) }
               end
