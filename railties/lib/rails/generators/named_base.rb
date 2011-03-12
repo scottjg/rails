@@ -59,7 +59,7 @@ module Rails
 
         def namespace
           @namespace ||= if defined?(Rails) && Rails.application
-            Rails.application.class.parents.detect { |n| n.respond_to?(:_railtie) }
+            Rails.application.class.ancestors.detect { |n| n.respond_to?(:_railtie) }
           end
         end
 
