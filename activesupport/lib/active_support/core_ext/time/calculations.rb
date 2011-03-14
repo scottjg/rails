@@ -63,7 +63,12 @@ class Time
   # Time.now.during?(Time.local(2000)..Time.local(2050))
   # => true
   # 
-  # Alternatively, values may be given in a similar manner to Time#gm. In
+  # If a Date instance is given rather than a Range of Times, the Date is
+  # converted to a Range of Times which represents the entire day of Date.
+  # Time.now.during?(Date.today)
+  # => true
+  # 
+  # Values may also be given in a similar manner to Time#gm. In
   # this case the range will be interpreted as the entirety of the last 
   # value given. For instance, the range used for #during?(2010,10) will
   # represent all of October 2010 (2010-10-01 00:00:00 to 2010-10-31 12:59:59).
