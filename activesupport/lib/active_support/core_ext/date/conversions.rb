@@ -92,7 +92,17 @@ class Date
   def to_datetime
     ::DateTime.civil(year, month, day, 0, 0, 0, 0)
   end if RUBY_VERSION < '1.9'
-
+  
+  # Converts a Date instance to a Range of Dates that covers from the beginning of the Date's
+  # day to the end of the Date's day
+  # 
+  #  ==== Examples
+  #   date = Date.new(2007, 11, 10)   # => Sat, 10 Nov 2007
+  #   date.to_range                   # => 2007-11-10...2007-11-11
+  def to_range
+    self...(self+1)
+  end
+  
   def iso8601
     strftime('%F')
   end if RUBY_VERSION < '1.9'
