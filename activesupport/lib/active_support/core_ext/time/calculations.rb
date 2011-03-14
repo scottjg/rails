@@ -58,6 +58,27 @@ class Time
   def future?
     self > ::Time.current
   end
+  
+  # Tells whether the Time object's time is within a specific Range of Times.
+  # Time.now.during?(Time.local(2000)..Time.local(2050))
+  # => true
+  # 
+  # Alternatively, values may be given in a similar manner to Time#gm. In
+  # this case the range will be interpreted as the entirety of the last 
+  # value given. For instance, the range used for #during?(2010,10) will
+  # represent all of October 2010 (2010-10-01 00:00:00 to 2010-10-31 12:59:59).
+  # If more specific values are passed in, the range shrinks. The used for the
+  # range in this way are local times.
+  # Time.local(2010,4,1,12,30).during?(2010,4)
+  # => true
+  # Time.local(2010,4,1,12,30).during?(2010,4,1,12)
+  # => true
+  # Time.local(2010,4,1,12,30).during?(2010,4,1,12,45)
+  # => false
+  def during?(*args)
+    range = args.first.is_a?(Range) ? args.first : Range.new(Time.local(*args), Time.local(*(args[0,args.size-1].push(args[-1]+1))), true)
+    range.cover?(self)
+  end
 
   # Seconds since midnight: Time.now.seconds_since_midnight
   def seconds_since_midnight

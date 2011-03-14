@@ -707,6 +707,37 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_during_with_range_input
+    assert_equal true, Time.now.during?(Time.now-10..Time.now+10)
+    assert_equal true, Time.now.during?(Time.utc(2000)..Time.utc(3000))
+    assert_equal false, Time.now.during?(Time.now+1..Time.now+10)
+  end
+  
+  def test_during_with_range_input_for_time_with_zone
+    assert_equal true, Time.now.utc.during?(Time.now.localtime-1..Time.now.localtime+1)
+    assert_equal true, Time.local(2011,3,10,12).during?(Time.utc(2011,3,10,16)..Time.utc(2011,3,10,18))
+    assert_equal false, Time.local(2011,3,10,12).during?(Time.local(2011,3,10,16)..Time.local(2011,3,10,18))
+    assert_equal true, Time.new(2011,3,10,12,30,30, "-05:00").during?(Time.new(2011,3,10,12,30,30, "-04:00")..Time.new(2011,3,10,12,30,30, "-06:00"))
+  end
+  
+  def test_during_with_value_input_for_local_times
+    assert_equal true, Time.local(2011,3,10,12,30,30).during?(2011)
+    assert_equal false, Time.local(2011,3,10,12,30,30).during?(2012)
+    assert_equal true, Time.local(2011,3,10,12,30,30).during?(2011,3)
+    assert_equal true, Time.local(2011,3,10,12,30,30).during?(2011,3,10)
+    assert_equal true, Time.local(2011,3,10,12,30,30).during?(2011,3,10,12)
+    assert_equal true, Time.local(2011,3,10,12,30,30).during?(2011,3,10,12,30)
+    assert_equal false, Time.local(2011,3,10,12,30,30).during?(2011,3,10,12,31)
+    assert_equal true, Time.local(2011,3,10,12,30,30,100).during?(2011,3,10,12,30,30)
+    assert_equal false, Time.local(2011,3,10,12,30,30,100).during?(2011,3,10,12,30,31)
+  end
+  
+  def test_during_with_value_input_for_nonlocal_times
+    assert_equal false, Time.utc(2011,3,10,12,30,30).during?(2011,3,10,12)
+    assert_equal false, Time.utc(2011,3,10,12,30,30).localtime.during?(2011,3,10,12)
+    assert_equal true, Time.local(2011,3,10,12,30,30).utc.during?(2011,3,10,12)
+  end
+
   def test_acts_like_time
     assert Time.new.acts_like_time?
   end
