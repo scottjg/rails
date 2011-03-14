@@ -1,3 +1,4 @@
+require 'date'
 require 'abstract_unit'
 require 'active_support/time'
 
@@ -718,6 +719,13 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal true, Time.local(2011,3,10,12).during?(Time.utc(2011,3,10,16)..Time.utc(2011,3,10,18))
     assert_equal false, Time.local(2011,3,10,12).during?(Time.local(2011,3,10,16)..Time.local(2011,3,10,18))
     assert_equal true, Time.new(2011,3,10,12,30,30, "-05:00").during?(Time.new(2011,3,10,12,30,30, "-04:00")..Time.new(2011,3,10,12,30,30, "-06:00"))
+  end
+  
+  def test_during_with_date_input
+    assert_equal true, Time.now.during?(Date.today)
+    assert_equal false, Time.now.during?(Date.new(1066, 10, 14))
+    assert_equal true, Time.utc(2011, 3, 14, 12, 30, 55).during?(Date.new(2011, 3, 14))
+    assert_equal false, Time.utc(2011, 3, 15, 12, 30, 55).during?(Date.new(2011, 3, 14))
   end
   
   def test_during_with_value_input_for_local_times

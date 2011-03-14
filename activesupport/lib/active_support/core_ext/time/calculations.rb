@@ -76,13 +76,11 @@ class Time
   # Time.local(2010,4,1,12,30).during?(2010,4,1,12,45)
   # => false
   def during?(*args)
-    # range = args.first.is_a?(Range) ? args.first : Range.new(Time.local(*args), Time.local(*(args[0,args.size-1].push(args[-1]+1))), true)
-    range = case args.first
+    case args.first
       when Range then args.first
-      when Date then args.first.to_range
-      else Range.new(Time.local(*args), Time.local(*(args[0,args.size-1].push(args[-1]+1))), true)
-    end
-    range.cover?(self)
+      when Date then args.first.to_range.begin.to_time...args.first.to_range.end.to_time
+      else Time.local(*args)...Time.local(*(args[0,args.size-1].push(args[-1]+1)))
+    end.cover?(self)
   end
 
   # Seconds since midnight: Time.now.seconds_since_midnight
