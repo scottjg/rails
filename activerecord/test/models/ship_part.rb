@@ -4,4 +4,6 @@ class ShipPart < ActiveRecord::Base
   accepts_nested_attributes_for :trinkets, :allow_destroy => true
 
   validates_presence_of :name
+  
+  attr_protected :a_protected_attribute
 end

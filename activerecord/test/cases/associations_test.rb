@@ -71,6 +71,19 @@ class AssociationsTest < ActiveRecord::TestCase
     assert_equal 'Deck', ship.parts[0].name
   end
 
+  def test_the_change_of_protected_attribute_after_a_record_is_loaded_through_nested_attributes_should_survive_subsequent_change_to_the_record
+    ship = Ship.create!(:name => "The good ship Dollypop")
+    part = ship.parts.create! do |p|
+      p.name = 'Mast'
+      p.a_protected_attribute = 'Original Value'
+    end
+    ship.parts_attributes = [{:id => part.id, :name => 'Main Mast'}]
+    a_copy_of_part = ShipPart.find(part.id)
+    a_copy_of_part.update_attribute(:a_protected_attribute, 'New Value')    
+    ship.save
+    assert_equal 'Main Mast', ship.parts[0].name
+    assert_equal a_copy_of_part.a_protected_attribute, ship.parts[0].a_protected_attribute
+  end
 
   def test_include_with_order_works
     assert_nothing_raised {Account.find(:first, :order => 'id', :include => :firm)}

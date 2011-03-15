@@ -481,6 +481,7 @@ ActiveRecord::Schema.define do
 
   create_table :ship_parts, :force => true do |t|
     t.string :name
+    t.string :a_protected_attribute
     t.integer :ship_id
   end
 

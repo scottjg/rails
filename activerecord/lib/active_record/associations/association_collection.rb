@@ -400,7 +400,7 @@ module ActiveRecord
                     if i
                       @target.delete_at(i).tap do |t|
                         keys = ["id"] + t.changes.keys + (f.attribute_names - t.attribute_names)
-                        t.attributes = f.attributes.except(*keys)
+                        t.send(:attributes=, f.attributes.except(*keys), false)
                       end
                     else
                       f
