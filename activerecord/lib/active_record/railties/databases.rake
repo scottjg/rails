@@ -4,7 +4,7 @@ db_namespace = namespace :db do
     ActiveRecord::Base.configurations = Rails.application.config.database_configuration
     ActiveRecord::Migrator.migrations_paths = Rails.application.paths["db/migrate"].to_a
 
-    if defined?(ENGINE_PATH) && engine = Rails::Engine.find(ENGINE_PATH)
+    Rails.application.railties.engines.each do |engine|
       if engine.paths["db/migrate"].existent
         ActiveRecord::Migrator.migrations_paths += engine.paths["db/migrate"].to_a
       end
