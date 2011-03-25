@@ -295,6 +295,7 @@ module ActionDispatch
       end
 
       def add_route(app, conditions = {}, requirements = {}, defaults = {}, name = nil, anchor = true)
+        raise ArgumentError, "Invalid route name: '#{name}'" unless name.blank? || name.to_s.match(/^[_a-z]\w*$/i)
         route = Route.new(self, app, conditions, requirements, defaults, name, anchor)
         @set.add_route(*route)
         named_routes[name] = route if name
@@ -396,7 +397,7 @@ module ActionDispatch
 
           raise_routing_error unless path
 
-          params.reject! {|k,v| !v }
+          params.reject! {|k,v| !v.to_param}
 
           return [path, params.keys] if @extras
 
@@ -512,7 +513,9 @@ module ActionDispatch
           end
 
           dispatcher = route.app
-          dispatcher = dispatcher.app while dispatcher.is_a?(Mapper::Constraints)
+          while dispatcher.is_a?(Mapper::Constraints) && dispatcher.matches?(env) do
+            dispatcher = dispatcher.app
+          end
 
           if dispatcher.is_a?(Dispatcher) && dispatcher.controller(params, false)
             dispatcher.prepare_params!(params)

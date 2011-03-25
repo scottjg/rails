@@ -465,10 +465,17 @@ class RelationTest < ActiveRecord::TestCase
     relation = relation.where(:name => david.name)
     relation = relation.where(:name => 'Santiago')
     relation = relation.where(:id => david.id)
-    assert_equal [david], relation.all
+    assert_equal [], relation.all
   end
 
-  def test_find_all_with_multiple_ors
+  def test_multi_where_ands_queries
+    relation = Author.unscoped
+    david = authors(:david)
+    sql = relation.where(:name => david.name).where(:name => 'Santiago').to_sql
+    assert_match('AND', sql)
+  end
+
+  def test_find_all_with_multiple_should_use_and
     david = authors(:david)
     relation = [
       { :name => david.name },
@@ -477,7 +484,7 @@ class RelationTest < ActiveRecord::TestCase
     ].inject(Author.unscoped) do |memo, param|
       memo.where(param)
     end
-    assert_equal [david], relation.all
+    assert_equal [], relation.all
   end
 
   def test_exists
@@ -536,17 +543,21 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_relation_merging
-    devs = Developer.where("salary >= 80000") & Developer.limit(2) & Developer.order('id ASC').where("id < 3")
+    devs = Developer.where("salary >= 80000").merge(Developer.limit(2)).merge(Developer.order('id ASC').where("id < 3"))
     assert_equal [developers(:david), developers(:jamis)], devs.to_a
 
-    dev_with_count = Developer.limit(1) & Developer.order('id DESC') & Developer.select('developers.*')
+    dev_with_count = Developer.limit(1).merge(Developer.order('id DESC')).merge(Developer.select('developers.*'))
     assert_equal [developers(:poor_jamis)], dev_with_count.to_a
+  end
+
+  def test_relation_ampersand_merge_deprecation
+    assert_deprecated { Developer.where("salary >= 80000") & Developer.limit(2) }
   end
 
   def test_relation_merging_with_eager_load
     relations = []
-    relations << (Post.order('comments.id DESC') & Post.eager_load(:last_comment) & Post.scoped)
-    relations << (Post.eager_load(:last_comment) & Post.order('comments.id DESC') & Post.scoped)
+    relations << Post.order('comments.id DESC').merge(Post.eager_load(:last_comment)).merge(Post.scoped)
+    relations << Post.eager_load(:last_comment).merge(Post.order('comments.id DESC')).merge(Post.scoped)
 
     relations.each do |posts|
       post = posts.find { |p| p.id == 1 }
@@ -555,18 +566,18 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_relation_merging_with_locks
-    devs = Developer.lock.where("salary >= 80000").order("id DESC") & Developer.limit(2)
+    devs = Developer.lock.where("salary >= 80000").order("id DESC").merge(Developer.limit(2))
     assert_present devs.locked
   end
 
   def test_relation_merging_with_preload
-    [Post.scoped & Post.preload(:author), Post.preload(:author) & Post.scoped].each do |posts|
+    [Post.scoped.merge(Post.preload(:author)), Post.preload(:author).merge(Post.scoped)].each do |posts|
       assert_queries(2) { assert posts.first.author }
     end
   end
 
   def test_relation_merging_with_joins
-    comments = Comment.joins(:post).where(:body => 'Thank you for the welcome') & Post.where(:body => 'Such a lovely day')
+    comments = Comment.joins(:post).where(:body => 'Thank you for the welcome').merge(Post.where(:body => 'Such a lovely day'))
     assert_equal 1, comments.count
   end
 
@@ -626,6 +637,31 @@ class RelationTest < ActiveRecord::TestCase
 
     expected = { 1 => 2 }
     assert_equal expected, posts.count
+  end
+
+  def test_empty
+    posts = Post.scoped
+
+    assert_queries(1) { assert_equal false, posts.empty? }
+    assert ! posts.loaded?
+
+    no_posts = posts.where(:title => "")
+    assert_queries(1) { assert_equal true, no_posts.empty? }
+    assert ! no_posts.loaded?
+
+    best_posts = posts.where(:comments_count => 0)
+    best_posts.to_a # force load
+    assert_no_queries { assert_equal false, best_posts.empty? }
+  end
+
+  def test_empty_complex_chained_relations
+    posts = Post.select("comments_count").where("id is not null").group("author_id").where("comments_count > 0")
+    assert_queries(1) { assert_equal false, posts.empty? }
+    assert ! posts.loaded?
+
+    no_posts = posts.where(:title => "")
+    assert_queries(1) { assert_equal true, no_posts.empty? }
+    assert ! no_posts.loaded?
   end
 
   def test_any
@@ -718,6 +754,10 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Post.all, all_posts.all
   end
 
+  def test_extensions_with_except
+    assert_equal 2, Topic.named_extension.order(:author_name).except(:order).two
+  end
+
   def test_only
     relation = Post.where(:author_id => 1).order('id ASC').limit(1)
     assert_equal [posts(:welcome)], relation.all
@@ -727,6 +767,10 @@ class RelationTest < ActiveRecord::TestCase
 
     all_posts = relation.only(:limit)
     assert_equal Post.limit(1).all.first, all_posts.first
+  end
+
+  def test_extensions_with_only
+    assert_equal 2, Topic.named_extension.order(:author_name).only(:order).two
   end
 
   def test_anonymous_extension
@@ -770,8 +814,10 @@ class RelationTest < ActiveRecord::TestCase
     relation = Author.where(:name => "David")
     rails_author = relation.first
 
-    assert_equal [rails_author], [rails_author] & relation
-    assert_equal [rails_author], relation & [rails_author]
+    assert_deprecated do
+      assert_equal [rails_author], [rails_author] & relation
+      assert_equal [rails_author], relation & [rails_author]
+    end
   end
 
 end

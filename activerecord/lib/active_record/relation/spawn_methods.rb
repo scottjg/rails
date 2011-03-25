@@ -67,7 +67,10 @@ module ActiveRecord
       merged_relation
     end
 
-    alias :& :merge
+    def &(r)
+      ActiveSupport::Deprecation.warn "Using & to merge relations has been deprecated and will be removed in Rails 3.1. Please use the relation's merge method, instead"
+      merge(r)
+    end
 
     def except(*skips)
       result = self.class.new(@klass, table)
@@ -79,6 +82,9 @@ module ActiveRecord
       (Relation::SINGLE_VALUE_METHODS - skips).each do |method|
         result.send(:"#{method}_value=", send(:"#{method}_value"))
       end
+
+      # Apply scope extension modules
+      result.send(:apply_modules, extensions)
 
       result
     end
@@ -93,6 +99,9 @@ module ActiveRecord
       (Relation::SINGLE_VALUE_METHODS & onlies).each do |method|
         result.send(:"#{method}_value=", send(:"#{method}_value"))
       end
+
+      # Apply scope extension modules
+      result.send(:apply_modules, extensions)
 
       result
     end
