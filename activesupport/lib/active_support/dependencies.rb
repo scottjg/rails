@@ -178,14 +178,14 @@ module ActiveSupport #:nodoc:
       end
 
       def require(file, *extras) #:nodoc:
-        if Dependencies.load?
+        #if Dependencies.load?
           Dependencies.new_constants_in(Object) { super }
-        else
-          super
-        end
-      rescue Exception => exception  # errors from required file
-        exception.blame_file! file
-        raise
+        #else
+          #super
+        #end
+      #rescue Exception => exception  # errors from required file
+        #exception.blame_file! file
+        #raise
       end
 
       # Mark the given constant as unloadable. Unloadable constants are removed each
