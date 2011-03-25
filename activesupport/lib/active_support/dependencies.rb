@@ -219,14 +219,14 @@ module ActiveSupport #:nodoc:
       end
 
       def load_dependency(file)
-        if Dependencies.load?
+        #if Dependencies.load?
           Dependencies.new_constants_in(Object) { yield }.presence
-        else
-          yield
-        end
-      rescue Exception => exception  # errors from loading file
-        exception.blame_file! file
-        raise
+        #else
+          #yield
+        #end
+      #rescue Exception => exception  # errors from loading file
+        #exception.blame_file! file
+        #raise
       end
 
       def load(file, *)
