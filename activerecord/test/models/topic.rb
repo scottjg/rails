@@ -1,29 +1,27 @@
 class Topic < ActiveRecord::Base
-  scope :base
-  scope :written_before, lambda { |time|
+  def self.written_before(time = nil)
     if time
-      { :conditions => ['written_on < ?', time] }
-    end
-  }
-  scope :approved, :conditions => {:approved => true}
-  scope :rejected, :conditions => {:approved => false}
-
-  scope :by_lifo, :conditions => {:author_name => 'lifo'}
-
-  scope :approved_as_hash_condition, :conditions => {:topics => {:approved => true}}
-  scope 'approved_as_string', :conditions => {:approved => true}
-  scope :replied, :conditions => ['replies_count > 0']
-  scope :anonymous_extension do
-    def one
-      1
+      where('written_on < ?', time)
+    else
+      scoped
     end
   end
 
-  scope :with_object, Class.new(Struct.new(:klass)) {
-    def call
-      klass.where(:approved => true)
-    end
-  }.new(self)
+  def self.approved
+    where :approved => true
+  end
+
+  def self.rejected
+    where :approved => false
+  end
+
+  def self.by_lifo
+    where :author_name => 'lifo'
+  end
+
+  def self.replied
+    where 'replies_count > 0'
+  end
 
   module NamedExtension
     def two
@@ -40,8 +38,28 @@ class Topic < ActiveRecord::Base
       2
     end
   end
-  scope :named_extension, :extend => NamedExtension
-  scope :multiple_extensions, :extend => [MultipleExtensionTwo, MultipleExtensionOne]
+
+  ActiveSupport::Deprecation.silence do
+    scope :base
+    scope :approved_hash, :conditions => { :approved => true }
+    scope :rejected_hash, :conditions => { :approved => false }
+
+    scope :approved_as_hash_condition, :conditions => {:topics => {:approved => true}}
+    scope 'approved_as_string', :conditions => {:approved => true}
+    scope :anonymous_extension do
+      def one
+        1
+      end
+    end
+    scope :with_object, Class.new(Struct.new(:klass)) {
+      def call
+        klass.where(:approved => true)
+      end
+    }.new(self)
+
+    scope :named_extension, :extend => NamedExtension
+    scope :multiple_extensions, :extend => [MultipleExtensionTwo, MultipleExtensionOne]
+  end
 
   has_many :replies, :dependent => :destroy, :foreign_key => "parent_id"
   has_many :replies_with_primary_key, :class_name => "Reply", :dependent => :destroy, :primary_key => "title", :foreign_key => "parent_title"

@@ -1,5 +1,25 @@
 *Rails 3.1.0 (unreleased)*
 
+* Deprecated support for the 'scope' method. Please define your scopes as normal class methods
+  instead. For example:
+
+    class Article < ActiveRecord::Base
+      scope :published, where(:published => true)
+    end
+
+  should be rewritten as:
+
+    class Article < ActiveRecord::Base
+      def self.published
+        where(:published => true)
+      end
+    end
+
+  Rationale: This is simpler, and it will deal with some issues which highlight the need for
+  named scopes to be "lazily evaluated".
+
+  [Jon Leighton, with thanks to Adam Wróbel for thoughful insights on the rails-core list]
+
 * ConnectionManagement middleware is changed to clean up the connection pool
   after the rack body has been flushed.
 

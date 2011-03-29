@@ -123,6 +123,22 @@ module ActiveRecord
       #   Article.featured.titles
 
       def scope(name, scope_options = {})
+        ActiveSupport::Deprecation.warn <<-WARN
+Defining scopes via the 'scope' macro is deprecated and will be removed in Rails 3.2. Please define your scopes as normal class methods instead. For example:
+
+  class Article < ActiveRecord::Base
+    scope :published, where(:published => true)
+  end
+
+should be rewritten as:
+
+  class Article < ActiveRecord::Base
+    def self.published
+      where(:published => true)
+    end
+  end
+WARN
+
         name = name.to_sym
         valid_scope_name?(name)
         extension = Module.new(&Proc.new) if block_given?

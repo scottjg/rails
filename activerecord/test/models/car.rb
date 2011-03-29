@@ -5,11 +5,21 @@ class Car < ActiveRecord::Base
   has_many :engines
   has_many :wheels, :as => :wheelable
 
-  scope :incl_tyres, includes(:tyres)
-  scope :incl_engines, includes(:engines)
+  def self.incl_tyres
+    includes(:tyres)
+  end
 
-  scope :order_using_new_style,  order('name asc')
-  scope :order_using_old_style,  :order => 'name asc'
+  def self.incl_engines
+    includes(:engines)
+  end
+
+  def self.order_using_new_style
+    order('name asc')
+  end
+
+  ActiveSupport::Deprecation.silence do
+    scope :order_using_old_style, :order => 'name asc'
+  end
 
 end
 

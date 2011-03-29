@@ -32,7 +32,10 @@ class Project < ActiveRecord::Base
   def self.all_as_method
     all
   end
-  scope :all_as_scope, {}
+
+  ActiveSupport::Deprecation.silence do
+    scope :all_as_scope, {}
+  end
 end
 
 class SpecialProject < Project

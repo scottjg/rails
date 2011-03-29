@@ -370,14 +370,14 @@ class NamedScopeTest < ActiveRecord::TestCase
 
   def test_chaining_should_use_latest_conditions_when_searching
     # Normal hash conditions
-    assert_equal Topic.where(:approved => true).to_a, Topic.rejected.approved.all
-    assert_equal Topic.where(:approved => false).to_a, Topic.approved.rejected.all
+    assert_equal Topic.where(:approved => true).to_a, Topic.rejected_hash.approved_hash.all
+    assert_equal Topic.where(:approved => false).to_a, Topic.approved_hash.rejected_hash.all
 
     # Nested hash conditions with same keys
-    assert_equal [posts(:sti_comments)], Post.with_special_comments.with_very_special_comments.all
+    assert_equal [posts(:sti_comments)], Post.with_special_comments_hash.with_very_special_comments_hash.all
 
     # Nested hash conditions with different keys
-    assert_equal [posts(:sti_comments)], Post.with_special_comments.with_post(4).all.uniq
+    assert_equal [posts(:sti_comments)], Post.with_special_comments_hash.with_post(4).all.uniq
   end
 
   def test_scopes_batch_finders
@@ -415,7 +415,9 @@ class NamedScopeTest < ActiveRecord::TestCase
     [:public_method, :protected_method, :private_method].each do |reserved_method|
       assert Topic.respond_to?(reserved_method, true)
       ActiveRecord::Base.logger.expects(:warn)
-      Topic.scope(reserved_method)
+      ActiveSupport::Deprecation.silence do
+        Topic.scope(reserved_method)
+      end
     end
   end
 
@@ -481,6 +483,10 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_nothing_raised do
       require "models/without_table"
     end
+  end
+
+  def test_scopes_are_deprecated
+    assert_deprecated { Post.scope :asdashsdfsd }
   end
 end
 

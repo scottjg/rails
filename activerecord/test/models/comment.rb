@@ -1,11 +1,23 @@
 class Comment < ActiveRecord::Base
-  scope :limit_by, lambda {|l| limit(l) }
-  scope :containing_the_letter_e, :conditions => "comments.body LIKE '%e%'"
-  scope :not_again, where("comments.body NOT LIKE '%again%'")
-  scope :for_first_post, :conditions => { :post_id => 1 }
-  scope :for_first_author,
-              :joins => :post,
-              :conditions => { "posts.author_id" => 1 }
+  def self.limit_by(l)
+    limit(l)
+  end
+
+  def self.containing_the_letter_e
+    where "comments.body LIKE '%e%'"
+  end
+
+  def self.not_again
+    where("comments.body NOT LIKE '%again%'")
+  end
+
+  def self.for_first_post
+    where :post_id => 1
+  end
+
+  def self.for_first_author
+    joins(:post).where("posts.author_id" => 1)
+  end
 
   belongs_to :post, :counter_cache => true
   has_many :ratings
@@ -21,7 +33,10 @@ class Comment < ActiveRecord::Base
   def self.all_as_method
     all
   end
-  scope :all_as_scope, {}
+
+  ActiveSupport::Deprecation.silence do
+    scope :all_as_scope, {}
+  end
 end
 
 class SpecialComment < Comment

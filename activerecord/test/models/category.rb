@@ -27,7 +27,9 @@ class Category < ActiveRecord::Base
   has_many :authors, :through => :categorizations
   has_many :authors_with_select, :through => :categorizations, :source => :author, :select => 'authors.*, categorizations.post_id'
 
-  scope :general, :conditions => { :name => 'General' }
+  def self.general
+    where(:name => 'General')
+  end
 end
 
 class SpecialCategory < Category

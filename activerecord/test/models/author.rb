@@ -138,8 +138,13 @@ class Author < ActiveRecord::Base
   has_many :misc_post_first_blue_tags_2, :through => :posts, :source => :first_blue_tags_2,
            :conditions => { :posts => { :title => ['misc post by bob', 'misc post by mary'] } }
 
-  scope :relation_include_posts, includes(:posts)
-  scope :relation_include_tags, includes(:tags)
+  def self.relation_include_posts
+    includes(:posts)
+  end
+
+  def self.relation_include_tags
+    includes(:tags)
+  end
 
   attr_accessor :post_log
   after_initialize :set_post_log
