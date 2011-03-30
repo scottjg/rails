@@ -1,8 +1,10 @@
 require 'cases/helper'
 require 'models/post'
+require 'models/comment'
+require 'models/author'
 
 class EachTest < ActiveRecord::TestCase
-  fixtures :posts
+  fixtures :posts, :authors, :comments
 
   def setup
     @posts = Post.order("id asc")
@@ -92,4 +94,38 @@ class EachTest < ActiveRecord::TestCase
       end
     end
   end
+  
+  def test_each_should_not_break_model_instance_references
+    author = Author.find(1)
+    author_post_count = author.posts.count
+    
+    other_author = Author.find(2)
+    
+    assert(author_post_count > 2, "expected author to have more than two posts")    
+	
+		author.posts.find_each(:batch_size => 2) do |post|		
+			assert_kind_of Post, post
+			new_attributes = post.attributes.symbolize_keys.except(:id, :author_id)
+
+			new_post = other_author.posts.create!(new_attributes)
+			assert_not_nil(new_post.id, "new_post should have received an ID upon creation")
+
+			post.comments.each do |comment|	  
+				new_attributes = comment.attributes.symbolize_keys.except(:id, :post_id)
+				new_comment = new_post.comments.create!(new_attributes)				
+				
+				assert_not_nil(new_comment.post_id, "post_id should have been received from new_post")
+				assert(new_comment.post_id == new_post.id, "post_id should be the ID of new_post")
+				
+				assert_not_nil(new_comment.post, "new_comment should be able to reference its post object")
+				assert(new_comment.post == new_post, "the new_comment\'s post object should be new_post")
+				
+				assert_not_nil(new_comment.post.author_id, "original post should still have an author_id")
+				assert(new_comment.post.author_id == other_author.id, "original post author should be the same")
+				
+				assert_not_nil(new_comment.post.author, "new_comment should be able to reference its post's author object")
+				assert(new_comment.post.author == othor_author, "the new_comment\'s post's author object should be other_author")
+			end
+		end         	  
+  end  
 end
