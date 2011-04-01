@@ -109,6 +109,11 @@ module ActiveRecord
       end
     end
 
+
+    def find!
+      find or raise RecordNotFound
+    end
+
     # A convenience wrapper for <tt>find(:first, *args)</tt>. You can pass in all the
     # same arguments to this method as you can to <tt>find(:first)</tt>.
     def first(*args)
@@ -297,7 +302,8 @@ module ActiveRecord
 
       case ids.size
       when 0
-        raise RecordNotFound, "Couldn't find #{@klass.name} without an ID"
+        #raise RecordNotFound, "Couldn't find #{@klass.name} without an ID"
+        nil
       when 1
         result = find_one(ids.first)
         expects_array ? [ result ] : result
