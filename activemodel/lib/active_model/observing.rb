@@ -61,11 +61,10 @@ module ActiveModel
 
       protected
         def instantiate_observer(observer) #:nodoc:
-          # string/symbol
-          if observer.respond_to?(:to_sym)
-            observer = observer.to_s.camelize.constantize.instance
-          elsif observer.respond_to?(:instance)
-            observer.instance
+          observer_class = observer_class_for(observer)
+
+          if observer_class.respond_to?(:instance)
+            observer_class.instance
           else
             raise ArgumentError,
               "#{observer} must be a lowercase, underscored class name (or an " +
@@ -79,6 +78,17 @@ module ActiveModel
         def inherited(subclass)
           super
           notify_observers :observed_class_inherited, subclass
+        end
+
+        def observer_class_for(observer)
+          return observer if observer.is_a?(Class)
+
+          if observer.respond_to?(:to_sym) # string/symbol
+            observer.to_s.camelize.constantize
+          else
+            raise ArgumentError, "#{observer} was not a class or a " +
+              "lowercase, underscored class name as expected."
+          end
         end
     end
 
