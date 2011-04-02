@@ -23,6 +23,15 @@ class Foo
   include ActiveModel::Observing
 end
 
+class BarObserver < ActiveModel::Observer
+  observe :foo
+  attr_accessor :stub
+
+  def on_spec(record)
+    stub.event_with(record) if stub
+  end
+end
+
 class ObservingTest < ActiveModel::TestCase
   def setup
     ObservedModel.observers.clear
@@ -70,7 +79,7 @@ end
 
 class ObserverTest < ActiveModel::TestCase
   def setup
-    ObservedModel.observers = :foo_observer
+    ObservedModel.observers = :foo_observer, :bar_observer
     FooObserver.instance_eval do
       alias_method :original_observed_classes, :observed_classes
     end
@@ -81,6 +90,10 @@ class ObserverTest < ActiveModel::TestCase
       undef_method :observed_classes
       alias_method :observed_classes, :original_observed_classes
     end
+    FooObserver.instance.stub = nil
+    BarObserver.instance.stub = nil
+
+    Foo.enable_observers :all
   end
 
   test "guesses implicit observable model name" do
@@ -117,10 +130,87 @@ class ObserverTest < ActiveModel::TestCase
     assert instance.send(:observed_classes).include?(ObservedModel), "ObservedModel not in #{instance.send(:observed_classes).inspect}"
   end
 
+  def setup_observer_mock(observer_class, should_be_notified, arg = nil)
+    observer_class.instance.stub = stub("#{observer_class} notification stub")
+
+    if should_be_notified
+      observer_class.instance.stub.expects(:event_with).with(arg)
+    else
+      observer_class.instance.stub.expects(:event_with).never
+    end
+  end
+
   test "calls existing observer event" do
     foo = Foo.new
-    FooObserver.instance.stub = stub
-    FooObserver.instance.stub.expects(:event_with).with(foo)
+    setup_observer_mock(FooObserver, true, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can disable invidual observers by calling `disable_observers :symbol` on the class that includes Observing" do
+    foo = Foo.new
+    Foo.disable_observers :foo_observer
+    setup_observer_mock(BarObserver, true, foo)
+    setup_observer_mock(FooObserver, false, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can disable invidual observers by calling `disable_observers ObserverClass` on the class that includes Observing" do
+    foo = Foo.new
+    Foo.disable_observers FooObserver
+    setup_observer_mock(BarObserver, true, foo)
+    setup_observer_mock(FooObserver, false, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can disable invidual observers by setting enabled = false on the observer class" do
+    foo = Foo.new
+    BarObserver.enabled = false
+    setup_observer_mock(BarObserver, false, foo)
+    setup_observer_mock(FooObserver, true, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can re-enable invidual observers by calling `enable_observers :symbol` on the class that includes Observing" do
+    foo = Foo.new
+    Foo.disable_observers :foo_observer
+    Foo.enable_observers :foo_observer
+    setup_observer_mock(BarObserver, true, foo)
+    setup_observer_mock(FooObserver, true, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can re-enable invidual observers by calling `enable_observers ObserverClass` on the class that includes Observing" do
+    foo = Foo.new
+    Foo.disable_observers FooObserver
+    Foo.enable_observers FooObserver
+    setup_observer_mock(BarObserver, true, foo)
+    setup_observer_mock(FooObserver, true, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can re-enable invidual observers by setting enabled = true on the observer class" do
+    foo = Foo.new
+    BarObserver.enabled = false
+    BarObserver.enabled = true
+    setup_observer_mock(BarObserver, true, foo)
+    setup_observer_mock(FooObserver, true, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can disable all observers by calling `disable_observers :all` on the class that includes Observing" do
+    foo = Foo.new
+    Foo.disable_observers :all
+    setup_observer_mock(BarObserver, false, foo)
+    setup_observer_mock(FooObserver, false, foo)
+    Foo.send(:notify_observers, :on_spec, foo)
+  end
+
+  test "can re-enable all observers by calling `enable_observers :all` on the class that includes Observing" do
+    foo = Foo.new
+    Foo.disable_observers :all
+    Foo.enable_observers :all
+    setup_observer_mock(BarObserver, true, foo)
+    setup_observer_mock(FooObserver, true, foo)
     Foo.send(:notify_observers, :on_spec, foo)
   end
 

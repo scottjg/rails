@@ -3,6 +3,7 @@ require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/module/aliasing'
 require 'active_support/core_ext/module/remove_method'
 require 'active_support/core_ext/string/inflections'
+require 'active_support/core_ext/class/attribute'
 
 module ActiveModel
   module Observing
@@ -59,6 +60,28 @@ module ActiveModel
         @observer_instances.size
       end
 
+      # Enable one ore more observers. Observers can be specified
+      # as symbols, classes or `:all`. Examples:
+      #
+      #   ORM.enable_observers :audit_trail, :logger
+      #   ORM.enable_observer  UserObserver
+      #   ORM.enable_observers :all
+      def enable_observers(*observers)
+        set_observers_enabled(observers, true)
+      end
+      alias enable_observer enable_observers
+
+      # Disable one ore more observers. Observers can be specified
+      # as symbols, classes or `:all`. Examples:
+      #
+      #   ORM.disable_observers :audit_trail, :logger
+      #   ORM.disable_observer  UserObserver
+      #   ORM.disable_observers :all
+      def disable_observers(*observers)
+        set_observers_enabled(observers, false)
+      end
+      alias disable_observer disable_observers
+
       protected
         def instantiate_observer(observer) #:nodoc:
           observer_class = observer_class_for(observer)
@@ -88,6 +111,15 @@ module ActiveModel
           else
             raise ArgumentError, "#{observer} was not a class or a " +
               "lowercase, underscored class name as expected."
+          end
+        end
+
+        def set_observers_enabled(observers, value)
+          observers = Observer.all_observers if observers == [:all]
+
+          observers.each do |obs|
+            observer_class = observer_class_for(obs)
+            observer_class.enabled = value
           end
         end
     end
@@ -198,6 +230,20 @@ module ActiveModel
           nil
         end
       end
+
+      # List of all observer classes.
+      # Necessary so we can disable or enable all observers.
+      def all_observers
+        @all_observers ||= []
+      end
+    end
+
+    class_attribute :enabled
+    self.enabled = true
+
+    def self.inherited(subclass)
+      all_observers << subclass
+      super
     end
 
     # Start observing the declared classes and their subclasses.
@@ -211,7 +257,9 @@ module ActiveModel
 
     # Send observed_method(object) if the method exists.
     def update(observed_method, object) #:nodoc:
-      send(observed_method, object) if respond_to?(observed_method)
+      if enabled? && respond_to?(observed_method)
+        send(observed_method, object)
+      end
     end
 
     # Special method sent by the observed class when it is inherited.
