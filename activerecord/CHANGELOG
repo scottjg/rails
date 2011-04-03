@@ -1,5 +1,24 @@
 *Rails 3.1.0 (unreleased)*
 
+* Deprecated support for passing hashes and relations to 'default_scope'. Please create a class
+  method for your scope instead. For example, change this:
+
+    class Post < ActiveRecord::Base
+      default_scope where(:published => true)
+    end
+
+    To this:
+
+    class Post < ActiveRecord::Base
+      def self.default_scope
+        where(:published => true)
+      end
+    end
+
+  Rationale: This builds on the previous deprecation of the 'scope' method.
+
+  [Jon Leighton, with thanks to Adam Wróbel for thoughful insights on the rails-core list]
+
 * Deprecated support for the 'scope' method. Please define your scopes as normal class methods
   instead. For example:
 

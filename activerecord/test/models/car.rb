@@ -1,6 +1,7 @@
 class Car < ActiveRecord::Base
 
   has_many :bulbs
+  has_many :foo_bulbs, :class_name => "Bulb", :conditions => { :name => 'foo' }
   has_many :tyres
   has_many :engines
   has_many :wheels, :as => :wheelable
@@ -24,9 +25,13 @@ class Car < ActiveRecord::Base
 end
 
 class CoolCar < Car
-  default_scope :order => 'name desc'
+  def self.default_scope
+    order 'name desc'
+  end
 end
 
 class FastCar < Car
-  default_scope order('name desc')
+  def self.default_scope
+    order 'name desc'
+  end
 end
