@@ -121,11 +121,18 @@ class Client < Company
     if client.firm
       Client.destroyed_client_ids[client.firm.id] << client.id
     end
+    @destroy_callback_triggered = true
     true
   end
 
   before_destroy :overwrite_to_raise
-
+  
+  attr_accessor :update_callback_triggered, :destroy_callback_triggered
+  before_update :call_me_before_update
+  def call_me_before_update
+    @update_callback_triggered = true
+  end
+  
   # Used to test that read and question methods are not generated for these attributes
   def ruby_type
     read_attribute :ruby_type

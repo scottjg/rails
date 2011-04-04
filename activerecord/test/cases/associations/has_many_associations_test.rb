@@ -747,6 +747,15 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm.destroy
     assert_nil Client.find_by_id(old_record.id)
   end
+  
+  def test_destroying_record_does_not_trigger_update_callbacks_on_dependent_associations
+    firm = Firm.find(:first)
+    client = firm.clients.to_a.first
+    assert_nil client.update_callback_triggered
+    firm.destroy
+    assert_nil client.update_callback_triggered
+    assert client.destroy_callback_triggered
+  end
 
   def test_creation_respects_hash_condition
     ms_client = companies(:first_firm).clients_like_ms_with_hash_conditions.build
