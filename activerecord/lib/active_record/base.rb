@@ -959,7 +959,7 @@ module ActiveRecord #:nodoc:
             if parent < ActiveRecord::Base && !parent.abstract_class?
               contained = parent.table_name
               contained = contained.singularize if parent.pluralize_table_names
-              contained << '_'
+              contained += '_'
             end
             "#{full_table_name_prefix}#{contained}#{undecorated_table_name(name)}#{table_name_suffix}"
           else
@@ -1732,7 +1732,10 @@ MSG
 
       def interpolate_and_sanitize_sql(sql, record = nil, sanitize_klass = self.class)
         sanitized = sanitize_klass.send(:sanitize_sql, sql)
+        interpolate_sanitized_sql(sanitized, record, sanitize_klass)
+      end
 
+      def interpolate_sanitized_sql(sanitized, record = nil, sanitize_klass = self.class)
         if sanitized =~ /\#\{.*\}/
           ActiveSupport::Deprecation.warn(
             'String-based interpolation of association conditions is deprecated. Please use a ' \
@@ -1740,8 +1743,8 @@ MSG
             'should be changed to has_many :older_friends, :conditions => proc { "age > #{age}" }.'
           )
           instance_eval("%@#{sanitized.gsub('@', '\@')}@", __FILE__, __LINE__)
-        elsif sql.respond_to?(:to_proc)
-          sanitize_klass.send(:sanitize_sql, instance_exec(record, &sql))
+        elsif sanitized.respond_to?(:to_proc)
+          sanitize_klass.send(:sanitize_sql, instance_exec(record, &sanitized))
         else
           sanitized
         end

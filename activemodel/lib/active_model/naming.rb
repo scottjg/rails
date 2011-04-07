@@ -28,8 +28,9 @@ module ActiveModel
                            @klass.respond_to?(:i18n_scope)
 
       defaults = @klass.lookup_ancestors.map do |klass|
-        klass.model_name.i18n_key
-      end
+        [klass.model_name.i18n_key,
+         klass.model_name.i18n_key.to_s.tr('.', '/').to_sym]
+      end.flatten
 
       defaults << options.delete(:default) if options[:default]
       defaults << @human

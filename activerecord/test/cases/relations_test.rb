@@ -149,11 +149,9 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_finding_with_reorder
-    assert_deprecated do
-      topics = Topic.order('author_name').order('title').reorder('id')
-      assert_equal 4, topics.to_a.size
-      assert_equal topics(:first).title, topics.first.title
-    end
+    topics = Topic.order('author_name').order('title').reorder('id')
+    assert_equal 4, topics.to_a.size
+    assert_equal topics(:first).title, topics.first.title
   end
 
   def test_finding_with_order_and_take
@@ -639,6 +637,31 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal expected, posts.count
   end
 
+  def test_empty
+    posts = Post.scoped
+
+    assert_queries(1) { assert_equal false, posts.empty? }
+    assert ! posts.loaded?
+
+    no_posts = posts.where(:title => "")
+    assert_queries(1) { assert_equal true, no_posts.empty? }
+    assert ! no_posts.loaded?
+
+    best_posts = posts.where(:comments_count => 0)
+    best_posts.to_a # force load
+    assert_no_queries { assert_equal false, best_posts.empty? }
+  end
+
+  def test_empty_complex_chained_relations
+    posts = Post.select("comments_count").where("id is not null").group("author_id").where("comments_count > 0")
+    assert_queries(1) { assert_equal false, posts.empty? }
+    assert ! posts.loaded?
+
+    no_posts = posts.where(:title => "")
+    assert_queries(1) { assert_equal true, no_posts.empty? }
+    assert ! no_posts.loaded?
+  end
+
   def test_any
     posts = Post.scoped
 
@@ -729,6 +752,10 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Post.all, all_posts.all
   end
 
+  def test_extensions_with_except
+    assert_equal 2, Topic.named_extension.order(:author_name).except(:order).two
+  end
+
   def test_only
     relation = Post.where(:author_id => 1).order('id ASC').limit(1)
     assert_equal [posts(:welcome)], relation.all
@@ -738,6 +765,10 @@ class RelationTest < ActiveRecord::TestCase
 
     all_posts = relation.only(:limit)
     assert_equal Post.limit(1).all.first, all_posts.first
+  end
+
+  def test_extensions_with_only
+    assert_equal 2, Topic.named_extension.order(:author_name).only(:order).two
   end
 
   def test_anonymous_extension
