@@ -124,3 +124,10 @@ class PostWithComment < ActiveRecord::Base
   self.table_name = 'posts'
   default_scope where("posts.comments_count > 0").order("posts.comments_count ASC")
 end
+
+class FirstPost < ActiveRecord::Base
+  self.table_name = 'posts'
+  default_scope where(:id => 1)
+  has_many :comments, :foreign_key => :post_id
+  has_one :comment, :foreign_key => :post_id
+end

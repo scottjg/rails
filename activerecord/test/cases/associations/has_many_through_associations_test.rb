@@ -495,4 +495,8 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
       assert_equal post.tags, post.deprecated_interpolated_tags_2
     end
   end
+
+  def test_has_many_through_with_default_scope_on_join_model
+    assert_equal posts(:welcome).comments, authors(:david).comments_on_first_posts
+  end
 end

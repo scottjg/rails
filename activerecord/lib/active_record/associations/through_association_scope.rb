@@ -3,6 +3,12 @@ module ActiveRecord
   module Associations
     module ThroughAssociationScope
 
+      def scoped
+        with_scope(construct_scope) do
+          @reflection.klass.scoped.merge(@reflection.through_reflection.klass.scoped)
+        end
+      end
+
       protected
 
       def construct_scope
