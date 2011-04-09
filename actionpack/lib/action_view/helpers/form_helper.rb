@@ -579,6 +579,20 @@ module ActionView
       #     <% end %>
       #     ...
       #   <% end %>
+      # 
+      #  If you want to specify the index used on a nested attributes association,
+      #  you can use the child_index option:
+      # 
+      #   <%= form_for @person do |person_form| %>
+      #     ...
+      #     <% @person.projects.each do |project| %>
+      #       <%= person_form.fields_for :projects, project, :child_index => project.id do |project_fields| %>
+      #         Name: <%= project_fields.text_field :name %>
+      #       <% end %>
+      #     <% end %>
+      #     ...
+      #   <% end %>
+      #
       def fields_for(record, record_object = nil, options = {}, &block)
         builder = instantiate_builder(record, record_object, options, &block)
         output = capture(builder, &block)
