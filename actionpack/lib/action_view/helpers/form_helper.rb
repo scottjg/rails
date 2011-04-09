@@ -579,6 +579,10 @@ module ActionView
       #     <% end %>
       #     ...
       #   <% end %>
+      # 
+      #  Available option:
+      #    child_index
+      #
       def fields_for(record, record_object = nil, options = {}, &block)
         builder = instantiate_builder(record, record_object, options, &block)
         output = capture(builder, &block)
