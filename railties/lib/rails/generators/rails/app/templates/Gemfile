@@ -6,7 +6,7 @@ source 'http://rubygems.org'
 
 # Asset template engines
 gem 'json'  # Not needed on Ruby 1.9
-gem 'sass', :git => 'git://github.com/nex3/sass.git'
+gem 'sass', "~> 3.1.0.alpha"
 gem 'coffee-script'
 
 # Use unicorn as the web server
