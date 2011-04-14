@@ -132,7 +132,7 @@ module ActiveRecord
 
     included do
       ASSOCIATION_TYPES.each do |type|
-        Associations::Builder.const_get(type).send(:include, AssociationBuilderExtension)
+        ActiveRecord::Associations::Builder.const_get(type).send(:include, AssociationBuilderExtension)
       end
     end
 
