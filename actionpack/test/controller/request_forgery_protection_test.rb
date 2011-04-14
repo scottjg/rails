@@ -66,7 +66,7 @@ module RequestForgeryProtectionTests
 
    def test_should_render_button_to_with_token_tag
      get :show_button
-     assert_select 'form>div>input[name=?][value=?]', 'authenticity_token', @token
+     assert_select 'form>input[name=?][value=?]', 'authenticity_token', @token
    end
 
    def test_should_render_remote_form_with_only_one_token_parameter
