@@ -308,8 +308,14 @@ module ActionView
 
         html_options.merge!("type" => "submit", "value" => name)
 
+        if wrapper = html_options.delete('wrapper')
+          input = wrapper.call(tag("input", html_options))
+        else
+          input = tag("input", html_options)
+        end
+
         ("<form method=\"#{form_method}\" action=\"#{escape_once url}\" class=\"button-to\">" +
-          method_tag + tag("input", html_options) + request_token_tag + "</form>").html_safe
+          method_tag + input + request_token_tag + "</form>").html_safe
       end
 
       # Creates a link tag of the given +name+ using a URL created by the set of
