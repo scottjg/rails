@@ -99,7 +99,7 @@ module RequestForgeryProtectionTests
     assert_not_blocked do
       get :show_button
     end
-    assert_select 'form>div>input[name=?][value=?]', 'custom_authenticity_token', @token
+    assert_select 'form>input[name=?][value=?]', 'custom_authenticity_token', @token
   end
 
   def test_should_allow_get
@@ -217,7 +217,7 @@ class FreeCookieControllerTest < ActionController::TestCase
 
   def test_should_not_render_button_to_with_token_tag
     get :show_button
-    assert_select 'form>div>input[name=?][value=?]', 'authenticity_token', @token, false
+    assert_select 'form>input[name=?][value=?]', 'authenticity_token', @token, false
   end
 
   def test_should_allow_all_methods_without_token
