@@ -324,8 +324,8 @@ module ActionView
 
         html_options.merge!("type" => "submit", "value" => name)
 
-        ("<form method=\"#{form_method}\" action=\"#{html_escape(url)}\" #{"data-remote=\"true\"" if remote} class=\"button_to\"><div>" +
-          method_tag + tag("input", html_options) + request_token_tag + "</div></form>").html_safe
+        ("<form method=\"#{form_method}\" action=\"#{html_escape(url)}\" #{"data-remote=\"true\"" if remote} class=\"button_to\">" +
+          method_tag + tag("input", html_options) + request_token_tag + "</form>").html_safe
       end
 
 
