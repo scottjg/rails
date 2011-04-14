@@ -351,7 +351,13 @@ module ActionView
         form_options.merge!(:method => form_method, :action => url)
         form_options.merge!("data-remote" => "true") if remote
         
-        "#{tag(:form, form_options, true)}#{method_tag}#{tag("input", html_options)}#{request_token_tag}</form>".html_safe
+        wrapper = html_options.delete('wrapper')
+        input = tag("input", html_options)
+        if wrapper
+          input = wrapper.call(input)
+        end
+
+        "#{tag(:form, form_options, true)}#{method_tag}#{input}#{request_token_tag}</form>".html_safe
       end
 
 
