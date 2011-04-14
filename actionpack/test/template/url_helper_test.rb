@@ -139,6 +139,13 @@ class UrlHelperTest < ActiveSupport::TestCase
     )
   end
 
+  def test_button_to_with_wrapper
+    assert_dom_equal(
+      "<form method=\"post\" action=\"http://www.example.com\" class=\"button_to\"><p><input type=\"submit\" value=\"Hello\" /></p></form>",
+      button_to("Hello", "http://www.example.com", :wrapper => lambda { |input| "<p>#{input}</p>" })
+    )
+  end
+
   def test_link_tag_with_straight_url
     assert_dom_equal "<a href=\"http://www.example.com\">Hello</a>", link_to("Hello", "http://www.example.com")
   end
