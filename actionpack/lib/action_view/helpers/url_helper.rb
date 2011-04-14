@@ -340,8 +340,8 @@ module ActionView
 
         html_options.merge!("type" => "submit", "value" => name)
 
-        ("<form method=\"#{form_method}\" action=\"#{ERB::Util.html_escape(url)}\" #{"data-remote=\"true\"" if remote} class=\"#{ERB::Util.html_escape(form_class)}\"><div>" +
-          method_tag + tag("input", html_options) + request_token_tag + "</div></form>").html_safe
+        ("<form method=\"#{form_method}\" action=\"#{ERB::Util.html_escape(url)}\" #{"data-remote=\"true\"" if remote} class=\"#{ERB::Util.html_escape(form_class)}\">" +
+          method_tag + tag("input", html_options) + request_token_tag + "</form>").html_safe
       end
 
 
