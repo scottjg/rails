@@ -2,9 +2,9 @@ module ActionPack
   module VERSION #:nodoc:
     MAJOR = 3
     MINOR = 0
-    TINY  = 5
-    BUILD = 1
+    TINY  = 7
+    PRE   = "rc1"
 
-    STRING = [MAJOR, MINOR, TINY, BUILD].compact.join('.')
+    STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
   end
 end
