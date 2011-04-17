@@ -1,5 +1,6 @@
 require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/object/blank'
+require 'active_record/relation/condition_evaluator'
 
 module ActiveRecord
   module QueryMethods
@@ -88,11 +89,17 @@ module ActiveRecord
       relation
     end
 
-    def where(opts, *rest)
-      return self if opts.blank?
+    def where(*args)
+      if block_given?
+        relation = clone
+        relation.where_values += [Proc.new]
+      else
+        return self if args.first.blank?
 
-      relation = clone
-      relation.where_values += build_where(opts, rest)
+        relation = clone
+        relation.where_values += build_where(*args)
+      end
+
       relation
     end
 
@@ -176,7 +183,7 @@ module ActiveRecord
 
       build_joins(arel, @joins_values) unless @joins_values.empty?
 
-      collapse_wheres(arel, (@where_values - ['']).uniq)
+      collapse_wheres(arel, eval_wheres((@where_values - ['']).uniq))
 
       arel.having(*@having_values.uniq.reject{|h| h.blank?}) unless @having_values.empty?
 
@@ -213,6 +220,16 @@ module ActiveRecord
           join = Arel.sql(join)
         end
         table.create_string_join(join)
+      end
+    end
+
+    def eval_wheres(wheres)
+      wheres.map do |where|
+        if where.respond_to?(:to_proc)
+          Relation::ConditionEvaluator.new(klass.arel_table, where).eval
+        else
+          where
+        end
       end
     end
 

@@ -56,6 +56,7 @@ module ActiveRecord
       autoload :PredicateBuilder
       autoload :SpawnMethods
       autoload :Batches
+      autoload :ConditionEvaluator
     end
 
     autoload :Base
