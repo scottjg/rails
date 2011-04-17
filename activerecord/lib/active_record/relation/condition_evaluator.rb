@@ -9,11 +9,11 @@ module ActiveRecord
         end
 
         def &(other)
-          Condition.new(Arel::Nodes::And.new([arel, other.arel]))
+          Condition.new(Arel::Nodes::Grouping.new(Arel::Nodes::And.new([arel, other.arel])))
         end
 
         def |(other)
-          Condition.new(Arel::Nodes::Or.new(arel, other.arel))
+          Condition.new(Arel::Nodes::Grouping.new(Arel::Nodes::Or.new(arel, other.arel)))
         end
       end
 

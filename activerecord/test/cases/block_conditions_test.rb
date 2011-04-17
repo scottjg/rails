@@ -36,6 +36,23 @@ class BlockConditionsTest < ActiveRecord::TestCase
     assert_equal expected, Post.order(:id).where { (posts.id == 1) | (id == 2)       }
   end
 
+  test "more complex ands and ors" do
+    assert_equal(
+      [posts(:thinking)],
+      Post.where { (id =~ [1, 2, 3]) & (id =~ [2, 3, 4]) & (id =~ [5, 2, 8]) }
+    )
+
+    assert_equal(
+      [posts(:welcome), posts(:thinking)],
+      Post.where { ((id =~ [1, 6]) & (id =~ [1, 3])) | ((id =~ [1, 2]) & (id =~ [1, 2, 6])) }
+    )
+
+    assert_equal(
+      [Post.find(7)],
+      Post.where { ((id == 3) | (id == 7)) & ((id == 7) | (id == 5)) }
+    )
+  end
+
   test "less than" do
     expected = [posts(:welcome), posts(:thinking)]
 
