@@ -33,8 +33,10 @@ module ActiveRecord
       end
 
       class Name
-        def initialize(symbol)
-          @symbol = symbol
+        attr_reader :symbol # TODO: Don't pollute namespace
+
+        def initialize(symbol, binding)
+          @symbol, @binding = symbol, binding
         end
 
         def ==(other)
@@ -84,13 +86,17 @@ module ActiveRecord
         end
 
         def predicate(name, other)
+          if other.is_a?(Name)
+            other = eval(other.symbol.to_s, @binding)
+          end
+
           Condition.new(arel_table[@symbol].send(name, other))
         end
       end
 
       class ColumnName < Name
-        def initialize(symbol, table)
-          super(symbol)
+        def initialize(symbol, binding, table)
+          super(symbol, binding)
           @arel_table = table
         end
 
@@ -100,8 +106,8 @@ module ActiveRecord
       end
 
       class TableOrColumnName < Name
-        def initialize(symbol, klass)
-          super(symbol)
+        def initialize(symbol, binding, klass)
+          super(symbol, binding)
           @klass = klass
         end
 
@@ -110,7 +116,7 @@ module ActiveRecord
             reflection = @klass.reflect_on_association(@symbol)
             table      = Arel::Table.new(reflection ? reflection.table_name : @symbol)
 
-            ColumnName.new(method_name, table)
+            ColumnName.new(method_name, @binding, table)
           else
             super
           end
@@ -124,15 +130,15 @@ module ActiveRecord
       end
 
       class Context
-        def initialize(klass)
-          @klass = klass
+        def initialize(binding, klass)
+          @binding, @klass = binding, klass
         end
 
-        def method_missing(method_name, *args)
+        def method_missing(method_name, *args, &block)
           if args.empty?
-            TableOrColumnName.new(method_name, @klass)
+            TableOrColumnName.new(method_name, @binding, @klass)
           else
-            super
+            eval("method(#{method_name.inspect})", @binding).call(*args, &block)
           end
         end
       end
@@ -140,11 +146,13 @@ module ActiveRecord
       attr_reader :klass, :condition
 
       def initialize(klass, condition)
-        @klass, @condition = klass, condition
+        @klass, @condition = klass, condition.to_proc
       end
 
       def eval
-        node = Context.new(klass).instance_eval(&condition).arel
+        context = Context.new(condition.binding, klass)
+        node    = context.instance_eval(&condition).arel
+
         node.is_a?(Arel::Nodes::Grouping) ? node.expr : node
       end
     end

@@ -1,4 +1,5 @@
 require 'cases/helper'
+require 'ostruct'
 require 'models/post'
 require 'models/comment'
 
@@ -130,5 +131,18 @@ class BlockConditionsTest < ActiveRecord::TestCase
   test "referencing an association" do
     expected = [posts(:welcome), posts(:thinking)]
     assert_equal expected, Post.joins(:other_comments).order(:id).where { other_comments.id =~ [2, 3] }
+  end
+
+  def foo
+    3
+  end
+
+  def bar(num)
+    num
+  end
+
+  test "referencing a method from inside the conditions" do
+    assert_equal [Post.find(3)], Post.where { id == foo }
+    assert_equal [Post.find(3)], Post.where { id == bar(3) }
   end
 end
