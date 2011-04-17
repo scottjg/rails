@@ -9,11 +9,26 @@ module ActiveRecord
         end
 
         def &(other)
-          Condition.new(Arel::Nodes::Grouping.new(Arel::Nodes::And.new([arel, other.arel])))
+          # This bit just ensures we don't spam the SQL with loads of unnecessary parentheses
+          if and_node?(arel)
+            ands = arel.expr.children + [other.arel]
+          elsif and_node?(other.arel)
+            ands = [arel] + other.arel.expr.children
+          else
+            ands = [arel, other.arel]
+          end
+
+          Condition.new(Arel::Nodes::Grouping.new(Arel::Nodes::And.new(ands)))
         end
 
         def |(other)
           Condition.new(Arel::Nodes::Grouping.new(Arel::Nodes::Or.new(arel, other.arel)))
+        end
+
+        private
+
+        def and_node?(node)
+          node.is_a?(Arel::Nodes::Grouping) && node.expr.is_a?(Arel::Nodes::And)
         end
       end
 
@@ -98,7 +113,8 @@ module ActiveRecord
       end
 
       def eval
-        Context.new(table).instance_eval(&condition).arel
+        node = Context.new(table).instance_eval(&condition).arel
+        node.is_a?(Arel::Nodes::Grouping) ? node.expr : node
       end
     end
   end

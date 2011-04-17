@@ -28,6 +28,18 @@ class BlockConditionsTest < ActiveRecord::TestCase
     assert_equal expected, Post.where { (posts.tags_count == 1) & (posts.title =~ '%thinking%') }
   end
 
+  test "collapsing subsequent ands" do
+    arel = Post.where { ((a == 1) & (b == 1)) & (c == 3) }.arel
+    node = arel.ast.cores.first.wheres.first.expr
+    assert node.is_a?(Arel::Nodes::And)
+    assert_equal 3, node.children.count
+
+    arel = Post.where { (a == 1) & ((b == 1) & (c == 3)) }.arel
+    node = arel.ast.cores.first.wheres.first.expr
+    assert node.is_a?(Arel::Nodes::And)
+    assert_equal 3, node.children.count
+  end
+
   test "oring predicates" do
     expected = [posts(:welcome), posts(:thinking)]
 
