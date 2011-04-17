@@ -1,8 +1,9 @@
 require 'cases/helper'
 require 'models/post'
+require 'models/comment'
 
 class BlockConditionsTest < ActiveRecord::TestCase
-  fixtures :posts
+  fixtures :posts, :comments
 
   test "equality" do
     expected = [posts(:welcome)]
@@ -119,5 +120,15 @@ class BlockConditionsTest < ActiveRecord::TestCase
 
     assert_equal expected, Post.order(:id).where { id !~ [1, 2] }
     assert_equal expected, Post.order(:id).where { posts.id !~ [1, 2] }
+  end
+
+  test "referencing a join table" do
+    expected = [posts(:welcome), posts(:thinking)]
+    assert_equal expected, Post.joins(:comments).order(:id).where { comments.id =~ [2, 3] }
+  end
+
+  test "referencing an association" do
+    expected = [posts(:welcome), posts(:thinking)]
+    assert_equal expected, Post.joins(:other_comments).order(:id).where { other_comments.id =~ [2, 3] }
   end
 end

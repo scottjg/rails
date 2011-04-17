@@ -40,6 +40,8 @@ class Post < ActiveRecord::Base
     end
   end
 
+  has_many :other_comments, :class_name => 'Comment', :foreign_key => :post_id
+
   has_many :author_favorites, :through => :author
   has_many :author_categorizations, :through => :author, :source => :categorizations
   has_many :author_addresses, :through => :author

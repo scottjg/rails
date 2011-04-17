@@ -226,7 +226,7 @@ module ActiveRecord
     def eval_wheres(wheres)
       wheres.map do |where|
         if where.respond_to?(:to_proc)
-          Relation::ConditionEvaluator.new(klass.arel_table, where).eval
+          Relation::ConditionEvaluator.new(klass, where).eval
         else
           where
         end

@@ -33,8 +33,8 @@ module ActiveRecord
       end
 
       class Name
-        def initialize(symbol, table)
-          @symbol, @table = symbol, table
+        def initialize(symbol)
+          @symbol = symbol
         end
 
         def ==(other)
@@ -77,9 +77,40 @@ module ActiveRecord
           end
         end
 
+        private
+
+        def arel_table
+          raise NotImplementedError
+        end
+
+        def predicate(name, other)
+          Condition.new(arel_table[@symbol].send(name, other))
+        end
+      end
+
+      class ColumnName < Name
+        def initialize(symbol, table)
+          super(symbol)
+          @arel_table = table
+        end
+
+        private
+
+        attr_reader :arel_table
+      end
+
+      class TableOrColumnName < Name
+        def initialize(symbol, klass)
+          super(symbol)
+          @klass = klass
+        end
+
         def method_missing(method_name, *args)
           if args.empty?
-            Name.new(method_name, Arel::Table.new(@symbol))
+            reflection = @klass.reflect_on_association(@symbol)
+            table      = Arel::Table.new(reflection ? reflection.table_name : @symbol)
+
+            ColumnName.new(method_name, table)
           else
             super
           end
@@ -87,33 +118,33 @@ module ActiveRecord
 
         private
 
-        def predicate(name, other)
-          Condition.new(@table[@symbol].send(name, other))
+        def arel_table
+          @klass.arel_table
         end
       end
 
       class Context
-        def initialize(table)
-          @table = table
+        def initialize(klass)
+          @klass = klass
         end
 
         def method_missing(method_name, *args)
           if args.empty?
-            Name.new(method_name, @table)
+            TableOrColumnName.new(method_name, @klass)
           else
             super
           end
         end
       end
 
-      attr_reader :table, :condition
+      attr_reader :klass, :condition
 
-      def initialize(table, condition)
-        @table, @condition = table, condition
+      def initialize(klass, condition)
+        @klass, @condition = klass, condition
       end
 
       def eval
-        node = Context.new(table).instance_eval(&condition).arel
+        node = Context.new(klass).instance_eval(&condition).arel
         node.is_a?(Arel::Nodes::Grouping) ? node.expr : node
       end
     end
