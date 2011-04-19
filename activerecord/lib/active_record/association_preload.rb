@@ -86,17 +86,21 @@ module ActiveRecord
       def preload_associations(records, associations, preload_options={})
         records = [records].flatten.compact.uniq
         return if records.empty?
+        preload_associations_for_normalized_records(records, associations, preload_options)
+      end
+
+      def preload_associations_for_normalized_records(records, associations, preload_options={})
         case associations
-        when Array then associations.each {|association| preload_associations(records, association, preload_options)}
+        when Array then associations.each {|association| preload_associations_for_normalized_records(records, association, preload_options)}
         when Symbol, String then preload_one_association(records, associations.to_sym, preload_options)
         when Hash then
           associations.each do |parent, child|
             raise "parent must be an association name" unless parent.is_a?(String) || parent.is_a?(Symbol)
-            preload_associations(records, parent, preload_options)
+            preload_associations_for_normalized_records(records, parent, preload_options)
             reflection = reflections[parent]
             parents = records.map {|record| record.send(reflection.name)}.flatten.compact
             unless parents.empty?
-              parents.first.class.preload_associations(parents, child)
+              parents.first.class.preload_associations_for_normalized_records(parents, child)
             end
           end
         end
