@@ -164,7 +164,7 @@ module Rails
         ] + config.assets.paths
 
         paths.each do |pattern|
-          Dir[app.root.join(pattern)].each do |dir|
+          Dir[app.root.join(pattern).to_s].each do |dir|
             app.assets.paths << dir
           end
         end
