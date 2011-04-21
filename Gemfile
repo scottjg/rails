@@ -12,6 +12,8 @@ gem "rack", :git => "git://github.com/rack/rack.git"
 gem "rack-test", :git => "git://github.com/brynary/rack-test.git"
 
 gem "sprockets", :git => "git://github.com/sstephenson/sprockets.git"
+gem "coffee-script"
+gem "sass", ">= 3.0"
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
@@ -30,6 +32,7 @@ platforms :mri_18 do
   gem "system_timer"
   gem "ruby-debug", ">= 0.10.3"
   gem 'ruby-prof'
+  gem "json"
 end
 
 platforms :mri_19 do
@@ -57,7 +60,7 @@ end
 
 platforms :jruby do
   gem "ruby-debug", ">= 0.10.3"
-
+  gem "json"
   gem "activerecord-jdbcsqlite3-adapter"
 
   # This is needed by now to let tests work on JRuby

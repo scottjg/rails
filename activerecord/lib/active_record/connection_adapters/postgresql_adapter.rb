@@ -360,6 +360,18 @@ module ActiveRecord
         end
       end
 
+      def type_cast(value, column)
+        return super unless column
+
+        case value
+        when String
+          return super unless 'bytea' == column.sql_type
+          { :value => value, :format => 1 }
+        else
+          super
+        end
+      end
+
       # Quotes strings for use in SQL input.
       def quote_string(s) #:nodoc:
         @connection.escape(s)
@@ -530,7 +542,7 @@ module ActiveRecord
           # Clear the queue
           @connection.get_last_result
           @connection.send_query_prepared(key, binds.map { |col, val|
-            col ? col.type_cast(val) : val
+            type_cast(val, col)
           })
           @connection.block
           result = @connection.get_last_result
@@ -542,6 +554,18 @@ module ActiveRecord
 
       def exec_insert(sql, name, binds)
         exec_query(sql, name, binds)
+      end
+
+      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+        unless pk
+          _, table = extract_schema_and_table(sql.split(" ", 4)[2])
+
+          pk = primary_key(table)
+        end
+
+        sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
+
+        [sql, binds]
       end
 
       # Executes an UPDATE query and returns the number of affected tuples.
@@ -1069,4 +1093,3 @@ module ActiveRecord
     end
   end
 end
-

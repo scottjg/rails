@@ -1,6 +1,5 @@
 require 'active_support/concern'
 require 'active_support/core_ext/file'
-require 'action_view/helpers/tag_helper'
 require 'action_view/helpers/asset_tag_helpers/asset_include_tag'
 
 module ActionView
@@ -8,8 +7,6 @@ module ActionView
     module AssetTagHelper
 
       class JavascriptIncludeTag < AssetIncludeTag
-        include TagHelper
-
         def asset_name
           'javascript'
         end
@@ -87,7 +84,7 @@ module ActionView
         #   javascript_path "http://www.railsapplication.com/js/xmlhr.js" # => http://www.railsapplication.com/js/xmlhr.js
         def javascript_path(source)
           if config.use_sprockets
-            sprockets_javascript_path(source)
+            asset_path(source, 'js')
           else
             asset_paths.compute_public_path(source, 'javascripts', 'js')
           end

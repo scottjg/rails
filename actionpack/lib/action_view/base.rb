@@ -137,6 +137,12 @@ module ActionView #:nodoc:
     cattr_accessor :field_error_proc
     @@field_error_proc = Proc.new{ |html_tag, instance| "<div class=\"field_with_errors\">#{html_tag}</div>".html_safe }
 
+    # How to complete the streaming when an exception occurs.
+    # This is our best guess: first try to close the attribute, then the tag.
+    # Currently this is private API and may be changed at *any* time.
+    cattr_accessor :streaming_completion_on_exception
+    @@streaming_completion_on_exception = %("><script type="text/javascript">window.location = "/500.html"</script></html>)
+
     class_attribute :helpers
     class_attribute :_routes
 
@@ -153,7 +159,7 @@ module ActionView #:nodoc:
       end
     end
 
-    attr_accessor :_template
+    attr_accessor :_template, :_view_flow
     attr_internal :request, :controller, :config, :assigns, :lookup_context
 
     delegate :formats, :formats=, :locale, :locale=, :view_paths, :view_paths=, :to => :lookup_context
@@ -181,8 +187,8 @@ module ActionView #:nodoc:
       self.helpers = Module.new unless self.class.helpers
 
       @_config = {}
-      @_content_for  = Hash.new { |h,k| h[k] = ActiveSupport::SafeBuffer.new }
       @_virtual_path = nil
+      @_view_flow = OutputFlow.new
       @output_buffer = nil
 
       if @_controller = controller
@@ -193,10 +199,6 @@ module ActionView #:nodoc:
       @_lookup_context = lookup_context.is_a?(ActionView::LookupContext) ?
         lookup_context : ActionView::LookupContext.new(lookup_context)
       @_lookup_context.formats = formats if formats
-    end
-
-    def store_content_for(key, value)
-      @_content_for[key] = value
     end
 
     def controller_path

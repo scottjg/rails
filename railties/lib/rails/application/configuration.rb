@@ -4,13 +4,12 @@ require 'rails/engine/configuration'
 module Rails
   class Application
     class Configuration < ::Rails::Engine::Configuration
-      attr_accessor :allow_concurrency, :asset_host, :cache_classes, :cache_store,
-                    :encoding, :consider_all_requests_local, :dependency_loading,
-                    :filter_parameters, :helpers_paths, :logger,
-                    :preload_frameworks, :reload_plugins,
-                    :secret_token, :serve_static_assets, :session_options,
-                    :time_zone, :whiny_nils, :force_ssl,
-                    :assets
+      attr_accessor :allow_concurrency, :asset_host, :asset_path, :assets,
+                    :cache_classes, :cache_store, :consider_all_requests_local,
+                    :dependency_loading, :encoding, :filter_parameters,
+                    :force_ssl, :helpers_paths, :logger, :preload_frameworks,
+                    :reload_plugins, :secret_token, :serve_static_assets,
+                    :session_options, :time_zone, :whiny_nils
 
       attr_writer :log_level
 
@@ -34,7 +33,7 @@ module Rails
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled    = false
         @assets.paths      = []
-        @assets.precompile = []
+        @assets.precompile = [ /\w+\.(?!js|css)$/, "application.js", "application.css" ]
         @assets.prefix     = "/assets"
       end
 
@@ -63,6 +62,9 @@ module Rails
           paths.add "config/environment", :with => "config/environment.rb"
           paths.add "lib/templates"
           paths.add "log",                :with => "log/#{Rails.env}.log"
+          paths.add "public"
+          paths.add "public/javascripts"
+          paths.add "public/stylesheets"
           paths.add "tmp"
           paths.add "tmp/cache"
           paths

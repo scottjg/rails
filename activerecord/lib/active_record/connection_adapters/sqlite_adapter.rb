@@ -165,7 +165,7 @@ module ActiveRecord
             cols = cache[:cols] ||= stmt.columns
             stmt.reset!
             stmt.bind_params binds.map { |col, val|
-              col ? col.type_cast(val) : val
+              type_cast(val, col)
             }
           end
 
@@ -175,6 +175,10 @@ module ActiveRecord
 
       def exec_insert(sql, name, binds)
         exec_query(sql, name, binds)
+      end
+
+      def last_inserted_id(result)
+        @connection.last_insert_row_id
       end
 
       def execute(sql, name = nil) #:nodoc:

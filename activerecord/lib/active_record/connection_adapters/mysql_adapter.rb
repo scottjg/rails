@@ -244,6 +244,12 @@ module ActiveRecord
         end
       end
 
+      def type_cast(value, column)
+        return super unless value == true || value == false
+
+        value ? 1 : 0
+      end
+
       def quote_column_name(name) #:nodoc:
         @quoted_column_names[name] ||= "`#{name}`"
       end
@@ -403,7 +409,7 @@ module ActiveRecord
           end
 
           stmt.execute(*binds.map { |col, val|
-            col ? col.type_cast(val) : val
+            type_cast(val, col)
           })
           if metadata = stmt.result_metadata
             cols = cache[:cols] ||= metadata.fetch_fields.map { |field|
@@ -423,6 +429,10 @@ module ActiveRecord
 
       def exec_insert(sql, name, binds)
         exec_query(sql, name, binds)
+      end
+
+      def last_inserted_id(result)
+        @connection.insert_id
       end
 
       def exec_without_stmt(sql, name = 'SQL') # :nodoc:
