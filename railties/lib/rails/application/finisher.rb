@@ -33,6 +33,10 @@ module Rails
         end
       end
 
+      initializer :define_main_app_helper do |app|
+        app.routes.define_mounted_helper(:main_app, app)
+      end
+
       initializer :add_sprockets_route do |app|
         assets = config.assets
         if assets.enabled

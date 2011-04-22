@@ -275,18 +275,17 @@ module ActionDispatch
       module MountedHelpers
       end
 
-      def mounted_helpers(name = :main_app)
-        define_mounted_helper(name) if name
+      def mounted_helpers
         MountedHelpers
       end
 
-      def define_mounted_helper(name)
+      def define_mounted_helper(name, app)
         return if MountedHelpers.method_defined?(name)
 
         routes = self
         MountedHelpers.class_eval do
           define_method "_#{name}" do
-            RoutesProxy.new(routes, self._routes_context)
+            RoutesProxy.new(routes, self._routes_context, app)
           end
         end
 

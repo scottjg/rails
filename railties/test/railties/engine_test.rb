@@ -584,6 +584,118 @@ module RailtiesTest
       assert_equal Bukkits::Engine.instance, Rails::Engine.find(engine_path)
     end
 
+    test "helpers proxy should allow to use both routes and regular helpers" do
+      @plugin.write "lib/bukkits.rb", <<-RUBY
+        module Bukkits
+          class Engine < ::Rails::Engine
+            isolate_namespace Bukkits
+          end
+        end
+      RUBY
+
+      app_file "config/routes.rb", <<-RUBY
+        AppTemplate::Application.routes.draw do
+          match "/routes_helpers" => "main#routes_helpers"
+          match "/regular_helpers" => "main#regular_helpers"
+          match "/helpers_priority" => "main#helpers_priority"
+          match "/foo" => "main#foo", :as => :foo
+          match "/bar" => "main#bar", :as => :bar
+          mount Bukkits::Engine => "/bukkits", :as => "bukkits"
+        end
+      RUBY
+
+      @plugin.write "config/routes.rb", <<-RUBY
+        Bukkits::Engine.routes.draw do
+          match "/routes_helpers" => "main#routes_helpers"
+          match "/regular_helpers" => "main#regular_helpers"
+          match "/helpers_priority" => "main#helpers_priority"
+          match "/foo" => "main#foo", :as => :foo
+          match "/bar" => "main#bar", :as => :bar
+        end
+      RUBY
+
+      app_file "app/helpers/some_helper.rb", <<-RUBY
+        module SomeHelper
+          def bar_path
+            "I'm just a helper (in app)"
+          end
+
+          def help_me
+            "Helped from the app"
+          end
+        end
+      RUBY
+
+      @plugin.write "app/helpers/engine_helper.rb", <<-RUBY
+        module EngineHelper
+          def bar_path
+            "I'm just a helper (in engine)"
+          end
+
+          def help_me
+            "Helped from the engine"
+          end
+        end
+      RUBY
+
+      @plugin.write "app/controllers/bukkits/main_controller.rb", <<-RUBY
+        class Bukkits::MainController < ActionController::Base
+           def routes_helpers
+             render :inline => "<%= main_app.foo_path %>"
+           end
+
+           def regular_helpers
+             render :inline => "<%= main_app.help_me %>"
+           end
+
+           def helpers_priority
+             render :inline => "<%= main_app.bar_path %>"
+           end
+        end
+      RUBY
+
+      app_file "app/controllers/main_controller.rb", <<-RUBY
+        class MainController < ActionController::Base
+           def routes_helpers
+             render :inline => "<%= bukkits.foo_path %>"
+           end
+
+           def regular_helpers
+             render :inline => "<%= bukkits.help_me %>"
+           end
+
+           def helpers_priority
+             render :inline => "<%= bukkits.bar_path %>"
+           end
+        end
+      RUBY
+
+      add_to_config("config.action_dispatch.show_exceptions = false")
+
+      boot_rails
+
+      require "#{rails_root}/config/environment"
+
+      get("/routes_helpers")
+      assert_equal "/bukkits/foo", last_response.body
+
+      get("/regular_helpers")
+      assert_equal "Helped from the engine", last_response.body
+
+      get("/helpers_priority")
+      assert_equal "I'm just a helper (in engine)", last_response.body
+
+      get("/bukkits/routes_helpers")
+      assert_equal "/foo", last_response.body
+
+      get("/bukkits/regular_helpers")
+      assert_equal "Helped from the app", last_response.body
+
+      get("/bukkits/helpers_priority")
+      assert_equal "I'm just a helper (in app)", last_response.body
+
+    end
+
   private
     def app
       Rails.application

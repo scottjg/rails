@@ -451,7 +451,7 @@ module ActionDispatch
 
             _route = @set.named_routes.routes[name.to_sym]
             _routes = @set
-            app.routes.define_mounted_helper(name)
+            app.routes.define_mounted_helper(name, app)
             app.routes.class_eval do
               define_method :_generate_prefix do |options|
                 prefix_options = options.slice(*_route.segment_keys)
