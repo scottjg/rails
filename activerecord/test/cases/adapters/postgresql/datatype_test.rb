@@ -21,6 +21,9 @@ end
 class PostgresqlOid < ActiveRecord::Base
 end
 
+class PostgresqlTsvector < ActiveRecord::Base
+end
+
 class PostgresqlTimestampWithZone < ActiveRecord::Base
 end
 
@@ -55,6 +58,9 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
     @first_oid = PostgresqlOid.find(1)
 
     @connection.execute("INSERT INTO postgresql_timestamp_with_zones (time) VALUES ('2010-01-01 10:00:00-1')")
+
+    @connection.execute("INSERT INTO postgresql_tsvectors (text) VALUES ('Monkeys are our friends')")
+    @first_tsvector = PostgresqlTsvector.find(1)
   end
 
   def test_data_type_of_array_types
@@ -73,6 +79,10 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
 
   def test_data_type_of_time_types
     assert_equal :string, @first_time.column_for_attribute(:time_interval).type
+  end
+
+  def test_data_type_of_tsvector_types
+    assert_equal :tsvector, @first_tsvector.column_for_attribute(:tsv_text).type
   end
 
   def test_data_type_of_network_address_types
@@ -122,6 +132,11 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
 
   def test_oid_values
     assert_equal 1234, @first_oid.obj_id
+  end
+
+  def test_tsvector_values
+    assert_equal "Monkeys are our friends", @first_tsvector.text
+    assert_equal "'friend':4 'monkey':1", @first_tsvector.tsv_text
   end
 
   def test_update_integer_array
@@ -205,6 +220,15 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
     assert @first_oid.save
     assert @first_oid.reload
     assert_equal @first_oid.obj_id, new_value
+  end
+
+  def test_update_tsvector
+    new_text = "Monkeys are our friends friends"
+    assert @first_tsvector.text = new_text
+    assert @first_tsvector.save
+    assert @first_tsvector.reload
+    assert_equal @first_tsvector.text, new_text
+    assert_equal @first_tsvector.tsv_text, "'friend':4,5 'monkey':1"
   end
 
   def test_timestamp_with_zone_values_with_rails_time_zone_support

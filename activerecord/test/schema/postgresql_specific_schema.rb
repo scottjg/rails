@@ -1,7 +1,8 @@
 ActiveRecord::Schema.define do
 
-  %w(postgresql_arrays postgresql_moneys postgresql_numbers postgresql_times postgresql_network_addresses postgresql_bit_strings
-      postgresql_oids postgresql_xml_data_type defaults geometrics postgresql_timestamp_with_zones).each do |table_name|
+  %w(postgresql_arrays postgresql_moneys postgresql_numbers postgresql_times postgresql_network_addresses
+      postgresql_bit_strings postgresql_oids postgresql_xml_data_type postgresql_tsvectors defaults
+      geometrics postgresql_timestamp_with_zones).each do |table_name|
     execute "DROP TABLE  IF EXISTS #{quote_table_name table_name}"
   end
 
@@ -115,7 +116,25 @@ _SQL
     data xml
     );
 _SQL
-rescue #This version of PostgreSQL either has no XML support or is was not compiled with XML support: skipping table
+  rescue # This version of PostgreSQL either has no XML support or is was not compiled with XML support: skipping table
   end
-end
 
+  begin
+    execute <<_SQL
+    CREATE TABLE postgresql_tsvectors (
+      id SERIAL PRIMARY KEY,
+      text TEXT,
+      tsv_text tsvector
+    );
+
+    CREATE TRIGGER postgresql_tsvectors_tsv_text_trigger
+      BEFORE INSERT OR UPDATE
+      ON postgresql_tsvectors
+      FOR EACH ROW
+      EXECUTE PROCEDURE
+        tsvector_update_trigger('tsv_text', 'pg_catalog.english', 'text');
+_SQL
+  rescue # This version of PostgreSQL has no tsvector type support for Full Text Searching: skipping table
+  end
+
+end

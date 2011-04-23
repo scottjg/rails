@@ -45,7 +45,7 @@ class SchemaDumperTest < ActiveRecord::TestCase
       next if column_set.empty?
 
       lengths = column_set.map do |column|
-        if match = column.match(/t\.(?:integer|decimal|float|datetime|timestamp|time|date|text|binary|string|boolean)\s+"/)
+        if match = column.match(/t\.(?:integer|tsvector|decimal|float|datetime|timestamp|time|date|text|binary|string|boolean)\s+"/)
           match[0].length
         end
       end
@@ -201,6 +201,13 @@ class SchemaDumperTest < ActiveRecord::TestCase
       output = standard_dump
       if %r{create_table "postgresql_xml_data_type"} =~ output
         assert_match %r{t.xml "data"}, output
+      end
+    end
+
+    def test_schema_dump_includes_tsvector_definition
+      output = standard_dump
+      if %r{create_table "postgresql_tsvectors"} =~ output
+        assert_match %r{t.tsvector "tsv_text"}, output
       end
     end
   end
