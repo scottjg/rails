@@ -1,5 +1,6 @@
 
 test
+
 == Welcome to \Railstesting hoocks
 
 \Rails is a web-application framework that includes everything needed to create
