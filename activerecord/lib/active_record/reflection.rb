@@ -202,6 +202,10 @@ module ActiveRecord
         @primary_key_name ||= options[:foreign_key] || derive_primary_key_name
       end
 
+      def quoted_primary_key_name
+        @quoted_primary_key_name ||= klass.quoted_primary_key_name
+      end
+
       def primary_key_column
         @primary_key_column ||= klass.columns.find { |c| c.name == klass.primary_key }
       end

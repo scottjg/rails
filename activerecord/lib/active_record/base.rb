@@ -606,6 +606,10 @@ module ActiveRecord #:nodoc:
         (parents.detect{ |p| p.respond_to?(:table_name_prefix) } || self).table_name_prefix
       end
 
+      def quoted_primary_key_name
+        @quoted_primary_key_name ||= connection.quote_column_name(primary_key_name)
+      end
+
       # Defines the column name for use with single table inheritance. Use
       # <tt>set_inheritance_column</tt> to set a different value.
       def inheritance_column
