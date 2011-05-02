@@ -158,7 +158,7 @@ module ActiveRecord
       # DATABASE STATEMENTS ======================================
 
       def exec_query(sql, name = nil, binds = [])
-        log(sql, name, binds) do
+        log(sql, { :name => name }, binds) do
 
           # Don't cache statements without bind values
           if binds.empty?
@@ -193,8 +193,15 @@ module ActiveRecord
         @connection.last_insert_row_id
       end
 
-      def execute(sql, name = nil) #:nodoc:
-        log(sql, name) { @connection.execute(sql) }
+      def execute(sql, name_or_options = {}) #:nodoc:
+        options = {}
+        if name_or_options.is_a?(String)
+          options[:name] = name_or_options
+        else
+          options.merge(name_or_options || {})
+        end
+
+        log(sql, options) { @connection.execute(sql) }
       end
 
       def update_sql(sql, name = nil) #:nodoc:

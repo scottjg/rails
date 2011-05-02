@@ -24,7 +24,7 @@ module ActiveRecord
 
       payload = event.payload
 
-      return if 'SCHEMA' == payload[:name]
+      return if payload.delete(:skip_logging)
 
       name    = '%s (%.1fms)' % [payload[:name], event.duration]
       sql     = payload[:sql].squeeze(' ')

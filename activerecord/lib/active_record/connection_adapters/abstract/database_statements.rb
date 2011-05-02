@@ -45,7 +45,7 @@ module ActiveRecord
       undef_method :select_rows
 
       # Executes the SQL statement in the context of this connection.
-      def execute(sql, name = nil)
+      def execute(sql, options = {})
       end
       undef_method :execute
 
@@ -316,10 +316,10 @@ module ActiveRecord
       # Sanitizes the given LIMIT parameter in order to prevent SQL injection.
       #
       # The +limit+ may be anything that can evaluate to a string via #to_s. It
-      # should look like an integer, or a comma-delimited list of integers, or 
+      # should look like an integer, or a comma-delimited list of integers, or
       # an Arel SQL literal.
       #
-      # Returns Integer and Arel::Nodes::SqlLiteral limits as is. 
+      # Returns Integer and Arel::Nodes::SqlLiteral limits as is.
       # Returns the sanitized limit parameter, either as an integer, or as a
       # string which contains a comma-delimited list of integers.
       def sanitize_limit(limit)

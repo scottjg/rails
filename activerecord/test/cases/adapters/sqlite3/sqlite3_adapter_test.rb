@@ -169,7 +169,7 @@ module ActiveRecord
         sql = "INSERT INTO items (number) VALUES (10)"
         name = "foo"
 
-        assert_logged([[sql, name, []]]) do
+        assert_logged([[sql, { :name => name }, []]]) do
           @conn.insert_sql sql, name
         end
       end
@@ -193,7 +193,7 @@ module ActiveRecord
         sql = "select * from items"
         name = "foo"
 
-        assert_logged([[sql, name, []]]) do
+        assert_logged([[sql, { :name => name }, []]]) do
           @conn.select_rows sql, name
         end
       end
@@ -223,7 +223,7 @@ module ActiveRecord
 
       def test_tables_logs_name
         name = "hello"
-        assert_logged [[name, []]] do
+        assert_logged [[{ :name => name }, []]] do
           @conn.tables(name)
           assert_not_nil @conn.logged.first.shift
         end
@@ -324,8 +324,8 @@ module ActiveRecord
       def intercept_logs_on ctx
         @conn.extend(Module.new {
           attr_accessor :logged
-          def log sql, name, binds = []
-            @logged << [sql, name, binds]
+          def log sql, options = {}, binds = []
+            @logged << [sql, options, binds]
             yield
           end
         })
