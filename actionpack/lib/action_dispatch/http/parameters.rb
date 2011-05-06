@@ -14,6 +14,14 @@ module ActionDispatch
       end
       alias :params :parameters
 
+      def parameters_uncached
+        @env["action_dispatch.request.parameters"] = begin
+          params = request_parameters.merge(query_parameters)
+          params.merge!(path_parameters)
+          encode_params(params).with_indifferent_access
+        end
+      end
+
       def path_parameters=(parameters) #:nodoc:
         @symbolized_path_params = nil
         @env.delete("action_dispatch.request.parameters")

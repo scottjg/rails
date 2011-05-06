@@ -30,7 +30,7 @@ module ActionDispatch
 
       # Return a hash of parameters with all sensitive data replaced.
       def filtered_parameters
-        @filtered_parameters ||= parameter_filter.filter(parameters)
+        @filtered_parameters ||= parameter_filter.filter(parameters_uncached)
       end
 
       # Return a hash of request.env with all sensitive data replaced.
