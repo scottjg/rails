@@ -13,7 +13,9 @@ module ActionController
     autoload :Compatibility
     autoload :ConditionalGet
     autoload :Cookies
+    autoload :DataStreaming
     autoload :Flash
+    autoload :ForceSSL
     autoload :Head
     autoload :Helpers
     autoload :HideActions
@@ -21,6 +23,7 @@ module ActionController
     autoload :ImplicitRender
     autoload :Instrumentation
     autoload :MimeResponds
+    autoload :ParamsWrapper
     autoload :RackDelegation
     autoload :Redirecting
     autoload :Renderers

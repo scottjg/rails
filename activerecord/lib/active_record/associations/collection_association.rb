@@ -21,14 +21,7 @@ module ActiveRecord
       attr_reader :proxy
 
       def initialize(owner, reflection)
-        # When scopes are created via method_missing on the proxy, they are stored so that
-        # any records fetched from the database are kept around for future use.
-        @scopes_cache = Hash.new do |hash, method|
-          hash[method] = { }
-        end
-
         super
-
         @proxy = CollectionProxy.new(self)
       end
 
@@ -74,7 +67,6 @@ module ActiveRecord
       def reset
         @loaded = false
         @target = []
-        @scopes_cache.clear
       end
 
       def select(select = nil)
@@ -101,20 +93,20 @@ module ActiveRecord
         first_or_last(:last, *args)
       end
 
-      def build(attributes = {}, &block)
-        build_or_create(attributes, :build, &block)
+      def build(attributes = {}, options = {}, &block)
+        build_or_create(:build, attributes, options, &block)
       end
 
-      def create(attributes = {}, &block)
+      def create(attributes = {}, options = {}, &block)
         unless owner.persisted?
           raise ActiveRecord::RecordNotSaved, "You cannot call create unless the parent is saved"
         end
 
-        build_or_create(attributes, :create, &block)
+        build_or_create(:create, attributes, options, &block)
       end
 
-      def create!(attrs = {}, &block)
-        record = create(attrs, &block)
+      def create!(attrs = {}, options = {}, &block)
+        record = create(attrs, options, &block)
         Array.wrap(record).each(&:save!)
         record
       end
@@ -327,15 +319,6 @@ module ActiveRecord
         end
       end
 
-      def cached_scope(method, args)
-        @scopes_cache[method][args] ||= scoped.readonly(nil).send(method, *args)
-      end
-
-      def association_scope
-        options = reflection.options.slice(:order, :limit, :joins, :group, :having, :offset)
-        super.apply_finder_options(options)
-      end
-
       def load_target
         if find_target?
           targets = []
@@ -372,14 +355,6 @@ module ActiveRecord
       end
 
       private
-
-        def select_value
-          super || uniq_select_value
-        end
-
-        def uniq_select_value
-          options[:uniq] && "DISTINCT #{reflection.quoted_table_name}.*"
-        end
 
         def custom_counter_sql
           if options[:counter_sql]
@@ -428,9 +403,9 @@ module ActiveRecord
           end + existing
         end
 
-        def build_or_create(attributes, method)
+        def build_or_create(method, attributes, options)
           records = Array.wrap(attributes).map do |attrs|
-            record = build_record(attrs)
+            record = build_record(attrs, options)
 
             add_to_target(record) do
               yield(record) if block_given?
@@ -446,8 +421,8 @@ module ActiveRecord
           raise NotImplementedError
         end
 
-        def build_record(attributes)
-          reflection.build_association(scoped.scope_for_create.merge(attributes))
+        def build_record(attributes, options)
+          reflection.build_association(scoped.scope_for_create.merge(attributes), options)
         end
 
         def delete_or_destroy(records, method)

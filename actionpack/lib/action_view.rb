@@ -34,16 +34,16 @@ module ActionView
     autoload :Context
     autoload :Helpers
     autoload :LookupContext
-    autoload :Partials
     autoload :PathSet
-    autoload :Rendering
     autoload :Template
     autoload :TestCase
 
     autoload_under "renderer" do
+      autoload :Renderer
       autoload :AbstractRenderer
       autoload :PartialRenderer
       autoload :TemplateRenderer
+      autoload :StreamingTemplateRenderer
     end
 
     autoload_at "action_view/template/resolver" do
@@ -51,6 +51,16 @@ module ActionView
       autoload :PathResolver
       autoload :FileSystemResolver
       autoload :FallbackFileSystemResolver
+    end
+
+    autoload_at "action_view/buffers" do
+      autoload :OutputBuffer
+      autoload :StreamingBuffer
+    end
+
+    autoload_at "action_view/flows" do
+      autoload :OutputFlow
+      autoload :StreamingFlow
     end
 
     autoload_at "action_view/template/error" do

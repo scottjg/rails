@@ -44,13 +44,13 @@ class ConnectionTest < Test::Unit::TestCase
     # 401 is an unauthorized request
     assert_response_raises ActiveResource::UnauthorizedAccess, 401
 
-    # 403 is a forbidden requst (and authorizing will not help)
+    # 403 is a forbidden request (and authorizing will not help)
     assert_response_raises ActiveResource::ForbiddenAccess, 403
 
     # 404 is a missing resource.
     assert_response_raises ActiveResource::ResourceNotFound, 404
 
-    # 405 is a missing not allowed error
+    # 405 is a method not allowed error
     assert_response_raises ActiveResource::MethodNotAllowed, 405
 
     # 409 is an optimistic locking error

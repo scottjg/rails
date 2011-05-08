@@ -1,4 +1,5 @@
 require 'active_support/core_ext/kernel/reporting'
+require 'active_support/core_ext/object/inclusion'
 
 module ActiveResource
   class InvalidRequestError < StandardError; end #:nodoc:
@@ -8,8 +9,8 @@ module ActiveResource
   # requests.
   #
   # To test your Active Resource model, you simply call the ActiveResource::HttpMock.respond_to
-  # method with an attached block.  The block declares a set of URIs with expected input, and the output
-  # each request should return.  The passed in block has any number of entries in the following generalized
+  # method with an attached block. The block declares a set of URIs with expected input, and the output
+  # each request should return. The passed in block has any number of entries in the following generalized
   # format:
   #
   #   mock.http_method(path, request_headers = {}, body = nil, status = 200, response_headers = {})
@@ -28,7 +29,7 @@ module ActiveResource
   #   <tt>request_headers</tt> listed above.
   #
   # In order for a mock to deliver its content, the incoming request must match by the <tt>http_method</tt>,
-  # +path+ and <tt>request_headers</tt>.  If no match is found an InvalidRequestError exception
+  # +path+ and <tt>request_headers</tt>. If no match is found an +InvalidRequestError+ exception
   # will be raised showing you what request it could not find a response for and also what requests and response
   # pairs have been recorded so you can create a new mock for that request.
   #
@@ -79,7 +80,7 @@ module ActiveResource
 
     class << self
 
-      # Returns an array of all request objects that have been sent to the mock.  You can use this to check
+      # Returns an array of all request objects that have been sent to the mock. You can use this to check
       # if your model actually sent an HTTP request.
       #
       # ==== Example
@@ -104,7 +105,7 @@ module ActiveResource
       end
 
       # Returns the list of requests and their mocked responses. Look up a
-      # response for a request using responses.assoc(request).
+      # response for a request using <tt>responses.assoc(request)</tt>.
       def responses
         @@responses ||= []
       end
@@ -298,8 +299,10 @@ module ActiveResource
       end
     end
 
+    # Returns true if code is 2xx,
+    # false otherwise.
     def success?
-      (200..299).include?(code)
+      code.in?(200..299)
     end
 
     def [](key)
@@ -310,6 +313,8 @@ module ActiveResource
       headers[key] = value
     end
 
+    # Returns true if the other is a Response with an equal body, equal message
+    # and equal headers. Otherwise it returns false.
     def ==(other)
       if (other.is_a?(Response))
         other.body == body && other.message == message && other.headers == headers

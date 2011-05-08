@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module DeveloperProjectsAssociationExtension
   def find_most_recent
     find(:first, :order => "id DESC")
@@ -87,6 +89,7 @@ end
 class DeveloperOrderedBySalary < ActiveRecord::Base
   self.table_name = 'developers'
   default_scope :order => 'salary DESC'
+
   scope :by_name, order('name DESC')
 
   def self.all_ordered_by_name
@@ -98,15 +101,68 @@ end
 
 class DeveloperCalledDavid < ActiveRecord::Base
   self.table_name = 'developers'
-  default_scope :conditions => "name = 'David'"
+  default_scope where("name = 'David'")
+end
+
+class LazyLambdaDeveloperCalledDavid < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_scope lambda { where(:name => 'David') }
+end
+
+class LazyBlockDeveloperCalledDavid < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_scope { where(:name => 'David') }
+end
+
+class CallableDeveloperCalledDavid < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_scope OpenStruct.new(:call => where(:name => 'David'))
+end
+
+class ClassMethodDeveloperCalledDavid < ActiveRecord::Base
+  self.table_name = 'developers'
+
+  def self.default_scope
+    where(:name => 'David')
+  end
 end
 
 class DeveloperCalledJamis < ActiveRecord::Base
   self.table_name = 'developers'
-  default_scope :conditions => { :name => 'Jamis' }
+
+  default_scope where(:name => 'Jamis')
+  scope :poor, where('salary < 150000')
 end
 
 class PoorDeveloperCalledJamis < ActiveRecord::Base
   self.table_name = 'developers'
-  default_scope :conditions => { :name => 'Jamis', :salary => 50000 }
+
+  default_scope where(:name => 'Jamis', :salary => 50000)
 end
+
+class InheritedPoorDeveloperCalledJamis < DeveloperCalledJamis
+  self.table_name = 'developers'
+
+  default_scope where(:salary => 50000)
+end
+
+class MultiplePoorDeveloperCalledJamis < ActiveRecord::Base
+  self.table_name = 'developers'
+
+  default_scope where(:name => 'Jamis')
+  default_scope where(:salary => 50000)
+end
+
+module SalaryDefaultScope
+  extend ActiveSupport::Concern
+
+  included { default_scope where(:salary => 50000) }
+end
+
+class ModuleIncludedPoorDeveloperCalledJamis < DeveloperCalledJamis
+  self.table_name = 'developers'
+
+  include SalaryDefaultScope
+end
+
+

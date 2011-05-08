@@ -4,6 +4,8 @@ require 'action_mailer/collector'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/proc'
+require 'active_support/core_ext/string/inflections'
+require 'active_support/core_ext/hash/except'
 require 'action_mailer/log_subscriber'
 
 module ActionMailer #:nodoc:
@@ -291,10 +293,14 @@ module ActionMailer #:nodoc:
   #   * <tt>:authentication</tt> - If your mail server requires authentication, you need to specify the
   #     authentication type here.
   #     This is a symbol and one of <tt>:plain</tt> (will send the password in the clear), <tt>:login</tt> (will
-  #     send password BASE64 encoded) or <tt>:cram_md5</tt> (combines a Challenge/Response mechanism to exchange
+  #     send password Base64 encoded) or <tt>:cram_md5</tt> (combines a Challenge/Response mechanism to exchange
   #     information and a cryptographic Message Digest 5 algorithm to hash important information)
   #   * <tt>:enable_starttls_auto</tt> - When set to true, detects if STARTTLS is enabled in your SMTP server
   #     and starts to use it.
+  #   * <tt>:openssl_verify_mode</tt> - When using TLS, you can set how OpenSSL checks the certificate. This is 
+  #     really useful if you need to validate a self-signed and/or a wildcard certificate. You can use the name 
+  #     of an OpenSSL verify constant ('none', 'peer', 'client_once','fail_if_no_peer_cert') or directly the 
+  #     constant  (OpenSSL::SSL::VERIFY_NONE, OpenSSL::SSL::VERIFY_PEER,...).
   #
   # * <tt>sendmail_settings</tt> - Allows you to override options for the <tt>:sendmail</tt> delivery method.
   #   * <tt>:location</tt> - The location of the sendmail executable. Defaults to <tt>/usr/sbin/sendmail</tt>.
@@ -343,14 +349,10 @@ module ActionMailer #:nodoc:
     include AbstractController::Translation
     include AbstractController::AssetPaths
 
-    cattr_reader :protected_instance_variables
-    @@protected_instance_variables = []
+    self.protected_instance_variables = %w(@_action_has_layout)
 
     helper  ActionMailer::MailHelper
     include ActionMailer::OldApi
-
-    delegate :register_observer, :to => Mail
-    delegate :register_interceptor, :to => Mail
 
     private_class_method :new #:nodoc:
 
@@ -363,6 +365,32 @@ module ActionMailer #:nodoc:
     }.freeze
 
     class << self
+      # Register one or more Observers which will be notified when mail is delivered.
+      def register_observers(*observers)
+        observers.flatten.compact.each { |observer| register_observer(observer) }
+      end
+
+      # Register one or more Interceptors which will be called before mail is sent.
+      def register_interceptors(*interceptors)
+        interceptors.flatten.compact.each { |interceptor| register_interceptor(interceptor) }
+      end
+
+      # Register an Observer which will be notified when mail is delivered.
+      # Either a class or a string can be passed in as the Observer. If a string is passed in
+      # it will be <tt>constantize</tt>d.
+      def register_observer(observer)
+        delivery_observer = (observer.is_a?(String) ? observer.constantize : observer)
+        Mail.register_observer(delivery_observer)
+      end
+
+      # Register an Inteceptor which will be called before mail is sent.
+      # Either a class or a string can be passed in as the Observer. If a string is passed in
+      # it will be <tt>constantize</tt>d.
+      def register_interceptor(interceptor)
+        delivery_interceptor = (interceptor.is_a?(String) ? interceptor.constantize : interceptor)
+        Mail.register_interceptor(delivery_interceptor)
+      end
+
       def mailer_name
         @mailer_name ||= name.underscore
       end
@@ -657,6 +685,9 @@ module ActionMailer #:nodoc:
       end
     end
 
+    # Translates the +subject+ using Rails I18n class under <tt>[:actionmailer, mailer_scope, action_name]</tt> scope.
+    # If it does not find a translation for the +subject+ under the specified scope it will default to a
+    # humanized version of the <tt>action_name</tt>.
     def default_i18n_subject #:nodoc:
       mailer_scope = self.class.mailer_name.gsub('/', '.')
       I18n.t(:subject, :scope => [mailer_scope, action_name], :default => action_name.humanize)

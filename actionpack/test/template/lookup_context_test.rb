@@ -51,6 +51,11 @@ class LookupContextTest < ActiveSupport::TestCase
     assert_equal Mime::SET, @lookup_context.formats
   end
 
+  test "handles explicitly defined */* formats fallback to :js" do
+    @lookup_context.formats = [:js, Mime::ALL]
+    assert_equal [:js, *Mime::SET.symbols], @lookup_context.formats
+  end
+
   test "adds :html fallback to :js formats" do
     @lookup_context.formats = [:js]
     assert_equal [:js, :html], @lookup_context.formats
@@ -180,15 +185,11 @@ class LookupContextTest < ActiveSupport::TestCase
 
     assert_not_equal template, old_template
   end
-
-  test "data can be stored in cached templates" do
-    template = @lookup_context.find("hello_world", %w(test))
-    template.data["cached"] = "data"
-    assert_equal "Hello world!", template.source
-
-    template = @lookup_context.find("hello_world", %w(test))
-    assert_equal "data", template.data["cached"]
-    assert_equal "Hello world!", template.source
+  
+  test "responds to #prefixes" do
+    assert_equal [], @lookup_context.prefixes
+    @lookup_context.prefixes = ["foo"]
+    assert_equal ["foo"], @lookup_context.prefixes
   end
 end
 
@@ -233,21 +234,6 @@ class LookupContextWithFalseCaching < ActiveSupport::TestCase
 
     @resolver.hash["test/_foo.erb"] = ["Foo", Time.utc(2000)]
     template = @lookup_context.find("foo", %w(test), true)
-    assert_equal "Foo", template.source
-  end
-
-  test "data can be stored as long as template was not updated" do
-    template = @lookup_context.find("foo", %w(test), true)
-    template.data["cached"] = "data"
-    assert_equal "Foo", template.source
-
-    template = @lookup_context.find("foo", %w(test), true)
-    assert_equal "data", template.data["cached"]
-    assert_equal "Foo", template.source
-
-    @resolver.hash["test/_foo.erb"][1] = Time.now.utc
-    template = @lookup_context.find("foo", %w(test), true)
-    assert_nil template.data["cached"]
     assert_equal "Foo", template.source
   end
 end

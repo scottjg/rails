@@ -9,6 +9,7 @@ module ActionView #:nodoc:
     autoload :AtomFeedHelper
     autoload :CacheHelper
     autoload :CaptureHelper
+    autoload :ControllerHelper
     autoload :CsrfHelper
     autoload :DateHelper
     autoload :DebugHelper
@@ -17,11 +18,11 @@ module ActionView #:nodoc:
     autoload :FormTagHelper
     autoload :JavaScriptHelper, "action_view/helpers/javascript_helper"
     autoload :NumberHelper
-    autoload :PrototypeHelper
     autoload :OutputSafetyHelper
     autoload :RecordTagHelper
+    autoload :RenderingHelper
     autoload :SanitizeHelper
-    autoload :ScriptaculousHelper
+    autoload :SprocketsHelper
     autoload :TagHelper
     autoload :TextHelper
     autoload :TranslationHelper
@@ -39,6 +40,7 @@ module ActionView #:nodoc:
     include AtomFeedHelper
     include CacheHelper
     include CaptureHelper
+    include ControllerHelper
     include CsrfHelper
     include DateHelper
     include DebugHelper
@@ -47,11 +49,11 @@ module ActionView #:nodoc:
     include FormTagHelper
     include JavaScriptHelper
     include NumberHelper
-    include PrototypeHelper
     include OutputSafetyHelper
     include RecordTagHelper
+    include RenderingHelper
     include SanitizeHelper
-    include ScriptaculousHelper
+    include SprocketsHelper
     include TagHelper
     include TextHelper
     include TranslationHelper

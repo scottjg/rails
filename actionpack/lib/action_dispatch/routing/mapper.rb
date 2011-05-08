@@ -1,6 +1,7 @@
 require 'erb'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/object/inclusion'
 require 'active_support/inflector'
 require 'action_dispatch/routing/redirection'
 
@@ -104,10 +105,16 @@ module ActionDispatch
               @options.reverse_merge!(:controller => /.+?/)
             end
 
+            # Add a constraint for wildcard route to make it non-greedy and match the
+            # optional format part of the route by default
+            if path.match(/\*([^\/]+)$/) && @options[:format] != false
+              @options.reverse_merge!(:"#{$1}" => /.+?/)
+            end
+
             if @options[:format] == false
               @options.delete(:format)
               path
-            elsif path.include?(":format")
+            elsif path.include?(":format") || path.end_with?('/')
               path
             else
               "#{path}(.:format)"
@@ -195,8 +202,8 @@ module ActionDispatch
 
           def request_method_condition
             if via = @options[:via]
-              via = Array(via).map { |m| m.to_s.dasherize.upcase }
-              { :request_method => %r[^#{via.join('|')}$] }
+              list = Array(via).map { |m| m.to_s.dasherize.upcase }
+              { :request_method => list }
             else
               { }
             end
@@ -243,10 +250,6 @@ module ActionDispatch
       end
 
       module Base
-        def initialize(set) #:nodoc:
-          @set = set
-        end
-
         # You can specify what Rails should route "/" to with the root method:
         #
         #   root :to => 'pages#main'
@@ -368,9 +371,17 @@ module ActionDispatch
         #     match 'path' => 'c#a', :defaults => { :format => 'jpg' }
         #
         #   See <tt>Scoping#defaults</tt> for its scope equivalent.
+        #
+        # [:anchor]
+        #   Boolean to anchor a #match pattern. Default is true. When set to
+        #   false, the pattern matches any request prefixed with the given path.
+        #
+        #     # Matches any request starting with 'path'
+        #     match 'path' => 'c#a', :anchor => false
         def match(path, options=nil)
-          mapping = Mapping.new(@set, @scope, path, options || {}).to_route
-          @set.add_route(*mapping)
+          mapping = Mapping.new(@set, @scope, path, options || {})
+          app, conditions, requirements, defaults, as, anchor = mapping.to_route
+          @set.add_route(app, conditions, requirements, defaults, as, anchor)
           self
         end
 
@@ -558,11 +569,6 @@ module ActionDispatch
       #   PUT	    /admin/posts/1
       #   DELETE  /admin/posts/1
       module Scoping
-        def initialize(*args) #:nodoc:
-          @scope = {}
-          super
-        end
-
         # Scopes a set of routes to the given default options.
         #
         # Take the following route definition as an example:
@@ -700,7 +706,7 @@ module ActionDispatch
         # Now routes such as +/posts/1+ will no longer be valid, but +/posts/1.1+ will be.
         # The +id+ parameter must match the constraint passed in for this example.
         #
-        # You may use this to also resrict other parameters:
+        # You may use this to also restrict other parameters:
         #
         #   resources :posts do
         #     constraints(:post_id => /\d+\.\d+) do
@@ -720,7 +726,7 @@ module ActionDispatch
         #
         # === Dynamic request matching
         #
-        # Requests to routes can be constrained based on specific critera:
+        # Requests to routes can be constrained based on specific criteria:
         #
         #    constraints(lambda { |req| req.env["HTTP_USER_AGENT"] =~ /iPhone/ }) do
         #      resources :iphones
@@ -954,11 +960,6 @@ module ActionDispatch
 
           alias :member_scope :path
           alias :nested_scope :path
-        end
-
-        def initialize(*args) #:nodoc:
-          super
-          @scope[:path_names] = @set.resources_path_names
         end
 
         def resources_path_names(options)
@@ -1345,11 +1346,11 @@ module ActionDispatch
           end
 
           def resource_scope? #:nodoc:
-            [:resource, :resources].include?(@scope[:scope_level])
+            @scope[:scope_level].in?([:resource, :resources])
           end
 
           def resource_method_scope? #:nodoc:
-            [:collection, :member, :new].include?(@scope[:scope_level])
+            @scope[:scope_level].in?([:collection, :member, :new])
           end
 
           def with_exclusive_scope
@@ -1471,6 +1472,11 @@ module ActionDispatch
             super
           end
         end
+      end
+
+      def initialize(set) #:nodoc:
+        @set = set
+        @scope = { :path_names => @set.resources_path_names }
       end
 
       include Base

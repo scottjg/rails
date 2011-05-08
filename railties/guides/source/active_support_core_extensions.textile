@@ -442,6 +442,20 @@ require_library_or_gem('mysql')
 
 NOTE: Defined in +active_support/core_ext/kernel/requires.rb+.
 
+h4. +in?+
+
+The predicate +in?+ tests if an object is included in another object. An +ArgumentError+ exception will be raised if the argument passed does not respond to +include?+.
+
+Examples of +in?+:
+
+<ruby>
+1.in?([1,2])        # => true
+"lo".in?("hello")   # => true
+25.in?(30..50)      # => false
+</ruby>
+
+NOTE: Defined in +active_support/core_ext/object/inclusion.rb+.
+
 h3. Extensions to +Module+
 
 h4. +alias_method_chain+
@@ -527,9 +541,9 @@ The default value can be also specified with a block, which is called in the con
 <ruby>
 class User
   attr_accessor :name, :surname
-  attr_accessor_with_default(:full_name) {
-  [name, surname].compact.join(" ")
-  }
+  attr_accessor_with_default(:full_name) do
+    [name, surname].compact.join(" ")
+  end
 end
 
 u = User.new
@@ -1045,6 +1059,8 @@ NOTE: Defined in +active_support/core_ext/class/attribute_accessors.rb+.
 
 h4. Class Inheritable Attributes
 
+WARNING: Class Inheritable Attributes are deprecated. It's recommended that you use +Class#class_attribute+ instead.
+
 Class variables are shared down the inheritance tree. Class instance variables are not shared, but they are not inherited either. The macros +class_inheritable_reader+, +class_inheritable_writer+, and +class_inheritable_accessor+ provide accessors for class-level data which is inherited but not shared with children:
 
 <ruby>
@@ -1207,7 +1223,7 @@ NOTE: Defined in +active_support/core_ext/string/output_safety.rb+.
 
 h4. +squish+
 
-The method +String#squish+ strips leading and trailing whitespace, and substitutes runs of whitespace with a single space each:
+The method +squish+ strips leading and trailing whitespace, and substitutes runs of whitespace with a single space each:
 
 <ruby>
 " \n  foo\n\r \t bar \n".squish # => "foo bar"
@@ -1249,6 +1265,15 @@ In the above example "dear" gets cut first, but then +:separator+ prevents it.
 WARNING: The option +:separator+ can't be a regexp.
 
 NOTE: Defined in +active_support/core_ext/string/filters.rb+.
+
+h4. +inquiry+
+
+The <tt>inquiry</tt> method converts a string into a +StringInquirer+ object making equality checks prettier.
+
+<ruby>
+"production".inquiry.production? # => true
+"active".inquiry.inactive?       # => false
+</ruby>
 
 h4. Key-based Interpolation
 
@@ -1816,7 +1841,7 @@ h3. Extensions to +Float+
 
 h4. +round+
 
-The built-in method +Float#round+ rounds a float to the nearest integer. Active Support adds an optional parameter to let you specify a precision:
+The built-in method +Float#round+ rounds a float to the nearest integer. In Ruby 1.9 this method takes an optional argument to let you specify a precision. Active Support adds that functionality to +round+ in previous versions of Ruby:
 
 <ruby>
 Math::E.round(4) # => 2.7183
@@ -1971,15 +1996,20 @@ Active Support augments the API of arrays to ease certain ways of accessing them
 [].to(7)          # => []
 </ruby>
 
-Similarly, +from+ returns the tail from the element at the passed index on:
+Similarly, +from+ returns the tail from the element at the passed index to the end. If the index is greater than the length of the array, it returns an empty array.
 
 <ruby>
 %w(a b c d).from(2)  # => %w(c d)
-%w(a b c d).from(10) # => nil
+%w(a b c d).from(10) # => []
 [].from(0)           # => []
 </ruby>
 
 The methods +second+, +third+, +fourth+, and +fifth+ return the corresponding element (+first+ is built-in). Thanks to social wisdom and positive constructiveness all around, +forty_two+ is also available.
+
+<ruby>
+%w(a b c d).third # => c
+%w(a b c d).fifth # => nil
+</ruby>
 
 NOTE: Defined in +active_support/core_ext/array/access.rb+.
 
@@ -2009,7 +2039,7 @@ That syntactic sugar is used a lot in Rails to avoid positional arguments where 
 
 If a method expects a variable number of arguments and uses <tt>*</tt> in its declaration, however, such an options hash ends up being an item of the array of arguments, where it loses its role.
 
-In those cases, you may give an options hash a distinguished treatment with +extract_options!+. That method checks the type of the last item of an array. If it is a hash it pops it and returns it, otherwise returns an empty hash.
+In those cases, you may give an options hash a distinguished treatment with +extract_options!+. This method checks the type of the last item of an array. If it is a hash it pops it and returns it, otherwise it returns an empty hash.
 
 Let's see for example the definition of the +caches_action+ controller macro:
 
@@ -2076,7 +2106,7 @@ h5. +to_xml+
 The method +to_xml+ returns a string containing an XML representation of its receiver:
 
 <ruby>
-Contributor.all(:limit => 2, :order => 'rank ASC').to_xml
+Contributor.limit(2).order(:rank).to_xml
 # =>
 # <?xml version="1.0" encoding="UTF-8"?>
 # <contributors type="array">
@@ -2151,7 +2181,7 @@ The name of children nodes is by default the name of the root node singularized.
 The default XML builder is a fresh instance of <tt>Builder::XmlMarkup</tt>. You can configure your own builder via the <tt>:builder</tt> option. The method also accepts options like <tt>:dasherize</tt> and friends, they are forwarded to the builder:
 
 <ruby>
-Contributor.all(:limit => 2, :order => 'rank ASC').to_xml(:skip_types => true)
+Contributor.limit(2).order(:rank).to_xml(:skip_types => true)
 # =>
 # <?xml version="1.0" encoding="UTF-8"?>
 # <contributors>
@@ -3391,11 +3421,11 @@ h4. +silence+
 Silences every log level lesser to the specified one for the duration of the given block. Log level orders are: debug, info, error and fatal.
 
 <ruby>
-  logger = Logger.new("log/development.log")
-  logger.silence(Logger::INFO) do
-    logger.debug("In space, no one can hear you scream.")
-    logger.info("Scream all you want, small mailman!")
-  end
+logger = Logger.new("log/development.log")
+logger.silence(Logger::INFO) do
+  logger.debug("In space, no one can hear you scream.")
+  logger.info("Scream all you want, small mailman!")
+end
 </ruby>
 
 h4. +datetime_format=+
@@ -3403,17 +3433,17 @@ h4. +datetime_format=+
 Modifies the datetime format output by the formatter class associated with this logger. If the formatter class does not have a +datetime_format+ method then this is ignored.
 
 <ruby>
-  class Logger::FormatWithTime < Logger::Formatter
-    cattr_accessor(:datetime_format) { "%Y%m%d%H%m%S" }
+class Logger::FormatWithTime < Logger::Formatter
+  cattr_accessor(:datetime_format) { "%Y%m%d%H%m%S" }
 
-    def self.call(severity, timestamp, progname, msg)
-      "#{timestamp.strftime(datetime_format)} -- #{String === msg ? msg : msg.inspect}\n"
-    end
+  def self.call(severity, timestamp, progname, msg)
+    "#{timestamp.strftime(datetime_format)} -- #{String === msg ? msg : msg.inspect}\n"
   end
+end
 
-  logger = Logger.new("log/development.log")
-  logger.formatter = Logger::FormatWithTime
-  logger.info("<- is the current time")
+logger = Logger.new("log/development.log")
+logger.formatter = Logger::FormatWithTime
+logger.info("<- is the current time")
 </ruby>
 
 NOTE: Defined in +active_support/core_ext/logger.rb+.
