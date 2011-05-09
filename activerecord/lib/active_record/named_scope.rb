@@ -173,17 +173,21 @@ module ActiveRecord
 
       private
       def method_missing(method, *args, &block)
-        if scopes.include?(method)
-          scopes[method].call(self, *args)
+        if [].respond_to?(method) && !NON_DELEGATE_METHODS.include?(method.to_s)
+          proxy_found.send(method, *args, &block)
         else
-          with_scope({:find => proxy_options, :create => proxy_options[:conditions].is_a?(Hash) ?  proxy_options[:conditions] : {}}, :reverse_merge) do
-            method = :new if method == :build
-            if current_scoped_methods_when_defined && !scoped_methods.include?(current_scoped_methods_when_defined)
-              with_scope current_scoped_methods_when_defined do
+          if scopes.include?(method)
+            scopes[method].call(self, *args)
+          else
+            with_scope({:find => proxy_options, :create => proxy_options[:conditions].is_a?(Hash) ?  proxy_options[:conditions] : {}}, :reverse_merge) do
+              method = :new if method == :build
+              if current_scoped_methods_when_defined && !scoped_methods.include?(current_scoped_methods_when_defined)
+                with_scope current_scoped_methods_when_defined do
+                  proxy_scope.send(method, *args, &block)
+                end
+              else
                 proxy_scope.send(method, *args, &block)
               end
-            else
-              proxy_scope.send(method, *args, &block)
             end
           end
         end
