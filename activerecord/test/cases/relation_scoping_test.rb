@@ -463,3 +463,168 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 10, DeveloperCalledJamis.unscoped.poor.length
   end
 end
+
+class DefaultSelectTest < ActiveRecord::TestCase
+  fixtures :developers, :posts
+
+  def test_default_select
+    expected = Developer.find(:all, :order => 'salary DESC').collect { |dev| dev.salary }
+    received = DeveloperOrderedBySalaryWithDefaultSelect.find(:all).collect { |dev| dev.salary }
+    assert_equal expected, received
+  end
+
+  def test_default_select_as_class_method
+    assert_equal [developers(:david).becomes(ClassMethodDeveloperCalledDavidDefaultSelect)], ClassMethodDeveloperCalledDavidDefaultSelect.all
+  end
+
+  def test_default_select_with_lambda
+    assert_equal [developers(:david).becomes(LazyLambdaDeveloperCalledDavidDefaultSelect)], LazyLambdaDeveloperCalledDavidDefaultSelect.all
+  end
+
+  def test_default_select_with_block
+    assert_equal [developers(:david).becomes(LazyBlockDeveloperCalledDavidDefaultSelect)], LazyBlockDeveloperCalledDavidDefaultSelect.all
+  end
+
+  def test_default_select_with_callable
+    assert_equal [developers(:david).becomes(CallableDeveloperCalledDavidDefaultSelect)], CallableDeveloperCalledDavidDefaultSelect.all
+  end
+
+  # def test_default_scope_is_unscoped_on_find
+  #   assert_equal 1, DeveloperCalledDavid.count
+  #   assert_equal 11, DeveloperCalledDavid.unscoped.count
+  # end
+  #
+  # def test_default_scope_is_unscoped_on_create
+  #   assert_nil DeveloperCalledJamis.unscoped.create!.name
+  # end
+  #
+  # def test_default_scope_with_conditions_string
+  #   assert_equal Developer.find_all_by_name('David').map(&:id).sort, DeveloperCalledDavid.find(:all).map(&:id).sort
+  #   assert_equal nil, DeveloperCalledDavid.create!.name
+  # end
+  #
+  # def test_default_scope_with_conditions_hash
+  #   assert_equal Developer.find_all_by_name('Jamis').map(&:id).sort, DeveloperCalledJamis.find(:all).map(&:id).sort
+  #   assert_equal 'Jamis', DeveloperCalledJamis.create!.name
+  # end
+  #
+  # def test_default_scoping_with_threads
+  #   2.times do
+  #     Thread.new { assert DeveloperOrderedBySalary.scoped.to_sql.include?('salary DESC') }.join
+  #   end
+  # end
+  #
+  # def test_default_scope_with_inheritance
+  #   wheres = InheritedPoorDeveloperCalledJamis.scoped.where_values_hash
+  #   assert_equal "Jamis", wheres[:name]
+  #   assert_equal 50000,   wheres[:salary]
+  # end
+  #
+  # def test_default_scope_with_module_includes
+  #   wheres = ModuleIncludedPoorDeveloperCalledJamis.scoped.where_values_hash
+  #   assert_equal "Jamis", wheres[:name]
+  #   assert_equal 50000,   wheres[:salary]
+  # end
+  #
+  # def test_default_scope_with_multiple_calls
+  #   wheres = MultiplePoorDeveloperCalledJamis.scoped.where_values_hash
+  #   assert_equal "Jamis", wheres[:name]
+  #   assert_equal 50000,   wheres[:salary]
+  # end
+  #
+  # def test_method_scope
+  #   expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.salary }
+  #   received = DeveloperOrderedBySalary.all_ordered_by_name.collect { |dev| dev.salary }
+  #   assert_equal expected, received
+  # end
+  #
+  # def test_nested_scope
+  #   expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.salary }
+  #   received = DeveloperOrderedBySalary.send(:with_scope, :find => { :order => 'name DESC'}) do
+  #     DeveloperOrderedBySalary.find(:all).collect { |dev| dev.salary }
+  #   end
+  #   assert_equal expected, received
+  # end
+  #
+  # def test_scope_overwrites_default
+  #   expected = Developer.find(:all, :order => 'salary DESC, name DESC').collect { |dev| dev.name }
+  #   received = DeveloperOrderedBySalary.by_name.find(:all).collect { |dev| dev.name }
+  #   assert_equal expected, received
+  # end
+  #
+  # def test_reorder_overrides_default_scope_order
+  #   expected = Developer.order('name DESC').collect { |dev| dev.name }
+  #   received = DeveloperOrderedBySalary.reorder('name DESC').collect { |dev| dev.name }
+  #   assert_equal expected, received
+  # end
+  #
+  # def test_nested_exclusive_scope
+  #   expected = Developer.find(:all, :limit => 100).collect { |dev| dev.salary }
+  #   received = DeveloperOrderedBySalary.send(:with_exclusive_scope, :find => { :limit => 100 }) do
+  #     DeveloperOrderedBySalary.find(:all).collect { |dev| dev.salary }
+  #   end
+  #   assert_equal expected, received
+  # end
+  #
+  # def test_order_in_default_scope_should_prevail
+  #   expected = Developer.find(:all, :order => 'salary desc').collect { |dev| dev.salary }
+  #   received = DeveloperOrderedBySalary.find(:all, :order => 'salary').collect { |dev| dev.salary }
+  #   assert_equal expected, received
+  # end
+  #
+  # def test_create_attribute_overwrites_default_scoping
+  #   assert_equal 'David', PoorDeveloperCalledJamis.create!(:name => 'David').name
+  #   assert_equal 200000, PoorDeveloperCalledJamis.create!(:name => 'David', :salary => 200000).salary
+  # end
+  #
+  # def test_create_attribute_overwrites_default_values
+  #   assert_equal nil, PoorDeveloperCalledJamis.create!(:salary => nil).salary
+  #   assert_equal 50000, PoorDeveloperCalledJamis.create!(:name => 'David').salary
+  # end
+  #
+  # def test_default_scope_attribute
+  #   jamis = PoorDeveloperCalledJamis.new(:name => 'David')
+  #   assert_equal 50000, jamis.salary
+  # end
+  #
+  # def test_where_attribute
+  #   aaron = PoorDeveloperCalledJamis.where(:salary => 20).new(:name => 'Aaron')
+  #   assert_equal 20, aaron.salary
+  #   assert_equal 'Aaron', aaron.name
+  # end
+  #
+  # def test_where_attribute_merge
+  #   aaron = PoorDeveloperCalledJamis.where(:name => 'foo').new(:name => 'Aaron')
+  #   assert_equal 'Aaron', aaron.name
+  # end
+  #
+  # def test_scope_composed_by_limit_and_then_offset_is_equal_to_scope_composed_by_offset_and_then_limit
+  #   posts_limit_offset = Post.limit(3).offset(2)
+  #   posts_offset_limit = Post.offset(2).limit(3)
+  #   assert_equal posts_limit_offset, posts_offset_limit
+  # end
+  #
+  # def test_create_with_merge
+  #   aaron = PoorDeveloperCalledJamis.create_with(:name => 'foo', :salary => 20).merge(
+  #             PoorDeveloperCalledJamis.create_with(:name => 'Aaron')).new
+  #   assert_equal 20, aaron.salary
+  #   assert_equal 'Aaron', aaron.name
+  #
+  #   aaron = PoorDeveloperCalledJamis.create_with(:name => 'foo', :salary => 20).
+  #                                    create_with(:name => 'Aaron').new
+  #   assert_equal 20, aaron.salary
+  #   assert_equal 'Aaron', aaron.name
+  # end
+  #
+  # def test_create_with_reset
+  #   jamis = PoorDeveloperCalledJamis.create_with(:name => 'Aaron').create_with(nil).new
+  #   assert_equal 'Jamis', jamis.name
+  # end
+  #
+  # def test_unscoped_with_named_scope_should_not_have_default_scope
+  #   assert_equal [DeveloperCalledJamis.find(developers(:poor_jamis).id)], DeveloperCalledJamis.poor
+  #
+  #   assert DeveloperCalledJamis.unscoped.poor.include?(developers(:david).becomes(DeveloperCalledJamis))
+  #   assert_equal 10, DeveloperCalledJamis.unscoped.poor.length
+  # end
+end

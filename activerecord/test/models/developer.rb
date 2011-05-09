@@ -166,3 +166,39 @@ class ModuleIncludedPoorDeveloperCalledJamis < DeveloperCalledJamis
 end
 
 
+
+class DeveloperOrderedBySalaryWithDefaultSelect < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_select :order => 'salary DESC'
+
+  # scope :by_name, order('name DESC')
+  #
+  # def self.all_ordered_by_name
+  #   with_scope(:find => { :order => 'name DESC' }) do
+  #     find(:all)
+  #   end
+  # end
+end
+
+class LazyLambdaDeveloperCalledDavidDefaultSelect < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_select lambda { where(:name => 'David') }
+end
+
+class LazyBlockDeveloperCalledDavidDefaultSelect < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_select { where(:name => 'David') }
+end
+
+class CallableDeveloperCalledDavidDefaultSelect < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_select OpenStruct.new(:call => where(:name => 'David'))
+end
+
+class ClassMethodDeveloperCalledDavidDefaultSelect < ActiveRecord::Base
+  self.table_name = 'developers'
+
+  def self.default_select
+    where(:name => 'David')
+  end
+end

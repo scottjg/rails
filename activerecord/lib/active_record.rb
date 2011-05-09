@@ -61,6 +61,7 @@ module ActiveRecord
     autoload :Base
     autoload :Callbacks
     autoload :CounterCache
+    autoload :DefaultScopes
     autoload :DynamicFinderMatch
     autoload :DynamicScopeMatch
     autoload :Migration
