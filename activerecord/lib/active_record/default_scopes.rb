@@ -121,7 +121,7 @@ module ActiveRecord
       end
 
       def add_default_scoping(scope_type, default_scoping, type, &block)
-        if method(scope_type).owner != Base.singleton_class
+        if method(:"default_#{scope_type}").owner != Base.singleton_class
           default_scoping.scoping(&block)
         elsif default_scopes_available_for_merging(type, scope_type)
           merge_default_scopes(default_scoping, scope_type)
