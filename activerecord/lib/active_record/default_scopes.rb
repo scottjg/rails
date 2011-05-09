@@ -116,21 +116,21 @@ module ActiveRecord
         # self.current_scope may be.
         default_scoping = relation
         default_scoping = add_default_scoping(:scope,  default_scoping, type_selection) { default_scope }
-        default_scoping = add_default_scoping(:select, default_scoping, type_selection) { default_select }
+        # default_scoping = add_default_scoping(:select, default_scoping, type_selection) { default_select }
         default_scoping
       end
 
-      def add_default_scoping(scope_type, default_scoping, type, &block)
+      def add_default_scoping(scope_type, default_scoping, type_selection, &block)
         if method(:"default_#{scope_type}").owner != Base.singleton_class
           default_scoping.scoping(&block)
-        elsif default_scopes_available_for_merging(type, scope_type)
+        elsif available_for_merging(type_selection, scope_type)
           merge_default_scopes(default_scoping, scope_type)
         else
           default_scoping
         end
       end
 
-      def default_scopes_available_for_merging(type, scope_type)
+      def available_for_merging(type, scope_type)
         (type.nil? || type == scope_type) && default_scopes.any? { |s| s[:type] == scope_type }
       end
 
