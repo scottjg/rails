@@ -284,7 +284,7 @@ module ActiveModel
 
       def define_attribute_method(attr_name)
         attribute_method_matchers.each do |matcher|
-          unless instance_method_already_implemented?(matcher.method_name(attr_name))
+          unless instance_method_already_implemented?(matcher.method_name(attr_name)) || matcher.method_name(attr_name).include?(' ')
             generate_method = "define_method_#{matcher.prefix}attribute#{matcher.suffix}"
 
             if respond_to?(generate_method)
