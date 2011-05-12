@@ -28,7 +28,7 @@ require 'models/club'
 class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :posts, :readers, :people, :comments, :authors, :categories, :taggings, :tags,
            :owners, :pets, :toys, :jobs, :references, :companies, :members, :author_addresses,
-           :subscribers, :books, :subscriptions, :developers, :categorizations, :essays
+           :subscribers, :books, :subscriptions, :developers, :categorizations, :essays, :developers_projects, :projects
 
   # Dummies to force column loads so query counts are clean.
   def setup
@@ -681,6 +681,14 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     readers = post.readers.size
     post.people << people(:michael)
     assert_equal readers + 1, post.readers.size
+  end
+  
+  def test_has_many_through_with_default_scope_on_origin_model
+    assert_equal developers(:david).projects.all.sort_by(&:id), [projects(:active_record),projects(:action_controller)]
+  end
+  
+  def test_has_many_through_with_default_scope_on_target_model
+    assert_equal projects(:active_record).developers.all.sort_by(&:id), [developers(:david),developers(:jamis),developers(:poor_jamis)]
   end
 
   def test_has_many_through_with_default_scope_on_join_model

@@ -12,7 +12,21 @@ module DeveloperProjectsAssociationExtension2
   end
 end
 
+class Project < ActiveRecord::Base
+  has_many :developers_projects
+  has_many :developers, :through => :developers_projects
+end
+
+class DevelopersProject < ActiveRecord::Base
+  belongs_to :developer
+  belongs_to :project
+end
+
+
 class Developer < ActiveRecord::Base
+  
+  default_scope order("id")
+  
   has_and_belongs_to_many :projects do
     def find_most_recent
       find(:first, :order => "id DESC")
@@ -40,6 +54,10 @@ class Developer < ActiveRecord::Base
           find(:first, :order => "id ASC")
         end
       end
+  
+  has_many :developers_projects
+  
+  has_many :developers_through_projects, :through => :developers_projects, :source => :project
 
   has_and_belongs_to_many :special_projects, :join_table => 'developers_projects', :association_foreign_key => 'project_id'
 
