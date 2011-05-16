@@ -1442,3 +1442,5 @@ module ActiveResource
     include ActiveModel::Serializers::Xml
   end
 end
+
+ActiveSupport.run_load_hooks(:active_resource, ActiveResource::Base)
