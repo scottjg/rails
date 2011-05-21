@@ -393,8 +393,8 @@ module ActiveRecord #:nodoc:
     # Indicates whether table names should be the pluralized versions of the corresponding class names.
     # If true, the default table name for a Product class will be +products+. If false, it would just be +product+.
     # See table_name for the full rules on table/class naming. This is true, by default.
-    cattr_accessor :pluralize_table_names, :instance_writer => false
-    @@pluralize_table_names = true
+    class_attribute :pluralize_table_names, :instance_writer => false
+    self.pluralize_table_names = true
 
     ##
     # :singleton-method:
@@ -2018,7 +2018,7 @@ MSG
       def extract_callstack_for_multiparameter_attributes(pairs)
         attributes = { }
 
-        for pair in pairs
+        pairs.each do |pair|
           multiparameter_name, value = pair
           attribute_name = multiparameter_name.split("(").first
           attributes[attribute_name] = {} unless attributes.include?(attribute_name)
