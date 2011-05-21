@@ -186,7 +186,7 @@ module Rails
 
     def initialize_tasks
       require "rails/tasks"
-      task :environment do
+      Rake::Task.define_task :environment do
         $rails_rake_task = true
         require_environment!
       end
