@@ -15,6 +15,12 @@ module ActionController
     attr_internal :view_runtime
 
     def process_action(*args)
+      Rails.logger.info <<-LOG
+**********************************
+#{request.inspect}
+#{request.format}
+**********************************
+LOG
       raw_payload = {
         :controller => self.class.name,
         :action     => self.action_name,
