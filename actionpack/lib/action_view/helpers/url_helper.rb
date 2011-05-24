@@ -68,7 +68,7 @@ module ActionView
       #   # => /books/find
       #
       #   <%= url_for(:action => 'login', :controller => 'members', :only_path => false, :protocol => 'https') %>
-      #   # => https://www.railsapplication.com/members/login/
+      #   # => https://www.example.com/members/login/
       #
       #   <%= url_for(:action => 'play', :anchor => 'player') %>
       #   # => /messages/play/#player
@@ -81,8 +81,11 @@ module ActionView
       #   # => /workshops
       #
       #   <%= url_for(@workshop) %>
-      #   # calls @workshop.to_s
+      #   # calls @workshop.to_param which by default returns the id
       #   # => /workshops/5
+      #
+      #   # to_param can be re-defined in a model to provide different URL names:
+      #   # => /workshops/1-workshop-name
       #
       #   <%= url_for("http://www.example.com") %>
       #   # => http://www.example.com
@@ -183,7 +186,7 @@ module ActionView
       #   link_to "Profiles", :controller => "profiles"
       #   # => <a href="/profiles">Profiles</a>
       #
-      # You can use a block as well if your link target is hard to fit into the name parameter. ERb example:
+      # You can use a block as well if your link target is hard to fit into the name parameter. ERB example:
       #
       #   <%= link_to(@profile) do %>
       #     <strong><%= @profile.name %></strong> -- <span>Check it out!</span>
@@ -417,7 +420,7 @@ module ActionView
       end
 
       # Creates a link tag of the given +name+ using a URL created by the set of
-      # +options+ if +condition+ is true, in which case only the name is
+      # +options+ if +condition+ is true, otherwise only the name is
       # returned. To specialize the default behavior, you can pass a block that
       # accepts the name or the full argument list for +link_to_unless+ (see the examples
       # in +link_to_unless+).
@@ -552,10 +555,10 @@ module ActionView
       #   current_page?(:controller => 'shop', :action => 'checkout')
       #   # => true
       #
-      #   current_page?(:controller => 'shop', :action => 'checkout', :order => 'desc', :page=>'1')
+      #   current_page?(:controller => 'shop', :action => 'checkout', :order => 'desc', :page => '1')
       #   # => true
       #
-      #   current_page?(:controller => 'shop', :action => 'checkout', :order => 'desc', :page=>'2')
+      #   current_page?(:controller => 'shop', :action => 'checkout', :order => 'desc', :page => '2')
       #   # => false
       #
       #   current_page?(:controller => 'shop', :action => 'checkout', :order => 'desc')

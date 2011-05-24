@@ -8,9 +8,9 @@ Rails comes with every command line tool you'll need to
 * Mess with objects through an interactive shell
 * Profile and benchmark your new creation
 
-NOTE: This tutorial assumes you have basic Rails knowledge from reading the "Getting Started with Rails Guide":getting_started.html.
-
 endprologue.
+
+NOTE: This tutorial assumes you have basic Rails knowledge from reading the "Getting Started with Rails Guide":getting_started.html.
 
 WARNING. This Guide is based on Rails 3.0. Some of the code shown here will not work in earlier versions of Rails.
 
@@ -144,10 +144,13 @@ $ rails generate controller Greetings hello
      create    app/helpers/greetings_helper.rb
      invoke    test_unit
      create      test/unit/helpers/greetings_helper_test.rb
+     invoke  assets
+     create    app/assets/javascripts/greetings.js
+     create    app/assets/stylesheets/greetings.css
 
 </shell>
 
-What all did this generate?  It made sure a bunch of directories were in our application, and created a controller file, a functional test file, a helper for the view, and a view file.
+What all did this generate? It made sure a bunch of directories were in our application, and created a controller file, a view file, a functional test file, a helper for the view, a javascript file and a stylesheet file.
 
 Check out the controller and modify it a little (in +app/controllers/greetings_controller.rb+):
 
@@ -215,13 +218,13 @@ $ rails generate scaffold HighScore game:string score:integer
     create  app/views/layouts/
     exists  test/functional/
     create  test/unit/
-    create  public/stylesheets/
+    create  app/assets/stylesheets/
     create  app/views/high_scores/index.html.erb
     create  app/views/high_scores/show.html.erb
     create  app/views/high_scores/new.html.erb
     create  app/views/high_scores/edit.html.erb
     create  app/views/layouts/high_scores.html.erb
-    create  public/stylesheets/scaffold.css
+    create  app/assets/stylesheets/scaffold.css.scss
     create  app/controllers/high_scores_controller.rb
     create  test/functional/high_scores_controller_test.rb
     create  app/helpers/high_scores_helper.rb
@@ -484,7 +487,7 @@ end
 We take whatever args are supplied, save them to an instance variable, and literally copying from the Rails source, implement a +manifest+ method, which calls +record+ with a block, and we:
 
 * Check there's a *public* directory. You bet there is.
-* Run the ERb template called "tutorial.erb".
+* Run the ERB template called "tutorial.erb".
 * Save it into "Rails.root/public/tutorial.txt".
 * Pass in the arguments we saved through the +:assigns+ parameter.
 
@@ -539,7 +542,7 @@ Rake is a standalone Ruby utility that replaces the Unix utility 'make', and use
 You can get a list of Rake tasks available to you, which will often depend on your current directory, by typing +rake --tasks+. Each task has a description, and should help you find the thing you need.
 
 <shell>
- rake --tasks
+$ rake --tasks
 (in /home/foobar/commandsapp)
 rake db:abort_if_pending_migrations       # Raises an error if there are pending migrations
 rake db:charset                           # Retrieves the charset for the current environment's database

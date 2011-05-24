@@ -5,11 +5,12 @@ gemspec
 if ENV['AREL']
   gem "arel", :path => ENV['AREL']
 else
-  gem "arel", :git => "git://github.com/rails/arel.git"
+  gem "arel", '~> 2.1.0'
 end
 
-gem "rack", :git => "git://github.com/rack/rack.git"
-gem "rack-test", :git => "git://github.com/brynary/rack-test.git"
+gem "coffee-script"
+gem "sass"
+gem "uglifier", :git => "git://github.com/lautis/uglifier.git"
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
@@ -22,12 +23,11 @@ end
 
 # AS
 gem "memcache-client", ">= 1.8.5"
-gem "fssm", "~> 0.2.5"
 
 platforms :mri_18 do
   gem "system_timer"
   gem "ruby-debug", ">= 0.10.3"
-  gem 'ruby-prof'
+  gem "json"
 end
 
 platforms :mri_19 do
@@ -36,23 +36,29 @@ platforms :mri_19 do
 end
 
 platforms :ruby do
+  if ENV["RB_FSEVENT"]
+    gem 'rb-fsevent'
+  end
   gem 'json'
   gem 'yajl-ruby'
   gem "nokogiri", ">= 1.4.4"
 
+  group :test do
+    gem 'ruby-prof'
+  end
   # AR
   gem "sqlite3", "~> 1.3.3"
 
   group :db do
-    gem "pg", ">= 0.9.0"
+    gem "pg", ">= 0.11.0"
     gem "mysql", ">= 2.8.1"
-    gem "mysql2", :git => "git://github.com/brianmario/mysql2.git"
+    gem "mysql2", ">= 0.3.0"
   end
 end
 
 platforms :jruby do
   gem "ruby-debug", ">= 0.10.3"
-
+  gem "json"
   gem "activerecord-jdbcsqlite3-adapter"
 
   # This is needed by now to let tests work on JRuby

@@ -17,6 +17,10 @@ module ActiveRecord
 
       # def tables(name = nil) end
 
+      # Checks to see if the table +table_name+ exists on the database.
+      #
+      # === Example
+      #   table_exists?(:developers)
       def table_exists?(table_name)
         tables.include?(table_name.to_s)
       end
@@ -24,7 +28,7 @@ module ActiveRecord
       # Returns an array of indexes for the given table.
       # def indexes(table_name, name = nil) end
 
-      # Checks to see if an index exists on a table for a given index definition
+      # Checks to see if an index exists on a table for a given index definition.
       #
       # === Examples
       #  # Check an index exists
@@ -279,12 +283,11 @@ module ActiveRecord
         raise NotImplementedError, "change_column is not implemented"
       end
 
-      # Sets a new default value for a column.  If you want to set the default
-      # value to +NULL+, you are out of luck.  You need to
-      # DatabaseStatements#execute the appropriate SQL statement yourself.
+      # Sets a new default value for a column.
       # ===== Examples
       #  change_column_default(:suppliers, :qualification, 'new')
       #  change_column_default(:accounts, :authorized, 1)
+      #  change_column_default(:users, :email, nil)
       def change_column_default(table_name, column_name, default)
         raise NotImplementedError, "change_column_default is not implemented"
       end
@@ -561,7 +564,7 @@ module ActiveRecord
         def columns_for_remove(table_name, *column_names)
           column_names = column_names.flatten
 
-          raise ArgumentError.new("You must specify at least one column name.  Example: remove_column(:people, :first_name)") if column_names.blank?
+          raise ArgumentError.new("You must specify at least one column name. Example: remove_column(:people, :first_name)") if column_names.blank?
           column_names.map {|column_name| quote_column_name(column_name) }
         end
 

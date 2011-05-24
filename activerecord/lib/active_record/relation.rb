@@ -6,23 +6,25 @@ module ActiveRecord
     JoinOperation = Struct.new(:relation, :join_class, :on)
     ASSOCIATION_METHODS = [:includes, :eager_load, :preload]
     MULTI_VALUE_METHODS = [:select, :group, :order, :joins, :where, :having, :bind]
-    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from]
+    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
     # These are explicitly delegated to improve performance (avoids method_missing)
     delegate :to_xml, :to_yaml, :length, :collect, :map, :each, :all?, :include?, :to => :to_a
-    delegate :table_name, :primary_key, :to => :klass
+    delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key, :to => :klass
 
     attr_reader :table, :klass, :loaded
-    attr_accessor :extensions
+    attr_accessor :extensions, :default_scoped
     alias :loaded? :loaded
+    alias :default_scoped? :default_scoped
 
     def initialize(klass, table)
       @klass, @table = klass, table
 
       @implicit_readonly = nil
       @loaded            = false
+      @default_scoped    = false
 
       SINGLE_VALUE_METHODS.each {|v| instance_variable_set(:"@#{v}_value", nil)}
       (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
@@ -30,22 +32,46 @@ module ActiveRecord
     end
 
     def insert(values)
-      im = arel.compile_insert values
-      im.into @table
-
       primary_key_value = nil
 
       if primary_key && Hash === values
         primary_key_value = values[values.keys.find { |k|
           k.name == primary_key
         }]
+
+        if !primary_key_value && connection.prefetch_primary_key?(klass.table_name)
+          primary_key_value = connection.next_sequence_value(klass.sequence_name)
+          values[klass.arel_table[klass.primary_key]] = primary_key_value
+        end
       end
 
-      @klass.connection.insert(
+      im = arel.create_insert
+      im.into @table
+
+      conn = @klass.connection
+
+      substitutes = values.sort_by { |arel_attr,_| arel_attr.name }
+      binds       = substitutes.map do |arel_attr, value|
+        [@klass.columns_hash[arel_attr.name], value]
+      end
+
+      substitutes.each_with_index do |tuple, i|
+        tuple[1] = conn.substitute_at(binds[i][0], i)
+      end
+
+      if values.empty? # empty insert
+        im.values = Arel.sql(connection.empty_insert_statement_value)
+      else
+        im.insert substitutes
+      end
+
+      conn.insert(
         im.to_sql,
         'SQL',
         primary_key,
-        primary_key_value)
+        primary_key_value,
+        nil,
+        binds)
     end
 
     def new(*args, &block)
@@ -67,15 +93,10 @@ module ActiveRecord
     end
 
     def respond_to?(method, include_private = false)
-      return true if arel.respond_to?(method, include_private) || Array.method_defined?(method) || @klass.respond_to?(method, include_private)
-
-      if match = DynamicFinderMatch.match(method)
-        return true if @klass.send(:all_attributes_exists?, match.attribute_names)
-      elsif match = DynamicScopeMatch.match(method)
-        return true if @klass.send(:all_attributes_exists?, match.attribute_names)
-      else
+      arel.respond_to?(method, include_private)     ||
+        Array.method_defined?(method)               ||
+        @klass.respond_to?(method, include_private) ||
         super
-      end
     end
 
     def to_a
@@ -91,7 +112,9 @@ module ActiveRecord
 
       preload = @preload_values
       preload +=  @includes_values unless eager_loading?
-      preload.each {|associations| @klass.send(:preload_associations, @records, associations) }
+      preload.each do |associations|
+        ActiveRecord::Associations::Preloader.new(@records, associations).run
+      end
 
       # @readonly_value is true only if set explicitly. @implicit_readonly is true if there
       # are JOINS and no explicit SELECT.
@@ -113,7 +136,10 @@ module ActiveRecord
 
     # Returns true if there are no records.
     def empty?
-      loaded? ? @records.empty? : count.zero?
+      return @records.empty? if loaded?
+
+      c = count
+      c.respond_to?(:zero?) ? c.zero? : c.empty?
     end
 
     def any?
@@ -143,12 +169,7 @@ module ActiveRecord
     # Please check unscoped if you want to remove all previous scopes (including
     # the default_scope) during the execution of a block.
     def scoping
-      @klass.scoped_methods << self
-      begin
-        yield
-      ensure
-        @klass.scoped_methods.pop
-      end
+      @klass.send(:with_scope, self, :overwrite) { yield }
     end
 
     # Updates all records with details given if they match a set of conditions supplied, limits and order can
@@ -176,7 +197,14 @@ module ActiveRecord
     #
     #   # Update all books that match conditions, but limit it to 5 ordered by date
     #   Book.update_all "author = 'David'", "title LIKE '%Rails%'", :order => 'created_at', :limit => 5
+    #
+    #   # Conditions from the current relation also works
+    #   Book.where('title LIKE ?', '%Rails%').update_all(:author => 'David')
+    #
+    #   # The same idea applies to limit and order
+    #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).update_all(:author => 'David')
     def update_all(updates, conditions = nil, options = {})
+      IdentityMap.repository[symbolized_base_class].clear if IdentityMap.enabled?
       if conditions || options.present?
         where(conditions).apply_finder_options(options.slice(:limit, :order)).update_all(updates)
       else
@@ -189,10 +217,10 @@ module ActiveRecord
         end
 
         stmt = arel.compile_update(Arel.sql(@klass.send(:sanitize_sql_for_assignment, updates)))
-        stmt.take limit
+        stmt.take limit if limit
         stmt.order(*order)
         stmt.key = table[primary_key]
-        @klass.connection.update stmt.to_sql
+        @klass.connection.update stmt.to_sql, 'SQL', bind_values
       end
     end
 
@@ -249,6 +277,7 @@ module ActiveRecord
     #
     #   Person.destroy_all("last_login < '2004-04-04'")
     #   Person.destroy_all(:status => "inactive")
+    #   Person.where(:age => 0..18).destroy_all
     def destroy_all(conditions = nil)
       if conditions
         where(conditions).destroy_all
@@ -298,16 +327,20 @@ module ActiveRecord
     #
     #   Post.delete_all("person_id = 5 AND (category = 'Something' OR category = 'Else')")
     #   Post.delete_all(["person_id = ? AND (category = ? OR category = ?)", 5, 'Something', 'Else'])
+    #   Post.where(:person_id => 5).where(:category => ['Something', 'Else']).delete_all
     #
     # Both calls delete the affected posts all at once with a single DELETE statement.
     # If you need to destroy dependent associations or call your <tt>before_*</tt> or
     # +after_destroy+ callbacks, use the +destroy_all+ method instead.
     def delete_all(conditions = nil)
+      IdentityMap.repository[symbolized_base_class] = {} if IdentityMap.enabled?
       if conditions
         where(conditions).delete_all
       else
         statement = arel.compile_delete
-        affected = @klass.connection.delete statement.to_sql
+        affected = @klass.connection.delete(
+          statement.to_sql, 'SQL', bind_values)
+
         reset
         affected
       end
@@ -334,6 +367,7 @@ module ActiveRecord
     #   # Delete multiple rows
     #   Todo.delete([2,3,4])
     def delete(id_or_array)
+      IdentityMap.remove_by_id(self.symbolized_base_class, id_or_array) if IdentityMap.enabled?
       where(primary_key => id_or_array).delete_all
     end
 
@@ -355,7 +389,7 @@ module ActiveRecord
     end
 
     def where_values_hash
-      equalities = @where_values.grep(Arel::Nodes::Equality).find_all { |node|
+      equalities = with_default_scope.where_values.grep(Arel::Nodes::Equality).find_all { |node|
         node.left.relation.name == table_name
       }
 
@@ -383,13 +417,20 @@ module ActiveRecord
       to_a.inspect
     end
 
+    def with_default_scope #:nodoc:
+      if default_scoped?
+        default_scope = @klass.send(:build_default_scope)
+        default_scope ? default_scope.merge(self) : self
+      else
+        self
+      end
+    end
+
     protected
 
     def method_missing(method, *args, &block)
       if Array.method_defined?(method)
         to_a.send(method, *args, &block)
-      elsif @klass.scopes[method]
-        merge(@klass.send(method, *args, &block))
       elsif @klass.respond_to?(method)
         scoping { @klass.send(method, *args, &block) }
       elsif arel.respond_to?(method)
@@ -402,8 +443,19 @@ module ActiveRecord
     private
 
     def references_eager_loaded_tables?
+      joined_tables = arel.join_sources.map do |join|
+        if join.is_a?(Arel::Nodes::StringJoin)
+          tables_in_string(join.left)
+        else
+          [join.left.table_name, join.left.table_alias]
+        end
+      end
+
+      joined_tables += [table.name, table.table_alias]
+
       # always convert table names to downcase as in Oracle quoted table names are in uppercase
-      joined_tables = (tables_in_string(arel.join_sql) + [table.name, table.table_alias]).compact.map{ |t| t.downcase }.uniq
+      joined_tables = joined_tables.flatten.compact.map { |t| t.downcase }.uniq
+
       (tables_in_string(to_sql) - joined_tables).any?
     end
 

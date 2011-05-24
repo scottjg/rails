@@ -40,7 +40,7 @@ module ActiveRecord
   # You must implement these methods:
   #
   #   self.find_by_session_id(session_id)
-  #   initialize(hash_of_session_id_and_data)
+  #   initialize(hash_of_session_id_and_data, options_hash = {})
   #   attr_reader :session_id
   #   attr_accessor :data
   #   save
@@ -83,6 +83,8 @@ module ActiveRecord
       cattr_accessor :data_column_name
       self.data_column_name = 'data'
 
+      attr_accessible :session_id, :data, :marshaled_data
+
       before_save :marshal_data!
       before_save :raise_on_session_data_overflow!
 
@@ -123,7 +125,7 @@ module ActiveRecord
           end
       end
 
-      def initialize(attributes = nil)
+      def initialize(attributes = nil, options = {})
         @data = nil
         super
       end

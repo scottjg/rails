@@ -25,7 +25,7 @@ module ActiveModel
           def decorations
             decorations = {}
             decorations[:encoding] = 'base64' if type == :binary
-            decorations[:type] = type unless type == :string
+            decorations[:type] = (type == :string) ? nil : type
             decorations[:nil] = true if value.nil?
             decorations
           end
@@ -33,6 +33,7 @@ module ActiveModel
         protected
 
           def compute_type
+            return if value.nil?
             type = ActiveSupport::XmlMini::TYPE_NAMES[value.class.name]
             type ||= :string if value.respond_to?(:to_str)
             type ||= :yaml
@@ -134,6 +135,29 @@ module ActiveModel
 
       # Returns XML representing the model. Configuration can be
       # passed through +options+.
+      #
+      # Without any +options+, the returned XML string will include all the model's
+      # attributes. For example:
+      #
+      #   konata = User.find(1)
+      #   konata.to_xml
+      #
+      #   <?xml version="1.0" encoding="UTF-8"?>
+      #   <user>
+      #     <id type="integer">1</id>
+      #     <name>David</name>
+      #     <age type="integer">16</age>
+      #     <created-at type="datetime">2011-01-30T22:29:23Z</created-at>
+      #   </user>
+      #
+      # The <tt>:only</tt> and <tt>:except</tt> options can be used to limit the attributes
+      # included, and work similar to the +attributes+ method.
+      #
+      # To include the result of some method calls on the model use <tt>:methods</tt>.
+      #
+      # To include associations use <tt>:include</tt>.
+      #
+      # For further documentation see activerecord/lib/active_record/serializers/xml_serializer.xml.
       def to_xml(options = {}, &block)
         Serializer.new(self, options).serialize(&block)
       end

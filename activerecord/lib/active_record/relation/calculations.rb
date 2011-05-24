@@ -146,7 +146,7 @@ module ActiveRecord
       if options.except(:distinct).present?
         apply_finder_options(options.except(:distinct)).calculate(operation, column_name, :distinct => options[:distinct])
       else
-        if eager_loading? || includes_values.present?
+        if eager_loading? || (includes_values.present? && references_eager_loaded_tables?)
           construct_relation_for_association_calculations.calculate(operation, column_name, options)
         else
           perform_calculation(operation, column_name, options)
@@ -161,20 +161,19 @@ module ActiveRecord
     def perform_calculation(operation, column_name, options = {})
       operation = operation.to_s.downcase
 
-      distinct = nil
+      distinct = options[:distinct]
 
       if operation == "count"
         column_name ||= (select_for_count || :all)
 
         unless arel.ast.grep(Arel::Nodes::OuterJoin).empty?
           distinct = true
-          column_name = primary_key if column_name == :all
         end
+
+        column_name = primary_key if column_name == :all && distinct
 
         distinct = nil if column_name =~ /\s*DISTINCT\s+/i
       end
-
-      distinct = options[:distinct] || distinct
 
       if @group_values.any?
         execute_grouped_calculation(operation, column_name, distinct)
@@ -196,15 +195,25 @@ module ActiveRecord
     end
 
     def execute_simple_calculation(operation, column_name, distinct) #:nodoc:
-      column = aggregate_column(column_name)
-
       # Postgresql doesn't like ORDER BY when there are no GROUP BY
-      relation = except(:order)
-      select_value = operation_over_aggregate_column(column, operation, distinct)
+      relation = reorder(nil)
 
-      relation.select_values = [select_value]
+      if operation == "count" && (relation.limit_value || relation.offset_value)
+        # Shortcut when limit is zero.
+        return 0 if relation.limit_value == 0
 
-      type_cast_calculated_value(@klass.connection.select_value(relation.to_sql), column_for(column_name), operation)
+        query_builder = build_count_subquery(relation, column_name, distinct)
+      else
+        column = aggregate_column(column_name)
+
+        select_value = operation_over_aggregate_column(column, operation, distinct)
+
+        relation.select_values = [select_value]
+
+        query_builder = relation.arel
+      end
+
+      type_cast_calculated_value(@klass.connection.select_value(query_builder.to_sql), column_for(column_name), operation)
     end
 
     def execute_grouped_calculation(operation, column_name, distinct) #:nodoc:
@@ -299,6 +308,19 @@ module ActiveRecord
         select = @select_values.join(", ")
         select if select !~ /(,|\*)/
       end
+    end
+
+    def build_count_subquery(relation, column_name, distinct)
+      column_alias = Arel.sql('count_column')
+      subquery_alias = Arel.sql('subquery_for_count')
+
+      aliased_column = aggregate_column(column_name == :all ? 1 : column_name).as(column_alias)
+      relation.select_values = [aliased_column]
+      subquery = relation.arel.as(subquery_alias)
+
+      sm = Arel::SelectManager.new relation.engine
+      select_value = operation_over_aggregate_column(column_alias, 'count', distinct)
+      sm.project(select_value).from(subquery)
     end
   end
 end

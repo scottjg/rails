@@ -6,15 +6,7 @@ module ActiveRecord
       # Returns an array of record hashes with the column names as keys and
       # column values as values.
       def select_all(sql, name = nil, binds = [])
-        if supports_statement_cache?
-          select(sql, name, binds)
-        else
-          return select(sql, name) if binds.empty?
-          binds = binds.dup
-          select sql.gsub('?') {
-            quote(*binds.shift.reverse)
-          }, name
-        end
+        select(sql, name, binds)
       end
 
       # Returns a record hash with the column names as keys and column values
@@ -55,19 +47,49 @@ module ActiveRecord
       def exec_query(sql, name = 'SQL', binds = [])
       end
 
+      # Executes insert +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes. +name+ is the logged along with
+      # the executed +sql+ statement.
+      def exec_insert(sql, name, binds)
+        exec_query(sql, name, binds)
+      end
+
+      # Executes delete +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes. +name+ is the logged along with
+      # the executed +sql+ statement.
+      def exec_delete(sql, name, binds)
+        exec_query(sql, name, binds)
+      end
+
+      # Executes update +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes. +name+ is the logged along with
+      # the executed +sql+ statement.
+      def exec_update(sql, name, binds)
+        exec_query(sql, name, binds)
+      end
+
       # Returns the last auto-generated ID from the affected table.
-      def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        insert_sql(sql, name, pk, id_value, sequence_name)
+      #
+      # +id_value+ will be returned unless the value is nil, in
+      # which case the database will attempt to calculate the last inserted
+      # id and return that value.
+      #
+      # If the next id was calculated in advance (as in Oracle), it should be
+      # passed in as +id_value+.
+      def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+        sql, binds = sql_for_insert(sql, pk, id_value, sequence_name, binds)
+        value      = exec_insert(sql, name, binds)
+        id_value || last_inserted_id(value)
       end
 
       # Executes the update statement and returns the number of rows affected.
-      def update(sql, name = nil)
-        update_sql(sql, name)
+      def update(sql, name = nil, binds = [])
+        exec_update(sql, name, binds)
       end
 
       # Executes the delete statement and returns the number of rows affected.
-      def delete(sql, name = nil)
-        delete_sql(sql, name)
+      def delete(sql, name = nil, binds = [])
+        exec_delete(sql, name, binds)
       end
 
       # Checks whether there is currently no transaction active. This is done
@@ -237,7 +259,6 @@ module ActiveRecord
       #  add_limit_offset!('SELECT * FROM suppliers', {:limit => 10, :offset => 50})
       # generates
       #  SELECT * FROM suppliers LIMIT 10 OFFSET 50
-
       def add_limit_offset!(sql, options)
         if limit = options[:limit]
           sql << " LIMIT #{sanitize_limit(limit)}"
@@ -361,6 +382,15 @@ module ActiveRecord
             end
           end
         end
+
+      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+        [sql, binds]
+      end
+
+      def last_inserted_id(result)
+        row = result.rows.first
+        row && row.first
+      end
     end
   end
 end
