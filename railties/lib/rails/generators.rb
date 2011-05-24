@@ -57,7 +57,7 @@ module Rails
         :resource_controller => :controller,
         :scaffold_controller => :scaffold_controller,
         :stylesheets => true,
-        :stylesheet_engine => nil,
+        :stylesheet_engine => :css,
         :test_framework => false,
         :template_engine => :erb
       },
@@ -75,6 +75,7 @@ module Rails
       fallbacks.merge! config.fallbacks
       templates_path.concat config.templates
       templates_path.uniq!
+      hide_namespaces *config.hidden_namespaces
     end
 
     def self.templates_path
@@ -175,6 +176,7 @@ module Rails
         orm      = options[:rails][:orm]
         test     = options[:rails][:test_framework]
         template = options[:rails][:template_engine]
+        css      = options[:rails][:stylesheet_engine]
 
         [
           "rails",
@@ -194,7 +196,11 @@ module Rails
           "#{test}:plugin",
           "#{template}:controller",
           "#{template}:scaffold",
-          "#{template}:mailer"
+          "#{template}:mailer",
+          "#{css}:scaffold",
+          "#{css}:assets",
+          "css:assets",
+          "css:scaffold"
         ]
       end
     end

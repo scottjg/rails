@@ -178,6 +178,7 @@ module Rails
     end
 
     def load_tasks
+      extend Rake::DSL if defined? Rake::DSL
       self.class.rake_tasks.each(&:call)
 
       # load also tasks from all superclasses
@@ -188,8 +189,8 @@ module Rails
       end
     end
 
-    def load_generators
-      self.class.generators.each(&:call)
+    def load_generators(app)
+      self.class.generators.each { |block| block.call(app) }
     end
   end
 end

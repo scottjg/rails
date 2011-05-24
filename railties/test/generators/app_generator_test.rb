@@ -136,7 +136,9 @@ class AppGeneratorTest < Rails::Generators::TestCase
     run_generator([destination_root, "-d", "jdbcmysql"])
     assert_file "config/database.yml", /jdbcmysql/
     assert_file "Gemfile", /^gem\s+["']activerecord-jdbcmysql-adapter["']$/
-    assert_file "Gemfile", /^gem\s+["']jruby-openssl["']$/ if defined?(JRUBY_VERSION) && JRUBY_VERSION < "1.6"
+    # TODO: When the JRuby guys merge jruby-openssl in
+    # jruby this will be removed
+    assert_file "Gemfile", /^gem\s+["']jruby-openssl["']$/ if defined?(JRUBY_VERSION)
   end
 
   def test_config_jdbcsqlite3_database
@@ -172,7 +174,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_jquery_is_the_default_javascript_library
     run_generator
-    assert_file "config/application.rb", /#\s+config\.action_view\.javascript_expansions\[:defaults\]\s+=\s+%w\(prototype prototype_ujs\)/
     assert_file "app/assets/javascripts/application.js" do |contents|
       assert_match %r{^//= require jquery}, contents
       assert_match %r{^//= require jquery_ujs}, contents
@@ -184,7 +185,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_other_javascript_libraries
     run_generator [destination_root, '-j', 'prototype']
-    assert_file "config/application.rb", /#\s+config\.action_view\.javascript_expansions\[:defaults\]\s+=\s+%w\(prototype prototype_ujs\)/
     assert_file "app/assets/javascripts/application.js" do |contents|
       assert_match %r{^//= require prototype}, contents
       assert_match %r{^//= require prototype_ujs}, contents
@@ -196,7 +196,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_javascript_is_skipped_if_required
     run_generator [destination_root, "--skip-javascript"]
-    assert_file "config/application.rb", /^\s+# config\.action_view\.javascript_expansions\[:defaults\]\s+=\s+%w\(\)/
     assert_file "app/assets/javascripts/application.js" do |contents|
       assert_no_match %r{^//=\s+require\s}, contents
     end

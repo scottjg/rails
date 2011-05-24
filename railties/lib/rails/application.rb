@@ -103,9 +103,10 @@ module Rails
       self
     end
 
-    def load_generators
+    def load_generators(app=self)
       initialize_generators
-      railties.all { |r| r.load_generators }
+      railties.all { |r| r.load_generators(app) }
+
       super
       self
     end
@@ -141,8 +142,6 @@ module Rails
 
     def default_middleware_stack
       ActionDispatch::MiddlewareStack.new.tap do |middleware|
-        middleware.use ::Rails::Rack::ContentLength, config.action_dispatch.x_sendfile_header
-
         if rack_cache = config.action_controller.perform_caching && config.action_dispatch.rack_cache
           require "action_dispatch/http/rack_cache"
           middleware.use ::Rack::Cache, rack_cache
@@ -185,10 +184,12 @@ module Rails
     end
 
     def initialize_tasks
-      require "rails/tasks"
-      task :environment do
-        $rails_rake_task = true
-        require_environment!
+      self.class.rake_tasks do
+        require "rails/tasks"
+        task :environment do
+          $rails_rake_task = true
+          require_environment!
+        end
       end
     end
 
