@@ -56,6 +56,19 @@ class TransactionCallbacksTest < ActiveRecord::TestCase
     assert_equal [:after_commit], @first.history
   end
 
+  def test_error_raised_in_after_commit_is_not_swallowed
+    @first.after_commit_block do |r|
+      r.history << :after_commit
+      raise StandardError
+    end
+    @first.after_rollback_block{|r| r.history << :after_rollback}
+
+    assert_raises StandardError do
+      @first.save!
+    end
+    assert_equal [:after_commit], @first.history
+  end
+
   def test_only_call_after_commit_on_update_after_transaction_commits_for_existing_record
     @first.after_commit_block(:create){|r| r.history << :commit_on_create}
     @first.after_commit_block(:update){|r| r.history << :commit_on_update}
