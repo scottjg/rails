@@ -1713,7 +1713,7 @@ module ActiveRecord
               association.delete_all if association
             end
           eoruby
-          after_destroy method_name
+          before_destroy method_name
         end
 
         def delete_all_has_many_dependencies(record, reflection_name, association_class, dependent_conditions)
