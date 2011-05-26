@@ -420,6 +420,8 @@ module ActiveRecord
           if !call_reject_if(association_name, attributes)
             assign_to_or_mark_for_destruction(existing_record, attributes, options[:allow_destroy])
           end
+        elsif unscoped_model = association.reflection.klass.find_by_id(attributes['id'])
+          association.insert_record(unscoped_model)
         else
           raise_nested_attributes_record_not_found(association_name, attributes['id'])
         end
