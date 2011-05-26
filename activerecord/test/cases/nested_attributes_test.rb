@@ -754,6 +754,12 @@ module NestedAttributesOnACollectionAssociationTests
     Man.reflect_on_association(:interests).options[:inverse_of] = :man
     Interest.reflect_on_association(:man).options[:inverse_of] = :interests
   end
+  
+  def test_should_reuse_associated_model_when_id_is_provided
+    @another_pirate = Pirate.create!(:catchphrase => "Ahoy, me Hearties!")
+    @another_pirate.update_attributes(@alternate_params)
+    assert_equal(@another_pirate.send(@association_name), [@child_1, @child_2])
+  end
 
   private
 
