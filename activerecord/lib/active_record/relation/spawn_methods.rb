@@ -2,6 +2,10 @@ require 'active_support/core_ext/object/blank'
 
 module ActiveRecord
   module SpawnMethods
+    def spawn
+      ActiveRecord::Relation.new(klass, table, self)
+    end
+
     def merge(other)
       if !other
         self

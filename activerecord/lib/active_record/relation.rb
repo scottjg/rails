@@ -20,12 +20,13 @@ module ActiveRecord
     alias :loaded? :loaded
     alias :default_scoped? :default_scoped
 
-    def initialize(klass, table)
+    def initialize(klass, table, prev = nil)
       @klass, @table = klass, table
 
       @implicit_readonly = nil
       @loaded            = false
       @default_scoped    = false
+      @prev              = prev
 
       @attributes = Hash[
         SINGLE_VALUE_ATTRIBUTES.map { |attribute| [attribute, nil] } +
