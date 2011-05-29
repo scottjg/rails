@@ -7,158 +7,204 @@ module ActiveRecord
 
     def includes(*args)
       args.reject! {|a| a.blank? }
-
       return self if args.empty?
+      clone.includes!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:includes] = (relation.attributes[:includes] + args).flatten.uniq
-      relation
+    def includes!(*args)
+      args.reject! {|a| a.blank? }
+      self.attributes[:includes] = (attributes[:includes] + args).flatten.uniq
+      self
     end
 
     def eager_load(*args)
       return self if args.blank?
+      clone.eager_load!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:eager_load] += args
-      relation
+    def eager_load!(*args)
+      self.attributes[:eager_load] += args
+      self
     end
 
     def preload(*args)
       return self if args.blank?
+      clone.preload!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:preload] += args
-      relation
+    def preload!(*args)
+      self.attributes[:preload] += args
+      self
     end
 
     def select(value = Proc.new)
       if block_given?
         to_a.select {|*block_args| value.call(*block_args) }
       else
-        relation = clone
-        relation.attributes[:select] += Array.wrap(value)
-        relation
+        clone.select!(value)
       end
+    end
+
+    def select!(value)
+      self.attributes[:select] += Array.wrap(value)
+      self
     end
 
     def group(*args)
       return self if args.blank?
+      clone.group!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:group] += args.flatten
-      relation
+    def group!(*args)
+      self.attributes[:group] += args.flatten
+      self
     end
 
     def order(*args)
       return self if args.blank?
+      clone.order!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:order] += args.flatten
-      relation
+    def order!(*args)
+      self.attributes[:order] += args.flatten
+      self
     end
 
     def reorder(*args)
       return self if args.blank?
+      clone.reorder!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:reorder] = args.flatten
-      relation
+    def reorder!(*args)
+      self.attributes[:reorder] = args.flatten
+      self
     end
 
     def joins(*args)
       return self if args.compact.blank?
+      clone.joins!(*args)
+    end
 
-      relation = clone
-
-      args.flatten!
-      relation.attributes[:joins] += args
-
-      relation
+    def joins!(*args)
+      self.attributes[:joins] += args.flatten
+      self
     end
 
     def bind(value)
-      relation = clone
-      relation.attributes[:bind] += [value]
-      relation
+      clone.bind!(value)
+    end
+
+    def bind!(value)
+      self.attributes[:bind] += [value]
+      self
     end
 
     def where(opts, *rest)
       return self if opts.blank?
+      clone.where!(opts, *rest)
+    end
 
-      relation = clone
-      relation.attributes[:where] += build_where(opts, rest)
-      relation
+    def where!(opts, *rest)
+      self.attributes[:where] += build_where(opts, rest)
+      self
     end
 
     def having(*args)
       return self if args.blank?
+      clone.having!(*args)
+    end
 
-      relation = clone
-      relation.attributes[:having] += build_where(*args)
-      relation
+    def having!(*args)
+      self.attributes[:having] += build_where(*args)
+      self
     end
 
     def limit(value)
-      relation = clone
-      relation.attributes[:limit] = value
-      relation
+      clone.limit!(value)
+    end
+
+    def limit!(value)
+      self.attributes[:limit] = value
+      self
     end
 
     def offset(value)
-      relation = clone
-      relation.attributes[:offset] = value
-      relation
+      clone.offset!(value)
+    end
+
+    def offset!(value)
+      self.attributes[:offset] = value
+      self
     end
 
     def lock(locks = true)
-      relation = clone
+      clone.lock!(locks)
+    end
 
+    def lock!(locks = true)
       case locks
       when String, TrueClass, NilClass
-        relation.attributes[:lock] = locks || true
+        self.attributes[:lock] = locks || true
       else
-        relation.attributes[:lock] = false
+        self.attributes[:lock] = false
       end
 
-      relation
+      self
     end
 
     def readonly(value = true)
-      relation = clone
-      relation.attributes[:readonly] = value
-      relation
+      clone.readonly!(value)
+    end
+
+    def readonly!(value = true)
+      self.attributes[:readonly] = value
+      self
     end
 
     def create_with(value)
-      relation = clone
-      relation.attributes[:create_with] = value && (attributes[:create_with] || {}).merge(value)
-      relation
+      clone.create_with!(value)
+    end
+
+    def create_with!(value)
+      self.attributes[:create_with] = value && (attributes[:create_with] || {}).merge(value)
+      self
     end
 
     def from(value)
-      relation = clone
-      relation.attributes[:from] = value
-      relation
+      clone.from!(value)
+    end
+
+    def from!(value)
+      self.attributes[:from] = value
+      self
     end
 
     def extending(*modules)
       modules << Module.new(&Proc.new) if block_given?
-
       return self if modules.empty?
+      clone.extending!(*modules)
+    end
 
-      relation = clone
-      relation.send(:apply_modules, modules.flatten)
-      relation
+    def extending!(*modules)
+      modules << Module.new(&Proc.new) if block_given?
+
+      apply_modules(modules.flatten)
+      self
     end
 
     def reverse_order
+      clone.reverse_order!
+    end
+
+    def reverse_order!
       order_clause = arel.order_clauses
 
       order = order_clause.empty? ?
         "#{table_name}.#{primary_key} DESC" :
         reverse_sql_order(order_clause).join(', ')
 
-      except(:order).order(Arel.sql(order))
+      self.attributes[:order] = [Arel.sql(order)]
+      self
     end
 
     def arel

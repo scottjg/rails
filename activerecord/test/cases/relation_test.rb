@@ -135,5 +135,157 @@ module ActiveRecord
       relation.attributes[:eager_load] << :b
       assert relation.eager_loading?
     end
+
+    def test_includes!
+      r1 = Relation.new :a, :b
+      r2 = r1.includes!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:includes]
+    end
+
+    def test_eager_load!
+      r1 = Relation.new :a, :b
+      r2 = r1.eager_load!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:eager_load]
+    end
+
+    def test_preload!
+      r1 = Relation.new :a, :b
+      r2 = r1.preload!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:preload]
+    end
+
+    def test_select!
+      r1 = Relation.new :a, :b
+      r2 = r1.select!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:select]
+    end
+
+    def test_group!
+      r1 = Relation.new :a, :b
+      r2 = r1.group!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:group]
+    end
+
+    def test_order!
+      r1 = Relation.new :a, :b
+      r2 = r1.order!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:order]
+    end
+
+    def test_reorder!
+      r1 = Relation.new :a, :b
+      r2 = r1.reorder!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:reorder]
+    end
+
+    def test_joins!
+      r1 = Relation.new :a, :b
+      r2 = r1.joins!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:joins]
+    end
+
+    def test_bind!
+      r1 = Relation.new :a, :b
+      r2 = r1.bind!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:bind]
+    end
+
+    def test_where!
+      r1 = Relation.new :a, :b
+      r2 = r1.where!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:where]
+    end
+
+    def test_having!
+      r1 = Relation.new :a, :b
+      r2 = r1.having!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r2.attributes[:having]
+    end
+
+    def test_limit!
+      r1 = Relation.new :a, :b
+      r2 = r1.limit!(5)
+
+      assert r1.equal?(r2)
+      assert_equal 5, r2.attributes[:limit]
+    end
+
+    def test_offset!
+      r1 = Relation.new :a, :b
+      r2 = r1.offset!(5)
+
+      assert r1.equal?(r2)
+      assert_equal 5, r2.attributes[:offset]
+    end
+
+    def test_lock!
+      r1 = Relation.new :a, :b
+      r2 = r1.lock!
+
+      assert r1.equal?(r2)
+      assert_equal true, r2.attributes[:lock]
+
+      r2.lock!(false)
+      assert_equal false, r2.attributes[:lock]
+    end
+
+    def test_readonly!
+      r1 = Relation.new :a, :b
+      r2 = r1.readonly!
+
+      assert r1.equal?(r2)
+      assert_equal true, r2.attributes[:readonly]
+
+      r2.readonly!(false)
+      assert_equal false, r2.attributes[:readonly]
+    end
+
+    def test_create_with!
+      r1 = Relation.new :a, :b
+      r2 = r1.create_with!(:foo => :bar)
+
+      assert r1.equal?(r2)
+      assert_equal({ :foo => :bar }, r2.attributes[:create_with])
+    end
+
+    def test_from!
+      r1 = Relation.new :a, :b
+      r2 = r1.from!(:foo)
+
+      assert r1.equal?(r2)
+      assert_equal :foo, r2.attributes[:from]
+    end
+
+    def test_extending!
+      mod = Module.new
+
+      r1 = Relation.new :a, :b
+      r2 = r1.extending!(mod)
+
+      assert r1.equal?(r2)
+      assert_equal [mod], r2.extensions
+    end
   end
 end
