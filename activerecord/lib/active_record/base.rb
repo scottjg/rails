@@ -1161,9 +1161,9 @@ module ActiveRecord #:nodoc:
             relation = construct_finder_arel(scope[:find] || {})
             relation.default_scoped = true unless action == :overwrite
 
-            if previous_scope && previous_scope.create_with_value && scope[:create]
+            if previous_scope && previous_scope.attributes[:create_with] && scope[:create]
               scope_for_create = if action == :merge
-                previous_scope.create_with_value.merge(scope[:create])
+                previous_scope.attributes[:create_with].merge(scope[:create])
               else
                 scope[:create]
               end
@@ -1171,7 +1171,7 @@ module ActiveRecord #:nodoc:
               relation = relation.create_with(scope_for_create)
             else
               scope_for_create = scope[:create]
-              scope_for_create ||= previous_scope.create_with_value if previous_scope
+              scope_for_create ||= previous_scope.attributes[:create_with] if previous_scope
               relation = relation.create_with(scope_for_create) if scope_for_create
             end
 

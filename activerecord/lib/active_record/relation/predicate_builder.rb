@@ -19,7 +19,7 @@ module ActiveRecord
 
           case value
           when ActiveRecord::Relation
-            value.select_values = [value.klass.arel_table['id']] if value.select_values.empty?
+            value.attributes[:select] = [value.klass.arel_table['id']] if value.attributes[:select].empty?
             attribute.in(value.arel.ast)
           when Array, ActiveRecord::Associations::CollectionProxy
             values = value.to_a.map { |x|

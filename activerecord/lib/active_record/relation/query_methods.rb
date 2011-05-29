@@ -5,19 +5,13 @@ module ActiveRecord
   module QueryMethods
     extend ActiveSupport::Concern
 
-    attr_accessor :includes_values, :eager_load_values, :preload_values,
-                  :select_values, :group_values, :order_values, :joins_values,
-                  :where_values, :having_values, :bind_values,
-                  :limit_value, :offset_value, :lock_value, :readonly_value, :create_with_value,
-                  :from_value, :reorder_value
-
     def includes(*args)
       args.reject! {|a| a.blank? }
 
       return self if args.empty?
 
       relation = clone
-      relation.includes_values = (relation.includes_values + args).flatten.uniq
+      relation.attributes[:includes] = (relation.attributes[:includes] + args).flatten.uniq
       relation
     end
 
@@ -25,7 +19,7 @@ module ActiveRecord
       return self if args.blank?
 
       relation = clone
-      relation.eager_load_values += args
+      relation.attributes[:eager_load] += args
       relation
     end
 
@@ -33,7 +27,7 @@ module ActiveRecord
       return self if args.blank?
 
       relation = clone
-      relation.preload_values += args
+      relation.attributes[:preload] += args
       relation
     end
 
@@ -42,7 +36,7 @@ module ActiveRecord
         to_a.select {|*block_args| value.call(*block_args) }
       else
         relation = clone
-        relation.select_values += Array.wrap(value)
+        relation.attributes[:select] += Array.wrap(value)
         relation
       end
     end
@@ -51,7 +45,7 @@ module ActiveRecord
       return self if args.blank?
 
       relation = clone
-      relation.group_values += args.flatten
+      relation.attributes[:group] += args.flatten
       relation
     end
 
@@ -59,7 +53,7 @@ module ActiveRecord
       return self if args.blank?
 
       relation = clone
-      relation.order_values += args.flatten
+      relation.attributes[:order] += args.flatten
       relation
     end
 
@@ -67,7 +61,7 @@ module ActiveRecord
       return self if args.blank?
 
       relation = clone
-      relation.reorder_value = args.flatten
+      relation.attributes[:reorder] = args.flatten
       relation
     end
 
@@ -77,14 +71,14 @@ module ActiveRecord
       relation = clone
 
       args.flatten!
-      relation.joins_values += args
+      relation.attributes[:joins] += args
 
       relation
     end
 
     def bind(value)
       relation = clone
-      relation.bind_values += [value]
+      relation.attributes[:bind] += [value]
       relation
     end
 
@@ -92,7 +86,7 @@ module ActiveRecord
       return self if opts.blank?
 
       relation = clone
-      relation.where_values += build_where(opts, rest)
+      relation.attributes[:where] += build_where(opts, rest)
       relation
     end
 
@@ -100,19 +94,19 @@ module ActiveRecord
       return self if args.blank?
 
       relation = clone
-      relation.having_values += build_where(*args)
+      relation.attributes[:having] += build_where(*args)
       relation
     end
 
     def limit(value)
       relation = clone
-      relation.limit_value = value
+      relation.attributes[:limit] = value
       relation
     end
 
     def offset(value)
       relation = clone
-      relation.offset_value = value
+      relation.attributes[:offset] = value
       relation
     end
 
@@ -121,9 +115,9 @@ module ActiveRecord
 
       case locks
       when String, TrueClass, NilClass
-        relation.lock_value = locks || true
+        relation.attributes[:lock] = locks || true
       else
-        relation.lock_value = false
+        relation.attributes[:lock] = false
       end
 
       relation
@@ -131,19 +125,19 @@ module ActiveRecord
 
     def readonly(value = true)
       relation = clone
-      relation.readonly_value = value
+      relation.attributes[:readonly] = value
       relation
     end
 
     def create_with(value)
       relation = clone
-      relation.create_with_value = value && (@create_with_value || {}).merge(value)
+      relation.attributes[:create_with] = value && (attributes[:create_with] || {}).merge(value)
       relation
     end
 
     def from(value)
       relation = clone
-      relation.from_value = value
+      relation.attributes[:from] = value
       relation
     end
 
@@ -174,24 +168,24 @@ module ActiveRecord
     def build_arel
       arel = table.from table
 
-      build_joins(arel, @joins_values) unless @joins_values.empty?
+      build_joins(arel, attributes[:joins]) unless attributes[:joins].empty?
 
-      collapse_wheres(arel, (@where_values - ['']).uniq)
+      collapse_wheres(arel, (attributes[:where] - ['']).uniq)
 
-      arel.having(*@having_values.uniq.reject{|h| h.blank?}) unless @having_values.empty?
+      arel.having(*attributes[:having].uniq.reject{|h| h.blank?}) unless attributes[:having].empty?
 
-      arel.take(connection.sanitize_limit(@limit_value)) if @limit_value
-      arel.skip(@offset_value) if @offset_value
+      arel.take(connection.sanitize_limit(attributes[:limit])) if attributes[:limit]
+      arel.skip(attributes[:offset]) if attributes[:offset]
 
-      arel.group(*@group_values.uniq.reject{|g| g.blank?}) unless @group_values.empty?
+      arel.group(*attributes[:group].uniq.reject{|g| g.blank?}) unless attributes[:group].empty?
 
-      order = @reorder_value ? @reorder_value : @order_values
+      order = attributes[:reorder] || attributes[:order]
       arel.order(*order.uniq.reject{|o| o.blank?}) unless order.empty?
 
-      build_select(arel, @select_values.uniq)
+      build_select(arel, attributes[:select].uniq)
 
-      arel.from(@from_value) if @from_value
-      arel.lock(@lock_value) if @lock_value
+      arel.from(attributes[:from]) if attributes[:from]
+      arel.lock(attributes[:lock]) if attributes[:lock]
 
       arel
     end

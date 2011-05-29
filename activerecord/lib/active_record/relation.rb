@@ -4,9 +4,10 @@ module ActiveRecord
   # = Active Record Relation
   class Relation
     JoinOperation = Struct.new(:relation, :join_class, :on)
-    ASSOCIATION_METHODS = [:includes, :eager_load, :preload]
-    MULTI_VALUE_METHODS = [:select, :group, :order, :joins, :where, :having, :bind]
-    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
+    ASSOCIATION_ATTRIBUTES = [:includes, :eager_load, :preload]
+    MULTI_VALUE_ATTRIBUTES = [:select, :group, :order, :joins, :where, :having, :bind]
+    SINGLE_VALUE_ATTRIBUTES = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
+    ATTRIBUTES = ASSOCIATION_ATTRIBUTES + MULTI_VALUE_ATTRIBUTES + SINGLE_VALUE_ATTRIBUTES
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
@@ -14,7 +15,7 @@ module ActiveRecord
     delegate :to_xml, :to_yaml, :length, :collect, :map, :each, :all?, :include?, :to => :to_a
     delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key, :to => :klass
 
-    attr_reader :table, :klass, :loaded
+    attr_reader :table, :klass, :loaded, :attributes
     attr_accessor :extensions, :default_scoped
     alias :loaded? :loaded
     alias :default_scoped? :default_scoped
@@ -25,10 +26,18 @@ module ActiveRecord
       @implicit_readonly = nil
       @loaded            = false
       @default_scoped    = false
+      @extensions        = []
 
-      SINGLE_VALUE_METHODS.each {|v| instance_variable_set(:"@#{v}_value", nil)}
-      (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
-      @extensions = []
+      @attributes = Hash[
+        SINGLE_VALUE_ATTRIBUTES.map { |attribute| [attribute, nil] } +
+        (ASSOCIATION_ATTRIBUTES + MULTI_VALUE_ATTRIBUTES).map { |attribute| [attribute, []] }
+      ]
+    end
+
+    # FIXME: Make this work on 1.8
+    def initialize_clone(other)
+      super
+      @attributes = other.attributes.dup
     end
 
     def insert(values)
@@ -105,23 +114,23 @@ module ActiveRecord
       default_scoped = with_default_scope
 
       if default_scoped.equal?(self)
-        @records = if @readonly_value.nil? && !@klass.locking_enabled?
-          eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, @bind_values)
+        @records = if attributes[:readonly].nil? && !@klass.locking_enabled?
+          eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, attributes[:bind])
         else
           IdentityMap.without do
-            eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, @bind_values)
+            eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, attributes[:bind])
           end
         end
 
-        preload = @preload_values
-        preload +=  @includes_values unless eager_loading?
+        preload = attributes[:preload]
+        preload += attributes[:includes] unless eager_loading?
         preload.each do |associations|
           ActiveRecord::Associations::Preloader.new(@records, associations).run
         end
 
         # @readonly_value is true only if set explicitly. @implicit_readonly is true if there
         # are JOINS and no explicit SELECT.
-        readonly = @readonly_value.nil? ? @implicit_readonly : @readonly_value
+        readonly = attributes[:readonly].nil? ? @implicit_readonly : attributes[:readonly]
         @records.each { |record| record.readonly! } if readonly
       else
         @records = default_scoped.to_a
@@ -160,7 +169,7 @@ module ActiveRecord
       if block_given?
         to_a.many? { |*block_args| yield(*block_args) }
       else
-        @limit_value ? to_a.many? : size > 1
+        attributes[:limit] ? to_a.many? : size > 1
       end
     end
 
@@ -217,7 +226,7 @@ module ActiveRecord
         limit = nil
         order = []
         # Apply limit and order only if they're both present
-        if @limit_value.present? == @order_values.present?
+        if attributes[:limit].present? == attributes[:order].present?
           limit = arel.limit
           order = arel.orders
         end
@@ -226,7 +235,7 @@ module ActiveRecord
         stmt.take limit if limit
         stmt.order(*order)
         stmt.key = table[primary_key]
-        @klass.connection.update stmt.to_sql, 'SQL', bind_values
+        @klass.connection.update stmt.to_sql, 'SQL', attributes[:bind]
       end
     end
 
@@ -345,7 +354,7 @@ module ActiveRecord
       else
         statement = arel.compile_delete
         affected = @klass.connection.delete(
-          statement.to_sql, 'SQL', bind_values)
+          statement.to_sql, 'SQL', attributes[:bind])
 
         reset
         affected
@@ -395,7 +404,7 @@ module ActiveRecord
     end
 
     def where_values_hash
-      equalities = with_default_scope.where_values.grep(Arel::Nodes::Equality).find_all { |node|
+      equalities = with_default_scope.attributes[:where].grep(Arel::Nodes::Equality).find_all { |node|
         node.left.relation.name == table_name
       }
 
@@ -403,11 +412,11 @@ module ActiveRecord
     end
 
     def scope_for_create
-      @scope_for_create ||= where_values_hash.merge(@create_with_value || {})
+      @scope_for_create ||= where_values_hash.merge(attributes[:create_with] || {})
     end
 
     def eager_loading?
-      @should_eager_load ||= (@eager_load_values.any? || (@includes_values.any? && references_eager_loaded_tables?))
+      @should_eager_load ||= (attributes[:eager_load].any? || (attributes[:includes].any? && references_eager_loaded_tables?))
     end
 
     def ==(other)

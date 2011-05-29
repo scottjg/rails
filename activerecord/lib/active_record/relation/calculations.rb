@@ -146,7 +146,7 @@ module ActiveRecord
       if options.except(:distinct).present?
         apply_finder_options(options.except(:distinct)).calculate(operation, column_name, :distinct => options[:distinct])
       else
-        if eager_loading? || (includes_values.present? && references_eager_loaded_tables?)
+        if eager_loading? || (attributes[:includes].present? && references_eager_loaded_tables?)
           construct_relation_for_association_calculations.calculate(operation, column_name, options)
         else
           perform_calculation(operation, column_name, options)
@@ -175,7 +175,7 @@ module ActiveRecord
         distinct = nil if column_name =~ /\s*DISTINCT\s+/i
       end
 
-      if @group_values.any?
+      if attributes[:group].any?
         execute_grouped_calculation(operation, column_name, distinct)
       else
         execute_simple_calculation(operation, column_name, distinct)
@@ -198,9 +198,9 @@ module ActiveRecord
       # Postgresql doesn't like ORDER BY when there are no GROUP BY
       relation = reorder(nil)
 
-      if operation == "count" && (relation.limit_value || relation.offset_value)
+      if operation == "count" && (relation.attributes[:limit] || relation.attributes[:offset])
         # Shortcut when limit is zero.
-        return 0 if relation.limit_value == 0
+        return 0 if relation.attributes[:limit] == 0
 
         query_builder = build_count_subquery(relation, column_name, distinct)
       else
@@ -208,7 +208,7 @@ module ActiveRecord
 
         select_value = operation_over_aggregate_column(column, operation, distinct)
 
-        relation.select_values = [select_value]
+        relation.attributes[:select] = [select_value]
 
         query_builder = relation.arel
       end
@@ -217,7 +217,7 @@ module ActiveRecord
     end
 
     def execute_grouped_calculation(operation, column_name, distinct) #:nodoc:
-      group_attr      = @group_values
+      group_attr      = attributes[:group]
       association     = @klass.reflect_on_association(group_attr.first.to_sym)
       associated      = group_attr.size == 1 && association && association.macro == :belongs_to # only count belongs_to associations
       group_fields  = Array(associated ? association.foreign_key : group_attr)
@@ -246,7 +246,7 @@ module ActiveRecord
       }
 
       relation = except(:group).group(group.join(','))
-      relation.select_values = select_values
+      relation.attributes[:select] = select_values
 
       calculated_data = @klass.connection.select_all(relation.to_sql)
 
@@ -304,8 +304,8 @@ module ActiveRecord
     end
 
     def select_for_count
-      if @select_values.present?
-        select = @select_values.join(", ")
+      if attributes[:select].present?
+        select = attributes[:select].join(", ")
         select if select !~ /(,|\*)/
       end
     end
@@ -315,7 +315,7 @@ module ActiveRecord
       subquery_alias = Arel.sql('subquery_for_count')
 
       aliased_column = aggregate_column(column_name == :all ? 1 : column_name).as(column_alias)
-      relation.select_values = [aliased_column]
+      relation.attributes[:select] = [aliased_column]
       subquery = relation.arel.as(subquery_alias)
 
       sm = Arel::SelectManager.new relation.engine

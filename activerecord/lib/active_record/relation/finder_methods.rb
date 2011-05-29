@@ -202,19 +202,19 @@ module ActiveRecord
     def find_with_associations
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)
-      rows = connection.select_all(relation.to_sql, 'SQL', relation.bind_values)
+      rows = connection.select_all(relation.to_sql, 'SQL', relation.attributes[:bind])
       join_dependency.instantiate(rows)
     rescue ThrowResult
       []
     end
 
     def construct_join_dependency_for_association_find
-      including = (@eager_load_values + @includes_values).uniq
+      including = (attributes[:eager_load] + attributes[:includes]).uniq
       ActiveRecord::Associations::JoinDependency.new(@klass, including, [])
     end
 
     def construct_relation_for_association_calculations
-      including = (@eager_load_values + @includes_values).uniq
+      including = (attributes[:eager_load] + attributes[:includes]).uniq
       join_dependency = ActiveRecord::Associations::JoinDependency.new(@klass, including, arel.froms.first)
       relation = except(:includes, :eager_load, :preload)
       apply_join_dependency(relation, join_dependency)
@@ -232,7 +232,7 @@ module ActiveRecord
 
       limitable_reflections = using_limitable_reflections?(join_dependency.reflections)
 
-      if !limitable_reflections && relation.limit_value
+      if !limitable_reflections && relation.attributes[:limit]
         limited_id_condition = construct_limited_ids_condition(relation.except(:select))
         relation = relation.where(limited_id_condition)
       end
@@ -243,7 +243,7 @@ module ActiveRecord
     end
 
     def construct_limited_ids_condition(relation)
-      orders = relation.order_values
+      orders = relation.attributes[:order]
       values = @klass.connection.distinct("#{@klass.connection.quote_table_name table_name}.#{primary_key}", orders)
 
       relation = relation.dup
@@ -311,10 +311,10 @@ module ActiveRecord
     def find_one(id)
       id = id.id if ActiveRecord::Base === id
 
-      if IdentityMap.enabled? && where_values.blank? &&
-        limit_value.blank? && order_values.blank? &&
-        includes_values.blank? && preload_values.blank? &&
-        readonly_value.nil? && joins_values.blank? &&
+      if IdentityMap.enabled? && attributes[:where].blank? &&
+        attributes[:limit].blank? && attributes[:order].blank? &&
+        attributes[:includes].blank? && attributes[:preload].blank? &&
+        attributes[:readonly].nil? && attributes[:joins].blank? &&
         !@klass.locking_enabled? &&
         record = IdentityMap.get(@klass, id)
         return record
@@ -322,9 +322,9 @@ module ActiveRecord
 
       column = columns_hash[primary_key]
 
-      substitute = connection.substitute_at(column, @bind_values.length)
+      substitute = connection.substitute_at(column, attributes[:bind].length)
       relation = where(table[primary_key].eq(substitute))
-      relation.bind_values = [[column, id]]
+      relation.attributes[:bind] = [[column, id]]
       record = relation.first
 
       unless record
@@ -340,15 +340,15 @@ module ActiveRecord
       result = where(table[primary_key].in(ids)).all
 
       expected_size =
-        if @limit_value && ids.size > @limit_value
-          @limit_value
+        if attributes[:limit] && ids.size > attributes[:limit]
+          attributes[:limit]
         else
           ids.size
         end
 
       # 11 ids with limit 3, offset 9 should give 2 results.
-      if @offset_value && (ids.size - @offset_value < expected_size)
-        expected_size = ids.size - @offset_value
+      if attributes[:offset] && (ids.size - attributes[:offset] < expected_size)
+        expected_size = ids.size - attributes[:offset]
       end
 
       if result.size == expected_size
@@ -376,7 +376,7 @@ module ActiveRecord
         @records.last
       else
         @last ||=
-          if offset_value || limit_value
+          if attributes[:offset] || attributes[:limit]
             to_a.last
           else
             reverse_order.limit(1).to_a[0]

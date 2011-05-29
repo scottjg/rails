@@ -88,7 +88,7 @@ module ActiveRecord
         relation = self.class.unscoped.where(
           self.class.arel_table[pk].eq(substitute))
 
-        relation.bind_values = [[column, id]]
+        relation.attributes[:bind] = [[column, id]]
         relation.delete_all
       end
 

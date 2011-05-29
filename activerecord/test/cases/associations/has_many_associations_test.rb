@@ -128,16 +128,16 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   # would be convenient), because this would cause that scope to be applied to any callbacks etc.
   def test_build_and_create_should_not_happen_within_scope
     car = cars(:honda)
-    scoped_count = car.foo_bulbs.scoped.where_values.count
+    scoped_count = car.foo_bulbs.scoped.attributes[:where].count
 
     bulb = car.foo_bulbs.build
-    assert_not_equal scoped_count, bulb.scope_after_initialize.where_values.count
+    assert_not_equal scoped_count, bulb.scope_after_initialize.attributes[:where].count
 
     bulb = car.foo_bulbs.create
-    assert_not_equal scoped_count, bulb.scope_after_initialize.where_values.count
+    assert_not_equal scoped_count, bulb.scope_after_initialize.attributes[:where].count
 
     bulb = car.foo_bulbs.create!
-    assert_not_equal scoped_count, bulb.scope_after_initialize.where_values.count
+    assert_not_equal scoped_count, bulb.scope_after_initialize.attributes[:where].count
   end
 
   def test_no_sql_should_be_fired_if_association_already_loaded
@@ -239,7 +239,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def test_find_should_append_to_association_order
     ordered_clients =  companies(:first_firm).clients_sorted_desc.order('companies.id')
-    assert_equal ['id DESC', 'companies.id'], ordered_clients.order_values
+    assert_equal ['id DESC', 'companies.id'], ordered_clients.attributes[:order]
   end
 
   def test_dynamic_find_last_without_specified_order

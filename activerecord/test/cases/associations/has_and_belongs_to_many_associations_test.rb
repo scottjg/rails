@@ -100,7 +100,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'c1', record[0]
     assert_equal 't1', record[1]
   end
-  
+
   def test_proper_usage_of_primary_keys_and_join_table
     setup_data_for_habtm_case
 
@@ -537,7 +537,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
   def test_find_should_append_to_association_order
     ordered_developers = projects(:active_record).developers.order('projects.id')
-    assert_equal ['developers.name desc, developers.id desc', 'projects.id'], ordered_developers.order_values
+    assert_equal ['developers.name desc, developers.id desc', 'projects.id'], ordered_developers.attributes[:order]
   end
 
   def test_dynamic_find_all_should_respect_association_limit

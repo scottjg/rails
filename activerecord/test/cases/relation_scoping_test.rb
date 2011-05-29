@@ -139,7 +139,7 @@ class RelationScopingTest < ActiveRecord::TestCase
     rescue
     end
 
-    assert !Developer.scoped.where_values.include?("name = 'Jamis'")
+    assert !Developer.scoped.attributes[:where].include?("name = 'Jamis'")
   end
 end
 

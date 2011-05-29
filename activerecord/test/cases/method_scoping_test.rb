@@ -211,7 +211,7 @@ class MethodScopingTest < ActiveRecord::TestCase
   def test_scope_for_create_only_uses_equal
     table = VerySpecialComment.arel_table
     relation = VerySpecialComment.scoped
-    relation.where_values << table[:id].not_eq(1)
+    relation.attributes[:where] << table[:id].not_eq(1)
     assert_equal({:type => "VerySpecialComment"}, relation.send(:scope_for_create))
   end
 
@@ -263,7 +263,7 @@ class MethodScopingTest < ActiveRecord::TestCase
     rescue
     end
 
-    assert !Developer.scoped.where_values.include?("name = 'Jamis'")
+    assert !Developer.scoped.attributes[:where].include?("name = 'Jamis'")
   end
 end
 
@@ -350,7 +350,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     # :include's remain unique and don't "double up" when merging
     Developer.send(:with_scope, :find => { :include => :projects, :conditions => "projects.id = 2" }) do
       Developer.send(:with_scope, :find => { :include => :projects }) do
-        assert_equal 1, Developer.scoped.includes_values.uniq.length
+        assert_equal 1, Developer.scoped.attributes[:includes].uniq.length
         assert_equal 'David', Developer.find(:first).name
       end
     end
@@ -358,7 +358,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     # the nested scope doesn't remove the first :include
     Developer.send(:with_scope, :find => { :include => :projects, :conditions => "projects.id = 2" }) do
       Developer.send(:with_scope, :find => { :include => [] }) do
-        assert_equal 1, Developer.scoped.includes_values.uniq.length
+        assert_equal 1, Developer.scoped.attributes[:includes].uniq.length
         assert_equal('David', Developer.find(:first).name)
       end
     end
@@ -366,7 +366,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     # mixing array and symbol include's will merge correctly
     Developer.send(:with_scope, :find => { :include => [:projects], :conditions => "projects.id = 2" }) do
       Developer.send(:with_scope, :find => { :include => :projects }) do
-        assert_equal 1, Developer.scoped.includes_values.uniq.length
+        assert_equal 1, Developer.scoped.attributes[:includes].uniq.length
         assert_equal('David', Developer.find(:first).name)
       end
     end
@@ -375,7 +375,7 @@ class NestedScopingTest < ActiveRecord::TestCase
   def test_nested_scoped_find_replace_include
     Developer.send(:with_scope, :find => { :include => :projects }) do
       Developer.send(:with_exclusive_scope, :find => { :include => [] }) do
-        assert_equal 0, Developer.scoped.includes_values.length
+        assert_equal 0, Developer.scoped.attributes[:includes].length
       end
     end
   end
@@ -515,8 +515,8 @@ class NestedScopingTest < ActiveRecord::TestCase
       rescue
       end
 
-      assert Developer.scoped.where_values.include?("name = 'David'")
-      assert !Developer.scoped.where_values.include?("name = 'Maiha'")
+      assert Developer.scoped.attributes[:where].include?("name = 'David'")
+      assert !Developer.scoped.attributes[:where].include?("name = 'Maiha'")
     end
   end
 

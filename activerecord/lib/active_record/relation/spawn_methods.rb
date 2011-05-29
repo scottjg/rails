@@ -10,28 +10,29 @@ module ActiveRecord
 
       r = r.with_default_scope if r.default_scoped? && r.klass != klass
 
-      Relation::ASSOCIATION_METHODS.each do |method|
-        value = r.send(:"#{method}_values")
+      Relation::ASSOCIATION_ATTRIBUTES.each do |attribute|
+        value = r.attributes[attribute]
 
         unless value.empty?
-          if method == :includes
+          if attribute == :includes
             merged_relation = merged_relation.includes(value)
           else
-            merged_relation.send(:"#{method}_values=", value)
+            merged_relation.attributes[attribute] = value
           end
         end
       end
 
-      (Relation::MULTI_VALUE_METHODS - [:joins, :where]).each do |method|
-        value = r.send(:"#{method}_values")
-        merged_relation.send(:"#{method}_values=", merged_relation.send(:"#{method}_values") + value) if value.present?
+      (Relation::MULTI_VALUE_ATTRIBUTES - [:joins, :where]).each do |attribute|
+        value = r.attributes[attribute]
+        merged_relation.attributes[attribute] += value if value.present?
       end
 
-      merged_relation.joins_values += r.joins_values
+      # TODO: This can probably go in the loop above?
+      merged_relation.attributes[:joins] += r.attributes[:joins]
 
-      merged_wheres = @where_values + r.where_values
+      merged_wheres = attributes[:where] + r.attributes[:where]
 
-      unless @where_values.empty?
+      unless attributes[:where].empty?
         # Remove duplicates, last one wins.
         seen = Hash.new { |h,table| h[table] = {} }
         merged_wheres = merged_wheres.reverse.reject { |w|
@@ -46,16 +47,16 @@ module ActiveRecord
         }.reverse
       end
 
-      merged_relation.where_values = merged_wheres
+      merged_relation.attributes[:where] = merged_wheres
 
-      (Relation::SINGLE_VALUE_METHODS - [:lock, :create_with]).each do |method|
-        value = r.send(:"#{method}_value")
-        merged_relation.send(:"#{method}_value=", value) unless value.nil?
+      (Relation::SINGLE_VALUE_ATTRIBUTES - [:lock, :create_with]).each do |method|
+        value = r.attributes[method]
+        merged_relation.attributes[method] = value unless value.nil?
       end
 
-      merged_relation.lock_value = r.lock_value unless merged_relation.lock_value
+      merged_relation.attributes[:lock] = r.attributes[:lock] unless merged_relation.attributes[:lock]
 
-      merged_relation = merged_relation.create_with(r.create_with_value) if r.create_with_value
+      merged_relation = merged_relation.create_with(r.attributes[:create_with]) if r.attributes[:create_with]
 
       # Apply scope extension modules
       merged_relation.send :apply_modules, r.extensions
@@ -71,16 +72,9 @@ module ActiveRecord
     #   Post.where('id > 10').order('id asc').except(:where) # discards the where condition but keeps the order
     #
     def except(*skips)
-      result = self.class.new(@klass, table)
+      result = self.class.new(klass, table)
       result.default_scoped = default_scoped
-
-      ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) - skips).each do |method|
-        result.send(:"#{method}_values=", send(:"#{method}_values"))
-      end
-
-      (Relation::SINGLE_VALUE_METHODS - skips).each do |method|
-        result.send(:"#{method}_value=", send(:"#{method}_value"))
-      end
+      result.attributes.merge!(attributes.except(*skips))
 
       # Apply scope extension modules
       result.send(:apply_modules, extensions)
@@ -98,14 +92,7 @@ module ActiveRecord
     def only(*onlies)
       result = self.class.new(@klass, table)
       result.default_scoped = default_scoped
-
-      ((Relation::ASSOCIATION_METHODS + Relation::MULTI_VALUE_METHODS) & onlies).each do |method|
-        result.send(:"#{method}_values=", send(:"#{method}_values"))
-      end
-
-      (Relation::SINGLE_VALUE_METHODS & onlies).each do |method|
-        result.send(:"#{method}_value=", send(:"#{method}_value"))
-      end
+      result.attributes.merge!(attributes.slice(*onlies))
 
       # Apply scope extension modules
       result.send(:apply_modules, extensions)

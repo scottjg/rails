@@ -35,11 +35,11 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_bind_values
     relation = Post.scoped
-    assert_equal [], relation.bind_values
+    assert_equal [], relation.attributes[:bind]
 
     relation2 = relation.bind 'foo'
-    assert_equal %w{ foo }, relation2.bind_values
-    assert_equal [], relation.bind_values
+    assert_equal %w{ foo }, relation2.attributes[:bind]
+    assert_equal [], relation.attributes[:bind]
   end
 
   def test_two_scopes_with_includes_should_not_drop_any_include
