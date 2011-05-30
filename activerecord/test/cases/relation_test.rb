@@ -31,20 +31,8 @@ module ActiveRecord
       end
     end
 
-    def test_association_methods
-      assert_equal [:includes, :eager_load, :preload].map(&:to_s).sort,
-        Relation::ASSOCIATION_ATTRIBUTES.map(&:to_s).sort
-    end
-
-    def test_initialize_association_methods
-      relation = Relation.new :a, :b
-      Relation::ASSOCIATION_ATTRIBUTES.each do |attribute|
-        assert_equal [], relation.attributes[attribute], attribute.to_s
-      end
-    end
-
     def test_multi_value_methods
-      assert_equal [:select, :group, :order, :joins, :where, :having, :bind].map(&:to_s).sort,
+      assert_equal [:includes, :eager_load, :preload, :select, :group, :order, :joins, :where, :having, :bind].map(&:to_s).sort,
         Relation::MULTI_VALUE_ATTRIBUTES.map(&:to_s).sort
     end
 

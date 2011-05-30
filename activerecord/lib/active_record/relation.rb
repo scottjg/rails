@@ -4,10 +4,8 @@ module ActiveRecord
   # = Active Record Relation
   class Relation
     JoinOperation = Struct.new(:relation, :join_class, :on)
-    ASSOCIATION_ATTRIBUTES = [:includes, :eager_load, :preload]
-    MULTI_VALUE_ATTRIBUTES = [:select, :group, :order, :joins, :where, :having, :bind]
+    MULTI_VALUE_ATTRIBUTES = [:includes, :eager_load, :preload, :select, :group, :order, :joins, :where, :having, :bind]
     SINGLE_VALUE_ATTRIBUTES = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
-    ATTRIBUTES = ASSOCIATION_ATTRIBUTES + MULTI_VALUE_ATTRIBUTES + SINGLE_VALUE_ATTRIBUTES
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
@@ -30,7 +28,7 @@ module ActiveRecord
 
       @attributes = Hash[
         SINGLE_VALUE_ATTRIBUTES.map { |attribute| [attribute, nil] } +
-        (ASSOCIATION_ATTRIBUTES + MULTI_VALUE_ATTRIBUTES).map { |attribute| [attribute, []] }
+        MULTI_VALUE_ATTRIBUTES.map { |attribute| [attribute, []] }
       ]
     end
 

@@ -10,25 +10,10 @@ module ActiveRecord
 
       r = r.with_default_scope if r.default_scoped? && r.klass != klass
 
-      Relation::ASSOCIATION_ATTRIBUTES.each do |attribute|
+      (Relation::MULTI_VALUE_ATTRIBUTES - [:where]).each do |attribute|
         value = r.attributes[attribute]
-
-        unless value.empty?
-          if attribute == :includes
-            merged_relation = merged_relation.includes(value)
-          else
-            merged_relation.attributes[attribute] = value
-          end
-        end
+        merged_relation.send("#{attribute}!", *value) if value.present?
       end
-
-      (Relation::MULTI_VALUE_ATTRIBUTES - [:joins, :where]).each do |attribute|
-        value = r.attributes[attribute]
-        merged_relation.attributes[attribute] += value if value.present?
-      end
-
-      # TODO: This can probably go in the loop above?
-      merged_relation.attributes[:joins] += r.attributes[:joins]
 
       merged_wheres = attributes[:where] + r.attributes[:where]
 
@@ -49,14 +34,10 @@ module ActiveRecord
 
       merged_relation.attributes[:where] = merged_wheres
 
-      (Relation::SINGLE_VALUE_ATTRIBUTES - [:lock, :create_with]).each do |method|
-        value = r.attributes[method]
-        merged_relation.attributes[method] = value unless value.nil?
+      Relation::SINGLE_VALUE_ATTRIBUTES.each do |attribute|
+        value = r.attributes[attribute]
+        merged_relation.send("#{attribute}!", value) unless value.nil?
       end
-
-      merged_relation.attributes[:lock] = r.attributes[:lock] unless merged_relation.attributes[:lock]
-
-      merged_relation = merged_relation.create_with(r.attributes[:create_with]) if r.attributes[:create_with]
 
       # Apply scope extension modules
       merged_relation.send :apply_modules, r.extensions
