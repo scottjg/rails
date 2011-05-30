@@ -33,11 +33,6 @@ module ActiveRecord
       end
     end
 
-    def test_extensions
-      relation = Relation.new :a, :b
-      assert_equal [], relation.extensions
-    end
-
     def test_empty_where_values_hash
       relation = Relation.new :a, :b
       assert_equal({}, relation.where_values_hash)
@@ -263,7 +258,7 @@ module ActiveRecord
       r2 = r1.extending!(mod)
 
       assert r1.equal?(r2)
-      assert_equal [mod], r2.extensions
+      assert_equal [mod], r2.attributes[:extending]
     end
   end
 end

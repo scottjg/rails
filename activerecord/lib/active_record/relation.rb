@@ -4,7 +4,9 @@ module ActiveRecord
   # = Active Record Relation
   class Relation
     JoinOperation = Struct.new(:relation, :join_class, :on)
-    MULTI_VALUE_ATTRIBUTES = [:includes, :eager_load, :preload, :select, :group, :order, :joins, :where, :having, :bind]
+
+    MULTI_VALUE_ATTRIBUTES  = [:includes, :eager_load, :preload, :select, :group, :order, :joins,
+                               :where, :having, :bind, :extending]
     SINGLE_VALUE_ATTRIBUTES = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
@@ -14,7 +16,7 @@ module ActiveRecord
     delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key, :to => :klass
 
     attr_reader :table, :klass, :loaded, :attributes
-    attr_accessor :extensions, :default_scoped
+    attr_accessor :default_scoped
     alias :loaded? :loaded
     alias :default_scoped? :default_scoped
 
@@ -24,11 +26,10 @@ module ActiveRecord
       @implicit_readonly = nil
       @loaded            = false
       @default_scoped    = false
-      @extensions        = []
 
       @attributes = Hash[
         SINGLE_VALUE_ATTRIBUTES.map { |attribute| [attribute, nil] } +
-        MULTI_VALUE_ATTRIBUTES.map { |attribute| [attribute, []] }
+        MULTI_VALUE_ATTRIBUTES.map  { |attribute| [attribute, []]  }
       ]
     end
 

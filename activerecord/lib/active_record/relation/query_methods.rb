@@ -188,6 +188,7 @@ module ActiveRecord
     def extending!(*modules)
       modules << Module.new(&Proc.new) if block_given?
 
+      self.attributes[:extending] += modules
       apply_modules(modules.flatten)
       self
     end
@@ -339,10 +340,7 @@ module ActiveRecord
     end
 
     def apply_modules(modules)
-      unless modules.empty?
-        @extensions += modules
-        modules.each {|extension| extend(extension) }
-      end
+      modules.each {|extension| extend(extension) }
     end
 
     def reverse_sql_order(order_query)

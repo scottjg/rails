@@ -39,9 +39,6 @@ module ActiveRecord
         merged_relation.send("#{attribute}!", value) unless value.nil?
       end
 
-      # Apply scope extension modules
-      merged_relation.send :apply_modules, r.extensions
-
       merged_relation
     end
 
@@ -58,8 +55,7 @@ module ActiveRecord
       result.attributes.merge!(attributes.except(*skips))
 
       # Apply scope extension modules
-      result.send(:apply_modules, extensions)
-
+      result.send(:apply_modules, attributes[:extending])
       result
     end
 
@@ -76,8 +72,7 @@ module ActiveRecord
       result.attributes.merge!(attributes.slice(*onlies))
 
       # Apply scope extension modules
-      result.send(:apply_modules, extensions)
-
+      result.send(:apply_modules, attributes[:extending])
       result
     end
 
