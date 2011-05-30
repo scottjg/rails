@@ -2,20 +2,27 @@ require 'active_support/core_ext/object/blank'
 
 module ActiveRecord
   module SpawnMethods
-    def merge(r)
-      return self unless r
-      return to_a & r if r.is_a?(Array)
+    def merge(other)
+      if !other
+        self
+      elsif other.is_a?(Array)
+        to_a & other
+      else
+        clone.merge!(other)
+      end
+    end
 
-      merged_relation = clone
-
-      r = r.with_default_scope if r.default_scoped? && r.klass != klass
-
-      (Relation::MULTI_VALUE_ATTRIBUTES - [:where]).each do |attribute|
-        value = r.attributes[attribute]
-        merged_relation.send("#{attribute}!", *value) if value.present?
+    def merge!(other)
+      if other.default_scoped? && other.klass != klass
+        other = other.with_default_scope
       end
 
-      merged_wheres = attributes[:where] + r.attributes[:where]
+      (Relation::MULTI_VALUE_ATTRIBUTES - [:where]).each do |attribute|
+        value = other.attributes[attribute]
+        send("#{attribute}!", *value) if value.present?
+      end
+
+      merged_wheres = attributes[:where] + other.attributes[:where]
 
       unless attributes[:where].empty?
         # Remove duplicates, last one wins.
@@ -32,14 +39,14 @@ module ActiveRecord
         }.reverse
       end
 
-      merged_relation.attributes[:where] = merged_wheres
+      self.attributes[:where] = merged_wheres
 
       Relation::SINGLE_VALUE_ATTRIBUTES.each do |attribute|
-        value = r.attributes[attribute]
-        merged_relation.send("#{attribute}!", value) unless value.nil?
+        value = other.attributes[attribute]
+        send("#{attribute}!", value) unless value.nil?
       end
 
-      merged_relation
+      self
     end
 
     # Removes from the query the condition(s) specified in +skips+.
@@ -80,22 +87,25 @@ module ActiveRecord
                            :order, :select, :readonly, :group, :having, :from, :lock ]
 
     def apply_finder_options(options)
-      relation = clone
-      return relation unless options
+      clone.apply_finder_options!(options)
+    end
+
+    def apply_finder_options!(options)
+      return self unless options
 
       options.assert_valid_keys(VALID_FIND_OPTIONS)
       finders = options.dup
       finders.delete_if { |key, value| value.nil? && key != :limit }
 
       ([:joins, :select, :group, :order, :having, :limit, :offset, :from, :lock, :readonly] & finders.keys).each do |finder|
-        relation = relation.send(finder, finders[finder])
+        send("#{finder}!", finders[finder])
       end
 
-      relation = relation.where(finders[:conditions]) if options.has_key?(:conditions)
-      relation = relation.includes(finders[:include]) if options.has_key?(:include)
-      relation = relation.extending(finders[:extend]) if options.has_key?(:extend)
+      where!(finders[:conditions]) if options.has_key?(:conditions)
+      includes!(finders[:include]) if options.has_key?(:include)
+      extending!(finders[:extend]) if options.has_key?(:extend)
 
-      relation
+      self
     end
 
   end

@@ -105,6 +105,7 @@ module ActiveRecord
     end
 
     def where!(opts, *rest)
+      return self if opts.blank?
       self.attributes[:where] += build_where(opts, rest)
       self
     end

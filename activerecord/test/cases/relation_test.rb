@@ -260,5 +260,23 @@ module ActiveRecord
       assert r1.equal?(r2)
       assert_equal [mod], r2.attributes[:extending]
     end
+
+    def test_merge!
+      r1 = Relation.new :a, :b
+      r2 = Relation.new :a, :b
+      r2.includes!(:foo)
+      r3 = r1.merge!(r2)
+
+      assert r1.equal?(r3)
+      assert_equal [:foo], r1.attributes[:includes]
+    end
+
+    def test_apply_finder_options!
+      r1 = Relation.new :a, :b
+      r2 = r1.apply_finder_options! :include => :foo
+
+      assert r1.equal?(r2)
+      assert_equal [:foo], r1.attributes[:includes]
+    end
   end
 end
