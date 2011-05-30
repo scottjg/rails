@@ -19,21 +19,11 @@ module ActiveRecord
       assert !relation.loaded, 'relation is not loaded'
     end
 
-    def test_single_values
-      assert_equal [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder].map(&:to_s).sort,
-        Relation::SINGLE_VALUE_ATTRIBUTES.map(&:to_s).sort
-    end
-
     def test_initialize_single_values
       relation = Relation.new :a, :b
       Relation::SINGLE_VALUE_ATTRIBUTES.each do |attribute|
         assert_nil relation.attributes[attribute], attribute.to_s
       end
-    end
-
-    def test_multi_value_methods
-      assert_equal [:includes, :eager_load, :preload, :select, :group, :order, :joins, :where, :having, :bind].map(&:to_s).sort,
-        Relation::MULTI_VALUE_ATTRIBUTES.map(&:to_s).sort
     end
 
     def test_multi_value_initialize
