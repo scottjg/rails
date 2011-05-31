@@ -1706,14 +1706,14 @@ module ActiveRecord
         end
 
         def configure_after_destroy_method_for_has_and_belongs_to_many(reflection)
-          method_name = :"has_and_belongs_to_many_after_destroy_for_#{reflection.name}"
+          method_name = :"has_and_belongs_to_many_before_destroy_for_#{reflection.name}"
           class_eval <<-eoruby, __FILE__, __LINE__ + 1
             def #{method_name}
               association = #{reflection.name}
               association.delete_all if association
             end
           eoruby
-          after_destroy method_name
+          before_destroy method_name
         end
 
         def delete_all_has_many_dependencies(record, reflection_name, association_class, dependent_conditions)
