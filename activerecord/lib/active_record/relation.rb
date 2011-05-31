@@ -9,7 +9,7 @@ module ActiveRecord
                                :where, :having, :bind, :extending]
     SINGLE_VALUE_ATTRIBUTES = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
 
-    include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
+    include FinderMethods, Calculations, SpawnMethods, Attributes, QueryMethods, Batches
 
     # These are explicitly delegated to improve performance (avoids method_missing)
     delegate :to_xml, :to_yaml, :length, :collect, :map, :each, :all?, :include?, :to => :to_a
@@ -20,17 +20,33 @@ module ActiveRecord
     alias :loaded? :loaded
     alias :default_scoped? :default_scoped
 
+    # SQL attributes
+    attribute :select,  Attributes::Select
+    attribute :lock,    Attributes::Lock
+    attribute :from,    Attributes::From
+    attribute :joins,   Attributes::Joins
+    attribute :where,   Attributes::Where
+    attribute :group,   Attributes::Group
+    attribute :having,  Attributes::Having
+    attribute :order,   Attributes::Order
+    attribute :reorder, Attributes::Reorder
+    attribute :limit,   Attributes::Limit
+    attribute :offset,  Attributes::Offset
+
+    # Non-SQL attributes
+    attribute :readonly,  Attributes::Readonly
+    attribute :bind,      Attributes::Bind
+    attribute :preload,   Attributes::Preload
+    attribute :includes,  Attributes::Includes
+    attribute :extending, Attributes::Extending
+
     def initialize(klass, table)
       @klass, @table = klass, table
 
       @implicit_readonly = nil
       @loaded            = false
       @default_scoped    = false
-
-      @attributes = Hash[
-        SINGLE_VALUE_ATTRIBUTES.map { |attribute| [attribute, nil] } +
-        MULTI_VALUE_ATTRIBUTES.map  { |attribute| [attribute, []]  }
-      ]
+      @attributes        = initial_attributes
     end
 
     # FIXME: Make this work on 1.8

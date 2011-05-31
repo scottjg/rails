@@ -37,18 +37,14 @@ module ActiveRecord
       self
     end
 
-    def select(value = Proc.new)
-      if block_given?
-        to_a.select {|*block_args| value.call(*block_args) }
-      else
-        clone.select!(value)
-      end
-    end
-
-    def select!(value)
-      self.attributes[:select] += Array.wrap(value)
-      self
-    end
+# FIXME
+#    def select(value = Proc.new)
+#      if block_given?
+#        to_a.select {|*block_args| value.call(*block_args) }
+#      else
+#        clone.select!(value)
+#      end
+#    end
 
     def group(*args)
       return self if args.blank?
@@ -77,16 +73,6 @@ module ActiveRecord
 
     def reorder!(*args)
       self.attributes[:reorder] = args.flatten
-      self
-    end
-
-    def joins(*args)
-      return self if args.compact.blank?
-      clone.joins!(*args)
-    end
-
-    def joins!(*args)
-      self.attributes[:joins] += args.flatten
       self
     end
 
@@ -138,21 +124,6 @@ module ActiveRecord
       self
     end
 
-    def lock(locks = true)
-      clone.lock!(locks)
-    end
-
-    def lock!(locks = true)
-      case locks
-      when String, TrueClass, NilClass
-        self.attributes[:lock] = locks || true
-      else
-        self.attributes[:lock] = false
-      end
-
-      self
-    end
-
     def readonly(value = true)
       clone.readonly!(value)
     end
@@ -168,15 +139,6 @@ module ActiveRecord
 
     def create_with!(value)
       self.attributes[:create_with] = value && (attributes[:create_with] || {}).merge(value)
-      self
-    end
-
-    def from(value)
-      clone.from!(value)
-    end
-
-    def from!(value)
-      self.attributes[:from] = value
       self
     end
 
@@ -266,18 +228,6 @@ module ActiveRecord
       (wheres - equalities).each do |where|
         where = Arel.sql(where) if String === where
         arel.where(Arel::Nodes::Grouping.new(where))
-      end
-    end
-
-    def build_where(opts, other = [])
-      case opts
-      when String, Array
-        [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
-      when Hash
-        attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
-        PredicateBuilder.build_from_hash(table.engine, attributes, table)
-      else
-        [opts]
       end
     end
 
