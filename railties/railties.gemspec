@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
 
   s.rdoc_options << '--exclude' << '.'
 
-  s.add_dependency('rake',          :git => "https://will-s-owen@github.com/will-s-owen/rake.git")
+  s.add_dependency('rake',         '~> 0.9.1')
   s.add_dependency('thor',          '~> 0.14.6')
   s.add_dependency('rack-ssl',      '~> 1.3.2')
   s.add_dependency('activesupport', version)

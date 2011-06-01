@@ -14,7 +14,7 @@ gem "coffee-script"
 gem "sass"
 gem "uglifier", :git => "git://github.com/lautis/uglifier.git"
 
-gem "rake", :git => "https://will-s-owen@github.com/will-s-owen/rake.git"
+#gem "rake", :git => "git://github.com/will-s-owen/rake.git"
 gem "mocha", ">= 0.9.8"
 
 group :doc do
