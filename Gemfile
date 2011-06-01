@@ -8,6 +8,8 @@ else
   gem "arel", '~> 2.1.0'
 end
 
+gem 'bundler', '1.0.13'
+
 gem "coffee-script"
 gem "sass"
 gem "uglifier", :git => "git://github.com/lautis/uglifier.git"
