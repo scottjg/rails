@@ -537,13 +537,8 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
 
 
   def test_nested_has_many_should_not_clobber_sti_conditions
-    b  = Business.create!
-    m2 = b.business_managers.create!
-    c  = m2.business_contracts.create!
-    c2 = c.business_consultants.create!
-    p  = c2.business_properties.create!
-
-    assert_equal p, b.business_managers_properties.first
+    b = Business.create!
+    assert b.business_managers_properties.to_sql.include?(%Q{"businesses"."type" IN ('BusinessConsultant')})
   end
 
   private
