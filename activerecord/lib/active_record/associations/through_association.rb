@@ -19,7 +19,24 @@ module ActiveRecord
                 except(:select, :create_with, :includes)
             )
           end
-          scope
+
+          sti_scope.nil? ? scope : scope.merge(sti_scope)
+        end
+
+        def sti_scope
+          sti_conditions = nil
+          chain.reverse.each do |reflection|
+            if reflection.through_reflection && reflection.klass.finder_needs_type_condition?
+              relation = reflection.klass.send :relation
+              if sti_conditions.nil?
+                sti_conditions = relation
+              else
+                sti_conditions = sti_conditions.merge(relation)
+              end
+            end
+          end
+
+          @sti_conditions ||= sti_conditions
         end
 
       private
