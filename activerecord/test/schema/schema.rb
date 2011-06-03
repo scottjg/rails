@@ -97,6 +97,32 @@ ActiveRecord::Schema.define do
     t.string :color
   end
 
+  create_table :businesses, :force => true do |t|
+    t.string :name
+    t.string :type
+  end
+
+  create_table :business_consultant_attributes, :force => true do |t|
+    t.string :business_consultant_id
+    t.string :first_name
+    t.string :last_name
+  end
+
+  create_table :business_contract_to_positions, :force => true do |t|
+    t.string :business_contract_id
+    t.string :business_position_id
+  end
+
+  create_table :business_contractings, :force => true do |t|
+    t.string :business_contract_id
+    t.string :business_consultant_id
+  end
+
+  create_table :business_managements, :force => true do |t|
+    t.string :business_id
+    t.string :business_position_id
+  end
+
   create_table "CamelCase", :force => true do |t|
     t.string :name
   end

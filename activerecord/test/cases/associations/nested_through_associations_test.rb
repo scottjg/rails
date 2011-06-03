@@ -22,6 +22,7 @@ require 'models/category'
 require 'models/categorization'
 require 'models/membership'
 require 'models/essay'
+require 'models/business'
 
 class NestedThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :authors, :books, :posts, :subscriptions, :subscribers, :tags, :taggings,
@@ -532,6 +533,17 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     organizations = Organization.joins(:author_owned_essay_category).
                                  where('categories.id' => categories(:general).id)
     assert_equal [organizations(:nsa)], organizations
+  end
+
+
+  def test_nested_has_many_should_not_clobber_sti_conditions
+    b  = Business.create!
+    m2 = b.business_managers.create!
+    c  = m2.business_contracts.create!
+    c2 = c.business_consultants.create!
+    p  = c2.business_properties.create!
+
+    assert_equal p, b.business_managers_properties.first
   end
 
   private
