@@ -443,6 +443,14 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_no_queries { post.comments.containing_the_letter_e.all }
   end
 
+  def test_named_scopes_to_get_newest
+    post = posts(:welcome)
+    old_last_comment = post.comments.newest
+    new_comment = post.comments.create(:body => "My new comment")
+    assert_equal post.comments.newest, new_comment
+    #assert_not_equal post.comments.newest, old_last_comment
+  end
+
   def test_named_scopes_with_arguments_are_cached_on_associations
     post = posts(:welcome)
 
