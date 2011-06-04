@@ -76,12 +76,6 @@ module ActiveRecord
     end
   end
 
-  class HasAndBelongsToManyAssociationWithPrimaryKeyError < ActiveRecordError #:nodoc:
-    def initialize(reflection)
-      super("Primary key is not allowed in a has_and_belongs_to_many join table (#{reflection.options[:join_table]}).")
-    end
-  end
-
   class HasAndBelongsToManyAssociationForeignKeyNeeded < ActiveRecordError #:nodoc:
     def initialize(reflection)
       super("Cannot create self referential has_and_belongs_to_many association on '#{reflection.class_name rescue nil}##{reflection.name rescue nil}'. :association_foreign_key cannot be the same as the :foreign_key.")
@@ -866,7 +860,7 @@ module ActiveRecord
     # the inverse of each other and the inverse of the +dungeon+ association on +EvilWizard+
     # is the +evil_wizard+ association on +Dungeon+ (and vice-versa). By default,
     # Active Record doesn't know anything about these inverse relationships and so no object
-    # loading optimisation is possible. For example:
+    # loading optimization is possible. For example:
     #
     #    d = Dungeon.first
     #    t = d.traps.first

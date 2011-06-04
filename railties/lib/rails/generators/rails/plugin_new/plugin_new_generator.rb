@@ -118,7 +118,7 @@ task :default => :test
       return if options.skip_javascript?
 
       if mountable?
-        copy_file "#{app_templates_dir}/app/assets/javascripts/application.js.tt",
+        template "#{app_templates_dir}/app/assets/javascripts/application.js.tt",
                   "app/assets/javascripts/application.js"
       elsif full?
         empty_directory_with_gitkeep "app/assets/javascripts"
@@ -258,7 +258,7 @@ task :default => :test
         elsif RESERVED_NAMES.include?(name)
           raise Error, "Invalid plugin name #{name}. Please give a name which does not match one of the reserved rails words."
         elsif Object.const_defined?(camelized)
-          raise Error, "Invalid plugin name #{name}, constant #{camelized} is already in use. Please choose another application name."
+          raise Error, "Invalid plugin name #{name}, constant #{camelized} is already in use. Please choose another plugin name."
         end
       end
 

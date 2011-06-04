@@ -11,6 +11,14 @@ require 'models/reference'
 class RelationScopingTest < ActiveRecord::TestCase
   fixtures :authors, :developers, :projects, :comments, :posts, :developers_projects
 
+  def test_reverse_order
+    assert_equal Developer.order("id DESC").to_a.reverse, Developer.order("id DESC").reverse_order
+  end
+
+  def test_double_reverse_order_produces_original_order
+    assert_equal Developer.order("name DESC"), Developer.order("name DESC").reverse_order.reverse_order
+  end
+
   def test_scoped_find
     Developer.where("name = 'David'").scoping do
       assert_nothing_raised { Developer.find(1) }
@@ -471,7 +479,23 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 10, DeveloperCalledJamis.unscoped.poor.length
   end
 
+  def test_default_scope_select_ignored_by_aggregations
+    assert_equal DeveloperWithSelect.all.count, DeveloperWithSelect.count
+  end
+
+  def test_default_scope_select_ignored_by_grouped_aggregations
+    assert_equal Hash[Developer.all.group_by(&:salary).map { |s, d| [s, d.count] }],
+                 DeveloperWithSelect.group(:salary).count
+  end
+
   def test_default_scope_order_ignored_by_aggregations
     assert_equal DeveloperOrderedBySalary.all.count, DeveloperOrderedBySalary.count
+  end
+
+  def test_default_scope_find_last
+    assert DeveloperOrderedBySalary.count > 1, "need more than one row for test"
+
+    lowest_salary_dev = DeveloperOrderedBySalary.find(developers(:poor_jamis).id)
+    assert_equal lowest_salary_dev, DeveloperOrderedBySalary.last
   end
 end
