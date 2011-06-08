@@ -1,3 +1,15 @@
+*Rails 3.0.8 (unreleased)*
+
+* Fix various problems with using :primary_key and :foreign_key options in conjunction with
+  :through associations. [Jon Leighton]
+
+* Correctly handle inner joins on polymorphic relationships.
+
+* Fixed infinity and negative infinity cases in PG date columns.
+
+* Creating records with invalid associations via `create` or `save` will no
+  longer raise exceptions.
+
 *Rails 3.0.7 (April 18, 2011)*
 
 * Destroying records via nested attributes works independent of reject_if LH #6006 [Durran Jordan]
@@ -9,6 +21,10 @@
 * Change exists? so records are not instantiated - fixes #6127. This prevents after_find
   and after_initialize callbacks being triggered when checking for record existence.
   [Andrew White]
+
+* Fix performance bug with attribute accessors which only occurred on Ruby 1.8.7, and ensure we
+  cache type-casted values when the column returned from the db contains non-standard chars.
+  [Jon Leighton]
 
 * Fix performance bug with attribute accessors which only occurred on Ruby 1.8.7, and ensure we
   cache type-casted values when the column returned from the db contains non-standard chars.

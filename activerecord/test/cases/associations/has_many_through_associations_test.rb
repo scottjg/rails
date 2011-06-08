@@ -471,6 +471,10 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, authors(:mary).categories.general.count
   end
 
+  def test_has_many_through_on_new_record
+    assert_equal [], Post.new.tags.all
+  end
+
   def test_joining_has_many_through_belongs_to
     posts = Post.joins(:author_categorizations).
                  where('categorizations.id' => categorizations(:mary_thinking_sti).id)
@@ -493,6 +497,48 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
     assert_deprecated do
       assert_equal post.tags, post.deprecated_interpolated_tags_2
+    end
+  end
+
+  def test_create_should_not_raise_exception_when_join_record_has_errors
+    repair_validations(Categorization) do
+      Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
+      Category.create(:name => 'Fishing', :authors => [Author.first])
+    end
+  end
+
+  def test_save_should_not_raise_exception_when_join_record_has_errors
+    repair_validations(Categorization) do
+      Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
+      c = Category.create(:name => 'Fishing', :authors => [Author.first])
+      c.save
+    end
+  end
+
+  def test_create_bang_should_raise_exception_when_join_record_has_errors
+    repair_validations(Categorization) do
+      Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
+      assert_raises(ActiveRecord::RecordInvalid) do
+        Category.create!(:name => 'Fishing', :authors => [Author.first])
+      end
+    end
+  end
+
+  def test_save_bang_should_raise_exception_when_join_record_has_errors
+    repair_validations(Categorization) do
+      Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
+      c = Category.new(:name => 'Fishing', :authors => [Author.first])
+      assert_raises(ActiveRecord::RecordInvalid) do
+        c.save!
+      end
+    end
+  end
+
+  def test_create_bang_returns_falsy_when_join_record_has_errors
+    repair_validations(Categorization) do
+      Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
+      c = Category.new(:name => 'Fishing', :authors => [Author.first])
+      assert !c.save
     end
   end
 end

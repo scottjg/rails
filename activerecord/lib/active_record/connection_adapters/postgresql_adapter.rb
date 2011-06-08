@@ -43,6 +43,16 @@ module ActiveRecord
       # :stopdoc:
       class << self
         attr_accessor :money_precision
+        def string_to_time(string)
+          return string unless String === string
+
+          case string
+          when 'infinity'  then 1.0 / 0.0
+          when '-infinity' then -1.0 / 0.0
+          else
+            super
+          end
+        end
       end
       # :startdoc:
 
@@ -123,6 +133,14 @@ module ActiveRecord
         # Extracts the value from a PostgreSQL column default definition.
         def self.extract_value_from_default(default)
           case default
+            # This is a performance optimization for Ruby 1.9.2 in development.
+            # If the value is nil, we return nil straight away without checking
+            # the regular expressions. If we check each regular expression,
+            # Regexp#=== will call NilClass#to_str, which will trigger
+            # method_missing (defined by whiny nil in ActiveSupport) which
+            # makes this method very very slow.
+            when NilClass
+              nil
             # Numeric types
             when /\A\(?(-?\d+(\.\d*)?\)?)\z/
               $1
@@ -319,6 +337,9 @@ module ActiveRecord
 
         if value.kind_of?(String) && column.type == :binary
           "'#{escape_bytea(value)}'"
+        elsif Float === value && column.type == :datetime
+          return super unless value.infinite?
+          "'#{value.to_s.downcase}'"
         elsif value.kind_of?(String) && column.sql_type == 'xml'
           "xml '#{quote_string(value)}'"
         elsif value.kind_of?(Numeric) && column.sql_type == 'money'
@@ -975,7 +996,7 @@ module ActiveRecord
         def select(sql, name = nil)
           fields, rows = select_raw(sql, name)
           rows.map do |row|
-            Hash[*fields.zip(row).flatten]
+            Hash[fields.zip(row)]
           end
         end
 

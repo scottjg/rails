@@ -211,6 +211,7 @@ module Rails
     end
 
     def initialize_tasks
+      extend Rake::DSL if defined? Rake::DSL
       require "rails/tasks"
       task :environment do
         $rails_rake_task = true

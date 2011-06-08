@@ -8,7 +8,7 @@ gem "mocha", ">= 0.9.8"
 group :doc do
   gem "rdoc",  "~> 3.4"
   gem "horo",  "= 1.0.3"
-  gem "RedCloth", "~> 4.2"
+  gem "RedCloth", "~> 4.2" if RUBY_VERSION < "1.9.3"
 end
 
 # for perf tests
@@ -41,7 +41,7 @@ platforms :ruby do
   group :db do
     gem "pg", ">= 0.9.0"
     gem "mysql", ">= 2.8.1"
-    gem "mysql2", ">= 0.2.6"
+    gem "mysql2", "~> 0.2.6"
   end
 end
 
