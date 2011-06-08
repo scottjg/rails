@@ -203,18 +203,18 @@ db_namespace = namespace :db do
         # only files matching "20091231235959_some_name.rb" pattern
         if match_data = /^(\d{14})_(.+)\.rb$/.match(file)
           status = db_list.delete(match_data[1]) ? 'up' : 'down'
-          file_list << [status, match_data[1], match_data[2]]
+          file_list << [status, match_data[1], match_data[2].humanize]
         end
+      end
+      db_list.map! do |version|
+        ['up', version, '********** NO FILE **********']
       end
       # output
       puts "\ndatabase: #{config['database']}\n\n"
       puts "#{'Status'.center(8)}  #{'Migration ID'.ljust(14)}  Migration Name"
       puts "-" * 50
-      file_list.each do |file|
-        puts "#{file[0].center(8)}  #{file[1].ljust(14)}  #{file[2].humanize}"
-      end
-      db_list.each do |version|
-        puts "#{'up'.center(8)}  #{version.ljust(14)}  *** NO FILE ***"
+      (db_list + file_list).sort_by {|migration| migration[1]}.each do |migration|
+        puts "#{migration[0].center(8)}  #{migration[1].ljust(14)}  #{migration[2]}"
       end
       puts
     end
@@ -305,7 +305,7 @@ db_namespace = namespace :db do
       fixtures_dir = File.join [base_dir, ENV['FIXTURES_DIR']].compact
 
       (ENV['FIXTURES'] ? ENV['FIXTURES'].split(/,/) : Dir["#{fixtures_dir}/**/*.{yml,csv}"].map {|f| f[(fixtures_dir.size + 1)..-5] }).each do |fixture_file|
-        Fixtures.create_fixtures(fixtures_dir, fixture_file)
+        ActiveRecord::Fixtures.create_fixtures(fixtures_dir, fixture_file)
       end
     end
 
@@ -316,13 +316,13 @@ db_namespace = namespace :db do
       label, id = ENV['LABEL'], ENV['ID']
       raise 'LABEL or ID required' if label.blank? && id.blank?
 
-      puts %Q(The fixture ID for "#{label}" is #{Fixtures.identify(label)}.) if label
+      puts %Q(The fixture ID for "#{label}" is #{ActiveRecord::Fixtures.identify(label)}.) if label
 
       base_dir = ENV['FIXTURES_PATH'] ? File.join(Rails.root, ENV['FIXTURES_PATH']) : File.join(Rails.root, 'test', 'fixtures')
       Dir["#{base_dir}/**/*.yml"].each do |file|
         if data = YAML::load(ERB.new(IO.read(file)).result)
           data.keys.each do |key|
-            key_id = Fixtures.identify(key)
+            key_id = ActiveRecord::Fixtures.identify(key)
 
             if key == label || key_id == id.to_i
               puts "#{file}: #{key} (#{key_id})"

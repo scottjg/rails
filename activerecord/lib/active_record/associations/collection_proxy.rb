@@ -64,9 +64,12 @@ module ActiveRecord
 
       def method_missing(method, *args, &block)
         match = DynamicFinderMatch.match(method)
-        if match && match.creator?
-          attributes = match.attribute_names
-          return send(:"find_by_#{attributes.join('_and_')}", *args) || create(Hash[attributes.zip(args)])
+        if match && match.instantiator?
+          record = send(:find_or_instantiator_by_attributes, match, match.attribute_names, *args) do |r|
+            @association.send :set_owner_attributes, r
+            @association.send :add_to_target, r
+            yield(r) if block_given?
+          end
         end
 
         if target.respond_to?(method) || (!@association.klass.respond_to?(method) && Class.respond_to?(method))
@@ -119,6 +122,30 @@ module ActiveRecord
         else
           method_missing(:new, *args, &block)
         end
+      end
+
+      def proxy_owner
+        ActiveSupport::Deprecation.warn(
+          "Calling record.#{@association.reflection.name}.proxy_owner is deprecated. Please use " \
+          "record.association(:#{@association.reflection.name}).owner instead."
+        )
+        @association.owner
+      end
+
+      def proxy_target
+        ActiveSupport::Deprecation.warn(
+          "Calling record.#{@association.reflection.name}.proxy_target is deprecated. Please use " \
+          "record.association(:#{@association.reflection.name}).target instead."
+        )
+        @association.target
+      end
+
+      def proxy_reflection
+        ActiveSupport::Deprecation.warn(
+          "Calling record.#{@association.reflection.name}.proxy_reflection is deprecated. Please use " \
+          "record.association(:#{@association.reflection.name}).reflection instead."
+        )
+        @association.reflection
       end
     end
   end

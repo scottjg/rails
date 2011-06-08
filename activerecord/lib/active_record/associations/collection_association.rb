@@ -4,7 +4,7 @@ module ActiveRecord
   module Associations
     # = Active Record Association Collection
     #
-    # AssociationCollection is an abstract class that provides common stuff to
+    # CollectionAssociation is an abstract class that provides common stuff to
     # ease the implementation of association proxies that represent
     # collections. See the class hierarchy in AssociationProxy.
     #
@@ -94,7 +94,13 @@ module ActiveRecord
       end
 
       def build(attributes = {}, options = {}, &block)
-        build_or_create(:build, attributes, options, &block)
+        if attributes.is_a?(Array)
+          attributes.collect { |attr| build(attr, options, &block) }
+        else
+          add_to_target(build_record(attributes, options)) do |record|
+            yield(record) if block_given?
+          end
+        end
       end
 
       def create(attributes = {}, options = {}, &block)
@@ -102,7 +108,16 @@ module ActiveRecord
           raise ActiveRecord::RecordNotSaved, "You cannot call create unless the parent is saved"
         end
 
-        build_or_create(:create, attributes, options, &block)
+        if attributes.is_a?(Array)
+          attributes.collect { |attr| create(attr, options, &block) }
+        else
+          transaction do
+            add_to_target(build_record(attributes, options)) do |record|
+              yield(record) if block_given?
+              insert_record(record)
+            end
+          end
+        end
       end
 
       def create!(attrs = {}, options = {}, &block)
@@ -321,15 +336,7 @@ module ActiveRecord
 
       def load_target
         if find_target?
-          targets = []
-
-          begin
-            targets = find_target
-          rescue ActiveRecord::RecordNotFound
-            reset
-          end
-
-          @target = merge_target_lists(targets, target)
+          @target = merge_target_lists(find_target, target)
         end
 
         loaded!
@@ -337,19 +344,17 @@ module ActiveRecord
       end
 
       def add_to_target(record)
-        transaction do
-          callback(:before_add, record)
-          yield(record) if block_given?
+        callback(:before_add, record)
+        yield(record) if block_given?
 
-          if options[:uniq] && index = @target.index(record)
-            @target[index] = record
-          else
-            @target << record
-          end
-
-          callback(:after_add, record)
-          set_inverse_instance(record)
+        if options[:uniq] && index = @target.index(record)
+          @target[index] = record
+        else
+          @target << record
         end
+
+        callback(:after_add, record)
+        set_inverse_instance(record)
 
         record
       end
@@ -374,7 +379,7 @@ module ActiveRecord
             if options[:finder_sql]
               reflection.klass.find_by_sql(custom_finder_sql)
             else
-              find(:all)
+              scoped.all
             end
 
           records = options[:uniq] ? uniq(records) : records
@@ -382,38 +387,35 @@ module ActiveRecord
           records
         end
 
-        def merge_target_lists(loaded, existing)
-          return loaded if existing.empty?
-          return existing if loaded.empty?
+        # We have some records loaded from the database (persisted) and some that are
+        # in-memory (memory). The same record may be represented in the persisted array
+        # and in the memory array.
+        #
+        # So the task of this method is to merge them according to the following rules:
+        #
+        #   * The final array must not have duplicates
+        #   * The order of the persisted array is to be preserved
+        #   * Any changes made to attributes on objects in the memory array are to be preserved
+        #   * Otherwise, attributes should have the value found in the database
+        def merge_target_lists(persisted, memory)
+          return persisted if memory.empty?
+          return memory    if persisted.empty?
 
-          loaded.map do |f|
-            i = existing.index(f)
-            if i
-              existing.delete_at(i).tap do |t|
-                keys = ["id"] + t.changes.keys + (f.attribute_names - t.attribute_names)
-                # FIXME: this call to attributes causes many NoMethodErrors
-                attributes = f.attributes
-                (attributes.keys - keys).each do |k|
-                  t.send("#{k}=", attributes[k])
-                end
+          persisted.map! do |record|
+            mem_record = memory.delete(record)
+
+            if mem_record
+              (record.attribute_names - mem_record.changes.keys).each do |name|
+                mem_record[name] = record[name]
               end
+
+              mem_record
             else
-              f
-            end
-          end + existing
-        end
-
-        def build_or_create(method, attributes, options)
-          records = Array.wrap(attributes).map do |attrs|
-            record = build_record(attrs, options)
-
-            add_to_target(record) do
-              yield(record) if block_given?
-              insert_record(record) if method == :create
+              record
             end
           end
 
-          attributes.is_a?(Array) ? records : records.first
+          persisted + memory
         end
 
         # Do the relevant stuff to insert the given record into the association collection.
@@ -421,8 +423,15 @@ module ActiveRecord
           raise NotImplementedError
         end
 
+        def create_scope
+          scoped.scope_for_create.stringify_keys
+        end
+
         def build_record(attributes, options)
-          reflection.build_association(scoped.scope_for_create.merge(attributes), options)
+          record = reflection.build_association(attributes, options)
+          record.assign_attributes(create_scope.except(*record.changed), :without_protection => true)
+          record.assign_attributes(attributes, options)
+          record
         end
 
         def delete_or_destroy(records, method)

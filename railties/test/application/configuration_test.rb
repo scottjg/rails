@@ -12,7 +12,6 @@ end
 
 class ::MyOtherMailObserver < ::MyMailObserver; end
 
-
 module ApplicationTests
   class ConfigurationTest < Test::Unit::TestCase
     include ActiveSupport::Testing::Isolation
@@ -226,8 +225,6 @@ module ApplicationTests
       make_basic_app
 
       class ::OmgController < ActionController::Base
-        protect_from_forgery
-
         def index
           render :inline => "<%= csrf_meta_tags %>"
         end
@@ -235,6 +232,21 @@ module ApplicationTests
 
       get "/"
       assert last_response.body =~ /csrf\-param/
+    end
+
+    test "request forgery token param can be changed" do
+      make_basic_app do
+        app.config.action_controller.request_forgery_protection_token = '_xsrf_token_here'
+      end
+
+      class ::OmgController < ActionController::Base
+        def index
+          render :inline => "<%= csrf_meta_tags %>"
+        end
+      end
+
+      get "/"
+      assert last_response.body =~ /_xsrf_token_here/
     end
 
     test "config.action_controller.perform_caching = true" do
@@ -437,10 +449,35 @@ module ApplicationTests
       app_file 'config/initializers/wrap_parameters.rb', <<-RUBY
         ActionController::Base.wrap_parameters :format => [:json]
       RUBY
-      require "#{app_path}/config/environment"
-      require 'action_controller/base'
 
-      assert_equal [:json], ActionController::Base._wrapper_options[:format]
+      app_file 'app/models/post.rb', <<-RUBY
+      class Post
+        def self.attribute_names
+          %w(title)
+        end
+      end
+      RUBY
+
+      app_file 'app/controllers/posts_controller.rb', <<-RUBY
+      class PostsController < ApplicationController
+        def index
+          render :text => params[:post].inspect
+        end
+      end
+      RUBY
+
+      add_to_config <<-RUBY
+        routes.append do
+          resources :posts
+        end
+      RUBY
+
+      require "#{app_path}/config/environment"
+      require "rack/test"
+      extend Rack::Test::Methods
+
+      post "/posts.json", '{ "title": "foo", "name": "bar" }', "CONTENT_TYPE" => "application/json"
+      assert_equal '{"title"=>"foo"}', last_response.body
     end
 
     test "config.action_dispatch.ignore_accept_header" do

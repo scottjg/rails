@@ -16,14 +16,6 @@ module XmlMiniTest
       assert_equal "my_key", ActiveSupport::XmlMini.rename_key("my_key", :dasherize => false)
     end
 
-    def test_rename_key_camelizes_with_camelize_false
-      assert_equal "my_key", ActiveSupport::XmlMini.rename_key("my_key", :camelize => false)
-    end
-
-    def test_rename_key_camelizes_with_camelize_nil
-      assert_equal "my_key", ActiveSupport::XmlMini.rename_key("my_key", :camelize => nil)
-    end
-
     def test_rename_key_camelizes_with_camelize_true
       assert_equal "MyKey", ActiveSupport::XmlMini.rename_key("my_key", :camelize => true)
     end
@@ -56,7 +48,7 @@ module XmlMiniTest
       assert_equal "__id", ActiveSupport::XmlMini.rename_key("__id")
     end
 
-    def test_rename_key_does_not_dasherize_multiple_leading_underscores
+    def test_rename_key_does_not_dasherize_multiple_trailing_underscores
       assert_equal "id__", ActiveSupport::XmlMini.rename_key("id__")
     end  
   end
@@ -94,6 +86,16 @@ module XmlMiniTest
     test "#to_tag accepts arbitrary objects responding to #to_str" do
       @xml.to_tag(:b, "Howdy", @options)
       assert_xml "<b>Howdy</b>"
+    end
+    
+    test "#to_tag should dasherize the space when passed a string with spaces as a key" do
+      @xml.to_tag("New   York", 33, @options)
+      assert_xml "<New---York type=\"integer\">33</New---York>"
+    end
+    
+    test "#to_tag should dasherize the space when passed a symbol with spaces as a key" do
+      @xml.to_tag(:"New   York", 33, @options)
+      assert_xml "<New---York type=\"integer\">33</New---York>"
     end
     # TODO: test the remaining functions hidden in #to_tag.
   end

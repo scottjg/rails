@@ -48,12 +48,17 @@ module ActiveSupport
       if log.respond_to?(:write)
         @log = log
       elsif File.exist?(log)
-        @log = open(log, (File::WRONLY | File::APPEND))
-        @log.sync = true
+        @log = open_log(log, (File::WRONLY | File::APPEND))
       else
         FileUtils.mkdir_p(File.dirname(log))
-        @log = open(log, (File::WRONLY | File::APPEND | File::CREAT))
-        @log.sync = true
+        @log = open_log(log, (File::WRONLY | File::APPEND | File::CREAT))
+      end
+    end
+
+    def open_log(log, mode)
+      open(log, mode).tap do |open_log|
+        open_log.set_encoding(Encoding::BINARY) if open_log.respond_to?(:set_encoding)
+        open_log.sync = true
       end
     end
 

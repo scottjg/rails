@@ -10,7 +10,7 @@ end
 
 gem "coffee-script"
 gem "sass"
-gem "uglifier"
+gem "uglifier", :git => "git://github.com/lautis/uglifier.git"
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
@@ -27,7 +27,6 @@ gem "memcache-client", ">= 1.8.5"
 platforms :mri_18 do
   gem "system_timer"
   gem "ruby-debug", ">= 0.10.3"
-  gem 'ruby-prof'
   gem "json"
 end
 
@@ -44,6 +43,9 @@ platforms :ruby do
   gem 'yajl-ruby'
   gem "nokogiri", ">= 1.4.4"
 
+  group :test do
+    gem 'ruby-prof'
+  end
   # AR
   gem "sqlite3", "~> 1.3.3"
 

@@ -393,8 +393,8 @@ module ActiveRecord #:nodoc:
     # Indicates whether table names should be the pluralized versions of the corresponding class names.
     # If true, the default table name for a Product class will be +products+. If false, it would just be +product+.
     # See table_name for the full rules on table/class naming. This is true, by default.
-    cattr_accessor :pluralize_table_names, :instance_writer => false
-    @@pluralize_table_names = true
+    class_attribute :pluralize_table_names, :instance_writer => false
+    self.pluralize_table_names = true
 
     ##
     # :singleton-method:
@@ -482,7 +482,7 @@ module ActiveRecord #:nodoc:
       #   # Create a single new object
       #   User.create(:first_name => 'Jamie')
       #
-      #   # Create a single new object using the :admin mass-assignment security scope
+      #   # Create a single new object using the :admin mass-assignment security role
       #   User.create({ :first_name => 'Jamie', :is_admin => true }, :as => :admin)
       #
       #   # Create a single new object bypassing mass-assignment security
@@ -577,15 +577,25 @@ module ActiveRecord #:nodoc:
       #
       # ==== Examples
       #
-      #   class Invoice < ActiveRecord::Base; end;
+      #   class Invoice < ActiveRecord::Base
+      #   end
+      #
       #   file                  class               table_name
       #   invoice.rb            Invoice             invoices
       #
-      #   class Invoice < ActiveRecord::Base; class Lineitem < ActiveRecord::Base; end; end;
+      #   class Invoice < ActiveRecord::Base
+      #     class Lineitem < ActiveRecord::Base
+      #     end
+      #   end
+      #
       #   file                  class               table_name
       #   invoice.rb            Invoice::Lineitem   invoice_lineitems
       #
-      #   module Invoice; class Lineitem < ActiveRecord::Base; end; end;
+      #   module Invoice
+      #     class Lineitem < ActiveRecord::Base
+      #     end
+      #   end
+      #
       #   file                  class               table_name
       #   invoice/lineitem.rb   Invoice::Lineitem   lineitems
       #
@@ -767,6 +777,17 @@ module ActiveRecord #:nodoc:
         super || (table_exists? && column_names.include?(attribute.to_s.sub(/=$/, '')))
       end
 
+      # Returns an array of column names as strings if it's not
+      # an abstract class and table exists.
+      # Otherwise it returns an empty array.
+      def attribute_names
+        @attribute_names ||= if !abstract_class? && table_exists?
+            column_names
+          else
+            []
+          end
+      end
+
       # Set the lookup ancestors for ActiveModel.
       def lookup_ancestors #:nodoc:
         klass = self
@@ -830,6 +851,10 @@ module ActiveRecord #:nodoc:
         @symbolized_base_class ||= base_class.to_s.to_sym
       end
 
+      def symbolized_sti_name
+        @symbolized_sti_name ||= sti_name.present? ? sti_name.to_sym : symbolized_base_class
+      end
+
       # Returns the base AR subclass that this class descends from. If A
       # extends AR::Base, A.base_class will return A. If B descends from A
       # through some arbitrarily deep hierarchy, B.base_class will return A.
@@ -891,7 +916,7 @@ module ActiveRecord #:nodoc:
       # not use the default_scope:
       #
       #   Post.unscoped {
-      #     limit(10) # Fires "SELECT * FROM posts LIMIT 10"
+      #     Post.limit(10) # Fires "SELECT * FROM posts LIMIT 10"
       #   }
       #
       # It is recommended to use block form of unscoped because chaining unscoped with <tt>scope</tt>
@@ -1482,7 +1507,7 @@ MSG
       #   # Instantiates a single new object
       #   User.new(:first_name => 'Jamie')
       #
-      #   # Instantiates a single new object using the :admin mass-assignment security scope
+      #   # Instantiates a single new object using the :admin mass-assignment security role
       #   User.new({ :first_name => 'Jamie', :is_admin => true }, :as => :admin)
       #
       #   # Instantiates a single new object bypassing mass-assignment security
@@ -1648,17 +1673,16 @@ MSG
 
         return unless new_attributes.is_a?(Hash)
 
-        guard_protected_attributes ||= true
-        if guard_protected_attributes
-          assign_attributes(new_attributes)
-        else
+        if guard_protected_attributes == false
           assign_attributes(new_attributes, :without_protection => true)
+        else
+          assign_attributes(new_attributes)
         end
       end
 
       # Allows you to set all the attributes for a particular mass-assignment
-      # security scope by passing in a hash of attributes with keys matching
-      # the attribute names (which again matches the column names) and the scope
+      # security role by passing in a hash of attributes with keys matching
+      # the attribute names (which again matches the column names) and the role
       # name using the :as option.
       #
       # To bypass mass-assignment security you can use the :without_protection => true
@@ -1684,13 +1708,15 @@ MSG
       #   user.name       # => "Josh"
       #   user.is_admin?  # => true
       def assign_attributes(new_attributes, options = {})
+        return unless new_attributes
+
         attributes = new_attributes.stringify_keys
-        scope = options[:as] || :default
+        role = options[:as] || :default
 
         multi_parameter_attributes = []
 
         unless options[:without_protection]
-          attributes = sanitize_for_mass_assignment(attributes, scope)
+          attributes = sanitize_for_mass_assignment(attributes, role)
         end
 
         attributes.each do |k, v|
@@ -1943,32 +1969,9 @@ MSG
         errors = []
         callstack.each do |name, values_with_empty_parameters|
           begin
-            klass = (self.class.reflect_on_aggregation(name.to_sym) || column_for_attribute(name)).klass
-            # in order to allow a date to be set without a year, we must keep the empty values.
-            # Otherwise, we wouldn't be able to distinguish it from a date with an empty day.
-            values = values_with_empty_parameters.reject { |v| v.nil? }
-
-            if values.empty?
-              send(name + "=", nil)
-            else
-
-              value = if Time == klass
-                instantiate_time_object(name, values)
-              elsif Date == klass
-                begin
-                  values = values_with_empty_parameters.collect do |v| v.nil? ? 1 : v end
-                  Date.new(*values)
-                rescue ArgumentError => ex # if Date.new raises an exception on an invalid date
-                  instantiate_time_object(name, values).to_date # we instantiate Time object and convert it back to a date thus using Time's logic in handling invalid dates
-                end
-              else
-                klass.new(*values)
-              end
-
-              send(name + "=", value)
-            end
+            send(name + "=", read_value_from_parameter(name, values_with_empty_parameters))
           rescue => ex
-            errors << AttributeAssignmentError.new("error on assignment #{values.inspect} to #{name}", ex, name)
+            errors << AttributeAssignmentError.new("error on assignment #{values_with_empty_parameters.values.inspect} to #{name}", ex, name)
           end
         end
         unless errors.empty?
@@ -1976,19 +1979,65 @@ MSG
         end
       end
 
+      def read_value_from_parameter(name, values_hash_from_param)
+        klass = (self.class.reflect_on_aggregation(name.to_sym) || column_for_attribute(name)).klass
+        if values_hash_from_param.values.all?{|v|v.nil?}
+          nil
+        elsif klass == Time
+          read_time_parameter_value(name, values_hash_from_param)
+        elsif klass == Date
+          read_date_parameter_value(name, values_hash_from_param)
+        else
+          read_other_parameter_value(klass, name, values_hash_from_param)
+        end
+      end
+
+      def read_time_parameter_value(name, values_hash_from_param)
+        # If Date bits were not provided, error
+        raise "Missing Parameter" if [1,2,3].any?{|position| !values_hash_from_param.has_key?(position)}
+        max_position = extract_max_param_for_multiparameter_attributes(values_hash_from_param, 6)
+        set_values = (1..max_position).collect{|position| values_hash_from_param[position] }
+        # If Date bits were provided but blank, then default to 1
+        # If Time bits are not there, then default to 0
+        [1,1,1,0,0,0].each_with_index{|v,i| set_values[i] = set_values[i].blank? ? v : set_values[i]}
+        instantiate_time_object(name, set_values)
+      end
+
+      def read_date_parameter_value(name, values_hash_from_param)
+        set_values = (1..3).collect{|position| values_hash_from_param[position].blank? ? 1 : values_hash_from_param[position]}
+        begin
+          Date.new(*set_values)
+        rescue ArgumentError => ex # if Date.new raises an exception on an invalid date
+          instantiate_time_object(name, set_values).to_date # we instantiate Time object and convert it back to a date thus using Time's logic in handling invalid dates
+        end
+      end
+
+      def read_other_parameter_value(klass, name, values_hash_from_param)
+        max_position = extract_max_param_for_multiparameter_attributes(values_hash_from_param)
+        values = (1..max_position).collect do |position|
+          raise "Missing Parameter" if !values_hash_from_param.has_key?(position)
+          values_hash_from_param[position]
+        end
+        klass.new(*values)
+      end
+
+      def extract_max_param_for_multiparameter_attributes(values_hash_from_param, upper_cap = 100)
+        [values_hash_from_param.keys.max,upper_cap].min
+      end
+
       def extract_callstack_for_multiparameter_attributes(pairs)
         attributes = { }
 
-        for pair in pairs
+        pairs.each do |pair|
           multiparameter_name, value = pair
           attribute_name = multiparameter_name.split("(").first
-          attributes[attribute_name] = [] unless attributes.include?(attribute_name)
+          attributes[attribute_name] = {} unless attributes.include?(attribute_name)
 
           parameter_value = value.empty? ? nil : type_cast_attribute_value(multiparameter_name, value)
-          attributes[attribute_name] << [ find_parameter_position(multiparameter_name), parameter_value ]
+          attributes[attribute_name][find_parameter_position(multiparameter_name)] ||= parameter_value
         end
 
-        attributes.each { |name, values| attributes[name] = values.sort_by{ |v| v.first }.collect { |v| v.last } }
+        attributes
       end
 
       def type_cast_attribute_value(multiparameter_name, value)
@@ -1996,7 +2045,7 @@ MSG
       end
 
       def find_parameter_position(multiparameter_name)
-        multiparameter_name.scan(/\(([0-9]*).*\)/).first.first
+        multiparameter_name.scan(/\(([0-9]*).*\)/).first.first.to_i
       end
 
       # Returns a comma-separated pair list, like "key1 = val1, key2 = val2".

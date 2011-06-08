@@ -1,11 +1,11 @@
 module Rails
   module Generators
     class AssetsGenerator < NamedBase
-      class_option :javascripts, :type => :boolean, :desc => "Generate javascripts"
-      class_option :stylesheets, :type => :boolean, :desc => "Generate stylesheets"
+      class_option :javascripts, :type => :boolean, :desc => "Generate JavaScripts"
+      class_option :stylesheets, :type => :boolean, :desc => "Generate Stylesheets"
 
-      class_option :javascript_engine, :desc => "Engine for javascripts"
-      class_option :stylesheet_engine, :desc => "Engine for stylesheets"
+      class_option :javascript_engine, :desc => "Engine for JavaScripts"
+      class_option :stylesheet_engine, :desc => "Engine for Stylesheets"
 
       def create_javascript_files
         return unless options.javascripts?

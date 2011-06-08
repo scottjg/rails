@@ -19,24 +19,24 @@ module ApplicationTests
       boot!
 
       assert_equal [
+        "Rails::Rack::ContentLength",
         "ActionDispatch::Static",
         "Rack::Lock",
         "ActiveSupport::Cache::Strategy::LocalCache",
         "Rack::Runtime",
-        "Rails::Rack::Logger",
+        "Rack::MethodOverride",
+        "Rails::Rack::Logger", # must come after Rack::MethodOverride to properly log overridden methods
         "ActionDispatch::ShowExceptions",
         "ActionDispatch::RemoteIp",
         "Rack::Sendfile",
         "ActionDispatch::Reloader",
         "ActionDispatch::Callbacks",
-        "ActiveRecord::IdentityMap::Middleware",
         "ActiveRecord::ConnectionAdapters::ConnectionManagement",
         "ActiveRecord::QueryCache",
         "ActionDispatch::Cookies",
         "ActionDispatch::Session::CookieStore",
         "ActionDispatch::Flash",
         "ActionDispatch::ParamsParser",
-        "Rack::MethodOverride",
         "ActionDispatch::Head",
         "Rack::ConditionalGet",
         "Rack::ETag",
@@ -49,7 +49,7 @@ module ApplicationTests
 
       boot!
 
-      assert_equal "Rack::Cache", middleware.first
+      assert_equal "Rack::Cache", middleware.second
     end
 
     test "Rack::SSL is present when force_ssl is set" do
@@ -104,7 +104,7 @@ module ApplicationTests
     end
 
     test "insert middleware after" do
-      add_to_config "config.middleware.insert_after ActionDispatch::Static, Rack::Config"
+      add_to_config "config.middleware.insert_after Rails::Rack::ContentLength, Rack::Config"
       boot!
       assert_equal "Rack::Config", middleware.second
     end
@@ -112,21 +112,22 @@ module ApplicationTests
     test "RAILS_CACHE does not respond to middleware" do
       add_to_config "config.cache_store = :memory_store"
       boot!
-      assert_equal "Rack::Runtime", middleware.third
+      assert_equal "Rack::Runtime", middleware.fourth
     end
 
     test "RAILS_CACHE does respond to middleware" do
       boot!
-      assert_equal "Rack::Runtime", middleware.fourth
+      assert_equal "Rack::Runtime", middleware.fifth
     end
 
     test "identity map is inserted" do
+      add_to_config "config.active_record.identity_map = true"
       boot!
       assert middleware.include?("ActiveRecord::IdentityMap::Middleware")
     end
 
     test "insert middleware before" do
-      add_to_config "config.middleware.insert_before ActionDispatch::Static, Rack::Config"
+      add_to_config "config.middleware.insert_before Rails::Rack::ContentLength, Rack::Config"
       boot!
       assert_equal "Rack::Config", middleware.first
     end

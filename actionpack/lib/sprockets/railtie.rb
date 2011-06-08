@@ -34,12 +34,12 @@ module Sprockets
       app.assets = asset_environment(app)
 
       ActiveSupport.on_load(:action_view) do
-        app.assets.context.instance_eval do
+        app.assets.context_class.instance_eval do
           include ::ActionView::Helpers::SprocketsHelper
         end
       end
 
-      app.routes.append do
+      app.routes.prepend do
         mount app.assets => assets.prefix
       end
 
@@ -91,7 +91,7 @@ module Sprockets
         compressor
       when :yui
         require 'yui/compressor'
-        YUI::JavaScriptCompressor.new(:munge => true)
+        YUI::CssCompressor.new
       else
         sym
       end

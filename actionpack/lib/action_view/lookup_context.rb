@@ -167,12 +167,12 @@ module ActionView
         @frozen_formats = true
       end
 
-      # Overload formats= to reject ["*/*"] values.
+      # Overload formats= to expand ["*/*"] values and automatically
+      # add :html as fallback to :js.
       def formats=(values)
-        if values && values.size == 1
-          value = values.first
-          values = nil    if value == "*/*"
-          values << :html if value == :js
+        if values
+          values.concat(_formats_defaults) if values.delete "*/*"
+          values << :html if values == [:js]
         end
         super(values)
       end

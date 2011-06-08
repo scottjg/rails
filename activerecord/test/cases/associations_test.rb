@@ -85,7 +85,7 @@ class AssociationsTest < ActiveRecord::TestCase
 
   def test_should_construct_new_finder_sql_after_create
     person = Person.new :first_name => 'clark'
-    assert_equal [], person.readers.find(:all)
+    assert_equal [], person.readers.all
     person.save!
     reader = Reader.create! :person => person, :post => Post.new(:title => "foo", :body => "bar")
     assert person.readers.find(reader.id)
@@ -201,6 +201,18 @@ class AssociationProxyTest < ActiveRecord::TestCase
     david = developers(:david)
     assert_nothing_raised do
       assert_equal david.projects, david.projects.reload.reload
+    end
+  end
+
+  # Tests that proxy_owner, proxy_target and proxy_reflection are implement as deprecated methods
+  def test_proxy_deprecations
+    david = developers(:david)
+    david.projects.load_target
+
+    [:owner, :target, :reflection].each do |name|
+      assert_deprecated do
+        assert_equal david.association(:projects).send(name), david.projects.send("proxy_#{name}")
+      end
     end
   end
 end

@@ -66,6 +66,63 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'exotic', bulb.name
   end
 
+  def test_create_from_association_with_nil_values_should_work
+    car = Car.create(:name => 'honda')
+
+    bulb = car.bulbs.new(nil)
+    assert_equal 'defaulty', bulb.name
+
+    bulb = car.bulbs.build(nil)
+    assert_equal 'defaulty', bulb.name
+
+    bulb = car.bulbs.create(nil)
+    assert_equal 'defaulty', bulb.name
+  end
+
+  def test_association_keys_bypass_attribute_protection
+    car = Car.create(:name => 'honda')
+
+    bulb = car.bulbs.new
+    assert_equal car.id, bulb.car_id
+
+    bulb = car.bulbs.new :car_id => car.id + 1
+    assert_equal car.id, bulb.car_id
+
+    bulb = car.bulbs.build
+    assert_equal car.id, bulb.car_id
+
+    bulb = car.bulbs.build :car_id => car.id + 1
+    assert_equal car.id, bulb.car_id
+
+    bulb = car.bulbs.create
+    assert_equal car.id, bulb.car_id
+
+    bulb = car.bulbs.create :car_id => car.id + 1
+    assert_equal car.id, bulb.car_id
+  end
+
+  def test_association_conditions_bypass_attribute_protection
+    car = Car.create(:name => 'honda')
+
+    bulb = car.frickinawesome_bulbs.new
+    assert_equal true, bulb.frickinawesome?
+
+    bulb = car.frickinawesome_bulbs.new(:frickinawesome => false)
+    assert_equal true, bulb.frickinawesome?
+
+    bulb = car.frickinawesome_bulbs.build
+    assert_equal true, bulb.frickinawesome?
+
+    bulb = car.frickinawesome_bulbs.build(:frickinawesome => false)
+    assert_equal true, bulb.frickinawesome?
+
+    bulb = car.frickinawesome_bulbs.create
+    assert_equal true, bulb.frickinawesome?
+
+    bulb = car.frickinawesome_bulbs.create(:frickinawesome => false)
+    assert_equal true, bulb.frickinawesome?
+  end
+
   # When creating objects on the association, we must not do it within a scope (even though it
   # would be convenient), because this would cause that scope to be applied to any callbacks etc.
   def test_build_and_create_should_not_happen_within_scope
@@ -603,6 +660,30 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal number_of_clients + 1, companies(:first_firm, :reload).clients.size
     assert_equal the_client, companies(:first_firm).clients.find_or_create_by_name("Yet another client")
     assert_equal number_of_clients + 1, companies(:first_firm, :reload).clients.size
+  end
+
+  def test_find_or_initialize_updates_collection_size
+    number_of_clients = companies(:first_firm).clients_of_firm.size
+    companies(:first_firm).clients_of_firm.find_or_initialize_by_name("name" => "Another Client")
+    assert_equal number_of_clients + 1, companies(:first_firm).clients_of_firm.size
+  end
+
+  def test_find_or_create_with_hash
+    post = authors(:david).posts.find_or_create_by_title(:title => 'Yet another post', :body => 'somebody')
+    assert_equal post, authors(:david).posts.find_or_create_by_title(:title => 'Yet another post', :body => 'somebody')
+    assert post.persisted?
+  end
+
+  def test_find_or_create_with_one_attribute_followed_by_hash
+    post = authors(:david).posts.find_or_create_by_title('Yet another post', :body => 'somebody')
+    assert_equal post, authors(:david).posts.find_or_create_by_title('Yet another post', :body => 'somebody')
+    assert post.persisted?
+  end
+
+  def test_find_or_create_should_work_with_block
+    post = authors(:david).posts.find_or_create_by_title('Yet another post') {|p| p.body = 'somebody'}
+    assert_equal post, authors(:david).posts.find_or_create_by_title('Yet another post') {|p| p.body = 'somebody'}
+    assert post.persisted?
   end
 
   def test_deleting
@@ -1363,5 +1444,28 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     target = topics(:first).replies.target
 
     assert_not_equal target.object_id, ary.object_id
+  end
+
+  def test_merging_with_custom_attribute_writer
+    bulb = Bulb.new(:color => "red")
+    assert_equal "RED!", bulb.color
+
+    car = Car.create!
+    car.bulbs << bulb
+
+    assert_equal "RED!", car.bulbs.to_a.first.color
+  end
+
+  def test_new_is_called_with_attributes_and_options
+    car = Car.create(:name => 'honda')
+
+    bulb = car.bulbs.build
+    assert_equal Bulb, bulb.class
+
+    bulb = car.bulbs.build(:bulb_type => :custom)
+    assert_equal Bulb, bulb.class
+
+    bulb = car.bulbs.build({ :bulb_type => :custom }, :as => :admin)
+    assert_equal CustomBulb, bulb.class
   end
 end

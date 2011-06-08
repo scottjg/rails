@@ -1,14 +1,14 @@
 require File.expand_path('../boot', __FILE__)
 
-<% unless options[:skip_active_record] -%>
+<% if include_all_railties? -%>
 require 'rails/all'
 <% else -%>
 # Pick the frameworks you want:
-# require "active_record/railtie"
+<%= comment_if :skip_active_record %> require "active_record/railtie"
 require "action_controller/railtie"
 require "action_mailer/railtie"
 require "active_resource/railtie"
-require "rails/test_unit/railtie"
+<%= comment_if :skip_test_unit %> require "rails/test_unit/railtie"
 <% end -%>
 
 # If you have a Gemfile, require the gems listed there, including any gems
@@ -50,20 +50,11 @@ module <%= app_const_base %>
     # config.action_view.javascript_expansions[:defaults] = %w(prototype prototype_ujs)
 <% end -%>
 
-<% if options[:skip_test_unit] -%>
-    config.generators.test_framework = false
-<% end -%>
-
     # Configure the default encoding used in templates for Ruby 1.9.
     config.encoding = "utf-8"
 
     # Configure sensitive parameters which will be filtered from the log file.
     config.filter_parameters += [:password]
-
-<% unless options[:skip_active_record] -%>
-    # Enable IdentityMap for Active Record, to disable set to false or remove the line below.
-    config.active_record.identity_map = true
-<% end -%>
 
     # Enable the asset pipeline
     config.assets.enabled = true

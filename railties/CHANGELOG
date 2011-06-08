@@ -1,5 +1,19 @@
 *Rails 3.1.0 (unreleased)*
 
+* Application and plugin generation run bundle install unless --skip-gemfile or --skip-bundle. [fxn]
+
+* Fixed database tasks for jdbc* adapters #jruby
+
+  [Rashmi Yadav]
+
+* Template generation for jdbcpostgresql  #jruby
+
+  [Vishnu Atrai]
+
+* Template generation for jdbcmysql and jdbcsqlite3 #jruby
+
+  [Arun Agrawal]
+
 * The -j option of the application generator accepts an arbitrary string. If passed "foo",
 the gem "foo-rails" is added to the Gemfile, and the application JavaScript manifest
 requires "foo" and "foo_ujs". As of this writing "prototype-rails" and "jquery-rails"
@@ -16,7 +30,7 @@ by the prototype-rails gem. [fxn]
 
 * jQuery is the new default JavaScript library. [fxn]
 
-* Changed scaffold and app generator to create Ruby 1.9 style hash when running on Ruby 1.9 [Prem Sichanugrist]
+* Changed scaffold, application, and mailer generator to create Ruby 1.9 style hash when running on Ruby 1.9 [Prem Sichanugrist]
 
   So instead of creating something like:
 
@@ -62,9 +76,41 @@ by the prototype-rails gem. [fxn]
 
 * Include all helpers from plugins and shared engines in application [Piotr Sarnacki]
 
+
+*Rails 3.0.7 (April 18, 2011)*
+
+*No changes.
+
+
+*Rails 3.0.6 (April 5, 2011)
+
+* No changes.
+
+
+*Rails 3.0.5 (February 26, 2011)*
+
+* No changes.
+
+
+*Rails 3.0.4 (February 8, 2011)*
+
+* No changes.
+
+
+*Rails 3.0.3 (November 16, 2010)*
+
+* No changes.
+
+
+*Rails 3.0.2 (November 15, 2010)*
+
+* No changes.
+
+
 *Rails 3.0.1 (October 15, 2010)*
 
 * No Changes, just a version bump.
+
 
 *Rails 3.0.0 (August 29, 2010)*
 

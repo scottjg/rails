@@ -75,6 +75,7 @@ task :default => :test
     def generate_test_dummy(force = false)
       opts = (options || {}).slice(*PASSTHROUGH_OPTIONS)
       opts[:force] = force
+      opts[:skip_bundle] = true
 
       invoke Rails::Generators::AppGenerator,
         [ File.expand_path(dummy_path, destination_root) ], opts
@@ -209,7 +210,7 @@ task :default => :test
         build(:leftovers)
       end
 
-      public_task :apply_rails_template, :bundle_if_dev_or_edge
+      public_task :apply_rails_template, :run_bundle
 
     protected
 

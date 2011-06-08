@@ -25,7 +25,7 @@ module ActiveModel
           def decorations
             decorations = {}
             decorations[:encoding] = 'base64' if type == :binary
-            decorations[:type] = type unless type == :string
+            decorations[:type] = (type == :string) ? nil : type
             decorations[:nil] = true if value.nil?
             decorations
           end
@@ -33,6 +33,7 @@ module ActiveModel
         protected
 
           def compute_type
+            return if value.nil?
             type = ActiveSupport::XmlMini::TYPE_NAMES[value.class.name]
             type ||= :string if value.respond_to?(:to_str)
             type ||= :yaml
