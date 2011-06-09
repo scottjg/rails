@@ -2,6 +2,7 @@ require "cases/helper"
 require 'models/developer'
 require 'models/project'
 require 'models/company'
+require 'models/contract'
 require 'models/topic'
 require 'models/reply'
 require 'models/category'
@@ -11,6 +12,7 @@ require 'models/comment'
 require 'models/person'
 require 'models/reader'
 require 'models/tagging'
+require 'models/tag'
 require 'models/invoice'
 require 'models/line_item'
 require 'models/car'
@@ -533,6 +535,16 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     companies(:first_firm).clients_of_firm.concat([Client.new("name" => "Natural Company"), Client.new("name" => "Apple")])
     assert_equal 3, companies(:first_firm).clients_of_firm.size
     assert_equal 3, companies(:first_firm).clients_of_firm(true).size
+  end
+
+  def test_new_aliased_to_build
+    company = companies(:first_firm)
+    new_client = assert_no_queries { company.clients_of_firm.new("name" => "Another Client") }
+    assert !company.clients_of_firm.loaded?
+
+    assert_equal "Another Client", new_client.name
+    assert !new_client.persisted?
+    assert_equal new_client, company.clients_of_firm.last
   end
 
   def test_build
@@ -1467,5 +1479,19 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     bulb = car.bulbs.build({ :bulb_type => :custom }, :as => :admin)
     assert_equal CustomBulb, bulb.class
+  end
+
+  def test_abstract_class_with_polymorphic_has_many
+    post = SubStiPost.create! :title => "fooo", :body => "baa"
+    tagging = Tagging.create! :taggable => post
+    assert_equal [tagging], post.taggings
+  end
+
+  def test_dont_call_save_callbacks_twice_on_has_many
+    firm = companies(:first_firm)
+    contract = firm.contracts.create!
+
+    assert_equal 1, contract.hi_count
+    assert_equal 1, contract.bye_count
   end
 end

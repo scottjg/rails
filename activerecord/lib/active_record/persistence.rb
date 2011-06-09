@@ -33,7 +33,11 @@ module ActiveRecord
     # +save+ returns +false+. See ActiveRecord::Callbacks for further
     # details.
     def save(*)
-      create_or_update
+      begin
+        create_or_update
+      rescue ActiveRecord::RecordInvalid
+        false
+      end
     end
 
     # Saves the model.
@@ -273,7 +277,7 @@ module ActiveRecord
 
         @changed_attributes.except!(*changes.keys)
         primary_key = self.class.primary_key
-        self.class.update_all(changes, { primary_key => self[primary_key] }) == 1
+        self.class.unscoped.update_all(changes, { primary_key => self[primary_key] }) == 1
       end
     end
 
