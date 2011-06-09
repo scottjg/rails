@@ -489,6 +489,11 @@ module ActionView
       def image_tag(source, options = {})
         options.symbolize_keys!
 
+        if CdnConfig.enabled?
+          cdn_source = CdnConfig.etag_name(source)
+          source = "#{CdnConfig.build_host(request)}#{cdn_source}" if cdn_source != source
+        end
+
         options[:src] = path_to_image(source)
         options[:alt] ||= File.basename(options[:src], '.*').split('.').first.to_s.capitalize
 
