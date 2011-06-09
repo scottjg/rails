@@ -8,7 +8,11 @@ class ConsoleTest < Test::Unit::TestCase
     boot_rails
   end
 
-  def load_environment
+  def teardown
+    teardown_app
+  end
+
+  def load_environment(sandbox = false)
     require "#{rails_root}/config/environment"
     Rails.application.load_console
   end
