@@ -22,11 +22,12 @@ class Time
     # (i.e., if year is within either 1970..2038 or 1902..2038, depending on system architecture);
     # otherwise returns a DateTime.
     def time_with_datetime_fallback(utc_or_local, year, month=1, day=1, hour=0, min=0, sec=0, usec=0)
-      time = ::Time.send(utc_or_local, year, month, day, hour, min, sec, usec)
-      # This check is needed because Time.utc(y) returns a time object in the 2000s for 0 <= y <= 138.
-      time.year == year ? time : ::DateTime.civil_from_format(utc_or_local, year, month, day, hour, min, sec)
+      ::Time.send(utc_or_local, year, month, day, hour, min, sec, usec).tap do |time|
+        # This check is needed because Time.utc(y) returns a time object in the 2000s for 0 <= y <= 138.
+        raise unless time.year == year.to_i
+      end
     rescue
-      ::DateTime.civil_from_format(utc_or_local, year, month, day, hour, min, sec)
+      ::DateTime.civil_from_format(utc_or_local, year.to_i, month.to_i, day.to_i, hour.to_i, min.to_i, sec.to_i)
     end
 
     # Wraps class method +time_with_datetime_fallback+ with +utc_or_local+ set to <tt>:utc</tt>.

@@ -598,6 +598,8 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal Time.utc(2005), Time.time_with_datetime_fallback(:utc, 2005)
     assert_equal DateTime.civil(2039, 1, 1, 0, 0, 0, 0, 0), Time.time_with_datetime_fallback(:utc, 2039)
     assert_equal Time.utc(2005, 2, 21, 17, 44, 30, 1), Time.time_with_datetime_fallback(:utc, 2005, 2, 21, 17, 44, 30, 1) #with usec
+    assert_equal Time.utc('2005', '2', '21', '17', '44', '30'), Time.time_with_datetime_fallback(:utc, '2005', '2', '21', '17', '44', '30')
+    assert_equal Time.local('2005', '2', '21', '17', '44', '30'), Time.time_with_datetime_fallback(:local, '2005', '2', '21', '17', '44', '30')
 
     # This won't overflow on 64bit linux
     unless time_is_64bits?
@@ -610,6 +612,7 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
       0.upto(138) do |year|
         [:utc, :local].each do |format|
           assert_equal year, Time.time_with_datetime_fallback(format, year).year
+          assert_equal year, Time.time_with_datetime_fallback(format, year.to_s).year
         end
       end
     end
