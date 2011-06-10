@@ -1,9 +1,9 @@
 module ActionPack #:nodoc:
   module VERSION #:nodoc:
-    MAJOR = 2
-    MINOR = 3
-    TINY  = 9
+    MAJOR = 2 unless defined?(MAJOR)
+    MINOR = 3 unless defined?(MINOR)
+    TINY  = 9 unless defined?(TINY)
 
-    STRING = [MAJOR, MINOR, TINY].join('.')
+    STRING = [MAJOR, MINOR, TINY].join('.') unless defined?(STRING)
   end
 end
