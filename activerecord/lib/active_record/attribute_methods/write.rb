@@ -29,7 +29,7 @@ module ActiveRecord
         if (column = column_for_attribute(attr_name)) && column.number?
           @attributes[attr_name] = convert_number_column_value(value)
         else
-          @attributes[attr_name] = value
+          @attributes[attr_name] = value.presence
         end
       end
       alias_method :raw_write_attribute, :write_attribute
