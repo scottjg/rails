@@ -463,6 +463,15 @@ XML
       assert_routing({ :method => 'post', :path => 'content' }, { :controller => 'content', :action => 'create' })
     end
   end
+  
+  def test_routing_with_method
+    with_routing do |set|
+      set.draw { post 'test_test/test' => 'test_test/test#create' }
+      assert_nothing_raised {
+        post :create
+      }
+    end
+  end
 
   def test_assert_routing_in_module
     with_routing do |set|
