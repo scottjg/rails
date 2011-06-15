@@ -62,9 +62,10 @@ module Rails
             change = changed_at.call                        
             if change > last_change
               last_change = change
-              Guard::Development.reloaded
-              ActiveSupport::DescendantsTracker.clear
-              ActiveSupport::Dependencies.clear
+              ActiveSupport::Notifications.instrument("server.reloading") do
+                ActiveSupport::DescendantsTracker.clear
+                ActiveSupport::Dependencies.clear
+              end
             end
           end
         end
