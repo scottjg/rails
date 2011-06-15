@@ -55,14 +55,14 @@ module Rails
 
       initializer :set_clear_dependencies_hook do
         unless config.cache_classes
-          changed_at = Proc.new{ File.new(File.join(Rails.root, '.watchr')).mtime }
+          changed_at = Proc.new{ Guard::Development.last_update }
           last_change = changed_at.call
 
           ActionDispatch::Callbacks.before do
             change = changed_at.call                        
             if change > last_change
-              Rails.logger.info("DETECTED CHANGES")
               last_change = change
+              Guard::Development.reloaded
               ActiveSupport::DescendantsTracker.clear
               ActiveSupport::Dependencies.clear
             end
