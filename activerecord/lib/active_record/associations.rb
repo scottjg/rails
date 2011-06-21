@@ -65,11 +65,11 @@ module ActiveRecord
     end
   end
 
-  class HasAndBelongsToManyAssociationWithPrimaryKeyError < ActiveRecordError #:nodoc:
-    def initialize(reflection)
-      super("Primary key is not allowed in a has_and_belongs_to_many join table (#{reflection.options[:join_table]}).")
-    end
-  end
+  #class HasAndBelongsToManyAssociationWithPrimaryKeyError < ActiveRecordError #:nodoc:
+  #  def initialize(reflection)
+  #    super("Primary key is not allowed in a has_and_belongs_to_many join table (#{reflection.options[:join_table]}).")
+  #  end
+  #end
 
   class HasAndBelongsToManyAssociationForeignKeyNeeded < ActiveRecordError #:nodoc:
     def initialize(reflection)
@@ -1801,9 +1801,9 @@ module ActiveRecord
           end
 
           reflection.options[:join_table] ||= join_table_name(undecorated_table_name(self.to_s), undecorated_table_name(reflection.class_name))
-          if connection.supports_primary_key? && (connection.primary_key(reflection.options[:join_table]) rescue false)
-             raise HasAndBelongsToManyAssociationWithPrimaryKeyError.new(reflection)
-          end
+          #if connection.supports_primary_key? && (connection.primary_key(reflection.options[:join_table]) rescue false)
+          #   raise HasAndBelongsToManyAssociationWithPrimaryKeyError.new(reflection)
+          #end
 
           reflection
         end
