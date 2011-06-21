@@ -8,7 +8,8 @@ module ActiveRecord
     attr_accessor :includes_values, :eager_load_values, :preload_values,
                   :select_values, :group_values, :order_values, :joins_values,
                   :where_values, :having_values, :bind_values,
-                  :limit_value, :offset_value, :lock_value, :readonly_value, :create_with_value, :from_value
+                  :limit_value, :offset_value, :lock_value, :readonly_value, :create_with_value,
+                  :from_value, :reorder_value, :reverse_order_value
 
     def includes(*args)
       args.reject! {|a| a.blank? }
@@ -59,6 +60,14 @@ module ActiveRecord
 
       relation = clone
       relation.order_values += args.flatten
+      relation
+    end
+
+    def reorder(*args)
+      return self if args.blank?
+
+      relation = clone
+      relation.reorder_value = args.flatten
       relation
     end
 
@@ -149,17 +158,13 @@ module ActiveRecord
     end
 
     def reverse_order
-      order_clause = arel.order_clauses
-
-      order = order_clause.empty? ?
-        "#{table_name}.#{primary_key} DESC" :
-        reverse_sql_order(order_clause).join(', ')
-
-      except(:order).order(Arel.sql(order))
+      relation = clone
+      relation.reverse_order_value = !relation.reverse_order_value
+      relation
     end
 
     def arel
-      @arel ||= build_arel
+      @arel ||= with_default_scope.build_arel
     end
 
     def build_arel
@@ -176,7 +181,9 @@ module ActiveRecord
 
       arel.group(*@group_values.uniq.reject{|g| g.blank?}) unless @group_values.empty?
 
-      arel.order(*@order_values.uniq.reject{|o| o.blank?}) unless @order_values.empty?
+      order = @reorder_value ? @reorder_value : @order_values
+      order = reverse_sql_order(order) if @reverse_order_value
+      arel.order(*order.uniq.reject{|o| o.blank?}) unless order.empty?
 
       build_select(arel, @select_values.uniq)
 
@@ -261,7 +268,7 @@ module ActiveRecord
       )
 
       join_nodes.each do |join|
-        join_dependency.table_aliases[join.left.name.downcase] = 1
+        join_dependency.alias_tracker.aliased_name_for(join.left.name.downcase)
       end
 
       join_dependency.graft(*stashed_association_joins)
@@ -296,6 +303,8 @@ module ActiveRecord
     end
 
     def reverse_sql_order(order_query)
+      order_query = ["#{quoted_table_name}.#{quoted_primary_key} ASC"] if order_query.empty?
+
       order_query.join(', ').split(',').collect do |s|
         s.gsub!(/\sasc\Z/i, ' DESC') || s.gsub!(/\sdesc\Z/i, ' ASC') || s.concat(' DESC')
       end

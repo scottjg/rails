@@ -352,6 +352,43 @@ module CacheStoreBehavior
   end
 end
 
+# https://rails.lighthouseapp.com/projects/8994/tickets/6225-memcachestore-cant-deal-with-umlauts-and-special-characters
+# The error is caused by charcter encodings that can't be compared with ASCII-8BIT regular expressions and by special
+# characters like the umlaut in UTF-8.
+module EncodedKeyCacheBehavior
+  if defined?(Encoding)
+    Encoding.list.each do |encoding|
+      define_method "test_#{encoding.name.underscore}_encoded_values" do
+        key = "foo".force_encoding(encoding)
+        assert_equal true, @cache.write(key, "1", :raw => true)
+        assert_equal "1", @cache.read(key)
+        assert_equal "1", @cache.fetch(key)
+        assert_equal true, @cache.delete(key)
+        assert_equal "2", @cache.fetch(key, :raw => true) { "2" }
+        assert_equal 3, @cache.increment(key)
+        assert_equal 2, @cache.decrement(key)
+      end
+    end
+
+    def test_common_utf8_values
+      key = "\xC3\xBCmlaut".force_encoding(Encoding::UTF_8)
+      assert_equal true, @cache.write(key, "1", :raw => true)
+      assert_equal "1", @cache.read(key)
+      assert_equal "1", @cache.fetch(key)
+      assert_equal true, @cache.delete(key)
+      assert_equal "2", @cache.fetch(key, :raw => true) { "2" }
+      assert_equal 3, @cache.increment(key)
+      assert_equal 2, @cache.decrement(key)
+    end
+
+    def test_retains_encoding
+      key = "\xC3\xBCmlaut".force_encoding(Encoding::UTF_8)
+      assert_equal true, @cache.write(key, "1", :raw => true)
+      assert_equal Encoding::UTF_8, key.encoding
+    end
+  end
+end
+
 module CacheDeleteMatchedBehavior
   def test_delete_matched
     @cache.write("foo", "bar")
@@ -494,26 +531,6 @@ class FileStoreTest < ActiveSupport::TestCase
   include CacheDeleteMatchedBehavior
   include CacheIncrementDecrementBehavior
 
-  def test_deprecated_expires_in_on_read
-    ActiveSupport::Deprecation.silence do
-      old_cache = ActiveSupport::Cache.lookup_store(:file_store, cache_dir)
-
-      time = Time.local(2008, 4, 24)
-      Time.stubs(:now).returns(time)
-
-      old_cache.write("foo", "bar")
-      assert_equal 'bar', old_cache.read('foo', :expires_in => 60)
-
-      Time.stubs(:now).returns(time + 30)
-      assert_equal 'bar', old_cache.read('foo', :expires_in => 60)
-
-      Time.stubs(:now).returns(time + 61)
-      assert_equal 'bar', old_cache.read('foo')
-      assert_nil old_cache.read('foo', :expires_in => 60)
-      assert_nil old_cache.read('foo')
-    end
-  end
-
   def test_key_transformation
     key = @cache.send(:key_file_path, "views/index?id=1")
     assert_equal "views/index?id=1", @cache.send(:file_path_key, key)
@@ -591,18 +608,6 @@ class MemoryStoreTest < ActiveSupport::TestCase
   end
 end
 
-class SynchronizedStoreTest < ActiveSupport::TestCase
-  def setup
-    ActiveSupport::Deprecation.silence do
-      @cache = ActiveSupport::Cache.lookup_store(:memory_store, :expires_in => 60)
-    end
-  end
-
-  include CacheStoreBehavior
-  include CacheDeleteMatchedBehavior
-  include CacheIncrementDecrementBehavior
-end
-
 uses_memcached 'memcached backed store' do
   class MemCacheStoreTest < ActiveSupport::TestCase
     def setup
@@ -617,6 +622,7 @@ uses_memcached 'memcached backed store' do
     include CacheStoreBehavior
     include LocalCacheBehavior
     include CacheIncrementDecrementBehavior
+    include EncodedKeyCacheBehavior
 
     def test_raw_values
       cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
@@ -633,18 +639,6 @@ uses_memcached 'memcached backed store' do
         assert_equal "2", cache.read("foo")
       end
     end
-  end
-
-  class CompressedMemCacheStore < ActiveSupport::TestCase
-    def setup
-      ActiveSupport::Deprecation.silence do
-        @cache = ActiveSupport::Cache.lookup_store(:compressed_mem_cache_store, :expires_in => 60)
-        @cache.clear
-      end
-    end
-
-    include CacheStoreBehavior
-    include CacheIncrementDecrementBehavior
   end
 end
 

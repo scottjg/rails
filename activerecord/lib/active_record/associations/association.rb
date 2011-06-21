@@ -1,4 +1,5 @@
 require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/object/inclusion'
 
 module ActiveRecord
   module Associations
@@ -93,23 +94,9 @@ module ActiveRecord
       # by scope.scoping { ... } or with_scope { ... } etc, which affects the scope which
       # actually gets built.
       def construct_scope
-        @association_scope = association_scope if klass
-      end
-
-      def association_scope
-        scope = klass.unscoped
-        scope = scope.create_with(creation_attributes)
-        scope = scope.apply_finder_options(options.slice(:readonly, :include))
-        scope = scope.where(interpolate(options[:conditions]))
-        if select = select_value
-          scope = scope.select(select)
+        if klass
+          @association_scope = AssociationScope.new(self).scope
         end
-        scope = scope.extending(*Array.wrap(options[:extend]))
-        scope.where(construct_owner_conditions)
-      end
-
-      def aliased_table
-        klass.arel_table
       end
 
       # Set the inverse association, if possible
@@ -154,7 +141,7 @@ module ActiveRecord
             @target ||= find_target
           end
         end
-        loaded!
+        loaded! unless loaded?
         target
       rescue ActiveRecord::RecordNotFound
         reset
@@ -174,43 +161,23 @@ module ActiveRecord
           end
         end
 
-        def select_value
-          options[:select]
-        end
-
-        # Implemented by (some) subclasses
         def creation_attributes
-          { }
-        end
-
-        # Returns a hash linking the owner to the association represented by the reflection
-        def construct_owner_attributes(reflection = reflection)
           attributes = {}
-          if reflection.macro == :belongs_to
-            attributes[reflection.association_primary_key] = owner[reflection.foreign_key]
-          else
+
+          if reflection.macro.in?([:has_one, :has_many]) && !options[:through]
             attributes[reflection.foreign_key] = owner[reflection.active_record_primary_key]
 
             if reflection.options[:as]
               attributes[reflection.type] = owner.class.base_class.name
             end
           end
-          attributes
-        end
 
-        # Builds an array of arel nodes from the owner attributes hash
-        def construct_owner_conditions(table = aliased_table, reflection = reflection)
-          conditions = construct_owner_attributes(reflection).map do |attr, value|
-            table[attr].eq(value)
-          end
-          table.create_and(conditions)
+          attributes
         end
 
         # Sets the owner attributes on the given record
         def set_owner_attributes(record)
-          if owner.persisted?
-            construct_owner_attributes.each { |key, value| record[key] = value }
-          end
+          creation_attributes.each { |key, value| record[key] = value }
         end
 
         # Should be true if there is a foreign key present on the owner which

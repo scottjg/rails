@@ -1,6 +1,7 @@
 require 'active_support/core_ext/array/wrap'
 require "active_support/core_ext/module/anonymous"
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/object/inclusion'
 
 module ActiveModel #:nodoc:
 
@@ -67,7 +68,7 @@ module ActiveModel #:nodoc:
   #
   #   class TitleValidator < ActiveModel::EachValidator
   #     def validate_each(record, attribute, value)
-  #       record.errors[attribute] << 'must be Mr. Mrs. or Dr.' unless ['Mr.', 'Mrs.', 'Dr.'].include?(value)
+  #       record.errors[attribute] << 'must be Mr. Mrs. or Dr.' unless value.in?(['Mr.', 'Mrs.', 'Dr.'])
   #     end
   #   end
   #
@@ -120,7 +121,7 @@ module ActiveModel #:nodoc:
     # Override this method in subclasses with validation logic, adding errors
     # to the records +errors+ array where necessary.
     def validate(record)
-      raise NotImplementedError
+      raise NotImplementedError, "Subclasses must implement a validate(record) method."
     end
   end
 
@@ -156,7 +157,7 @@ module ActiveModel #:nodoc:
     # Override this method in subclasses with the validation logic, adding
     # errors to the records +errors+ array where necessary.
     def validate_each(record, attribute, value)
-      raise NotImplementedError
+      raise NotImplementedError, "Subclasses must implement a validate_each(record, attribute, value) method"
     end
 
     # Hook method that gets called by the initializer allowing verification

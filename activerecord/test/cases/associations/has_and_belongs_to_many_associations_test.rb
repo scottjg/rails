@@ -101,6 +101,16 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 't1', record[1]
   end
 
+  def test_proper_usage_of_primary_keys_and_join_table
+    setup_data_for_habtm_case
+
+    assert_equal 'country_id', Country.primary_key
+    assert_equal 'treaty_id', Treaty.primary_key
+
+    country = Country.first
+    assert_equal 1, country.treaties.count
+  end
+
   def test_has_and_belongs_to_many
     david = Developer.find(1)
 
@@ -223,6 +233,21 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_build
     devel = Developer.find(1)
     proj = assert_no_queries { devel.projects.build("name" => "Projekt") }
+    assert !devel.projects.loaded?
+
+    assert_equal devel.projects.last, proj
+    assert devel.projects.loaded?
+
+    assert !proj.persisted?
+    devel.save
+    assert proj.persisted?
+    assert_equal devel.projects.last, proj
+    assert_equal Developer.find(1).projects.sort_by(&:id).last, proj  # prove join table is updated
+  end
+
+  def test_new_aliased_to_build
+    devel = Developer.find(1)
+    proj = assert_no_queries { devel.projects.new("name" => "Projekt") }
     assert !devel.projects.loaded?
 
     assert_equal devel.projects.last, proj
@@ -604,7 +629,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     project = SpecialProject.create("name" => "Special Project")
     assert developer.save
     developer.projects << project
-    developer.update_attribute("name", "Bruza")
+    developer.update_column("name", "Bruza")
     assert_equal 1, Developer.connection.select_value(<<-end_sql).to_i
       SELECT count(*) FROM developers_projects
       WHERE project_id = #{project.id}
@@ -642,12 +667,12 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_find_grouped
     all_posts_from_category1 = Post.find(:all, :conditions => "category_id = 1", :joins => :categories)
     grouped_posts_of_category1 = Post.find(:all, :conditions => "category_id = 1", :group => "author_id", :select => 'count(posts.id) as posts_count', :joins => :categories)
-    assert_equal 4, all_posts_from_category1.size
-    assert_equal 1, grouped_posts_of_category1.size
+    assert_equal 5, all_posts_from_category1.size
+    assert_equal 2, grouped_posts_of_category1.size
   end
 
   def test_find_scoped_grouped
-    assert_equal 4, categories(:general).posts_grouped_by_title.size
+    assert_equal 5, categories(:general).posts_grouped_by_title.size
     assert_equal 1, categories(:technology).posts_grouped_by_title.size
   end
 

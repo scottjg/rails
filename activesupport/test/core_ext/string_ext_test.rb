@@ -3,6 +3,7 @@ require 'date'
 require 'abstract_unit'
 require 'inflector_test_cases'
 
+require 'active_support/inflector'
 require 'active_support/core_ext/string'
 require 'active_support/time'
 require 'active_support/core_ext/kernel/reporting'
@@ -251,6 +252,11 @@ class StringInflectionsTest < Test::Unit::TestCase
     assert_equal original, expected
   end
 
+  def test_string_inquiry
+    assert "production".inquiry.production?
+    assert !"production".inquiry.development?
+  end
+
   def test_truncate
     assert_equal "Hello World!", "Hello World!".truncate(12)
     assert_equal "Hello Wor...", "Hello World!!".truncate(12)
@@ -444,6 +450,12 @@ class OutputSafetyTest < ActiveSupport::TestCase
     else
       assert !'ruby'.encoding_aware?
     end
+  end
+
+  test "call to_param returns a normal string" do
+    string = @string.html_safe
+    assert string.html_safe?
+    assert !string.to_param.html_safe?
   end
 end
 

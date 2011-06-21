@@ -49,20 +49,52 @@ end
 
 desc "Generate documentation for the Rails framework"
 RDoc::Task.new do |rdoc|
+  RDOC_MAIN = 'RDOC_MAIN.rdoc'
+
+  # This is a hack.
+  #
+  # Backslashes are needed to prevent RDoc from autolinking "Rails" to the
+  # documentation of the Rails module. On the other hand, as of this
+  # writing README.rdoc is displayed in the front page of the project in
+  # GitHub, where backslashes are shown and look weird.
+  #
+  # The temporary solution is to have a README.rdoc without backslashes for
+  # GitHub, and gsub it to generate the main page of the API.
+  #
+  # Also, relative links in GitHub have to point to blobs, whereas in the API
+  # they need to point to files.
+  #
+  # The idea for the future is to have totally different files, since the
+  # API is no longer a generic entry point to Rails and deserves a
+  # dedicated main page specifically thought as an API entry point.
+  rdoc.before_running_rdoc do
+    rdoc_main = File.read('README.rdoc')
+
+    # The ^(?=\S) assertion prevents code blocks from being processed,
+    # since no autolinking happens there and RDoc displays the backslash
+    # otherwise.
+    rdoc_main.gsub!(/^(?=\S).*?\b(?=Rails)\b/) { "#$&\\" }
+    rdoc_main.gsub!(%r{link:blob/master/(\w+)/README\.rdoc}, "link:files/\\1/README_rdoc.html")
+
+    File.open(RDOC_MAIN, 'w') do |f|
+      f.write(rdoc_main)
+    end
+
+    rdoc.rdoc_files.include(RDOC_MAIN)
+  end
+
   rdoc.rdoc_dir = 'doc/rdoc'
   rdoc.title    = "Ruby on Rails Documentation"
 
   rdoc.options << '-f' << 'horo'
   rdoc.options << '-c' << 'utf-8'
-  rdoc.options << '-m' << 'README.rdoc'
-
-  rdoc.rdoc_files.include('README.rdoc')
+  rdoc.options << '-m' << RDOC_MAIN
 
   rdoc.rdoc_files.include('railties/CHANGELOG')
   rdoc.rdoc_files.include('railties/MIT-LICENSE')
   rdoc.rdoc_files.include('railties/README.rdoc')
   rdoc.rdoc_files.include('railties/lib/**/*.rb')
-  rdoc.rdoc_files.exclude('railties/lib/rails/generators/**/templates/*')
+  rdoc.rdoc_files.exclude('railties/lib/rails/generators/**/templates/**/*.rb')
 
   rdoc.rdoc_files.include('activerecord/README.rdoc')
   rdoc.rdoc_files.include('activerecord/CHANGELOG')
@@ -85,6 +117,7 @@ RDoc::Task.new do |rdoc|
   rdoc.rdoc_files.include('actionmailer/README.rdoc')
   rdoc.rdoc_files.include('actionmailer/CHANGELOG')
   rdoc.rdoc_files.include('actionmailer/lib/action_mailer/base.rb')
+  rdoc.rdoc_files.include('actionmailer/lib/action_mailer/mail_helper.rb')
   rdoc.rdoc_files.exclude('actionmailer/lib/action_mailer/vendor/*')
 
   rdoc.rdoc_files.include('activesupport/README.rdoc')

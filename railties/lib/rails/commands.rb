@@ -1,10 +1,13 @@
+require 'active_support/core_ext/object/inclusion'
+
 ARGV << '--help' if ARGV.empty?
 
 aliases = {
   "g"  => "generate",
   "c"  => "console",
   "s"  => "server",
-  "db" => "dbconsole"
+  "db" => "dbconsole",
+  "r"  => "runner"
 }
 
 command = ARGV.shift
@@ -12,15 +15,15 @@ command = aliases[command] || command
 
 case command
 when 'generate', 'destroy', 'plugin'
+  require 'rails/generators'
+
   if command == 'plugin' && ARGV.first == 'new'
     require "rails/commands/plugin_new"
   else
     require APP_PATH
     Rails.application.require_environment!
 
-    if defined?(ENGINE_PATH) && engine = Rails::Engine.find(ENGINE_PATH)
-      Rails.application = engine
-    end
+    Rails.application.load_generators
 
     require "rails/commands/#{command}"
   end
@@ -69,7 +72,7 @@ when '--version', '-v'
   require 'rails/commands/application'
 
 else
-  puts "Error: Command not recognized" unless %w(-h --help).include?(command)
+  puts "Error: Command not recognized" unless command.in?(['-h', '--help'])
   puts <<-EOT
 Usage: rails COMMAND [ARGS]
 
@@ -88,7 +91,7 @@ In addition to those, there are:
  benchmarker  See how fast a piece of code runs
  profiler     Get profile information from a piece of code
  plugin       Install a plugin
- runner       Run a piece of code in the application environment
+ runner       Run a piece of code in the application environment (short-cut alias: "r")
 
 All commands can be run with -h for more information.
   EOT

@@ -9,8 +9,14 @@ module ActiveRecord
         super
       end
 
-      def insert_record(record, validate = true)
-        return if record.new_record? && !record.save(:validate => validate)
+      def insert_record(record, validate = true, raise = false)
+        if record.new_record?
+          if raise
+            record.save!(:validate => validate)
+          else
+            return unless record.save(:validate => validate)
+          end
+        end
 
         if options[:insert_sql]
           owner.connection.insert(interpolate(options[:insert_sql], record))
@@ -24,10 +30,6 @@ module ActiveRecord
         end
 
         record
-      end
-
-      def association_scope
-        super.joins(construct_joins)
       end
 
       private
@@ -46,24 +48,6 @@ module ActiveRecord
             ).compile_delete
             owner.connection.delete stmt.to_sql
           end
-        end
-
-        def construct_joins
-          right = join_table
-          left  = reflection.klass.arel_table
-
-          condition = left[reflection.klass.primary_key].eq(
-            right[reflection.association_foreign_key])
-
-          right.create_join(right, right.create_on(condition))
-        end
-
-        def construct_owner_conditions
-          super(join_table)
-        end
-
-        def select_value
-          super || reflection.klass.arel_table[Arel.star]
         end
 
         def invertible_for?(record)

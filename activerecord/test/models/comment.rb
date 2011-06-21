@@ -6,8 +6,10 @@ class Comment < ActiveRecord::Base
   scope :for_first_author,
               :joins => :post,
               :conditions => { "posts.author_id" => 1 }
-
+  scope :created
+  
   belongs_to :post, :counter_cache => true
+  has_many :ratings
 
   def self.what_are_you
     'a comment...'

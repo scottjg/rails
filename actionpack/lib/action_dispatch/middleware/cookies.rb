@@ -1,4 +1,5 @@
-require "active_support/core_ext/object/blank"
+require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/hash/keys'
 
 module ActionDispatch
   class Request
@@ -59,7 +60,7 @@ module ActionDispatch
   # The option symbols for setting cookies are:
   #
   # * <tt>:value</tt> - The cookie's value or list of values (as an array).
-  # * <tt>:path</tt> - The path for which this cookie applies.  Defaults to the root
+  # * <tt>:path</tt> - The path for which this cookie applies. Defaults to the root
   #   of the application.
   # * <tt>:domain</tt> - The domain for which this cookie applies so you can
   #   restrict to the domain level. If you use a schema like www.example.com
@@ -83,7 +84,7 @@ module ActionDispatch
     # Raised when storing more than 4K of session data.
     class CookieOverflow < StandardError; end
 
-    class CookieJar < Hash #:nodoc:
+    class CookieJar #:nodoc:
 
       # This regular expression is used to split the levels of a domain.
       # The top level domain can be any string without a period or
@@ -115,13 +116,22 @@ module ActionDispatch
         @delete_cookies = {}
         @host = host
         @secure = secure
-
-        super()
+        @closed = false
+        @cookies = {}
       end
+
+      attr_reader :closed
+      alias :closed? :closed
+      def close!; @closed = true end
 
       # Returns the value of the cookie by +name+, or +nil+ if no such cookie exists.
       def [](name)
-        super(name.to_s)
+        @cookies[name.to_s]
+      end
+
+      def update(other_hash)
+        @cookies.update other_hash.stringify_keys
+        self
       end
 
       def handle_options(options) #:nodoc:
@@ -145,6 +155,7 @@ module ActionDispatch
       # Sets the cookie named +name+. The second argument may be the very cookie
       # value, or a hash of options as documented above.
       def []=(key, options)
+        raise ClosedError, :cookies if closed?
         if options.is_a?(Hash)
           options.symbolize_keys!
           value = options[:value]
@@ -153,12 +164,12 @@ module ActionDispatch
           options = { :value => value }
         end
 
-        value = super(key.to_s, value)
+        value = @cookies[key.to_s] = value
 
         handle_options(options)
 
-        @set_cookies[key] = options
-        @delete_cookies.delete(key)
+        @set_cookies[key.to_s] = options
+        @delete_cookies.delete(key.to_s)
         value
       end
 
@@ -170,9 +181,14 @@ module ActionDispatch
 
         handle_options(options)
 
-        value = super(key.to_s)
-        @delete_cookies[key] = options
+        value = @cookies.delete(key.to_s)
+        @delete_cookies[key.to_s] = options
         value
+      end
+
+      # Removes all cookies on the client machine by calling <tt>delete</tt> for each cookie
+      def clear(options = {})
+        @cookies.each_key{ |k| delete(k, options) }
       end
 
       # Returns a jar that'll automatically set the assigned cookies to have an expiration date 20 years from now. Example:
@@ -212,6 +228,11 @@ module ActionDispatch
         @delete_cookies.each { |k, v| ::Rack::Utils.delete_cookie_header!(headers, k, v) }
       end
 
+      def recycle! #:nodoc:
+        @set_cookies.clear
+        @delete_cookies.clear
+      end
+
       private
 
         def write_cookie?(cookie)
@@ -225,6 +246,7 @@ module ActionDispatch
       end
 
       def []=(key, options)
+        raise ClosedError, :cookies if closed?
         if options.is_a?(Hash)
           options.symbolize_keys!
         else
@@ -263,6 +285,7 @@ module ActionDispatch
       end
 
       def []=(key, options)
+        raise ClosedError, :cookies if closed?
         if options.is_a?(Hash)
           options.symbolize_keys!
           options[:value] = @verifier.generate(options[:value])
@@ -293,7 +316,7 @@ module ActionDispatch
 
         if secret.length < SECRET_MIN_LENGTH
           raise ArgumentError, "Secret should be something secure, " +
-            "like \"#{ActiveSupport::SecureRandom.hex(16)}\".  The value you " +
+            "like \"#{SecureRandom.hex(16)}\". The value you " +
             "provided, \"#{secret}\", is shorter than the minimum length " +
             "of #{SECRET_MIN_LENGTH} characters"
         end
@@ -305,6 +328,7 @@ module ActionDispatch
     end
 
     def call(env)
+      cookie_jar = nil
       status, headers, body = @app.call(env)
 
       if cookie_jar = env['action_dispatch.cookies']
@@ -315,6 +339,9 @@ module ActionDispatch
       end
 
       [status, headers, body]
+    ensure
+      cookie_jar = ActionDispatch::Request.new(env).cookie_jar unless cookie_jar
+      cookie_jar.close!
     end
   end
 end

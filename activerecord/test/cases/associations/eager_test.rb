@@ -68,8 +68,8 @@ class EagerAssociationTest < ActiveRecord::TestCase
 
   def test_with_ordering
     list = Post.find(:all, :include => :comments, :order => "posts.id DESC")
-    [:eager_other, :sti_habtm, :sti_post_and_comments, :sti_comments,
-     :authorless, :thinking, :welcome
+    [:other_by_mary, :other_by_bob, :misc_by_mary, :misc_by_bob, :eager_other,
+     :sti_habtm, :sti_post_and_comments, :sti_comments, :authorless, :thinking, :welcome
     ].each_with_index do |post, index|
       assert_equal posts(post), list[index]
     end
@@ -97,25 +97,25 @@ class EagerAssociationTest < ActiveRecord::TestCase
   def test_preloading_has_many_in_multiple_queries_with_more_ids_than_database_can_handle
     Post.connection.expects(:in_clause_length).at_least_once.returns(5)
     posts = Post.find(:all, :include=>:comments)
-    assert_equal 7, posts.size
+    assert_equal 11, posts.size
   end
 
   def test_preloading_has_many_in_one_queries_when_database_has_no_limit_on_ids_it_can_handle
     Post.connection.expects(:in_clause_length).at_least_once.returns(nil)
     posts = Post.find(:all, :include=>:comments)
-    assert_equal 7, posts.size
+    assert_equal 11, posts.size
   end
 
   def test_preloading_habtm_in_multiple_queries_with_more_ids_than_database_can_handle
     Post.connection.expects(:in_clause_length).at_least_once.returns(5)
     posts = Post.find(:all, :include=>:categories)
-    assert_equal 7, posts.size
+    assert_equal 11, posts.size
   end
 
   def test_preloading_habtm_in_one_queries_when_database_has_no_limit_on_ids_it_can_handle
     Post.connection.expects(:in_clause_length).at_least_once.returns(nil)
     posts = Post.find(:all, :include=>:categories)
-    assert_equal 7, posts.size
+    assert_equal 11, posts.size
   end
 
   def test_load_associated_records_in_one_query_when_adapter_has_no_limit
@@ -169,6 +169,16 @@ class EagerAssociationTest < ActiveRecord::TestCase
     categories.each do |category|
       assert_equal [comment], category.posts[0].comments
     end
+  end
+
+  def test_associations_loaded_for_all_records
+    post = Post.create!(:title => 'foo', :body => "I like cars!")
+    SpecialComment.create!(:body => 'Come on!', :post => post)
+    first_category = Category.create! :name => 'First!', :posts => [post]
+    second_category = Category.create! :name => 'Second!', :posts => [post]
+
+    categories = Category.where(:id => [first_category.id, second_category.id]).includes(:posts => :special_comments)
+    assert_equal categories.map { |category| category.posts.first.special_comments.loaded? }, [true, true]
   end
 
   def test_finding_with_includes_on_has_many_association_with_same_include_includes_only_once
@@ -370,6 +380,18 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal subscriptions, subscriber.subscriptions.sort_by(&:id)
   end
 
+  def test_string_id_column_joins
+    s = Subscriber.create! do |c|
+      c.id = "PL"
+    end
+
+    b = Book.create!
+
+    Subscription.create!(:subscriber_id => "PL", :book_id => b.id)
+    s.reload
+    s.book_ids = s.book_ids
+  end
+
   def test_eager_load_has_many_through_with_string_keys
     books = books(:awdr, :rfr)
     subscriber = Subscriber.find(subscribers(:second).id, :include => :books)
@@ -436,6 +458,12 @@ class EagerAssociationTest < ActiveRecord::TestCase
     post_tags = Post.find(posts(:welcome).id).misc_tags
     eager_post_tags = Post.find(1, :include => :misc_tags).misc_tags
     assert_equal post_tags, eager_post_tags
+  end
+
+  def test_eager_with_has_many_through_join_model_ignores_default_includes
+    assert_nothing_raised do
+      authors(:david).comments_on_posts_with_default_include.to_a
+    end
   end
 
   def test_eager_with_has_many_and_limit
@@ -663,6 +691,46 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_raise(ActiveRecord::ConfigurationError, "Association was not found; perhaps you misspelled it?  You specified :include => :monkeys, :elephants") {
       Post.find(6, :include=>[ :monkeys, :elephants ])
     }
+  end
+
+  def test_eager_with_default_scope
+    developer = EagerDeveloperWithDefaultScope.where(:name => 'David').first
+    projects = Project.order(:id).all
+    assert_no_queries do
+      assert_equal(projects, developer.projects)
+    end
+  end
+
+  def test_eager_with_default_scope_as_class_method
+    developer = EagerDeveloperWithClassMethodDefaultScope.where(:name => 'David').first
+    projects = Project.order(:id).all
+    assert_no_queries do
+      assert_equal(projects, developer.projects)
+    end
+  end
+
+  def test_eager_with_default_scope_as_lambda
+    developer = EagerDeveloperWithLambdaDefaultScope.where(:name => 'David').first
+    projects = Project.order(:id).all
+    assert_no_queries do
+      assert_equal(projects, developer.projects)
+    end
+  end
+
+  def test_eager_with_default_scope_as_block
+    developer = EagerDeveloperWithBlockDefaultScope.where(:name => 'David').first
+    projects = Project.order(:id).all
+    assert_no_queries do
+      assert_equal(projects, developer.projects)
+    end
+  end
+
+  def test_eager_with_default_scope_as_callable
+    developer = EagerDeveloperWithCallableDefaultScope.where(:name => 'David').first
+    projects = Project.order(:id).all
+    assert_no_queries do
+      assert_equal(projects, developer.projects)
+    end
   end
 
   def find_all_ordered(className, include=nil)
