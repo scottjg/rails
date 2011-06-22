@@ -55,16 +55,22 @@ module Rails
 
       initializer :set_clear_dependencies_hook do
         unless config.cache_classes
-          changed_at = Proc.new{ File.new(File.join(Rails.root, '.watchr')).mtime }
-          last_change = changed_at.call
+          changed_at = Proc.new do
+            ActiveSupport::Dependencies.autoload_paths.map do |p|
+              Dir["#{p}/**/*.rb"].map{|f| File.mtime(f) }
+            end.flatten.max
+          end
+
+          last_change = Time.now
 
           ActionDispatch::Callbacks.before do
-            change = changed_at.call                        
+            change = changed_at.call
             if change > last_change
-              Rails.logger.info("DETECTED CHANGES")
               last_change = change
-              ActiveSupport::DescendantsTracker.clear
-              ActiveSupport::Dependencies.clear
+              ActiveSupport::Notifications.instrument("active_support.dependencies.clear") do
+                ActiveSupport::DescendantsTracker.clear
+                ActiveSupport::Dependencies.clear
+              end
             end
           end
         end
