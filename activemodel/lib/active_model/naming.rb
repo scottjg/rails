@@ -18,10 +18,14 @@ module ActiveModel
       @element = ActiveSupport::Inflector.underscore(ActiveSupport::Inflector.demodulize(self)).freeze
       @human = ActiveSupport::Inflector.humanize(@element).freeze
       @collection = ActiveSupport::Inflector.tableize(self).freeze
-      @partial_path = "#{@collection}/#{@element}".freeze
       @param_key = (namespace ? _singularize(@unnamespaced) : @singular).freeze
       @route_key = (namespace ? ActiveSupport::Inflector.pluralize(@param_key) : @plural).freeze
       @i18n_key = self.underscore.to_sym
+
+      parent, parent_collection = @klass, @collection
+      parent_collection = (parent = parent.superclass).model_name.collection while
+        parent.superclass.respond_to? :model_name
+      @partial_path = "#{parent_collection}/#{@element}".freeze
     end
 
     # Transform the model name into a more humane format, using I18n. By default,
