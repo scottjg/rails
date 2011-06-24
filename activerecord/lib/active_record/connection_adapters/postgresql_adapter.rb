@@ -896,7 +896,7 @@ module ActiveRecord
 
         # Construct a clean list of column names from the ORDER BY clause, removing
         # any ASC/DESC modifiers
-        order_columns = order_by.split(',').collect { |s| s.split.first }
+        order_columns = order_by.collect { |s| s.gsub(/\s+(ASC|DESC)\s*/i, '') }
         order_columns.delete_if { |c| c.blank? }
         order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
