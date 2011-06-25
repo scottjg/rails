@@ -61,6 +61,7 @@ platforms :jruby do
   gem "ruby-debug", ">= 0.10.3"
   gem "json"
   gem "activerecord-jdbcsqlite3-adapter"
+  gem "sprockets", :git => "git://github.com/leemhenson/sprockets.git", :branch => "jruby_pathname"
 
   # This is needed by now to let tests work on JRuby
   # TODO: When the JRuby guys merge jruby-openssl in
