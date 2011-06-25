@@ -113,8 +113,8 @@ module ActionView
 
         options.symbolize_keys!
 
-        defaults  = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
-        currency  = I18n.translate(:'number.currency.format', :locale => options[:locale], :default => {})
+        defaults  = I18n.translate(:'number.format', :locale => options[:locale], :default => lambda {{}})
+        currency  = I18n.translate(:'number.currency.format', :locale => options[:locale], :default => lambda {{}})
 
         defaults  = DEFAULT_CURRENCY_VALUES.merge(defaults).merge!(currency)
         defaults[:negative_format] = "-" + options[:format] if options[:format]
@@ -164,8 +164,8 @@ module ActionView
 
         options.symbolize_keys!
 
-        defaults   = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
-        percentage = I18n.translate(:'number.percentage.format', :locale => options[:locale], :default => {})
+        defaults   = I18n.translate(:'number.format', :locale => options[:locale], :default => lambda {{}})
+        percentage = I18n.translate(:'number.percentage.format', :locale => options[:locale], :default => lambda {{}})
         defaults  = defaults.merge(percentage)
 
         options = options.reverse_merge(defaults)
@@ -210,7 +210,7 @@ module ActionView
           end
         end
 
-        defaults = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
+        defaults = I18n.translate(:'number.format', :locale => options[:locale], :default => lambda {{}})
         options = options.reverse_merge(defaults)
 
         parts = number.to_s.split('.')
@@ -258,8 +258,8 @@ module ActionView
           end
         end
 
-        defaults           = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
-        precision_defaults = I18n.translate(:'number.precision.format', :locale => options[:locale], :default => {})
+        defaults           = I18n.translate(:'number.format', :locale => options[:locale], :default => lambda {{}})
+        precision_defaults = I18n.translate(:'number.precision.format', :locale => options[:locale], :default => lambda {{}})
         defaults           = defaults.merge(precision_defaults)
 
         options = options.reverse_merge(defaults)  # Allow the user to unset default values: Eg.: :significant => false
@@ -334,8 +334,8 @@ module ActionView
           end
         end
 
-        defaults = I18n.translate(:'number.format', :locale => options[:locale], :default => {})
-        human    = I18n.translate(:'number.human.format', :locale => options[:locale], :default => {})
+        defaults = I18n.translate(:'number.format', :locale => options[:locale], :default => lambda {{}})
+        human    = I18n.translate(:'number.human.format', :locale => options[:locale], :default => lambda {{}})
         defaults = defaults.merge(human)
 
         options = options.reverse_merge(defaults)
