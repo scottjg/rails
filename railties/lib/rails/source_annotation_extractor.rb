@@ -49,7 +49,7 @@ class SourceAnnotationExtractor
   # with their annotations. Only files with annotations are included, and only
   # those with extension +.builder+, +.rb+, +.rxml+, +.rhtml+, and +.erb+
   # are taken into account.
-  def find(dirs=%w(app lib test))
+  def find(dirs=%w(app lib test db config))
     dirs.inject({}) { |h, dir| h.update(find_in(dir)) }
   end
 
