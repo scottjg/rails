@@ -32,6 +32,8 @@ module ActiveModel
       #   # => {"id": 1, "name": "Konata Izumi", "age": 16,
       #         "created_at": "2006/08/01", "awesome": true}
       #
+      # This behavior can be achieved by setting the <tt>:root</tt> option to +false+ as in:
+      #
       # The remainder of the examples in this section assume include_root_in_json is set to
       # <tt>false</tt>.
       #
@@ -83,7 +85,12 @@ module ActiveModel
       def as_json(options = nil)
         hash = serializable_hash(options)
 
-        if include_root_in_json
+        include_root = include_root_in_json
+        if options.try(:key?, :root)
+          include_root = options[:root]
+        end
+
+        if include_root
           custom_root = options && options[:root]
           hash = { custom_root || self.class.model_name.element => hash }
         end
@@ -91,9 +98,9 @@ module ActiveModel
         hash
       end
 
-      def from_json(json)
+      def from_json(json, include_root=include_root_in_json)
         hash = ActiveSupport::JSON.decode(json)
-        hash = hash.values.first if include_root_in_json
+        hash = hash.values.first if include_root
         self.attributes = hash
         self
       end
