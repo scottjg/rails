@@ -478,6 +478,19 @@ class BasicsTest < ActiveRecord::TestCase
   def test_hashing
     assert_equal [ Topic.find(1) ], [ Topic.find(2).topic ] & [ Topic.find(1) ]
   end
+  
+  def test_comparison
+    topic_1 = Topic.create!
+    topic_2 = Topic.create!
+    
+    assert_equal [topic_2, topic_1].sort, [topic_1, topic_2]
+  end
+
+  def test_comparison_with_different_objects
+    topic = Topic.create
+    category = Category.create(:name => "comparison")
+    assert_nil topic <=> category
+  end
 
   def test_readonly_attributes
     assert_equal Set.new([ 'title' , 'comments_count' ]), ReadonlyTitlePost.readonly_attributes
@@ -500,13 +513,6 @@ class BasicsTest < ActiveRecord::TestCase
     weird.update_column('a$b', 'value2')
     weird.reload
     assert_equal 'value2', weird.send('a$b')
-  end
-
-  def test_attributes_guard_protected_attributes_is_deprecated
-    attributes = { "title" => "An amazing title" }
-    post = ProtectedTitlePost.new
-    assert_deprecated { post.send(:attributes=, attributes, false) }
-    assert_equal "An amazing title", post.title
   end
 
   def test_multiparameter_attributes_on_date
@@ -1769,6 +1775,13 @@ class BasicsTest < ActiveRecord::TestCase
   def test_compute_type_no_method_error
     ActiveSupport::Dependencies.stubs(:constantize).raises(NoMethodError)
     assert_raises NoMethodError do
+      ActiveRecord::Base.send :compute_type, 'InvalidModel'
+    end
+  end
+
+  def test_compute_type_argument_error
+    ActiveSupport::Dependencies.stubs(:constantize).raises(ArgumentError)
+    assert_raises ArgumentError do
       ActiveRecord::Base.send :compute_type, 'InvalidModel'
     end
   end

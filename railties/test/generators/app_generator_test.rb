@@ -10,6 +10,7 @@ DEFAULT_APP_FILES = %w(
   config.ru
   app/assets/javascripts
   app/assets/stylesheets
+  app/assets/images
   app/controllers
   app/helpers
   app/mailers
@@ -22,8 +23,8 @@ DEFAULT_APP_FILES = %w(
   doc
   lib
   lib/tasks
+  lib/assets
   log
-  app/assets/images
   script/rails
   test/fixtures
   test/functional
@@ -47,11 +48,12 @@ class AppGeneratorTest < Rails::Generators::TestCase
     ::DEFAULT_APP_FILES
   end
 
-  def test_application_controller_and_layout_files
+  def test_assets
     run_generator
     assert_file "app/views/layouts/application.html.erb", /stylesheet_link_tag\s+"application"/
     assert_file "app/views/layouts/application.html.erb", /javascript_include_tag\s+"application"/
     assert_file "app/assets/stylesheets/application.css"
+    assert_file "config/application.rb", /config\.assets\.enabled = true/
   end
 
   def test_invalid_application_name_raises_an_error
@@ -123,18 +125,26 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_config_database_is_added_by_default
     run_generator
     assert_file "config/database.yml", /sqlite3/
-    assert_file "Gemfile", /^gem\s+["']sqlite3["']$/
+    unless defined?(JRUBY_VERSION)
+      assert_file "Gemfile", /^gem\s+["']sqlite3["']$/
+    else
+      assert_file "Gemfile", /^gem\s+["']activerecord-jdbcsqlite3-adapter["']$/
+    end
   end
 
   def test_config_another_database
     run_generator([destination_root, "-d", "mysql"])
     assert_file "config/database.yml", /mysql/
-    assert_file "Gemfile", /^gem\s+["']mysql2["']$/
+    unless defined?(JRUBY_VERSION)
+      assert_file "Gemfile", /^gem\s+["']mysql2["']$/
+    else
+      assert_file "Gemfile", /^gem\s+["']activerecord-jdbcmysql-adapter["']$/
+    end
   end
 
   def test_config_jdbcmysql_database
     run_generator([destination_root, "-d", "jdbcmysql"])
-    assert_file "config/database.yml", /jdbcmysql/
+    assert_file "config/database.yml", /mysql/
     assert_file "Gemfile", /^gem\s+["']activerecord-jdbcmysql-adapter["']$/
     # TODO: When the JRuby guys merge jruby-openssl in
     # jruby this will be removed
@@ -143,28 +153,48 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_config_jdbcsqlite3_database
     run_generator([destination_root, "-d", "jdbcsqlite3"])
-    assert_file "config/database.yml", /jdbcsqlite3/
+    assert_file "config/database.yml", /sqlite3/
     assert_file "Gemfile", /^gem\s+["']activerecord-jdbcsqlite3-adapter["']$/
   end
 
   def test_config_jdbcpostgresql_database
     run_generator([destination_root, "-d", "jdbcpostgresql"])
-    assert_file "config/database.yml", /jdbcpostgresql/
+    assert_file "config/database.yml", /postgresql/
     assert_file "Gemfile", /^gem\s+["']activerecord-jdbcpostgresql-adapter["']$/
+  end
+
+  def test_config_jdbc_database
+    run_generator([destination_root, "-d", "jdbc"])
+    assert_file "config/database.yml", /jdbc/
+    assert_file "config/database.yml", /mssql/
+    assert_file "Gemfile", /^gem\s+["']activerecord-jdbc-adapter["']$/
+  end
+
+  def test_config_jdbc_database_when_no_option_given
+    if defined?(JRUBY_VERSION)
+      run_generator([destination_root])
+      assert_file "config/database.yml", /sqlite3/
+      assert_file "Gemfile", /^gem\s+["']activerecord-jdbcsqlite3-adapter["']$/
+    end
   end
 
   def test_generator_if_skip_active_record_is_given
     run_generator [destination_root, "--skip-active-record"]
     assert_no_file "config/database.yml"
+    assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
     assert_file "test/test_helper.rb" do |helper_content|
       assert_no_match(/fixtures :all/, helper_content)
     end
     assert_file "test/performance/browsing_test.rb"
   end
 
-  def test_active_record_is_removed_from_frameworks_if_skip_active_record_is_given
-    run_generator [destination_root, "--skip-active-record"]
-    assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
+  def test_generator_if_skip_active_record_is_given
+    run_generator [destination_root, "--skip-sprockets"]
+    assert_file "config/application.rb" do |content|
+      assert_match(/#\s+require\s+["']sprockets\/railtie["']/, content)
+      assert_no_match(/config\.assets\.enabled = true/, content)
+    end
+    assert_file "test/performance/browsing_test.rb"
   end
 
   def test_creation_of_a_test_directory

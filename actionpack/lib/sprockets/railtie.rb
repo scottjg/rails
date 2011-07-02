@@ -1,15 +1,11 @@
 module Sprockets
   autoload :Helpers, "sprockets/helpers"
 
+  # TODO: Get rid of config.assets.enabled
   class Railtie < ::Rails::Railtie
-    def self.using_coffee?
-      require 'coffee-script'
-      defined?(CoffeeScript)
-    rescue LoadError
-      false
+    rake_tasks do
+      load "sprockets/assets.rake"
     end
-
-    config.app_generators.javascript_engine :coffee if using_coffee?
 
     # Configure ActionController to use sprockets.
     initializer "sprockets.set_configs", :after => "action_controller.set_configs" do |app|
@@ -46,43 +42,61 @@ module Sprockets
     end
 
     protected
+      def asset_environment(app)
+        require "sprockets"
 
-    def asset_environment(app)
-      require "sprockets"
-      assets = app.config.assets
-      env = Sprockets::Environment.new(app.root.to_s)
-      env.static_root = File.join(app.root.join("public"), assets.prefix)
-      env.paths.concat assets.paths
-      env.logger = Rails.logger
-      env.js_compressor = expand_js_compressor(assets.js_compressor) if assets.compress
-      env.css_compressor = expand_css_compressor(assets.css_compressor) if assets.compress
-      env
-    end
+        assets = app.config.assets
 
-    def expand_js_compressor(sym)
-      case sym
-      when :closure
-        require 'closure-compiler'
-        Closure::Compiler.new
-      when :uglifier
-        require 'uglifier'
-        Uglifier.new
-      when :yui
-        require 'yui/compressor'
-        YUI::JavaScriptCompressor.new
-      else
-        sym
+        env = Sprockets::Environment.new(app.root.to_s)
+
+        env.static_root = File.join(app.root.join("public"), assets.prefix)
+
+        if env.respond_to?(:append_path)
+          assets.paths.each { |path| env.append_path(path) }
+        else
+          env.paths.concat assets.paths
+        end
+
+        env.logger = Rails.logger
+
+        if env.respond_to?(:cache)
+          env.cache = Rails.cache
+        end
+
+        if assets.compress
+          # temporarily hardcode default JS compressor to uglify. Soon, it will work
+          # the same as SCSS, where a default plugin sets the default.
+          env.js_compressor  = expand_js_compressor(assets.js_compressor || :uglifier)
+          env.css_compressor = expand_css_compressor(assets.css_compressor)
+        end
+
+        env
       end
-    end
 
-    def expand_css_compressor(sym)
-      case sym
-      when :yui
-        require 'yui/compressor'
-        YUI::CssCompressor.new
-      else
-        sym
+      def expand_js_compressor(sym)
+        case sym
+        when :closure
+          require 'closure-compiler'
+          Closure::Compiler.new
+        when :uglifier
+          require 'uglifier'
+          Uglifier.new
+        when :yui
+          require 'yui/compressor'
+          YUI::JavaScriptCompressor.new
+        else
+          sym
+        end
       end
-    end
+
+      def expand_css_compressor(sym)
+        case sym
+        when :yui
+          require 'yui/compressor'
+          YUI::CssCompressor.new
+        else
+          sym
+        end
+      end
   end
 end

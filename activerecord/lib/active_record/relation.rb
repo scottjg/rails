@@ -6,13 +6,13 @@ module ActiveRecord
     JoinOperation = Struct.new(:relation, :join_class, :on)
     ASSOCIATION_METHODS = [:includes, :eager_load, :preload]
     MULTI_VALUE_METHODS = [:select, :group, :order, :joins, :where, :having, :bind]
-    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder]
+    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :from, :reorder, :reverse_order]
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
     # These are explicitly delegated to improve performance (avoids method_missing)
     delegate :to_xml, :to_yaml, :length, :collect, :map, :each, :all?, :include?, :to => :to_a
-    delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key, :to => :klass
+    delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key, :connection, :column_hash,:to => :klass
 
     attr_reader :table, :klass, :loaded
     attr_accessor :extensions, :default_scoped
@@ -29,6 +29,7 @@ module ActiveRecord
       SINGLE_VALUE_METHODS.each {|v| instance_variable_set(:"@#{v}_value", nil)}
       (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
       @extensions = []
+      @create_with_value = {}
     end
 
     def insert(values)
@@ -293,7 +294,7 @@ module ActiveRecord
     end
 
     # Destroy an object (or multiple objects) that has the given id, the object is instantiated first,
-    # therefore all callbacks and filters are fired off before the object is deleted.  This method is
+    # therefore all callbacks and filters are fired off before the object is deleted. This method is
     # less efficient than ActiveRecord#delete but allows cleanup methods and other actions to be run.
     #
     # This essentially finds the object (or multiple objects) with the given id, creates a new object
@@ -322,7 +323,7 @@ module ActiveRecord
     # Deletes the records matching +conditions+ without instantiating the records first, and hence not
     # calling the +destroy+ method nor invoking callbacks. This is a single SQL DELETE statement that
     # goes straight to the database, much more efficient than +destroy_all+. Be careful with relations
-    # though, in particular <tt>:dependent</tt> rules defined on associations are not honored.  Returns
+    # though, in particular <tt>:dependent</tt> rules defined on associations are not honored. Returns
     # the number of rows affected.
     #
     # ==== Parameters
@@ -403,7 +404,7 @@ module ActiveRecord
     end
 
     def scope_for_create
-      @scope_for_create ||= where_values_hash.merge(@create_with_value || {})
+      @scope_for_create ||= where_values_hash.merge(create_with_value)
     end
 
     def eager_loading?

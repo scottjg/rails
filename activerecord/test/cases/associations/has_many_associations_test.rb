@@ -2,6 +2,7 @@ require "cases/helper"
 require 'models/developer'
 require 'models/project'
 require 'models/company'
+require 'models/contract'
 require 'models/topic'
 require 'models/reply'
 require 'models/category'
@@ -536,6 +537,35 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 3, companies(:first_firm).clients_of_firm(true).size
   end
 
+  def test_transactions_when_adding_to_persisted
+    good = Client.new(:name => "Good")
+    bad  = Client.new(:name => "Bad", :raise_on_save => true)
+
+    begin
+      companies(:first_firm).clients_of_firm.concat(good, bad)
+    rescue Client::RaisedOnSave
+    end
+
+    assert !companies(:first_firm).clients_of_firm(true).include?(good)
+  end
+
+  def test_transactions_when_adding_to_new_record
+    assert_no_queries do
+      firm = Firm.new
+      firm.clients_of_firm.concat(Client.new("name" => "Natural Company"))
+    end
+  end
+
+  def test_new_aliased_to_build
+    company = companies(:first_firm)
+    new_client = assert_no_queries { company.clients_of_firm.new("name" => "Another Client") }
+    assert !company.clients_of_firm.loaded?
+
+    assert_equal "Another Client", new_client.name
+    assert !new_client.persisted?
+    assert_equal new_client, company.clients_of_firm.last
+  end
+
   def test_build
     company = companies(:first_firm)
     new_client = assert_no_queries { company.clients_of_firm.build("name" => "Another Client") }
@@ -765,6 +795,29 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     companies(:first_firm).clients_of_firm.delete_all
     assert_equal 0, companies(:first_firm).clients_of_firm.size
     assert_equal 0, companies(:first_firm).clients_of_firm(true).size
+  end
+
+  def test_transaction_when_deleting_persisted
+    good = Client.new(:name => "Good")
+    bad  = Client.new(:name => "Bad", :raise_on_destroy => true)
+
+    companies(:first_firm).clients_of_firm = [good, bad]
+
+    begin
+      companies(:first_firm).clients_of_firm.destroy(good, bad)
+    rescue Client::RaisedOnDestroy
+    end
+
+    assert_equal [good, bad], companies(:first_firm).clients_of_firm(true)
+  end
+
+  def test_transaction_when_deleting_new_record
+    assert_no_queries do
+      firm = Firm.new
+      client = Client.new("name" => "New Client")
+      firm.clients_of_firm << client
+      firm.clients_of_firm.destroy(client)
+    end
   end
 
   def test_clearing_an_association_collection
@@ -1098,6 +1151,27 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
       firm.accounts = [account]
     end
     assert_equal orig_accounts, firm.accounts
+  end
+
+  def test_transactions_when_replacing_on_persisted
+    good = Client.new(:name => "Good")
+    bad  = Client.new(:name => "Bad", :raise_on_save => true)
+
+    companies(:first_firm).clients_of_firm = [good]
+
+    begin
+      companies(:first_firm).clients_of_firm = [bad]
+    rescue Client::RaisedOnSave
+    end
+
+    assert_equal [good], companies(:first_firm).clients_of_firm(true)
+  end
+
+  def test_transactions_when_replacing_on_new_record
+    assert_no_queries do
+      firm = Firm.new
+      firm.clients_of_firm = [Client.new("name" => "New Client")]
+    end
   end
 
   def test_get_ids
@@ -1474,5 +1548,20 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     post = SubStiPost.create! :title => "fooo", :body => "baa"
     tagging = Tagging.create! :taggable => post
     assert_equal [tagging], post.taggings
+  end
+
+  def test_dont_call_save_callbacks_twice_on_has_many
+    firm = companies(:first_firm)
+    contract = firm.contracts.create!
+
+    assert_equal 1, contract.hi_count
+    assert_equal 1, contract.bye_count
+  end
+
+  def test_association_attributes_are_available_to_after_initialize
+    car = Car.create(:name => 'honda')
+    bulb = car.bulbs.build
+
+    assert_equal car.id, bulb.attributes_after_initialize['car_id']
   end
 end

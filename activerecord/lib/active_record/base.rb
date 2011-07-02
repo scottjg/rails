@@ -428,10 +428,6 @@ module ActiveRecord #:nodoc:
     class_attribute :default_scopes, :instance_writer => false
     self.default_scopes = []
 
-    # Boolean flag to prevent infinite recursion when evaluating default scopes
-    class_attribute :apply_default_scope, :instance_writer => false
-    self.apply_default_scope = true
-
     # Returns a hash of all the attributes that have been specified for serialization as
     # keys and their class restriction as values.
     class_attribute :serialized_attributes
@@ -659,8 +655,8 @@ module ActiveRecord #:nodoc:
       def set_table_name(value = nil, &block)
         @quoted_table_name = nil
         define_attr_method :table_name, value, &block
+        @arel_table = nil
 
-        @arel_table = Arel::Table.new(table_name, arel_engine)
         @relation = Relation.new(self, arel_table)
       end
       alias :table_name= :set_table_name
@@ -711,6 +707,12 @@ module ActiveRecord #:nodoc:
       # Returns a hash of column objects for the table associated with this class.
       def columns_hash
         connection_pool.columns_hash[table_name]
+      end
+
+      # Returns a hash where the keys are column names and the values are
+      # default values when instantiating the AR object for this table.
+      def column_defaults
+        connection_pool.column_defaults[table_name]
       end
 
       # Returns an array of column names as strings.
@@ -892,7 +894,7 @@ module ActiveRecord #:nodoc:
       end
 
       def arel_table
-        Arel::Table.new(table_name, arel_engine)
+        @arel_table ||= Arel::Table.new(table_name, arel_engine)
       end
 
       def arel_engine
@@ -1208,11 +1210,11 @@ MSG
         end
 
         def current_scope #:nodoc:
-          Thread.current[:"#{self}_current_scope"]
+          Thread.current["#{self}_current_scope"]
         end
 
         def current_scope=(scope) #:nodoc:
-          Thread.current[:"#{self}_current_scope"] = scope
+          Thread.current["#{self}_current_scope"] = scope
         end
 
         # Use this macro in your model to set a default scope for all operations on
@@ -1265,11 +1267,11 @@ MSG
           self.default_scopes = default_scopes + [scope]
         end
 
-        # The apply_default_scope flag is used to prevent an infinite recursion situation where
+        # The @ignore_default_scope flag is used to prevent an infinite recursion situation where
         # a default scope references a scope which has a default scope which references a scope...
         def build_default_scope #:nodoc:
-          return unless apply_default_scope
-          self.apply_default_scope = false
+          return if defined?(@ignore_default_scope) && @ignore_default_scope
+          @ignore_default_scope = true
 
           if method(:default_scope).owner != Base.singleton_class
             default_scope
@@ -1285,7 +1287,7 @@ MSG
             end
           end
         ensure
-          self.apply_default_scope = true
+          @ignore_default_scope = false
         end
 
         # Returns the class type of the record using the current module as a prefix. So descendants of
@@ -1308,7 +1310,6 @@ MSG
               rescue NameError => e
                 # We don't want to swallow NoMethodError < NameError errors
                 raise e unless e.instance_of?(NameError)
-              rescue ArgumentError
               end
             end
 
@@ -1532,6 +1533,7 @@ MSG
         @marked_for_destruction = false
         @previously_changed = {}
         @changed_attributes = {}
+        @relation = nil
 
         ensure_proper_type
         set_serialized_attributes
@@ -1540,9 +1542,8 @@ MSG
 
         assign_attributes(attributes, options) if attributes
 
-        result = yield self if block_given?
+        yield self if block_given?
         run_callbacks :initialize
-        result
       end
 
       # Populate +coder+ with attributes about this record that should be
@@ -1573,6 +1574,7 @@ MSG
       #   post.title # => 'hello world'
       def init_with(coder)
         @attributes = coder['attributes']
+        @relation = nil
 
         set_serialized_attributes
 
@@ -1662,9 +1664,6 @@ MSG
       # If any attributes are protected by either +attr_protected+ or
       # +attr_accessible+ then only settable attributes will be assigned.
       #
-      # The +guard_protected_attributes+ argument is now deprecated, use
-      # the +assign_attributes+ method if you want to bypass mass-assignment security.
-      #
       #   class User < ActiveRecord::Base
       #     attr_protected :is_admin
       #   end
@@ -1673,20 +1672,10 @@ MSG
       #   user.attributes = { :username => 'Phusion', :is_admin => true }
       #   user.username   # => "Phusion"
       #   user.is_admin?  # => false
-      def attributes=(new_attributes, guard_protected_attributes = nil)
-        unless guard_protected_attributes.nil?
-          message = "the use of 'guard_protected_attributes' will be removed from the next major release of rails, " +
-                    "if you want to bypass mass-assignment security then look into using assign_attributes"
-          ActiveSupport::Deprecation.warn(message)
-        end
-
+      def attributes=(new_attributes)
         return unless new_attributes.is_a?(Hash)
 
-        if guard_protected_attributes == false
-          assign_attributes(new_attributes, :without_protection => true)
-        else
-          assign_attributes(new_attributes)
-        end
+        assign_attributes(new_attributes)
       end
 
       # Allows you to set all the attributes for a particular mass-assignment
@@ -1731,10 +1720,13 @@ MSG
         attributes.each do |k, v|
           if k.include?("(")
             multi_parameter_attributes << [ k, v ]
-          elsif respond_to?("#{k}=")
-            send("#{k}=", v)
           else
-            raise(UnknownAttributeError, "unknown attribute: #{k}")
+            method_name = "#{k}="
+            if respond_to?(method_name)
+              method(method_name).arity == -2 ? send(method_name, v, options) : send(method_name, v)
+            else
+              raise(UnknownAttributeError, "unknown attribute: #{k}")
+            end
           end
         end
 
@@ -1792,16 +1784,12 @@ MSG
       # Note also that destroying a record preserves its ID in the model instance, so deleted
       # models are still comparable.
       def ==(comparison_object)
-        comparison_object.equal?(self) ||
+        super ||
           comparison_object.instance_of?(self.class) &&
           id.present? &&
           comparison_object.id == id
       end
-
-      # Delegates to ==
-      def eql?(comparison_object)
-        self == comparison_object
-      end
+      alias :eql? :==
 
       # Delegates to id in order to allow two records of the same type and id to work with something like:
       #   [ Person.find(1), Person.find(2), Person.find(3) ] & [ Person.find(1), Person.find(4) ] # => [ Person.find(1) ]
@@ -1817,6 +1805,15 @@ MSG
       # Returns +true+ if the attributes hash has been frozen.
       def frozen?
         @attributes.frozen?
+      end
+
+      # Allows sort on objects
+      def <=>(other_object)
+        if other_object.is_a?(self.class)
+          self.to_key <=> other_object.to_key
+        else
+          nil
+        end
       end
 
       # Backport dup from 1.9 so that initialize_dup() gets called
@@ -1870,12 +1867,16 @@ MSG
 
       # Returns the contents of the record as a nicely formatted string.
       def inspect
-        attributes_as_nice_string = self.class.column_names.collect { |name|
-          if has_attribute?(name)
-            "#{name}: #{attribute_for_inspect(name)}"
-          end
-        }.compact.join(", ")
-        "#<#{self.class} #{attributes_as_nice_string}>"
+        inspection = if @attributes
+                       self.class.column_names.collect { |name|
+                         if has_attribute?(name)
+                           "#{name}: #{attribute_for_inspect(name)}"
+                         end
+                       }.compact.join(", ")
+                     else
+                       "not initialized"
+                     end
+        "#<#{self.class} #{inspection}>"
       end
 
     protected
@@ -1895,10 +1896,23 @@ MSG
 
     private
 
+      # Under Ruby 1.9, Array#flatten will call #to_ary (recursively) on each of the elements
+      # of the array, and then rescues from the possible NoMethodError. If those elements are
+      # ActiveRecord::Base's, then this triggers the various method_missing's that we have,
+      # which significantly impacts upon performance.
+      #
+      # So we can avoid the method_missing hit by explicitly defining #to_ary as nil here.
+      #
+      # See also http://tenderlovemaking.com/2011/06/28/til-its-ok-to-return-nil-from-to_ary/
+      def to_ary # :nodoc:
+        nil
+      end
+
       def set_serialized_attributes
-        (@attributes.keys & self.class.serialized_attributes.keys).each do |key|
-          coder = self.class.serialized_attributes[key]
-          @attributes[key] = coder.load @attributes[key]
+        sattrs = self.class.serialized_attributes
+
+        sattrs.each do |key, coder|
+          @attributes[key] = coder.load @attributes[key] if @attributes.key?(key)
         end
       end
 
@@ -1908,8 +1922,9 @@ MSG
       # do Reply.new without having to set <tt>Reply[Reply.inheritance_column] = "Reply"</tt> yourself.
       # No such attribute would be set for objects of the Message class in that example.
       def ensure_proper_type
-        unless self.class.descends_from_active_record?
-          write_attribute(self.class.inheritance_column, self.class.sti_name)
+        klass = self.class
+        if klass.finder_needs_type_condition?
+          write_attribute(klass.inheritance_column, klass.sti_name)
         end
       end
 
@@ -2016,7 +2031,7 @@ MSG
         set_values = (1..3).collect{|position| values_hash_from_param[position].blank? ? 1 : values_hash_from_param[position]}
         begin
           Date.new(*set_values)
-        rescue ArgumentError => ex # if Date.new raises an exception on an invalid date
+        rescue ArgumentError # if Date.new raises an exception on an invalid date
           instantiate_time_object(name, set_values).to_date # we instantiate Time object and convert it back to a date thus using Time's logic in handling invalid dates
         end
       end
@@ -2083,8 +2098,10 @@ MSG
       end
 
       def populate_with_current_scope_attributes
-        self.class.scoped.scope_for_create.each do |att,value|
-          respond_to?("#{att}=") && send("#{att}=", value)
+        return unless self.class.scope_attributes?
+
+        self.class.scope_attributes.each do |att,value|
+          send("#{att}=", value) if respond_to?("#{att}=")
         end
       end
 

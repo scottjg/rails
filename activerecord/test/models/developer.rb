@@ -86,6 +86,17 @@ class DeveloperWithBeforeDestroyRaise < ActiveRecord::Base
   end
 end
 
+class DeveloperWithSelect < ActiveRecord::Base
+  self.table_name = 'developers'
+  default_scope select('name')
+end
+
+class DeveloperWithIncludes < ActiveRecord::Base
+  self.table_name = 'developers'
+  has_many :audit_logs, :foreign_key => :developer_id
+  default_scope includes(:audit_logs)
+end
+
 class DeveloperOrderedBySalary < ActiveRecord::Base
   self.table_name = 'developers'
   default_scope :order => 'salary DESC'

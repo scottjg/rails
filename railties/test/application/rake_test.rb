@@ -10,6 +10,10 @@ module ApplicationTests
       FileUtils.rm_rf("#{app_path}/config/environments")
     end
 
+    def teardown
+      teardown_app
+    end
+
     def test_gems_tasks_are_loaded_first_than_application_ones
       app_file "lib/tasks/app.rake", <<-RUBY
         $task_loaded = Rake::Task.task_defined?("db:create:all")
@@ -53,6 +57,32 @@ module ApplicationTests
     def test_code_statistics_sanity
       assert_match "Code LOC: 5     Test LOC: 0     Code to Test Ratio: 1:0.0",
         Dir.chdir(app_path){ `rake stats` }
+    end
+
+    def test_rake_test_error_output
+      Dir.chdir(app_path){ `rake db:migrate` }
+      
+      app_file "config/database.yml", <<-RUBY
+        development:
+      RUBY
+      
+      app_file "test/unit/one_unit_test.rb", <<-RUBY
+      RUBY
+      
+      app_file "test/functional/one_functional_test.rb", <<-RUBY
+        raise RuntimeError
+      RUBY
+      
+      app_file "test/integration/one_integration_test.rb", <<-RUBY
+        raise RuntimeError
+      RUBY
+      
+      silence_stderr do
+        output = Dir.chdir(app_path){ `rake test` }
+        assert_match /Errors running test:units! #<ActiveRecord::AdapterNotSpecified/, output
+        assert_match /Errors running test:functionals! #<RuntimeError/, output
+        assert_match /Errors running test:integration! #<RuntimeError/, output
+      end
     end
 
     def test_rake_routes_output_strips_anchors_from_http_verbs
@@ -113,7 +143,7 @@ module ApplicationTests
       end
 
       require "#{rails_root}/config/environment"
-      
+
       # loading a specific fixture
       errormsg = Dir.chdir(app_path) { `rake db:fixtures:load FIXTURES=products` }
       assert $?.success?, errormsg

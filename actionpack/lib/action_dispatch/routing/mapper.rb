@@ -49,6 +49,9 @@ module ActionDispatch
 
       class Mapping #:nodoc:
         IGNORE_OPTIONS = [:to, :as, :via, :on, :constraints, :defaults, :only, :except, :anchor, :shallow, :shallow_path, :shallow_prefix]
+        ANCHOR_CHARACTERS_REGEX = %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
+        SHORTHAND_REGEX = %r{^/[\w/]+$}
+        WILDCARD_PATH = %r{\*([^/]+)$}
 
         def initialize(set, scope, path, options)
           @set, @scope = set, scope
@@ -77,7 +80,7 @@ module ActionDispatch
               # segment_keys.include?(k.to_s) || k == :controller
               next unless Regexp === requirement && !constraints[name]
 
-              if requirement.source =~ %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
+              if requirement.source =~ ANCHOR_CHARACTERS_REGEX
                 raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
               end
               if requirement.multiline?
@@ -88,7 +91,7 @@ module ActionDispatch
 
           # match "account/overview"
           def using_match_shorthand?(path, options)
-            path && options.except(:via, :anchor, :to, :as).empty? && path =~ %r{^/[\w\/]+$}
+            path && options.except(:via, :anchor, :to, :as).empty? && path =~ SHORTHAND_REGEX
           end
 
           def normalize_path(path)
@@ -107,7 +110,7 @@ module ActionDispatch
 
             # Add a constraint for wildcard route to make it non-greedy and match the
             # optional format part of the route by default
-            if path.match(/\*([^\/]+)$/) && @options[:format] != false
+            if path.match(WILDCARD_PATH) && @options[:format] != false
               @options.reverse_merge!(:"#{$1}" => /.+?/)
             end
 
@@ -335,7 +338,7 @@ module ActionDispatch
         #
         # [:on]
         #   Shorthand for wrapping routes in a specific RESTful context. Valid
-        #   values are +:member+, +:collection+, and +:new+.  Only use within
+        #   values are +:member+, +:collection+, and +:new+. Only use within
         #   <tt>resource(s)</tt> block. For example:
         #
         #      resource :bar do
@@ -578,8 +581,8 @@ module ActionDispatch
         #   end
         #
         # This generates helpers such as +account_projects_path+, just like +resources+ does.
-        # The difference here being that the routes generated are like /rails/projects/2,
-        # rather than /accounts/rails/projects/2.
+        # The difference here being that the routes generated are like /:account_id/projects,
+        # rather than /accounts/:account_id/projects.
         #
         # === Options
         #
@@ -1094,17 +1097,17 @@ module ActionDispatch
         # [:shallow_path]
         #   Prefixes nested shallow routes with the specified path.
         #
-        #   scope :shallow_path => "sekret" do
-        #     resources :posts do
-        #       resources :comments, :shallow => true
+        #     scope :shallow_path => "sekret" do
+        #       resources :posts do
+        #         resources :comments, :shallow => true
+        #       end
         #     end
-        #   end
         #
         #   The +comments+ resource here will have the following routes generated for it:
         #
-        #     post_comments    GET    /sekret/posts/:post_id/comments(.:format)
-        #     post_comments    POST   /sekret/posts/:post_id/comments(.:format)
-        #     new_post_comment GET    /sekret/posts/:post_id/comments/new(.:format)
+        #     post_comments    GET    /posts/:post_id/comments(.:format)
+        #     post_comments    POST   /posts/:post_id/comments(.:format)
+        #     new_post_comment GET    /posts/:post_id/comments/new(.:format)
         #     edit_comment     GET    /sekret/comments/:id/edit(.:format)
         #     comment          GET    /sekret/comments/:id(.:format)
         #     comment          PUT    /sekret/comments/:id(.:format)
@@ -1423,7 +1426,9 @@ module ActionDispatch
           end
 
           def action_path(name, path = nil) #:nodoc:
-            path || @scope[:path_names][name.to_sym] || name.to_s
+            # Ruby 1.8 can't transform empty strings to symbols
+            name = name.to_sym if name.is_a?(String) && !name.empty?
+            path || @scope[:path_names][name] || name.to_s
           end
 
           def prefix_name_for_action(as, action) #:nodoc:

@@ -1,14 +1,19 @@
 require 'isolation/abstract_unit'
+require 'active_support/core_ext/kernel/reporting'
 require 'rack/test'
 
 module ApplicationTests
-  class RoutingTest < Test::Unit::TestCase
+  class AssetsTest < Test::Unit::TestCase
     include ActiveSupport::Testing::Isolation
     include Rack::Test::Methods
 
     def setup
       build_app
       boot_rails
+    end
+
+    def teardown
+      teardown_app
     end
 
     def app
@@ -28,6 +33,31 @@ module ApplicationTests
 
       get "/assets/demo.js"
       assert_match "alert()", last_response.body
+    end
+
+    test "assets are compiled properly" do
+      app_file "app/assets/javascripts/application.js", "alert();"
+
+      capture(:stdout) do
+        Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
+      end
+
+      file = Dir["#{app_path}/public/assets/application-*.js"][0]
+      assert_not_nil file, "Expected application.js asset to be generated, but none found"
+      assert_equal "alert();\n", File.read(file)
+    end
+
+    test "assets are cleaned up properly" do
+      app_file "public/assets/application.js", "alert();"
+      app_file "public/assets/application.css", "a { color: green; }"
+      app_file "public/assets/subdir/broken.png", "not really an image file"
+
+      capture(:stdout) do
+        Dir.chdir(app_path){ `bundle exec rake assets:clean` }
+      end
+
+      files = Dir["#{app_path}/public/assets/**/*"]
+      assert_equal 0, files.length, "Expected no assets, but found #{files.join(', ')}"
     end
 
     test "does not stream session cookies back" do

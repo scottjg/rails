@@ -50,7 +50,9 @@ module Rails
       end
     end
 
-    attr_accessor :assets
+    attr_accessor :assets, :sandbox
+    alias_method :sandbox?, :sandbox
+
     delegate :default_url_options, :default_url_options=, :to => :routes
 
     # This method is called just after an application inherits from Rails::Application,
@@ -76,10 +78,6 @@ module Rails
       require environment if environment
     end
 
-    def eager_load! #:nodoc:
-      railties.all(&:eager_load!)
-      super
-    end
 
     def reload_routes!
       routes_reloader.reload!
@@ -96,25 +94,15 @@ module Rails
       self
     end
 
-    def load_tasks
+    def load_tasks(app=self)
       initialize_tasks
-      railties.all { |r| r.load_tasks }
       super
       self
     end
 
-    def load_generators(app=self)
-      initialize_generators
-      railties.all { |r| r.load_generators(app) }
-
+    def load_console(app=self)
+      initialize_console
       super
-      self
-    end
-
-    def load_console(sandbox=false)
-      initialize_console(sandbox)
-      railties.all { |r| r.load_console(sandbox) }
-      super()
       self
     end
 
@@ -134,6 +122,10 @@ module Rails
 
     def config
       @config ||= Application::Configuration.new(find_root_with_flag("config.ru", Dir.pwd))
+    end
+
+    def to_app
+      self
     end
 
   protected
@@ -193,11 +185,7 @@ module Rails
       end
     end
 
-    def initialize_generators
-      require "rails/generators"
-    end
-
-    def initialize_console(sandbox=false)
+    def initialize_console
       require "pp"
       require "rails/console/app"
       require "rails/console/helpers"

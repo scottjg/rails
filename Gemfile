@@ -5,12 +5,12 @@ gemspec
 if ENV['AREL']
   gem "arel", :path => ENV['AREL']
 else
-  gem "arel", '~> 2.1.0'
+  gem "arel", '~> 2.1.3'
 end
 
 gem "coffee-script"
 gem "sass"
-gem "uglifier", :git => "git://github.com/lautis/uglifier.git"
+gem "uglifier", ">= 1.0.0"
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
@@ -41,10 +41,11 @@ platforms :ruby do
   end
   gem "json"
   gem "yajl-ruby"
-  gem "nokogiri", ">= 1.4.4"
+  gem "nokogiri", ">= 1.4.5"
 
   group :test do
-    gem "ruby-prof"
+    gem "ruby-prof" if RUBY_VERSION < "1.9.3"
+
   end
   # AR
   gem "sqlite3", "~> 1.3.3"
@@ -52,7 +53,7 @@ platforms :ruby do
   group :db do
     gem "pg", ">= 0.11.0"
     gem "mysql", ">= 2.8.1"
-    gem "mysql2", ">= 0.3.0"
+    gem "mysql2", ">= 0.3.6"
   end
 end
 

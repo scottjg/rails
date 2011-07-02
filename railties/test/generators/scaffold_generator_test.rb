@@ -81,7 +81,7 @@ class ScaffoldGeneratorTest < Rails::Generators::TestCase
 
     # Assets
     assert_file "app/assets/stylesheets/scaffold.css"
-    assert_file "app/assets/javascripts/product_lines.js.coffee"
+    assert_file "app/assets/javascripts/product_lines.js"
     assert_file "app/assets/stylesheets/product_lines.css"
   end
 
@@ -114,7 +114,7 @@ class ScaffoldGeneratorTest < Rails::Generators::TestCase
 
     # Assets
     assert_file "app/assets/stylesheets/scaffold.css", /:visited/
-    assert_no_file "app/assets/javascripts/product_lines.js.coffee"
+    assert_no_file "app/assets/javascripts/product_lines.js"
     assert_no_file "app/assets/stylesheets/product_lines.css"
   end
 
@@ -190,7 +190,7 @@ class ScaffoldGeneratorTest < Rails::Generators::TestCase
 
     # Assets
     assert_file "app/assets/stylesheets/scaffold.css", /:visited/
-    assert_file "app/assets/javascripts/admin/roles.js.coffee"
+    assert_file "app/assets/javascripts/admin/roles.js"
     assert_file "app/assets/stylesheets/admin/roles.css"
   end
 
@@ -224,7 +224,7 @@ class ScaffoldGeneratorTest < Rails::Generators::TestCase
 
     # Assets
     assert_file "app/assets/stylesheets/scaffold.css"
-    assert_no_file "app/assets/javascripts/admin/roles.js.coffee"
+    assert_no_file "app/assets/javascripts/admin/roles.js"
     assert_no_file "app/assets/stylesheets/admin/roles.css"
   end
 
@@ -246,34 +246,33 @@ class ScaffoldGeneratorTest < Rails::Generators::TestCase
   def test_scaffold_generator_no_assets
     run_generator [ "posts", "--no-assets" ]
     assert_file "app/assets/stylesheets/scaffold.css"
-    assert_no_file "app/assets/javascripts/posts.js.coffee"
+    assert_no_file "app/assets/javascripts/posts.js"
     assert_no_file "app/assets/stylesheets/posts.css"
   end
 
   def test_scaffold_generator_no_stylesheets
     run_generator [ "posts", "--no-stylesheets" ]
     assert_no_file "app/assets/stylesheets/scaffold.css"
-    assert_file "app/assets/javascripts/posts.js.coffee"
+    assert_file "app/assets/javascripts/posts.js"
     assert_no_file "app/assets/stylesheets/posts.css"
   end
 
   def test_scaffold_generator_no_javascripts
     run_generator [ "posts", "--no-javascripts" ]
     assert_file "app/assets/stylesheets/scaffold.css"
-    assert_no_file "app/assets/javascripts/posts.js.coffee"
-    assert_file "app/assets/stylesheets/posts.css"
-  end
-
-  def test_scaffold_generator_no_engines
-    run_generator [ "posts", "--no-javascript-engine" ]
-    assert_file "app/assets/stylesheets/scaffold.css"
-    assert_file "app/assets/javascripts/posts.js"
+    assert_no_file "app/assets/javascripts/posts.js"
     assert_file "app/assets/stylesheets/posts.css"
   end
 
   def test_scaffold_generator_outputs_error_message_on_missing_attribute_type
-    content = capture(:stderr) { run_generator ["post", "title:string", "body"]}
-    assert_match(/Missing type for attribute 'body'/, content)
-    assert_match(/Example: 'body:string' where string is the type/, content)
+    run_generator ["post", "title", "body:text", "author"]
+
+    assert_migration "db/migrate/create_posts.rb" do |m|
+      assert_method :change, m do |up|
+        assert_match(/t\.string :title/, up)
+        assert_match(/t\.text :body/, up)
+        assert_match(/t\.string :author/, up)
+      end
+    end
   end
 end

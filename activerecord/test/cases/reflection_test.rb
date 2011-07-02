@@ -76,7 +76,7 @@ class ReflectionTest < ActiveRecord::TestCase
   end
 
   def test_reflection_klass_for_nested_class_name
-    reflection = MacroReflection.new(nil, nil, { :class_name => 'MyApplication::Business::Company' }, nil)
+    reflection = MacroReflection.new(:company, nil, { :class_name => 'MyApplication::Business::Company' }, ActiveRecord::Base)
     assert_nothing_raised do
       assert_equal MyApplication::Business::Company, reflection.klass
     end
@@ -302,13 +302,6 @@ class ReflectionTest < ActiveRecord::TestCase
   def test_foreign_key
     assert_equal "author_id", Author.reflect_on_association(:posts).foreign_key.to_s
     assert_equal "category_id", Post.reflect_on_association(:categorizations).foreign_key.to_s
-  end
-
-  def test_primary_key_name
-    assert_deprecated do
-      assert_equal "author_id", Author.reflect_on_association(:posts).primary_key_name.to_s
-      assert_equal "category_id", Post.reflect_on_association(:categorizations).primary_key_name.to_s
-    end
   end
 
   private
