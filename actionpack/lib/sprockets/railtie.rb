@@ -9,6 +9,8 @@ module Sprockets
 
     # Configure ActionController to use sprockets.
     initializer "sprockets.set_configs", :after => "action_controller.set_configs" do |app|
+      app.config.assets.bundle_processors = []
+
       ActiveSupport.on_load(:action_controller) do
         self.use_sprockets = app.config.assets.enabled
       end
@@ -68,6 +70,12 @@ module Sprockets
           # the same as SCSS, where a default plugin sets the default.
           env.js_compressor  = expand_js_compressor(assets.js_compressor || :uglifier)
           env.css_compressor = expand_css_compressor(assets.css_compressor)
+        end
+
+        if assets.bundle_processors
+          assets.bundle_processors.each do |mime_and_processor|
+            env.register_bundle_processor mime_and_processor.first, mime_and_processor.second
+          end
         end
 
         env
