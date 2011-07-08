@@ -1,9 +1,9 @@
 script: 'ci/ci_travis.rb'
 env:
   - 'ISOLATED=false'
-  # - 'ISOLATED=true'
+  - 'ISOLATED=true'
 rvm:
   - 1.8.7
-  # - 1.9.2
+  - 1.9.2
 notifications:
   disabled: true
