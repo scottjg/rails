@@ -1,4 +1,4 @@
-script: 'ci/ci_travis.rb'
+script: 'ci/travis/ci.rb'
 env:
   - 'ISOLATED=false'
   - 'ISOLATED=true'
