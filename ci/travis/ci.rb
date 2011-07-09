@@ -5,8 +5,8 @@ include FileUtils
 commands = [
   'mysql -e "create database activerecord_unittest;"',
   'mysql -e "create database activerecord_unittest2;"',
-  'psql  -c "create database activerecord_unittest;" -U postgres',
-  'psql  -c "create database activerecord_unittest2;" -U postgres'
+  'psql  -c "create database activerecord_unittest;" -U postgres > /dev/null',
+  'psql  -c "create database activerecord_unittest2;" -U postgres > /dev/null'
 ]
 commands.each do |command|
   system(command)
@@ -28,6 +28,10 @@ def isolated?
   ENV['ISOLATED'] == 'true'
 end
 
+def identity_map?
+  ENV['IM'] == 'true'
+end
+
 def announce(section)
   puts
   puts "\e[1;33m[Travis CI] #{section}\e[m"
@@ -47,7 +51,7 @@ def build(key, options = {})
 end
 
 def build_active_record(adapter, options = {})
-  if options[:im]
+  if identity_map?
     ENV['IM'] = 'true'
     name = "activerecord with #{adapter} IM enabled"
     key  = :"activerecord_#{adapter}_IM"
@@ -69,7 +73,7 @@ build :activeresource
 
 [:mysql, :mysql2, :postgresql, :sqlite3].each do |adapter|
   build_active_record adapter
-  build_active_record adapter, :im => true
+  # build_active_record adapter, :im => true
 end
 
 puts

@@ -35,6 +35,6 @@ end
 
 if ENV['TRAVIS']
   require File.expand_path('../../../../ci/travis/ivar_patch', __FILE__)
-  require File.expand_path('../../../../ci/travis/ruby_187_patch', __FILE__) # if RUBY_VERSION == '1.8.7'
+  require File.expand_path('../../../../ci/travis/ruby_187_patch', __FILE__) if RUBY_VERSION == '1.8.7'
 end
 
