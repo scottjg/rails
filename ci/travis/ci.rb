@@ -71,9 +71,15 @@ build :actionmailer
 build :activemodel
 build :activeresource
 
-[:mysql, :mysql2, :postgresql, :sqlite3].each do |adapter|
+# We currently have issues with configuring postgres inside vagrant properly so
+# that it supports the required number of connections for the rails test suite
+# (which seems to be huge). So we have to leave postgres out until this has been
+# fixed.
+#
+# :postgresql
+
+[:mysql, :mysql2, :sqlite3].each do |adapter|
   build_active_record adapter
-  # build_active_record adapter, :im => true
 end
 
 puts
