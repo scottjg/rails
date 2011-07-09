@@ -52,7 +52,7 @@ def build_active_record(adapter, options = {})
     name = "activerecord with #{adapter} IM enabled"
     key  = :"activerecord_#{adapter}_IM"
   else
-    ENV['IM'] = 'true'
+    ENV['IM'] = 'false'
     name = "activerecord with #{adapter} IM disabled"
     key  = :"activerecord_#{adapter}"
   end
