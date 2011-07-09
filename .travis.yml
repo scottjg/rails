@@ -1,8 +1,8 @@
 script: 'ci/travis/ci.rb'
 env:
-  - 'ISOLATED=false IM=false'
-  - 'ISOLATED=false IM=true'
-  - 'ISOLATED=true IM=false'
+  - ''
+  - 'IM=true'
+  - 'ISOLATED=true'
   - 'ISOLATED=true IM=true'
 rvm:
   - 1.8.7
