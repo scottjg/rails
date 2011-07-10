@@ -24,11 +24,15 @@ end
 RESULTS  = {}
 DEFAULTS = { :normal => 'test', :isolated => 'test:isolated' }
 
+def gem
+  ENV['GEM'].to_sym
+end
+
 def isolated?
   ENV['ISOLATED'] == 'true'
 end
 
-def identity_map?
+def identity_map?(options)
   ENV['IM'] == 'true'
 end
 
@@ -38,10 +42,10 @@ def announce(section)
   puts
 end
 
-def build(key, options = {})
+def build(component, options = {})
   config  = DEFAULTS.merge(options)
-  name    = config[:name] || key
-  dir     = config[:dir] || key.to_s
+  name    = config[:name] || component
+  dir     = config[:dir] || component.to_s
   command = config[:command] || config[isolated? ? :isolated : :normal]
 
   cd(dir) do
@@ -51,7 +55,7 @@ def build(key, options = {})
 end
 
 def build_active_record(adapter, options = {})
-  if identity_map?
+  if identity_map?(options)
     ENV['IM'] = 'true'
     name = "activerecord with #{adapter} IM enabled"
     key  = :"activerecord_#{adapter}_IM"
@@ -64,25 +68,37 @@ def build_active_record(adapter, options = {})
   build(key, :name => name, :command => command, :dir => 'activerecord')
 end
 
-unless identity_map?
-  build :activesupport
-  build :railties
-  build :actionpack
-  build :actionmailer
-  build :activemodel
-  build :activeresource
+if gem == :activerecord
+  [:mysql, :mysql2, :sqlite3].each do |adapter|
+    build_active_record(adapter)
+  end
+else
+  build
 end
 
-# We currently have issues with configuring postgres inside vagrant properly so
-# that it supports the required number of connections for the rails test suite
-# (which seems to be huge). So we have to leave postgres out until this has been
-# fixed.
+
+
+
+
+# unless identity_map?
+#   build :activesupport
+#   build :railties
+#   build :actionpack
+#   build :actionmailer
+#   build :activemodel
+#   build :activeresource
+# end
 #
-# :postgresql
-
-[:mysql, :mysql2, :sqlite3].each do |adapter|
-  build_active_record adapter
-end
+# # We currently have issues with configuring postgres inside vagrant properly so
+# # that it supports the required number of connections for the rails test suite
+# # (which seems to be huge). So we have to leave postgres out until this has been
+# # fixed.
+# #
+# # :postgresql
+#
+# [:mysql, :mysql2, :sqlite3].each do |adapter|
+#   build_active_record adapter
+# end
 
 puts
 puts "Build environment:"

@@ -1,12 +1,24 @@
 script: 'ci/travis/ci.rb'
-env:
-  - ''
-  - 'IM=true'
-  - 'ISOLATED=true'
-  - 'IM=true ISOLATED=true'
+notifications:
+  disabled: true
 rvm:
   - 1.8.7
   - 1.9.2
-  # - ruby-head
-notifications:
-  disabled: true
+env:
+  - "GEM=railties"
+  - "GEM=activesupport"
+  - "GEM=actionpack"
+  - "GEM=actionmailer"
+  - "GEM=activeresource"
+  - "GEM=activesupport"
+  - "GEM=activerecord"
+  - "GEM=activerecord IM=true"
+  - "ISOLATED=true GEM=railties"
+  - "ISOLATED=true GEM=activesupport"
+  - "ISOLATED=true GEM=actionpack"
+  - "ISOLATED=true GEM=actionmailer"
+  - "ISOLATED=true GEM=activeresource"
+  - "ISOLATED=true GEM=activesupport"
+  - "ISOLATED=true GEM=activerecord"
+  - "ISOLATED=true GEM=activerecord IM=true"
+
