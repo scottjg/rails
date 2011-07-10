@@ -88,7 +88,7 @@ puts "  #{`cat /etc/issue`}"
 puts "  #{`uname -a`}"
 puts "  #{`ruby -v`}"
 puts "  #{`mysql --version`}"
-puts "  #{`pg_config --version`}"
+# puts "  #{`pg_config --version`}"
 puts "  SQLite3: #{`sqlite3 -version`}"
 `gem env`.each_line {|line| print "   #{line}"}
 puts "   Bundled gems:"
