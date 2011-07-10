@@ -42,15 +42,15 @@ def announce(section)
   puts
 end
 
-def build(component, options = {})
+def build(gem, options = {})
   config  = DEFAULTS.merge(options)
-  name    = config[:name] || component
-  dir     = config[:dir] || component.to_s
+  name    = config[:name] || gem
+  dir     = config[:dir] || gem.to_s
   command = config[:command] || config[isolated? ? :isolated : :normal]
 
   cd(dir) do
     announce name
-    RESULTS[key] = rake(*Array(command))
+    RESULTS[gem] = rake(*Array(command))
   end if command
 end
 
@@ -73,7 +73,7 @@ if gem == :activerecord
     build_active_record(adapter)
   end
 else
-  build
+  build(gem)
 end
 
 
