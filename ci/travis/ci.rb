@@ -64,12 +64,14 @@ def build_active_record(adapter, options = {})
   build(key, :name => name, :command => command, :dir => 'activerecord')
 end
 
-build :activesupport
-build :railties
-build :actionpack
-build :actionmailer
-build :activemodel
-build :activeresource
+unless identity_map?
+  build :activesupport
+  build :railties
+  build :actionpack
+  build :actionmailer
+  build :activemodel
+  build :activeresource
+end
 
 # We currently have issues with configuring postgres inside vagrant properly so
 # that it supports the required number of connections for the rails test suite
