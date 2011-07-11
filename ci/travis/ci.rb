@@ -54,7 +54,7 @@ class Build
     if activerecord?
       ['mysql:rebuild_databases', "#{adapter}:#{'isolated_' if isolated?}test"]
     else
-      ["test#{':isolated_' if isolated?}"]
+      ["test#{':isolated' if isolated?}"]
     end
   end
 
