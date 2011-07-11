@@ -44,7 +44,7 @@ class Build
     if activerecord?
       ['mysql:rebuild_databases', "#{adapter}:#{'isolated_' if isolated?}test"]
     else
-      ["test:#{'isolated_' if isolated?}"]
+      ["test#{':isolated_' if isolated?}"]
     end
   end
 
@@ -88,7 +88,6 @@ class Build
 end
 
 results = {}
-
 ENV['GEM'].split(',').each do |gem|
   build = Build.new(gem, :isolated => ENV['ISOLATE'])
   results[build.key] = build.run!
