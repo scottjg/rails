@@ -13,6 +13,16 @@ commands.each do |command|
 end
 
 class Build
+  MAP = {
+    'railties' => 'railties',
+    'ap'   => 'actionpack',
+    'am'   => 'actionmailer',
+    'amo'  => 'activemodel',
+    'ares' => 'activeresource',
+    'as'   => 'activesupport',
+    'ar'   => 'activerecord'
+  }
+
   attr_reader :component, :options
 
   def initialize(component, options = {})
@@ -69,7 +79,7 @@ class Build
   end
 
   def gem
-    component.split(':').first
+    MAP[component.split(':').first]
   end
   alias :dir :gem
 
@@ -88,6 +98,7 @@ class Build
 end
 
 results = {}
+
 ENV['GEM'].split(',').each do |gem|
   build = Build.new(gem, :isolated => ENV['ISOLATE'])
   results[build.key] = build.run!
