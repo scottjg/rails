@@ -78,6 +78,10 @@ end
 class DefaultLayoutController < LayoutTest
 end
 
+class StreamingLayoutController < LayoutTest
+  stream
+end
+
 class AbsolutePathLayoutController < LayoutTest
   layout File.expand_path(File.expand_path(__FILE__) + '/../../fixtures/layout_tests/layouts/layout_test.erb')
 end
@@ -120,6 +124,12 @@ class LayoutSetInResponseTest < ActionController::TestCase
     @controller = DefaultLayoutController.new
     get :hello
     assert_template :layout => "layouts/layout_test"
+  end
+
+  def test_layout_set_when_using_streaming_layout
+    @controller = StreamingLayoutController.new
+    get :hello
+    assert_template :hello
   end
 
   def test_layout_set_when_set_in_controller
