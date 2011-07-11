@@ -6,8 +6,7 @@ rvm:
   # - 1.9.2
 env:
   - "GEM=railties"
-  - "GEM=actionpack"
-  - "GEM=activesupport,actionmailer,activeresource"
+  - "GEM=actionpack,actionmailer,activeresource,activesupport"
   - "GEM=activerecord:mysql"
   - "GEM=activerecord:mysql2"
   - "GEM=activerecord:sqlite3"
