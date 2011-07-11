@@ -22,7 +22,7 @@ class Build
 
   def run!(options = {})
     self.options.update(options)
-    cd(dir) do
+    Dir.chdir(dir) do
       announce(heading)
       ENV['IM'] = identity_map?.inspect
       rake(*tasks)
