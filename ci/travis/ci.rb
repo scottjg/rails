@@ -13,12 +13,11 @@ commands.each do |command|
 end
 
 class Build
-  attr_reader :component, :options, :results
+  attr_reader :component, :options
 
   def initialize(component, options = {})
     @component = component
     @options = options
-    @results = {}
   end
 
   def run!(options = {})
@@ -26,8 +25,7 @@ class Build
     cd(dir) do
       announce(heading)
       ENV['IM'] = identity_map?.inspect
-      results[component] = rake(*tasks)
-      summary
+      rake(*tasks)
     end
   end
 
@@ -40,13 +38,6 @@ class Build
     heading << "with #{adapter} IM #{identity_map? ? 'enabled' : 'disabled'}" if activerecord?
     heading << "in isolation" if isolated?
     heading.join(' ')
-  end
-
-  def summary
-  end
-
-  def failures
-    results.select { |key, value| value == false }
   end
 
   def tasks
@@ -96,10 +87,16 @@ class Build
   end
 end
 
+results = {}
+
 ENV['GEM'].split(',').each do |gem|
   build = Build.new(gem, :isolated => ENV['ISOLATE'])
-  build.run!
-  build.run!(:identity_map => true) if build.activerecord?
+  results[build.key] = build.run!
+
+  if build.activerecord?
+    build.options[:identity_map] = true
+    results[build.key] = build.run!
+  end
 end
 
 # puts
@@ -116,15 +113,15 @@ end
 # puts "   Local gems:"
 # `gem list`.each_line {|line| print "     #{line}"}
 
-failures = build.failures
+failures = results.select { |key, value| value == false }
 
-if build.failures.empty?
+if failures.empty?
   puts
   puts "Rails build finished sucessfully"
   exit(true)
 else
   puts
   puts "Rails build FAILED"
-  puts "Failed components: #{build.failures.map { |component| component.first }.join(', ')}"
+  puts "Failed components: #{failures.map { |component| component.first }.join(', ')}"
   exit(false)
 end
