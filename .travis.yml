@@ -3,15 +3,15 @@ notifications:
   disabled: true
 rvm:
   - 1.8.7
-  - 1.9.2
+  # - 1.9.2
 env:
-  - "GEM=railties"
-  - "GEM=ap,am,amo,ares,as"
-  - "GEM=ar:mysql"
-  - "GEM=ar:mysql2"
-  - "GEM=ar:sqlite3"
-  - "ISOLATE=true GEM=railties"
-  - "ISOLATE=true GEM=ap,am,amo,ares,as"
+  # - "GEM=railties"
+  # - "GEM=ap,am,amo,ares,as"
+  # - "GEM=ar:mysql"
+  # - "GEM=ar:mysql2"
+  # - "GEM=ar:sqlite3"
+  # - "ISOLATE=true GEM=railties"
+  # - "ISOLATE=true GEM=ap,am,amo,ares,as"
   - "ISOLATE=true GEM=ar:mysql"
-  - "ISOLATE=true GEM=ar:mysql2"
-  - "ISOLATE=true GEM=ar:sqlite3"
+  # - "ISOLATE=true GEM=ar:mysql2"
+  # - "ISOLATE=true GEM=ar:sqlite3"
