@@ -18,7 +18,7 @@ class Build
   def initialize(component, options = {})
     @component = component
     @options = options
-    @results = []
+    @results = {}
   end
 
   def run!(options = {})
