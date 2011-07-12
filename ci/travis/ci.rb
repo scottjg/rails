@@ -100,12 +100,16 @@ end
 results = {}
 
 ENV['GEM'].split(',').each do |gem|
-  build = Build.new(gem, :isolated => ENV['ISOLATE'])
-  results[build.key] = build.run!
+  [true, false].each do |isolated|
+    next if gem == 'railties' && isolated
 
-  if build.activerecord?
-    build.options[:identity_map] = true
+    build = Build.new(gem, :isolated => isolated)
     results[build.key] = build.run!
+
+    if build.activerecord?
+      build.options[:identity_map] = true
+      results[build.key] = build.run!
+    end
   end
 end
 
