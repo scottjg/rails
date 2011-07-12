@@ -58,7 +58,7 @@ module ActionMailer #:nodoc:
   # will accept (any valid Email header including optional fields).
   #
   # The mail method, if not passed a block, will inspect your views and send all the views with
-  # the same name as the method, so the above action would send the +welcome.text.plain.erb+ view
+  # the same name as the method, so the above action would send the +welcome.text.erb+ view
   # file as well as the +welcome.text.html.erb+ view file in a +multipart/alternative+ email.
   #
   # If you want to explicitly render only certain templates, pass a block:
@@ -89,7 +89,7 @@ module ActionMailer #:nodoc:
   #
   # To define a template to be used with a mailing, create an <tt>.erb</tt> file with the same
   # name as the method in your mailer model. For example, in the mailer defined above, the template at
-  # <tt>app/views/notifier/signup_notification.text.plain.erb</tt> would be used to generate the email.
+  # <tt>app/views/notifier/welcome.text.erb</tt> would be used to generate the email.
   #
   # Variables defined in the model are accessible as instance variables in the view.
   #
@@ -123,8 +123,9 @@ module ActionMailer #:nodoc:
   #
   #   <%= users_url(:host => "example.com") %>
   #
-  # You want to avoid using the <tt>name_of_route_path</tt> form of named routes because it doesn't
-  # make sense to generate relative URLs in email messages.
+  # You should use the <tt>named_route_url</tt> style (which generates absolute URLs) and avoid using the 
+  # <tt>named_route_path</tt> style (which generates relative URLs), since clients reading the mail will 
+  # have no concept of a current URL from which to determine a relative path.
   #
   # It is also possible to set a default host that will be used in all mailers by setting the <tt>:host</tt>
   # option as a configuration option in <tt>config/application.rb</tt>:
@@ -152,12 +153,12 @@ module ActionMailer #:nodoc:
   #
   # = Multipart Emails
   #
-  # Multipart messages can also be used implicitly because Action Mailer will automatically
-  # detect and use multipart templates, where each template is named after the name of the action, followed
-  # by the content type. Each such detected template will be added as separate part to the message.
+  # Multipart messages can also be used implicitly because Action Mailer will automatically detect and use 
+  # multipart templates, where each template is named after the name of the action, followed by the content 
+  # type. Each such detected template will be added as a separate part to the message.
   #
   # For example, if the following templates exist:
-  # * signup_notification.text.plain.erb
+  # * signup_notification.text.erb
   # * signup_notification.text.html.erb
   # * signup_notification.text.xml.builder
   # * signup_notification.text.yaml.erb
@@ -182,7 +183,7 @@ module ActionMailer #:nodoc:
   #     end
   #   end
   #
-  # Which will (if it had both a <tt>welcome.text.plain.erb</tt> and <tt>welcome.text.html.erb</tt>
+  # Which will (if it had both a <tt>welcome.text.erb</tt> and <tt>welcome.text.html.erb</tt>
   # template in the view directory), send a complete <tt>multipart/mixed</tt> email with two parts,
   # the first part being a <tt>multipart/alternative</tt> with the text and HTML email parts inside,
   # and the second being a <tt>application/pdf</tt> with a Base64 encoded copy of the file.pdf book

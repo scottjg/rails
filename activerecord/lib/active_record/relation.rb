@@ -1,4 +1,5 @@
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/module/delegation'
 
 module ActiveRecord
   # = Active Record Relation
@@ -6,7 +7,7 @@ module ActiveRecord
     JoinOperation = Struct.new(:relation, :join_class, :on)
     ASSOCIATION_METHODS = [:includes, :eager_load, :preload]
     MULTI_VALUE_METHODS = [:select, :group, :order, :joins, :where, :having, :bind]
-    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder, :reverse_order]
+    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :from, :reorder, :reverse_order]
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
@@ -29,6 +30,7 @@ module ActiveRecord
       SINGLE_VALUE_METHODS.each {|v| instance_variable_set(:"@#{v}_value", nil)}
       (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
       @extensions = []
+      @create_with_value = {}
     end
 
     def insert(values)
@@ -403,11 +405,21 @@ module ActiveRecord
     end
 
     def scope_for_create
-      @scope_for_create ||= where_values_hash.merge(@create_with_value || {})
+      @scope_for_create ||= where_values_hash.merge(create_with_value)
     end
 
     def eager_loading?
-      @should_eager_load ||= (@eager_load_values.any? || (@includes_values.any? && references_eager_loaded_tables?))
+      @should_eager_load ||=
+        @eager_load_values.any? ||
+        @includes_values.any? && (joined_includes_values.any? || references_eager_loaded_tables?)
+    end
+
+    # Joins that are also marked for preloading. In which case we should just eager load them.
+    # Note that this is a naive implementation because we could have strings and symbols which
+    # represent the same association, but that aren't matched by this. Also, we could have
+    # nested hashes which partially match, e.g. { :a => :b } & { :a => [:b, :c] }
+    def joined_includes_values
+      @includes_values & @joins_values
     end
 
     def ==(other)

@@ -15,6 +15,18 @@ class RelationScopingTest < ActiveRecord::TestCase
     assert_equal Developer.order("id DESC").to_a.reverse, Developer.order("id DESC").reverse_order
   end
 
+  def test_reverse_order_with_arel_node
+    assert_equal Developer.order("id DESC").to_a.reverse, Developer.order(Developer.arel_table[:id].desc).reverse_order
+  end
+
+  def test_reverse_order_with_multiple_arel_nodes
+    assert_equal Developer.order("id DESC").order("name DESC").to_a.reverse, Developer.order(Developer.arel_table[:id].desc).order(Developer.arel_table[:name].desc).reverse_order
+  end
+
+  def test_reverse_order_with_arel_nodes_and_strings
+    assert_equal Developer.order("id DESC").order("name DESC").to_a.reverse, Developer.order("id DESC").order(Developer.arel_table[:name].desc).reverse_order
+  end
+
   def test_double_reverse_order_produces_original_order
     assert_equal Developer.order("name DESC"), Developer.order("name DESC").reverse_order.reverse_order
   end
@@ -472,6 +484,13 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 'Jamis', jamis.name
   end
 
+  # FIXME: I don't know if this is *desired* behavior, but it is *today's*
+  # behavior.
+  def test_create_with_empty_hash_will_not_reset
+    jamis = PoorDeveloperCalledJamis.create_with(:name => 'Aaron').create_with({}).new
+    assert_equal 'Aaron', jamis.name
+  end
+
   def test_unscoped_with_named_scope_should_not_have_default_scope
     assert_equal [DeveloperCalledJamis.find(developers(:poor_jamis).id)], DeveloperCalledJamis.poor
 
@@ -497,5 +516,12 @@ class DefaultScopingTest < ActiveRecord::TestCase
 
     lowest_salary_dev = DeveloperOrderedBySalary.find(developers(:poor_jamis).id)
     assert_equal lowest_salary_dev, DeveloperOrderedBySalary.last
+  end
+
+  def test_default_scope_include_with_count
+    d = DeveloperWithIncludes.create!
+    d.audit_logs.create! :message => 'foo'
+
+    assert_equal 1, DeveloperWithIncludes.where(:audit_logs => { :message => 'foo' }).count
   end
 end

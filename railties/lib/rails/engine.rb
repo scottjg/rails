@@ -535,15 +535,9 @@ module Rails
     end
 
     initializer :append_assets_path do |app|
-      if app.config.assets.respond_to?(:prepend_path)
-        app.config.assets.prepend_path(*paths["vendor/assets"].existent)
-        app.config.assets.prepend_path(*paths["lib/assets"].existent)
-        app.config.assets.prepend_path(*paths["app/assets"].existent)
-      else
-        app.config.assets.paths.unshift(*paths["vendor/assets"].existent)
-        app.config.assets.paths.unshift(*paths["lib/assets"].existent)
-        app.config.assets.paths.unshift(*paths["app/assets"].existent)
-      end
+      app.config.assets.paths.unshift(*paths["vendor/assets"].existent)
+      app.config.assets.paths.unshift(*paths["lib/assets"].existent)
+      app.config.assets.paths.unshift(*paths["app/assets"].existent)
     end
 
     initializer :prepend_helpers_path do |app|
@@ -585,7 +579,7 @@ module Rails
     end
 
     def has_migrations?
-      paths["db/migrate"].first.present?
+      paths["db/migrate"].existent.any?
     end
 
     def find_root_with_flag(flag, default=nil)

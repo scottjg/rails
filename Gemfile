@@ -5,12 +5,15 @@ gemspec
 if ENV['AREL']
   gem "arel", :path => ENV['AREL']
 else
-  gem "arel", '~> 2.1.0'
+  gem "arel", '~> 2.1.3'
 end
 
 gem "coffee-script"
 gem "sass"
-gem "uglifier", :git => "git://github.com/lautis/uglifier.git"
+
+# This needs to be with require false to avoid
+# it being automatically loaded by sprockets
+gem "uglifier", ">= 1.0.0", :require => false
 
 gem "rake",  ">= 0.8.7"
 gem "mocha", ">= 0.9.8"
@@ -19,6 +22,7 @@ group :doc do
   gem "rdoc",  "~> 3.4"
   gem "horo",  "= 1.0.3"
   gem "RedCloth", "~> 4.2" if RUBY_VERSION < "1.9.3"
+  gem "w3c_validators"
 end
 
 # AS
@@ -26,9 +30,6 @@ gem "memcache-client", ">= 1.8.5"
 
 platforms :mri_18 do
   gem "system_timer"
-  # ruby-debug requires linecache which depends on require_relative but doesn't explicitly
-  # declare this in its gemspec
-  gem "require_relative"
   gem "ruby-debug", ">= 0.10.3"
   gem "json"
 end
@@ -56,7 +57,7 @@ platforms :ruby do
   group :db do
     gem "pg", ">= 0.11.0"
     gem "mysql", ">= 2.8.1"
-    gem "mysql2", ">= 0.3.5"
+    gem "mysql2", ">= 0.3.6"
   end
 end
 

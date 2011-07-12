@@ -4,6 +4,7 @@ require 'action_view/helpers/tag_helper'
 require 'action_view/helpers/form_tag_helper'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/module/method_names'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/array/extract_options'
@@ -219,9 +220,9 @@ module ActionView
       #   <% end %>
       #
       # If you have an object that needs to be represented as a different
-      # parameter, like a Client that acts as a Person:
+      # parameter, like a Person that acts as a Client:
       #
-      #   <%= form_for(@post, :as => :client) do |f| %>
+      #   <%= form_for(@person, :as => :client) do |f| %>
       #     ...
       #   <% end %>
       #
@@ -290,7 +291,7 @@ module ActionView
       #
       # Example:
       #
-      #   <%= form(@post) do |f| %>
+      #   <%= form_for(@post) do |f| %>
       #     <% f.fields_for(:comments, :include_id => false) do |cf| %>
       #       ...
       #     <% end %>
@@ -1136,7 +1137,7 @@ module ActionView
             options["name"] ||= tag_name_with_index(@auto_index)
             options["id"] = options.fetch("id"){ tag_id_with_index(@auto_index) }
           else
-            options["name"] ||= tag_name + (options.has_key?('multiple') ? '[]' : '')
+            options["name"] ||= tag_name + (options['multiple'] ? '[]' : '')
             options["id"] = options.fetch("id"){ tag_id }
           end
         end
@@ -1217,7 +1218,7 @@ module ActionView
       end
 
       def fields_for(record_name, record_object = nil, fields_options = {}, &block)
-        fields_options, record_object = record_object, nil if record_object.is_a?(Hash)
+        fields_options, record_object = record_object, nil if record_object.is_a?(Hash) && record_object.extractable_options?
         fields_options[:builder] ||= options[:builder]
         fields_options[:parent_builder] = self
 
