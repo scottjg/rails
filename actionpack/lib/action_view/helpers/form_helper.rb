@@ -1283,7 +1283,9 @@ module ActionView
         def fields_for_nested_model(name, object, options, block)
           object = object.to_model if object.respond_to?(:to_model)
 
-          options[:hidden_field_id] = object.persisted?
+          unless options.has_key?(:hidden_field_id)
+            options[:hidden_field_id] = object.persisted?
+          end
           @template.fields_for(name, object, options, &block)
         end
 
