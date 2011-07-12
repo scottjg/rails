@@ -100,7 +100,7 @@ end
 results = {}
 
 ENV['GEM'].split(',').each do |gem|
-  [true, false].each do |isolated|
+  [false, true].each do |isolated|
     next if gem == 'railties' && isolated
 
     build = Build.new(gem, :isolated => isolated)
