@@ -119,6 +119,17 @@ class ResponseTest < ActiveSupport::TestCase
     assert_equal({"user_name" => "david", "login" => nil}, @response.cookies)
   end
 
+  test "cookie paths" do
+    @response.set_cookie("user_name", :value => "david", :path => "/")
+    assert_equal({"user_name" => "david"}, @response.cookies)
+
+    @response.delete_cookie("user_name", :path => "/path")    # Delete cookie with different path
+    assert_equal({"user_name" => "david"}, @response.cookies) # Cookie should still exist?
+
+    @response.delete_cookie("user_name", :path => "/")        # Delete cookie with same path
+    assert_equal({"user_name" => nil}, @response.cookies)     # Cookie should be gone
+  end
+
   test "read cache control" do
     resp = ActionDispatch::Response.new.tap { |resp|
       resp.cache_control[:public] = true
