@@ -1,4 +1,8 @@
-*Edge*
+*2.3.5.1 (July 13, 2011)*
+
+* No changes, just a version bump.
+
+*2.3.5 (November 25, 2009)*
 
 * Fixed that the debugger wouldn't go into IRB mode because of left-over ARGVs [DHH]
 
