@@ -1,3 +1,5 @@
+require 'tempfile' unless defined?(Tempfile)
+
 #--
 # Most objects are cloneable, but not all. For example you can't dup +nil+:
 #
@@ -100,6 +102,17 @@ class Module
   #  m.dup          # => #<Module:0x10328b6e0>
   #
   # Note +dup+ returned the same module object.
+  def duplicable?
+    false
+  end
+end
+
+class Tempfile
+  # Tempfiles are not duplicable:
+  #
+  #   t = Tempfile.new('foo.txt') # => #<File:0x101bf2438>
+  #   t.dup                       # => #<File:0x101bf2438>
+  #
   def duplicable?
     false
   end

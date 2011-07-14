@@ -4,7 +4,7 @@ require 'active_support/core_ext/object/duplicable'
 require 'active_support/core_ext/numeric/time'
 
 class DuplicableTest < Test::Unit::TestCase
-  NO  = [nil, false, true, :symbol, 1, 2.3, BigDecimal.new('4.56'), Class.new, Module.new, 5.seconds]
+  NO  = [nil, false, true, :symbol, 1, 2.3, BigDecimal.new('4.56'), Class.new, Module.new, 5.seconds, Tempfile.new('toriaez.txt')]
   YES = ['1', Object.new, /foo/, [], {}, Time.now]
 
   def test_duplicable
