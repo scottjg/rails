@@ -89,10 +89,11 @@ HEADER
           end
 
           tbl.print "  create_table #{table.inspect}"
-          if columns.detect { |c| c.name == pk }
-            if pk != 'id'
-              tbl.print %Q(, :primary_key => "#{pk}")
-            end
+					if columns.detect { |c| pk && pk.include?(c.name) }
+            #if pk != 'id'
+              # tbl.print %Q(, :primary_key => "#{pk}")
+							# this would have forced the primary key to be an integer
+            #end
           else
             tbl.print ", :id => false"
           end
@@ -102,7 +103,7 @@ HEADER
           # then dump all non-primary key columns
           column_specs = columns.map do |column|
             raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" if @types[column.type].nil?
-            next if column.name == pk
+						next if pk && pk.include?(column.name) && pk.to_s == 'id' # only skip column declaration for 'id'
             spec = {}
             spec[:name]      = column.name.inspect
 
@@ -147,6 +148,13 @@ HEADER
           end
 
           tbl.puts "  end"
+					if pk && pk.to_s != 'id' && columns.detect { |c| pk.include? c.name }
+						if pk.is_a? String then
+							tbl.puts %Q(\n  add_index '#{table.inspect}', '#{pk}', :unique => true)
+						else
+							tbl.puts %Q(\n  add_index #{table.inspect}, ["#{pk.join('", "')}"], :unique => true)
+						end
+					end
           tbl.puts
 
           indexes(table, tbl)
