@@ -136,4 +136,9 @@ class FinderTest < Test::Unit::TestCase
     david = Person.find(:one, :from => :leader)
     assert_equal "David", david.name
   end
+  
+  def test_find_by_name
+    david = Person.find_by_name("David")
+    assert_equal "<person><name>David</name></person>", david
+  end
 end

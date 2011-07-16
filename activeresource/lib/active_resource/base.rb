@@ -961,6 +961,16 @@ module ActiveResource
 
           [ prefix_options, query_options ]
         end
+        
+        def method_missing(method_symbol, *arguments)
+          case method_symbol.to_s
+          when /^find_by_([_a-zA-Z]\w*)$/
+            names = $1
+            "<#{self.to_s.downcase}><#{names}>#{arguments.first}</#{names}></#{self.to_s.downcase}>"
+          else
+            super
+          end
+        end
     end
 
     attr_accessor :attributes #:nodoc:
@@ -1335,7 +1345,7 @@ module ActiveResource
     def to_xml(options={})
       super({ :root => self.class.element_name }.merge(options))
     end
-
+    
     protected
       def connection(refresh = false)
         self.class.connection(refresh)
