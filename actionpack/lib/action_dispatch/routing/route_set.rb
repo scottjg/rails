@@ -242,7 +242,7 @@ module ActionDispatch
       end
 
       def prepend(&block)
-        @prepend << block
+        @prepend.unshift(block)
       end
 
       def eval_block(block)

@@ -35,6 +35,43 @@ module ApplicationTests
       assert_match "alert()", last_response.body
     end
 
+    test "assets routes can be overwritten" do
+      app_file "app/assets/javascripts/demo.js.erb", "<%= :alert %>();"
+
+      app_file "lib/test_middleware.rb", <<-RUBY
+        class TestMiddleware
+ 
+          def initialize(app)
+            @app = app
+          end
+
+          def call(env)
+            result = @app.call(env)
+            result_env = result[1]
+            result_env['Cache-Control'] = 'MODIFIED'
+            result[1] = result_env
+            result
+          end
+        end
+      RUBY
+
+      require "#{app_path}/lib/test_middleware"
+
+      add_to_config <<-RUBY
+        config.after_initialize do |app|
+          app.routes.prepend do
+            mount TestMiddleware.new(app.assets) => app.config.assets.prefix
+          end
+        end
+      RUBY
+
+      require "#{app_path}/config/environment"
+
+      get "/assets/demo.js"
+      assert_equal 200, last_response.status
+      assert_match "MODIFIED", last_response.headers['Cache-Control']
+    end
+
     test "assets do not require compressors until it is used" do
       app_file "app/assets/javascripts/demo.js.erb", "<%= :alert %>();"
       ENV["RAILS_ENV"] = "production"
