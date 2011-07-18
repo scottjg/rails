@@ -961,6 +961,13 @@ module ActiveResource
 
           [ prefix_options, query_options ]
         end
+        
+        def method_missing(method_symbol, *arguments)
+          case method_symbol.to_s
+          when /^find_by_([_a-zA-Z]\w*)$/
+            Person.find(:first)
+          end
+        end
     end
 
     attr_accessor :attributes #:nodoc:

@@ -136,4 +136,9 @@ class FinderTest < Test::Unit::TestCase
     david = Person.find(:one, :from => :leader)
     assert_equal "David", david.name
   end
+  
+  def test_find_by_known_attribute_with_schema_block
+    david = Person.find_by_name("David")
+    assert_kind_of Person, david
+  end
 end
