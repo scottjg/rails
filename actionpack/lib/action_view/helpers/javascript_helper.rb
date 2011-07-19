@@ -44,12 +44,14 @@ module ActionView
         "\n"    => '\n',
         "\r"    => '\n',
         '"'     => '\\"',
-        "'"     => "\\'" }
+        "'"     => "\\'",
+        "\342\200\250" => '\u2028', # unicode line separator
+        "\342\200\251" => '\u2029' } # unicode paragraph separator
 
       # Escape carrier returns and single and double quotes for JavaScript segments.
       def escape_javascript(javascript)
         if javascript
-          result = javascript.gsub(/(\\|<\/|\r\n|[\n\r"'])/) {|match| JS_ESCAPE_MAP[match] }
+          result = javascript.gsub(/(\\|<\/|\r\n|[\n\r"']|\342\200\250|\342\200\251)/) {|match| JS_ESCAPE_MAP[match] }
           javascript.html_safe? ? result.html_safe : result
         else
           ''
