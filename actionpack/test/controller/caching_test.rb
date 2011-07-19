@@ -812,7 +812,6 @@ class CacheHelperOutputBufferTest < ActionController::TestCase
 
     assert_nothing_raised do
       cache_helper.send :fragment_for, 'Test fragment name', 'Test fragment', &Proc.new{ nil }
-      assert output_buffer.html_safe?, "Output buffer should stay html_safe"
     end
   end
 
@@ -828,7 +827,6 @@ class CacheHelperOutputBufferTest < ActionController::TestCase
 
     assert_nothing_raised do
       cache_helper.send :fragment_for, 'Test fragment name', 'Test fragment', &Proc.new{ nil }
-      assert output_buffer.html_safe?, "Output buffer should stay html_safe"
     end
   end
 
