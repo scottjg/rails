@@ -30,7 +30,10 @@ def setup_response
   @addy  = { :address => { :id => 1, :street => '12345 Street', :country => 'Australia' } }.to_json
   @rick  = { :person => { :name => "Rick", :age => 25 } }.to_json
   @joe    = { :person => { :id => 6, :name => 'Joe', :likes_hats => true }}.to_json
-  @people = { :people => [ { :person => { :id => 1, :name => 'Matz' } }, { :person => { :id => 2, :name => 'David' } }] }.to_json
+  @people = { :people => [ { :person => { :id => 1, :name => 'Matz' } },
+                           { :person => { :id => 2, :name => 'David', :hair_color => "black", :age => 32 } }
+                         ]
+            }.to_json
   @people_david = { :people => [ { :person => { :id => 2, :name => 'David' } }] }.to_json
   @addresses = { :addresses => [{ :address => { :id => 1, :street => '12345 Street', :country => 'Australia' } }] }.to_json
 
@@ -117,6 +120,7 @@ def setup_response
     mock.get    "/people/99.json",              {}, nil, 404
     mock.post   "/people.json",                 {}, @rick, 201, 'Location' => '/people/5.xml'
     mock.get    "/people.json",                 {}, @people
+    mock.get    "/people.json?name%5B%5D=Matz", {}, @matz
     mock.get    "/people/1/addresses.json",     {}, @addresses
     mock.get    "/people/1/addresses/1.json",   {}, @addy
     mock.get    "/people/1/addresses/2.xml",    {}, nil, 404

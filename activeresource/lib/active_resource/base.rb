@@ -965,7 +965,15 @@ module ActiveResource
         def method_missing(method_symbol, *arguments)
           case method_symbol.to_s
           when /^find_by_([_a-zA-Z]\w*)$/
-            Person.find(:first)
+            attribute = $1
+            params = { attribute.to_sym => arguments }
+            if self.schema.key?(attribute)
+              self.find(:all, :params => params)
+            else
+              raise "Couldn't find attribute #{attribute} for #{self}"
+            end
+          else
+            super
           end
         end
     end

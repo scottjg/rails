@@ -138,7 +138,12 @@ class FinderTest < Test::Unit::TestCase
   end
   
   def test_find_by_known_attribute_with_schema_block
-    david = Person.find_by_name("David")
-    assert_kind_of Person, david
+    matz = Person.find_by_name('Matz')
+    assert_kind_of Person, matz
+    assert_equal "Matz", matz.name
+  end
+  
+  def test_find_by_unknown_attribute_with_schema_block
+    assert_raise(RuntimeError) { Person.find_by_birthmonth("December") }
   end
 end
