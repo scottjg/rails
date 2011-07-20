@@ -11,7 +11,7 @@
 # classes in NilClass::WHINERS the error message suggests which could be the
 # actual intended class:
 #
-#   $ script/runner nil.destroy 
+#   $ rails runner nil.destroy
 #   ...
 #   You might have expected an instance of ActiveRecord::Base.
 #   ...
@@ -25,25 +25,28 @@
 # By default it is on in development and test modes, and it is off in production
 # mode.
 class NilClass
-  WHINERS = [::Array]
-  WHINERS << ::ActiveRecord::Base if defined? ::ActiveRecord
-
   METHOD_CLASS_MAP = Hash.new
 
-  WHINERS.each do |klass|
+  def self.add_whiner(klass)
     methods = klass.public_instance_methods - public_instance_methods
     class_name = klass.name
     methods.each { |method| METHOD_CLASS_MAP[method.to_sym] = class_name }
   end
 
+  add_whiner ::Array
+
   # Raises a RuntimeError when you attempt to call +id+ on +nil+.
   def id
-    raise RuntimeError, "Called id for nil, which would mistakenly be 4 -- if you really wanted the id of nil, use object_id", caller
+    raise RuntimeError, "Called id for nil, which would mistakenly be #{object_id} -- if you really wanted the id of nil, use object_id", caller
   end
 
   private
-    def method_missing(method, *args, &block)
-      raise_nil_warning_for METHOD_CLASS_MAP[method], method, caller
+    def method_missing(method, *args)
+      if klass = METHOD_CLASS_MAP[method]
+        raise_nil_warning_for klass, method, caller
+      else
+        super
+      end
     end
 
     # Raises a NoMethodError when you attempt to call a method on +nil+.
@@ -55,4 +58,3 @@ class NilClass
       raise NoMethodError, message, with_caller || caller
     end
 end
-

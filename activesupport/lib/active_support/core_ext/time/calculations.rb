@@ -1,5 +1,5 @@
 require 'active_support/duration'
-require 'active_support/core_ext/date/calculations'
+require 'active_support/core_ext/time/zones'
 
 class Time
   COMMON_YEAR_DAYS_IN_MONTH = [nil, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -20,12 +20,13 @@ class Time
 
     # Returns a new Time if requested year can be accommodated by Ruby's Time class
     # (i.e., if year is within either 1970..2038 or 1902..2038, depending on system architecture);
-    # otherwise returns a DateTime
+    # otherwise returns a DateTime.
     def time_with_datetime_fallback(utc_or_local, year, month=1, day=1, hour=0, min=0, sec=0, usec=0)
-      ::Time.send(utc_or_local, year, month, day, hour, min, sec, usec)
+      time = ::Time.send(utc_or_local, year, month, day, hour, min, sec, usec)
+      # This check is needed because Time.utc(y) returns a time object in the 2000s for 0 <= y <= 138.
+      time.year == year ? time : ::DateTime.civil_from_format(utc_or_local, year, month, day, hour, min, sec)
     rescue
-      offset = utc_or_local.to_sym == :local ? ::DateTime.local_offset : 0
-      ::DateTime.civil(year, month, day, hour, min, sec, offset)
+      ::DateTime.civil_from_format(utc_or_local, year, month, day, hour, min, sec)
     end
 
     # Wraps class method +time_with_datetime_fallback+ with +utc_or_local+ set to <tt>:utc</tt>.
@@ -36,6 +37,11 @@ class Time
     # Wraps class method +time_with_datetime_fallback+ with +utc_or_local+ set to <tt>:local</tt>.
     def local_time(*args)
       time_with_datetime_fallback(:local, *args)
+    end
+
+    # Returns <tt>Time.zone.now</tt> when <tt>Time.zone</tt> or <tt>config.time_zone</tt> are set, otherwise just returns <tt>Time.now</tt>.
+    def current
+      ::Time.zone ? ::Time.zone.now : ::Time.now
     end
   end
 
@@ -84,12 +90,12 @@ class Time
       options[:weeks], partial_weeks = options[:weeks].divmod(1)
       options[:days] = (options[:days] || 0) + 7 * partial_weeks
     end
-    
+
     unless options[:days].nil?
       options[:days], partial_days = options[:days].divmod(1)
       options[:hours] = (options[:hours] || 0) + 24 * partial_days
     end
-    
+
     d = to_date.advance(options)
     time_advanced_by_date = change(:year => d.year, :month => d.month, :day => d.day)
     seconds_to_advance = (options[:seconds] || 0) + (options[:minutes] || 0) * 60 + (options[:hours] || 0) * 3600
@@ -108,6 +114,11 @@ class Time
     to_datetime.since(seconds)
   end
   alias :in :since
+
+  # Returns a new Time representing the time a number of specified weeks ago.
+  def weeks_ago(weeks)
+    advance(:weeks => -weeks)
+  end
 
   # Returns a new Time representing the time a number of specified months ago
   def months_ago(months)
@@ -130,7 +141,7 @@ class Time
   end
 
   # Short-hand for years_ago(1)
-  def last_year
+  def prev_year
     years_ago(1)
   end
 
@@ -139,9 +150,8 @@ class Time
     years_since(1)
   end
 
-
   # Short-hand for months_ago(1)
-  def last_month
+  def prev_month
     months_ago(1)
   end
 
@@ -165,6 +175,11 @@ class Time
   end
   alias :at_end_of_week :end_of_week
 
+  # Returns a new Time representing the start of the given day in the previous week (default is Monday).
+  def prev_week(day = :monday)
+    ago(1.week).beginning_of_week.since(DAYS_INTO_WEEK[day].day).change(:hour => 0)
+  end
+
   # Returns a new Time representing the start of the given day in next week (default is Monday).
   def next_week(day = :monday)
     since(1.week).beginning_of_week.since(DAYS_INTO_WEEK[day].day).change(:hour => 0)
@@ -173,7 +188,7 @@ class Time
   # Returns a new Time representing the start of the day (0:00)
   def beginning_of_day
     #(self - seconds_since_midnight).change(:usec => 0)
-    change(:hour => 0, :min => 0, :sec => 0, :usec => 0)
+    change(:hour => 0)
   end
   alias :midnight :beginning_of_day
   alias :at_midnight :beginning_of_day
@@ -187,7 +202,7 @@ class Time
   # Returns a new Time representing the start of the month (1st of the month, 0:00)
   def beginning_of_month
     #self - ((self.mday-1).days + self.seconds_since_midnight)
-    change(:day => 1,:hour => 0, :min => 0, :sec => 0, :usec => 0)
+    change(:day => 1, :hour => 0)
   end
   alias :at_beginning_of_month :beginning_of_month
 
@@ -211,9 +226,9 @@ class Time
   end
   alias :at_end_of_quarter :end_of_quarter
 
-  # Returns  a new Time representing the start of the year (1st of january, 0:00)
+  # Returns a new Time representing the start of the year (1st of january, 0:00)
   def beginning_of_year
-    change(:month => 1, :day => 1, :hour => 0, :min => 0, :sec => 0, :usec => 0)
+    change(:month => 1, :day => 1, :hour => 0)
   end
   alias :at_beginning_of_year :beginning_of_year
 
@@ -231,6 +246,31 @@ class Time
   # Convenience method which returns a new Time representing the time 1 day since the instance time
   def tomorrow
     advance(:days => 1)
+  end
+
+  # Returns a Range representing the whole day of the current time.
+  def all_day
+    beginning_of_day..end_of_day
+  end
+
+  # Returns a Range representing the whole week of the current time.
+  def all_week
+    beginning_of_week..end_of_week
+  end
+
+  # Returns a Range representing the whole month of the current time.
+  def all_month
+    beginning_of_month..end_of_month
+  end
+
+  # Returns a Range representing the whole quarter of the current time.
+  def all_quarter
+    beginning_of_quarter..end_of_quarter
+  end
+
+  # Returns a Range representing the whole year of the current time.
+  def all_year
+    beginning_of_year..end_of_year
   end
 
   def plus_with_duration(other) #:nodoc:
@@ -258,7 +298,7 @@ class Time
   # are coerced into values that Time#- will recognize
   def minus_with_coercion(other)
     other = other.comparable_time if other.respond_to?(:comparable_time)
-    minus_without_coercion(other)
+    other.is_a?(DateTime) ? to_f - other.to_f : minus_without_coercion(other)
   end
   alias_method :minus_without_coercion, :-
   alias_method :-, :minus_with_coercion
@@ -266,14 +306,8 @@ class Time
   # Layers additional behavior on Time#<=> so that DateTime and ActiveSupport::TimeWithZone instances
   # can be chronologically compared with a Time
   def compare_with_coercion(other)
-    # if other is an ActiveSupport::TimeWithZone, coerce a Time instance from it so we can do <=> comparison
-    other = other.comparable_time if other.respond_to?(:comparable_time)
-    if other.acts_like?(:date)
-      # other is a Date/DateTime, so coerce self #to_datetime and hand off to DateTime#<=>
-      to_datetime.compare_without_coercion(other)
-    else
-      compare_without_coercion(other)
-    end
+    # we're avoiding Time#to_datetime cause it's expensive
+    other.is_a?(Time) ? compare_without_coercion(other.to_time) : to_datetime <=> other
   end
   alias_method :compare_without_coercion, :<=>
   alias_method :<=>, :compare_with_coercion

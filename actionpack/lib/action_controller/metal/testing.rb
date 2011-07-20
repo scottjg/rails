@@ -2,26 +2,19 @@ module ActionController
   module Testing
     extend ActiveSupport::Concern
 
-    include RackConvenience
+    include RackDelegation
 
-    # OMG MEGA HAX
+    # TODO: Clean this up
     def process_with_new_base_test(request, response)
       @_request = request
       @_response = response
       @_response.request = request
       ret = process(request.parameters[:action])
-      @_response.body ||= self.response_body
-      @_response.prepare!
-      set_test_assigns
-      ret
-    end
-
-    def set_test_assigns
-      @assigns = {}
-      (instance_variable_names - self.class.protected_instance_variables).each do |var|
-        name, value = var[1..-1], instance_variable_get(var)
-        @assigns[name] = value
+      if cookies = @_request.env['action_dispatch.cookies']
+        cookies.write(@_response)
       end
+      @_response.prepare!
+      ret
     end
 
     # TODO : Rewrite tests using controller.headers= to use Rack env

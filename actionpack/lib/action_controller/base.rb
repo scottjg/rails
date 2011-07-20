@@ -1,168 +1,236 @@
+require "action_controller/log_subscriber"
+
 module ActionController
+  # Action Controllers are the core of a web request in \Rails. They are made up of one or more actions that are executed
+  # on request and then either render a template or redirect to another action. An action is defined as a public method
+  # on the controller, which will automatically be made accessible to the web-server through \Rails Routes.
+  #
+  # By default, only the ApplicationController in a \Rails application inherits from <tt>ActionController::Base</tt>. All other
+  # controllers in turn inherit from ApplicationController. This gives you one class to configure things such as
+  # request forgery protection and filtering of sensitive request parameters.
+  #
+  # A sample controller could look like this:
+  #
+  #   class PostsController < ApplicationController
+  #     def index
+  #       @posts = Post.all
+  #     end
+  #
+  #     def create
+  #       @post = Post.create params[:post]
+  #       redirect_to posts_path
+  #     end
+  #   end
+  #
+  # Actions, by default, render a template in the <tt>app/views</tt> directory corresponding to the name of the controller and action
+  # after executing code in the action. For example, the +index+ action of the PostsController would render the
+  # template <tt>app/views/posts/index.html.erb</tt> by default after populating the <tt>@posts</tt> instance variable.
+  #
+  # Unlike index, the create action will not render a template. After performing its main purpose (creating a
+  # new post), it initiates a redirect instead. This redirect works by returning an external
+  # "302 Moved" HTTP response that takes the user to the index action.
+  #
+  # These two methods represent the two basic action archetypes used in Action Controllers. Get-and-show and do-and-redirect.
+  # Most actions are variations on these themes.
+  #
+  # == Requests
+  #
+  # For every request, the router determines the value of the +controller+ and +action+ keys. These determine which controller
+  # and action are called. The remaining request parameters, the session (if one is available), and the full request with
+  # all the HTTP headers are made available to the action through accessor methods. Then the action is performed.
+  #
+  # The full request object is available via the request accessor and is primarily used to query for HTTP headers:
+  #
+  #   def server_ip
+  #     location = request.env["SERVER_ADDR"]
+  #     render :text => "This server hosted at #{location}"
+  #   end
+  #
+  # == Parameters
+  #
+  # All request parameters, whether they come from a GET or POST request, or from the URL, are available through the params method
+  # which returns a hash. For example, an action that was performed through <tt>/posts?category=All&limit=5</tt> will include
+  # <tt>{ "category" => "All", "limit" => 5 }</tt> in params.
+  #
+  # It's also possible to construct multi-dimensional parameter hashes by specifying keys using brackets, such as:
+  #
+  #   <input type="text" name="post[name]" value="david">
+  #   <input type="text" name="post[address]" value="hyacintvej">
+  #
+  # A request stemming from a form holding these inputs will include <tt>{ "post" => { "name" => "david", "address" => "hyacintvej" } }</tt>.
+  # If the address input had been named "post[address][street]", the params would have included
+  # <tt>{ "post" => { "address" => { "street" => "hyacintvej" } } }</tt>. There's no limit to the depth of the nesting.
+  #
+  # == Sessions
+  #
+  # Sessions allows you to store objects in between requests. This is useful for objects that are not yet ready to be persisted,
+  # such as a Signup object constructed in a multi-paged process, or objects that don't change much and are needed all the time, such
+  # as a User object for a system that requires login. The session should not be used, however, as a cache for objects where it's likely
+  # they could be changed unknowingly. It's usually too much work to keep it all synchronized -- something databases already excel at.
+  #
+  # You can place objects in the session by using the <tt>session</tt> method, which accesses a hash:
+  #
+  #   session[:person] = Person.authenticate(user_name, password)
+  #
+  # And retrieved again through the same hash:
+  #
+  #   Hello #{session[:person]}
+  #
+  # For removing objects from the session, you can either assign a single key to +nil+:
+  #
+  #   # removes :person from session
+  #   session[:person] = nil
+  #
+  # or you can remove the entire session with +reset_session+.
+  #
+  # Sessions are stored by default in a browser cookie that's cryptographically signed, but unencrypted.
+  # This prevents the user from tampering with the session but also allows him to see its contents.
+  #
+  # Do not put secret information in cookie-based sessions!
+  #
+  # Other options for session storage:
+  #
+  # * ActiveRecord::SessionStore - Sessions are stored in your database, which works better than PStore with multiple app servers and,
+  #   unlike CookieStore, hides your session contents from the user. To use ActiveRecord::SessionStore, set
+  #
+  #     MyApplication::Application.config.session_store :active_record_store
+  #
+  #   in your <tt>config/initializers/session_store.rb</tt> and run <tt>script/rails g session_migration</tt>.
+  #
+  # == Responses
+  #
+  # Each action results in a response, which holds the headers and document to be sent to the user's browser. The actual response
+  # object is generated automatically through the use of renders and redirects and requires no user intervention.
+  #
+  # == Renders
+  #
+  # Action Controller sends content to the user by using one of five rendering methods. The most versatile and common is the rendering
+  # of a template. Included in the Action Pack is the Action View, which enables rendering of ERB templates. It's automatically configured.
+  # The controller passes objects to the view by assigning instance variables:
+  #
+  #   def show
+  #     @post = Post.find(params[:id])
+  #   end
+  #
+  # Which are then automatically available to the view:
+  #
+  #   Title: <%= @post.title %>
+  #
+  # You don't have to rely on the automated rendering. For example, actions that could result in the rendering of different templates 
+  # will use the manual rendering methods:
+  #
+  #   def search
+  #     @results = Search.find(params[:query])
+  #     case @results
+  #       when 0 then render :action => "no_results"
+  #       when 1 then render :action => "show"
+  #       when 2..10 then render :action => "show_many"
+  #     end
+  #   end
+  #
+  # Read more about writing ERB and Builder templates in ActionView::Base.
+  #
+  # == Redirects
+  #
+  # Redirects are used to move from one action to another. For example, after a <tt>create</tt> action, which stores a blog entry to the
+  # database, we might like to show the user the new entry. Because we're following good DRY principles (Don't Repeat Yourself), we're 
+  # going to reuse (and redirect to) a <tt>show</tt> action that we'll assume has already been created. The code might look like this:
+  #
+  #   def create
+  #     @entry = Entry.new(params[:entry])
+  #     if @entry.save
+  #       # The entry was saved correctly, redirect to show
+  #       redirect_to :action => 'show', :id => @entry.id
+  #     else
+  #       # things didn't go so well, do something else
+  #     end
+  #   end
+  #
+  # In this case, after saving our new entry to the database, the user is redirected to the <tt>show</tt> method, which is then executed.
+  # Note that this is an external HTTP-level redirection which will cause the browser to make a second request (a GET to the show action),
+  # and not some internal re-routing which calls both "create" and then "show" within one request.
+  #
+  # Learn more about <tt>redirect_to</tt> and what options you have in ActionController::Redirecting.
+  #
+  # == Calling multiple redirects or renders
+  #
+  # An action may contain only a single render or a single redirect. Attempting to try to do either again will result in a DoubleRenderError:
+  #
+  #   def do_something
+  #     redirect_to :action => "elsewhere"
+  #     render :action => "overthere" # raises DoubleRenderError
+  #   end
+  #
+  # If you need to redirect on the condition of something, then be sure to add "and return" to halt execution.
+  #
+  #   def do_something
+  #     redirect_to(:action => "elsewhere") and return if monkeys.nil?
+  #     render :action => "overthere" # won't be called if monkeys is nil
+  #   end
+  #
   class Base < Metal
     abstract!
 
-    include AbstractController::Callbacks
-    include AbstractController::Logger
+    def self.without_modules(*modules)
+      modules = modules.map do |m|
+        m.is_a?(Symbol) ? ActionController.const_get(m) : m
+      end
 
-    include ActionController::Helpers
-    include ActionController::HideActions
-    include ActionController::UrlFor
-    include ActionController::Redirector
-    include ActionController::RenderingController
-    include ActionController::RenderOptions::All
-    include ActionController::Layouts
-    include ActionController::ConditionalGet
-    include ActionController::RackConvenience
-    include ActionController::Benchmarking
-    include ActionController::Configuration
+      MODULES - modules
+    end
 
-    # Legacy modules
-    include SessionManagement
-    include ActionDispatch::StatusCodes
-    include ActionController::Caching
-    include ActionController::MimeResponds
+    MODULES = [
+      AbstractController::Layouts,
+      AbstractController::Translation,
+      AbstractController::AssetPaths,
+
+      Helpers,
+      HideActions,
+      UrlFor,
+      Redirecting,
+      Rendering,
+      Renderers::All,
+      ConditionalGet,
+      RackDelegation,
+      SessionManagement,
+      Caching,
+      MimeResponds,
+      ImplicitRender,
+
+      Cookies,
+      Flash,
+      RequestForgeryProtection,
+      ForceSSL,
+      Streaming,
+      DataStreaming,
+      RecordIdentifier,
+      HttpAuthentication::Basic::ControllerMethods,
+      HttpAuthentication::Digest::ControllerMethods,
+      HttpAuthentication::Token::ControllerMethods,
+
+      # Before callbacks should also be executed the earliest as possible, so
+      # also include them at the bottom.
+      AbstractController::Callbacks,
+
+      # Append rescue at the bottom to wrap as much as possible.
+      Rescue,
+
+      # Add instrumentations hooks at the bottom, to ensure they instrument
+      # all the methods properly.
+      Instrumentation,
+
+      # Params wrapper should come before instrumentation so they are
+      # properly showed in logs
+      ParamsWrapper
+    ]
+
+    MODULES.each do |mod|
+      include mod
+    end
 
     # Rails 2.x compatibility
-    include ActionController::Rails2Compatibility
+    include ActionController::Compatibility
 
-    include ActionController::Cookies
-    include ActionController::Session
-    include ActionController::Flash
-    include ActionController::Verification
-    include ActionController::RequestForgeryProtection
-    include ActionController::Streaming
-    include ActionController::HttpAuthentication::Basic::ControllerMethods
-    include ActionController::HttpAuthentication::Digest::ControllerMethods
-    include ActionController::FilterParameterLogging
-    include ActionController::Translation
-
-    # TODO: Extract into its own module
-    # This should be moved together with other normalizing behavior
-    module ImplicitRender
-      def send_action(*)
-        ret = super
-        default_render unless response_body
-        ret
-      end
-
-      def default_render
-        render
-      end
-
-      def method_for_action(action_name)
-        super || begin
-          if template_exists?(action_name.to_s, {:formats => formats}, :_prefix => controller_path)
-            "default_render"
-          end
-        end
-      end
-    end
-
-    include ImplicitRender
-
-    include ActionController::Rescue
-
-    def self.inherited(klass)
-      ::ActionController::Base.subclasses << klass.to_s
-      super
-    end
-
-    def self.subclasses
-      @subclasses ||= []
-    end
-
-    def _normalize_options(action = nil, options = {}, &blk)
-      if action.is_a?(Hash)
-        options, action = action, nil
-      elsif action.is_a?(String) || action.is_a?(Symbol)
-        key = case action = action.to_s
-        when %r{^/} then :file
-        when %r{/}  then :template
-        else             :action
-        end
-        options.merge! key => action
-      elsif action
-        options.merge! :partial => action
-      end
-
-      if options.key?(:action) && options[:action].to_s.index("/")
-        options[:template] = options.delete(:action)
-      end
-
-      if options[:status]
-        options[:status] = interpret_status(options[:status]).to_i
-      end
-
-      options[:update] = blk if block_given?
-      options
-    end
-
-    def render(action = nil, options = {}, &blk)
-      options = _normalize_options(action, options, &blk)
-      super(options)
-    end
-
-    def render_to_string(action = nil, options = {}, &blk)
-      options = _normalize_options(action, options, &blk)
-      super(options)
-    end
-
-    # Redirects the browser to the target specified in +options+. This parameter can take one of three forms:
-    #
-    # * <tt>Hash</tt> - The URL will be generated by calling url_for with the +options+.
-    # * <tt>Record</tt> - The URL will be generated by calling url_for with the +options+, which will reference a named URL for that record.
-    # * <tt>String</tt> starting with <tt>protocol://</tt> (like <tt>http://</tt>) - Is passed straight through as the target for redirection.
-    # * <tt>String</tt> not containing a protocol - The current protocol and host is prepended to the string.
-    # * <tt>:back</tt> - Back to the page that issued the request. Useful for forms that are triggered from multiple places.
-    #   Short-hand for <tt>redirect_to(request.env["HTTP_REFERER"])</tt>
-    #
-    # Examples:
-    #   redirect_to :action => "show", :id => 5
-    #   redirect_to post
-    #   redirect_to "http://www.rubyonrails.org"
-    #   redirect_to "/images/screenshot.jpg"
-    #   redirect_to articles_url
-    #   redirect_to :back
-    #
-    # The redirection happens as a "302 Moved" header unless otherwise specified.
-    #
-    # Examples:
-    #   redirect_to post_url(@post), :status=>:found
-    #   redirect_to :action=>'atom', :status=>:moved_permanently
-    #   redirect_to post_url(@post), :status=>301
-    #   redirect_to :action=>'atom', :status=>302
-    #
-    # When using <tt>redirect_to :back</tt>, if there is no referrer,
-    # RedirectBackError will be raised. You may specify some fallback
-    # behavior for this case by rescuing RedirectBackError.
-    def redirect_to(options = {}, response_status = {}) #:doc:
-      raise ActionControllerError.new("Cannot redirect to nil!") if options.nil?
-
-      status = if options.is_a?(Hash) && options.key?(:status)
-        interpret_status(options.delete(:status))
-      elsif response_status.key?(:status)
-        interpret_status(response_status[:status])
-      else
-        302
-      end
-
-      url = case options
-      # The scheme name consist of a letter followed by any combination of
-      # letters, digits, and the plus ("+"), period ("."), or hyphen ("-")
-      # characters; and is terminated by a colon (":").
-      when %r{^\w[\w\d+.-]*:.*}
-        options
-      when String
-        request.protocol + request.host_with_port + options
-      when :back
-        raise RedirectBackError unless refer = request.headers["Referer"]
-        refer
-      else
-        url_for(options)
-      end
-
-      super(url, status)
-    end
+    ActiveSupport.run_load_hooks(:action_controller, self)
   end
 end

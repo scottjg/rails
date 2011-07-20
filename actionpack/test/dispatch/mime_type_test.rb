@@ -6,8 +6,55 @@ class MimeTypeTest < ActiveSupport::TestCase
 
   test "parse single" do
     Mime::LOOKUP.keys.each do |mime_type|
-      assert_equal [Mime::Type.lookup(mime_type)], Mime::Type.parse(mime_type)
+      unless mime_type == 'image/*'
+        assert_equal [Mime::Type.lookup(mime_type)], Mime::Type.parse(mime_type)
+      end
     end
+  end
+
+  test "unregister" do
+    begin
+      Mime::Type.register("text/x-mobile", :mobile)
+      assert defined?(Mime::MOBILE)
+      assert_equal Mime::MOBILE, Mime::LOOKUP['text/x-mobile']
+      assert_equal Mime::MOBILE, Mime::EXTENSION_LOOKUP['mobile']
+
+      Mime::Type.unregister(:mobile)
+      assert !defined?(Mime::MOBILE), "Mime::MOBILE should not be defined"
+      assert !Mime::LOOKUP.has_key?('text/x-mobile'), "Mime::LOOKUP should not have key ['text/x-mobile]"
+      assert !Mime::EXTENSION_LOOKUP.has_key?('mobile'), "Mime::EXTENSION_LOOKUP should not have key ['mobile]"
+    ensure
+      Mime.module_eval { remove_const :MOBILE if const_defined?(:MOBILE) }
+      Mime::LOOKUP.reject!{|key,_| key == 'text/x-mobile'}
+    end
+  end
+
+  test "parse text with trailing star at the beginning" do
+    accept = "text/*, text/html, application/json, multipart/form-data"
+    expect = [Mime::HTML, Mime::TEXT, Mime::JS, Mime::CSS, Mime::ICS, Mime::CSV, Mime::XML, Mime::YAML, Mime::JSON, Mime::MULTIPART_FORM]
+    parsed = Mime::Type.parse(accept)
+    assert_equal expect, parsed
+  end
+
+  test "parse text with trailing star in the end" do
+    accept = "text/html, application/json, multipart/form-data, text/*"
+    expect = [Mime::HTML, Mime::JSON, Mime::MULTIPART_FORM, Mime::TEXT, Mime::JS, Mime::CSS, Mime::ICS, Mime::CSV, Mime::XML, Mime::YAML]
+    parsed = Mime::Type.parse(accept)
+    assert_equal expect, parsed
+  end
+
+  test "parse text with trailing star" do
+    accept = "text/*"
+    expect = [Mime::HTML, Mime::TEXT, Mime::JS, Mime::CSS, Mime::ICS, Mime::CSV, Mime::XML, Mime::YAML, Mime::JSON]
+    parsed = Mime::Type.parse(accept)
+    assert_equal expect, parsed
+  end
+
+  test "parse application with trailing star" do
+    accept = "application/*"
+    expect = [Mime::HTML, Mime::JS, Mime::XML, Mime::RSS, Mime::ATOM, Mime::YAML, Mime::URL_ENCODED_FORM, Mime::JSON, Mime::PDF, Mime::ZIP]
+    parsed = Mime::Type.parse(accept)
+    assert_equal expect, parsed
   end
 
   test "parse without q" do
@@ -23,7 +70,7 @@ class MimeTypeTest < ActiveSupport::TestCase
   end
 
   # Accept header send with user HTTP_USER_AGENT: Sunrise/0.42j (Windows XP)
-  test "parse crappy broken acceptlines" do
+  test "parse broken acceptlines" do
     accept = "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/*,,*/*;q=0.5"
     expect = [Mime::HTML, Mime::XML, "image/*", Mime::TEXT, Mime::ALL]
     assert_equal expect, Mime::Type.parse(accept).collect { |c| c.to_s }
@@ -31,7 +78,7 @@ class MimeTypeTest < ActiveSupport::TestCase
 
   # Accept header send with user HTTP_USER_AGENT: Mozilla/4.0
   #  (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; InfoPath.1)
-  test "parse crappy broken acceptlines2" do
+  test "parse other broken acceptlines" do
     accept = "image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword,  , pronto/1.00.00, sslvpn/1.00.00.00, */*"
     expect = ['image/gif', 'image/x-xbitmap', 'image/jpeg','image/pjpeg', 'application/x-shockwave-flash', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/msword', 'pronto/1.00.00', 'sslvpn/1.00.00.00', Mime::ALL  ]
     assert_equal expect, Mime::Type.parse(accept).collect { |c| c.to_s }
@@ -39,13 +86,12 @@ class MimeTypeTest < ActiveSupport::TestCase
 
   test "custom type" do
     begin
-      Mime::Type.register("image/gif", :gif)
+      Mime::Type.register("image/foo", :foo)
       assert_nothing_raised do
-        Mime::GIF
-        assert_equal Mime::GIF, Mime::SET.last
+        assert_equal Mime::FOO, Mime::SET.last
       end
     ensure
-      Mime.module_eval { remove_const :GIF if const_defined?(:GIF) }
+      Mime::Type.unregister(:FOO)
     end
   end
 
@@ -83,6 +129,13 @@ class MimeTypeTest < ActiveSupport::TestCase
     verified, unverified = all_types.partition { |type| Mime::Type.browser_generated_types.include? type }
     assert verified.each   { |type| assert  Mime.const_get(type.to_s.upcase).verify_request?, "Verifiable Mime Type is not verified: #{type.inspect}" }
     assert unverified.each { |type| assert !Mime.const_get(type.to_s.upcase).verify_request?, "Nonverifiable Mime Type is verified: #{type.inspect}" }
+  end
+
+  test "references gives preference to symbols before strings" do
+    assert_equal :html, Mime::HTML.ref
+    another = Mime::Type.lookup("foo/bar")
+    assert_nil another.to_sym
+    assert_equal "foo/bar", another.ref
   end
 
   test "regexp matcher" do

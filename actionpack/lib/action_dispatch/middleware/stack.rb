@@ -1,49 +1,27 @@
+require "active_support/inflector/methods"
+require "active_support/dependencies"
+
 module ActionDispatch
-  class MiddlewareStack < Array
+  class MiddlewareStack
     class Middleware
-      def self.new(klass, *args, &block)
-        if klass.is_a?(self)
-          klass
+      attr_reader :args, :block, :name, :classcache
+
+      def initialize(klass_or_name, *args, &block)
+        @klass = nil
+
+        if klass_or_name.respond_to?(:name)
+          @klass = klass_or_name
+          @name  = @klass.name
         else
-          super
+          @name  = klass_or_name.to_s
         end
-      end
 
-      attr_reader :args, :block
-
-      def initialize(klass, *args, &block)
-        @klass = klass
-
-        options = args.extract_options!
-        if options.has_key?(:if)
-          @conditional = options.delete(:if)
-        else
-          @conditional = true
-        end
-        args << options unless options.empty?
-
-        @args = args
-        @block = block
+        @classcache = ActiveSupport::Dependencies::Reference
+        @args, @block = args, block
       end
 
       def klass
-        if @klass.respond_to?(:new)
-          @klass
-        elsif @klass.respond_to?(:call)
-          @klass.call
-        else
-          @klass.to_s.constantize
-        end
-      end
-
-      def active?
-        return false unless klass
-
-        if @conditional.respond_to?(:call)
-          @conditional.call
-        else
-          @conditional
-        end
+        @klass || classcache[@name]
       end
 
       def ==(middleware)
@@ -53,45 +31,64 @@ module ActionDispatch
         when Class
           klass == middleware
         else
-          klass == middleware.to_s.constantize
+          normalize(@name) == normalize(middleware)
         end
       end
 
       def inspect
-        str = klass.to_s
-        args.each { |arg| str += ", #{build_args.inspect}" }
-        str
+        klass.to_s
       end
 
       def build(app)
-        if block
-          klass.new(app, *build_args, &block)
-        else
-          klass.new(app, *build_args)
-        end
+        klass.new(app, *args, &block)
       end
 
-      private
-        def build_args
-          Array(args).map { |arg| arg.respond_to?(:call) ? arg.call : arg }
-        end
+    private
+
+      def normalize(object)
+        object.to_s.strip.sub(/^::/, '')
+      end
     end
 
-    def initialize(*args, &block)
-      super(*args)
-      block.call(self) if block_given?
+    include Enumerable
+
+    attr_accessor :middlewares
+
+    def initialize(*args)
+      @middlewares = []
+      yield(self) if block_given?
+    end
+
+    def each
+      @middlewares.each { |x| yield x }
+    end
+
+    def size
+      middlewares.size
+    end
+
+    def last
+      middlewares.last
+    end
+
+    def [](i)
+      middlewares[i]
+    end
+
+    def initialize_copy(other)
+      self.middlewares = other.middlewares.dup
     end
 
     def insert(index, *args, &block)
-      index = self.index(index) unless index.is_a?(Integer)
-      middleware = Middleware.new(*args, &block)
-      super(index, middleware)
+      index = assert_index(index, :before)
+      middleware = self.class::Middleware.new(*args, &block)
+      middlewares.insert(index, middleware)
     end
 
     alias_method :insert_before, :insert
 
     def insert_after(index, *args, &block)
-      index = self.index(index) unless index.is_a?(Integer)
+      index = assert_index(index, :after)
       insert(index + 1, *args, &block)
     end
 
@@ -100,17 +97,27 @@ module ActionDispatch
       delete(target)
     end
 
+    def delete(target)
+      middlewares.delete target
+    end
+
     def use(*args, &block)
-      middleware = Middleware.new(*args, &block)
-      push(middleware)
+      middleware = self.class::Middleware.new(*args, &block)
+      middlewares.push(middleware)
     end
 
-    def active
-      find_all { |middleware| middleware.active? }
+    def build(app = nil, &block)
+      app ||= block
+      raise "MiddlewareStack#build requires an app" unless app
+      middlewares.reverse.inject(app) { |a, e| e.build(a) }
     end
 
-    def build(app)
-      active.reverse.inject(app) { |a, e| e.build(a) }
+  protected
+
+    def assert_index(index, where)
+      i = index.is_a?(Integer) ? index : middlewares.index(index)
+      raise "No such middleware to insert #{where}: #{index.inspect}" unless i
+      i
     end
   end
 end

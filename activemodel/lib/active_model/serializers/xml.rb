@@ -1,7 +1,11 @@
+require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/array/conversions'
 require 'active_support/core_ext/hash/conversions'
+require 'active_support/core_ext/hash/slice'
 
 module ActiveModel
+  # == Active Model XML Serializer
   module Serializers
     module Xml
       extend ActiveSupport::Concern
@@ -11,68 +15,33 @@ module ActiveModel
         class Attribute #:nodoc:
           attr_reader :name, :value, :type
 
-          def initialize(name, serializable)
+          def initialize(name, serializable, raw_value=nil)
             @name, @serializable = name, serializable
+            raw_value = raw_value.in_time_zone if raw_value.respond_to?(:in_time_zone)
+            @value = raw_value || @serializable.send(name)
             @type  = compute_type
-            @value = compute_value
           end
 
-          # There is a significant speed improvement if the value
-          # does not need to be escaped, as <tt>tag!</tt> escapes all values
-          # to ensure that valid XML is generated. For known binary
-          # values, it is at least an order of magnitude faster to
-          # Base64 encode binary values and directly put them in the
-          # output XML than to pass the original value or the Base64
-          # encoded value to the <tt>tag!</tt> method. It definitely makes
-          # no sense to Base64 encode the value and then give it to
-          # <tt>tag!</tt>, since that just adds additional overhead.
-          def needs_encoding?
-            ![ :binary, :date, :datetime, :boolean, :float, :integer ].include?(type)
-          end
-
-          def decorations(include_types = true)
+          def decorations
             decorations = {}
-
-            if type == :binary
-              decorations[:encoding] = 'base64'
-            end
-
-            if include_types && type != :string
-              decorations[:type] = type
-            end
-
-            if value.nil?
-              decorations[:nil] = true
-            end
-
+            decorations[:encoding] = 'base64' if type == :binary
+            decorations[:type] = (type == :string) ? nil : type
+            decorations[:nil] = true if value.nil?
             decorations
           end
 
-          protected
-            def compute_type
-              value = @serializable.send(name)
-              type = Hash::XML_TYPE_NAMES[value.class.name]
-              type ||= :string if value.respond_to?(:to_str)
-              type ||= :yaml
-              type
-            end
+        protected
 
-            def compute_value
-              value = @serializable.send(name)
-
-              if formatter = Hash::XML_FORMATTING[type.to_s]
-                value ? formatter.call(value) : nil
-              else
-                value
-              end
-            end
+          def compute_type
+            return if value.nil?
+            type = ActiveSupport::XmlMini::TYPE_NAMES[value.class.name]
+            type ||= :string if value.respond_to?(:to_str)
+            type ||= :yaml
+            type
+          end
         end
 
         class MethodAttribute < Attribute #:nodoc:
-          protected
-            def compute_type
-              Hash::XML_TYPE_NAMES[@serializable.send(name).class.name] || :string
-            end
         end
 
         attr_reader :options
@@ -85,112 +54,150 @@ module ActiveModel
           @options[:except] = Array.wrap(@options[:except]).map { |n| n.to_s }
         end
 
-        # To replicate the behavior in ActiveRecord#attributes,
-        # <tt>:except</tt> takes precedence over <tt>:only</tt>.  If <tt>:only</tt> is not set
+        # To replicate the behavior in ActiveRecord#attributes, <tt>:except</tt>
+        # takes precedence over <tt>:only</tt>. If <tt>:only</tt> is not set
         # for a N level model but is set for the N+1 level models,
         # then because <tt>:except</tt> is set to a default value, the second
-        # level model can have both <tt>:except</tt> and <tt>:only</tt> set.  So if
+        # level model can have both <tt>:except</tt> and <tt>:only</tt> set. So if
         # <tt>:only</tt> is set, always delete <tt>:except</tt>.
-        def serializable_attribute_names
-          attribute_names = @serializable.attributes.keys.sort
-
+        def attributes_hash
+          attributes = @serializable.attributes
           if options[:only].any?
-            attribute_names &= options[:only]
+            attributes.slice(*options[:only])
           elsif options[:except].any?
-            attribute_names -= options[:except]
+            attributes.except(*options[:except])
+          else
+            attributes
           end
-
-          attribute_names
         end
 
         def serializable_attributes
-          serializable_attribute_names.collect { |name| Attribute.new(name, @serializable) }
+          attributes_hash.map do |name, value|
+            self.class::Attribute.new(name, @serializable, value)
+          end
         end
 
-        def serializable_method_attributes
-          Array(options[:methods]).inject([]) do |methods, name|
-            methods << MethodAttribute.new(name.to_s, @serializable) if @serializable.respond_to?(name.to_s)
-            methods
-          end
+        def serializable_methods
+          Array.wrap(options[:methods]).map do |name|
+            self.class::MethodAttribute.new(name.to_s, @serializable) if @serializable.respond_to?(name.to_s)
+          end.compact
         end
 
         def serialize
+          require 'builder' unless defined? ::Builder
+
+          options[:indent]  ||= 2
+          options[:builder] ||= ::Builder::XmlMarkup.new(:indent => options[:indent])
+
+          @builder = options[:builder]
+          @builder.instruct! unless options[:skip_instruct]
+
+          root = (options[:root] || @serializable.class.model_name.element).to_s
+          root = ActiveSupport::XmlMini.rename_key(root, options)
+
           args = [root]
+          args << {:xmlns => options[:namespace]} if options[:namespace]
+          args << {:type => options[:type]} if options[:type] && !options[:skip_types]
 
-          if options[:namespace]
-            args << {:xmlns => options[:namespace]}
-          end
-
-          if options[:type]
-            args << {:type => options[:type]}
-          end
-
-          builder.tag!(*args) do
-            add_attributes
-            procs = options.delete(:procs)
-            options[:procs] = procs
+          @builder.tag!(*args) do
+            add_attributes_and_methods
+            add_includes
+            add_extra_behavior
             add_procs
-            yield builder if block_given?
+            yield @builder if block_given?
           end
         end
 
-        private
-          def builder
-            @builder ||= begin
-              require 'builder' unless defined? ::Builder
-              options[:indent] ||= 2
-              builder = options[:builder] ||= ::Builder::XmlMarkup.new(:indent => options[:indent])
+      private
 
-              unless options[:skip_instruct]
-                builder.instruct!
-                options[:skip_instruct] = true
-              end
+        def add_extra_behavior
+        end
 
-              builder
-            end
+        def add_attributes_and_methods
+          (serializable_attributes + serializable_methods).each do |attribute|
+            key = ActiveSupport::XmlMini.rename_key(attribute.name, options)
+            ActiveSupport::XmlMini.to_tag(key, attribute.value,
+              options.merge(attribute.decorations))
           end
+        end
 
-          def root
-            root = (options[:root] || @serializable.class.model_name.singular).to_s
-            reformat_name(root)
+        def add_includes
+          @serializable.send(:serializable_add_includes, options) do |association, records, opts|
+            add_associations(association, records, opts)
           end
+        end
 
-          def dasherize?
-            !options.has_key?(:dasherize) || options[:dasherize]
-          end
+        # TODO This can likely be cleaned up to simple use ActiveSupport::XmlMini.to_tag as well.
+        def add_associations(association, records, opts)
+          merged_options = opts.merge(options.slice(:builder, :indent))
+          merged_options[:skip_instruct] = true
 
-          def camelize?
-            options.has_key?(:camelize) && options[:camelize]
-          end
+          if records.is_a?(Enumerable)
+            tag  = ActiveSupport::XmlMini.rename_key(association.to_s, options)
+            type = options[:skip_types] ? { } : {:type => "array"}
+            association_name = association.to_s.singularize
+            merged_options[:root] = association_name
 
-          def reformat_name(name)
-            name = name.camelize if camelize?
-            dasherize? ? name.dasherize : name
-          end
+            if records.empty?
+              @builder.tag!(tag, type)
+            else
+              @builder.tag!(tag, type) do
+                records.each do |record|
+                  if options[:skip_types]
+                    record_type = {}
+                  else
+                    record_class = (record.class.to_s.underscore == association_name) ? nil : record.class.name
+                    record_type = {:type => record_class}
+                  end
 
-          def add_attributes
-            (serializable_attributes + serializable_method_attributes).each do |attribute|
-              builder.tag!(
-                reformat_name(attribute.name),
-                attribute.value.to_s,
-                attribute.decorations(!options[:skip_types])
-              )
-            end
-          end
-
-          def add_procs
-            if procs = options.delete(:procs)
-              [ *procs ].each do |proc|
-                if proc.arity > 1
-                  proc.call(options, @serializable)
-                else
-                  proc.call(options)
+                  record.to_xml merged_options.merge(record_type)
                 end
               end
             end
+          else
+            merged_options[:root] = association.to_s
+            records.to_xml(merged_options)
           end
+        end
+
+        def add_procs
+          if procs = options.delete(:procs)
+            Array.wrap(procs).each do |proc|
+              if proc.arity == 1
+                proc.call(options)
+              else
+                proc.call(options, @serializable)
+              end
+            end
+          end
+        end
       end
 
+      # Returns XML representing the model. Configuration can be
+      # passed through +options+.
+      #
+      # Without any +options+, the returned XML string will include all the model's
+      # attributes. For example:
+      #
+      #   user = User.find(1)
+      #   user.to_xml
+      #
+      #   <?xml version="1.0" encoding="UTF-8"?>
+      #   <user>
+      #     <id type="integer">1</id>
+      #     <name>David</name>
+      #     <age type="integer">16</age>
+      #     <created-at type="datetime">2011-01-30T22:29:23Z</created-at>
+      #   </user>
+      #
+      # The <tt>:only</tt> and <tt>:except</tt> options can be used to limit the attributes
+      # included, and work similar to the +attributes+ method.
+      #
+      # To include the result of some method calls on the model use <tt>:methods</tt>.
+      #
+      # To include associations use <tt>:include</tt>.
+      #
+      # For further documentation see activerecord/lib/active_record/serializers/xml_serializer.xml.
       def to_xml(options = {}, &block)
         Serializer.new(self, options).serialize(&block)
       end

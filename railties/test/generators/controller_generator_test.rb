@@ -1,12 +1,15 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/controller/controller_generator'
 
-class ControllerGeneratorTest < GeneratorsTestCase
+class ControllerGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  arguments %w(Account foo bar)
+
+  setup :copy_routes
 
   def test_help_does_not_show_invoked_generators_options_if_they_already_exist
     content = run_generator ["--help"]
-    assert_no_match /Helper options:/, content
+    assert_no_match(/Helper options\:/, content)
   end
 
   def test_controller_skeleton_is_created
@@ -17,13 +20,11 @@ class ControllerGeneratorTest < GeneratorsTestCase
   def test_check_class_collision
     Object.send :const_set, :ObjectController, Class.new
     content = capture(:stderr){ run_generator ["object"] }
-    assert_match /The name 'ObjectController' is either already used in your application or reserved/, content
+    assert_match(/The name 'ObjectController' is either already used in your application or reserved/, content)
   ensure
     Object.send :remove_const, :ObjectController
   end
 
-  # No need to spec content since it's already spec'ed on helper generator.
-  #
   def test_invokes_helper
     run_generator
     assert_file "app/helpers/account_helper.rb"
@@ -34,6 +35,12 @@ class ControllerGeneratorTest < GeneratorsTestCase
     run_generator ["account", "--skip-helper"]
     assert_no_file "app/helpers/account_helper.rb"
     assert_no_file "test/unit/helpers/account_helper_test.rb"
+  end
+
+  def test_invokes_assets
+    run_generator
+    assert_file "app/assets/javascripts/account.js"
+    assert_file "app/assets/stylesheets/account.css"
   end
 
   def test_invokes_default_test_framework
@@ -48,8 +55,13 @@ class ControllerGeneratorTest < GeneratorsTestCase
 
   def test_invokes_default_template_engine
     run_generator
-    assert_file "app/views/account/foo.html.erb", /app\/views\/account\/foo/
-    assert_file "app/views/account/bar.html.erb", /app\/views\/account\/bar/
+    assert_file "app/views/account/foo.html.erb", %r(app/views/account/foo\.html\.erb)
+    assert_file "app/views/account/bar.html.erb", %r(app/views/account/bar\.html\.erb)
+  end
+
+  def test_add_routes
+    run_generator
+    assert_file "config/routes.rb", /get "account\/foo"/, /get "account\/bar"/
   end
 
   def test_invokes_default_template_engine_even_with_no_action
@@ -66,15 +78,8 @@ class ControllerGeneratorTest < GeneratorsTestCase
     run_generator
 
     assert_file "app/controllers/account_controller.rb" do |controller|
-      assert_instance_method controller, :foo
-      assert_instance_method controller, :bar
+      assert_instance_method :foo, controller
+      assert_instance_method :bar, controller
     end
   end
-
-  protected
-
-    def run_generator(args=["Account", "foo", "bar"])
-      silence(:stdout) { Rails::Generators::ControllerGenerator.start args }
-    end
-
 end

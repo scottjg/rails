@@ -1,3 +1,4 @@
+require 'rbconfig'
 module Kernel
   # Sets $VERBOSE to nil for the duration of the block and back to its original value afterwards.
   #
@@ -37,7 +38,7 @@ module Kernel
   #   puts 'But this will'
   def silence_stream(stream)
     old_stream = stream.dup
-    stream.reopen(RUBY_PLATFORM =~ /mswin/ ? 'NUL:' : '/dev/null')
+    stream.reopen(RbConfig::CONFIG['host_os'] =~ /mswin|mingw/ ? 'NUL:' : '/dev/null')
     stream.sync = true
     yield
   ensure
@@ -56,6 +57,37 @@ module Kernel
     begin yield
     rescue Exception => e
       raise unless exception_classes.any? { |cls| e.kind_of?(cls) }
+    end
+  end
+
+  # Captures the given stream and returns it:
+  #
+  #   stream = capture(:stdout) { puts "Cool" }
+  #   stream # => "Cool\n"
+  #
+  def capture(stream)
+    begin
+      stream = stream.to_s
+      eval "$#{stream} = StringIO.new"
+      yield
+      result = eval("$#{stream}").string
+    ensure
+      eval("$#{stream} = #{stream.upcase}")
+    end
+
+    result
+  end
+  alias :silence :capture
+
+  # Silences both STDOUT and STDERR, even for subprocesses.
+  #
+  #   quietly { system 'bundle install' }
+  #
+  def quietly
+    silence_stream(STDOUT) do
+      silence_stream(STDERR) do
+        yield
+      end
     end
   end
 end

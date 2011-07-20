@@ -38,28 +38,26 @@ end
 class Firm < Company
   has_many :clients, :order => "id", :dependent => :destroy, :counter_sql =>
       "SELECT COUNT(*) FROM companies WHERE firm_id = 1 " +
-      "AND (#{QUOTED_TYPE} = 'Client' OR #{QUOTED_TYPE} = 'SpecialClient' OR #{QUOTED_TYPE} = 'VerySpecialClient' )"
+      "AND (#{QUOTED_TYPE} = 'Client' OR #{QUOTED_TYPE} = 'SpecialClient' OR #{QUOTED_TYPE} = 'VerySpecialClient' )",
+      :before_remove => :log_before_remove,
+      :after_remove  => :log_after_remove
   has_many :unsorted_clients, :class_name => "Client"
   has_many :clients_sorted_desc, :class_name => "Client", :order => "id DESC"
   has_many :clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :order => "id"
   has_many :unvalidated_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :validate => false
   has_many :dependent_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :order => "id", :dependent => :destroy
   has_many :exclusively_dependent_clients_of_firm, :foreign_key => "client_of", :class_name => "Client", :order => "id", :dependent => :delete_all
-  has_many :limited_clients, :class_name => "Client", :order => "id", :limit => 1
+  has_many :limited_clients, :class_name => "Client", :limit => 1
+  has_many :clients_with_interpolated_conditions, :class_name => "Client", :conditions => proc { "rating > #{rating}" }
   has_many :clients_like_ms, :conditions => "name = 'Microsoft'", :class_name => "Client", :order => "id"
-  has_many :clients_with_interpolated_conditions, :class_name => "Client", :conditions => 'rating > #{rating}'
   has_many :clients_like_ms_with_hash_conditions, :conditions => { :name => 'Microsoft' }, :class_name => "Client", :order => "id"
-  has_many :clients_using_sql, :class_name => "Client", :finder_sql => 'SELECT * FROM companies WHERE client_of = #{id}'
-  has_many :clients_using_multiline_sql, :class_name => "Client", :finder_sql => '
-  SELECT
-  companies.*
-  FROM companies WHERE companies.client_of = #{id}'
+  has_many :clients_using_sql, :class_name => "Client", :finder_sql => proc { "SELECT * FROM companies WHERE client_of = #{id}" }
   has_many :clients_using_counter_sql, :class_name => "Client",
-           :finder_sql  => 'SELECT * FROM companies WHERE client_of = #{id}',
-           :counter_sql => 'SELECT COUNT(*) FROM companies WHERE client_of = #{id}'
+           :finder_sql  => proc { "SELECT * FROM companies WHERE client_of = #{id} " },
+           :counter_sql => proc { "SELECT COUNT(*) FROM companies WHERE client_of = #{id}" }
   has_many :clients_using_zero_counter_sql, :class_name => "Client",
-           :finder_sql  => 'SELECT * FROM companies WHERE client_of = #{id}',
-           :counter_sql => 'SELECT 0 FROM companies WHERE client_of = #{id}'
+           :finder_sql  => proc { "SELECT * FROM companies WHERE client_of = #{id}" },
+           :counter_sql => proc { "SELECT 0 FROM companies WHERE client_of = #{id}" }
   has_many :no_clients_using_counter_sql, :class_name => "Client",
            :finder_sql  => 'SELECT * FROM companies WHERE client_of = 1000',
            :counter_sql => 'SELECT COUNT(*) FROM companies WHERE client_of = 1000'
@@ -68,6 +66,8 @@ class Firm < Company
   has_many :readonly_clients, :class_name => 'Client', :readonly => true
   has_many :clients_using_primary_key, :class_name => 'Client',
            :primary_key => 'name', :foreign_key => 'firm_name'
+  has_many :clients_using_primary_key_with_delete_all, :class_name => 'Client',
+           :primary_key => 'name', :foreign_key => 'firm_name', :dependent => :delete_all
   has_many :clients_grouped_by_firm_id, :class_name => "Client", :group => "firm_id", :select => "firm_id"
   has_many :clients_grouped_by_name, :class_name => "Client", :group => "name", :select => "name"
 
@@ -80,19 +80,35 @@ class Firm < Company
   has_one :account_using_primary_key, :primary_key => "firm_id", :class_name => "Account", :order => "id"
   has_one :account_using_foreign_and_primary_keys, :foreign_key => "firm_name", :primary_key => "name", :class_name => "Account"
   has_one :deletable_account, :foreign_key => "firm_id", :class_name => "Account", :dependent => :delete
-  
+
   has_one :account_limit_500_with_hash_conditions, :foreign_key => "firm_id", :class_name => "Account", :conditions => { :credit_limit => 500 }
 
   has_one :unautosaved_account, :foreign_key => "firm_id", :class_name => 'Account', :autosave => false
   has_many :accounts
   has_many :unautosaved_accounts, :foreign_key => "firm_id", :class_name => 'Account', :autosave => false
+
+  def log
+    @log ||= []
+  end
+
+  private
+    def log_before_remove(record)
+      log << "before_remove#{record.id}"
+    end
+
+    def log_after_remove(record)
+      log << "after_remove#{record.id}"
+    end
 end
 
 class DependentFirm < Company
-  # added order by id as in fixtures there are two accounts for Rails Core
-  # Oracle tests were failing because of that as the second fixture was selected
-  has_one :account, :foreign_key => "firm_id", :dependent => :nullify, :order => "id"
-  has_many :companies, :foreign_key => 'client_of', :order => "id", :dependent => :nullify
+  has_one :account, :foreign_key => "firm_id", :dependent => :nullify
+  has_many :companies, :foreign_key => 'client_of', :dependent => :nullify
+end
+
+class RestrictedFirm < Company
+  has_one :account, :foreign_key => "firm_id", :dependent => :restrict, :order => "id"
+  has_many :companies, :foreign_key => 'client_of', :order => "id", :dependent => :restrict
 end
 
 class Client < Company
@@ -102,7 +118,23 @@ class Client < Company
   belongs_to :firm_with_other_name, :class_name => "Firm", :foreign_key => "client_of"
   belongs_to :firm_with_condition, :class_name => "Firm", :foreign_key => "client_of", :conditions => ["1 = ?", 1]
   belongs_to :firm_with_primary_key, :class_name => "Firm", :primary_key => "name", :foreign_key => "firm_name"
+  belongs_to :firm_with_primary_key_symbols, :class_name => "Firm", :primary_key => :name, :foreign_key => :firm_name
   belongs_to :readonly_firm, :class_name => "Firm", :foreign_key => "firm_id", :readonly => true
+  belongs_to :bob_firm, :class_name => "Firm", :foreign_key => "client_of", :conditions => { :name => "Bob" }
+  has_many :accounts, :through => :firm
+  belongs_to :account
+
+  class RaisedOnSave < RuntimeError; end
+  attr_accessor :raise_on_save
+  before_save do
+    raise RaisedOnSave if raise_on_save
+  end
+
+  class RaisedOnDestroy < RuntimeError; end
+  attr_accessor :raise_on_destroy
+  before_destroy do
+    raise RaisedOnDestroy if raise_on_destroy
+  end
 
   # Record destruction so we can test whether firm.clients.clear has
   # is calling client.destroy, deleting from the database, or setting
@@ -155,7 +187,7 @@ class VerySpecialClient < SpecialClient
 end
 
 class Account < ActiveRecord::Base
-  belongs_to :firm
+  belongs_to :firm, :class_name => 'Company'
   belongs_to :unautosaved_firm, :foreign_key => "firm_id", :class_name => "Firm", :autosave => false
 
   def self.destroyed_account_ids

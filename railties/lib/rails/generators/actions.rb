@@ -1,4 +1,5 @@
 require 'open-uri'
+require 'rbconfig'
 
 module Rails
   module Generators
@@ -31,54 +32,80 @@ module Rails
           options[:git] = "-b #{options[:branch]} #{options[:git]}"   if options[:branch]
           options[:svn] = "-r #{options[:revision]} #{options[:svn]}" if options[:revision]
           in_root do
-            run_ruby_script "script/plugin install #{options[:svn] || options[:git]}", :verbose => false
+            run_ruby_script "script/rails plugin install #{options[:svn] || options[:git]}", :verbose => false
           end
         else
           log "! no git or svn provided for #{name}. Skipping..."
         end
       end
 
-      # Adds an entry into config/environment.rb for the supplied gem. If env
+      # Adds an entry into Gemfile for the supplied gem. If env
       # is specified, add the gem to the given environment.
       #
       # ==== Example
       #
-      #   gem "rspec", :env => :test
+      #   gem "rspec", :group => :test
       #   gem "technoweenie-restful-authentication", :lib => "restful-authentication", :source => "http://gems.github.com/"
+      #   gem "rails", "3.0", :git => "git://github.com/rails/rails"
       #
-      def gem(name, options={})
-        log :gem, name
-        env = options.delete(:env)
+      def gem(*args)
+        options = args.extract_options!
+        name, version = args
 
-        gems_code = "config.gem '#{name}'"
+        # Set the message to be shown in logs. Uses the git repo if one is given,
+        # otherwise use name (version).
+        parts, message = [ name.inspect ], name
+        if version ||= options.delete(:version)
+          parts   << version.inspect
+          message << " (#{version})"
+        end
+        message = options[:git] if options[:git]
 
-        if options.any?
-          opts = options.inject([]) {|result, h| result << [":#{h[0]} => #{h[1].inspect.gsub('"',"'")}"] }.sort.join(", ")
-          gems_code << ", #{opts}"
+        log :gemfile, message
+
+        options.each do |option, value|
+          parts << ":#{option} => #{value.inspect}"
         end
 
-        environment gems_code, :env => env
+        in_root do
+          append_file "Gemfile", "gem #{parts.join(", ")}\n", :verbose => false
+        end
       end
 
-      # Adds a line inside the Initializer block for config/environment.rb.
+      # Add the given source to Gemfile
+      #
+      # ==== Example
+      #
+      #   add_source "http://gems.github.com/"
+      def add_source(source, options={})
+        log :source, source
+
+        in_root do
+          prepend_file "Gemfile", "source #{source.inspect}\n", :verbose => false
+        end
+      end
+
+      # Adds a line inside the Application class for config/application.rb.
       #
       # If options :env is specified, the line is appended to the corresponding
       # file in config/environments.
       #
       def environment(data=nil, options={}, &block)
-        sentinel = "Rails::Initializer.run do |config|"
+        sentinel = /class [a-z_:]+ < Rails::Application/i
+        env_file_sentinel = /::Application\.configure do/
         data = block.call if !data && block_given?
 
         in_root do
           if options[:env].nil?
             inject_into_file 'config/application.rb', "\n  #{data}", :after => sentinel, :verbose => false
           else
-            Array.wrap(options[:env]).each do|env|
-              append_file "config/environments/#{env}.rb", "\n#{data}", :verbose => false
+            Array.wrap(options[:env]).each do |env|
+              inject_into_file "config/environments/#{env}.rb", "\n  #{data}", :after => env_file_sentinel, :verbose => false
             end
           end
         end
       end
+      alias :application :environment
 
       # Run a command in git.
       #
@@ -88,11 +115,11 @@ module Rails
       #   git :add => "this.file that.rb"
       #   git :add => "onefile.rb", :rm => "badfile.cxx"
       #
-      def git(command={})
-        if command.is_a?(Symbol)
-          run "git #{command}"
+      def git(commands={})
+        if commands.is_a?(Symbol)
+          run "git #{commands}"
         else
-          command.each do |command, options|
+          commands.each do |command, options|
             run "git #{command} #{options}"
           end
         end
@@ -161,8 +188,8 @@ module Rails
       #   initializer("globals.rb") do
       #     data = ""
       #
-      #     ['MY_WORK', 'ADMINS', 'BEST_COMPANY_EVAR'].each do
-      #       data << "#{const} = :entp"
+      #     ['MY_WORK', 'ADMINS', 'BEST_COMPANY_EVAR'].each do |const|
+      #       data << "#{const} = :entp\n"
       #     end
       #
       #     data
@@ -187,7 +214,7 @@ module Rails
         log :generate, what
         argument = args.map {|arg| arg.to_s }.flatten.join(" ")
 
-        in_root { run_ruby_script("script/generate #{what} #{argument}", :verbose => false) }
+        in_root { run_ruby_script("script/rails generate #{what} #{argument}", :verbose => false) }
       end
 
       # Runs the supplied rake task
@@ -201,7 +228,7 @@ module Rails
       def rake(command, options={})
         log :rake, command
         env  = options[:env] || 'development'
-        sudo = options[:sudo] && RUBY_PLATFORM !~ /mswin|mingw/ ? 'sudo ' : ''
+        sudo = options[:sudo] && RbConfig::CONFIG['host_os'] !~ /mswin|mingw/ ? 'sudo ' : ''
         in_root { run("#{sudo}#{extify(:rake)} #{command} RAILS_ENV=#{env}", :verbose => false) }
       end
 
@@ -216,49 +243,50 @@ module Rails
         in_root { run("#{extify(:capify)} .", :verbose => false) }
       end
 
-      # Add Rails to /vendor/rails
-      #
-      # ==== Example
-      #
-      #   freeze!
-      #
-      def freeze!(args = {})
-        log :vendor, "rails"
-        in_root { run("#{extify(:rake)} rails:freeze:edge", :verbose => false) }
-      end
-
-      # Make an entry in Rails routing file conifg/routes.rb
+      # Make an entry in Rails routing file config/routes.rb
       #
       # === Example
       #
-      #   route "map.root :controller => :welcome"
+      #   route "root :to => 'welcome'"
       #
       def route(routing_code)
         log :route, routing_code
-        sentinel = "ActionController::Routing::Routes.draw do |map|"
+        sentinel = /\.routes\.draw do(?:\s*\|map\|)?\s*$/
 
         in_root do
           inject_into_file 'config/routes.rb', "\n  #{routing_code}\n", { :after => sentinel, :verbose => false }
         end
       end
 
+      # Reads the given file at the source root and prints it in the console.
+      #
+      # === Example
+      #
+      #   readme "README"
+      #
+      def readme(path)
+        log File.read(find_in_source_paths(path))
+      end
+
       protected
 
         # Define log for backwards compatibility. If just one argument is sent,
-        # invoke say, otherwise invoke say_status.
+        # invoke say, otherwise invoke say_status. Differently from say and
+        # similarly to say_status, this method respects the quiet? option given.
         #
         def log(*args)
           if args.size == 1
-            say args.first.to_s
+            say args.first.to_s unless options.quiet?
           else
-            say_status *args
+            args << (self.behavior == :invoke ? :green : :red)
+            say_status(*args)
           end
         end
 
         # Add an extension to the given name based on the platform.
         #
         def extify(name)
-          if RUBY_PLATFORM =~ /mswin|mingw/
+          if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
             "#{name}.bat"
           else
             name

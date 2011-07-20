@@ -1,5 +1,9 @@
+require 'active_support/core_ext/class/attribute'
+
 module ActiveRecord
-  # Observer classes respond to lifecycle callbacks to implement trigger-like
+  # = Active Record Observer
+  #
+  # Observer classes respond to life cycle callbacks to implement trigger-like
   # behavior outside the original class. This is a great way to reduce the
   # clutter that normally comes when the model class is burdened with
   # functionality that doesn't pertain to the core responsibility of the
@@ -7,7 +11,7 @@ module ActiveRecord
   #
   #   class CommentObserver < ActiveRecord::Observer
   #     def after_save(comment)
-  #       Notifications.deliver_comment("admin@do.com", "New comment was posted", comment)
+  #       Notifications.comment("admin@do.com", "New comment was posted", comment).deliver
   #     end
   #   end
   #
@@ -63,8 +67,8 @@ module ActiveRecord
   #
   # == Configuration
   #
-  # In order to activate an observer, list it in the <tt>config.active_record.observers</tt> configuration setting in your
-  # <tt>config/environment.rb</tt> file.
+  # In order to activate an observer, list it in the <tt>config.active_record.observers</tt> configuration
+  # setting in your <tt>config/application.rb</tt> file.
   #
   #   config.active_record.observers = :comment_observer, :signup_observer
   #
@@ -85,32 +89,31 @@ module ActiveRecord
   # singletons and that call instantiates and registers them.
   #
   class Observer < ActiveModel::Observer
-    extlib_inheritable_accessor(:observed_methods){ [] }
-
-    def initialize
-      super
-      observed_subclasses.each { |klass| add_observer!(klass) }
-    end
-
-    def self.method_added(method)
-      observed_methods << method if ActiveRecord::Callbacks::CALLBACKS.include?(method.to_sym)
-    end
 
     protected
-      def observed_subclasses
-        observed_classes.sum([]) { |klass| klass.send(:subclasses) }
+
+      def observed_classes
+        klasses = super
+        klasses + klasses.map { |klass| klass.descendants }.flatten
       end
 
       def add_observer!(klass)
         super
+        define_callbacks klass
+      end
 
-        # Check if a notifier callback was already added to the given class. If
-        # it was not, add it.
-        self.observed_methods.each do |method|
-          callback = :"_notify_observers_for_#{method}"
-          if (klass.instance_methods & [callback, callback.to_s]).empty?
-            klass.class_eval "def #{callback}; notify_observers(:#{method}); end"
-            klass.send(method, callback)
+      def define_callbacks(klass)
+        observer = self
+        observer_name = observer.class.name.underscore.gsub('/', '__')
+
+        ActiveRecord::Callbacks::CALLBACKS.each do |callback|
+          next unless respond_to?(callback)
+          callback_meth = :"_notify_#{observer_name}_for_#{callback}"
+          unless klass.respond_to?(callback_meth)
+            klass.send(:define_method, callback_meth) do |&block|
+              observer.send(callback, self, &block)
+            end
+            klass.send(callback, callback_meth)
           end
         end
       end

@@ -1,5 +1,4 @@
 require 'abstract_unit'
-require 'active_support/core_ext/symbol'
 
 class ActionController::Base
   class << self
@@ -79,7 +78,8 @@ class FilterTest < ActionController::TestCase
   end
 
   class RenderingController < ActionController::Base
-    before_filter :render_something_else
+    before_filter :before_filter_rendering
+    after_filter :unreached_after_filter
 
     def show
       @ran_action = true
@@ -87,8 +87,58 @@ class FilterTest < ActionController::TestCase
     end
 
     private
-      def render_something_else
+      def before_filter_rendering
+        @ran_filter ||= []
+        @ran_filter << "before_filter_rendering"
         render :inline => "something else"
+      end
+
+      def unreached_after_filter
+        @ran_filter << "unreached_after_filter_after_render"
+      end
+  end
+
+  class RenderingForPrependAfterFilterController < RenderingController
+    prepend_after_filter :unreached_prepend_after_filter
+
+    private
+      def unreached_prepend_after_filter
+        @ran_filter << "unreached_preprend_after_filter_after_render"
+      end
+  end
+
+  class BeforeFilterRedirectionController < ActionController::Base
+    before_filter :before_filter_redirects
+    after_filter :unreached_after_filter
+
+    def show
+      @ran_action = true
+      render :inline => "ran show action"
+    end
+
+    def target_of_redirection
+      @ran_target_of_redirection = true
+      render :inline => "ran target_of_redirection action"
+    end
+
+    private
+      def before_filter_redirects
+        @ran_filter ||= []
+        @ran_filter << "before_filter_redirects"
+        redirect_to(:action => 'target_of_redirection')
+      end
+
+      def unreached_after_filter
+        @ran_filter << "unreached_after_filter_after_redirection"
+      end
+  end
+
+  class BeforeFilterRedirectionForPrependAfterFilterController < BeforeFilterRedirectionController
+    prepend_after_filter :unreached_prepend_after_filter_after_redirection
+
+    private
+      def unreached_prepend_after_filter_after_redirection
+        @ran_filter << "unreached_prepend_after_filter_after_redirection"
       end
   end
 
@@ -315,6 +365,7 @@ class FilterTest < ActionController::TestCase
 
     def initialize
       @@execution_log = ""
+      super()
     end
 
     before_filter { |c| c.class.execution_log << " before procfilter "  }
@@ -436,7 +487,7 @@ class FilterTest < ActionController::TestCase
       end
 
       def non_yielding_filter
-        @filters  << "zomg it didn't yield"
+        @filters  << "it didn't yield"
         @filter_return_value
       end
 
@@ -444,6 +495,44 @@ class FilterTest < ActionController::TestCase
         @filters  << "filter_three"
       end
 
+  end
+
+  class ::AppSweeper < ActionController::Caching::Sweeper; end
+  class SweeperTestController < ActionController::Base
+    cache_sweeper :app_sweeper
+    def show
+      render :text => 'hello world'
+    end
+  end
+
+  class ImplicitActionsController < ActionController::Base
+    before_filter :find_only, :only => :edit
+    before_filter :find_except, :except => :edit
+
+    private
+
+    def find_only
+      @only = 'Only'
+    end
+
+    def find_except
+      @except = 'Except'
+    end
+  end
+
+  def test_sweeper_should_not_block_rendering
+    response = test_process(SweeperTestController)
+    assert_equal 'hello world', response.body
+  end
+
+  def test_before_method_of_sweeper_should_always_return_true
+    sweeper = ActionController::Caching::Sweeper.send(:new)
+    assert sweeper.before(TestController.new)
+  end
+
+  def test_after_method_of_sweeper_should_always_return_nil
+    sweeper = ActionController::Caching::Sweeper.send(:new)
+    assert_nil sweeper.after(TestController.new)
   end
 
   def test_non_yielding_around_filters_not_returning_false_do_not_raise
@@ -466,14 +555,14 @@ class FilterTest < ActionController::TestCase
     controller = NonYieldingAroundFilterController.new
     controller.instance_variable_set "@filter_return_value", false
     test_process(controller, "index")
-    assert_equal ["filter_one", "zomg it didn't yield"], controller.assigns['filters']
+    assert_equal ["filter_one", "it didn't yield"], controller.assigns['filters']
   end
 
   def test_after_filters_are_not_run_if_around_filter_does_not_yield
     controller = NonYieldingAroundFilterController.new
     controller.instance_variable_set "@filter_return_value", true
     test_process(controller, "index")
-    assert_equal ["filter_one", "zomg it didn't yield"], controller.assigns['filters']
+    assert_equal ["filter_one", "it didn't yield"], controller.assigns['filters']
   end
 
   def test_added_filter_to_inheritance_graph
@@ -516,7 +605,7 @@ class FilterTest < ActionController::TestCase
     assert assigns["ran_proc_filter2"]
 
     test_process(AnomolousYetValidConditionController, "show_without_filter")
-    assert_equal nil, assigns["ran_filter"]
+    assert_nil assigns["ran_filter"]
     assert !assigns["ran_class_filter"]
     assert !assigns["ran_proc_filter1"]
     assert !assigns["ran_proc_filter2"]
@@ -531,16 +620,16 @@ class FilterTest < ActionController::TestCase
     test_process(ConditionalCollectionFilterController)
     assert_equal %w( ensure_login ), assigns["ran_filter"]
     test_process(ConditionalCollectionFilterController, "show_without_filter")
-    assert_equal nil, assigns["ran_filter"]
+    assert_nil assigns["ran_filter"]
     test_process(ConditionalCollectionFilterController, "another_action")
-    assert_equal nil, assigns["ran_filter"]
+    assert_nil assigns["ran_filter"]
   end
 
   def test_running_only_condition_filters
     test_process(OnlyConditionSymController)
     assert_equal %w( ensure_login ), assigns["ran_filter"]
     test_process(OnlyConditionSymController, "show_without_filter")
-    assert_equal nil, assigns["ran_filter"]
+    assert_nil assigns["ran_filter"]
 
     test_process(OnlyConditionProcController)
     assert assigns["ran_proc_filter"]
@@ -557,7 +646,7 @@ class FilterTest < ActionController::TestCase
     test_process(ExceptConditionSymController)
     assert_equal %w( ensure_login ), assigns["ran_filter"]
     test_process(ExceptConditionSymController, "show_without_filter")
-    assert_equal nil, assigns["ran_filter"]
+    assert_nil assigns["ran_filter"]
 
     test_process(ExceptConditionProcController)
     assert assigns["ran_proc_filter"]
@@ -574,7 +663,7 @@ class FilterTest < ActionController::TestCase
     test_process(BeforeAndAfterConditionController)
     assert_equal %w( ensure_login clean_up_tmp), assigns["ran_filter"]
     test_process(BeforeAndAfterConditionController, "show_without_filter")
-    assert_equal nil, assigns["ran_filter"]
+    assert_nil assigns["ran_filter"]
   end
 
   def test_around_filter
@@ -595,7 +684,7 @@ class FilterTest < ActionController::TestCase
   end
 
   def test_prepending_and_appending_around_filter
-    controller = test_process(MixedFilterController)
+    test_process(MixedFilterController)
     assert_equal " before aroundfilter  before procfilter  before appended aroundfilter " +
                  " after appended aroundfilter  after procfilter  after aroundfilter ",
                  MixedFilterController.execution_log
@@ -605,6 +694,32 @@ class FilterTest < ActionController::TestCase
     response = test_process(RenderingController)
     assert_equal "something else", response.body
     assert !assigns["ran_action"]
+  end
+
+  def test_before_filter_rendering_breaks_filtering_chain_for_after_filter
+    test_process(RenderingController)
+    assert_equal %w( before_filter_rendering ), assigns["ran_filter"]
+    assert !assigns["ran_action"]
+  end
+
+  def test_before_filter_redirects_breaks_filtering_chain_for_after_filter
+    test_process(BeforeFilterRedirectionController)
+    assert_response :redirect
+    assert_equal "http://test.host/filter_test/before_filter_redirection/target_of_redirection", redirect_to_url
+    assert_equal %w( before_filter_redirects ), assigns["ran_filter"]
+  end
+
+  def test_before_filter_rendering_breaks_filtering_chain_for_preprend_after_filter
+    test_process(RenderingForPrependAfterFilterController)
+    assert_equal %w( before_filter_rendering ), assigns["ran_filter"]
+    assert !assigns["ran_action"]
+  end
+
+  def test_before_filter_redirects_breaks_filtering_chain_for_preprend_after_filter
+    test_process(BeforeFilterRedirectionForPrependAfterFilterController)
+    assert_response :redirect
+    assert_equal "http://test.host/filter_test/before_filter_redirection_for_prepend_after_filter/target_of_redirection", redirect_to_url
+    assert_equal %w( before_filter_redirects ), assigns["ran_filter"]
   end
 
   def test_filters_with_mixed_specialization_run_in_order
@@ -652,9 +767,9 @@ class FilterTest < ActionController::TestCase
     assert_equal %w( ensure_login find_user ), assigns["ran_filter"]
 
     test_process(ConditionalSkippingController, "login")
-    assert_nil @controller.template.controller.instance_variable_get("@ran_after_filter")
+    assert !@controller.instance_variable_defined?("@ran_after_filter")
     test_process(ConditionalSkippingController, "change_password")
-    assert_equal %w( clean_up ), @controller.template.controller.instance_variable_get("@ran_after_filter")
+    assert_equal %w( clean_up ), @controller.instance_variable_get("@ran_after_filter")
   end
 
   def test_conditional_skipping_of_filters_when_parent_filter_is_also_conditional
@@ -675,7 +790,7 @@ class FilterTest < ActionController::TestCase
 
   def test_changing_the_requirements
     test_process(ChangingTheRequirementsController, "go_wild")
-    assert_equal nil, assigns['ran_filter']
+    assert_nil assigns['ran_filter']
   end
 
   def test_a_rescuing_around_filter
@@ -686,6 +801,18 @@ class FilterTest < ActionController::TestCase
 
     assert response.success?
     assert_equal("I rescued this: #<FilterTest::ErrorToRescue: Something made the bad noise.>", response.body)
+  end
+
+  def test_filters_obey_only_and_except_for_implicit_actions
+    test_process(ImplicitActionsController, 'show')
+    assert_equal 'Except', assigns(:except)
+    assert_nil assigns(:only)
+    assert_equal 'show', response.body
+
+    test_process(ImplicitActionsController, 'edit')
+    assert_equal 'Only', assigns(:only)
+    assert_nil assigns(:except)
+    assert_equal 'edit', response.body
   end
 
   private
@@ -740,12 +867,12 @@ class ControllerWithSymbolAsFilter < PostsController
 
     def without_exception
       # Do stuff...
-      1 + 1
+      wtf = 1 + 1
 
       yield
 
       # Do stuff...
-      1 + 1
+      wtf += 1
     end
 end
 

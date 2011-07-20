@@ -6,6 +6,8 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
     before_filter :authenticate_with_request, :only => :display
     before_filter :authenticate_long_credentials, :only => :show
 
+    http_basic_authenticate_with :name => "David", :password => "Goliath", :only => :search
+
     def index
       render :text => "Hello Secret"
     end
@@ -13,9 +15,13 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
     def display
       render :text => 'Definitely Maybe'
     end
-    
+
     def show
       render :text => 'Only for loooooong credentials'
+    end
+    
+    def search
+      render :text => 'All inline'
     end
 
     private
@@ -33,7 +39,7 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
         request_http_basic_authentication("SuperSecret")
       end
     end
-    
+
     def authenticate_long_credentials
       authenticate_or_request_with_http_basic do |username, password|
         username == '1234567890123456789012345678901234567890' && password == '1234567890123456789012345678901234567890'
@@ -56,7 +62,7 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
     test "successful authentication with #{header.downcase} and long credentials" do
       @request.env[header] = encode_credentials('1234567890123456789012345678901234567890', '1234567890123456789012345678901234567890')
       get :show
-      
+
       assert_response :success
       assert_equal 'Only for loooooong credentials', @response.body, "Authentication failed for request header #{header} and long credentials"
     end
@@ -103,6 +109,16 @@ class HttpBasicAuthenticationTest < ActionController::TestCase
     assert_response :success
     assert assigns(:logged_in)
     assert_equal 'Definitely Maybe', @response.body
+  end
+  
+  test "authenticate with class method" do
+    @request.env['HTTP_AUTHORIZATION'] = encode_credentials('David', 'Goliath')
+    get :search
+    assert_response :success
+
+    @request.env['HTTP_AUTHORIZATION'] = encode_credentials('David', 'WRONG!')
+    get :search
+    assert_response :unauthorized
   end
 
   private

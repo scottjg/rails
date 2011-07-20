@@ -1,10 +1,20 @@
 require "cases/helper"
-require 'models/topic'
+require 'active_support/core_ext/object/inclusion'
 require 'models/minimalistic'
+require 'models/developer'
+require 'models/auto_id'
+require 'models/boolean'
+require 'models/computer'
+require 'models/topic'
+require 'models/company'
+require 'models/category'
+require 'models/reply'
+require 'models/contact'
+require 'models/keyboard'
 
 class AttributeMethodsTest < ActiveRecord::TestCase
-  fixtures :topics
-  
+  fixtures :topics, :developers, :companies, :computers
+
   def setup
     @old_matchers = ActiveRecord::Base.send(:attribute_method_matchers).dup
     @target = Class.new(ActiveRecord::Base)
@@ -14,6 +24,331 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   def teardown
     ActiveRecord::Base.send(:attribute_method_matchers).clear
     ActiveRecord::Base.send(:attribute_method_matchers).concat(@old_matchers)
+  end
+
+  def test_attribute_present
+    t = Topic.new
+    t.title = "hello there!"
+    t.written_on = Time.now
+    assert t.attribute_present?("title")
+    assert t.attribute_present?("written_on")
+    assert !t.attribute_present?("content")
+  end
+
+  def test_attribute_keys_on_new_instance
+    t = Topic.new
+    assert_equal nil, t.title, "The topics table has a title column, so it should be nil"
+    assert_raise(NoMethodError) { t.title2 }
+  end
+
+  def test_boolean_attributes
+    assert ! Topic.find(1).approved?
+    assert Topic.find(2).approved?
+  end
+
+  def test_set_attributes
+    topic = Topic.find(1)
+    topic.attributes = { "title" => "Budget", "author_name" => "Jason" }
+    topic.save
+    assert_equal("Budget", topic.title)
+    assert_equal("Jason", topic.author_name)
+    assert_equal(topics(:first).author_email_address, Topic.find(1).author_email_address)
+  end
+
+  def test_set_attributes_without_hash
+    topic = Topic.new
+    assert_nothing_raised { topic.attributes = '' }
+  end
+
+  def test_integers_as_nil
+    test = AutoId.create('value' => '')
+    assert_nil AutoId.find(test.id).value
+  end
+
+  def test_set_attributes_with_block
+    topic = Topic.new do |t|
+      t.title       = "Budget"
+      t.author_name = "Jason"
+    end
+
+    assert_equal("Budget", topic.title)
+    assert_equal("Jason", topic.author_name)
+  end
+
+  def test_respond_to?
+    topic = Topic.find(1)
+    assert_respond_to topic, "title"
+    assert_respond_to topic, "_title"
+    assert_respond_to topic, "title?"
+    assert_respond_to topic, "title="
+    assert_respond_to topic, :title
+    assert_respond_to topic, :title?
+    assert_respond_to topic, :title=
+    assert_respond_to topic, "author_name"
+    assert_respond_to topic, "attribute_names"
+    assert !topic.respond_to?("nothingness")
+    assert !topic.respond_to?(:nothingness)
+  end
+
+  def test_respond_to_with_custom_primary_key
+    keyboard = Keyboard.create
+    assert_not_nil keyboard.key_number
+    assert_equal keyboard.key_number, keyboard.id
+    assert keyboard.respond_to?('key_number')
+    assert keyboard.respond_to?('_key_number')
+    assert keyboard.respond_to?('id')
+    assert keyboard.respond_to?('_id')
+  end
+
+  # Syck calls respond_to? before actually calling initialize
+  def test_respond_to_with_allocated_object
+    topic = Topic.allocate
+    assert !topic.respond_to?("nothingness")
+    assert !topic.respond_to?(:nothingness)
+    assert_respond_to topic, "title"
+    assert_respond_to topic, :title
+  end
+
+  # IRB inspects the return value of "MyModel.allocate"
+  # by inspecting it.
+  def test_allocated_object_can_be_inspected
+    topic = Topic.allocate
+    assert_nothing_raised { topic.inspect }
+    assert topic.inspect, "#<Topic not initialized>"
+  end
+
+  def test_array_content
+    topic = Topic.new
+    topic.content = %w( one two three )
+    topic.save
+
+    assert_equal(%w( one two three ), Topic.find(topic.id).content)
+  end
+
+  def test_read_attributes_before_type_cast
+    category = Category.new({:name=>"Test categoty", :type => nil})
+    category_attrs = {"name"=>"Test categoty", "id" => nil, "type" => nil, "categorizations_count" => nil}
+    assert_equal category_attrs , category.attributes_before_type_cast
+  end
+
+  if current_adapter?(:MysqlAdapter)
+    def test_read_attributes_before_type_cast_on_boolean
+      bool = Boolean.create({ "value" => false })
+      if RUBY_PLATFORM =~ /java/
+        # JRuby will return the value before typecast as string
+        assert_equal "0", bool.reload.attributes_before_type_cast["value"]
+      else
+        assert_equal 0, bool.reload.attributes_before_type_cast["value"]
+      end
+    end
+  end
+
+  def test_read_attributes_before_type_cast_on_datetime
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new
+
+      record.written_on = "345643456"
+      assert_equal "345643456", record.written_on_before_type_cast
+      assert_equal nil, record.written_on
+
+      record.written_on = "2009-10-11 12:13:14"
+      assert_equal "2009-10-11 12:13:14", record.written_on_before_type_cast
+      assert_equal Time.zone.parse("2009-10-11 12:13:14"), record.written_on
+      assert_equal ActiveSupport::TimeZone["Pacific Time (US & Canada)"], record.written_on.time_zone
+    end
+  end
+
+  def test_read_attributes_after_type_cast_on_datetime
+    tz = "Pacific Time (US & Canada)"
+
+    in_time_zone tz do
+      record = @target.new
+
+      date_string = "2011-03-24"
+      time        = Time.zone.parse date_string
+
+      record.written_on = date_string
+      assert_equal date_string, record.written_on_before_type_cast
+      assert_equal time, record.written_on
+      assert_equal ActiveSupport::TimeZone[tz], record.written_on.time_zone
+
+      record.save
+      record.reload
+
+      assert_equal time, record.written_on
+    end
+  end
+
+  def test_hash_content
+    topic = Topic.new
+    topic.content = { "one" => 1, "two" => 2 }
+    topic.save
+
+    assert_equal 2, Topic.find(topic.id).content["two"]
+
+    topic.content_will_change!
+    topic.content["three"] = 3
+    topic.save
+
+    assert_equal 3, Topic.find(topic.id).content["three"]
+  end
+
+  def test_update_array_content
+    topic = Topic.new
+    topic.content = %w( one two three )
+
+    topic.content.push "four"
+    assert_equal(%w( one two three four ), topic.content)
+
+    topic.save
+
+    topic = Topic.find(topic.id)
+    topic.content << "five"
+    assert_equal(%w( one two three four five ), topic.content)
+  end
+
+  def test_case_sensitive_attributes_hash
+    # DB2 is not case-sensitive
+    return true if current_adapter?(:DB2Adapter)
+
+    assert_equal @loaded_fixtures['computers']['workstation'].to_hash, Computer.find(:first).attributes
+  end
+
+  def test_hashes_not_mangled
+    new_topic = { :title => "New Topic" }
+    new_topic_values = { :title => "AnotherTopic" }
+
+    topic = Topic.new(new_topic)
+    assert_equal new_topic[:title], topic.title
+
+    topic.attributes= new_topic_values
+    assert_equal new_topic_values[:title], topic.title
+  end
+
+  def test_create_through_factory
+    topic = Topic.create("title" => "New Topic")
+    topicReloaded = Topic.find(topic.id)
+    assert_equal(topic, topicReloaded)
+  end
+
+  def test_write_attribute
+    topic = Topic.new
+    topic.send(:write_attribute, :title, "Still another topic")
+    assert_equal "Still another topic", topic.title
+
+    topic.send(:write_attribute, "title", "Still another topic: part 2")
+    assert_equal "Still another topic: part 2", topic.title
+  end
+
+  def test_read_attribute
+    topic = Topic.new
+    topic.title = "Don't change the topic"
+    assert_equal "Don't change the topic", topic.send(:read_attribute, "title")
+    assert_equal "Don't change the topic", topic["title"]
+
+    assert_equal "Don't change the topic", topic.send(:read_attribute, :title)
+    assert_equal "Don't change the topic", topic[:title]
+  end
+
+  def test_read_attribute_when_false
+    topic = topics(:first)
+    topic.approved = false
+    assert !topic.approved?, "approved should be false"
+    topic.approved = "false"
+    assert !topic.approved?, "approved should be false"
+  end
+
+  def test_read_attribute_when_true
+    topic = topics(:first)
+    topic.approved = true
+    assert topic.approved?, "approved should be true"
+    topic.approved = "true"
+    assert topic.approved?, "approved should be true"
+  end
+
+  def test_read_write_boolean_attribute
+    topic = Topic.new
+    # puts ""
+    # puts "New Topic"
+    # puts topic.inspect
+    topic.approved = "false"
+    # puts "Expecting false"
+    # puts topic.inspect
+    assert !topic.approved?, "approved should be false"
+    topic.approved = "false"
+    # puts "Expecting false"
+    # puts topic.inspect
+    assert !topic.approved?, "approved should be false"
+    topic.approved = "true"
+    # puts "Expecting true"
+    # puts topic.inspect
+    assert topic.approved?, "approved should be true"
+    topic.approved = "true"
+    # puts "Expecting true"
+    # puts topic.inspect
+    assert topic.approved?, "approved should be true"
+    # puts ""
+  end
+
+  def test_read_overridden_attribute
+    topic = Topic.new(:title => 'a')
+    def topic.title() 'b' end
+    assert_equal 'a', topic[:title]
+  end
+
+  def test_query_attribute_string
+    [nil, "", " "].each do |value|
+      assert_equal false, Topic.new(:author_name => value).author_name?
+    end
+
+    assert_equal true, Topic.new(:author_name => "Name").author_name?
+  end
+
+  def test_query_attribute_number
+    [nil, 0, "0"].each do |value|
+      assert_equal false, Developer.new(:salary => value).salary?
+    end
+
+    assert_equal true, Developer.new(:salary => 1).salary?
+    assert_equal true, Developer.new(:salary => "1").salary?
+  end
+
+  def test_query_attribute_boolean
+    [nil, "", false, "false", "f", 0].each do |value|
+      assert_equal false, Topic.new(:approved => value).approved?
+    end
+
+    [true, "true", "1", 1].each do |value|
+      assert_equal true, Topic.new(:approved => value).approved?
+    end
+  end
+
+  def test_query_attribute_with_custom_fields
+    object = Company.find_by_sql(<<-SQL).first
+      SELECT c1.*, c2.ruby_type as string_value, c2.rating as int_value
+        FROM companies c1, companies c2
+       WHERE c1.firm_id = c2.id
+         AND c1.id = 2
+    SQL
+
+    assert_equal "Firm", object.string_value
+    assert object.string_value?
+
+    object.string_value = "  "
+    assert !object.string_value?
+
+    assert_equal 1, object.int_value.to_i
+    assert object.int_value?
+
+    object.int_value = "0"
+    assert !object.int_value?
+  end
+
+  def test_non_attribute_access_and_assignment
+    topic = Topic.new
+    assert !topic.respond_to?("mumbo")
+    assert_raise(NoMethodError) { topic.mumbo }
+    assert_raise(NoMethodError) { topic.mumbo = 5 }
   end
 
   def test_undeclared_attribute_method_does_not_affect_respond_to_and_method_missing
@@ -142,12 +477,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     Topic.instance_variable_set "@cached_attributes", nil
   end
 
-  def test_time_related_columns_are_actually_cached
-    column_types = %w(datetime timestamp time date).map(&:to_sym)
-    column_names = Topic.columns.select{|c| column_types.include?(c.type) }.map(&:name)
-
-    assert_equal column_names.sort, Topic.cached_attributes.sort
-    assert_equal time_related_columns_on_topic.sort, Topic.cached_attributes.sort
+  def test_cacheable_columns_are_actually_cached
+    assert_equal cached_columns.sort, Topic.cached_attributes.sort
   end
 
   def test_accessing_cached_attributes_caches_the_converted_values_and_nothing_else
@@ -158,8 +489,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert cache.empty?
 
     all_columns = Topic.columns.map(&:name)
-    cached_columns = time_related_columns_on_topic
-    uncached_columns =  all_columns - cached_columns
+    uncached_columns = all_columns - cached_columns
 
     all_columns.each do |attr_name|
       attribute_gets_cached = Topic.cache_attribute?(attr_name)
@@ -171,6 +501,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
         assert uncached_columns.include?(attr_name)
         assert !cache.include?(attr_name)
       end
+    end
+  end
+
+  def test_write_nil_to_time_attributes
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new
+      record.written_on = nil
+      assert_nil record.written_on
     end
   end
 
@@ -258,9 +596,9 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   def test_setting_time_zone_conversion_for_attributes_should_write_value_on_class_variable
     Topic.skip_time_zone_conversion_for_attributes = [:field_a]
     Minimalistic.skip_time_zone_conversion_for_attributes = [:field_b]
-    
-    assert_equal [:field_a], Topic.skip_time_zone_conversion_for_attributes 
-    assert_equal [:field_b], Minimalistic.skip_time_zone_conversion_for_attributes 
+
+    assert_equal [:field_a], Topic.skip_time_zone_conversion_for_attributes
+    assert_equal [:field_b], Minimalistic.skip_time_zone_conversion_for_attributes
   end
 
   def test_read_attributes_respect_access_control
@@ -269,7 +607,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = @target.new(:title => "The pros and cons of programming naked.")
     assert !topic.respond_to?(:title)
     exception = assert_raise(NoMethodError) { topic.title }
-    assert_equal "Attempt to call private method", exception.message
+    assert_match %r(^Attempt to call private method), exception.message
     assert_equal "I'm private", topic.send(:title)
   end
 
@@ -279,7 +617,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = @target.new
     assert !topic.respond_to?(:title=)
     exception = assert_raise(NoMethodError) { topic.title = "Pants"}
-    assert_equal "Attempt to call private method", exception.message
+    assert_match %r(^Attempt to call private method), exception.message
     topic.send(:title=, "Very large pants")
   end
 
@@ -289,14 +627,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = @target.new(:title => "Isaac Newton's pants")
     assert !topic.respond_to?(:title?)
     exception = assert_raise(NoMethodError) { topic.title? }
-    assert_equal "Attempt to call private method", exception.message
+    assert_match %r(^Attempt to call private method), exception.message
     assert topic.send(:title?)
   end
 
   def test_bulk_update_respects_access_control
     privatize("title=(value)")
 
-    assert_raise(ActiveRecord::UnknownAttributeError) { topic = @target.new(:title => "Rants about pants") }
+    assert_raise(ActiveRecord::UnknownAttributeError) { @target.new(:title => "Rants about pants") }
     assert_raise(ActiveRecord::UnknownAttributeError) { @target.new.attributes = { :title => "Ants in pants" } }
   end
 
@@ -310,15 +648,27 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
     assert !@target.instance_method_already_implemented?(:title)
     topic = @target.new
-    assert_equal nil, topic.title
+    assert_nil topic.title
 
     Object.send(:undef_method, :title) # remove test method from object
   end
 
+  def test_list_of_serialized_attributes
+    assert_equal %w(content), Topic.serialized_attributes.keys
+    assert_equal %w(preferences), Contact.serialized_attributes.keys
+  end
 
   private
+  def cached_columns
+    @cached_columns ||= (time_related_columns_on_topic + serialized_columns_on_topic).map(&:name)
+  end
+
   def time_related_columns_on_topic
-    Topic.columns.select{|c| [:time, :date, :datetime, :timestamp].include?(c.type)}.map(&:name)
+    Topic.columns.select { |c| c.type.in?([:time, :date, :datetime, :timestamp]) }
+  end
+
+  def serialized_columns_on_topic
+    Topic.columns.select { |c| Topic.serialized_attributes.include?(c.name) }
   end
 
   def in_time_zone(zone)

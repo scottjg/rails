@@ -1,10 +1,12 @@
+require 'thread'
 require 'active_support/core_ext/module/aliasing'
+require 'active_support/core_ext/array/extract_options'
 
 class Module
   # Synchronize access around a method, delegating synchronization to a
-  # particular mutex. A mutex (either a Mutex, or any object that responds to 
+  # particular mutex. A mutex (either a Mutex, or any object that responds to
   # #synchronize and yields to a block) must be provided as a final :with option.
-  # The :with option should be a symbol or string, and can represent a method, 
+  # The :with option should be a symbol or string, and can represent a method,
   # constant, or instance or class variable.
   # Example:
   #   class SharedCache
@@ -27,7 +29,7 @@ class Module
         raise ArgumentError, "#{method} is already synchronized. Double synchronization is not currently supported."
       end
 
-      module_eval(<<-EOS, __FILE__, __LINE__)
+      module_eval(<<-EOS, __FILE__, __LINE__ + 1)
         def #{aliased_method}_with_synchronization#{punctuation}(*args, &block)     # def expire_with_synchronization(*args, &block)
           #{with}.synchronize do                                                    #   @@lock.synchronize do
             #{aliased_method}_without_synchronization#{punctuation}(*args, &block)  #     expire_without_synchronization(*args, &block)

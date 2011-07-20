@@ -1,102 +1,39 @@
-# TODO: Fix this RAILS_ENV stuff
-RAILS_ENV = 'test' unless defined?(RAILS_ENV)
-
 require 'abstract_unit'
-Rails.application.config.root = File.expand_path(File.join(File.dirname(__FILE__), '..', 'fixtures'))
 require 'rails/generators'
-require 'rubygems'
-require 'active_record'
-require 'action_dispatch'
-
-CURRENT_PATH = File.expand_path(Dir.pwd)
-Rails::Generators.no_color!
+require 'rails/generators/test_case'
 
 module Rails
   def self.root
-    @root ||= File.expand_path(File.join(File.dirname(__FILE__), '..', 'fixtures', 'tmp'))
+    @root ||= File.expand_path(File.join(File.dirname(__FILE__), '..', 'fixtures'))
   end
 end
+Rails.application.config.root = Rails.root
+Rails.application.config.generators.templates = [File.join(Rails.root, "lib", "templates")]
 
-class GeneratorsTestCase < Test::Unit::TestCase
-  include FileUtils
+# Call configure to load the settings from
+# Rails.application.config.generators to Rails::Generators
+Rails.application.load_generators
 
-  def destination_root
-    Rails.root
-  end
+require 'active_record'
+require 'action_dispatch'
 
-  def setup
-    cd CURRENT_PATH
-    rm_rf(destination_root)
-    mkdir_p(destination_root)
-  end
+module GeneratorsTestHelper
+  def self.included(base)
+    base.class_eval do
+      destination File.join(Rails.root, "tmp")
+      setup :prepare_destination
 
-  def test_truth
-    # don't complain, test/unit
-  end
-
-  def capture(stream)
-    begin
-      stream = stream.to_s
-      eval "$#{stream} = StringIO.new"
-      yield
-      result = eval("$#{stream}").string
-    ensure 
-      eval("$#{stream} = #{stream.upcase}")
-    end
-
-    result
-  end
-  alias :silence :capture
-
-  def assert_file(relative, *contents)
-    absolute = File.join(destination_root, relative)
-    assert File.exists?(absolute), "Expected file #{relative.inspect} to exist, but does not"
-
-    read = File.read(absolute) if block_given? || !contents.empty?
-    yield read if block_given?
-
-    contents.each do |content|
-      case content
-        when String
-          assert_equal content, read
-        when Regexp
-          assert_match content, read
+      begin
+        base.tests Rails::Generators.const_get(base.name.sub(/Test$/, ''))
+      rescue
       end
     end
   end
 
-  def assert_no_file(relative)
-    absolute = File.join(destination_root, relative)
-    assert !File.exists?(absolute), "Expected file #{relative.inspect} to not exist, but does"
+  def copy_routes
+    routes = File.expand_path("../../../lib/rails/generators/rails/app/templates/config/routes.rb", __FILE__)
+    destination = File.join(destination_root, "config")
+    FileUtils.mkdir_p(destination)
+    FileUtils.cp routes, destination
   end
-
-  def assert_migration(relative, *contents, &block)
-    file_name = migration_file_name(relative)
-    assert file_name, "Expected migration #{relative} to exist, but was not found"
-    assert_file File.join(File.dirname(relative), file_name), *contents, &block
-  end
-
-  def assert_no_migration(relative)
-    file_name = migration_file_name(relative)
-    assert_nil file_name, "Expected migration #{relative} to not exist, but found #{file_name}"
-  end
-
-  def assert_class_method(content, method, &block)
-    assert_instance_method content, "self.#{method}", &block
-  end
-
-  def assert_instance_method(content, method)
-    assert content =~ /def #{method}(\(.+\))?(.*?)\n  end/m, "Expected to have method #{method}"
-    yield $2.strip if block_given?
-  end
-
-  protected
-
-    def migration_file_name(relative)
-      absolute = File.join(destination_root, relative)
-      dirname, file_name = File.dirname(absolute), File.basename(absolute).sub(/\.rb$/, '')
-
-      migration = Dir.glob("#{dirname}/[0-9]*_*.rb").grep(/\d+_#{file_name}.rb$/).first
-      File.basename(migration) if migration
-    end
 end

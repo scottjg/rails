@@ -1,17 +1,21 @@
+version = File.read(File.expand_path("../../RAILS_VERSION", __FILE__)).strip
+
 Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
-  s.name = "activesupport"
-  s.version = "3.0.pre"
-  s.date = "2009-09-01"
-  s.summary = "Support and utility classes used by the Rails framework."
-  s.description = %q{Utility library which carries commonly used classes and goodies from the Rails framework}
+  s.platform    = Gem::Platform::RUBY
+  s.name        = 'activesupport'
+  s.version     = version
+  s.summary     = 'A toolkit of support libraries and Ruby core extensions extracted from the Rails framework.'
+  s.description = 'A toolkit of support libraries and Ruby core extensions extracted from the Rails framework. Rich support for multibyte strings, internationalization, time zones, and testing.'
 
-  s.files = Dir['CHANGELOG', 'README', 'lib/**/*']
+  s.required_ruby_version = '>= 1.8.7'
+
+  s.author       = 'David Heinemeier Hansson'
+  s.email        = 'david@loudthinking.com'
+  s.homepage     = 'http://www.rubyonrails.org'
+
+  s.files        = Dir['CHANGELOG', 'MIT-LICENSE', 'README.rdoc', 'lib/**/*']
   s.require_path = 'lib'
-  s.has_rdoc = true
 
-  s.author = "David Heinemeier Hansson"
-  s.email = "david@loudthinking.com"
-  s.homepage = "http://www.rubyonrails.org"
-  s.rubyforge_project = "activesupport"
+  s.add_dependency('i18n',       '~> 0.6')
+  s.add_dependency('multi_json', '~> 1.0')
 end

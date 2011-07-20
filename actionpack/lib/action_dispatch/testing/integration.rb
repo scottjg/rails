@@ -1,10 +1,10 @@
 require 'stringio'
 require 'uri'
-require 'active_support/test_case'
-require 'active_support/core_ext/object/metaclass'
-
-# TODO: Remove circular dependency on ActionController
-require 'action_controller/testing/process'
+require 'active_support/core_ext/kernel/singleton_class'
+require 'active_support/core_ext/object/inclusion'
+require 'active_support/core_ext/object/try'
+require 'rack/test'
+require 'test/unit/assertions'
 
 module ActionDispatch
   module Integration #:nodoc:
@@ -27,31 +27,31 @@ module ActionDispatch
       # object's <tt>@response</tt> instance variable will point to the same
       # response object.
       #
-      # You can also perform POST, PUT, DELETE, and HEAD requests with +post+,
-      # +put+, +delete+, and +head+.
+      # You can also perform POST, PUT, DELETE, and HEAD requests with +#post+,
+      # +#put+, +#delete+, and +#head+.
       def get(path, parameters = nil, headers = nil)
         process :get, path, parameters, headers
       end
 
-      # Performs a POST request with the given parameters. See get() for more
+      # Performs a POST request with the given parameters. See +#get+ for more
       # details.
       def post(path, parameters = nil, headers = nil)
         process :post, path, parameters, headers
       end
 
-      # Performs a PUT request with the given parameters. See get() for more
+      # Performs a PUT request with the given parameters. See +#get+ for more
       # details.
       def put(path, parameters = nil, headers = nil)
         process :put, path, parameters, headers
       end
 
-      # Performs a DELETE request with the given parameters. See get() for
+      # Performs a DELETE request with the given parameters. See +#get+ for
       # more details.
       def delete(path, parameters = nil, headers = nil)
         process :delete, path, parameters, headers
       end
 
-      # Performs a HEAD request with the given parameters. See get() for more
+      # Performs a HEAD request with the given parameters. See +#get+ for more
       # details.
       def head(path, parameters = nil, headers = nil)
         process :head, path, parameters, headers
@@ -60,9 +60,9 @@ module ActionDispatch
       # Performs an XMLHttpRequest request with the given parameters, mirroring
       # a request from the Prototype library.
       #
-      # The request_method is :get, :post, :put, :delete or :head; the
+      # The request_method is +:get+, +:post+, +:put+, +:delete+ or +:head+; the
       # parameters are +nil+, a hash, or a url-encoded or multipart string;
-      # the headers are a hash.  Keys are automatically upcased and prefixed
+      # the headers are a hash. Keys are automatically upcased and prefixed
       # with 'HTTP_' if not already.
       def xml_http_request(request_method, path, parameters = nil, headers = nil)
         headers ||= {}
@@ -116,8 +116,8 @@ module ActionDispatch
       end
     end
 
-    # An integration Session instance represents a set of requests and responses
-    # performed sequentially by some virtual user. Because you can instantiate
+    # An instance of this class represents a set of requests and responses
+    # performed sequentially by a test process. Because you can instantiate
     # multiple sessions and run them side-by-side, you can also mimic (to some
     # limited extent) multiple simultaneous users interacting with your system.
     #
@@ -128,9 +128,7 @@ module ActionDispatch
       DEFAULT_HOST = "www.example.com"
 
       include Test::Unit::Assertions
-      include ActionDispatch::Assertions
-      include ActionController::TestProcess
-      include RequestHelpers
+      include TestProcess, RequestHelpers, Assertions
 
       %w( status status_message headers body redirect? ).each do |method|
         delegate method, :to => :response, :allow_nil => true
@@ -141,7 +139,10 @@ module ActionDispatch
       end
 
       # The hostname used in the last request.
-      attr_accessor :host
+      def host
+        @host || DEFAULT_HOST
+      end
+      attr_writer :host
 
       # The remote_addr used in the last request.
       attr_accessor :remote_addr
@@ -152,7 +153,7 @@ module ActionDispatch
       # A map of the cookies returned by the last response, and which will be
       # sent with the next request.
       def cookies
-        @mock_session.cookie_jar
+        _mock_session.cookie_jar
       end
 
       # A reference to the controller instance used by the last request.
@@ -167,10 +168,25 @@ module ActionDispatch
       # A running counter of the number of requests processed.
       attr_accessor :request_count
 
+      include ActionDispatch::Routing::UrlFor
+
       # Create and initialize a new Session instance.
       def initialize(app)
+        super()
         @app = app
+
+        # If the app is a Rails app, make url_helpers available on the session
+        # This makes app.url_for and app.foo_path available in the console
+        if app.respond_to?(:routes) && app.routes.respond_to?(:url_helpers)
+          singleton_class.class_eval { include app.routes.url_helpers }
+        end
+
         reset!
+      end
+
+      remove_method :default_url_options
+      def default_url_options
+        { :host => host, :protocol => https? ? "https" : "http" }
       end
 
       # Resets the instance. This can be used to reset the state information
@@ -180,8 +196,8 @@ module ActionDispatch
       #   session.reset!
       def reset!
         @https = false
-        @mock_session = Rack::MockSession.new(@app, DEFAULT_HOST)
         @controller = @request = @response = nil
+        @_mock_session = nil
         @request_count = 0
 
         self.host        = DEFAULT_HOST
@@ -191,13 +207,8 @@ module ActionDispatch
                            "*/*;q=0.5"
 
         unless defined? @named_routes_configured
-          # install the named routes in this session instance.
-          klass = metaclass
-          ActionController::Routing::Routes.install_helpers(klass)
-
           # the helpers are made protected by default--we make them public for
           # easier access during testing and troubleshooting.
-          klass.module_eval { public *ActionController::Routing::Routes.named_routes.helpers }
           @named_routes_configured = true
         end
       end
@@ -222,22 +233,16 @@ module ActionDispatch
       # Set the host name to use in the next request.
       #
       #   session.host! "www.example.com"
-      def host!(name)
-        @host = name
-      end
-
-      # Returns the URL for the given options, according to the rules specified
-      # in the application's routes.
-      def url_for(options)
-        controller ?
-          controller.url_for(options) :
-          generic_url_rewriter.rewrite(options)
-      end
+      alias :host! :host=
 
       private
+        def _mock_session
+          @_mock_session ||= Rack::MockSession.new(@app, host)
+        end
 
         # Performs the actual request.
-        def process(method, path, parameters = nil, rack_environment = nil)
+        def process(method, path, parameters = nil, env = nil)
+          env ||= {}
           if path =~ %r{://}
             location = URI.parse(path)
             https! URI::HTTPS === location if location.scheme
@@ -245,18 +250,20 @@ module ActionDispatch
             path = location.query ? "#{location.path}?#{location.query}" : location.path
           end
 
-          [ControllerCapture, ActionController::Testing].each do |mod|
-            unless ActionController::Base < mod
-              ActionController::Base.class_eval { include mod }
+          unless ActionController::Base < ActionController::Testing
+            ActionController::Base.class_eval do
+              include ActionController::Testing
             end
           end
 
-          env = {
+          hostname, port = host.split(':')
+
+          default_env = {
             :method => method,
             :params => parameters,
 
-            "SERVER_NAME"     => host,
-            "SERVER_PORT"     => (https? ? "443" : "80"),
+            "SERVER_NAME"     => hostname,
+            "SERVER_PORT"     => port || (https? ? "443" : "80"),
             "HTTPS"           => https? ? "on" : "off",
             "rack.url_scheme" => https? ? "https" : "http",
 
@@ -267,81 +274,52 @@ module ActionDispatch
             "HTTP_ACCEPT"    => accept
           }
 
-          (rack_environment || {}).each do |key, value|
-            env[key] = value
-          end
+          session = Rack::Test::Session.new(_mock_session)
 
-          session = Rack::Test::Session.new(@mock_session)
+          env.reverse_merge!(default_env)
 
-          @controller = ActionController::Base.capture_instantiation do
-            session.request(path, env)
-          end
+          # NOTE: rack-test v0.5 doesn't build a default uri correctly
+          # Make sure requested path is always a full uri
+          uri = URI.parse('/')
+          uri.scheme ||= env['rack.url_scheme']
+          uri.host   ||= env['SERVER_NAME']
+          uri.port   ||= env['SERVER_PORT'].try(:to_i)
+          uri += path
+
+          session.request(uri.to_s, env)
 
           @request_count += 1
           @request  = ActionDispatch::Request.new(session.last_request.env)
-          @response = ActionDispatch::TestResponse.from_response(@mock_session.last_response)
+          response = _mock_session.last_response
+          @response = ActionDispatch::TestResponse.new(response.status, response.headers, response.body)
           @html_document = nil
+
+          @controller = session.last_request.env['action_controller.instance']
 
           return response.status
         end
-
-        # Get a temporary URL writer object
-        def generic_url_rewriter
-          env = {
-            'REQUEST_METHOD' => "GET",
-            'QUERY_STRING'   => "",
-            "REQUEST_URI"    => "/",
-            "HTTP_HOST"      => host,
-            "SERVER_PORT"    => https? ? "443" : "80",
-            "HTTPS"          => https? ? "on" : "off"
-          }
-          ActionController::UrlRewriter.new(ActionDispatch::Request.new(env), {})
-        end
-    end
-
-    # A module used to extend ActionController::Base, so that integration tests
-    # can capture the controller used to satisfy a request.
-    module ControllerCapture #:nodoc:
-      extend ActiveSupport::Concern
-
-      included do
-        alias_method_chain :initialize, :capture
-      end
-
-      def initialize_with_capture(*args)
-        initialize_without_capture
-        self.class.last_instantiation ||= self
-      end
-
-      module ClassMethods #:nodoc:
-        mattr_accessor :last_instantiation
-
-        def capture_instantiation
-          self.last_instantiation = nil
-          yield
-          return last_instantiation
-        end
-      end
     end
 
     module Runner
+      include ActionDispatch::Assertions
+
       def app
-        @app
+        @app ||= nil
       end
 
       # Reset the current session. This is useful for testing multiple sessions
       # in a single test case.
       def reset!
-        @integration_session = open_session
+        @integration_session = Integration::Session.new(app)
       end
 
       %w(get post put head delete cookies assigns
          xml_http_request xhr get_via_redirect post_via_redirect).each do |method|
         define_method(method) do |*args|
-          reset! unless @integration_session
+          reset! unless integration_session
           # reset the html_document variable, but only for new get/post calls
-          @html_document = nil unless %w(cookies assigns).include?(method)
-          returning @integration_session.__send__(method, *args) do
+          @html_document = nil unless method.in?(["cookies", "assigns"])
+          integration_session.__send__(method, *args).tap do
             copy_session_variables!
           end
         end
@@ -358,66 +336,62 @@ module ActionDispatch
       # can use this method to open multiple sessions that ought to be tested
       # simultaneously.
       def open_session(app = nil)
-        session = Integration::Session.new(app || self.app)
-
-        # delegate the fixture accessors back to the test instance
-        extras = Module.new { attr_accessor :delegate, :test_result }
-        if self.class.respond_to?(:fixture_table_names)
-          self.class.fixture_table_names.each do |table_name|
-            name = table_name.tr(".", "_")
-            next unless respond_to?(name)
-            extras.__send__(:define_method, name) { |*args|
-              delegate.send(name, *args)
-            }
-          end
+        dup.tap do |session|
+          yield session if block_given?
         end
-
-        # delegate add_assertion to the test case
-        extras.__send__(:define_method, :add_assertion) {
-          test_result.add_assertion
-        }
-        session.extend(extras)
-        session.delegate = self
-        session.test_result = @_result
-
-        yield session if block_given?
-        session
       end
 
       # Copy the instance variables from the current session instance into the
       # test instance.
       def copy_session_variables! #:nodoc:
-        return unless @integration_session
+        return unless integration_session
         %w(controller response request).each do |var|
           instance_variable_set("@#{var}", @integration_session.__send__(var))
         end
       end
 
+      extend ActiveSupport::Concern
+      include ActionDispatch::Routing::UrlFor
+
+      def url_options
+        reset! unless integration_session
+        integration_session.url_options
+      end
+
+      def respond_to?(method, include_private = false)
+        integration_session.respond_to?(method, include_private) || super
+      end
+
       # Delegate unhandled messages to the current session instance.
       def method_missing(sym, *args, &block)
-        reset! unless @integration_session
-        if @integration_session.respond_to?(sym)
-          returning @integration_session.__send__(sym, *args, &block) do
+        reset! unless integration_session
+        if integration_session.respond_to?(sym)
+          integration_session.__send__(sym, *args, &block).tap do
             copy_session_variables!
           end
         else
           super
         end
       end
+
+      private
+        def integration_session
+          @integration_session ||= nil
+        end
     end
   end
 
-  # An IntegrationTest is one that spans multiple controllers and actions,
+  # An integration test spans multiple controllers and actions,
   # tying them all together to ensure they work together as expected. It tests
   # more completely than either unit or functional tests do, exercising the
   # entire stack, from the dispatcher to the database.
   #
-  # At its simplest, you simply extend IntegrationTest and write your tests
+  # At its simplest, you simply extend <tt>IntegrationTest</tt> and write your tests
   # using the get/post methods:
   #
-  #   require "#{File.dirname(__FILE__)}/test_helper"
+  #   require "test_helper"
   #
-  #   class ExampleTest < ActionController::IntegrationTest
+  #   class ExampleTest < ActionDispatch::IntegrationTest
   #     fixtures :people
   #
   #     def test_login
@@ -437,11 +411,11 @@ module ActionDispatch
   # However, you can also have multiple session instances open per test, and
   # even extend those instances with assertions and methods to create a very
   # powerful testing DSL that is specific for your application. You can even
-  # reference any named routes you happen to have defined!
+  # reference any named routes you happen to have defined.
   #
-  #   require "#{File.dirname(__FILE__)}/test_helper"
+  #   require "test_helper"
   #
-  #   class AdvancedTest < ActionController::IntegrationTest
+  #   class AdvancedTest < ActionDispatch::IntegrationTest
   #     fixtures :people, :rooms
   #
   #     def test_login_and_speak
@@ -484,6 +458,7 @@ module ActionDispatch
   #   end
   class IntegrationTest < ActiveSupport::TestCase
     include Integration::Runner
+    include ActionController::TemplateAssertions
 
     @@app = nil
 

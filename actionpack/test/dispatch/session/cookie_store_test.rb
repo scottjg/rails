@@ -1,12 +1,12 @@
 require 'abstract_unit'
 require 'stringio'
 
-class CookieStoreTest < ActionController::IntegrationTest
+class CookieStoreTest < ActionDispatch::IntegrationTest
   SessionKey = '_myapp_session'
   SessionSecret = 'b3c631c314c0bbca50c1b2843150fe33'
 
   Verifier = ActiveSupport::MessageVerifier.new(SessionSecret, 'SHA1')
-  SignedBar = Verifier.generate(:foo => "bar", :session_id => ActiveSupport::SecureRandom.hex(16))
+  SignedBar = Verifier.generate(:foo => "bar", :session_id => SecureRandom.hex(16))
 
   class TestController < ActionController::Base
     def no_session_access
@@ -30,6 +30,11 @@ class CookieStoreTest < ActionController::IntegrationTest
       render :text => "id: #{request.session_options[:id]}"
     end
 
+    def call_session_clear
+      session.clear
+      head :ok
+    end
+
     def call_reset_session
       reset_session
       head :ok
@@ -40,48 +45,17 @@ class CookieStoreTest < ActionController::IntegrationTest
       head :ok
     end
 
+    def change_session_id
+      request.session_options[:id] = nil
+      get_session_id
+    end
+
+    def renew_session_id
+      request.session_options[:renew] = true
+      head :ok
+    end
+
     def rescue_action(e) raise end
-  end
-
-  def test_raises_argument_error_if_missing_session_key
-    assert_raise(ArgumentError, nil.inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-        :key => nil, :secret => SessionSecret)
-    }
-
-    assert_raise(ArgumentError, ''.inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-        :key => '', :secret => SessionSecret)
-    }
-  end
-
-  def test_raises_argument_error_if_missing_secret
-    assert_raise(ArgumentError, nil.inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-       :key => SessionKey, :secret => nil)
-    }
-
-    assert_raise(ArgumentError, ''.inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-       :key => SessionKey, :secret => '')
-    }
-  end
-
-  def test_raises_argument_error_if_secret_is_probably_insecure
-    assert_raise(ArgumentError, "password".inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-       :key => SessionKey, :secret => "password")
-    }
-
-    assert_raise(ArgumentError, "secret".inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-       :key => SessionKey, :secret => "secret")
-    }
-
-    assert_raise(ArgumentError, "12345678901234567890123456789".inspect) {
-      ActionDispatch::Session::CookieStore.new(nil,
-       :key => SessionKey, :secret => "12345678901234567890123456789")
-    }
   end
 
   def test_setting_session_value
@@ -90,7 +64,7 @@ class CookieStoreTest < ActionController::IntegrationTest
       assert_response :success
       assert_equal "_myapp_session=#{response.body}; path=/; HttpOnly",
         headers['Set-Cookie']
-   end
+    end
   end
 
   def test_getting_session_value
@@ -99,7 +73,7 @@ class CookieStoreTest < ActionController::IntegrationTest
       get '/get_session_value'
       assert_response :success
       assert_equal 'foo: "bar"', response.body
-   end
+    end
   end
 
   def test_getting_session_id
@@ -112,7 +86,7 @@ class CookieStoreTest < ActionController::IntegrationTest
 
       get '/get_session_id'
       assert_response :success
-      assert_equal "id: #{session_id}", response.body
+      assert_equal "id: #{session_id}", response.body, "should be able to read session id without accessing the session hash"
     end
   end
 
@@ -125,9 +99,62 @@ class CookieStoreTest < ActionController::IntegrationTest
     end
   end
 
+  def test_does_not_set_secure_cookies_over_http
+    with_test_route_set(:secure => true) do
+      get '/set_session_value'
+      assert_response :success
+      assert_equal nil, headers['Set-Cookie']
+    end
+  end
+
+  def test_properly_renew_cookies
+    with_test_route_set do
+      get '/set_session_value'
+      get '/persistent_session_id'
+      session_id = response.body
+      get '/renew_session_id'
+      get '/persistent_session_id'
+      assert_not_equal response.body, session_id
+    end
+  end
+
+  def test_does_set_secure_cookies_over_https
+    with_test_route_set(:secure => true) do
+      get '/set_session_value', nil, 'HTTPS' => 'on'
+      assert_response :success
+      assert_equal "_myapp_session=#{response.body}; path=/; secure; HttpOnly",
+        headers['Set-Cookie']
+    end
+  end
+
+  # {:foo=>#<SessionAutoloadTest::Foo bar:"baz">, :session_id=>"ce8b0752a6ab7c7af3cdb8a80e6b9e46"}
+  SignedSerializedCookie = "BAh7BzoIZm9vbzodU2Vzc2lvbkF1dG9sb2FkVGVzdDo6Rm9vBjoJQGJhciIIYmF6Og9zZXNzaW9uX2lkIiVjZThiMDc1MmE2YWI3YzdhZjNjZGI4YTgwZTZiOWU0Ng==--2bf3af1ae8bd4e52b9ac2099258ace0c380e601c"
+
+  def test_deserializes_unloaded_classes_on_get_id
+    with_test_route_set do
+      with_autoload_path "session_autoload_test" do
+        cookies[SessionKey] = SignedSerializedCookie
+        get '/get_session_id'
+        assert_response :success
+        assert_equal 'id: ce8b0752a6ab7c7af3cdb8a80e6b9e46', response.body, "should auto-load unloaded class"
+      end
+    end
+  end
+
+  def test_deserializes_unloaded_classes_on_get_value
+    with_test_route_set do
+      with_autoload_path "session_autoload_test" do
+        cookies[SessionKey] = SignedSerializedCookie
+        get '/get_session_value'
+        assert_response :success
+        assert_equal 'foo: #<SessionAutoloadTest::Foo bar:"baz">', response.body, "should auto-load unloaded class"
+      end
+    end
+  end
+
   def test_close_raises_when_data_overflows
     with_test_route_set do
-      assert_raise(ActionDispatch::Session::CookieStore::CookieOverflow) {
+      assert_raise(ActionDispatch::Cookies::CookieOverflow) {
         get '/raise_data_overflow'
       }
     end
@@ -137,7 +164,7 @@ class CookieStoreTest < ActionController::IntegrationTest
     with_test_route_set do
       get '/no_session_access'
       assert_response :success
-      assert_equal "", headers['Set-Cookie']
+      assert_equal nil, headers['Set-Cookie']
     end
   end
 
@@ -147,7 +174,7 @@ class CookieStoreTest < ActionController::IntegrationTest
         "fef868465920f415f2c0652d6910d3af288a0367"
       get '/no_session_access'
       assert_response :success
-      assert_equal "", headers['Set-Cookie']
+      assert_equal nil, headers['Set-Cookie']
     end
   end
 
@@ -170,6 +197,31 @@ class CookieStoreTest < ActionController::IntegrationTest
     end
   end
 
+  def test_getting_from_nonexistent_session
+    with_test_route_set do
+      get '/get_session_value'
+      assert_response :success
+      assert_equal 'foo: nil', response.body
+      assert_nil headers['Set-Cookie'], "should only create session on write, not read"
+    end
+  end
+
+  def test_setting_session_value_after_session_clear
+    with_test_route_set do
+      get '/set_session_value'
+      assert_response :success
+      assert_equal "_myapp_session=#{response.body}; path=/; HttpOnly",
+        headers['Set-Cookie']
+
+      get '/call_session_clear'
+      assert_response :success
+
+      get '/get_session_value'
+      assert_response :success
+      assert_equal 'foo: nil', response.body
+    end
+  end
+
   def test_persistent_session_id
     with_test_route_set do
       cookies[SessionKey] = SignedBar
@@ -182,6 +234,19 @@ class CookieStoreTest < ActionController::IntegrationTest
       reset!
       get '/persistent_session_id'
       assert_not_equal session_id, response.body
+    end
+  end
+
+  def test_setting_session_id_to_nil_is_respected
+    with_test_route_set do
+      cookies[SessionKey] = SignedBar
+
+      get "/get_session_id"
+      sid = response.body
+      assert_equal sid.size, 36
+
+      get "/change_session_id"
+      assert_not_equal sid, response.body
     end
   end
 
@@ -209,30 +274,63 @@ class CookieStoreTest < ActionController::IntegrationTest
       get '/no_session_access'
       assert_response :success
 
-      # Mystery bug that came up in 2.3 as well. What is this trying to test?!
-      # assert_equal "_myapp_session=#{cookie_body}; path=/; expires=#{expected_expiry}; HttpOnly",
-      #   headers['Set-Cookie']
+      assert_equal "_myapp_session=#{cookie_body}; path=/; expires=#{expected_expiry}; HttpOnly",
+        headers['Set-Cookie']
+    end
+  end
+
+  def test_session_store_with_explicit_domain
+    with_test_route_set(:domain => "example.es") do
+      get '/set_session_value'
+      assert_match(/domain=example\.es/, headers['Set-Cookie'])
+      headers['Set-Cookie']
+    end
+  end
+
+  def test_session_store_without_domain
+    with_test_route_set do
+      get '/set_session_value'
+      assert_no_match(/domain\=/, headers['Set-Cookie'])
+    end
+  end
+
+  def test_session_store_with_nil_domain
+    with_test_route_set(:domain => nil) do
+      get '/set_session_value'
+      assert_no_match(/domain\=/, headers['Set-Cookie'])
+    end
+  end
+
+  def test_session_store_with_all_domains
+    with_test_route_set(:domain => :all) do
+      get '/set_session_value'
+      assert_match(/domain=\.example\.com/, headers['Set-Cookie'])
     end
   end
 
   private
+
+    # Overwrite get to send SessionSecret in env hash
+    def get(path, parameters = nil, env = {})
+      env["action_dispatch.secret_token"] ||= SessionSecret
+      super
+    end
+
     def with_test_route_set(options = {})
       with_routing do |set|
-        set.draw do |map|
-          match ':action', :to => TestController
+        set.draw do
+          match ':action', :to => ::CookieStoreTest::TestController
         end
-        options = {:key => SessionKey, :secret => SessionSecret}.merge(options)
-        @app = ActionDispatch::Session::CookieStore.new(set, options)
+
+        options = { :key => SessionKey }.merge!(options)
+
+        @app = self.class.build_app(set) do |middleware|
+          middleware.use ActionDispatch::Session::CookieStore, options
+          middleware.delete "ActionDispatch::ShowExceptions"
+        end
+
         yield
       end
     end
 
-    def unmarshal_session(cookie_string)
-      session = Rack::Utils.parse_query(cookie_string, ';,').inject({}) {|h,(k,v)|
-        h[k] = Array === v ? v.first : v
-        h
-      }[SessionKey]
-      verifier = ActiveSupport::MessageVerifier.new(SessionSecret, 'SHA1')
-      verifier.verify(session)
-    end
 end

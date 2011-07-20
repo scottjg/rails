@@ -12,6 +12,8 @@ module InflectorTestCases
     "stack"       => "stacks",
     "wish"        => "wishes",
     "fish"        => "fish",
+    "jeans"       => "jeans",
+    "funky jeans" => "funky jeans",
 
     "category"    => "categories",
     "query"       => "queries",
@@ -42,6 +44,7 @@ module InflectorTestCases
 
     "datum"       => "data",
     "medium"      => "media",
+    "stadium"     => "stadia",
     "analysis"    => "analyses",
 
     "node_child"  => "node_children",
@@ -158,37 +161,42 @@ module InflectorTestCases
     "Allow_Under_Scores"                  => "allow_under_scores",
     "Trailing bad characters!@#"          => "trailing-bad-characters",
     "!@#Leading bad characters"           => "leading-bad-characters",
-    "Squeeze   separators"                => "squeeze-separators"
+    "Squeeze   separators"                => "squeeze-separators",
+    "Test with + sign"                    => "test-with-sign",
+    "Test with malformed utf8 \251"       => "test-with-malformed-utf8"
   }
 
   StringToParameterizeWithNoSeparator = {
     "Donald E. Knuth"                     => "donaldeknuth",
+    "With-some-dashes"                    => "with-some-dashes",
     "Random text with *(bad)* characters" => "randomtextwithbadcharacters",
     "Trailing bad characters!@#"          => "trailingbadcharacters",
     "!@#Leading bad characters"           => "leadingbadcharacters",
-    "Squeeze   separators"                => "squeezeseparators"
+    "Squeeze   separators"                => "squeezeseparators",
+    "Test with + sign"                    => "testwithsign",
+    "Test with malformed utf8 \251"       => "testwithmalformedutf8"
   }
 
   StringToParameterizeWithUnderscore = {
     "Donald E. Knuth"                     => "donald_e_knuth",
     "Random text with *(bad)* characters" => "random_text_with_bad_characters",
+    "With-some-dashes"                    => "with-some-dashes",
+    "Retain_underscore"                   => "retain_underscore",
     "Trailing bad characters!@#"          => "trailing_bad_characters",
     "!@#Leading bad characters"           => "leading_bad_characters",
-    "Squeeze   separators"                => "squeeze_separators"
+    "Squeeze   separators"                => "squeeze_separators",
+    "Test with + sign"                    => "test_with_sign",
+    "Test with malformed utf8 \251"       => "test_with_malformed_utf8"
   }
 
-  # Ruby 1.9 doesn't do Unicode normalization yet.
-  if RUBY_VERSION >= '1.9'
-    StringToParameterizedAndNormalized = {
-      "Malmö"                               => "malm",
-      "Garçons"                             => "gar-ons"
-    }
-  else
-    StringToParameterizedAndNormalized = {
-      "Malmö"                               => "malmo",
-      "Garçons"                             => "garcons"
-    }
-  end
+  StringToParameterizedAndNormalized = {
+    "Malmö"                               => "malmo",
+    "Garçons"                             => "garcons",
+    "Ops\331"                             => "opsu",
+    "Ærøskøbing"                          => "aeroskobing",
+    "Aßlar"                               => "asslar",
+    "Japanese: 日本語"                    => "japanese"
+  }
 
   UnderscoreToHuman = {
     "employee_salary" => "Employee salary",
@@ -210,6 +218,36 @@ module InflectorTestCases
   }
 
   OrdinalNumbers = {
+    "-1" => "-1st",
+    "-2" => "-2nd",
+    "-3" => "-3rd",
+    "-4" => "-4th",
+    "-5" => "-5th",
+    "-6" => "-6th",
+    "-7" => "-7th",
+    "-8" => "-8th",
+    "-9" => "-9th",
+    "-10" => "-10th",
+    "-11" => "-11th",
+    "-12" => "-12th",
+    "-13" => "-13th",
+    "-14" => "-14th",
+    "-20" => "-20th",
+    "-21" => "-21st",
+    "-22" => "-22nd",
+    "-23" => "-23rd",
+    "-24" => "-24th",
+    "-100" => "-100th",
+    "-101" => "-101st",
+    "-102" => "-102nd",
+    "-103" => "-103rd",
+    "-104" => "-104th",
+    "-110" => "-110th",
+    "-111" => "-111th",
+    "-112" => "-112th",
+    "-113" => "-113th",
+    "-1000" => "-1000th",
+    "-1001" => "-1001st",
     "0" => "0th",
     "1" => "1st",
     "2" => "2nd",

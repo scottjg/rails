@@ -1,21 +1,25 @@
-# Gemfile is where you list all of your application's dependencies
-#
-<%= "# " if options.freeze? %>gem "rails", "<%= Rails::VERSION::STRING %>"
-#
-# Bundling edge rails:
-<%= "# " unless options.freeze? %>gem "rails", "<%= Rails::VERSION::STRING %>", :git => "git://github.com/rails/rails.git"
+source 'http://rubygems.org'
 
-# Specify gemcutter as a gem source
-# source "http://gemcutter.org"
+<%= rails_gemfile_entry -%>
 
-# Specify gems that this application depends on and have them installed with rake gems:install
-# gem "bj"
-# gem "hpricot", "0.6"
-# gem "sqlite3-ruby", :require_as => "sqlite3"
-# gem "aws-s3", :require_as => "aws/s3"
+<%= database_gemfile_entry -%>
 
-# Specify gems that should only be required in certain environments
-# gem "rspec", :only => :test
-# only :test do
-#   gem "webrat"
-# end
+<%= "gem 'jruby-openssl'\n" if defined?(JRUBY_VERSION) -%>
+<%= "gem 'json'\n" if RUBY_VERSION < "1.9.2" -%>
+
+# Gems used only for assets and not required
+# in production environments by default.
+<%= assets_gemfile_entry %>
+
+<%= javascript_gemfile_entry %>
+
+# Use unicorn as the web server
+# gem 'unicorn'
+
+# Deploy with Capistrano
+# gem 'capistrano'
+
+# To use debugger
+# <%= ruby_debugger_gemfile_entry %>
+
+<%= turn_gemfile_entry -%>

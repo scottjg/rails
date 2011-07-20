@@ -1,4 +1,4 @@
-require 'active_support/core_ext/object/misc'
+require 'active_support/core_ext/object/with_options'
 
 module MyApplication
   module Business
@@ -32,6 +32,23 @@ module MyApplication
       has_and_belongs_to_many :developers
     end
 
+    module Prefixed
+      def self.table_name_prefix
+        'prefixed_'
+      end
+
+      class Company < ActiveRecord::Base
+      end
+
+      class Firm < Company
+        self.table_name = 'companies'
+      end
+
+      module Nested
+        class Company < ActiveRecord::Base
+        end
+      end
+    end
   end
 
   module Billing

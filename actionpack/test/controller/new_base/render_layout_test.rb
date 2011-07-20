@@ -3,10 +3,10 @@ require 'abstract_unit'
 module ControllerLayouts
   class ImplicitController < ::ApplicationController
     self.view_paths = [ActionView::FixtureResolver.new(
-      "layouts/application.html.erb" => "OMG <%= yield %> KTHXBAI",
+      "layouts/application.html.erb" => "Main <%= yield %> Layout",
       "layouts/override.html.erb"    => "Override! <%= yield %>",
       "basic.html.erb"               => "Hello world!",
-      "controller_layouts/implicit/layout_false.html.erb" => "hai(layout_false.html.erb)"
+      "controller_layouts/implicit/layout_false.html.erb" => "hi(layout_false.html.erb)"
     )]
 
     def index
@@ -27,7 +27,7 @@ module ControllerLayouts
 
   class ImplicitNameController < ::ApplicationController
     self.view_paths = [ActionView::FixtureResolver.new(
-      "layouts/controller_layouts/implicit_name.html.erb" => "OMGIMPLICIT <%= yield %> KTHXBAI",
+      "layouts/controller_layouts/implicit_name.html.erb" => "Implicit <%= yield %> Layout",
       "basic.html.erb" => "Hello world!"
     )]
 
@@ -40,14 +40,14 @@ module ControllerLayouts
     test "rendering a normal template, but using the implicit layout" do
       get "/controller_layouts/implicit/index"
 
-      assert_body   "OMG Hello world! KTHXBAI"
+      assert_body   "Main Hello world! Layout"
       assert_status 200
     end
 
     test "rendering a normal template, but using an implicit NAMED layout" do
       get "/controller_layouts/implicit_name/index"
 
-      assert_body "OMGIMPLICIT Hello world! KTHXBAI"
+      assert_body "Implicit Hello world! Layout"
       assert_status 200
     end
 
@@ -63,15 +63,15 @@ module ControllerLayouts
 
     test "rendering with :layout => false leaves out the implicit layout" do
       get :layout_false
-      assert_response "hai(layout_false.html.erb)"
+      assert_response "hi(layout_false.html.erb)"
     end
   end
 
   class MismatchFormatController < ::ApplicationController
     self.view_paths = [ActionView::FixtureResolver.new(
       "layouts/application.html.erb" => "<html><%= yield %></html>",
-      "controller_layouts/mismatch_format/index.js.rjs" => "page[:test].omg",
-      "controller_layouts/mismatch_format/implicit.rjs" => "page[:test].omg"      
+      "controller_layouts/mismatch_format/index.xml.builder" => "xml.instruct!",
+      "controller_layouts/mismatch_format/implicit.builder" => "xml.instruct!"
     )]
 
     def explicit
@@ -81,15 +81,17 @@ module ControllerLayouts
 
   class MismatchFormatTest < Rack::TestCase
     testing ControllerLayouts::MismatchFormatController
+    
+    XML_INSTRUCT = %Q(<?xml version="1.0" encoding="UTF-8"?>\n)
 
-    test "if JS is selected, an HTML template is not also selected" do
-      get :index, "format" => "js"
-      assert_response "$(\"test\").omg();"
+    test "if XML is selected, an HTML template is not also selected" do
+      get :index, :format => "xml"
+      assert_response XML_INSTRUCT
     end
 
-    test "if JS is implicitly selected, an HTML template is not also selected" do
+    test "if XML is implicitly selected, an HTML template is not also selected" do
       get :implicit
-      assert_response "$(\"test\").omg();"
+      assert_response XML_INSTRUCT
     end
 
     test "if an HTML template is explicitly provides for a JS template, an error is raised" do

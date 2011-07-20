@@ -1,8 +1,8 @@
-<h1>Listing <%= plural_name %></h1>
+<h1>Listing <%= plural_table_name %></h1>
 
 <table>
   <tr>
-<% for attribute in attributes -%>
+<% attributes.each do |attribute| -%>
     <th><%= attribute.human_name %></th>
 <% end -%>
     <th></th>
@@ -10,18 +10,18 @@
     <th></th>
   </tr>
 
-<%% @<%= plural_name %>.each do |<%= singular_name %>| %>
+<%% @<%= plural_table_name %>.each do |<%= singular_table_name %>| %>
   <tr>
-<% for attribute in attributes -%>
-    <td><%%= <%= singular_name %>.<%= attribute.name %> %></td>
+<% attributes.each do |attribute| -%>
+    <td><%%= <%= singular_table_name %>.<%= attribute.name %> %></td>
 <% end -%>
-    <td><%%= link_to 'Show', <%= singular_name %> %></td>
-    <td><%%= link_to 'Edit', edit_<%= singular_name %>_path(<%= singular_name %>) %></td>
-    <td><%%= link_to 'Destroy', <%= singular_name %>, :confirm => 'Are you sure?', :method => :delete %></td>
+    <td><%%= link_to 'Show', <%= singular_table_name %> %></td>
+    <td><%%= link_to 'Edit', edit_<%= singular_table_name %>_path(<%= singular_table_name %>) %></td>
+    <td><%%= link_to 'Destroy', <%= singular_table_name %>, <%= key_value :confirm, "'Are you sure?'" %>, <%= key_value :method, ":delete" %> %></td>
   </tr>
 <%% end %>
 </table>
 
 <br />
 
-<%%= link_to 'New <%= singular_name %>', new_<%= singular_name %>_path %>
+<%%= link_to 'New <%= human_name %>', new_<%= singular_table_name %>_path %>

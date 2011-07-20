@@ -48,7 +48,7 @@ Title: Rails debugging guide
 
 h4. +to_yaml+
 
-Displaying an instance variable, or any other object or method, in yaml format can be achieved this way:
+Displaying an instance variable, or any other object or method, in YAML format can be achieved this way:
 
 <html>
 <%= simple_format @post.to_yaml %>
@@ -96,37 +96,19 @@ Will be rendered as follows:
 Title: Rails debugging guide
 </pre>
 
-h4. Debugging JavaScript
-
-Rails has built-in support to debug RJS, to active it, set +ActionView::Base.debug_rjs+ to _true_, this will specify whether RJS responses should be wrapped in a try/catch block that alert()s the caught exception (and then re-raises it).
-
-To enable it, add the following in the +Rails::Initializer do |config|+ block inside +environment.rb+:
-
-<ruby>
-config.action_view[:debug_rjs] = true
-</ruby>
-
-Or, at any time, setting +ActionView::Base.debug_rjs+ to _true_:
-
-<ruby>
-ActionView::Base.debug_rjs = true
-</ruby>
-
-TIP: For more information on debugging javascript refer to "Firebug":http://getfirebug.com/, the popular debugger for Firefox.
-
 h3. The Logger
 
 It can also be useful to save information to log files at runtime. Rails maintains a separate log file for each runtime environment.
 
 h4. What is the Logger?
 
-Rails makes use of Ruby's standard +logger+ to write log information. You can also substitute another logger such as +Log4R+ if you wish.
+Rails makes use of Ruby's standard +logger+ to write log information. You can also substitute another logger such as +Log4r+ if you wish.
 
 You can specify an alternative logger in your +environment.rb+ or any environment file:
 
 <ruby>
-ActiveRecord::Base.logger = Logger.new(STDOUT)
-ActiveRecord::Base.logger = Log4r::Logger.new("Application Log")
+Rails.logger = Logger.new(STDOUT)
+Rails.logger = Log4r::Logger.new("Application Log")
 </ruby>
 
 Or in the +Initializer+ section, add _any_ of the following
@@ -136,17 +118,17 @@ config.logger = Logger.new(STDOUT)
 config.logger = Log4r::Logger.new("Application Log")
 </ruby>
 
-TIP: By default, each log is created under +RAILS_ROOT/log/+ and the log file name is +environment_name.log+.
+TIP: By default, each log is created under +Rails.root/log/+ and the log file name is +environment_name.log+.
 
 h4. Log Levels
 
-When something is logged it's printed into the corresponding log if the log level of the message is equal or higher than the configured log level. If you want to know the current log level you can call the +ActiveRecord::Base.logger.level+ method.
+When something is logged it's printed into the corresponding log if the log level of the message is equal or higher than the configured log level. If you want to know the current log level you can call the +Rails.logger.level+ method.
 
 The available log levels are: +:debug+, +:info+, +:warn+, +:error+, and +:fatal+, corresponding to the log level numbers from 0 up to 4 respectively. To change the default log level, use
 
 <ruby>
-config.log_level = Logger::WARN # In any environment initializer, or
-ActiveRecord::Base.logger.level = 0 # at any time
+config.log_level = :warn # In any environment initializer, or
+Rails.logger.level = 0 # at any time
 </ruby>
 
 This is useful when you want to log under development or staging, but you don't want to flood your production log with unnecessary information.
@@ -176,7 +158,7 @@ class PostsController < ApplicationController
 
     if @post.save
       flash[:notice] = 'Post was successfully created.'
-      logger.debug "The post was saved and now is the user is going to be redirected..."
+      logger.debug "The post was saved and now the user is going to be redirected..."
       redirect_to(@post)
     else
       render :action => "new"
@@ -202,7 +184,7 @@ Post should be valid: true
   Post Create (0.000443)   INSERT INTO "posts" ("updated_at", "title", "body", "published",
  "created_at") VALUES('2008-09-08 14:52:54', 'Debugging Rails',
  'I''m learning how to print in logs!!!', 'f', '2008-09-08 14:52:54')
-The post was saved and now is the user is going to be redirected...
+The post was saved and now the user is going to be redirected...
 Redirected to #<Post:0x20af760>
 Completed in 0.01224 (81 reqs/sec) | DB: 0.00044 (3%) | 302 Found [http://localhost/posts]
 </shell>
@@ -222,6 +204,8 @@ The debugger used by Rails, +ruby-debug+, comes as a gem. To install it, just ru
 <shell>
 $ sudo gem install ruby-debug
 </shell>
+
+TIP: If you are using Ruby 1.9, you can install a compatible version of +ruby-debug+ by running +sudo gem install ruby-debug19+
 
 In case you want to download a particular version or get the source code, refer to the "project's page on rubyforge":http://rubyforge.org/projects/ruby-debug/.
 
@@ -247,16 +231,14 @@ If you see the message in the console or logs:
 Make sure you have started your web server with the option +--debugger+:
 
 <shell>
-~/PathTo/rails_project$ script/server --debugger
-=> Booting Mongrel (use 'script/server webrick' to force WEBrick)
-=> Rails 2.2.0 application starting on http://0.0.0.0:3000
+$ rails server --debugger
+=> Booting WEBrick
+=> Rails 3.0.0 application starting on http://0.0.0.0:3000
 => Debugger enabled
 ...
 </shell>
 
 TIP: In development mode, you can dynamically +require \'ruby-debug\'+ instead of restarting the server, if it was started without +--debugger+.
-
-In order to use Rails debugging you'll need to be running either *WEBrick* or *Mongrel*. For the moment, no alternative servers are supported.
 
 h4. The Shell
 
@@ -267,7 +249,7 @@ If you got there by a browser request, the browser tab containing the request wi
 For example:
 
 <shell>
-@posts = Post.find(:all)
+@posts = Post.all
 (rdb:7)
 </shell>
 
@@ -286,7 +268,7 @@ condition  down     finish  list    ps    save     thread  var
 continue   edit     frame   method  putl  set      tmate   where
 </shell>
 
-TIP: To view the help menu for any command use +help <command-name>+ in active debug mode. For example: _+help var+_
+TIP: To view the help menu for any command use +help &lt;command-name&gt;+ in active debug mode. For example: _+help var+_
 
 The next command to learn is one of the most useful: +list+. You can also abbreviate ruby-debug commands by supplying just enough letters to distinguish them from other commands, so you can also use +l+ for the +list+ command.
 
@@ -297,14 +279,14 @@ This command shows you where you are in the code by printing 10 lines centered a
 [1, 10] in /PathToProject/posts_controller.rb
    1  class PostsController < ApplicationController
    2    # GET /posts
-   3    # GET /posts.xml
+   3    # GET /posts.json
    4    def index
    5      debugger
-=> 6      @posts = Post.find(:all)
+=> 6      @posts = Post.all
    7
    8      respond_to do |format|
    9        format.html # index.html.erb
-   10        format.xml  { render :xml => @posts }
+   10        format.json { render :json => @posts }
 </shell>
 
 If you repeat the +list+ command, this time using just +l+, the next ten lines of the file will be printed out.
@@ -316,7 +298,7 @@ If you repeat the +list+ command, this time using just +l+, the next ten lines o
    12    end
    13
    14    # GET /posts/1
-   15    # GET /posts/1.xml
+   15    # GET /posts/1.json
    16    def show
    17      @post = Post.find(params[:id])
    18
@@ -326,11 +308,46 @@ If you repeat the +list+ command, this time using just +l+, the next ten lines o
 
 And so on until the end of the current file. When the end of file is reached, the +list+ command will start again from the beginning of the file and continue again up to the end, treating the file as a circular buffer.
 
+On the other hand, to see the previous ten lines you should type +list-+ (or +l-+)
+
+<shell>
+(rdb:7) l-
+[1, 10] in /PathToProject/posts_controller.rb
+   1  class PostsController < ApplicationController
+   2    # GET /posts
+   3    # GET /posts.json
+   4    def index
+   5      debugger
+   6      @posts = Post.all
+   7
+   8      respond_to do |format|
+   9        format.html # index.html.erb
+   10        format.json { render :json => @posts }
+</shell>
+
+This way you can move inside the file, being able to see the code above and over the line you added the +debugger+.
+Finally, to see where you are in the code again you can type +list=+
+
+<shell>
+(rdb:7) list=
+[1, 10] in /PathToProject/posts_controller.rb
+   1  class PostsController < ApplicationController
+   2    # GET /posts
+   3    # GET /posts.json
+   4    def index
+   5      debugger
+=> 6      @posts = Post.all
+   7
+   8      respond_to do |format|
+   9        format.html # index.html.erb
+   10        format.json { render :json => @posts }
+</shell>
+
 h4. The Context
 
 When you start debugging your application, you will be placed in different contexts as you go through the different parts of the stack.
 
-ruby-debug creates a content when a stopping point or an event is reached. The context has information about the suspended program which enables a debugger to inspect the frame stack, evaluate variables from the perspective of the debugged program, and contains information about the place where the debugged program is stopped.
+ruby-debug creates a context when a stopping point or an event is reached. The context has information about the suspended program which enables a debugger to inspect the frame stack, evaluate variables from the perspective of the debugged program, and contains information about the place where the debugged program is stopped.
 
 At any time you can call the +backtrace+ command (or its alias +where+) to print the backtrace of the application. This can be very helpful to know how you got where you are. If you ever wondered about how you got somewhere in your code, then +backtrace+ will supply the answer.
 
@@ -378,7 +395,7 @@ Any expression can be evaluated in the current context. To evaluate an expressio
 This example shows how you can print the instance_variables defined within the current context:
 
 <shell>
-@posts = Post.find(:all)
+@posts = Post.all
 (rdb:11) instance_variables
 ["@_response", "@action_name", "@url", "@_session", "@_cookies", "@performed_render", "@_flash", "@template", "@_params", "@before_filter_chain_aborted", "@request_origin", "@_headers", "@performed_redirect", "@_request"]
 </shell>
@@ -463,20 +480,16 @@ class Author < ActiveRecord::Base
 
   def find_recent_comments(limit = 10)
     debugger
-    @recent_comments ||= comments.find(
-      :all,
-      :conditions => ["created_at > ?", 1.week.ago],
-      :limit => limit
-    )
+    @recent_comments ||= comments.where("created_at > ?", 1.week.ago).limit(limit)
   end
 end
 </ruby>
 
-TIP: You can use ruby-debug while using script/console. Just remember to +require "ruby-debug"+ before calling the +debugger+ method.
+TIP: You can use ruby-debug while using +rails console+. Just remember to +require "ruby-debug"+ before calling the +debugger+ method.
 
 <shell>
-/PathTo/project $ script/console
-Loading development environment (Rails 2.1.0)
+$ rails console
+Loading development environment (Rails 3.1.0)
 >> require "ruby-debug"
 => []
 >> author = Author.first
@@ -490,15 +503,15 @@ With the code stopped, take a look around:
 
 <shell>
 (rdb:1) list
-[6, 15] in /PathTo/project/app/models/author.rb
+[2, 9] in /PathTo/project/app/models/author.rb
+   2    has_one :editorial
+   3    has_many :comments
+   4
+   5    def find_recent_comments(limit = 10)
    6      debugger
-   7      @recent_comments ||= comments.find(
-   8        :all,
-   9        :conditions => ["created_at > ?", 1.week.ago],
-   10        :limit => limit
-=> 11      )
-   12    end
-   13  end
+=> 7      @recent_comments ||= comments.where("created_at > ?", 1.week.ago).limit(limit)
+   8    end
+   9  end
 </shell>
 
 You are at the end of the line, but... was this line executed? You can inspect the instance variables.
@@ -599,7 +612,7 @@ There are some settings that can be configured in ruby-debug to make it easier t
 
 You can see the full list by using +help set+. Use +help set _subcommand_+ to learn about a particular +set+ command.
 
-TIP: You can include any number of these configuration lines inside a +.rdebugrc+ file in your HOME directory. ruby-debug will read this file every time it is loaded. and configure itself accordingly.
+TIP: You can include any number of these configuration lines inside a +.rdebugrc+ file in your HOME directory. ruby-debug will read this file every time it is loaded and configure itself accordingly.
 
 Here's a good start for an +.rdebugrc+:
 
@@ -613,18 +626,18 @@ h3. Debugging Memory Leaks
 
 A Ruby application (on Rails or not), can leak memory - either in the Ruby code or at the C code level.
 
-In this section, you will learn how to find and fix such leaks by using Bleak House and Valgrind debugging tools.
+In this section, you will learn how to find and fix such leaks by using tools such as BleakHouse and Valgrind.
 
 h4. BleakHouse
 
-"BleakHouse":http://github.com/fauna/bleak_house/tree/master is a library for finding memory leaks.
+"BleakHouse":https://github.com/fauna/bleak_house/tree/master is a library for finding memory leaks.
 
 If a Ruby object does not go out of scope, the Ruby Garbage Collector won't sweep it since it is referenced somewhere. Leaks like this can grow slowly and your application will consume more and more memory, gradually affecting the overall system performance. This tool will help you find leaks on the Ruby heap.
 
 To install it run:
 
 <shell>
-sudo gem install bleak_house
+$ sudo gem install bleak_house
 </shell>
 
 Then setup your application for profiling. Then add the following at the bottom of config/environment.rb:
@@ -636,7 +649,7 @@ require 'bleak_house' if ENV['BLEAK_HOUSE']
 Start a server instance with BleakHouse integration:
 
 <shell>
-RAILS_ENV=production BLEAK_HOUSE=1 ruby-bleak-house ./script/server
+$ RAILS_ENV=production BLEAK_HOUSE=1 ruby-bleak-house rails server
 </shell>
 
 Make sure to run a couple hundred requests to get better data samples, then press +CTRL-C+. The server will stop and Bleak House will produce a dumpfile in +/tmp+:
@@ -666,7 +679,7 @@ To analyze it, just run the listed command. The top 20 leakiest lines will be li
 
 This way you can find where your application is leaking memory and fix it.
 
-If "BleakHouse":http://github.com/fauna/bleak_house/tree/master doesn't report any heap growth but you still have memory growth, you might have a broken C extension, or real leak in the interpreter. In that case, try using Valgrind to investigate further.
+If "BleakHouse":https://github.com/fauna/bleak_house/tree/master doesn't report any heap growth but you still have memory growth, you might have a broken C extension, or real leak in the interpreter. In that case, try using Valgrind to investigate further.
 
 h4. Valgrind
 
@@ -680,12 +693,12 @@ h3. Plugins for Debugging
 
 There are some Rails plugins to help you to find errors and debug your application. Here is a list of useful plugins for debugging:
 
-* "Footnotes":http://github.com/drnic/rails-footnotes/tree/master: Every Rails page has footnotes that give request information and link back to your source via TextMate.
-* "Query Trace":http://github.com/ntalbott/query_trace/tree/master: Adds query origin tracing to your logs.
-* "Query Stats":http://github.com/dan-manges/query_stats/tree/master: A Rails plugin to track database queries.
+* "Footnotes":https://github.com/josevalim/rails-footnotes: Every Rails page has footnotes that give request information and link back to your source via TextMate.
+* "Query Trace":https://github.com/ntalbott/query_trace/tree/master: Adds query origin tracing to your logs.
+* "Query Stats":https://github.com/dan-manges/query_stats/tree/master: A Rails plugin to track database queries.
 * "Query Reviewer":http://code.google.com/p/query-reviewer/: This rails plugin not only runs "EXPLAIN" before each of your select queries in development, but provides a small DIV in the rendered output of each page with the summary of warnings for each query that it analyzed.
-* "Exception Notifier":http://github.com/rails/exception_notification/tree/master: Provides a mailer object and a default set of templates for sending email notifications when errors occur in a Rails application.
-* "Exception Logger":http://github.com/defunkt/exception_logger/tree/master: Logs your Rails exceptions in the database and provides a funky web interface to manage them.
+* "Exception Notifier":https://github.com/smartinez87/exception_notification/tree/master: Provides a mailer object and a default set of templates for sending email notifications when errors occur in a Rails application.
+* "Exception Logger":https://github.com/defunkt/exception_logger/tree/master: Logs your Rails exceptions in the database and provides a funky web interface to manage them.
 
 h3. References
 
@@ -702,8 +715,7 @@ h3. References
 
 h3. Changelog
 
-"Lighthouse ticket":http://rails.lighthouseapp.com/projects/16213-rails-guides/tickets/5
-
+* April 4, 2010: Fixed document to validate XHTML 1.0 Strict. "Jaime Iniesta":http://jaimeiniesta.com
 * November 3, 2008: Accepted for publication. Added RJS, memory leaks and plugins chapters by "Emilio Tagua":credits.html#miloops
 * October 19, 2008: Copy editing pass by "Mike Gunderloy":credits.html#mgunderloy
 * September 16, 2008: initial version by "Emilio Tagua":credits.html#miloops

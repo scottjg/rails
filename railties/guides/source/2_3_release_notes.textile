@@ -47,13 +47,13 @@ After some versions without an upgrade, Rails 2.3 offers some new features for R
 
 h3. Documentation
 
-The "Ruby on Rails guides":http://guides.rubyonrails.org/ project has published several additional guides for Rails 2.3. In addition, a "separate site":http://guides.rails.info/ maintains updated copies of the Guides for Edge Rails. Other documentation efforts include a relaunch of the "Rails wiki":http://newwiki.rubyonrails.org/ and early planning for a Rails Book.
+The "Ruby on Rails guides":http://guides.rubyonrails.org/ project has published several additional guides for Rails 2.3. In addition, a "separate site":http://edgeguides.rubyonrails.org/ maintains updated copies of the Guides for Edge Rails. Other documentation efforts include a relaunch of the "Rails wiki":http://newwiki.rubyonrails.org/ and early planning for a Rails Book.
 
 * More Information: "Rails Documentation Projects":http://weblog.rubyonrails.org/2009/1/15/rails-documentation-projects.
 
 h3. Ruby 1.9.1 Support
 
-Rails 2.3 should pass all of its own tests whether you are running on Ruby 1.8 or the now-released Ruby 1.9.1. You should be aware, though, that moving to 1.9.1 entails checking all of the data adapters, plugins, and other code that you depend on for Ruby 1.9.1 compatibility, as well as Rails core. 
+Rails 2.3 should pass all of its own tests whether you are running on Ruby 1.8 or the now-released Ruby 1.9.1. You should be aware, though, that moving to 1.9.1 entails checking all of the data adapters, plugins, and other code that you depend on for Ruby 1.9.1 compatibility, as well as Rails core.
 
 h3. Active Record
 
@@ -77,11 +77,11 @@ Turning on nested attributes enables a number of things: automatic (and atomic) 
 You can also specify requirements for any new records that are added via nested attributes using the +:reject_if+ option:
 
 <ruby>
-accepts_nested_attributes_for :author, 
+accepts_nested_attributes_for :author,
   :reject_if => proc { |attributes| attributes['name'].blank? }
 </ruby>
 
-* Lead Contributor: "Eloy Duran":http://www.superalloy.nl/blog/
+* Lead Contributor: "Eloy Duran":http://superalloy.nl/
 * More Information: "Nested Model Forms":http://weblog.rubyonrails.org/2009/1/26/nested-model-forms
 
 h4. Nested Transactions
@@ -149,7 +149,7 @@ end
 
 Note that you should only use this method for batch processing: for small numbers of records (less than 1000), you should just use the regular find methods with your own loop.
 
-* More Information (at that point the convenience method was called just +each+): 
+* More Information (at that point the convenience method was called just +each+):
 ** "Rails 2.3: Batch Finding":http://afreshcup.com/2009/02/23/rails-23-batch-finding/
 ** "What's New in Edge Rails: Batched Find":http://ryandaigle.com/articles/2009/2/23/what-s-new-in-edge-rails-batched-find
 
@@ -278,7 +278,7 @@ Mime::JS =~ "text/javascript"        => true
 Mime::JS =~ "application/javascript" => true
 </ruby>
 
-The other change is that the framework now uses the +Mime::JS+ when checking for javascript in various spots, making it handle those alternatives cleanly.
+The other change is that the framework now uses the +Mime::JS+ when checking for JavaScript in various spots, making it handle those alternatives cleanly.
 
 * Lead Contributor: "Seth Fitzsimmons":http://www.workingwithrails.com/person/5510-seth-fitzsimmons
 
@@ -365,10 +365,10 @@ You can write this view in Rails 2.3:
 <% end %>
 </erb>
 
-* Lead Contributor: "Eloy Duran":http://www.superalloy.nl/blog/
+* Lead Contributor: "Eloy Duran":http://superalloy.nl/
 * More Information:
 ** "Nested Model Forms":http://weblog.rubyonrails.org/2009/1/26/nested-model-forms
-** "complex-form-examples":http://github.com/alloy/complex-form-examples/tree/nested_attributes
+** "complex-form-examples":http://github.com/alloy/complex-form-examples
 ** "What's New in Edge Rails: Nested Object Forms":http://ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes
 
 h4. Smart Rendering of Partials
@@ -410,7 +410,7 @@ You're likely familiar with Rails' practice of adding timestamps to static asset
 
 h4. Asset Hosts as Objects
 
-Asset hosts get more flexible in edge Rails with the ability to declare an asset host as a specific object that responds to a call. This allows you to to implement any complex logic you need in your asset hosting.
+Asset hosts get more flexible in edge Rails with the ability to declare an asset host as a specific object that responds to a call. This allows you to implement any complex logic you need in your asset hosting.
 
 * More Information: "asset-hosting-with-minimum-ssl":http://github.com/dhh/asset-hosting-with-minimum-ssl/tree/master
 
@@ -449,7 +449,7 @@ returns
 <option>joke</option>
 <option>poem</option>
 <option disabled=“disabled“>private</option>
-</select>	
+</select>
 </ruby>
 
 You can also use an anonymous function to determine at runtime which options from collections will be selected and/or disabled:
@@ -502,7 +502,7 @@ The support for XML parsing in ActiveSupport has been made more flexible by allo
 XmlMini.backend = 'LibXML'
 </ruby>
 
-* Lead Contributor: "Bart ten Brinke":http://www.movesonrails.com/ 
+* Lead Contributor: "Bart ten Brinke":http://www.movesonrails.com/
 * Lead Contributor: "Aaron Patterson":http://tenderlovemaking.com/
 
 h4. Fractional seconds for TimeWithZone

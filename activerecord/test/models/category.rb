@@ -15,14 +15,19 @@ class Category < ActiveRecord::Base
                           :conditions => { :title => 'Yet Another Testing Title' }
 
   has_and_belongs_to_many :popular_grouped_posts, :class_name => "Post", :group => "posts.type", :having => "sum(comments.post_id) > 2", :include => :comments
-  has_and_belongs_to_many :posts_gruoped_by_title, :class_name => "Post", :group => "title", :select => "title"
+  has_and_belongs_to_many :posts_grouped_by_title, :class_name => "Post", :group => "title", :select => "title"
 
   def self.what_are_you
     'a category...'
   end
 
   has_many :categorizations
-  has_many :authors, :through => :categorizations, :select => 'authors.*, categorizations.post_id'
+  has_many :post_comments, :through => :posts, :source => :comments
+
+  has_many :authors, :through => :categorizations
+  has_many :authors_with_select, :through => :categorizations, :source => :author, :select => 'authors.*, categorizations.post_id'
+
+  scope :general, :conditions => { :name => 'General' }
 end
 
 class SpecialCategory < Category

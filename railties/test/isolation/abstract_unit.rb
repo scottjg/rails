@@ -8,9 +8,8 @@
 # Rails booted up.
 require 'fileutils'
 
-# TODO: Remove rubygems when possible
-require 'rubygems'
 require 'test/unit'
+require 'rubygems'
 
 # TODO: Remove setting this magic constant
 RAILS_FRAMEWORK_ROOT = File.expand_path("#{File.dirname(__FILE__)}/../../..")
@@ -19,6 +18,7 @@ RAILS_FRAMEWORK_ROOT = File.expand_path("#{File.dirname(__FILE__)}/../../..")
 # to run the tests
 require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/testing/isolation"
 require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/testing/declarative"
+require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/core_ext/kernel/reporting"
 
 module TestHelpers
   module Paths
@@ -44,6 +44,17 @@ module TestHelpers
   end
 
   module Rack
+    def app(env = "production")
+      old_env = ENV["RAILS_ENV"]
+      @app ||= begin
+        ENV["RAILS_ENV"] = env
+        require "#{app_path}/config/environment"
+        Rails.application
+      end
+    ensure
+      ENV["RAILS_ENV"] = old_env
+    end
+
     def extract_body(response)
       "".tap do |body|
         response[2].each {|chunk| body << chunk }
@@ -78,7 +89,11 @@ module TestHelpers
   end
 
   module Generation
+    # Build an application by invoking the generator and going through the whole stack.
     def build_app(options = {})
+      @prev_rails_env = ENV['RAILS_ENV']
+      ENV['RAILS_ENV'] = 'development'
+
       FileUtils.rm_rf(app_path)
       FileUtils.cp_r(tmp_path('app_template'), app_path)
 
@@ -89,22 +104,131 @@ module TestHelpers
         end
       end
 
-      add_to_config 'config.action_controller.session = { :key => "_myapp_session", :secret => "bac838a849c1d5c4de2e6a50af826079" }'
+      unless options[:gemfile]
+        File.delete"#{app_path}/Gemfile"
+      end
+
+      routes = File.read("#{app_path}/config/routes.rb")
+      if routes =~ /(\n\s*end\s*)\Z/
+        File.open("#{app_path}/config/routes.rb", 'w') do |f|
+          f.puts $` + "\nmatch ':controller(/:action(/:id))(.:format)'\n" + $1
+        end
+      end
+
+      add_to_config 'config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"; config.session_store :cookie_store, :key => "_myapp_session"; config.active_support.deprecation = :log'
+    end
+
+    def teardown_app
+      ENV['RAILS_ENV'] = @prev_rails_env if @prev_rails_env
+    end
+
+    # Make a very basic app, without creating the whole directory structure.
+    # This is faster and simpler than the method above.
+    def make_basic_app
+      require "rails"
+      require "action_controller/railtie"
+
+      app = Class.new(Rails::Application)
+      app.config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"
+      app.config.session_store :cookie_store, :key => "_myapp_session"
+      app.config.active_support.deprecation = :log
+
+      yield app if block_given?
+      app.initialize!
+
+      app.routes.draw do
+        match "/" => "omg#index"
+      end
+
+      require 'rack/test'
+      extend ::Rack::Test::Methods
+    end
+
+    def simple_controller
+      controller :foo, <<-RUBY
+        class FooController < ApplicationController
+          def index
+            render :text => "foo"
+          end
+        end
+      RUBY
+
+      app_file 'config/routes.rb', <<-RUBY
+        AppTemplate::Application.routes.draw do
+          match ':controller(/:action)'
+        end
+      RUBY
+    end
+
+    class Bukkit
+      attr_reader :path
+
+      def initialize(path)
+        @path = path
+      end
+
+      def write(file, string)
+        path = "#{@path}/#{file}"
+        FileUtils.mkdir_p(File.dirname(path))
+        File.open(path, "w") {|f| f.puts string }
+      end
+
+      def delete(file)
+        File.delete("#{@path}/#{file}")
+      end
+    end
+
+    def plugin(name, string = "")
+      dir = "#{app_path}/vendor/plugins/#{name}"
+      FileUtils.mkdir_p(dir)
+
+      File.open("#{dir}/init.rb", 'w') do |f|
+        f.puts "::#{name.upcase} = 'loaded'"
+        f.puts string
+      end
+
+      Bukkit.new(dir).tap do |bukkit|
+        yield bukkit if block_given?
+      end
+    end
+
+    def engine(name)
+      dir = "#{app_path}/random/#{name}"
+      FileUtils.mkdir_p(dir)
+
+      app = File.readlines("#{app_path}/config/application.rb")
+      app.insert(2, "$:.unshift(\"#{dir}/lib\")")
+      app.insert(3, "require #{name.inspect}")
+
+      File.open("#{app_path}/config/application.rb", 'r+') do |f|
+        f.puts app
+      end
+
+      Bukkit.new(dir).tap do |bukkit|
+        yield bukkit if block_given?
+      end
     end
 
     def script(script)
       Dir.chdir(app_path) do
-        `#{Gem.ruby} #{app_path}/script/#{script}`
+        `#{Gem.ruby} #{app_path}/script/rails #{script}`
       end
     end
 
     def add_to_config(str)
       environment = File.read("#{app_path}/config/application.rb")
-      if environment =~ /(\n\s*end\s*)\Z/
+      if environment =~ /(\n\s*end\s*end\s*)\Z/
         File.open("#{app_path}/config/application.rb", 'w') do |f|
           f.puts $` + "\n#{str}\n" + $1
         end
       end
+    end
+
+    def remove_from_config(str)
+      file = "#{app_path}/config/application.rb"
+      contents = File.read(file)
+      contents.sub!(/#{str}/, "")
+      File.open(file, "w+") { |f| f.puts contents }
     end
 
     def app_file(path, contents)
@@ -114,28 +238,25 @@ module TestHelpers
       end
     end
 
+    def remove_file(path)
+      FileUtils.rm_rf "#{app_path}/#{path}"
+    end
+
     def controller(name, contents)
       app_file("app/controllers/#{name}_controller.rb", contents)
     end
 
+    def use_frameworks(arr)
+      to_remove =  [:actionmailer,
+                    :activemodel,
+                    :activerecord,
+                    :activeresource] - arr
+      remove_from_config "config.active_record.identity_map = true" if to_remove.include? :activerecord
+      $:.reject! {|path| path =~ %r'/(#{to_remove.join('|')})/' }
+    end
+
     def boot_rails
-      root = File.expand_path('../../../..', __FILE__)
-      begin
-        require "#{root}/vendor/gems/environment"
-      rescue LoadError
-        %w(
-          actionmailer/lib
-          actionpack/lib
-          activemodel/lib
-          activerecord/lib
-          activeresource/lib
-          activesupport/lib
-          railties/lib
-          railties
-        ).reverse_each do |path|
-          $:.unshift "#{root}/#{path}"
-        end
-      end
+      require File.expand_path('../../../../load_paths', __FILE__)
     end
   end
 end
@@ -156,10 +277,18 @@ Module.new do
   end
   FileUtils.mkdir(tmp_path)
 
-  environment = File.expand_path('../../../../vendor/gems/environment', __FILE__)
-
-  `#{Gem.ruby} -r #{environment} #{RAILS_FRAMEWORK_ROOT}/railties/bin/rails #{tmp_path('app_template')}`
-  File.open("#{tmp_path}/app_template/config/boot.rb", 'w') do |f|
-    f.puts "require '#{environment}' ; require 'rails'"
+  environment = File.expand_path('../../../../load_paths', __FILE__)
+  if File.exist?("#{environment}.rb")
+    require_environment = "-r #{environment}"
   end
-end
+
+  `#{Gem.ruby} #{require_environment} #{RAILS_FRAMEWORK_ROOT}/bin/rails new #{tmp_path('app_template')}`
+  File.open("#{tmp_path}/app_template/config/boot.rb", 'w') do |f|
+    if require_environment
+      f.puts "Dir.chdir('#{File.dirname(environment)}') do"
+      f.puts "  require '#{environment}'"
+      f.puts "end"
+    end
+    f.puts "require 'rails/all'"
+  end
+end unless defined?(RAILS_ISOLATED_ENGINE)

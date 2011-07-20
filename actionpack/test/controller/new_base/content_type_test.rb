@@ -21,15 +21,10 @@ module ContentType
 
     self.view_paths = [ActionView::FixtureResolver.new(
       "content_type/implied/i_am_html_erb.html.erb"         => "Hello world!",
-      "content_type/implied/i_am_xml_erb.xml.erb"          => "<xml>Hello world!</xml>",
+      "content_type/implied/i_am_xml_erb.xml.erb"           => "<xml>Hello world!</xml>",
       "content_type/implied/i_am_html_builder.html.builder" => "xml.p 'Hello'",
-      "content_type/implied/i_am_xml_builder.xml.builder"  => "xml.awesome 'Hello'"
+      "content_type/implied/i_am_xml_builder.xml.builder"   => "xml.awesome 'Hello'"
     )]
-
-    def i_am_html_erb()     end
-    def i_am_xml_erb()      end
-    def i_am_html_builder() end
-    def i_am_xml_builder()  end
   end
 
   class CharsetController < ActionController::Base
@@ -46,10 +41,16 @@ module ContentType
 
   class ExplicitContentTypeTest < Rack::TestCase
     test "default response is HTML and UTF8" do
-      get "/content_type/base"
+      with_routing do |set|
+        set.draw do
+          match ':controller', :action => 'index'
+        end
 
-      assert_body "Hello world!"
-      assert_header "Content-Type", "text/html; charset=utf-8"
+        get "/content_type/base"
+
+        assert_body "Hello world!"
+        assert_header "Content-Type", "text/html; charset=utf-8"
+      end
     end
 
     test "setting the content type of the response directly on the response object" do

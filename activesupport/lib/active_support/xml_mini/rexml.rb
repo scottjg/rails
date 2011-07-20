@@ -1,5 +1,6 @@
 require 'active_support/core_ext/kernel/reporting'
 require 'active_support/core_ext/object/blank'
+require 'stringio'
 
 # = XmlMini ReXML implementation
 module ActiveSupport
@@ -11,7 +12,7 @@ module ActiveSupport
     # Parse an XML Document string or IO into a simple hash
     #
     # Same as XmlSimple::xml_in but doesn't shoot itself in the foot,
-    # and uses the defaults from ActiveSupport
+    # and uses the defaults from Active Support.
     #
     # data::
     #   XML Document string or IO to parse
@@ -19,7 +20,7 @@ module ActiveSupport
       if !data.respond_to?(:read)
         data = StringIO.new(data || '')
       end
-      
+
       char = data.getc
       if char.nil?
         {}
@@ -27,7 +28,13 @@ module ActiveSupport
         data.ungetc(char)
         silence_warnings { require 'rexml/document' } unless defined?(REXML::Document)
         doc = REXML::Document.new(data)
-        merge_element!({}, doc.root)
+
+        if doc.root
+          merge_element!({}, doc.root)
+        else
+          raise REXML::ParseException,
+            "The document #{doc.to_s.inspect} does not have a valid root"
+        end
       end
     end
 

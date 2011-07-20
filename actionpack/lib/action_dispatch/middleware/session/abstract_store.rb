@@ -1,208 +1,80 @@
 require 'rack/utils'
+require 'rack/request'
+require 'rack/session/abstract/id'
+require 'action_dispatch/middleware/cookies'
+require 'active_support/core_ext/object/blank'
 
 module ActionDispatch
   module Session
     class SessionRestoreError < StandardError #:nodoc:
     end
 
-    class AbstractStore
-      ENV_SESSION_KEY = 'rack.session'.freeze
-      ENV_SESSION_OPTIONS_KEY = 'rack.session.options'.freeze
-
-      HTTP_COOKIE = 'HTTP_COOKIE'.freeze
-      SET_COOKIE = 'Set-Cookie'.freeze
-
-      class SessionHash < Hash
-        def initialize(by, env)
-          super()
-          @by = by
-          @env = env
-          @loaded = false
-        end
-
-        def session_id
-          ActiveSupport::Deprecation.warn(
-            "ActionDispatch::Session::AbstractStore::SessionHash#session_id " +
-            "has been deprecated. Please use request.session_options[:id] instead.", caller)
-          @env[ENV_SESSION_OPTIONS_KEY][:id]
-        end
-
-        def [](key)
-          load! unless @loaded
-          super(key.to_s)
-        end
-
-        def []=(key, value)
-          load! unless @loaded
-          super(key.to_s, value)
-        end
-
-        def to_hash
-          h = {}.replace(self)
-          h.delete_if { |k,v| v.nil? }
-          h
-        end
-
-        def update(hash = nil)
-          if hash.nil?
-            ActiveSupport::Deprecation.warn('use replace instead', caller)
-            replace({})
-          else
-            load! unless @loaded
-            super(hash.stringify_keys)
-          end
-        end
-
-        def delete(key = nil)
-          if key.nil?
-            ActiveSupport::Deprecation.warn('use clear instead', caller)
-            clear
-          else
-            load! unless @loaded
-            super(key.to_s)
-          end
-        end
-
-        def data
-         ActiveSupport::Deprecation.warn(
-           "ActionDispatch::Session::AbstractStore::SessionHash#data " +
-           "has been deprecated. Please use #to_hash instead.", caller)
-          to_hash
-        end
-
-        def close
-          ActiveSupport::Deprecation.warn('sessions should no longer be closed', caller)
-        end
-
-        def inspect
-          load! unless @loaded
-          super
-        end
-
-        private
-          def loaded?
-            @loaded
-          end
-
-          def load!
-            stale_session_check! do
-              id, session = @by.send(:load_session, @env)
-              (@env[ENV_SESSION_OPTIONS_KEY] ||= {})[:id] = id
-              replace(session.stringify_keys)
-              @loaded = true
-            end
-          end
-
-          def stale_session_check!
-            yield
-          rescue ArgumentError => argument_error
-            if argument_error.message =~ %r{undefined class/module ([\w:]*\w)}
-              begin
-                # Note that the regexp does not allow $1 to end with a ':'
-                $1.constantize
-              rescue LoadError, NameError => const_error
-                raise ActionDispatch::SessionRestoreError, "Session contains objects whose class definition isn't available.\nRemember to require the classes for all objects kept in the session.\n(Original exception: #{const_error.message} [#{const_error.class}])\n"
-              end
-
-              retry
-            else
-              raise
-            end
-          end
+    module DestroyableSession
+      def destroy
+        clear
+        options = @env[Rack::Session::Abstract::ENV_SESSION_OPTIONS_KEY] if @env
+        options ||= {}
+        @by.send(:destroy_session, @env, options[:id], options) if @by
+        options[:id] = nil
+        @loaded = false
       end
+    end
 
-      DEFAULT_OPTIONS = {
-        :key =>           '_session_id',
-        :path =>          '/',
-        :domain =>        nil,
-        :expire_after =>  nil,
-        :secure =>        false,
-        :httponly =>      true,
-        :cookie_only =>   true
-      }
+    ::Rack::Session::Abstract::SessionHash.send :include, DestroyableSession
 
+    module Compatibility
       def initialize(app, options = {})
-        # Process legacy CGI options
-        options = options.symbolize_keys
-        if options.has_key?(:session_path)
-          options[:path] = options.delete(:session_path)
-        end
-        if options.has_key?(:session_key)
-          options[:key] = options.delete(:session_key)
-        end
-        if options.has_key?(:session_http_only)
-          options[:httponly] = options.delete(:session_http_only)
-        end
-
-        @app = app
-        @default_options = DEFAULT_OPTIONS.merge(options)
-        @key = @default_options[:key]
-        @cookie_only = @default_options[:cookie_only]
+        options[:key] ||= '_session_id'
+        super
       end
 
-      def call(env)
-        session = SessionHash.new(self, env)
-
-        env[ENV_SESSION_KEY] = session
-        env[ENV_SESSION_OPTIONS_KEY] = @default_options.dup
-
-        response = @app.call(env)
-
-        session_data = env[ENV_SESSION_KEY]
-        options = env[ENV_SESSION_OPTIONS_KEY]
-
-        if !session_data.is_a?(AbstractStore::SessionHash) || session_data.send(:loaded?) || options[:expire_after]
-          session_data.send(:load!) if session_data.is_a?(AbstractStore::SessionHash) && !session_data.send(:loaded?)
-
-          sid = options[:id] || generate_sid
-
-          unless set_session(env, sid, session_data.to_hash)
-            return response
-          end
-
-          cookie = Rack::Utils.escape(@key) + '=' + Rack::Utils.escape(sid)
-          cookie << "; domain=#{options[:domain]}" if options[:domain]
-          cookie << "; path=#{options[:path]}" if options[:path]
-          if options[:expire_after]
-            expiry = Time.now + options[:expire_after]
-            cookie << "; expires=#{expiry.httpdate}"
-          end
-          cookie << "; Secure" if options[:secure]
-          cookie << "; HttpOnly" if options[:httponly]
-
-          headers = response[1]
-          unless headers[SET_COOKIE].blank?
-            headers[SET_COOKIE] << "\n#{cookie}"
-          else
-            headers[SET_COOKIE] = cookie
-          end
-        end
-
-        response
+      def generate_sid
+        sid = SecureRandom.hex(16)
+        sid.encode!('UTF-8') if sid.respond_to?(:encode!)
+        sid
       end
 
-      private
-        def generate_sid
-          ActiveSupport::SecureRandom.hex(16)
-        end
+    protected
 
-        def load_session(env)
-          request = Rack::Request.new(env)
-          sid = request.cookies[@key]
-          unless @cookie_only
-            sid ||= request.params[@key]
+      def initialize_sid
+        @default_options.delete(:sidbits)
+        @default_options.delete(:secure_random)
+      end
+    end
+
+    module StaleSessionCheck
+      def load_session(env)
+        stale_session_check! { super }
+      end
+
+      def extract_session_id(env)
+        stale_session_check! { super }
+      end
+
+      def stale_session_check!
+        yield
+      rescue ArgumentError => argument_error
+        if argument_error.message =~ %r{undefined class/module ([\w:]*\w)}
+          begin
+            # Note that the regexp does not allow $1 to end with a ':'
+            $1.constantize
+          rescue LoadError, NameError => const_error
+            raise ActionDispatch::Session::SessionRestoreError, "Session contains objects whose class definition isn't available.\nRemember to require the classes for all objects kept in the session.\n(Original exception: #{const_error.message} [#{const_error.class}])\n"
           end
-          sid, session = get_session(env, sid)
-          [sid, session]
+          retry
+        else
+          raise
         end
+      end
+    end
 
-        def get_session(env, sid)
-          raise '#get_session needs to be implemented.'
-        end
+    class AbstractStore < Rack::Session::Abstract::ID
+      include Compatibility
+      include StaleSessionCheck
 
-        def set_session(env, sid, session_data)
-          raise '#set_session needs to be implemented.'
-        end
+      def destroy_session(env, sid, options)
+        raise '#destroy_session needs to be implemented.'
+      end
     end
   end
 end

@@ -2,21 +2,23 @@ require 'active_support/core_ext/array/extract_options'
 
 class Module
   def mattr_reader(*syms)
-    syms.extract_options!
+    options = syms.extract_options!
     syms.each do |sym|
       class_eval(<<-EOS, __FILE__, __LINE__ + 1)
-        unless defined? @@#{sym}  # unless defined? @@pagination_options
-          @@#{sym} = nil          #   @@pagination_options = nil
-        end                       # end
+        @@#{sym} = nil unless defined? @@#{sym}
 
-        def self.#{sym}           # def self.pagination_options
-          @@#{sym}                #   @@pagination_options
-        end                       # end
-
-        def #{sym}                # def pagination_options
-          @@#{sym}                #   @@pagination_options
-        end                       # end
+        def self.#{sym}
+          @@#{sym}
+        end
       EOS
+
+      unless options[:instance_reader] == false || options[:instance_accessor] == false
+        class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+          def #{sym}
+            @@#{sym}
+          end
+        EOS
+      end
     end
   end
 
@@ -24,20 +26,16 @@ class Module
     options = syms.extract_options!
     syms.each do |sym|
       class_eval(<<-EOS, __FILE__, __LINE__ + 1)
-        unless defined? @@#{sym}                       # unless defined? @@pagination_options
-          @@#{sym} = nil                               #   @@pagination_options = nil
-        end                                            # end
-
-        def self.#{sym}=(obj)                          # def self.pagination_options=(obj)
-          @@#{sym} = obj                               #   @@pagination_options = obj
-        end                                            # end
+        def self.#{sym}=(obj)
+          @@#{sym} = obj
+        end
       EOS
 
-      unless options[:instance_writer] == false
-        class_eval(<<-EOS, __FILE__, __LINE__)
-          def #{sym}=(obj)                             # def pagination_options=(obj)
-            @@#{sym} = obj                             #   @@pagination_options = obj
-          end                                          # end
+      unless options[:instance_writer] == false || options[:instance_accessor] == false
+        class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+          def #{sym}=(obj)
+            @@#{sym} = obj
+          end
         EOS
       end
     end
@@ -55,6 +53,10 @@ class Module
   #  end
   #
   #  AppConfiguration.google_api_key = "overriding the api key!"
+  #
+  # To opt out of the instance writer method, pass :instance_writer => false.
+  # To opt out of the instance reader method, pass :instance_reader => false.
+  # To opt out of both instance methods, pass :instance_accessor => false.
   def mattr_accessor(*syms)
     mattr_reader(*syms)
     mattr_writer(*syms)

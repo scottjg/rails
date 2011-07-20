@@ -1,107 +1,84 @@
+require 'tsort'
+
 module Rails
   module Initializable
-    def self.included(klass)
-      klass.instance_eval do
-        extend Rails::Initializable
-        extend Rails::Initializable::ClassMethodsWhenIncluded
-        include Rails::Initializable::InstanceMethodsWhenIncluded
-      end
+    def self.included(base)
+      base.extend ClassMethods
     end
 
-    def self.extended(klass)
-      klass.extend Initializer
+    class Initializer
+      attr_reader :name, :block
+
+      def initialize(name, context, options, &block)
+        @name, @context, @options, @block = name, context, options, block
+      end
+
+      def before
+        @options[:before]
+      end
+
+      def after
+        @options[:after]
+      end
+
+      def run(*args)
+        @context.instance_exec(*args, &block)
+      end
+
+      def bind(context)
+        return self if @context
+        Initializer.new(@name, context, @options, &block)
+      end
     end
 
     class Collection < Array
-      def initialize(klasses)
-        klasses.each do |klass|
-          (klass.added_initializers || []).each do |initializer|
-            index = if initializer.before
-              index_for(initializer.before)
-            elsif initializer.after
-              index_for(initializer.after) + 1
-            else
-              length
-            end
+      include TSort
 
-            insert(index, initializer)
-          end
+      alias :tsort_each_node :each
+      def tsort_each_child(initializer, &block)
+        select { |i| i.before == initializer.name || i.name == initializer.after }.each(&block)
+      end
+
+      def +(other)
+        Collection.new(to_a + other.to_a)
+      end
+    end
+
+    def run_initializers(*args)
+      return if instance_variable_defined?(:@ran)
+      initializers.tsort.each do |initializer|
+        initializer.run(*args)
+      end
+      @ran = true
+    end
+
+    def initializers
+      @initializers ||= self.class.initializers_for(self)
+    end
+
+    module ClassMethods
+      def initializers
+        @initializers ||= Collection.new
+      end
+
+      def initializers_chain
+        initializers = Collection.new
+        ancestors.reverse_each do |klass|
+          next unless klass.respond_to?(:initializers)
+          initializers = initializers + klass.initializers
         end
+        initializers
       end
 
-      def index_for(name)
-        inst = find {|i| i.name == name }
-        inst && index(inst)
+      def initializers_for(binding)
+        Collection.new(initializers_chain.map { |i| i.bind(binding) })
       end
 
-    end
-
-    attr_reader :added_initializers
-
-    # When you include Rails::Initializable, this method will be on instances
-    # of the class included into. When you extend it, it will be on the
-    # class or module itself.
-    #
-    # The #initializers method is set up to return the right list of
-    # initializers for the context in question.
-    def run_initializers
-      return if @_initialized
-
-      initializers.each {|initializer| instance_eval(&initializer.block) }
-
-      @_initialized = true
-    end
-
-    module Initializer
-      Initializer = Struct.new(:name, :before, :after, :block, :global)
-
-      def all_initializers
-        klasses = ancestors.select {|klass| klass.is_a?(Initializable) }.reverse
-        initializers = Collection.new(klasses)
+      def initializer(name, opts = {}, &blk)
+        raise ArgumentError, "A block must be passed when defining an initializer" unless blk
+        opts[:after] ||= initializers.last.name unless initializers.empty? || initializers.find { |i| i.name == opts[:before] }
+        initializers << Initializer.new(name, nil, opts, &blk)
       end
-
-      alias initializers all_initializers
-
-      def initializer(name, options = {}, &block)
-        @added_initializers ||= []
-        @added_initializers <<
-          Initializer.new(name, options[:before], options[:after], block, options[:global])
-      end
-    end
-
-    module ClassMethodsWhenIncluded
-      def initializers
-        all_initializers.select {|i| i.global == true }
-      end
-
-    end
-
-    module InstanceMethodsWhenIncluded
-      def initializers
-        self.class.all_initializers.reject {|i| i.global == true }
-      end
-    end
-  end
-
-  extend Initializable
-
-  # Check for valid Ruby version (1.8.2 or 1.8.4 or higher). This is done in an
-  # external file, so we can use it from the `rails` program as well without duplication.
-  initializer :check_ruby_version do
-    require 'rails/ruby_version_check'
-  end
-
-  # For Ruby 1.8, this initialization sets $KCODE to 'u' to enable the
-  # multibyte safe operations. Plugin authors supporting other encodings
-  # should override this behaviour and set the relevant +default_charset+
-  # on ActionController::Base.
-  #
-  # For Ruby 1.9, UTF-8 is the default internal and external encoding.
-  initializer :initialize_encoding do
-    if RUBY_VERSION < '1.9'
-      $KCODE='u'
-    else
-      Encoding.default_external = Encoding::UTF_8
     end
   end
 end

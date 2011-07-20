@@ -1,46 +1,50 @@
-root = File.expand_path('../../..', __FILE__)
-begin
-  require "#{root}/vendor/gems/environment"
-rescue LoadError
-  $:.unshift "#{root}/activesupport/lib"
-  $:.unshift "#{root}/activemodel/lib"
-end
+require File.expand_path('../../../load_paths', __FILE__)
 
-$:.unshift(File.dirname(__FILE__) + '/../lib')
+lib = File.expand_path("#{File.dirname(__FILE__)}/../lib")
+$:.unshift(lib) unless $:.include?('lib') || $:.include?(lib)
+
+activemodel_path = File.expand_path('../../../activemodel/lib', __FILE__)
+$:.unshift(activemodel_path) if File.directory?(activemodel_path) && !$:.include?(activemodel_path)
+
 $:.unshift(File.dirname(__FILE__) + '/lib')
 $:.unshift(File.dirname(__FILE__) + '/fixtures/helpers')
 $:.unshift(File.dirname(__FILE__) + '/fixtures/alternate_helpers')
 
-begin
-  %w( rack rack/test sqlite3 ).each { |lib| require lib }
-rescue LoadError => e
-  abort e.message
-end
-
 ENV['TMPDIR'] = File.join(File.dirname(__FILE__), 'tmp')
 
+require 'active_support/core_ext/kernel/reporting'
+
+require 'active_support/core_ext/string/encoding'
+if "ruby".encoding_aware?
+  # These are the normal settings that will be set up by Railties
+  # TODO: Have these tests support other combinations of these values
+  silence_warnings do
+    Encoding.default_internal = "UTF-8"
+    Encoding.default_external = "UTF-8"
+  end
+end
+
 require 'test/unit'
-require 'active_support'
-require 'active_support/test_case'
 require 'abstract_controller'
 require 'action_controller'
 require 'action_view'
-require 'action_view/base'
+require 'action_view/testing/resolvers'
 require 'action_dispatch'
-require 'active_model'
-require 'fixture_template'
-require 'action_view/test_case'
 require 'active_support/dependencies'
-
-begin
-  require 'ruby-debug'
-  Debugger.settings[:autoeval] = true
-  Debugger.start
-rescue LoadError
-  # Debugging disabled. `gem install ruby-debug` to enable.
-end
+require 'active_model'
+require 'active_record'
+require 'action_controller/caching'
+require 'action_controller/caching/sweeping'
 
 require 'pp' # require 'pp' early to prevent hidden_methods from not picking up the pretty-print methods until too late
+
+module Rails
+  class << self
+    def env
+      @_env ||= ActiveSupport::StringInquirer.new(ENV["RAILS_ENV"] || ENV["RACK_ENV"] || "test")
+    end
+  end
+end
 
 ActiveSupport::Dependencies.hook!
 
@@ -54,6 +58,31 @@ ORIGINAL_LOCALES = I18n.available_locales.map {|locale| locale.to_s }.sort
 
 FIXTURE_LOAD_PATH = File.join(File.dirname(__FILE__), 'fixtures')
 FIXTURES = Pathname.new(FIXTURE_LOAD_PATH)
+
+module RackTestUtils
+  def body_to_string(body)
+    if body.respond_to?(:each)
+      str = ""
+      body.each {|s| str << s }
+      str
+    else
+      body
+    end
+  end
+  extend self
+end
+
+module RenderERBUtils
+  def render_erb(string)
+    template = ActionView::Template.new(
+      string.strip,
+      "test template",
+      ActionView::Template::Handlers::ERB,
+      {})
+
+    template.render(self, {}).strip
+  end
+end
 
 module SetupOnce
   extend ActiveSupport::Concern
@@ -80,38 +109,83 @@ module SetupOnce
     end
 end
 
-class ActiveSupport::TestCase
-  include SetupOnce
+SharedTestRoutes = ActionDispatch::Routing::RouteSet.new
 
-  # Hold off drawing routes until all the possible controller classes
-  # have been loaded.
-  setup_once do
-    ActionController::Routing::Routes.draw do |map|
-      map.connect ':controller/:action/:id'
+module ActiveSupport
+  class TestCase
+    include SetupOnce
+    # Hold off drawing routes until all the possible controller classes
+    # have been loaded.
+    setup_once do
+      SharedTestRoutes.draw do
+        match ':controller(/:action)'
+      end
+
+      ActionDispatch::IntegrationTest.app.routes.draw do
+        match ':controller(/:action)'
+      end
     end
   end
 end
 
-class ActionController::IntegrationTest < ActiveSupport::TestCase
+class RoutedRackApp
+  attr_reader :routes
+
+  def initialize(routes, &blk)
+    @routes = routes
+    @stack = ActionDispatch::MiddlewareStack.new(&blk).build(@routes)
+  end
+
+  def call(env)
+    @stack.call(env)
+  end
+end
+
+class BasicController
+  attr_accessor :request
+
+  def config
+    @config ||= ActiveSupport::InheritableOptions.new(ActionController::Base.config).tap do |config|
+      # VIEW TODO: View tests should not require a controller
+      public_dir = File.expand_path("../fixtures/public", __FILE__)
+      config.assets_dir = public_dir
+      config.javascripts_dir = "#{public_dir}/javascripts"
+      config.stylesheets_dir = "#{public_dir}/stylesheets"
+      config.assets          = ActiveSupport::InheritableOptions.new({ :prefix => "assets" })
+      config
+    end
+  end
+end
+
+class ActionDispatch::IntegrationTest < ActiveSupport::TestCase
+  setup do
+    @routes = SharedTestRoutes
+  end
+
   def self.build_app(routes = nil)
-    ActionDispatch::MiddlewareStack.new { |middleware|
-      middleware.use "ActionDispatch::StringCoercion"
+    RoutedRackApp.new(routes || ActionDispatch::Routing::RouteSet.new) do |middleware|
       middleware.use "ActionDispatch::ShowExceptions"
       middleware.use "ActionDispatch::Callbacks"
       middleware.use "ActionDispatch::ParamsParser"
-      middleware.use "Rack::Head"
-    }.build(routes || ActionController::Routing::Routes)
+      middleware.use "ActionDispatch::Cookies"
+      middleware.use "ActionDispatch::Flash"
+      middleware.use "ActionDispatch::Head"
+      yield(middleware) if block_given?
+    end
   end
 
   self.app = build_app
 
-  class StubDispatcher
-    def self.new(*args)
-      lambda { |env|
-        params = env['action_dispatch.request.path_parameters']
-        controller, action = params[:controller], params[:action]
-        [200, {'Content-Type' => 'text/html'}, ["#{controller}##{action}"]]
-      }
+  # Stub Rails dispatcher so it does not get controller references and
+  # simply return the controller#action as Rack::Body.
+  class StubDispatcher < ::ActionDispatch::Routing::RouteSet::Dispatcher
+    protected
+    def controller_reference(controller_param)
+      controller_param
+    end
+
+    def dispatch(controller, action, env)
+      [200, {'Content-Type' => 'text/html'}, ["#{controller}##{action}"]]
     end
   end
 
@@ -126,30 +200,35 @@ class ActionController::IntegrationTest < ActiveSupport::TestCase
   end
 
   def with_routing(&block)
-    real_routes = ActionController::Routing::Routes
-    ActionController::Routing.module_eval { remove_const :Routes }
-
-    temporary_routes = ActionController::Routing::RouteSet.new
-    self.class.app = self.class.build_app(temporary_routes)
-    ActionController::Routing.module_eval { const_set :Routes, temporary_routes }
+    temporary_routes = ActionDispatch::Routing::RouteSet.new
+    old_app, self.class.app = self.class.app, self.class.build_app(temporary_routes)
+    old_routes = SharedTestRoutes
+    silence_warnings { Object.const_set(:SharedTestRoutes, temporary_routes) }
 
     yield temporary_routes
   ensure
-    if ActionController::Routing.const_defined? :Routes
-      ActionController::Routing.module_eval { remove_const :Routes }
+    self.class.app = old_app
+    silence_warnings { Object.const_set(:SharedTestRoutes, old_routes) }
+  end
+
+  def with_autoload_path(path)
+    path = File.join(File.dirname(__FILE__), "fixtures", path)
+    if ActiveSupport::Dependencies.autoload_paths.include?(path)
+      yield
+    else
+      begin
+        ActiveSupport::Dependencies.autoload_paths << path
+        yield
+      ensure
+        ActiveSupport::Dependencies.autoload_paths.reject! {|p| p == path}
+        ActiveSupport::Dependencies.clear
+      end
     end
-    ActionController::Routing.const_set(:Routes, real_routes) if real_routes
-    self.class.app = self.class.build_app
   end
 end
 
 # Temporary base class
-class Rack::TestCase < ActionController::IntegrationTest
-  setup do
-    ActionController::Base.session_options[:key] = "abc"
-    ActionController::Base.session_options[:secret] = ("*" * 30)
-  end
-
+class Rack::TestCase < ActionDispatch::IntegrationTest
   def self.testing(klass = nil)
     if klass
       @testing = "/#{klass.name.underscore}".sub!(/_controller$/, '')
@@ -191,70 +270,74 @@ class Rack::TestCase < ActionController::IntegrationTest
   end
 end
 
+module ActionController
+  class Base
+    include ActionController::Testing
+    # This stub emulates the Railtie including the URL helpers from a Rails application
+    include SharedTestRoutes.url_helpers
+
+    self.view_paths = FIXTURE_LOAD_PATH
+
+    def self.test_routes(&block)
+      routes = ActionDispatch::Routing::RouteSet.new
+      routes.draw(&block)
+      include routes.url_helpers
+    end
+  end
+
+  class TestCase
+    include ActionDispatch::TestProcess
+
+    setup do
+      @routes = SharedTestRoutes
+    end
+  end
+end
+
 class ::ApplicationController < ActionController::Base
 end
 
-module ActionController
-  module Routing
-    def self.possible_controllers
-      @@possible_controllers ||= []
-    end
-  end
-
-  class Base
-    include ActionController::Testing
-
-    def self.inherited(klass)
-      name = klass.name.underscore.sub(/_controller$/, '')
-      ActionController::Routing.possible_controllers << name unless name.blank?
-      super
-    end
-  end
-
-  Base.view_paths = FIXTURE_LOAD_PATH
-
+module ActionView
   class TestCase
-    include TestProcess
-
-    def assert_template(options = {}, message = nil)
-      validate_request!
-
-      hax = @controller.view_context.instance_variable_get(:@_rendered)
-
-      case options
-      when NilClass, String
-        rendered = (hax[:template] || []).map { |t| t.identifier }
-        msg = build_message(message,
-                "expecting <?> but rendering with <?>",
-                options, rendered.join(', '))
-        assert_block(msg) do
-          if options.nil?
-            hax[:template].blank?
-          else
-            rendered.any? { |t| t.match(options) }
-          end
-        end
-      when Hash
-        if expected_partial = options[:partial]
-          partials = hax[:partials]
-          if expected_count = options[:count]
-            found = partials.detect { |p, _| p.identifier.match(expected_partial) }
-            actual_count = found.nil? ? 0 : found[1]
-            msg = build_message(message,
-                    "expecting ? to be rendered ? time(s) but rendered ? time(s)",
-                     expected_partial, expected_count, actual_count)
-            assert(actual_count == expected_count.to_i, msg)
-          else
-            msg = build_message(message,
-                    "expecting partial <?> but action rendered <?>",
-                    options[:partial], partials.keys)
-            assert(partials.keys.any? { |p| p.identifier.match(expected_partial) }, msg)
-          end
-        else
-          assert hax[:partials].empty?,
-            "Expected no partials to be rendered"
-        end
-      end
+    # Must repeat the setup because AV::TestCase is a duplication
+    # of AC::TestCase
+    setup do
+      @routes = SharedTestRoutes
     end
   end
 end
+
+class Workshop
+  extend ActiveModel::Naming
+  include ActiveModel::Conversion
+  attr_accessor :id
+
+  def initialize(id)
+    @id = id
+  end
+
+  def persisted?
+    id.present?
+  end
+
+  def to_s
+    id.to_s
+  end
+end
+
+module ActionDispatch
+  class ShowExceptions
+    private
+      remove_method :public_path
+      def public_path
+        "#{FIXTURE_LOAD_PATH}/public"
+      end
+
+      remove_method :logger
+      # Silence logger
+      def logger
+        nil
+      end
+  end
+end
+

@@ -4,6 +4,12 @@ class MiddlewareStackTest < ActiveSupport::TestCase
   class FooMiddleware; end
   class BarMiddleware; end
   class BazMiddleware; end
+  class BlockMiddleware
+    attr_reader :block
+    def initialize(&block)
+      @block = block
+    end
+  end
 
   def setup
     @stack = ActionDispatch::MiddlewareStack.new
@@ -39,7 +45,16 @@ class MiddlewareStackTest < ActiveSupport::TestCase
     assert_equal BazMiddleware, @stack.last.klass
     assert_equal([true, {:foo => "bar"}], @stack.last.args)
   end
-
+  
+  test "use should push middleware class with block arguments onto the stack" do
+    proc = Proc.new {}
+    assert_difference "@stack.size" do
+      @stack.use(BlockMiddleware, &proc)
+    end
+    assert_equal BlockMiddleware, @stack.last.klass
+    assert_equal proc, @stack.last.block
+  end
+  
   test "insert inserts middleware at the integer index" do
     @stack.insert(1, BazMiddleware)
     assert_equal BazMiddleware, @stack[1].klass
@@ -66,25 +81,26 @@ class MiddlewareStackTest < ActiveSupport::TestCase
     assert_equal BazMiddleware, @stack[0].klass
   end
 
-  test "active returns all only enabled middleware" do
-    assert_no_difference "@stack.active.size" do
-      assert_difference "@stack.size" do
-        @stack.use BazMiddleware, :if => lambda { false }
-      end
+  test "raise an error on invalid index" do
+    assert_raise RuntimeError do
+      @stack.insert("HiyaMiddleware", BazMiddleware)
+    end
+
+    assert_raise RuntimeError do
+      @stack.insert_after("HiyaMiddleware", BazMiddleware)
     end
   end
 
   test "lazy evaluates middleware class" do
     assert_difference "@stack.size" do
-      @stack.use lambda { BazMiddleware }
+      @stack.use "MiddlewareStackTest::BazMiddleware"
     end
     assert_equal BazMiddleware, @stack.last.klass
   end
 
-  test "lazy evaluates middleware arguments" do
-    assert_difference "@stack.size" do
-      @stack.use BazMiddleware, lambda { :foo }
-    end
-    assert_equal [:foo], @stack.last.send(:build_args)
+  test "lazy compares so unloaded constants are not loaded" do
+    @stack.use "UnknownMiddleware"
+    @stack.use :"MiddlewareStackTest::BazMiddleware"
+    assert @stack.include?("::MiddlewareStackTest::BazMiddleware")
   end
 end

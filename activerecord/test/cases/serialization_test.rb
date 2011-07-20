@@ -1,5 +1,6 @@
 require "cases/helper"
 require 'models/contact'
+require 'models/topic'
 
 class SerializationTest < ActiveRecord::TestCase
   FORMATS = [ :xml, :json ]
@@ -13,8 +14,12 @@ class SerializationTest < ActiveRecord::TestCase
       :awesome     => false,
       :preferences => { :gem => '<strong>ruby</strong>' }
     }
+  end
 
-    @contact = Contact.new(@contact_attributes)
+  def test_serialized_init_with
+    topic = Topic.allocate
+    topic.init_with('attributes' => { 'content' => '--- foo' })
+    assert_equal 'foo', topic.content
   end
 
   def test_serialize_should_be_reversible

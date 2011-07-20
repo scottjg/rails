@@ -93,14 +93,14 @@ class SchemaDumperTest < ActiveRecord::TestCase
 
       assert_match %r{c_int_4.*}, output
       assert_no_match %r{c_int_4.*:limit}, output
-    elsif current_adapter?(:MysqlAdapter)
+    elsif current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
       assert_match %r{c_int_1.*:limit => 1}, output
       assert_match %r{c_int_2.*:limit => 2}, output
       assert_match %r{c_int_3.*:limit => 3}, output
 
       assert_match %r{c_int_4.*}, output
       assert_no_match %r{c_int_4.*:limit}, output
-    elsif current_adapter?(:SQLiteAdapter)
+    elsif current_adapter?(:SQLite3Adapter)
       assert_match %r{c_int_1.*:limit => 1}, output
       assert_match %r{c_int_2.*:limit => 2}, output
       assert_match %r{c_int_3.*:limit => 3}, output
@@ -109,7 +109,7 @@ class SchemaDumperTest < ActiveRecord::TestCase
     assert_match %r{c_int_without_limit.*}, output
     assert_no_match %r{c_int_without_limit.*:limit}, output
 
-    if current_adapter?(:SQLiteAdapter)
+    if current_adapter?(:SQLite3Adapter)
       assert_match %r{c_int_5.*:limit => 5}, output
       assert_match %r{c_int_6.*:limit => 6}, output
       assert_match %r{c_int_7.*:limit => 7}, output
@@ -169,7 +169,7 @@ class SchemaDumperTest < ActiveRecord::TestCase
     assert_match %r(:primary_key => "movieid"), match[1], "non-standard primary key not preserved"
   end
 
-  if current_adapter?(:MysqlAdapter)
+  if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
     def test_schema_dump_should_not_add_default_value_for_mysql_text_field
       output = standard_dump
       assert_match %r{t.text\s+"body",\s+:null => false$}, output
@@ -203,6 +203,13 @@ class SchemaDumperTest < ActiveRecord::TestCase
         assert_match %r{t.xml "data"}, output
       end
     end
+
+    def test_schema_dump_includes_tsvector_shorthand_definition
+      output = standard_dump
+      if %r{create_table "postgresql_tsvectors"} =~ output
+        assert_match %r{t.tsvector "text_vector"}, output
+      end
+    end
   end
 
   def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
@@ -223,4 +230,3 @@ class SchemaDumperTest < ActiveRecord::TestCase
     assert_match %r{t.string[[:space:]]+"id",[[:space:]]+:null => false$}, match[2], "non-primary key id column not preserved"
   end
 end
-

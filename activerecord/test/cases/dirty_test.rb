@@ -26,6 +26,11 @@ class NumericData < ActiveRecord::Base
 end
 
 class DirtyTest < ActiveRecord::TestCase
+  # Dummy to force column loads so query counts are clean.
+  def setup
+    Person.create :first_name => 'foo'
+  end
+
   def test_attribute_changes
     # New record - no changes.
     pirate = Pirate.new
@@ -48,6 +53,89 @@ class DirtyTest < ActiveRecord::TestCase
     assert !pirate.catchphrase_changed?
     assert_nil pirate.catchphrase_change
   end
+
+  def test_time_attributes_changes_with_time_zone
+    in_time_zone 'Paris' do
+      target = Class.new(ActiveRecord::Base)
+      target.table_name = 'pirates'
+
+      # New record - no changes.
+      pirate = target.new
+      assert !pirate.created_on_changed?
+      assert_nil pirate.created_on_change
+
+      # Saved - no changes.
+      pirate.catchphrase = 'arrrr, time zone!!'
+      pirate.save!
+      assert !pirate.created_on_changed?
+      assert_nil pirate.created_on_change
+
+      # Change created_on.
+      old_created_on = pirate.created_on
+      pirate.created_on = Time.now - 1.day
+      assert pirate.created_on_changed?
+      assert_kind_of ActiveSupport::TimeWithZone, pirate.created_on_was
+      assert_equal old_created_on, pirate.created_on_was
+    end
+  end
+
+  def test_time_attributes_changes_without_time_zone_by_skip
+    in_time_zone 'Paris' do
+      target = Class.new(ActiveRecord::Base)
+      target.table_name = 'pirates'
+
+      target.skip_time_zone_conversion_for_attributes = [:created_on]
+
+      # New record - no changes.
+      pirate = target.new
+      assert !pirate.created_on_changed?
+      assert_nil pirate.created_on_change
+
+      # Saved - no changes.
+      pirate.catchphrase = 'arrrr, time zone!!'
+      pirate.save!
+      assert !pirate.created_on_changed?
+      assert_nil pirate.created_on_change
+
+      # Change created_on.
+      old_created_on = pirate.created_on
+      pirate.created_on = Time.now + 1.day
+      assert pirate.created_on_changed?
+      # kind_of does not work because
+      # ActiveSupport::TimeWithZone.name == 'Time'
+      assert_instance_of Time, pirate.created_on_was
+      assert_equal old_created_on, pirate.created_on_was
+    end
+  end
+
+  def test_time_attributes_changes_without_time_zone
+
+    target = Class.new(ActiveRecord::Base)
+    target.table_name = 'pirates'
+
+    target.time_zone_aware_attributes = false
+
+    # New record - no changes.
+    pirate = target.new
+    assert !pirate.created_on_changed?
+    assert_nil pirate.created_on_change
+
+    # Saved - no changes.
+    pirate.catchphrase = 'arrrr, time zone!!'
+    pirate.save!
+    assert !pirate.created_on_changed?
+    assert_nil pirate.created_on_change
+
+    # Change created_on.
+    old_created_on = pirate.created_on
+    pirate.created_on = Time.now + 1.day
+    assert pirate.created_on_changed?
+    # kind_of does not work because
+    # ActiveSupport::TimeWithZone.name == 'Time'
+    assert_instance_of Time, pirate.created_on_was
+    assert_equal old_created_on, pirate.created_on_was
+  end
+
 
   def test_aliased_attribute_changes
     # the actual attribute here is name, title is an
@@ -250,6 +338,15 @@ class DirtyTest < ActiveRecord::TestCase
     assert !pirate.changed?
   end
 
+  def test_dup_objects_should_not_copy_dirty_flag_from_creator
+    pirate = Pirate.create!(:catchphrase => "shiver me timbers")
+    pirate_dup = pirate.dup
+    pirate_dup.reset_catchphrase!
+    pirate.catchphrase = "I love Rum"
+    assert pirate.catchphrase_changed?
+    assert !pirate_dup.catchphrase_changed?
+  end
+
   def test_reverted_changes_are_not_dirty
     phrase = "shiver me timbers"
     pirate = Pirate.create!(:catchphrase => phrase)
@@ -298,11 +395,25 @@ class DirtyTest < ActiveRecord::TestCase
     end
   end
 
+  def test_save_always_should_update_timestamps_when_serialized_attributes_are_present
+    with_partial_updates(Topic) do
+      topic = Topic.create!(:content => {:a => "a"})
+      topic.save!
+
+      updated_at = topic.updated_at
+      topic.content[:hello] = 'world'
+      topic.save!
+
+      assert_not_equal updated_at, topic.updated_at
+      assert_equal 'world', topic.content[:hello]
+    end
+  end
+
   def test_save_should_not_save_serialized_attribute_with_partial_updates_if_not_present
     with_partial_updates(Topic) do
       Topic.create!(:author_name => 'Bill', :content => {:a => "a"})
-      topic = Topic.first(:select => 'id, author_name')
-      topic.update_attribute :author_name, 'John'
+      topic = Topic.select('id, author_name').first
+      topic.update_column :author_name, 'John'
       topic = Topic.first
       assert_not_nil topic.content
     end
@@ -311,11 +422,11 @@ class DirtyTest < ActiveRecord::TestCase
   def test_previous_changes
     # original values should be in previous_changes
     pirate = Pirate.new
-  
+
     assert_equal Hash.new, pirate.previous_changes
     pirate.catchphrase = "arrr"
     pirate.save!
-  
+
     assert_equal 4, pirate.previous_changes.size
     assert_equal [nil, "arrr"], pirate.previous_changes['catchphrase']
     assert_equal [nil, pirate.id], pirate.previous_changes['id']
@@ -324,21 +435,21 @@ class DirtyTest < ActiveRecord::TestCase
     assert_nil pirate.previous_changes['created_on'][0]
     assert_not_nil pirate.previous_changes['created_on'][1]
     assert !pirate.previous_changes.key?('parrot_id')
-  
+
     # original values should be in previous_changes
     pirate = Pirate.new
-  
+
     assert_equal Hash.new, pirate.previous_changes
     pirate.catchphrase = "arrr"
     pirate.save
-  
+
     assert_equal 4, pirate.previous_changes.size
     assert_equal [nil, "arrr"], pirate.previous_changes['catchphrase']
     assert_equal [nil, pirate.id], pirate.previous_changes['id']
     assert pirate.previous_changes.include?('updated_on')
     assert pirate.previous_changes.include?('created_on')
     assert !pirate.previous_changes.key?('parrot_id')
-  
+
     pirate.catchphrase = "Yar!!"
     pirate.reload
     assert_equal Hash.new, pirate.previous_changes
@@ -383,7 +494,7 @@ class DirtyTest < ActiveRecord::TestCase
     assert_not_nil pirate.previous_changes['updated_on'][0]
     assert_not_nil pirate.previous_changes['updated_on'][1]
     assert !pirate.previous_changes.key?('parrot_id')
-    assert !pirate.previous_changes.key?('created_on')    
+    assert !pirate.previous_changes.key?('created_on')
   end
 
   private
@@ -400,5 +511,17 @@ class DirtyTest < ActiveRecord::TestCase
       assert pirate.parrot_id_changed?
       assert_equal %w(parrot_id), pirate.changed
       assert_nil pirate.parrot_id_was
+    end
+
+    def in_time_zone(zone)
+      old_zone  = Time.zone
+      old_tz    = ActiveRecord::Base.time_zone_aware_attributes
+
+      Time.zone = zone ? ActiveSupport::TimeZone[zone] : nil
+      ActiveRecord::Base.time_zone_aware_attributes = !zone.nil?
+      yield
+    ensure
+      Time.zone = old_zone
+      ActiveRecord::Base.time_zone_aware_attributes = old_tz
     end
 end

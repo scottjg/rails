@@ -3,49 +3,72 @@ require 'active_support/core_ext/array/extract_options'
 # Extends the class object with class and instance accessors for class attributes,
 # just like the native attr* accessors for instance attributes.
 #
+# Note that unlike +class_attribute+, if a subclass changes the value then that would
+# also change the value for parent class. Similarly if parent class changes the value
+# then that would change the value of subclasses too.
+#
 #  class Person
 #    cattr_accessor :hair_colors
 #  end
 #
 #  Person.hair_colors = [:brown, :black, :blonde, :red]
+#  Person.hair_colors     # => [:brown, :black, :blonde, :red]
+#  Person.new.hair_colors # => [:brown, :black, :blonde, :red]
+#
+# To opt out of the instance writer method, pass :instance_writer => false.
+# To opt out of the instance reader method, pass :instance_reader => false.
+# To opt out of both instance methods, pass :instance_accessor => false.
+#
+#   class Person
+#     cattr_accessor :hair_colors, :instance_writer => false, :instance_reader => false
+#   end
+#
+#   Person.new.hair_colors = [:brown]  # => NoMethodError
+#   Person.new.hair_colors             # => NoMethodError
 class Class
   def cattr_reader(*syms)
-    syms.flatten.each do |sym|
-      next if sym.is_a?(Hash)
+    options = syms.extract_options!
+    syms.each do |sym|
       class_eval(<<-EOS, __FILE__, __LINE__ + 1)
-        unless defined? @@#{sym}  # unless defined? @@hair_colors
-          @@#{sym} = nil          #   @@hair_colors = nil
-        end                       # end
-                                  #
-        def self.#{sym}           # def self.hair_colors
-          @@#{sym}                #   @@hair_colors
-        end                       # end
-                                  #
-        def #{sym}                # def hair_colors
-          @@#{sym}                #   @@hair_colors
-        end                       # end
+        unless defined? @@#{sym}
+          @@#{sym} = nil
+        end
+
+        def self.#{sym}
+          @@#{sym}
+        end
       EOS
+
+      unless options[:instance_reader] == false || options[:instance_accessor] == false
+        class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+          def #{sym}
+            @@#{sym}
+          end
+        EOS
+      end
     end
   end
 
   def cattr_writer(*syms)
     options = syms.extract_options!
-    syms.flatten.each do |sym|
+    syms.each do |sym|
       class_eval(<<-EOS, __FILE__, __LINE__ + 1)
-        unless defined? @@#{sym}                       # unless defined? @@hair_colors
-          @@#{sym} = nil                               #   @@hair_colors = nil
-        end                                            # end
-                                                       #
-        def self.#{sym}=(obj)                          # def self.hair_colors=(obj)
-          @@#{sym} = obj                               #   @@hair_colors = obj
-        end                                            # end
-                                                       #
-        #{"                                            #
-        def #{sym}=(obj)                               # def hair_colors=(obj)
-          @@#{sym} = obj                               #   @@hair_colors = obj
-        end                                            # end
-        " unless options[:instance_writer] == false }  # # instance writer above is generated unless options[:instance_writer] == false
+        unless defined? @@#{sym}
+          @@#{sym} = nil
+        end
+
+        def self.#{sym}=(obj)
+          @@#{sym} = obj
+        end
       EOS
+
+      unless options[:instance_writer] == false || options[:instance_accessor] == false
+        class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+          def #{sym}=(obj)
+            @@#{sym} = obj
+          end
+        EOS
+      end
       self.send("#{sym}=", yield) if block_given?
     end
   end

@@ -1,4 +1,5 @@
 require 'active_support/core_ext/array/wrap'
+require 'active_support/core_ext/object/blank'
 
 module ActiveSupport
   module Testing
@@ -28,22 +29,33 @@ module ActiveSupport
       #     post :create, :article => {...}
       #   end
       #
+      # A lambda or a list of lambdas can be passed in and evaluated:
+      #
+      #   assert_difference lambda { Article.count }, 2 do
+      #     post :create, :article => {...}
+      #   end
+      #
+      #   assert_difference [->{ Article.count }, ->{ Post.count }], 2 do
+      #     post :create, :article => {...}
+      #   end
+      #
       # A error message can be specified.
       #
       #   assert_difference 'Article.count', -1, "An Article should be destroyed" do
       #     post :delete, :id => ...
       #   end
       def assert_difference(expression, difference = 1, message = nil, &block)
-        b = block.send(:binding)
-        exps = Array.wrap(expression)
-        before = exps.map { |e| eval(e, b) }
+        exps = Array.wrap(expression).map { |e|
+          e.respond_to?(:call) ? e : lambda { eval(e, block.binding) }
+        }
+        before = exps.map { |e| e.call }
 
         yield
 
         exps.each_with_index do |e, i|
-          error = "#{e.inspect} didn't change by #{difference}"
-          error = "#{message}.\n#{error}" if message
-          assert_equal(before[i] + difference, eval(e, b), error)
+          error  = "#{e.inspect} didn't change by #{difference}"
+          error  = "#{message}.\n#{error}" if message
+          assert_equal(before[i] + difference, e.call, error)
         end
       end
 
@@ -56,11 +68,27 @@ module ActiveSupport
       #
       # A error message can be specified.
       #
-      #   assert_no_difference 'Article.count', "An Article should not be destroyed" do
+      #   assert_no_difference 'Article.count', "An Article should not be created" do
       #     post :create, :article => invalid_attributes
       #   end
       def assert_no_difference(expression, message = nil, &block)
         assert_difference expression, 0, message, &block
+      end
+
+      # Test if an expression is blank. Passes if object.blank? is true.
+      #
+      #   assert_blank [] # => true
+      def assert_blank(object, message=nil)
+        message ||= "#{object.inspect} is not blank"
+        assert object.blank?, message
+      end
+
+      # Test if an expression is not blank. Passes if object.present? is true.
+      #
+      #   assert_present {:data => 'x' } # => true
+      def assert_present(object, message=nil)
+        message ||= "#{object.inspect} is blank"
+        assert object.present?, message
       end
     end
   end

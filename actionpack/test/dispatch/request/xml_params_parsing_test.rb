@@ -1,6 +1,6 @@
 require 'abstract_unit'
 
-class XmlParamsParsingTest < ActionController::IntegrationTest
+class XmlParamsParsingTest < ActionDispatch::IntegrationTest
   class TestController < ActionController::Base
     class << self
       attr_accessor :last_request_parameters
@@ -14,6 +14,20 @@ class XmlParamsParsingTest < ActionController::IntegrationTest
 
   def teardown
     TestController.last_request_parameters = nil
+  end
+
+  test "parses a strict rack.input" do
+    class Linted
+      undef call if method_defined?(:call)
+      def call(env)
+        bar = env['action_dispatch.request.request_parameters']['foo']
+        result = "<ok>#{bar}</ok>"
+        [200, {"Content-Type" => "application/xml", "Content-Length" => result.length.to_s}, [result]]
+      end
+    end
+    req = Rack::MockRequest.new(ActionDispatch::ParamsParser.new(Linted.new))
+    resp = req.post('/', "CONTENT_TYPE" => "application/xml", :input => "<foo>bar</foo>", :lint => true)
+    assert_equal "<ok>bar</ok>", resp.body
   end
 
   test "parses hash params" do
@@ -43,7 +57,7 @@ class XmlParamsParsingTest < ActionController::IntegrationTest
       begin
         $stderr = StringIO.new
         xml = "<person><name>David</name><avatar type='file' name='me.jpg' content_type='image/jpg'>#{ActiveSupport::Base64.encode64('ABC')}</avatar></pineapple>"
-        post "/parse", xml, default_headers
+        post "/parse", xml, default_headers.merge('action_dispatch.show_exceptions' => true)
         assert_response :error
         $stderr.rewind && err = $stderr.read
         assert err =~ /Error occurred while parsing request parameters/
@@ -83,8 +97,8 @@ class XmlParamsParsingTest < ActionController::IntegrationTest
   private
     def with_test_routing
       with_routing do |set|
-        set.draw do |map|
-          match ':action', :to => TestController
+        set.draw do
+          match ':action', :to => ::XmlParamsParsingTest::TestController
         end
         yield
       end
@@ -99,5 +113,43 @@ class LegacyXmlParamsParsingTest < XmlParamsParsingTest
   private
     def default_headers
       {'HTTP_X_POST_DATA_FORMAT' => 'xml'}
+    end
+end
+
+class RootLessXmlParamsParsingTest < ActionDispatch::IntegrationTest
+  class TestController < ActionController::Base
+    wrap_parameters :person, :format => :xml
+
+    class << self
+      attr_accessor :last_request_parameters
+    end
+
+    def parse
+      self.class.last_request_parameters = request.request_parameters
+      head :ok
+    end
+  end
+
+  def teardown
+    TestController.last_request_parameters = nil
+  end
+
+  test "parses hash params" do
+    with_test_routing do
+      xml = "<name>David</name>"
+      post "/parse", xml, {'CONTENT_TYPE' => 'application/xml'}
+      assert_response :ok
+      assert_equal({"name" => "David", "person" => {"name" => "David"}}, TestController.last_request_parameters)
+    end
+  end
+
+  private
+    def with_test_routing
+      with_routing do |set|
+        set.draw do
+          match ':action', :to => ::RootLessXmlParamsParsingTest::TestController
+        end
+        yield
+      end
     end
 end

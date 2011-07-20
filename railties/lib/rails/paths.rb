@@ -1,136 +1,178 @@
 require 'set'
 
 module Rails
-  class Application
-    module PathParent
-      def method_missing(id, *args)
-        name = id.to_s
-
-        if name =~ /^(.*)=$/ || args.any?
-          @children[$1 || name] = Path.new(@root, *args)
-        elsif path = @children[name]
-          path
-        else
-          super
-        end
-      end
-    end
-
-    class Root
-      include PathParent
-
+  module Paths
+    # This object is an extended hash that behaves as root of the Rails::Paths system.
+    # It allows you to collect information about how you want to structure your application
+    # paths by a Hash like API. It requires you to give a physical path on initialization.
+    #
+    #   root = Root.new "/rails"
+    #   root.add "app/controllers", :eager_load => true
+    #
+    # The command above creates a new root object and add "app/controllers" as a path.
+    # This means we can get a Path object back like below:
+    #
+    #   path = root["app/controllers"]
+    #   path.eager_load?               # => true
+    #   path.is_a?(Rails::Paths::Path) # => true
+    #
+    # The Path object is simply an array and allows you to easily add extra paths:
+    #
+    #   path.is_a?(Array) # => true
+    #   path.inspect      # => ["app/controllers"]
+    #
+    #   path << "lib/controllers"
+    #   path.inspect      # => ["app/controllers", "lib/controllers"]
+    #
+    # Notice that when you add a path using #add, the path object created already
+    # contains the path with the same path value given to #add. In some situations,
+    # you may not want this behavior, so you can give :with as option.
+    #
+    #   root.add "config/routes", :with => "config/routes.rb"
+    #   root["config/routes"].inspect # => ["config/routes.rb"]
+    #
+    # #add also accepts the following options as argument: eager_load, autoload,
+    # autoload_once and glob.
+    #
+    # Finally, the Path object also provides a few helpers:
+    #
+    #   root = Root.new "/rails"
+    #   root.add "app/controllers"
+    #
+    #   root["app/controllers"].expanded # => ["/rails/app/controllers"]
+    #   root["app/controllers"].existent # => ["/rails/app/controllers"]
+    #
+    # Check the Path documentation for more information.
+    class Root < ::Hash
       attr_accessor :path
 
       def initialize(path)
-        raise if path.is_a?(Array)
-
-        @children = {}
-
+        raise "Argument should be a String of the physical root path" if path.is_a?(Array)
+        @current = nil
         @path = path
         @root = self
-        @all_paths = []
+        super()
       end
 
-      def load_once
-        all_paths.map { |path| path.paths if path.load_once? }.compact.flatten.uniq
+      def []=(path, value)
+        value = Path.new(self, path, value) unless value.is_a?(Path)
+        super(path, value)
       end
 
-      def eager_load
-        all_paths.map { |path| path.paths if path.eager_load? }.compact.flatten.uniq
+      def add(path, options={})
+        with = options[:with] || path
+        self[path] = Path.new(self, path, with, options)
       end
 
       def all_paths
-        @all_paths.uniq!
-        @all_paths
+        values.tap { |v| v.uniq! }
+      end
+
+      def autoload_once
+        filter_by(:autoload_once?)
+      end
+
+      def eager_load
+        filter_by(:eager_load?)
+      end
+
+      def autoload_paths
+        filter_by(:autoload?)
       end
 
       def load_paths
-        all_paths.map { |path| path.paths if path.load_path? }.compact.flatten.uniq
+        filter_by(:load_path?)
       end
 
-      def add_to_load_path
-        load_paths.reverse_each do |path|
-          $LOAD_PATH.unshift(path) if File.directory?(path)
+    protected
+
+      def filter_by(constraint)
+        all = []
+        all_paths.each do |path|
+          if path.send(constraint)
+            paths  = path.existent
+            paths -= path.children.map { |p| p.send(constraint) ? [] : p.existent }.flatten
+            all.concat(paths)
+          end
         end
+        all.uniq!
+        all
       end
-
-      def push(*)
-        raise "Application root can only have one physical path"
-      end
-
-      alias unshift push
-      alias << push
-      alias concat push
     end
 
-    class Path
-      include PathParent
-
+    class Path < Array
       attr_reader :path
       attr_accessor :glob
 
-      def initialize(root, *paths)
-        @options  = paths.last.is_a?(::Hash) ? paths.pop : {}
-        @children = {}
+      def initialize(root, current, *paths)
+        options = paths.last.is_a?(::Hash) ? paths.pop : {}
+        super(paths.flatten)
+
+        @current  = current
         @root     = root
-        @paths    = paths.flatten
-        @glob     = @options[:glob] || "**/*.rb"
+        @glob     = options[:glob]
 
-        @load_once  = @options[:load_once]
-        @eager_load = @options[:eager_load]
-        @load_path  = @options[:load_path] || @eager_load
-
-        @root.all_paths << self
+        options[:autoload_once] ? autoload_once! : skip_autoload_once!
+        options[:eager_load]    ? eager_load!    : skip_eager_load!
+        options[:autoload]      ? autoload!      : skip_autoload!
+        options[:load_path]     ? load_path!     : skip_load_path!
       end
 
-      def push(path)
-        @paths.push path
+      def children
+        keys = @root.keys.select { |k| k.include?(@current) }
+        keys.delete(@current)
+        @root.values_at(*keys.sort)
       end
 
-      alias << push
-
-      def unshift(path)
-        @paths.unshift path
+      def first
+        expanded.first
       end
 
-      def concat(paths)
-        @paths.concat paths
+      def last
+        expanded.last
       end
 
-      def load_once!
-        @load_once = true
+      %w(autoload_once eager_load autoload load_path).each do |m|
+        class_eval <<-RUBY, __FILE__, __LINE__ + 1
+          def #{m}!        # def eager_load!
+            @#{m} = true   #   @eager_load = true
+          end              # end
+                           #
+          def skip_#{m}!   # def skip_eager_load!
+            @#{m} = false  #   @eager_load = false
+          end              # end
+                           #
+          def #{m}?        # def eager_load?
+            @#{m}          #   @eager_load
+          end              # end
+        RUBY
       end
 
-      def load_once?
-        @load_once
-      end
-
-      def eager_load!
-        @eager_load = true
-        @load_path  = true
-      end
-
-      def eager_load?
-        @eager_load
-      end
-
-      def load_path!
-        @load_path = true
-      end
-
-      def load_path?
-        @load_path
-      end
-
-      def paths
+      # Expands all paths against the root and return all unique values.
+      def expanded
         raise "You need to set a path root" unless @root.path
+        result = []
 
-        @paths.map do |path|
-          path.index('/') == 0 ? path : File.expand_path(File.join(@root.path, path))
+        each do |p|
+          path = File.expand_path(p, @root.path)
+
+          if @glob
+            result.concat Dir[File.join(path, @glob)].sort
+          else
+            result << path
+          end
         end
+
+        result.uniq!
+        result
       end
 
-      alias to_a paths
+      # Returns all expanded paths but only if they exist in the filesystem.
+      def existent
+        expanded.select { |f| File.exists?(f) }
+      end
+
+      alias to_a expanded
     end
   end
 end

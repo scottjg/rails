@@ -10,8 +10,8 @@ module ActiveRecord
     ##
     # :singleton-method:
     # The connection handler
-    cattr_accessor :connection_handler, :instance_writer => false
-    @@connection_handler = ConnectionAdapters::ConnectionHandler.new
+    class_attribute :connection_handler, :instance_writer => false
+    self.connection_handler = ConnectionAdapters::ConnectionHandler.new
 
     # Returns the connection currently associated with the class. This can
     # also be used to "borrow" the connection to do database work that isn't
@@ -51,10 +51,10 @@ module ActiveRecord
     def self.establish_connection(spec = nil)
       case spec
         when nil
-          raise AdapterNotSpecified unless defined? RAILS_ENV
-          establish_connection(RAILS_ENV)
+          raise AdapterNotSpecified unless defined?(Rails.env)
+          establish_connection(Rails.env)
         when ConnectionSpecification
-          @@connection_handler.establish_connection(name, spec)
+          self.connection_handler.establish_connection(name, spec)
         when Symbol, String
           if configuration = configurations[spec.to_s]
             establish_connection(configuration)
@@ -66,19 +66,13 @@ module ActiveRecord
           unless spec.key?(:adapter) then raise AdapterNotSpecified, "database configuration does not specify adapter" end
 
           begin
-            require 'rubygems'
-            gem "activerecord-#{spec[:adapter]}-adapter"
             require "active_record/connection_adapters/#{spec[:adapter]}_adapter"
-          rescue LoadError
-            begin
-              require "active_record/connection_adapters/#{spec[:adapter]}_adapter"
-            rescue LoadError
-              raise "Please install the #{spec[:adapter]} adapter: `gem install activerecord-#{spec[:adapter]}-adapter` (#{$!})"
-            end
+          rescue LoadError => e
+            raise "Please install the #{spec[:adapter]} adapter: `gem install activerecord-#{spec[:adapter]}-adapter` (#{e})"
           end
 
           adapter_method = "#{spec[:adapter]}_connection"
-          if !respond_to?(adapter_method)
+          unless respond_to?(adapter_method)
             raise AdapterNotFound, "database configuration specifies nonexistent #{spec[:adapter]} adapter"
           end
 
@@ -88,31 +82,21 @@ module ActiveRecord
     end
 
     class << self
-      # Deprecated and no longer has any effect.
-      def allow_concurrency
-        ActiveSupport::Deprecation.warn("ActiveRecord::Base.allow_concurrency has been deprecated and no longer has any effect. Please remove all references to allow_concurrency.")
-      end
-
-      # Deprecated and no longer has any effect.
-      def allow_concurrency=(flag)
-        ActiveSupport::Deprecation.warn("ActiveRecord::Base.allow_concurrency= has been deprecated and no longer has any effect. Please remove all references to allow_concurrency=.")
-      end
-
-      # Deprecated and no longer has any effect.
-      def verification_timeout
-        ActiveSupport::Deprecation.warn("ActiveRecord::Base.verification_timeout has been deprecated and no longer has any effect. Please remove all references to verification_timeout.")
-      end
-
-      # Deprecated and no longer has any effect.
-      def verification_timeout=(flag)
-        ActiveSupport::Deprecation.warn("ActiveRecord::Base.verification_timeout= has been deprecated and no longer has any effect. Please remove all references to verification_timeout=.")
-      end
-
       # Returns the connection currently associated with the class. This can
       # also be used to "borrow" the connection to do database work unrelated
       # to any of the specific Active Records.
       def connection
         retrieve_connection
+      end
+
+      # Returns the configuration of the associated connection as a hash:
+      #
+      #  ActiveRecord::Base.connection_config
+      #  # => {:pool=>5, :timeout=>5000, :database=>"db/development.sqlite3", :adapter=>"sqlite3"}
+      #
+      # Please use only for reading.
+      def connection_config
+        connection_pool.spec.config
       end
 
       def connection_pool
@@ -123,7 +107,7 @@ module ActiveRecord
         connection_handler.retrieve_connection(self)
       end
 
-      # Returns true if +ActiveRecord+ is connected.
+      # Returns true if Active Record is connected.
       def connected?
         connection_handler.connected?(self)
       end
@@ -132,7 +116,11 @@ module ActiveRecord
         connection_handler.remove_connection(klass)
       end
 
-      delegate :clear_active_connections!, :clear_reloadable_connections!,
+      def clear_active_connections!
+        connection_handler.clear_active_connections!
+      end
+
+      delegate :clear_reloadable_connections!,
         :clear_all_connections!,:verify_active_connections!, :to => :connection_handler
     end
   end

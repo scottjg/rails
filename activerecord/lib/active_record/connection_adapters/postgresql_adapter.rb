@@ -1,21 +1,9 @@
 require 'active_record/connection_adapters/abstract_adapter'
-require 'active_support/core_ext/kernel/requires'
+require 'active_support/core_ext/object/blank'
 
-begin
-  require_library_or_gem 'pg'
-rescue LoadError => e
-  begin
-    require_library_or_gem 'postgres'
-    class PGresult
-      alias_method :nfields, :num_fields unless self.method_defined?(:nfields)
-      alias_method :ntuples, :num_tuples unless self.method_defined?(:ntuples)
-      alias_method :ftype, :type unless self.method_defined?(:ftype)
-      alias_method :cmd_tuples, :cmdtuples unless self.method_defined?(:cmd_tuples)
-    end
-  rescue LoadError
-    raise e
-  end
-end
+# Make sure we're using pg high enough for PGResult#values
+gem 'pg', '~> 0.11'
+require 'pg'
 
 module ActiveRecord
   class Base
@@ -27,7 +15,7 @@ module ActiveRecord
       username = config[:username].to_s if config[:username]
       password = config[:password].to_s if config[:password]
 
-      if config.has_key?(:database)
+      if config.key?(:database)
         database = config[:database]
       else
         raise ArgumentError, "No database specified. Missing argument: database."
@@ -40,18 +28,28 @@ module ActiveRecord
   end
 
   module ConnectionAdapters
-    class TableDefinition
-      def xml(*args)
-        options = args.extract_options!
-        column(args[0], 'xml', options)
-      end
-    end
     # PostgreSQL-specific extensions to column definitions in a table.
     class PostgreSQLColumn < Column #:nodoc:
       # Instantiates a new PostgreSQL column definition in a table.
       def initialize(name, default, sql_type = nil, null = true)
         super(name, self.class.extract_value_from_default(default), sql_type, null)
       end
+
+      # :stopdoc:
+      class << self
+        attr_accessor :money_precision
+        def string_to_time(string)
+          return string unless String === string
+
+          case string
+          when 'infinity'  then 1.0 / 0.0
+          when '-infinity' then -1.0 / 0.0
+          else
+            super
+          end
+        end
+      end
+      # :startdoc:
 
       private
         def extract_limit(sql_type)
@@ -70,9 +68,11 @@ module ActiveRecord
 
         # Extracts the precision from PostgreSQL-specific data types.
         def extract_precision(sql_type)
-          # Actual code is defined dynamically in PostgreSQLAdapter.connect
-          # depending on the server specifics
-          super
+          if sql_type == 'money'
+            self.class.money_precision
+          else
+            super
+          end
         end
 
         # Maps PostgreSQL-specific data types to logical Rails types.
@@ -82,18 +82,18 @@ module ActiveRecord
             when /^(?:real|double precision)$/
               :float
             # Monetary types
-            when /^money$/
+            when 'money'
               :decimal
             # Character types
             when /^(?:character varying|bpchar)(?:\(\d+\))?$/
               :string
             # Binary data types
-            when /^bytea$/
+            when 'bytea'
               :binary
             # Date/time types
             when /^timestamp with(?:out)? time zone$/
               :datetime
-            when /^interval$/
+            when 'interval'
               :string
             # Geometric types
             when /^(?:point|line|lseg|box|"?path"?|polygon|circle)$/
@@ -105,13 +105,22 @@ module ActiveRecord
             when /^bit(?: varying)?(?:\(\d+\))?$/
               :string
             # XML type
-            when /^xml$/
+            when 'xml'
               :xml
+            # tsvector type
+            when 'tsvector'
+              :tsvector
             # Arrays
             when /^\D+\[\]$/
               :string
             # Object identifier types
-            when /^oid$/
+            when 'oid'
+              :integer
+            # UUID type
+            when 'uuid'
+              :string
+            # Small and big integer types
+            when /^(?:small|big)int$/
               :integer
             # Pass through all types that are not specific to PostgreSQL.
             else
@@ -122,6 +131,14 @@ module ActiveRecord
         # Extracts the value from a PostgreSQL column default definition.
         def self.extract_value_from_default(default)
           case default
+            # This is a performance optimization for Ruby 1.9.2 in development.
+            # If the value is nil, we return nil straight away without checking
+            # the regular expressions. If we check each regular expression,
+            # Regexp#=== will call NilClass#to_str, which will trigger
+            # method_missing (defined by whiny nil in ActiveSupport) which
+            # makes this method very very slow.
+            when NilClass
+              nil
             # Numeric types
             when /\A\(?(-?\d+(\.\d*)?\)?)\z/
               $1
@@ -169,9 +186,7 @@ module ActiveRecord
           end
         end
     end
-  end
 
-  module ConnectionAdapters
     # The PostgreSQL adapter works both with the native C (http://ruby.scripting.ca/postgres/) and the pure
     # Ruby (available both as gem and from http://rubyforge.org/frs/?group_id=234&release_id=1944) drivers.
     #
@@ -182,15 +197,29 @@ module ActiveRecord
     # * <tt>:username</tt> - Defaults to nothing.
     # * <tt>:password</tt> - Defaults to nothing.
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
-    # * <tt>:schema_search_path</tt> - An optional schema search path for the connection given as a string of comma-separated schema names.  This is backward-compatible with the <tt>:schema_order</tt> option.
-    # * <tt>:encoding</tt> - An optional client encoding that is used in a <tt>SET client_encoding TO <encoding></tt> call on the connection.
-    # * <tt>:min_messages</tt> - An optional client min messages that is used in a <tt>SET client_min_messages TO <min_messages></tt> call on the connection.
-    # * <tt>:allow_concurrency</tt> - If true, use async query methods so Ruby threads don't deadlock; otherwise, use blocking query methods.
+    # * <tt>:schema_search_path</tt> - An optional schema search path for the connection given
+    #   as a string of comma-separated schema names. This is backward-compatible with the <tt>:schema_order</tt> option.
+    # * <tt>:encoding</tt> - An optional client encoding that is used in a <tt>SET client_encoding TO
+    #   <encoding></tt> call on the connection.
+    # * <tt>:min_messages</tt> - An optional client min messages that is used in a
+    #   <tt>SET client_min_messages TO <min_messages></tt> call on the connection.
     class PostgreSQLAdapter < AbstractAdapter
-      ADAPTER_NAME = 'PostgreSQL'.freeze
+      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+        def xml(*args)
+          options = args.extract_options!
+          column(args[0], 'xml', options)
+        end
+
+        def tsvector(*args)
+          options = args.extract_options!
+          column(args[0], 'tsvector', options)
+        end
+      end
+
+      ADAPTER_NAME = 'PostgreSQL'
 
       NATIVE_DATABASE_TYPES = {
-        :primary_key => "serial primary key".freeze,
+        :primary_key => "serial primary key",
         :string      => { :name => "character varying", :limit => 255 },
         :text        => { :name => "text" },
         :integer     => { :name => "integer" },
@@ -202,7 +231,8 @@ module ActiveRecord
         :date        => { :name => "date" },
         :binary      => { :name => "bytea" },
         :boolean     => { :name => "boolean" },
-        :xml         => { :name => "xml" }
+        :xml         => { :name => "xml" },
+        :tsvector    => { :name => "tsvector" }
       }
 
       # Returns 'PostgreSQL' as adapter name for identification purposes.
@@ -210,41 +240,62 @@ module ActiveRecord
         ADAPTER_NAME
       end
 
+      # Returns +true+, since this connection adapter supports prepared statement
+      # caching.
+      def supports_statement_cache?
+        true
+      end
+
       # Initializes and connects a PostgreSQL adapter.
       def initialize(connection, logger, connection_parameters, config)
         super(connection, logger)
         @connection_parameters, @config = connection_parameters, config
 
+        # @local_tz is initialized as nil to avoid warnings when connect tries to use it
+        @local_tz = nil
+        @table_alias_length = nil
+        @statements = {}
+
         connect
+
+        if postgresql_version < 80200
+          raise "Your version of PostgreSQL (#{postgresql_version}) is too old, please upgrade!"
+        end
+
+        @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
+      end
+
+      # Clears the prepared statements cache.
+      def clear_cache!
+        @statements.each_value do |value|
+          @connection.query "DEALLOCATE #{value}"
+        end
+        @statements.clear
       end
 
       # Is this connection alive and ready for queries?
       def active?
-        if @connection.respond_to?(:status)
-          @connection.status == PGconn::CONNECTION_OK
-        else
-          # We're asking the driver, not ActiveRecord, so use @connection.query instead of #query
-          @connection.query 'SELECT 1'
-          true
-        end
-      # postgres-pr raises a NoMethodError when querying if no connection is available.
-      rescue PGError, NoMethodError
+        @connection.status == PGconn::CONNECTION_OK
+      rescue PGError
         false
       end
 
       # Close then reopen the connection.
       def reconnect!
-        if @connection.respond_to?(:reset)
-          @connection.reset
-          configure_connection
-        else
-          disconnect!
-          connect
-        end
+        clear_cache!
+        @connection.reset
+        configure_connection
       end
 
-      # Close the connection.
+      def reset!
+        clear_cache!
+        super
+      end
+
+      # Disconnects from the database if already connected. Otherwise, this
+      # method does nothing.
       def disconnect!
+        clear_cache!
         @connection.close rescue nil
       end
 
@@ -252,169 +303,100 @@ module ActiveRecord
         NATIVE_DATABASE_TYPES
       end
 
-      # Does PostgreSQL support migrations?
+      # Returns true, since this connection adapter supports migrations.
       def supports_migrations?
         true
       end
 
-      # Does PostgreSQL support finding primary key on non-ActiveRecord tables?
+      # Does PostgreSQL support finding primary key on non-Active Record tables?
       def supports_primary_key? #:nodoc:
         true
       end
 
-      # Does PostgreSQL support standard conforming strings?
-      def supports_standard_conforming_strings?
-        # Temporarily set the client message level above error to prevent unintentional
-        # error messages in the logs when working on a PostgreSQL database server that
-        # does not support standard conforming strings.
-        client_min_messages_old = client_min_messages
-        self.client_min_messages = 'panic'
-
-        # postgres-pr does not raise an exception when client_min_messages is set higher
-        # than error and "SHOW standard_conforming_strings" fails, but returns an empty
-        # PGresult instead.
-        has_support = query('SHOW standard_conforming_strings')[0][0] rescue false
-        self.client_min_messages = client_min_messages_old
-        has_support
+      # Enable standard-conforming strings if available.
+      def set_standard_conforming_strings
+        old, self.client_min_messages = client_min_messages, 'panic'
+        execute('SET standard_conforming_strings = on', 'SCHEMA') rescue nil
+      ensure
+        self.client_min_messages = old
       end
 
       def supports_insert_with_returning?
-        postgresql_version >= 80200
+        true
       end
 
       def supports_ddl_transactions?
         true
       end
 
+      # Returns true, since this connection adapter supports savepoints.
       def supports_savepoints?
         true
       end
 
-      # Returns the configured supported identifier length supported by PostgreSQL,
-      # or report the default of 63 on PostgreSQL 7.x.
+      # Returns the configured supported identifier length supported by PostgreSQL
       def table_alias_length
-        @table_alias_length ||= (postgresql_version >= 80000 ? query('SHOW max_identifier_length')[0][0].to_i : 63)
+        @table_alias_length ||= query('SHOW max_identifier_length')[0][0].to_i
       end
 
       # QUOTING ==================================================
 
       # Escapes binary strings for bytea input to the database.
       def escape_bytea(value)
-        if @connection.respond_to?(:escape_bytea)
-          self.class.instance_eval do
-            define_method(:escape_bytea) do |value|
-              @connection.escape_bytea(value) if value
-            end
-          end
-        elsif PGconn.respond_to?(:escape_bytea)
-          self.class.instance_eval do
-            define_method(:escape_bytea) do |value|
-              PGconn.escape_bytea(value) if value
-            end
-          end
-        else
-          self.class.instance_eval do
-            define_method(:escape_bytea) do |value|
-              if value
-                result = ''
-                value.each_byte { |c| result << sprintf('\\\\%03o', c) }
-                result
-              end
-            end
-          end
-        end
-        escape_bytea(value)
+        @connection.escape_bytea(value) if value
       end
 
       # Unescapes bytea output from a database to the binary string it represents.
       # NOTE: This is NOT an inverse of escape_bytea! This is only to be used
       #       on escaped binary output from database drive.
       def unescape_bytea(value)
-        # In each case, check if the value actually is escaped PostgreSQL bytea output
-        # or an unescaped Active Record attribute that was just written.
-        if PGconn.respond_to?(:unescape_bytea)
-          self.class.instance_eval do
-            define_method(:unescape_bytea) do |value|
-              if value =~ /\\\d{3}/
-                PGconn.unescape_bytea(value)
-              else
-                value
-              end
-            end
-          end
-        else
-          self.class.instance_eval do
-            define_method(:unescape_bytea) do |value|
-              if value =~ /\\\d{3}/
-                result = ''
-                i, max = 0, value.size
-                while i < max
-                  char = value[i]
-                  if char == ?\\
-                    if value[i+1] == ?\\
-                      char = ?\\
-                      i += 1
-                    else
-                      char = value[i+1..i+3].oct
-                      i += 3
-                    end
-                  end
-                  result << char
-                  i += 1
-                end
-                result
-              else
-                value
-              end
-            end
-          end
-        end
-        unescape_bytea(value)
+        @connection.unescape_bytea(value) if value
       end
 
       # Quotes PostgreSQL-specific data types for SQL input.
       def quote(value, column = nil) #:nodoc:
-        if value.kind_of?(String) && column && column.type == :binary
-          "#{quoted_string_prefix}'#{escape_bytea(value)}'"
-        elsif value.kind_of?(String) && column && column.sql_type =~ /^xml$/
-          "xml E'#{quote_string(value)}'"
-        elsif value.kind_of?(Numeric) && column && column.sql_type =~ /^money$/
+        return super unless column
+
+        case value
+        when Float
+          return super unless value.infinite? && column.type == :datetime
+          "'#{value.to_s.downcase}'"
+        when Numeric
+          return super unless column.sql_type == 'money'
           # Not truly string input, so doesn't require (or allow) escape string syntax.
-          "'#{value.to_s}'"
-        elsif value.kind_of?(String) && column && column.sql_type =~ /^bit/
-          case value
-            when /^[01]*$/
-              "B'#{value}'" # Bit-string notation
-            when /^[0-9A-F]*$/i
-              "X'#{value}'" # Hexadecimal notation
+          "'#{value}'"
+        when String
+          case column.sql_type
+          when 'bytea' then "'#{escape_bytea(value)}'"
+          when 'xml'   then "xml '#{quote_string(value)}'"
+          when /^bit/
+            case value
+            when /^[01]*$/      then "B'#{value}'" # Bit-string notation
+            when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+            end
+          else
+            super
           end
         else
           super
         end
       end
 
-      # Quotes strings for use in SQL input in the postgres driver for better performance.
-      def quote_string(s) #:nodoc:
-        if @connection.respond_to?(:escape)
-          self.class.instance_eval do
-            define_method(:quote_string) do |s|
-              @connection.escape(s)
-            end
-          end
-        elsif PGconn.respond_to?(:escape)
-          self.class.instance_eval do
-            define_method(:quote_string) do |s|
-              PGconn.escape(s)
-            end
-          end
+      def type_cast(value, column)
+        return super unless column
+
+        case value
+        when String
+          return super unless 'bytea' == column.sql_type
+          { :value => value, :format => 1 }
         else
-          # There are some incorrectly compiled postgres drivers out there
-          # that don't define PGconn.escape.
-          self.class.instance_eval do
-            remove_method(:quote_string)
-          end
+          super
         end
-        quote_string(s)
+      end
+
+      # Quotes strings for use in SQL input.
+      def quote_string(s) #:nodoc:
+        @connection.escape(s)
       end
 
       # Checks the following cases:
@@ -451,22 +433,25 @@ module ActiveRecord
         end
       end
 
-      # REFERENTIAL INTEGRITY ====================================
-
-      def supports_disable_referential_integrity?() #:nodoc:
-        version = query("SHOW server_version")[0][0].split('.')
-        (version[0].to_i >= 8 && version[1].to_i >= 1) ? true : false
-      rescue
-        return false
+      # Set the authorized user for this session
+      def session_auth=(user)
+        clear_cache!
+        exec_query "SET SESSION AUTHORIZATION #{user}"
       end
 
-      def disable_referential_integrity(&block) #:nodoc:
-        if supports_disable_referential_integrity?() then
+      # REFERENTIAL INTEGRITY ====================================
+
+      def supports_disable_referential_integrity? #:nodoc:
+        true
+      end
+
+      def disable_referential_integrity #:nodoc:
+        if supports_disable_referential_integrity? then
           execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
         end
         yield
       ensure
-        if supports_disable_referential_integrity?() then
+        if supports_disable_referential_integrity? then
           execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
         end
       end
@@ -480,34 +465,17 @@ module ActiveRecord
       end
 
       # Executes an INSERT query and returns the new record's ID
-      def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        # Extract the table from the insert sql. Yuck.
-        table = sql.split(" ", 4)[2].gsub('"', '')
-
-        # Try an insert with 'returning id' if available (PG >= 8.2)
-        if supports_insert_with_returning?
-          pk, sequence_name = *pk_and_sequence_for(table) unless pk
-          if pk
-            id = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-            clear_query_cache
-            return id
-          end
+      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+        unless pk
+          # Extract the table from the insert sql. Yuck.
+          table_ref = extract_table_ref_from_insert_sql(sql)
+          pk = primary_key(table_ref) if table_ref
         end
 
-        # Otherwise, insert then grab last_insert_id.
-        if insert_id = super
-          insert_id
+        if pk
+          select_value("#{sql} RETURNING #{quote_column_name(pk)}")
         else
-          # If neither pk nor sequence name is given, look them up.
-          unless pk || sequence_name
-            pk, sequence_name = *pk_and_sequence_for(table)
-          end
-
-          # If a pk is given, fallback to default sequence name.
-          # Don't fetch last insert id for a table without a pk.
-          if pk && sequence_name ||= default_sequence_name(table, pk)
-            last_insert_id(table, sequence_name)
-          end
+          super
         end
       end
       alias :create :insert
@@ -515,34 +483,50 @@ module ActiveRecord
       # create a 2D array representing the result set
       def result_as_array(res) #:nodoc:
         # check if we have any binary column and if they need escaping
-        unescape_col = []
-        for j in 0...res.nfields do
-          # unescape string passed BYTEA field (OID == 17)
-          unescape_col << ( res.ftype(j)==17 )
+        ftypes = Array.new(res.nfields) do |i|
+          [i, res.ftype(i)]
         end
 
-        ary = []
-        for i in 0...res.ntuples do
-          ary << []
-          for j in 0...res.nfields do
-            data = res.getvalue(i,j)
-            data = unescape_bytea(data) if unescape_col[j] and data.is_a?(String)
-            ary[i] << data
+        rows = res.values
+        return rows unless ftypes.any? { |_, x|
+          x == BYTEA_COLUMN_TYPE_OID || x == MONEY_COLUMN_TYPE_OID
+        }
+
+        typehash = ftypes.group_by { |_, type| type }
+        binaries = typehash[BYTEA_COLUMN_TYPE_OID] || []
+        monies   = typehash[MONEY_COLUMN_TYPE_OID] || []
+
+        rows.each do |row|
+          # unescape string passed BYTEA field (OID == 17)
+          binaries.each do |index, _|
+            row[index] = unescape_bytea(row[index])
+          end
+
+          # If this is a money type column and there are any currency symbols,
+          # then strip them off. Indeed it would be prettier to do this in
+          # PostgreSQLColumn.string_to_decimal but would break form input
+          # fields that call value_before_type_cast.
+          monies.each do |index, _|
+            data = row[index]
+            # Because money output is formatted according to the locale, there are two
+            # cases to consider (note the decimal separators):
+            #  (1) $12,345,678.12
+            #  (2) $12.345.678,12
+            case data
+            when /^-?\D+[\d,]+\.\d{2}$/  # (1)
+              data.gsub!(/[^-\d.]/, '')
+            when /^-?\D+[\d.]+,\d{2}$/  # (2)
+              data.gsub!(/[^-\d,]/, '').sub!(/,/, '.')
+            end
           end
         end
-        return ary
       end
 
 
       # Queries the database and returns the results in an Array-like object
       def query(sql, name = nil) #:nodoc:
         log(sql, name) do
-          if @async
-            res = @connection.async_exec(sql)
-          else
-            res = @connection.exec(sql)
-          end
-          return result_as_array(res)
+          result_as_array @connection.async_exec(sql)
         end
       end
 
@@ -550,12 +534,46 @@ module ActiveRecord
       # or raising a PGError exception otherwise.
       def execute(sql, name = nil)
         log(sql, name) do
-          if @async
-            @connection.async_exec(sql)
-          else
-            @connection.exec(sql)
-          end
+          @connection.async_exec(sql)
         end
+      end
+
+      def substitute_at(column, index)
+        Arel.sql("$#{index + 1}")
+      end
+
+      def exec_query(sql, name = 'SQL', binds = [])
+        log(sql, name, binds) do
+          result = binds.empty? ? exec_no_cache(sql, binds) :
+                                  exec_cache(sql, binds)
+
+          ret = ActiveRecord::Result.new(result.fields, result_as_array(result))
+          result.clear
+          return ret
+        end
+      end
+
+      def exec_delete(sql, name = 'SQL', binds = [])
+        log(sql, name, binds) do
+          result = binds.empty? ? exec_no_cache(sql, binds) :
+                                  exec_cache(sql, binds)
+          affected = result.cmd_tuples
+          result.clear
+          affected
+        end
+      end
+      alias :exec_update :exec_delete
+
+      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+        unless pk
+          # Extract the table from the insert sql. Yuck.
+          table_ref = extract_table_ref_from_insert_sql(sql)
+          pk = primary_key(table_ref) if table_ref
+        end
+
+        sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
+
+        [sql, binds]
       end
 
       # Executes an UPDATE query and returns the number of affected tuples.
@@ -578,12 +596,8 @@ module ActiveRecord
         execute "ROLLBACK"
       end
 
-      if defined?(PGconn::PQTRANS_IDLE)
-        # The ruby-pg driver supports inspecting the transaction status,
-        # while the ruby-postgres driver does not.
-        def outside_transaction?
-          @connection.transaction_status == PGconn::PQTRANS_IDLE
-        end
+      def outside_transaction?
+        @connection.transaction_status == PGconn::PQTRANS_IDLE
       end
 
       def create_savepoint
@@ -605,7 +619,7 @@ module ActiveRecord
         create_database(name)
       end
 
-      # Create a new PostgreSQL database.  Options include <tt>:owner</tt>, <tt>:template</tt>,
+      # Create a new PostgreSQL database. Options include <tt>:owner</tt>, <tt>:template</tt>,
       # <tt>:encoding</tt>, <tt>:tablespace</tt>, and <tt>:connection_limit</tt> (note that MySQL uses
       # <tt>:charset</tt> while PostgreSQL uses <tt>:encoding</tt>).
       #
@@ -635,83 +649,102 @@ module ActiveRecord
         execute "CREATE DATABASE #{quote_table_name(name)}#{option_string}"
       end
 
-      # Drops a PostgreSQL database
+      # Drops a PostgreSQL database.
       #
       # Example:
       #   drop_database 'matt_development'
       def drop_database(name) #:nodoc:
-        if postgresql_version >= 80200
-          execute "DROP DATABASE IF EXISTS #{quote_table_name(name)}"
-        else
-          begin
-            execute "DROP DATABASE #{quote_table_name(name)}"
-          rescue ActiveRecord::StatementInvalid
-            @logger.warn "#{name} database doesn't exist." if @logger
-          end
-        end
+        execute "DROP DATABASE IF EXISTS #{quote_table_name(name)}"
       end
-
 
       # Returns the list of all tables in the schema search path or a specified schema.
       def tables(name = nil)
-        schemas = schema_search_path.split(/,/).map { |p| quote(p) }.join(',')
-        query(<<-SQL, name).map { |row| row[0] }
+        query(<<-SQL, 'SCHEMA').map { |row| row[0] }
           SELECT tablename
-            FROM pg_tables
-           WHERE schemaname IN (#{schemas})
+          FROM pg_tables
+          WHERE schemaname = ANY (current_schemas(false))
         SQL
       end
 
-      # Returns the list of all indexes for a table.
+      # Returns true if table exists.
+      # If the schema is not specified as part of +name+ then it will only find tables within
+      # the current schema search path (regardless of permissions to access tables in other schemas)
+      def table_exists?(name)
+        schema, table = Utils.extract_schema_and_table(name.to_s)
+        return false unless table
+
+        binds = [[nil, table]]
+        binds << [nil, schema] if schema
+
+        exec_query(<<-SQL, 'SCHEMA', binds).rows.first[0].to_i > 0
+          SELECT COUNT(*)
+          FROM pg_class c
+          LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.relkind in ('v','r')
+          AND c.relname = $1
+          AND n.nspname = #{schema ? '$2' : 'ANY (current_schemas(false))'}
+        SQL
+      end
+
+      # Returns true if schema exists.
+      def schema_exists?(name)
+        exec_query(<<-SQL, 'SCHEMA', [[nil, name]]).rows.first[0].to_i > 0
+          SELECT COUNT(*)
+          FROM pg_namespace
+          WHERE nspname = $1
+        SQL
+      end
+
+      # Returns an array of indexes for the given table.
       def indexes(table_name, name = nil)
          schemas = schema_search_path.split(/,/).map { |p| quote(p) }.join(',')
          result = query(<<-SQL, name)
            SELECT distinct i.relname, d.indisunique, d.indkey, t.oid
-             FROM pg_class t, pg_class i, pg_index d
+           FROM pg_class t
+           INNER JOIN pg_index d ON t.oid = d.indrelid
+           INNER JOIN pg_class i ON d.indexrelid = i.oid
            WHERE i.relkind = 'i'
-             AND d.indexrelid = i.oid
              AND d.indisprimary = 'f'
-             AND t.oid = d.indrelid
              AND t.relname = '#{table_name}'
              AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname IN (#{schemas}) )
           ORDER BY i.relname
         SQL
 
 
-        indexes = []
-
-        indexes = result.map do |row|
+        result.map do |row|
           index_name = row[0]
           unique = row[1] == 't'
           indkey = row[2].split(" ")
           oid = row[3]
 
-          columns = query(<<-SQL, "Columns for index #{row[0]} on #{table_name}").inject({}) {|attlist, r| attlist[r[1]] = r[0]; attlist}
-          SELECT a.attname, a.attnum
+          columns = Hash[query(<<-SQL, "Columns for index #{row[0]} on #{table_name}")]
+          SELECT a.attnum, a.attname
           FROM pg_attribute a
           WHERE a.attrelid = #{oid}
           AND a.attnum IN (#{indkey.join(",")})
           SQL
 
-          column_names = indkey.map {|attnum| columns[attnum] }
-          IndexDefinition.new(table_name, index_name, unique, column_names)
-
-        end
-
-        indexes
+          column_names = columns.values_at(*indkey).compact
+          column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names)
+        end.compact
       end
 
       # Returns the list of all column definitions for a table.
       def columns(table_name, name = nil)
         # Limit, precision, and scale are all handled by the superclass.
-        column_definitions(table_name).collect do |name, type, default, notnull|
-          PostgreSQLColumn.new(name, default, type, notnull == 'f')
+        column_definitions(table_name).collect do |column_name, type, default, notnull|
+          PostgreSQLColumn.new(column_name, default, type, notnull == 'f')
         end
       end
 
       # Returns the current database name.
       def current_database
         query('select current_database()')[0][0]
+      end
+
+      # Returns the current schema name.
+      def current_schema
+        query('SELECT current_schema', 'SCHEMA')[0][0]
       end
 
       # Returns the current database encoding format.
@@ -741,37 +774,47 @@ module ActiveRecord
 
       # Returns the current client message level.
       def client_min_messages
-        query('SHOW client_min_messages')[0][0]
+        query('SHOW client_min_messages', 'SCHEMA')[0][0]
       end
 
       # Set the client message level.
       def client_min_messages=(level)
-        execute("SET client_min_messages TO '#{level}'")
+        execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
       end
 
       # Returns the sequence name for a table's primary key or some other specified key.
       def default_sequence_name(table_name, pk = nil) #:nodoc:
-        default_pk, default_seq = pk_and_sequence_for(table_name)
-        default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
+        serial_sequence(table_name, pk || 'id').split('.').last
+      rescue ActiveRecord::StatementInvalid
+        "#{table_name}_#{pk || 'id'}_seq"
+      end
+
+      def serial_sequence(table, column)
+        result = exec_query(<<-eosql, 'SCHEMA', [[nil, table], [nil, column]])
+          SELECT pg_get_serial_sequence($1, $2)
+        eosql
+        result.rows.first.first
       end
 
       # Resets the sequence of a table's primary key to the maximum value.
       def reset_pk_sequence!(table, pk = nil, sequence = nil) #:nodoc:
         unless pk and sequence
           default_pk, default_sequence = pk_and_sequence_for(table)
+
           pk ||= default_pk
           sequence ||= default_sequence
         end
-        if pk
-          if sequence
-            quoted_sequence = quote_column_name(sequence)
 
-            select_value <<-end_sql, 'Reset sequence'
-              SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
-            end_sql
-          else
-            @logger.warn "#{table} has primary key #{pk} with no default sequence" if @logger
-          end
+        if @logger && pk && !sequence
+          @logger.warn "#{table} has primary key #{pk} with no default sequence"
+        end
+
+        if pk && sequence
+          quoted_sequence = quote_table_name(sequence)
+
+          select_value <<-end_sql, 'Reset sequence'
+            SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
+          end_sql
         end
       end
 
@@ -779,58 +822,48 @@ module ActiveRecord
       def pk_and_sequence_for(table) #:nodoc:
         # First try looking for a sequence with a dependency on the
         # given table's primary key.
-        result = query(<<-end_sql, 'PK and serial sequence')[0]
-          SELECT attr.attname, seq.relname
-          FROM pg_class      seq,
-               pg_attribute  attr,
-               pg_depend     dep,
-               pg_namespace  name,
-               pg_constraint cons
-          WHERE seq.oid           = dep.objid
-            AND seq.relkind       = 'S'
-            AND attr.attrelid     = dep.refobjid
-            AND attr.attnum       = dep.refobjsubid
-            AND attr.attrelid     = cons.conrelid
-            AND attr.attnum       = cons.conkey[1]
-            AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{quote_table_name(table)}'::regclass
+        result = exec_query(<<-end_sql, 'SCHEMA').rows.first
+          SELECT attr.attname, ns.nspname, seq.relname
+          FROM pg_class seq
+          INNER JOIN pg_depend dep ON seq.oid = dep.objid
+          INNER JOIN pg_attribute attr ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
+          INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
+          INNER JOIN pg_namespace ns ON seq.relnamespace = ns.oid
+          WHERE seq.relkind  = 'S'
+            AND cons.contype = 'p'
+            AND dep.refobjid = '#{quote_table_name(table)}'::regclass
         end_sql
 
-        if result.nil? or result.empty?
-          # If that fails, try parsing the primary key's default value.
-          # Support the 7.x and 8.0 nextval('foo'::text) as well as
-          # the 8.1+ nextval('foo'::regclass).
-          result = query(<<-end_sql, 'PK and custom sequence')[0]
-            SELECT attr.attname,
-              CASE
-                WHEN split_part(def.adsrc, '''', 2) ~ '.' THEN
-                  substr(split_part(def.adsrc, '''', 2),
-                         strpos(split_part(def.adsrc, '''', 2), '.')+1)
-                ELSE split_part(def.adsrc, '''', 2)
-              END
-            FROM pg_class       t
-            JOIN pg_attribute   attr ON (t.oid = attrelid)
-            JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
-            JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{quote_table_name(table)}'::regclass
-              AND cons.contype = 'p'
-              AND def.adsrc ~* 'nextval'
-          end_sql
+        # [primary_key, sequence]
+        if result.second ==  'public' then
+          sequence = result.last
+        else
+          sequence = result.second+'.'+result.last
         end
 
-        # [primary_key, sequence]
-        [result.first, result.last]
+        [result.first, sequence]
       rescue
         nil
       end
 
       # Returns just a table's primary key
       def primary_key(table)
-        pk_and_sequence = pk_and_sequence_for(table)
-        pk_and_sequence && pk_and_sequence.first
+        row = exec_query(<<-end_sql, 'SCHEMA', [[nil, table]]).rows.first
+          SELECT DISTINCT(attr.attname)
+          FROM pg_attribute attr
+          INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
+          INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
+          WHERE cons.contype = 'p'
+            AND dep.refobjid = $1::regclass
+        end_sql
+
+        row && row.first
       end
 
       # Renames a table.
+      #
+      # Example:
+      #   rename_table('octopuses', 'octopi')
       def rename_table(name, new_name)
         execute "ALTER TABLE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}"
       end
@@ -838,37 +871,17 @@ module ActiveRecord
       # Adds a new column to the named table.
       # See TableDefinition#column for details of the options you can use.
       def add_column(table_name, column_name, type, options = {})
-        default = options[:default]
-        notnull = options[:null] == false
+        add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+        add_column_options!(add_column_sql, options)
 
-        # Add the column.
-        execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
-
-        change_column_default(table_name, column_name, default) if options_include_default?(options)
-        change_column_null(table_name, column_name, false, default) if notnull
+        execute add_column_sql
       end
 
       # Changes the column of a table.
       def change_column(table_name, column_name, type, options = {})
         quoted_table_name = quote_table_name(table_name)
 
-        begin
-          execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        rescue ActiveRecord::StatementInvalid => e
-          raise e if postgresql_version > 80000
-          # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
-          begin
-            begin_db_transaction
-            tmp_column_name = "#{column_name}_ar_tmp"
-            add_column(table_name, tmp_column_name, type, options)
-            execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
-            remove_column(table_name, column_name)
-            rename_column(table_name, tmp_column_name, column_name)
-            commit_db_transaction
-          rescue
-            rollback_db_transaction
-          end
-        end
+        execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
 
         change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
         change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
@@ -891,19 +904,27 @@ module ActiveRecord
         execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
       end
 
-      # Drops an index from a table.
-      def remove_index(table_name, options = {})
-        execute "DROP INDEX #{quote_table_name(index_name(table_name, options))}"
+      def remove_index!(table_name, index_name) #:nodoc:
+        execute "DROP INDEX #{quote_table_name(index_name)}"
+      end
+
+      def rename_index(table_name, old_name, new_name)
+        execute "ALTER INDEX #{quote_column_name(old_name)} RENAME TO #{quote_table_name(new_name)}"
+      end
+
+      def index_name_length
+        63
       end
 
       # Maps logical Rails types to PostgreSQL-specific data types.
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
         return super unless type.to_s == 'integer'
+        return 'integer' unless limit
 
         case limit
-          when 1..2;      'smallint'
-          when 3..4, nil; 'integer'
-          when 5..8;      'bigint'
+          when 1, 2; 'smallint'
+          when 3, 4; 'integer'
+          when 5..8; 'bigint'
           else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
         end
       end
@@ -914,36 +935,39 @@ module ActiveRecord
       # requires that the ORDER BY include the distinct column.
       #
       #   distinct("posts.id", "posts.created_at desc")
-      def distinct(columns, order_by) #:nodoc:
-        return "DISTINCT #{columns}" if order_by.blank?
+      def distinct(columns, orders) #:nodoc:
+        return "DISTINCT #{columns}" if orders.empty?
 
         # Construct a clean list of column names from the ORDER BY clause, removing
         # any ASC/DESC modifiers
-        order_columns = order_by.split(',').collect { |s| s.split.first }
-        order_columns.delete_if &:blank?
+        order_columns = orders.collect { |s| s.gsub(/\s+(ASC|DESC)\s*/i, '') }
+        order_columns.delete_if { |c| c.blank? }
         order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
-        # Return a DISTINCT ON() clause that's distinct on the columns we want but includes
-        # all the required columns for the ORDER BY to work properly.
-        sql = "DISTINCT ON (#{columns}) #{columns}, "
-        sql << order_columns * ', '
+        "DISTINCT #{columns}, #{order_columns * ', '}"
+      end
+
+      module Utils
+        # Returns an array of <tt>[schema_name, table_name]</tt> extracted from +name+.
+        # +schema_name+ is nil if not specified in +name+.
+        # +schema_name+ and +table_name+ exclude surrounding quotes (regardless of whether provided in +name+)
+        # +name+ supports the range of schema/table references understood by PostgreSQL, for example:
+        #
+        # * <tt>table_name</tt>
+        # * <tt>"table.name"</tt>
+        # * <tt>schema_name.table_name</tt>
+        # * <tt>schema_name."table.name"</tt>
+        # * <tt>"schema.name"."table name"</tt>
+        def self.extract_schema_and_table(name)
+          table, schema = name.scan(/[^".\s]+|"[^"]*"/)[0..1].collect{|m| m.gsub(/(^"|"$)/,'') }.reverse
+          [schema, table]
+        end
       end
 
       protected
-        # Returns the version of the connected PostgreSQL version.
+        # Returns the version of the connected PostgreSQL server.
         def postgresql_version
-          @postgresql_version ||=
-            if @connection.respond_to?(:server_version)
-              @connection.server_version
-            else
-              # Mimic PGconn.server_version behavior
-              begin
-                query('SELECT version()')[0][0] =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-                ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
-              rescue
-                0
-              end
-            end
+          @connection.server_version
         end
 
         def translate_exception(exception, message)
@@ -958,114 +982,85 @@ module ActiveRecord
         end
 
       private
+        def exec_no_cache(sql, binds)
+          @connection.async_exec(sql)
+        end
+
+        def exec_cache(sql, binds)
+          unless @statements.key? sql
+            nextkey = "a#{@statements.length + 1}"
+            @connection.prepare nextkey, sql
+            @statements[sql] = nextkey
+          end
+
+          key = @statements[sql]
+
+          # Clear the queue
+          @connection.get_last_result
+          @connection.send_query_prepared(key, binds.map { |col, val|
+            type_cast(val, col)
+          })
+          @connection.block
+          @connection.get_last_result
+        end
+
         # The internal PostgreSQL identifier of the money data type.
         MONEY_COLUMN_TYPE_OID = 790 #:nodoc:
+        # The internal PostgreSQL identifier of the BYTEA data type.
+        BYTEA_COLUMN_TYPE_OID = 17 #:nodoc:
 
         # Connects to a PostgreSQL server and sets up the adapter depending on the
         # connected server's characteristics.
         def connect
           @connection = PGconn.connect(*@connection_parameters)
-          PGconn.translate_results = false if PGconn.respond_to?(:translate_results=)
-
-          # Ignore async_exec and async_query when using postgres-pr.
-          @async = @config[:allow_concurrency] && @connection.respond_to?(:async_exec)
-
-          # Use escape string syntax if available. We cannot do this lazily when encountering
-          # the first string, because that could then break any transactions in progress.
-          # See: http://www.postgresql.org/docs/current/static/runtime-config-compatible.html
-          # If PostgreSQL doesn't know the standard_conforming_strings parameter then it doesn't
-          # support escape string syntax. Don't override the inherited quoted_string_prefix.
-          if supports_standard_conforming_strings?
-            self.class.instance_eval do
-              define_method(:quoted_string_prefix) { 'E' }
-            end
-          end
 
           # Money type has a fixed precision of 10 in PostgreSQL 8.2 and below, and as of
           # PostgreSQL 8.3 it has a fixed precision of 19. PostgreSQLColumn.extract_precision
           # should know about this but can't detect it there, so deal with it here.
-          money_precision = (postgresql_version >= 80300) ? 19 : 10
-          PostgreSQLColumn.module_eval(<<-end_eval)
-            def extract_precision(sql_type)  # def extract_precision(sql_type)
-              if sql_type =~ /^money$/       #   if sql_type =~ /^money$/
-                #{money_precision}           #     19
-              else                           #   else
-                super                        #     super
-              end                            #   end
-            end                              # end
-          end_eval
+          PostgreSQLColumn.money_precision = (postgresql_version >= 80300) ? 19 : 10
 
           configure_connection
         end
 
-        # Configures the encoding, verbosity, and schema search path of the connection.
+        # Configures the encoding, verbosity, schema search path, and time zone of the connection.
         # This is called by #connect and should not be called manually.
         def configure_connection
           if @config[:encoding]
-            if @connection.respond_to?(:set_client_encoding)
-              @connection.set_client_encoding(@config[:encoding])
-            else
-              execute("SET client_encoding TO '#{@config[:encoding]}'")
-            end
+            @connection.set_client_encoding(@config[:encoding])
           end
           self.client_min_messages = @config[:min_messages] if @config[:min_messages]
           self.schema_search_path = @config[:schema_search_path] || @config[:schema_order]
+
+          # Use standard-conforming strings if available so we don't have to do the E'...' dance.
+          set_standard_conforming_strings
+
+          # If using Active Record's time zone support configure the connection to return
+          # TIMESTAMP WITH ZONE types in UTC.
+          if ActiveRecord::Base.default_timezone == :utc
+            execute("SET time zone 'UTC'", 'SCHEMA')
+          elsif @local_tz
+            execute("SET time zone '#{@local_tz}'", 'SCHEMA')
+          end
         end
 
         # Returns the current ID of a table's sequence.
-        def last_insert_id(table, sequence_name) #:nodoc:
-          Integer(select_value("SELECT currval('#{sequence_name}')"))
+        def last_insert_id(sequence_name) #:nodoc:
+          r = exec_query("SELECT currval($1)", 'SQL', [[nil, sequence_name]])
+          Integer(r.rows.first.first)
         end
 
         # Executes a SELECT query and returns the results, performing any data type
         # conversions that are required to be performed here instead of in PostgreSQLColumn.
-        def select(sql, name = nil)
-          fields, rows = select_raw(sql, name)
-          result = []
-          for row in rows
-            row_hash = {}
-            fields.each_with_index do |f, i|
-              row_hash[f] = row[i]
-            end
-            result << row_hash
-          end
-          result
+        def select(sql, name = nil, binds = [])
+          exec_query(sql, name, binds).to_a
         end
 
         def select_raw(sql, name = nil)
           res = execute(sql, name)
           results = result_as_array(res)
-          fields = []
-          rows = []
-          if res.ntuples > 0
-            fields = res.fields
-            results.each do |row|
-              hashed_row = {}
-              row.each_index do |cell_index|
-                # If this is a money type column and there are any currency symbols,
-                # then strip them off. Indeed it would be prettier to do this in
-                # PostgreSQLColumn.string_to_decimal but would break form input
-                # fields that call value_before_type_cast.
-                if res.ftype(cell_index) == MONEY_COLUMN_TYPE_OID
-                  # Because money output is formatted according to the locale, there are two
-                  # cases to consider (note the decimal separators):
-                  #  (1) $12,345,678.12
-                  #  (2) $12.345.678,12
-                  case column = row[cell_index]
-                    when /^-?\D+[\d,]+\.\d{2}$/  # (1)
-                      row[cell_index] = column.gsub(/[^-\d\.]/, '')
-                    when /^-?\D+[\d\.]+,\d{2}$/  # (2)
-                      row[cell_index] = column.gsub(/[^-\d,]/, '').sub(/,/, '.')
-                  end
-                end
-
-                hashed_row[fields[cell_index]] = column
-              end
-              rows << row
-            end
-          end
+          fields = res.fields
           res.clear
-          return fields, rows
+          return fields, results
         end
 
         # Returns the list of a table's column names, data types, and default values.
@@ -1087,7 +1082,7 @@ module ActiveRecord
         #  - format_type includes the column size constraint, e.g. varchar(50)
         #  - ::regclass is a function that gives the id for a table name
         def column_definitions(table_name) #:nodoc:
-          query <<-end_sql
+          exec_query(<<-end_sql, 'SCHEMA').rows
             SELECT a.attname, format_type(a.atttypid, a.atttypmod), d.adsrc, a.attnotnull
               FROM pg_attribute a LEFT JOIN pg_attrdef d
                 ON a.attrelid = d.adrelid AND a.attnum = d.adnum
@@ -1098,15 +1093,23 @@ module ActiveRecord
         end
 
         def extract_pg_identifier_from_name(name)
-          match_data = name[0,1] == '"' ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
+          match_data = name.start_with?('"') ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
 
           if match_data
-            rest = name[match_data[0].length..-1]
-            rest = rest[1..-1] if rest[0,1] == "."
+            rest = name[match_data[0].length, name.length]
+            rest = rest[1, rest.length] if rest.start_with? "."
             [match_data[1], (rest.length > 0 ? rest : nil)]
           end
+        end
+
+        def extract_table_ref_from_insert_sql(sql)
+          sql[/into\s+([^\(]*).*values\s*\(/i]
+          $1.strip if $1
+        end
+
+        def table_definition
+          TableDefinition.new(self)
         end
     end
   end
 end
-

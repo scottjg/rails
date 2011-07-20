@@ -8,7 +8,7 @@ class SessionTest < Test::Unit::TestCase
   }
 
   def setup
-    @session = ActionController::Integration::Session.new(StubApp)
+    @session = ActionDispatch::Integration::Session.new(StubApp)
   end
 
   def test_https_bang_works_and_sets_truth_by_default
@@ -73,23 +73,6 @@ class SessionTest < Test::Unit::TestCase
     path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue" }
     @session.expects(:request_via_redirect).with(:delete, path, args, headers)
     @session.delete_via_redirect(path, args, headers)
-  end
-
-  def test_url_for_with_controller
-    options = {:action => 'show'}
-    mock_controller = mock()
-    mock_controller.expects(:url_for).with(options).returns('/show')
-    @session.stubs(:controller).returns(mock_controller)
-    assert_equal '/show', @session.url_for(options)
-  end
-
-  def test_url_for_without_controller
-    options = {:action => 'show'}
-    mock_rewriter = mock()
-    mock_rewriter.expects(:rewrite).with(options).returns('/show')
-    @session.stubs(:generic_url_rewriter).returns(mock_rewriter)
-    @session.stubs(:controller).returns(nil)
-    assert_equal '/show', @session.url_for(options)
   end
 
   def test_get
@@ -184,20 +167,18 @@ end
 
 class IntegrationTestTest < Test::Unit::TestCase
   def setup
-    @test = ::ActionController::IntegrationTest.new(:default_test)
+    @test = ::ActionDispatch::IntegrationTest.new(:app)
     @test.class.stubs(:fixture_table_names).returns([])
     @session = @test.open_session
   end
 
   def test_opens_new_session
-    @test.class.expects(:fixture_table_names).times(2).returns(['foo'])
-
     session1 = @test.open_session { |sess| }
     session2 = @test.open_session # implicit session
 
-    assert_equal ::ActionController::Integration::Session, session1.class
-    assert_equal ::ActionController::Integration::Session, session2.class
-    assert_not_equal session1, session2
+    assert_respond_to session1, :assert_template, "open_session makes assert_template available"
+    assert_respond_to session2, :assert_template, "open_session makes assert_template available"
+    assert !session1.equal?(session2)
   end
 
   # RSpec mixes Matchers (which has a #method_missing) into
@@ -221,7 +202,7 @@ end
 
 # Tests that integration tests don't call Controller test methods for processing.
 # Integration tests have their own setup and teardown.
-class IntegrationTestUsesCorrectClass < ActionController::IntegrationTest
+class IntegrationTestUsesCorrectClass < ActionDispatch::IntegrationTest
   def self.fixture_table_names
     []
   end
@@ -237,7 +218,7 @@ class IntegrationTestUsesCorrectClass < ActionController::IntegrationTest
   end
 end
 
-class IntegrationProcessTest < ActionController::IntegrationTest
+class IntegrationProcessTest < ActionDispatch::IntegrationTest
   class IntegrationController < ActionController::Base
     def get
       respond_to do |format|
@@ -254,10 +235,23 @@ class IntegrationProcessTest < ActionController::IntegrationTest
       render :text => "Created", :status => 201
     end
 
+    def method
+      render :text => "method: #{request.method.downcase}"
+    end
+
     def cookie_monster
       cookies["cookie_1"] = nil
       cookies["cookie_3"] = "chocolate"
       render :text => "Gone", :status => 410
+    end
+
+    def set_cookie
+      cookies["foo"] = 'bar'
+      head :ok
+    end
+
+    def get_cookie
+      render :text => cookies["foo"]
     end
 
     def redirect
@@ -297,18 +291,49 @@ class IntegrationProcessTest < ActionController::IntegrationTest
     end
   end
 
-  def test_cookie_monster
+  test 'response cookies are added to the cookie jar for the next request' do
     with_test_route_set do
       self.cookies['cookie_1'] = "sugar"
       self.cookies['cookie_2'] = "oatmeal"
       get '/cookie_monster'
-      assert_equal 410, status
-      assert_equal "Gone", status_message
-      assert_response 410
-      assert_response :gone
       assert_equal "cookie_1=; path=/\ncookie_3=chocolate; path=/", headers["Set-Cookie"]
       assert_equal({"cookie_1"=>"", "cookie_2"=>"oatmeal", "cookie_3"=>"chocolate"}, cookies.to_hash)
-      assert_equal "Gone", response.body
+    end
+  end
+
+  test 'cookie persist to next request' do
+    with_test_route_set do
+      get '/set_cookie'
+      assert_response :success
+
+      assert_equal "foo=bar; path=/", headers["Set-Cookie"]
+      assert_equal({"foo"=>"bar"}, cookies.to_hash)
+
+      get '/get_cookie'
+      assert_response :success
+      assert_equal "bar", body
+
+      assert_equal nil, headers["Set-Cookie"]
+      assert_equal({"foo"=>"bar"}, cookies.to_hash)
+    end
+  end
+
+  test 'cookie persist to next request on another domain' do
+    with_test_route_set do
+      host! "37s.backpack.test"
+
+      get '/set_cookie'
+      assert_response :success
+
+      assert_equal "foo=bar; path=/", headers["Set-Cookie"]
+      assert_equal({"foo"=>"bar"}, cookies.to_hash)
+
+      get '/get_cookie'
+      assert_response :success
+      assert_equal "bar", body
+
+      assert_equal nil, headers["Set-Cookie"]
+      assert_equal({"foo"=>"bar"}, cookies.to_hash)
     end
   end
 
@@ -346,7 +371,7 @@ class IntegrationProcessTest < ActionController::IntegrationTest
     with_test_route_set do
       get '/get_with_params?foo=bar'
       assert_equal '/get_with_params?foo=bar', request.env["REQUEST_URI"]
-      assert_equal '/get_with_params?foo=bar', request.request_uri
+      assert_equal '/get_with_params?foo=bar', request.fullpath
       assert_equal "foo=bar", request.env["QUERY_STRING"]
       assert_equal 'foo=bar', request.query_string
       assert_equal 'bar', request.parameters['foo']
@@ -359,8 +384,8 @@ class IntegrationProcessTest < ActionController::IntegrationTest
   def test_get_with_parameters
     with_test_route_set do
       get '/get_with_params', :foo => "bar"
-      assert_equal '/get_with_params', request.env["REQUEST_URI"]
-      assert_equal '/get_with_params', request.request_uri
+      assert_equal '/get_with_params', request.env["PATH_INFO"]
+      assert_equal '/get_with_params', request.path_info
       assert_equal 'foo=bar', request.env["QUERY_STRING"]
       assert_equal 'foo=bar', request.query_string
       assert_equal 'bar', request.parameters['foo']
@@ -379,6 +404,14 @@ class IntegrationProcessTest < ActionController::IntegrationTest
       head '/post'
       assert_equal 201, status
       assert_equal "", body
+
+      get '/get/method'
+      assert_equal 200, status
+      assert_equal "method: get", body
+
+      head '/get/method'
+      assert_equal 200, status
+      assert_equal "", body
     end
   end
 
@@ -389,15 +422,26 @@ class IntegrationProcessTest < ActionController::IntegrationTest
   private
     def with_test_route_set
       with_routing do |set|
-        set.draw do |map|
-          match ':action', :to => IntegrationController
+        controller = ::IntegrationProcessTest::IntegrationController.clone
+        controller.class_eval do
+          include set.url_helpers
         end
+
+        set.draw do
+          match ':action', :to => controller
+          get 'get/:action', :to => controller
+        end
+
+        self.singleton_class.send(:include, set.url_helpers)
+
         yield
       end
     end
 end
 
-class MetalIntegrationTest < ActionController::IntegrationTest
+class MetalIntegrationTest < ActionDispatch::IntegrationTest
+  include SharedTestRoutes.url_helpers
+
   class Poller
     def self.call(env)
       if env["PATH_INFO"] =~ /^\/success/
@@ -429,5 +473,66 @@ class MetalIntegrationTest < ActionController::IntegrationTest
 
   def test_generate_url_without_controller
     assert_equal 'http://www.example.com/foo', url_for(:controller => "foo")
+  end
+end
+
+class ApplicationIntegrationTest < ActionDispatch::IntegrationTest
+  class TestController < ActionController::Base
+    def index
+      render :text => "index"
+    end
+  end
+
+  def self.call(env)
+    routes.call(env)
+  end
+
+  def self.routes
+    @routes ||= ActionDispatch::Routing::RouteSet.new
+  end
+
+  routes.draw do
+    match '',    :to => 'application_integration_test/test#index', :as => :empty_string
+    
+    match 'foo', :to => 'application_integration_test/test#index', :as => :foo
+    match 'bar', :to => 'application_integration_test/test#index', :as => :bar
+  end
+
+  def app
+    self.class
+  end
+
+  test "includes route helpers" do
+    assert_equal '/', empty_string_path
+    assert_equal '/foo', foo_path
+    assert_equal '/bar', bar_path
+  end
+
+  test "route helpers after controller access" do
+    get '/'
+    assert_equal '/', empty_string_path
+    
+    get '/foo'
+    assert_equal '/foo', foo_path
+
+    get '/bar'
+    assert_equal '/bar', bar_path
+  end
+
+  test "missing route helper before controller access" do
+    assert_raise(NameError) { missing_path }
+  end
+
+  test "missing route helper after controller access" do
+    get '/foo'
+    assert_raise(NameError) { missing_path }
+  end
+
+  test "process reuse the env we pass as argument" do
+    env = { :SERVER_NAME => 'server', 'action_dispatch.custom' => 'custom' }
+    get '/foo', nil, env
+    assert_equal :get, env[:method]
+    assert_equal 'server', env[:SERVER_NAME]
+    assert_equal 'custom', env['action_dispatch.custom']
   end
 end

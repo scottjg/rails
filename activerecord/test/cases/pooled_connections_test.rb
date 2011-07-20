@@ -34,8 +34,8 @@ class PooledConnectionsTest < ActiveRecord::TestCase
   if RUBY_VERSION < '1.9'
     def test_pooled_connection_checkout
       checkout_connections
-      assert_equal @connections.length, 2
-      assert_equal @timed_out, 2
+      assert_equal 2, @connections.length
+      assert_equal 2, @timed_out
     end
   end
 
@@ -61,12 +61,14 @@ class PooledConnectionsTest < ActiveRecord::TestCase
     checkout_checkin_connections 1, 2
     assert_equal 2, @connection_count
     assert_equal 0, @timed_out
+    assert_equal 1, ActiveRecord::Base.connection_pool.connections.size
   end
 
   def test_pooled_connection_checkin_two
     checkout_checkin_connections 2, 3
     assert_equal 3, @connection_count
     assert_equal 0, @timed_out
+    assert_equal 1, ActiveRecord::Base.connection_pool.connections.size
   end
 
   def test_pooled_connection_checkout_existing_first
@@ -87,9 +89,14 @@ class PooledConnectionsTest < ActiveRecord::TestCase
   def test_undefined_connection_returns_false
     old_handler = ActiveRecord::Base.connection_handler
     ActiveRecord::Base.connection_handler = ActiveRecord::ConnectionAdapters::ConnectionHandler.new
-    assert_equal false, ActiveRecord::Base.connected?
+    assert ! ActiveRecord::Base.connected?
   ensure
     ActiveRecord::Base.connection_handler = old_handler
+  end
+
+  def test_connection_config
+    ActiveRecord::Base.establish_connection(@connection)
+    assert_equal @connection, ActiveRecord::Base.connection_config
   end
 
   def test_with_connection_nesting_safety
@@ -105,7 +112,7 @@ class PooledConnectionsTest < ActiveRecord::TestCase
       Thread.new do
         ActiveRecord::Base.connection.rollback_db_transaction
         ActiveRecord::Base.connection_pool.release_connection
-      end.join rescue nil
+      end
       add_record('three')
     end
 
@@ -135,15 +142,4 @@ class PooledConnectionsTest < ActiveRecord::TestCase
   def add_record(name)
     ActiveRecord::Base.connection_pool.with_connection { Project.create! :name => name }
   end
-end unless %w(FrontBase).include? ActiveRecord::Base.connection.adapter_name
-
-class AllowConcurrencyDeprecatedTest < ActiveRecord::TestCase
-  def test_allow_concurrency_is_deprecated
-    assert_deprecated('ActiveRecord::Base.allow_concurrency') do
-      ActiveRecord::Base.allow_concurrency
-    end
-    assert_deprecated('ActiveRecord::Base.allow_concurrency=') do
-      ActiveRecord::Base.allow_concurrency = true
-    end
-  end
-end
+end unless current_adapter?(:FrontBase) || in_memory_db?

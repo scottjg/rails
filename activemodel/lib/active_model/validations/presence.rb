@@ -1,8 +1,16 @@
 require 'active_support/core_ext/object/blank'
 
 module ActiveModel
+
+  # == Active Model Presence Validator
   module Validations
-    module ClassMethods
+    class PresenceValidator < EachValidator
+      def validate(record)
+        record.errors.add_on_blank(attributes, options)
+      end
+    end
+
+    module HelperMethods
       # Validates that the specified attributes are not blank (as defined by Object#blank?). Happens by default on save. Example:
       #
       #   class Person < ActiveRecord::Base
@@ -18,8 +26,9 @@ module ActiveModel
       #
       # Configuration options:
       # * <tt>message</tt> - A custom error message (default is: "can't be blank").
-      # * <tt>on</tt> - Specifies when this validation is active (default is <tt>:save</tt>, other options <tt>:create</tt>,
-      #   <tt>:update</tt>).
+      # * <tt>:on</tt> - Specifies when this validation is active. Runs in all
+      #   validation contexts by default (+nil+), other options are <tt>:create</tt>
+      #   and <tt>:update</tt>.
       # * <tt>if</tt> - Specifies a method, proc or string to call to determine if the validation should
       #   occur (e.g. <tt>:if => :allow_validation</tt>, or <tt>:if => Proc.new { |user| user.signup_step > 2 }</tt>).
       #   The method, proc or string should return or evaluate to a true or false value.
@@ -28,13 +37,7 @@ module ActiveModel
       #   The method, proc or string should return or evaluate to a true or false value.
       #
       def validates_presence_of(*attr_names)
-        configuration = attr_names.extract_options!
-
-        # can't use validates_each here, because it cannot cope with nonexistent attributes,
-        # while errors.add_on_empty can
-        validate configuration do |record|
-          record.errors.add_on_blank(attr_names, configuration[:message])
-        end
+        validates_with PresenceValidator, _merge_attributes(attr_names)
       end
     end
   end

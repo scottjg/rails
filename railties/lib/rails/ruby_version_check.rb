@@ -1,17 +1,23 @@
-min_release  = "1.8.2 (2004-12-25)"
-ruby_release = "#{RUBY_VERSION} (#{RUBY_RELEASE_DATE})"
-if ruby_release =~ /1\.8\.3/
+if RUBY_VERSION < '1.8.7'
+  desc = defined?(RUBY_DESCRIPTION) ? RUBY_DESCRIPTION : "ruby #{RUBY_VERSION} (#{RUBY_RELEASE_DATE})"
   abort <<-end_message
 
-    Rails does not work with Ruby version 1.8.3.
-    Please upgrade to version 1.8.4 or downgrade to 1.8.2.
+    Rails 3 requires Ruby 1.8.7 or 1.9.2.
+
+    You're running
+      #{desc}
+
+    Please upgrade to continue.
 
   end_message
-elsif ruby_release < min_release
-  abort <<-end_message
+elsif RUBY_VERSION > '1.9' and RUBY_VERSION < '1.9.2'
+  $stderr.puts <<-end_message
 
-    Rails requires Ruby version #{min_release} or later.
-    You're running #{ruby_release}; please upgrade to continue.
+    Rails 3 doesn't officially support Ruby 1.9.1 since recent stable
+    releases have segfaulted the test suite. Please upgrade to Ruby 1.9.2.
+
+    You're running
+      #{RUBY_DESCRIPTION}
 
   end_message
 end

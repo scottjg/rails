@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'controller/fake_controllers'
+require 'active_support/ordered_hash'
 
 class TestTest < ActionController::TestCase
   class TestController < ActionController::Base
@@ -42,7 +43,7 @@ class TestTest < ActionController::TestCase
     end
 
     def test_uri
-      render :text => request.request_uri
+      render :text => request.fullpath
     end
 
     def test_query_string
@@ -113,6 +114,11 @@ XML
       render :nothing => true
     end
 
+    def test_assigns
+      @foo = "foo"
+      render :nothing => true
+    end
+
     private
       def rescue_action(e)
         raise e
@@ -128,17 +134,23 @@ XML
     @controller = TestController.new
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
+    @request.env['PATH_INFO'] = nil
+    @routes = ActionDispatch::Routing::RouteSet.new.tap do |r|
+      r.draw do
+        match ':controller(/:action(/:id))'
+      end
+    end
   end
 
   def test_raw_post_handling
-    params = {:page => {:name => 'page name'}, 'some key' => 123}
+    params = ActiveSupport::OrderedHash[:page, {:name => 'page name'}, 'some key', 123]
     post :render_raw_post, params.dup
 
     assert_equal params.to_query, @response.body
   end
 
   def test_body_stream
-    params = { :page => { :name => 'page name' }, 'some key' => 123 }
+    params = ActiveSupport::OrderedHash[:page, { :name => 'page name' }, 'some key', 123]
 
     post :render_body, params.dup
 
@@ -188,6 +200,12 @@ XML
     assert_equal Hash.new, @request.session.to_hash
   end
 
+  def test_response_and_request_have_nice_accessors
+    process :no_op
+    assert_equal @response, response
+    assert_equal @request, request
+  end
+
   def test_process_with_request_uri_with_no_params
     process :test_uri
     assert_equal "/test_test/test/test_uri", @response.body
@@ -199,7 +217,7 @@ XML
   end
 
   def test_process_with_request_uri_with_params_with_explicit_uri
-    @request.request_uri = "/explicit/uri"
+    @request.env['PATH_INFO'] = "/explicit/uri"
     process :test_uri, :id => 7
     assert_equal "/explicit/uri", @response.body
   end
@@ -210,7 +228,8 @@ XML
   end
 
   def test_process_with_query_string_with_explicit_uri
-    @request.request_uri = "/explicit/uri?q=test?extra=question"
+    @request.env['PATH_INFO'] = '/explicit/uri'
+    @request.env['QUERY_STRING'] = 'q=test?extra=question'
     process :test_query_string
     assert_equal "q=test?extra=question", @response.body
   end
@@ -220,6 +239,17 @@ XML
     assert_equal "OK", @response.body
     process :test_only_one_param, :right => true
     assert_equal "OK", @response.body
+  end
+
+  def test_assigns
+    process :test_assigns
+    # assigns can be accessed using assigns(key)
+    # or assigns[key], where key is a string or
+    # a symbol
+    assert_equal "foo", assigns(:foo)
+    assert_equal "foo", assigns("foo")
+    assert_equal "foo", assigns[:foo]
+    assert_equal "foo", assigns["foo"]
   end
 
   def test_assert_tag_tag
@@ -429,13 +459,28 @@ XML
 
   def test_assert_routing_with_method
     with_routing do |set|
-      set.draw { |map| map.resources(:content) }
+      set.draw { resources(:content) }
       assert_routing({ :method => 'post', :path => 'content' }, { :controller => 'content', :action => 'create' })
     end
   end
 
   def test_assert_routing_in_module
-    assert_routing 'admin/user', :controller => 'admin/user', :action => 'index'
+    with_routing do |set|
+      set.draw do
+        namespace :admin do
+          match 'user' => 'user#index'
+        end
+      end
+
+      assert_routing 'admin/user', :controller => 'admin/user', :action => 'index'
+    end
+  end
+
+  def test_assert_routing_with_glob
+    with_routing do |set|
+      set.draw { match('*path' => "pages#show") }
+      assert_routing('/company/about', { :controller => 'pages', :action => 'show', :path => 'company/about' })
+    end
   end
 
   def test_params_passing
@@ -448,6 +493,28 @@ XML
     )
   end
 
+  def test_params_passing_with_fixnums
+    get :test_params, :page => {:name => "Page name", :month => 4, :year => 2004, :day => 6}
+    parsed_params = eval(@response.body)
+    assert_equal(
+      {'controller' => 'test_test/test', 'action' => 'test_params',
+       'page' => {'name' => "Page name", 'month' => '4', 'year' => '2004', 'day' => '6'}},
+      parsed_params
+    )
+  end
+
+  def test_params_passing_with_frozen_values
+    assert_nothing_raised do
+      get :test_params, :frozen => 'icy'.freeze, :frozens => ['icy'.freeze].freeze
+    end
+    parsed_params = eval(@response.body)
+    assert_equal(
+      {'controller' => 'test_test/test', 'action' => 'test_params',
+       'frozen' => 'icy', 'frozens' => ['icy']},
+      parsed_params
+    )
+  end
+
   def test_id_converted_to_string
     get :test_params, :id => 20, :foo => Object.new
     assert_kind_of String, @request.path_parameters['id']
@@ -455,9 +522,9 @@ XML
 
   def test_array_path_parameter_handled_properly
     with_routing do |set|
-      set.draw do |map|
-        map.connect 'file/*path', :controller => 'test_test/test', :action => 'test_params'
-        map.connect ':controller/:action/:id'
+      set.draw do
+        match 'file/*path', :to => 'test_test/test#test_params'
+        match ':controller/:action'
       end
 
       get :test_params, :path => ['hello', 'world']
@@ -476,8 +543,8 @@ XML
   end
 
   def test_with_routing_places_routes_back
-    assert ActionController::Routing::Routes
-    routes_id = ActionController::Routing::Routes.object_id
+    assert @routes
+    routes_id = @routes.object_id
 
     begin
       with_routing { raise 'fail' }
@@ -485,8 +552,8 @@ XML
     rescue RuntimeError
     end
 
-    assert ActionController::Routing::Routes
-    assert_equal routes_id, ActionController::Routing::Routes.object_id
+    assert @routes
+    assert_equal routes_id, @routes.object_id
   end
 
   def test_remote_addr
@@ -514,17 +581,25 @@ XML
     assert_equal "bar", @request.params[:foo]
     @request.recycle!
     post :no_op
-    assert @request.params[:foo].blank?
+    assert_blank @request.params[:foo]
+  end
+
+  def test_symbolized_path_params_reset_after_request
+    get :test_params, :id => "foo"
+    assert_equal "foo", @request.symbolized_path_parameters[:id]
+    @request.recycle!
+    get :test_params
+    assert_nil @request.symbolized_path_parameters[:id]
   end
 
   def test_should_have_knowledge_of_client_side_cookie_state_even_if_they_are_not_set
-    @request.cookies['foo'] = 'bar'
+    cookies['foo'] = 'bar'
     get :no_op
     assert_equal 'bar', cookies['foo']
   end
 
   def test_should_detect_if_cookie_is_deleted
-    @request.cookies['foo'] = 'bar'
+    cookies['foo'] = 'bar'
     get :delete_cookie
     assert_nil cookies['foo']
   end
@@ -537,8 +612,7 @@ XML
           send(method, :test_remote_addr)
           assert false, "expected RuntimeError, got nothing"
         rescue RuntimeError => error
-          assert true
-          assert_match %r{@#{variable} is nil}, error.message
+          assert_match(%r{@#{variable} is nil}, error.message)
         rescue => error
           assert false, "expected RuntimeError, got #{error.class}"
         end
@@ -563,7 +637,7 @@ XML
     expected = File.read(path)
     expected.force_encoding(Encoding::BINARY) if expected.respond_to?(:force_encoding)
 
-    file = ActionController::TestUploadedFile.new(path, content_type)
+    file = Rack::Test::UploadedFile.new(path, content_type)
     assert_equal filename, file.original_filename
     assert_equal content_type, file.content_type
     assert_equal file.path, file.local_path
@@ -575,15 +649,22 @@ XML
 
   end
 
+  def test_fixture_path_is_accessed_from_self_instead_of_active_support_test_case
+    TestTest.stubs(:fixture_path).returns(FILES_DIR)
+
+    uploaded_file = fixture_file_upload('/mona_lisa.jpg', 'image/png')
+    assert_equal File.open("#{FILES_DIR}/mona_lisa.jpg", READ_PLAIN).read, uploaded_file.read
+  end
+
   def test_test_uploaded_file_with_binary
     filename = 'mona_lisa.jpg'
     path = "#{FILES_DIR}/#{filename}"
     content_type = 'image/png'
 
-    binary_uploaded_file = ActionController::TestUploadedFile.new(path, content_type, :binary)
+    binary_uploaded_file = Rack::Test::UploadedFile.new(path, content_type, :binary)
     assert_equal File.open(path, READ_BINARY).read, binary_uploaded_file.read
 
-    plain_uploaded_file = ActionController::TestUploadedFile.new(path, content_type)
+    plain_uploaded_file = Rack::Test::UploadedFile.new(path, content_type)
     assert_equal File.open(path, READ_PLAIN).read, plain_uploaded_file.read
   end
 
@@ -605,7 +686,7 @@ XML
   end
 
   def test_test_uploaded_file_exception_when_file_doesnt_exist
-    assert_raise(RuntimeError) { ActionController::TestUploadedFile.new('non_existent_file') }
+    assert_raise(RuntimeError) { Rack::Test::UploadedFile.new('non_existent_file') }
   end
 
   def test_redirect_url_only_cares_about_location_header
@@ -621,24 +702,6 @@ XML
       assert_redirected_to 'created resource'
     end
   end
-
-  def test_binary_content_works_with_send_file
-    get :test_send_file
-    assert_deprecated do
-      assert_nothing_raised(NoMethodError) { @response.binary_content }
-    end
-  end
-
-  protected
-    def with_foo_routing
-      with_routing do |set|
-        set.draw do |map|
-          map.generate_url 'foo', :controller => 'test'
-          map.connect      ':controller/:action/:id'
-        end
-        yield set
-      end
-    end
 end
 
 class InferringClassNameTest < ActionController::TestCase
@@ -673,7 +736,7 @@ class NamedRoutesControllerTest < ActionController::TestCase
 
   def test_should_be_able_to_use_named_routes_before_a_request_is_done
     with_routing do |set|
-      set.draw { |map| map.resources :contents }
+      set.draw { resources :contents }
       assert_equal 'http://test.host/contents/new', new_content_url
       assert_equal 'http://test.host/contents/1', content_url(:id => 1)
     end

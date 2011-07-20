@@ -1,3 +1,4 @@
+require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/hash/conversions'
 
 module ActiveRecord #:nodoc:
@@ -74,12 +75,12 @@ module ActiveRecord #:nodoc:
     #   </firm>
     #
     # Additionally, the record being serialized will be passed to a Proc's second
-    # parameter.  This allows for ad hoc additions to the resultant document that
+    # parameter. This allows for ad hoc additions to the resultant document that
     # incorporate the context of the record being serialized. And by leveraging the
     # closure created by a Proc, to_xml can be used to add elements that normally fall
     # outside of the scope of the model -- for example, generating and appending URLs
     # associated with models.
-    # 
+    #
     #   proc = Proc.new { |options, record| options[:builder].tag!('name-reverse', record.name.reverse) }
     #   firm.to_xml :procs => [ proc ]
     #
@@ -181,89 +182,21 @@ module ActiveRecord #:nodoc:
       options[:except] |= Array.wrap(@serializable.class.inheritance_column)
     end
 
-    def serializable_attributes
-      serializable_attribute_names.collect { |name| Attribute.new(name, @serializable) }
-    end
-
-    def serializable_method_attributes
-      Array(options[:methods]).inject([]) do |method_attributes, name|
-        method_attributes << MethodAttribute.new(name.to_s, @serializable) if @serializable.respond_to?(name.to_s)
-        method_attributes
-      end
-    end
-
-    def add_associations(association, records, opts)
-      if records.is_a?(Enumerable)
-        tag = reformat_name(association.to_s)
-        type = options[:skip_types] ? {} : {:type => "array"}
-
-        if records.empty?
-          builder.tag!(tag, type)
-        else
-          builder.tag!(tag, type) do
-            association_name = association.to_s.singularize
-            records.each do |record|
-              if options[:skip_types]
-                record_type = {}
-              else
-                record_class = (record.class.to_s.underscore == association_name) ? nil : record.class.name
-                record_type = {:type => record_class}
-              end
-
-              record.to_xml opts.merge(:root => association_name).merge(record_type)
-            end
-          end
-        end
-      else
-        if record = @serializable.send(association)
-          record.to_xml(opts.merge(:root => association))
-        end
-      end
-    end
-
-    def serialize
-      args = [root]
-      if options[:namespace]
-        args << {:xmlns=>options[:namespace]}
-      end
-
-      if options[:type]
-        args << {:type=>options[:type]}
-      end
-
-      builder.tag!(*args) do
-        add_attributes
-        procs = options.delete(:procs)
-        @serializable.send(:serializable_add_includes, options) { |association, records, opts|
-          add_associations(association, records, opts)
-        }
-        options[:procs] = procs
-        add_procs
-        yield builder if block_given?
-      end
-    end
-
     class Attribute < ActiveModel::Serializers::Xml::Serializer::Attribute #:nodoc:
-      protected
-        def compute_type
-          type = @serializable.class.serialized_attributes.has_key?(name) ? :yaml : @serializable.class.columns_hash[name].type
+      def compute_type
+        klass = @serializable.class
+        type = if klass.serialized_attributes.key?(name)
+                 super
+               elsif klass.columns_hash.key?(name)
+                 klass.columns_hash[name].type
+               else
+                 NilClass
+               end
 
-          case type
-            when :text
-              :string
-            when :time
-              :datetime
-            else
-              type
-          end
-        end
-    end
-
-    class MethodAttribute < Attribute #:nodoc:
-      protected
-        def compute_type
-          Hash::XML_TYPE_NAMES[@serializable.send(name).class.name] || :string
-        end
+        { :text => :string,
+          :time => :datetime }[type] || type
+      end
+      protected :compute_type
     end
   end
 end

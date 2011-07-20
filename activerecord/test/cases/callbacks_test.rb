@@ -16,6 +16,7 @@ class CallbackDeveloper < ActiveRecord::Base
       define_method(callback_method) do
         self.history << [callback_method, :method]
       end
+      send(callback_method, :"#{callback_method}")
     end
 
     def callback_object(callback_method)
@@ -27,20 +28,23 @@ class CallbackDeveloper < ActiveRecord::Base
     end
   end
 
-  ActiveSupport::Deprecation.silence do
-    ActiveRecord::Callbacks::CALLBACKS.each do |callback_method|
-      next if callback_method.to_s =~ /^around_/
-      define_callback_method(callback_method)
-      send(callback_method, callback_string(callback_method))
-      send(callback_method, callback_proc(callback_method))
-      send(callback_method, callback_object(callback_method))
-      send(callback_method) { |model| model.history << [callback_method, :block] }
-    end
+  ActiveRecord::Callbacks::CALLBACKS.each do |callback_method|
+    next if callback_method.to_s =~ /^around_/
+    define_callback_method(callback_method)
+    send(callback_method, callback_string(callback_method))
+    send(callback_method, callback_proc(callback_method))
+    send(callback_method, callback_object(callback_method))
+    send(callback_method) { |model| model.history << [callback_method, :block] }
   end
 
   def history
     @history ||= []
   end
+end
+
+class CallbackDeveloperWithFalseValidation < CallbackDeveloper
+  before_validation proc { |model| model.history << [:before_validation, :returning_false]; return false }
+  before_validation proc { |model| model.history << [:before_validation, :should_never_get_here] }
 end
 
 class ParentDeveloper < ActiveRecord::Base
@@ -113,13 +117,33 @@ class ImmutableMethodDeveloper < ActiveRecord::Base
   end
 end
 
+class OnCallbacksDeveloper < ActiveRecord::Base
+  set_table_name 'developers'
+
+  before_validation { history << :before_validation }
+  before_validation(:on => :create){ history << :before_validation_on_create }
+  before_validation(:on => :update){ history << :before_validation_on_update }
+
+  validate do
+    history << :validate
+  end
+
+  after_validation { history << :after_validation }
+  after_validation(:on => :create){ history << :after_validation_on_create }
+  after_validation(:on => :update){ history << :after_validation_on_update }
+
+  def history
+    @history ||= []
+  end
+end
+
 class CallbackCancellationDeveloper < ActiveRecord::Base
   set_table_name 'developers'
 
   attr_reader   :after_save_called, :after_create_called, :after_update_called, :after_destroy_called
   attr_accessor :cancel_before_save, :cancel_before_create, :cancel_before_update, :cancel_before_destroy
 
-  before_save    { !@cancel_before_save    }
+  before_save    {defined?(@cancel_before_save) ? !@cancel_before_save : false}
   before_create  { !@cancel_before_create  }
   before_update  { !@cancel_before_update  }
   before_destroy { !@cancel_before_destroy }
@@ -250,7 +274,18 @@ class CallbacksTest < ActiveRecord::TestCase
     ], david.history
   end
 
-  def test_save
+  def test_validate_on_create
+    david = OnCallbacksDeveloper.create('name' => 'David', 'salary' => 1000000)
+    assert_equal [
+      :before_validation,
+      :before_validation_on_create,
+      :validate,
+      :after_validation,
+      :after_validation_on_create
+    ], david.history
+  end
+
+  def test_update
     david = CallbackDeveloper.find(1)
     david.save
     assert_equal [
@@ -294,6 +329,18 @@ class CallbacksTest < ActiveRecord::TestCase
       [ :after_save,                  :proc   ],
       [ :after_save,                  :object ],
       [ :after_save,                  :block  ]
+    ], david.history
+  end
+
+  def test_validate_on_update
+    david = OnCallbacksDeveloper.find(1)
+    david.save
+    assert_equal [
+      :before_validation,
+      :before_validation_on_update,
+      :validate,
+      :after_validation,
+      :after_validation_on_update
     ], david.history
   end
 
@@ -394,10 +441,8 @@ class CallbacksTest < ActiveRecord::TestCase
   end
   private :assert_save_callbacks_not_called
 
-  def test_zzz_callback_returning_false # must be run last since we modify CallbackDeveloper
-    david = CallbackDeveloper.find(1)
-    CallbackDeveloper.before_validation proc { |model| model.history << [:before_validation, :returning_false]; return false }
-    CallbackDeveloper.before_validation proc { |model| model.history << [:before_validation, :should_never_get_here] }
+  def test_callback_returning_false
+    david = CallbackDeveloperWithFalseValidation.find(1)
     david.save
     assert_equal [
       [ :after_find,            :method ],
@@ -415,7 +460,12 @@ class CallbacksTest < ActiveRecord::TestCase
       [ :before_validation,           :proc   ],
       [ :before_validation,           :object ],
       [ :before_validation,           :block  ],
-      [ :before_validation, :returning_false  ]
+      [ :before_validation, :returning_false  ],
+      [ :after_rollback, :block  ],
+      [ :after_rollback, :object ],
+      [ :after_rollback, :proc   ],
+      [ :after_rollback, :string ],
+      [ :after_rollback, :method ],
     ], david.history
   end
 

@@ -1,9 +1,10 @@
-require File.expand_path(File.join(File.dirname(__FILE__), '..', 'generators'))
+require 'rails/generators'
+require 'active_support/core_ext/object/inclusion'
 
-if ARGV.size == 0
-  Rails::Generators.help
+if ARGV.first.in?([nil, "-h", "--help"])
+  Rails::Generators.help 'destroy'
   exit
 end
 
 name = ARGV.shift
-Rails::Generators.invoke name, ARGV, :behavior => :revoke
+Rails::Generators.invoke name, ARGV, :behavior => :revoke, :destination_root => Rails.root

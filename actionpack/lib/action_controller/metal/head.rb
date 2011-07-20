@@ -1,5 +1,7 @@
 module ActionController
   module Head
+    extend ActiveSupport::Concern
+
     # Return a response that has no content (merely headers). The options
     # argument is interpreted to be a hash of header names and values.
     # This allows you to easily return a response that consists only of
@@ -18,10 +20,13 @@ module ActionController
       location = options.delete(:location)
 
       options.each do |key, value|
-        headers[key.to_s.dasherize.split(/-/).map { |v| v.capitalize }.join("-")] = value.to_s
+        headers[key.to_s.dasherize.split('-').each { |v| v[0] = v[0].chr.upcase }.join('-')] = value.to_s
       end
 
-      render :nothing => true, :status => status, :location => location
+      self.status = status
+      self.location = url_for(location) if location
+      self.content_type = Mime[formats.first] if formats
+      self.response_body = " "
     end
   end
 end

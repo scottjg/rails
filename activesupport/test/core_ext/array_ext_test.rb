@@ -4,12 +4,13 @@ require 'active_support/core_ext/big_decimal'
 require 'active_support/core_ext/object/conversions'
 
 require 'active_support/core_ext' # FIXME: pulling in all to_xml extensions
+require 'active_support/hash_with_indifferent_access'
 
 class ArrayExtAccessTests < Test::Unit::TestCase
   def test_from
     assert_equal %w( a b c d ), %w( a b c d ).from(0)
     assert_equal %w( c d ), %w( a b c d ).from(2)
-    assert_nil %w( a b c d ).from(10)
+    assert_equal %w(), %w( a b c d ).from(10)
   end
 
   def test_to
@@ -17,10 +18,10 @@ class ArrayExtAccessTests < Test::Unit::TestCase
     assert_equal %w( a b c ), %w( a b c d ).to(2)
     assert_equal %w( a b c d ), %w( a b c d ).to(10)
   end
-  
+
   def test_second_through_tenth
     array = (1..42).to_a
-    
+
     assert_equal array[1], array.second
     assert_equal array[2], array.third
     assert_equal array[3], array.fourth
@@ -52,8 +53,6 @@ class ArrayExtToParamTests < Test::Unit::TestCase
 end
 
 class ArrayExtToSentenceTests < Test::Unit::TestCase
-  include ActiveSupport::Testing::Deprecation
-  
   def test_plain_array_to_sentence
     assert_equal "", [].to_sentence
     assert_equal "one", ['one'].to_sentence
@@ -62,28 +61,12 @@ class ArrayExtToSentenceTests < Test::Unit::TestCase
   end
 
   def test_to_sentence_with_words_connector
-    assert_deprecated(":connector has been deprecated. Use :words_connector instead") do
-      assert_equal "one, two, three", ['one', 'two', 'three'].to_sentence(:connector => '')
-    end
-    
-    assert_deprecated(":connector has been deprecated. Use :words_connector instead") do
-      assert_equal "one, two, and three", ['one', 'two', 'three'].to_sentence(:connector => 'and ')
-    end
-    
     assert_equal "one two, and three", ['one', 'two', 'three'].to_sentence(:words_connector => ' ')
     assert_equal "one & two, and three", ['one', 'two', 'three'].to_sentence(:words_connector => ' & ')
     assert_equal "onetwo, and three", ['one', 'two', 'three'].to_sentence(:words_connector => nil)
   end
 
   def test_to_sentence_with_last_word_connector
-    assert_deprecated(":skip_last_comma has been deprecated. Use :last_word_connector instead") do
-      assert_equal "one, two and three", ['one', 'two', 'three'].to_sentence(:skip_last_comma => true)
-    end
-    
-    assert_deprecated(":skip_last_comma has been deprecated. Use :last_word_connector instead") do
-      assert_equal "one, two, and three", ['one', 'two', 'three'].to_sentence(:skip_last_comma => false)
-    end
-    
     assert_equal "one, two, and also three", ['one', 'two', 'three'].to_sentence(:last_word_connector => ', and also ')
     assert_equal "one, twothree", ['one', 'two', 'three'].to_sentence(:last_word_connector => nil)
     assert_equal "one, two three", ['one', 'two', 'three'].to_sentence(:last_word_connector => ' ')
@@ -97,6 +80,11 @@ class ArrayExtToSentenceTests < Test::Unit::TestCase
 
   def test_one_element
     assert_equal "one", ['one'].to_sentence
+  end
+
+  def test_one_element_not_same_object
+    elements = ["one"]
+    assert_not_equal elements[0].object_id, elements.to_sentence.object_id
   end
 
   def test_one_non_string_element
@@ -228,7 +216,7 @@ class ArrayToXmlTests < Test::Unit::TestCase
       { :name => "Jason", :age => 31, :age_in_millis => BigDecimal.new('1.0') }
     ].to_xml(:skip_instruct => true, :indent => 0)
 
-    assert_equal '<records type="array"><record>', xml.first(30)
+    assert_equal '<objects type="array"><object>', xml.first(30)
     assert xml.include?(%(<age type="integer">26</age>)), xml
     assert xml.include?(%(<age-in-millis type="integer">820497600000</age-in-millis>)), xml
     assert xml.include?(%(<name>David</name>)), xml
@@ -250,7 +238,7 @@ class ArrayToXmlTests < Test::Unit::TestCase
       { :name => "David", :street_address => "Paulina" }, { :name => "Jason", :street_address => "Evergreen" }
     ].to_xml(:skip_instruct => true, :skip_types => true, :indent => 0)
 
-    assert_equal "<records><record>", xml.first(17)
+    assert_equal "<objects><object>", xml.first(17)
     assert xml.include?(%(<street-address>Paulina</street-address>))
     assert xml.include?(%(<name>David</name>))
     assert xml.include?(%(<street-address>Evergreen</street-address>))
@@ -262,7 +250,7 @@ class ArrayToXmlTests < Test::Unit::TestCase
       { :name => "David", :street_address => "Paulina" }, { :name => "Jason", :street_address => "Evergreen" }
     ].to_xml(:skip_instruct => true, :skip_types => true, :indent => 0, :dasherize => false)
 
-    assert_equal "<records><record>", xml.first(17)
+    assert_equal "<objects><object>", xml.first(17)
     assert xml.include?(%(<street_address>Paulina</street_address>))
     assert xml.include?(%(<street_address>Evergreen</street_address>))
   end
@@ -272,7 +260,7 @@ class ArrayToXmlTests < Test::Unit::TestCase
       { :name => "David", :street_address => "Paulina" }, { :name => "Jason", :street_address => "Evergreen" }
     ].to_xml(:skip_instruct => true, :skip_types => true, :indent => 0, :dasherize => true)
 
-    assert_equal "<records><record>", xml.first(17)
+    assert_equal "<objects><object>", xml.first(17)
     assert xml.include?(%(<street-address>Paulina</street-address>))
     assert xml.include?(%(<street-address>Evergreen</street-address>))
   end
@@ -312,23 +300,94 @@ class ArrayToXmlTests < Test::Unit::TestCase
 end
 
 class ArrayExtractOptionsTests < Test::Unit::TestCase
+  class HashSubclass < Hash
+  end
+
+  class ExtractableHashSubclass < Hash
+    def extractable_options?
+      true
+    end
+  end
+
   def test_extract_options
     assert_equal({}, [].extract_options!)
     assert_equal({}, [1].extract_options!)
     assert_equal({:a=>:b}, [{:a=>:b}].extract_options!)
     assert_equal({:a=>:b}, [1, {:a=>:b}].extract_options!)
   end
+
+  def test_extract_options_doesnt_extract_hash_subclasses
+    hash = HashSubclass.new
+    hash[:foo] = 1
+    array = [hash]
+    options = array.extract_options!
+    assert_equal({}, options)
+    assert_equal [hash], array
+  end
+
+  def test_extract_options_extracts_extractable_subclass
+    hash = ExtractableHashSubclass.new
+    hash[:foo] = 1
+    array = [hash]
+    options = array.extract_options!
+    assert_equal({:foo => 1}, options)
+    assert_equal [], array
+  end
+
+  def test_extract_options_extracts_hwia
+    hash = [{:foo => 1}.with_indifferent_access]
+    options = hash.extract_options!
+    assert_equal 1, options[:foo]
+  end
 end
 
-class ArrayExtRandomTests < Test::Unit::TestCase
-  def test_random_element_from_array
-    assert_nil [].rand
+class ArrayUniqByTests < Test::Unit::TestCase
+  def test_uniq_by
+    assert_equal [1,2], [1,2,3,4].uniq_by { |i| i.odd? }
+    assert_equal [1,2], [1,2,3,4].uniq_by(&:even?)
+    assert_equal((-5..0).to_a, (-5..5).to_a.uniq_by{ |i| i**2 })
+  end
 
-    Kernel.expects(:rand).with(1).returns(0)
-    assert_equal 'x', ['x'].rand
+  def test_uniq_by!
+    a = [1,2,3,4]
+    a.uniq_by! { |i| i.odd? }
+    assert_equal [1,2], a
 
-    Kernel.expects(:rand).with(3).returns(1)
-    assert_equal 2, [1, 2, 3].rand
+    a = [1,2,3,4]
+    a.uniq_by! { |i| i.even? }
+    assert_equal [1,2], a
+
+    a = (-5..5).to_a
+    a.uniq_by! { |i| i**2 }
+    assert_equal((-5..0).to_a, a)
+  end
+end
+
+class ArrayExtRandomTests < ActiveSupport::TestCase
+  def test_sample_from_array
+    assert_nil [].sample
+    assert_equal [], [].sample(5)
+    assert_equal 42, [42].sample
+    assert_equal [42], [42].sample(5)
+
+    a = [:foo, :bar, 42]
+    s = a.sample(2)
+    assert_equal 2, s.size
+    assert_equal 1, (a-s).size
+    assert_equal [], a-(0..20).sum{a.sample(2)}
+
+    o = Object.new
+    def o.to_int; 1; end
+    assert_equal [0], [0].sample(o)
+
+    o = Object.new
+    assert_raises(TypeError) { [0].sample(o) }
+
+    o = Object.new
+    def o.to_int; ''; end
+    assert_raises(TypeError) { [0].sample(o) }
+
+    assert_raises(ArgumentError) { [0].sample(-7) }
   end
 end
 
@@ -336,6 +395,23 @@ class ArrayWrapperTests < Test::Unit::TestCase
   class FakeCollection
     def to_ary
       ["foo", "bar"]
+    end
+  end
+
+  class Proxy
+    def initialize(target) @target = target end
+    def method_missing(*a) @target.send(*a) end
+  end
+
+  class DoubtfulToAry
+    def to_ary
+      :not_an_array
+    end
+  end
+
+  class NilToAry
+    def to_ary
+      nil
     end
   end
 
@@ -363,5 +439,29 @@ class ArrayWrapperTests < Test::Unit::TestCase
 
   def test_object_with_to_ary
     assert_equal ["foo", "bar"], Array.wrap(FakeCollection.new)
+  end
+
+  def test_proxy_object
+    p = Proxy.new(Object.new)
+    assert_equal [p], Array.wrap(p)
+  end
+
+  def test_proxy_to_object_with_to_ary
+    p = Proxy.new(FakeCollection.new)
+    assert_equal [p], Array.wrap(p)
+  end
+
+  def test_struct
+    o = Struct.new(:foo).new(123)
+    assert_equal [o], Array.wrap(o)
+  end
+
+  def test_wrap_returns_wrapped_if_to_ary_returns_nil
+    o = NilToAry.new
+    assert_equal [o], Array.wrap(o)
+  end
+
+  def test_wrap_does_not_complain_if_to_ary_does_not_return_an_array
+    assert_equal DoubtfulToAry.new.to_ary, Array.wrap(DoubtfulToAry.new)
   end
 end

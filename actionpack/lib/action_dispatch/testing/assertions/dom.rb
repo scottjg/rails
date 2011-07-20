@@ -1,7 +1,9 @@
+require 'action_controller/vendor/html-scanner'
+
 module ActionDispatch
   module Assertions
     module DomAssertions
-      # Test two HTML strings for equivalency (e.g., identical up to reordering of attributes)
+      # \Test two HTML strings for equivalency (e.g., identical up to reordering of attributes)
       #
       # ==== Examples
       #
@@ -15,7 +17,7 @@ module ActionDispatch
 
         assert_block(full_message) { expected_dom == actual_dom }
       end
-      
+
       # The negated form of +assert_dom_equivalent+.
       #
       # ==== Examples

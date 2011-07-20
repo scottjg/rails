@@ -1,52 +1,33 @@
 module ActiveRecord
+  # = Active Record Belongs To Polymorphic Association
   module Associations
-    class BelongsToPolymorphicAssociation < AssociationProxy #:nodoc:
-      def replace(record)
-        if record.nil?
-          @target = @owner[@reflection.primary_key_name] = @owner[@reflection.options[:foreign_type]] = nil
-        else
-          @target = (AssociationProxy === record ? record.target : record)
-
-          @owner[@reflection.primary_key_name] = record_id(record)
-          @owner[@reflection.options[:foreign_type]] = record.class.base_class.name.to_s
-
-          @updated = true
-        end
-
-        loaded
-        record
-      end
-
-      def updated?
-        @updated
-      end
-
+    class BelongsToPolymorphicAssociation < BelongsToAssociation #:nodoc:
       private
-        def find_target
-          return nil if association_class.nil?
 
-          if @reflection.options[:conditions]
-            association_class.find(
-              @owner[@reflection.primary_key_name],
-              :select     => @reflection.options[:select],
-              :conditions => conditions,
-              :include    => @reflection.options[:include]
-            )
-          else
-            association_class.find(@owner[@reflection.primary_key_name], :select => @reflection.options[:select], :include => @reflection.options[:include])
-          end
+        def replace_keys(record)
+          super
+          owner[reflection.foreign_type] = record && record.class.base_class.name
         end
 
-        def foreign_key_present
-          !@owner[@reflection.primary_key_name].nil?
+        def different_target?(record)
+          super || record.class != klass
         end
 
-        def record_id(record)
-          record.send(@reflection.options[:primary_key] || :id)
+        def inverse_reflection_for(record)
+          reflection.polymorphic_inverse_of(record.class)
         end
 
-        def association_class
-          @owner[@reflection.options[:foreign_type]] ? @owner[@reflection.options[:foreign_type]].constantize : nil
+        def klass
+          type = owner[reflection.foreign_type]
+          type.presence && type.constantize
+        end
+
+        def raise_on_type_mismatch(record)
+          # A polymorphic association cannot have a type mismatch, by definition
+        end
+
+        def stale_state
+          [super, owner[reflection.foreign_type].to_s]
         end
     end
   end

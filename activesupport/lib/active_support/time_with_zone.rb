@@ -1,17 +1,14 @@
-require 'active_support/duration'
-require 'active_support/core_ext/numeric/time'
-require 'active_support/core_ext/integer/time'
-require 'active_support/core_ext/time/conversions'
-require 'active_support/core_ext/date/conversions'
-require 'active_support/core_ext/date_time/conversions'
+require "active_support/values/time_zone"
+require 'active_support/core_ext/object/acts_like'
+require 'active_support/core_ext/object/inclusion'
 
 module ActiveSupport
   # A Time-like class that can represent a time in any time zone. Necessary because standard Ruby Time instances are
   # limited to UTC and the system's <tt>ENV['TZ']</tt> zone.
   #
-  # You shouldn't ever need to create a TimeWithZone instance directly via <tt>new</tt> -- instead, Rails provides the methods
-  # +local+, +parse+, +at+ and +now+ on TimeZone instances, and +in_time_zone+ on Time and DateTime instances, for a more
-  # user-friendly syntax. Examples:
+  # You shouldn't ever need to create a TimeWithZone instance directly via <tt>new</tt> . Instead use methods
+  # +local+, +parse+, +at+ and +now+ on TimeZone instances, and +in_time_zone+ on Time and DateTime instances.
+  # Examples:
   #
   #   Time.zone = 'Eastern Time (US & Canada)'        # => 'Eastern Time (US & Canada)'
   #   Time.zone.local(2007, 2, 10, 15, 30, 45)        # => Sat, 10 Feb 2007 15:30:45 EST -05:00
@@ -22,7 +19,8 @@ module ActiveSupport
   #
   # See Time and TimeZone for further documentation of these methods.
   #
-  # TimeWithZone instances implement the same API as Ruby Time instances, so that Time and TimeWithZone instances are interchangable. Examples:
+  # TimeWithZone instances implement the same API as Ruby Time instances, so that Time and TimeWithZone instances are interchangeable.
+  # Examples:
   #
   #   t = Time.zone.now                     # => Sun, 18 May 2008 13:27:25 EDT -04:00
   #   t.hour                                # => 13
@@ -35,12 +33,12 @@ module ActiveSupport
   #   t > Time.utc(1999)                    # => true
   #   t.is_a?(Time)                         # => true
   #   t.is_a?(ActiveSupport::TimeWithZone)  # => true
+  #
   class TimeWithZone
-    
     def self.name
       'Time' # Report class name as 'Time' to thwart type checking
     end
-    
+
     include Comparable
     attr_reader :time_zone
 
@@ -76,7 +74,7 @@ module ActiveSupport
 
     # Returns a <tt>Time.local()</tt> instance of the simultaneous time in your system's <tt>ENV['TZ']</tt> zone
     def localtime
-      utc.getlocal
+      utc.respond_to?(:getlocal) ? utc.getlocal : utc.to_time.getlocal
     end
     alias_method :getlocal, :localtime
 
@@ -111,16 +109,16 @@ module ActiveSupport
 
     def xmlschema(fraction_digits = 0)
       fraction = if fraction_digits > 0
-        ".%i" % time.usec.to_s[0, fraction_digits]
+        (".%06i" % time.usec)[0, fraction_digits + 1]
       end
 
       "#{time.strftime("%Y-%m-%dT%H:%M:%S")}#{fraction}#{formatted_offset(true, 'Z')}"
     end
     alias_method :iso8601, :xmlschema
 
-    # Coerces the date to a string for JSON encoding.
-    #
-    # ISO 8601 format is used if ActiveSupport::JSON::Encoding.use_standard_json_time_format is set.
+    # Coerces time to a string for JSON encoding. The default format is ISO 8601. You can get
+    # %Y/%m/%d %H:%M:%S +offset style by setting <tt>ActiveSupport::JSON::Encoding.use_standard_json_time_format</tt>
+    # to false.
     #
     # ==== Examples
     #
@@ -131,6 +129,7 @@ module ActiveSupport
     #   # With ActiveSupport::JSON::Encoding.use_standard_json_time_format = false
     #   Time.utc(2005,2,1,15,15,10).in_time_zone.to_json
     #   # => "2005/02/01 15:15:10 +0000"
+    #
     def as_json(options = nil)
       if ActiveSupport::JSON::Encoding.use_standard_json_time_format
         xmlschema
@@ -139,12 +138,18 @@ module ActiveSupport
       end
     end
 
-    def to_yaml(options = {})
-      if options.kind_of?(YAML::Emitter)
-        utc.to_yaml(options)
+    def encode_with(coder)
+      if coder.respond_to?(:represent_object)
+        coder.represent_object(nil, utc)
       else
-        time.to_yaml(options).gsub('Z', formatted_offset(true, 'Z'))
+        coder.represent_scalar(nil, utc.strftime("%Y-%m-%d %H:%M:%S.%9NZ"))
       end
+    end
+
+    def to_yaml(options = {})
+      return super if defined?(YAML::ENGINE) && !YAML::ENGINE.syck?
+
+      utc.to_yaml(options)
     end
 
     def httpdate
@@ -277,7 +282,7 @@ module ActiveSupport
 
     # A TimeWithZone acts like a Time, so just return +self+.
     def to_time
-      self
+      utc
     end
 
     def to_datetime
@@ -305,7 +310,7 @@ module ActiveSupport
     end
 
     def marshal_load(variables)
-      initialize(variables[0].utc, ::Time.__send__(:get_zone, variables[1]), variables[2].utc)
+      initialize(variables[0].utc, ::Time.find_zone(variables[1]), variables[2].utc)
     end
 
     # Ensure proxy class responds to all methods that underlying time instance responds to.
@@ -340,7 +345,7 @@ module ActiveSupport
       end
 
       def duration_of_variable_length?(obj)
-        ActiveSupport::Duration === obj && obj.parts.any? {|p| [:years, :months, :days].include? p[0] }
+        ActiveSupport::Duration === obj && obj.parts.any? {|p| p[0].in?([:years, :months, :days]) }
       end
   end
 end

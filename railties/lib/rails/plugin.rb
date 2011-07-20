@@ -1,180 +1,90 @@
+require 'rails/engine'
+require 'active_support/core_ext/array/conversions'
+
 module Rails
-  # The Plugin class should be an object which provides the following methods:
+  # Rails::Plugin is nothing more than a Rails::Engine, but since it's loaded too late
+  # in the boot process, it does not have the same configuration powers as a bare
+  # Rails::Engine.
   #
-  # * +name+       - Used during initialisation to order the plugin (based on name and
-  #                  the contents of <tt>config.plugins</tt>).
-  # * +valid?+     - Returns true if this plugin can be loaded.
-  # * +load_paths+ - Each path within the returned array will be added to the <tt>$LOAD_PATH</tt>.
-  # * +load+       - Finally 'load' the plugin.
+  # Opposite to Rails::Railtie and Rails::Engine, you are not supposed to inherit from
+  # Rails::Plugin. Rails::Plugin is automatically configured to be an engine by simply
+  # placing inside vendor/plugins. Since this is done automatically, you actually cannot
+  # declare a Rails::Engine inside your Plugin, otherwise it would cause the same files
+  # to be loaded twice. This means that if you want to ship an Engine as gem it cannot
+  # be used as plugin and vice-versa.
   #
-  # These methods are expected by the Rails::Plugin::Locator and Rails::Plugin::Loader classes.
-  # The default implementation returns the <tt>lib</tt> directory as its <tt>load_paths</tt>, 
-  # and evaluates <tt>init.rb</tt> when <tt>load</tt> is called.
+  # Besides this conceptual difference, the only difference between Rails::Engine and
+  # Rails::Plugin is that plugins automatically load the file "init.rb" at the plugin
+  # root during the boot process.
   #
-  # You can also inspect the about.yml data programmatically:
-  #
-  #   plugin = Rails::Plugin.new(path_to_my_plugin)
-  #   plugin.about["author"] # => "James Adam"
-  #   plugin.about["url"] # => "http://interblah.net"
-  class Plugin
-    include Comparable
-    
-    attr_reader :directory, :name
-    
-    def initialize(directory)
-      @directory = directory
-      @name      = File.basename(@directory) rescue nil
-      @loaded    = false
-    end
-    
-    def valid?
-      File.directory?(directory) && (has_app_directory? || has_lib_directory? || has_init_file?)
-    end
-  
-    # Returns a list of paths this plugin wishes to make available in <tt>$LOAD_PATH</tt>.
-    def load_paths
-      report_nonexistant_or_empty_plugin! unless valid?
-      
-      load_paths = []
-      load_paths << lib_path  if has_lib_directory?
-      load_paths << app_paths if has_app_directory?
-      load_paths.flatten
-    end
-    
-    # Evaluates a plugin's init.rb file.
-    def load(initializer)
-      return if loaded?
-      report_nonexistant_or_empty_plugin! unless valid?
-      evaluate_init_rb(initializer)
-      @loaded = true
-    end
-    
-    def loaded?
-      @loaded
-    end
-    
-    def <=>(other_plugin)
-      name <=> other_plugin.name
+  class Plugin < Engine
+    def self.global_plugins
+      @global_plugins ||= []
     end
 
-    def about
-      @about ||= load_about_information
+    def self.inherited(base)
+      raise "You cannot inherit from Rails::Plugin"
     end
 
-    # Engines are plugins with an app/ directory.
-    def engine?
-      has_app_directory?
-    end
-    
-    # Returns true if the engine ships with a routing file
-    def routed?
-      File.exist?(routing_file)
-    end
-
-    # Returns true if there is any localization file in locale_path
-    def localized?
-      locale_files.any?
-    end
-
-    def view_path
-      File.join(directory, 'app', 'views')
-    end
-
-    def controller_path
-      File.join(directory, 'app', 'controllers')
-    end
-
-    def metal_path
-      File.join(directory, 'app', 'metal')
-    end
-
-    def routing_file
-      File.join(directory, 'config', 'routes.rb')
-    end
-
-    def locale_path
-      File.join(directory, 'config', 'locales')
-    end
-
-    def locale_files
-      Dir[ File.join(locale_path, '*.{rb,yml}') ]
-    end
-    
-
-    private
-      def load_about_information
-        about_yml_path = File.join(@directory, "about.yml")
-        parsed_yml = File.exist?(about_yml_path) ? YAML.load(File.read(about_yml_path)) : {}
-        parsed_yml || {}
-      rescue Exception
-        {}
-      end
-
-      def report_nonexistant_or_empty_plugin!
-        raise LoadError, "Can not find the plugin named: #{name}"
-      end
-
-      
-      def app_paths
-        [ File.join(directory, 'app', 'models'), File.join(directory, 'app', 'helpers'), controller_path, metal_path ]
-      end
-      
-      def lib_path
-        File.join(directory, 'lib')
-      end
-
-      def classic_init_path
-        File.join(directory, 'init.rb')
-      end
-
-      def gem_init_path
-        File.join(directory, 'rails', 'init.rb')
-      end
-
-      def init_path
-        File.file?(gem_init_path) ? gem_init_path : classic_init_path
-      end
-
-
-      def has_app_directory?
-        File.directory?(File.join(directory, 'app'))
-      end
-
-      def has_lib_directory?
-        File.directory?(lib_path)
-      end
-
-      def has_init_file?
-        File.file?(init_path)
-      end
-
-
-      def evaluate_init_rb(initializer)
-        if has_init_file?
-          require 'active_support/core_ext/kernel/reporting'
-          silence_warnings do
-            # Allow plugins to reference the current configuration object
-            config = initializer.configuration
-            
-            eval(IO.read(init_path), binding, init_path)
+    def self.all(list, paths)
+      plugins = []
+      paths.each do |path|
+        Dir["#{path}/*"].each do |plugin_path|
+          plugin = new(plugin_path)
+          next unless list.include?(plugin.name) || list.include?(:all)
+          if global_plugins.include?(plugin.name)
+            warn "WARNING: plugin #{plugin.name} from #{path} was not loaded. Plugin with the same name has been already loaded."
+            next
           end
+          global_plugins << plugin.name
+          plugins << plugin
         end
-      end               
-  end
+      end
 
-  # This Plugin subclass represents a Gem plugin. Although RubyGems has already
-  # taken care of $LOAD_PATHs, it exposes its load_paths to add them
-  # to Dependencies.load_paths.
-  class GemPlugin < Plugin
-    # Initialize this plugin from a Gem::Specification.
-    def initialize(spec, gem)
-      directory = spec.full_gem_path
-      super(directory)
-      @name = spec.name
+      plugins.sort_by do |p|
+        [list.index(p.name) || list.index(:all), p.name.to_s]
+      end
     end
 
-    def init_path
-      File.join(directory, 'rails', 'init.rb')
+    attr_reader :name, :path
+
+    def railtie_name
+      name.to_s
+    end
+
+    def initialize(root)
+      @name = File.basename(root).to_sym
+      config.root = root
+    end
+
+    def config
+      @config ||= Engine::Configuration.new
+    end
+
+    initializer :handle_lib_autoload, :before => :set_load_path do |app|
+      autoload = if app.config.reload_plugins
+        config.autoload_paths
+      else
+        config.autoload_once_paths
+      end
+
+      autoload.concat paths["lib"].existent
+    end
+
+    initializer :load_init_rb, :before => :load_config_initializers do |app|
+      init_rb = File.expand_path("init.rb", root)
+      if File.file?(init_rb)
+        config = app.config
+        # TODO: think about evaling initrb in context of Engine (currently it's
+        # always evaled in context of Rails::Application)
+        eval(File.read(init_rb), binding, init_rb)
+      end
+    end
+
+    initializer :sanity_check_railties_collision do
+      if Engine.subclasses.map { |k| k.root.to_s }.include?(root.to_s)
+        raise "\"#{name}\" is a Railtie/Engine and cannot be installed as a plugin"
+      end
     end
   end
 end

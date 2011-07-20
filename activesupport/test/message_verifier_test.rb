@@ -7,10 +7,12 @@ rescue LoadError, NameError
   $stderr.puts "Skipping MessageVerifier test: broken OpenSSL install"
 else
 
+require 'active_support/time'
+
 class MessageVerifierTest < Test::Unit::TestCase
   def setup
     @verifier = ActiveSupport::MessageVerifier.new("Hey, I'm a secret!")
-    @data = {:some=>"data", :now=>Time.now}
+    @data = { :some => "data", :now => Time.local(2010) }
   end
 
   def test_simple_round_tripping

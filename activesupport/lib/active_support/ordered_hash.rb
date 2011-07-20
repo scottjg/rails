@@ -1,10 +1,65 @@
-# OrderedHash is namespaced to prevent conflicts with other implementations
+begin
+  require 'psych'
+rescue LoadError
+end
+
+require 'yaml'
+
+YAML.add_builtin_type("omap") do |type, val|
+  ActiveSupport::OrderedHash[val.map(&:to_a).map(&:first)]
+end
+
 module ActiveSupport
-  # Hash is ordered in Ruby 1.9!
-  if RUBY_VERSION >= '1.9'
-    OrderedHash = ::Hash
-  else
-    class OrderedHash < Hash #:nodoc:
+  # The order of iteration over hashes in Ruby 1.8 is undefined. For example, you do not know the
+  # order in which +keys+ will return keys, or +each+ yield pairs. <tt>ActiveSupport::OrderedHash</tt>
+  # implements a hash that preserves insertion order, as in Ruby 1.9:
+  #
+  #   oh = ActiveSupport::OrderedHash.new
+  #   oh[:a] = 1
+  #   oh[:b] = 2
+  #   oh.keys # => [:a, :b], this order is guaranteed
+  #
+  # <tt>ActiveSupport::OrderedHash</tt> is namespaced to prevent conflicts with other implementations.
+  class OrderedHash < ::Hash #:nodoc:
+    def to_yaml_type
+      "!tag:yaml.org,2002:omap"
+    end
+
+    def encode_with(coder)
+      coder.represent_seq '!omap', map { |k,v| { k => v } }
+    end
+
+    def to_yaml(opts = {})
+      if YAML.const_defined?(:ENGINE) && !YAML::ENGINE.syck?
+        return super
+      end
+
+      YAML.quick_emit(self, opts) do |out|
+        out.seq(taguri) do |seq|
+          each do |k, v|
+            seq.add(k => v)
+          end
+        end
+      end
+    end
+
+    def nested_under_indifferent_access
+      self
+    end
+
+    # Hash is ordered in Ruby 1.9!
+    if RUBY_VERSION < '1.9'
+
+      # In MRI the Hash class is core and written in C. In particular, methods are
+      # programmed with explicit C function calls and polymorphism is not honored.
+      #
+      # For example, []= is crucial in this implementation to maintain the @keys
+      # array but hash.c invokes rb_hash_aset() originally. This prevents method
+      # reuse through inheritance and forces us to reimplement stuff.
+      #
+      # For instance, we cannot use the inherited #merge! because albeit the algorithm
+      # itself would work, our []= is not being called at all by the C code.
+
       def initialize(*args, &block)
         super
         @keys = []
@@ -41,7 +96,7 @@ module ActiveSupport
       end
 
       def []=(key, value)
-        @keys << key if !has_key?(key)
+        @keys << key unless has_key?(key)
         super
       end
 
@@ -52,7 +107,7 @@ module ActiveSupport
         end
         super
       end
-      
+
       def delete_if
         super
         sync_keys!
@@ -86,18 +141,30 @@ module ActiveSupport
       end
 
       def each_key
+        return to_enum(:each_key) unless block_given?
         @keys.each { |key| yield key }
+        self
       end
 
       def each_value
+        return to_enum(:each_value) unless block_given?
         @keys.each { |key| yield self[key]}
+        self
       end
 
       def each
+        return to_enum(:each) unless block_given?
         @keys.each {|key| yield [key, self[key]]}
+        self
       end
 
-      alias_method :each_pair, :each
+      def each_pair
+        return to_enum(:each_pair) unless block_given?
+        @keys.each {|key| yield key, self[key]}
+        self
+      end
+
+      alias_method :select, :find_all
 
       def clear
         super
@@ -112,23 +179,39 @@ module ActiveSupport
       end
 
       def merge!(other_hash)
-        other_hash.each {|k,v| self[k] = v }
+        if block_given?
+          other_hash.each { |k, v| self[k] = key?(k) ? yield(k, self[k], v) : v }
+        else
+          other_hash.each { |k, v| self[k] = v }
+        end
         self
       end
 
-      def merge(other_hash)
-        dup.merge!(other_hash)
+      alias_method :update, :merge!
+
+      def merge(other_hash, &block)
+        dup.merge!(other_hash, &block)
+      end
+
+      # When replacing with another hash, the initial order of our keys must come from the other hash -ordered or not.
+      def replace(other)
+        super
+        @keys = other.keys
+        self
+      end
+
+      def invert
+        OrderedHash[self.to_a.map!{|key_value_pair| key_value_pair.reverse}]
       end
 
       def inspect
         "#<OrderedHash #{super}>"
       end
 
-    private
-
-      def sync_keys!
-        @keys.delete_if {|k| !has_key?(k)}
-      end
+      private
+        def sync_keys!
+          @keys.delete_if {|k| !has_key?(k)}
+        end
     end
   end
 end

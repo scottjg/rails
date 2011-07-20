@@ -1,5 +1,5 @@
 #--
-# Copyright (c) 2004-2009 David Heinemeier Hansson
+# Copyright (c) 2004-2011 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -21,6 +21,17 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
+activesupport_path = File.expand_path('../../../activesupport/lib', __FILE__)
+$:.unshift(activesupport_path) if File.directory?(activesupport_path) && !$:.include?(activesupport_path)
+
+activemodel_path = File.expand_path('../../../activemodel/lib', __FILE__)
+$:.unshift(activemodel_path) if File.directory?(activemodel_path) && !$:.include?(activemodel_path)
+
+require 'active_support'
+require 'active_support/dependencies/autoload'
+
+require 'action_pack'
+require 'active_model'
 require 'rack'
 
 module Rack
@@ -28,43 +39,60 @@ module Rack
 end
 
 module ActionDispatch
-  autoload :Request, 'action_dispatch/http/request'
-  autoload :Response, 'action_dispatch/http/response'
-  autoload :StatusCodes, 'action_dispatch/http/status_codes'
-  autoload :Utils, 'action_dispatch/http/utils'
+  extend ActiveSupport::Autoload
 
-  autoload :Callbacks, 'action_dispatch/middleware/callbacks'
+  autoload_under 'http' do
+    autoload :Request
+    autoload :Response
+  end
+
+  autoload_under 'middleware' do
+    autoload :BestStandardsSupport
+    autoload :Callbacks
+    autoload :Cookies
+    autoload :Flash
+    autoload :Head
+    autoload :ParamsParser
+    autoload :Reloader
+    autoload :RemoteIp
+    autoload :Rescue
+    autoload :ShowExceptions
+    autoload :Static
+  end
+
+  autoload :ClosedError, 'action_dispatch/middleware/closed_error'
   autoload :MiddlewareStack, 'action_dispatch/middleware/stack'
-  autoload :ParamsParser, 'action_dispatch/middleware/params_parser'
-  autoload :Rescue, 'action_dispatch/middleware/rescue'
-  autoload :ShowExceptions, 'action_dispatch/middleware/show_exceptions'
-  autoload :Static, 'action_dispatch/middleware/static'
-  autoload :StringCoercion, 'action_dispatch/middleware/string_coercion'
-
-  autoload :Routing, 'action_dispatch/routing'
-
-  autoload :Assertions, 'action_dispatch/testing/assertions'
-  autoload :Integration, 'action_dispatch/testing/integration'
-  autoload :IntegrationTest, 'action_dispatch/testing/integration'
-  autoload :PerformanceTest, 'action_dispatch/testing/performance_test'
-  autoload :TestRequest, 'action_dispatch/testing/test_request'
-  autoload :TestResponse, 'action_dispatch/testing/test_response'
-
-  autoload :HTML, 'action_controller/vendor/html-scanner'
+  autoload :Routing
 
   module Http
-    autoload :Headers, 'action_dispatch/http/headers'
+    extend ActiveSupport::Autoload
+
+    autoload :Cache
+    autoload :Headers
+    autoload :MimeNegotiation
+    autoload :Parameters
+    autoload :ParameterFilter
+    autoload :FilterParameters
+    autoload :Upload
+    autoload :UploadedFile, 'action_dispatch/http/upload'
+    autoload :URL
   end
 
   module Session
     autoload :AbstractStore, 'action_dispatch/middleware/session/abstract_store'
-    autoload :CookieStore, 'action_dispatch/middleware/session/cookie_store'
+    autoload :CookieStore,   'action_dispatch/middleware/session/cookie_store'
     autoload :MemCacheStore, 'action_dispatch/middleware/session/mem_cache_store'
+  end
+
+  autoload_under 'testing' do
+    autoload :Assertions
+    autoload :Integration
+    autoload :IntegrationTest, 'action_dispatch/testing/integration'
+    autoload :PerformanceTest
+    autoload :TestProcess
+    autoload :TestRequest
+    autoload :TestResponse
   end
 end
 
 autoload :Mime, 'action_dispatch/http/mime_type'
-
-activesupport_path = "#{File.dirname(__FILE__)}/../../activesupport/lib"
-$:.unshift activesupport_path if File.directory?(activesupport_path)
-require 'active_support'

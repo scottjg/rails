@@ -1,19 +1,15 @@
+require 'active_support/dependencies'
+
 module AbstractController
   module Helpers
     extend ActiveSupport::Concern
 
-    include RenderingController
-
-    def self.next_serial
-      @helper_serial ||= 0
-      @helper_serial += 1
-    end
-
     included do
-      extlib_inheritable_accessor(:_helpers) { Module.new }
-      extlib_inheritable_accessor(:_helper_serial) do
-        AbstractController::Helpers.next_serial
-      end
+      class_attribute :_helpers
+      self._helpers = Module.new
+
+      class_attribute :_helper_methods
+      self._helper_methods = Array.new
     end
 
     module ClassMethods
@@ -23,7 +19,7 @@ module AbstractController
       def inherited(klass)
         helpers = _helpers
         klass._helpers = Module.new { include helpers }
-
+        klass.class_eval { default_helper_module! unless anonymous? }
         super
       end
 
@@ -45,10 +41,13 @@ module AbstractController
       #  <% if logged_in? -%>Welcome, <%= current_user.name %><% end -%>
       #
       # ==== Parameters
-      # meths<Array[#to_s]>:: The name of a method on the controller
+      # * <tt>method[, method]</tt> - A name or names of a method on the controller
       #   to be made available on the view.
       def helper_method(*meths)
-        meths.flatten.each do |meth|
+        meths.flatten!
+        self._helper_methods += meths
+
+        meths.each do |meth|
           _helpers.class_eval <<-ruby_eval, __FILE__, __LINE__ + 1
             def #{meth}(*args, &blk)
               controller.send(%(#{meth}), *args, &blk)
@@ -57,24 +56,90 @@ module AbstractController
         end
       end
 
-      # Make a number of helper modules part of this class' default
-      # helpers.
+      # The +helper+ class method can take a series of helper module names, a block, or both.
       #
       # ==== Parameters
-      # *args<Array[Module]>:: Modules to be included
-      # block<Block>:: Evalulate the block in the context
-      #   of the helper module. Any methods defined in the block
-      #   will be helpers.
+      # * <tt>*args</tt> - Module, Symbol, String, :all
+      # * <tt>block</tt> - A block defining helper methods
+      #
+      # ==== Examples
+      # When the argument is a module it will be included directly in the template class.
+      #   helper FooHelper # => includes FooHelper
+      #
+      # When the argument is a string or symbol, the method will provide the "_helper" suffix, require the file
+      # and include the module in the template class. The second form illustrates how to include custom helpers
+      # when working with namespaced controllers, or other cases where the file containing the helper definition is not
+      # in one of Rails' standard load paths:
+      #   helper :foo             # => requires 'foo_helper' and includes FooHelper
+      #   helper 'resources/foo'  # => requires 'resources/foo_helper' and includes Resources::FooHelper
+      #
+      # Additionally, the +helper+ class method can receive and evaluate a block, making the methods defined available
+      # to the template.
+      #
+      #   # One line
+      #   helper { def hello() "Hello, world!" end }
+      #
+      #   # Multi-line
+      #   helper do
+      #     def foo(bar)
+      #       "#{bar} is the very best"
+      #     end
+      #   end
+      #
+      # Finally, all the above styles can be mixed together, and the +helper+ method can be invoked with a mix of
+      # +symbols+, +strings+, +modules+ and blocks.
+      #
+      #   helper(:three, BlindHelper) { def mice() 'mice' end }
+      #
       def helper(*args, &block)
-        self._helper_serial = AbstractController::Helpers.next_serial + 1
+        modules_for_helpers(args).each do |mod|
+          add_template_helper(mod)
+        end
 
-        args.flatten.each do |arg|
+        _helpers.module_eval(&block) if block_given?
+      end
+
+      # Clears up all existing helpers in this class, only keeping the helper
+      # with the same name as this class.
+      def clear_helpers
+        inherited_helper_methods = _helper_methods
+        self._helpers = Module.new
+        self._helper_methods = Array.new
+
+        inherited_helper_methods.each { |meth| helper_method meth }
+        default_helper_module! unless anonymous?
+      end
+
+      # Returns a list of modules, normalized from the acceptable kinds of
+      # helpers with the following behavior:
+      #
+      # String or Symbol:: :FooBar or "FooBar" becomes "foo_bar_helper",
+      #   and "foo_bar_helper.rb" is loaded using require_dependency.
+      #
+      # Module:: No further processing
+      #
+      # After loading the appropriate files, the corresponding modules
+      # are returned.
+      #
+      # ==== Parameters
+      # * <tt>args</tt> - An array of helpers
+      #
+      # ==== Returns
+      # * <tt>Array</tt> - A normalized list of modules for the list of
+      #   helpers provided.
+      def modules_for_helpers(args)
+        args.flatten.map! do |arg|
           case arg
+          when String, Symbol
+            file_name = "#{arg.to_s.underscore}_helper"
+            require_dependency(file_name, "Missing helper file helpers/%s.rb")
+            file_name.camelize.constantize
           when Module
-            add_template_helper(arg)
+            arg
+          else
+            raise ArgumentError, "helper must be a String, Symbol, or Module"
           end
         end
-        _helpers.module_eval(&block) if block_given?
       end
 
       private
@@ -82,10 +147,20 @@ module AbstractController
       # rendered through this controller.
       #
       # ==== Parameters
-      # mod<Module>:: The module to include into the current helper module
+      # * <tt>module</tt> - The module to include into the current helper module
       #   for the class
       def add_template_helper(mod)
         _helpers.module_eval { include mod }
+      end
+
+      def default_helper_module!
+        module_name = name.sub(/Controller$/, '')
+        module_path = module_name.underscore
+        helper module_path
+      rescue MissingSourceFile => e
+        raise e unless e.is_missing? "helpers/#{module_path}_helper"
+      rescue NameError => e
+        raise e unless e.missing_name? "#{module_name}Helper"
       end
     end
   end

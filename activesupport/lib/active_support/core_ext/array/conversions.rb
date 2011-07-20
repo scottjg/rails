@@ -1,6 +1,7 @@
+require 'active_support/xml_mini'
 require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/hash/reverse_merge'
-require 'active_support/inflector'
+require 'active_support/core_ext/string/inflections'
 
 class Array
   # Converts the array to a comma-separated sentence where the last element is joined by the connector word. Options:
@@ -8,21 +9,14 @@ class Array
   # * <tt>:two_words_connector</tt> - The sign or word used to join the elements in arrays with two elements (default: " and ")
   # * <tt>:last_word_connector</tt> - The sign or word used to join the last element in arrays with three or more elements (default: ", and ")
   def to_sentence(options = {})
-    default_words_connector     = I18n.translate(:'support.array.words_connector',     :locale => options[:locale])
-    default_two_words_connector = I18n.translate(:'support.array.two_words_connector', :locale => options[:locale])
-    default_last_word_connector = I18n.translate(:'support.array.last_word_connector', :locale => options[:locale])
-
-    # Try to emulate to_sentences previous to 2.3
-    if options.has_key?(:connector) || options.has_key?(:skip_last_comma)
-      ::ActiveSupport::Deprecation.warn(":connector has been deprecated. Use :words_connector instead", caller) if options.has_key? :connector
-      ::ActiveSupport::Deprecation.warn(":skip_last_comma has been deprecated. Use :last_word_connector instead", caller) if options.has_key? :skip_last_comma
-
-      skip_last_comma = options.delete :skip_last_comma
-      if connector = options.delete(:connector)
-        options[:last_word_connector] ||= skip_last_comma ? connector : ", #{connector}"
-      else
-        options[:last_word_connector] ||= skip_last_comma ? default_two_words_connector : default_last_word_connector
-      end
+    if defined?(I18n)
+      default_words_connector     = I18n.translate(:'support.array.words_connector',     :locale => options[:locale])
+      default_two_words_connector = I18n.translate(:'support.array.two_words_connector', :locale => options[:locale])
+      default_last_word_connector = I18n.translate(:'support.array.last_word_connector', :locale => options[:locale])
+    else
+      default_words_connector     = ", "
+      default_two_words_connector = " and "
+      default_last_word_connector = ", and "
     end
 
     options.assert_valid_keys(:words_connector, :two_words_connector, :last_word_connector, :locale)
@@ -32,7 +26,7 @@ class Array
       when 0
         ""
       when 1
-        self[0].to_s
+        self[0].to_s.dup
       when 2
         "#{self[0]}#{options[:two_words_connector]}#{self[1]}"
       else
@@ -40,31 +34,15 @@ class Array
     end
   end
 
-
-  # Calls <tt>to_param</tt> on all its elements and joins the result with
-  # slashes. This is used by <tt>url_for</tt> in Action Pack.
-  def to_param
-    collect { |e| e.to_param }.join '/'
-  end
-
-  # Converts an array into a string suitable for use as a URL query string,
-  # using the given +key+ as the param name.
-  #
-  #   ['Rails', 'coding'].to_query('hobbies') # => "hobbies%5B%5D=Rails&hobbies%5B%5D=coding"
-  def to_query(key)
-    prefix = "#{key}[]"
-    collect { |value| value.to_query(prefix) }.join '&'
-  end
-
   # Converts a collection of elements into a formatted string by calling
   # <tt>to_s</tt> on all elements and joining them:
   #
-  #   Blog.find(:all).to_formatted_s # => "First PostSecond PostThird Post"
+  #   Blog.all.to_formatted_s # => "First PostSecond PostThird Post"
   #
   # Adding in the <tt>:db</tt> argument as the format yields a prettier
   # output:
   #
-  #   Blog.find(:all).to_formatted_s(:db) # => "First Post,Second Post,Third Post"
+  #   Blog.all.to_formatted_s(:db) # => "First Post,Second Post,Third Post"
   def to_formatted_s(format = :default)
     case format
       when :db
@@ -80,12 +58,12 @@ class Array
   alias_method :to_default_s, :to_s
   alias_method :to_s, :to_formatted_s
 
-  # Returns a string that represents this array in XML by sending +to_xml+
-  # to each element. Active Record collections delegate their representation
+  # Returns a string that represents the array in XML by invoking +to_xml+
+  # on each element. Active Record collections delegate their representation
   # in XML to this method.
   #
   # All elements are expected to respond to +to_xml+, if any of them does
-  # not an exception is raised.
+  # not then an exception is raised.
   #
   # The root node reflects the class name of the first element in plural
   # if all elements belong to the same type and that's not Hash:
@@ -137,8 +115,8 @@ class Array
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <projects type="array"/>
   #
-  # By default root children have as node name the one of the root
-  # singularized. You can change it with the <tt>:children</tt> option.
+  # By default name of the node for the children of root is <tt>root.singularize</tt>.
+  # You can change it with the <tt>:children</tt> option.
   #
   # The +options+ hash is passed downwards:
   #
@@ -156,34 +134,31 @@ class Array
   #   </messages>
   #
   def to_xml(options = {})
-    raise "Not all elements respond to to_xml" unless all? { |e| e.respond_to? :to_xml }
-    require 'builder' unless defined?(Builder)
+    require 'active_support/builder' unless defined?(Builder)
 
     options = options.dup
-    options[:root]     ||= all? { |e| e.is_a?(first.class) && first.class.to_s != "Hash" } ? ActiveSupport::Inflector.pluralize(ActiveSupport::Inflector.underscore(first.class.name)) : "records"
-    options[:children] ||= options[:root].singularize
-    options[:indent]   ||= 2
-    options[:builder]  ||= Builder::XmlMarkup.new(:indent => options[:indent])
-
-    root     = options.delete(:root).to_s
-    children = options.delete(:children)
-
-    if !options.has_key?(:dasherize) || options[:dasherize]
-      root = root.dasherize
+    options[:indent]  ||= 2
+    options[:builder] ||= Builder::XmlMarkup.new(:indent => options[:indent])
+    options[:root]    ||= if first.class.to_s != "Hash" && all? { |e| e.is_a?(first.class) }
+      underscored = ActiveSupport::Inflector.underscore(first.class.name)
+      ActiveSupport::Inflector.pluralize(underscored).tr('/', '_')
+    else
+      "objects"
     end
 
-    options[:builder].instruct! unless options.delete(:skip_instruct)
+    builder = options[:builder]
+    builder.instruct! unless options.delete(:skip_instruct)
 
-    opts = options.merge({ :root => children })
+    root = ActiveSupport::XmlMini.rename_key(options[:root].to_s, options)
+    children = options.delete(:children) || root.singularize
 
-    xml = options[:builder]
-    if empty?
-      xml.tag!(root, options[:skip_types] ? {} : {:type => "array"})
-    else
-      xml.tag!(root, options[:skip_types] ? {} : {:type => "array"}) {
-        yield xml if block_given?
-        each { |e| e.to_xml(opts.merge({ :skip_instruct => true })) }
-      }
+    attributes = options[:skip_types] ? {} : {:type => "array"}
+    return builder.tag!(root, attributes) if empty?
+
+    builder.__send__(:method_missing, root, attributes) do
+      each { |value| ActiveSupport::XmlMini.to_tag(children, value, options) }
+      yield builder if block_given?
     end
   end
+
 end

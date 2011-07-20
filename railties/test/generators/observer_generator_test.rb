@@ -1,8 +1,9 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/observer/observer_generator'
 
-class ObserverGeneratorTest < GeneratorsTestCase
+class ObserverGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  arguments %w(account)
 
   def test_invokes_default_orm
     run_generator
@@ -21,13 +22,6 @@ class ObserverGeneratorTest < GeneratorsTestCase
 
   def test_logs_if_the_test_framework_cannot_be_found
     content = run_generator ["account", "--test-framework=rspec"]
-    assert_match /rspec \[not found\]/, content
+    assert_match(/rspec \[not found\]/, content)
   end
-
-  protected
-
-    def run_generator(args=["account"])
-      silence(:stdout) { Rails::Generators::ObserverGenerator.start args }
-    end
-
 end

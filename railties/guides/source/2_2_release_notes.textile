@@ -18,7 +18,7 @@ Rails 2.2 supplies an easy system for internationalization (or i18n, for those o
 * More information :
 ** "Official Rails i18 website":http://rails-i18n.org
 ** "Finally. Ruby on Rails gets internationalized":http://www.artweb-design.de/2008/7/18/finally-ruby-on-rails-gets-internationalized
-** "Localizing Rails : Demo application":http://i18n-demo.phusion.nl
+** "Localizing Rails : Demo application":http://github.com/clemens/i18n_demo_app
 
 h4. Compatibility with Ruby 1.9 and JRuby
 
@@ -28,20 +28,20 @@ h3. Documentation
 
 The internal documentation of Rails, in the form of code comments, has been improved in numerous places. In addition, the "Ruby on Rails Guides":http://guides.rubyonrails.org/ project is the definitive source for information on major Rails components. In its first official release, the Guides page includes:
 
-* "Getting Started with Rails":http://guides.rubyonrails.org/getting_started_with_rails.html
+* "Getting Started with Rails":http://guides.rubyonrails.org/getting_started.html
 * "Rails Database Migrations":http://guides.rubyonrails.org/migrations.html
 * "Active Record Associations":http://guides.rubyonrails.org/association_basics.html
-* "Active Record Finders":http://guides.rubyonrails.org/finders.html
+* "Active Record Query Interface":http://guides.rubyonrails.org/active_record_querying.html
 * "Layouts and Rendering in Rails":http://guides.rubyonrails.org/layouts_and_rendering.html
 * "Action View Form Helpers":http://guides.rubyonrails.org/form_helpers.html
-* "Rails Routing from the Outside In":http://guides.rubyonrails.org/routing_outside_in.html
-* "Basics of Action Controller":http://guides.rubyonrails.org/actioncontroller_basics.html
+* "Rails Routing from the Outside In":http://guides.rubyonrails.org/routing.html
+* "Action Controller Overview":http://guides.rubyonrails.org/action_controller_overview.html
 * "Rails Caching":http://guides.rubyonrails.org/caching_with_rails.html
-* "Testing Rails Applications":http://guides.rubyonrails.org/testing_rails_applications.html
+* "A Guide to Testing Rails Applications":http://guides.rubyonrails.org/testing.html
 * "Securing Rails Applications":http://guides.rubyonrails.org/security.html
 * "Debugging Rails Applications":http://guides.rubyonrails.org/debugging_rails_applications.html
-* "Benchmarking and Profiling Rails Applications":http://guides.rubyonrails.org/benchmarking_and_profiling.html
-* "The Basics of Creating Rails Plugins":http://guides.rubyonrails.org/creating_plugins.html
+* "Performance Testing Rails Applications":http://guides.rubyonrails.org/performance_testing.html
+* "The Basics of Creating Rails Plugins":http://guides.rubyonrails.org/plugins.html
 
 All told, the Guides provide tens of thousands of words of guidance for beginning and intermediate Rails developers.
 
@@ -53,7 +53,7 @@ rake doc:guides
 
 This will put the guides inside +Rails.root/doc/guides+ and you may start surfing straight away by opening +Rails.root/doc/guides/index.html+ in your favourite browser.
 
-* Lead Contributors: "Rails Documentation Team":http://guides.rails.info/credits.html
+* Lead Contributors: "Rails Documentation Team":credits.html
 * Major contributions from "Xavier Noria":http://advogato.org/person/fxn/diary.html and "Hongli Lai":http://izumi.plan99.net/blog/.
 * More information:
 ** "Rails Guides hackfest":http://hackfest.rubyonrails.org/guide
@@ -229,7 +229,7 @@ This will enable recognition of (among others) these routes:
 
 * Lead Contributor: "S. Brent Faulkner":http://www.unwwwired.net/
 * More information:
-** "Rails Routing from the Outside In":http://guides.rails.info/routing/routing_outside_in.html#_nested_resources
+** "Rails Routing from the Outside In":http://guides.rubyonrails.org/routing.html#_nested_resources
 ** "What's New in Edge Rails: Shallow Routes":http://ryandaigle.com/articles/2008/9/7/what-s-new-in-edge-rails-shallow-routes
 
 h4. Method Arrays for Member or Collection Routes
@@ -260,15 +260,15 @@ h4. Other Action Controller Changes
 * Benchmarking numbers are now reported in milliseconds rather than tiny fractions of seconds
 * Rails now supports HTTP-only cookies (and uses them for sessions), which help mitigate some cross-site scripting risks in newer browsers.
 * +redirect_to+ now fully supports URI schemes (so, for example, you can redirect to a svn+ssh: URI).
-* +render+ now supports a +:js+ option to render plain vanilla javascript with the right mime type.
+* +render+ now supports a +:js+ option to render plain vanilla JavaScript with the right mime type.
 * Request forgery protection has been tightened up to apply to HTML-formatted content requests only.
 * Polymorphic URLs behave more sensibly if a passed parameter is nil. For example, calling +polymorphic_path([@project, @date, @area])+ with a nil date will give you +project_area_path+.
 
 h3. Action View
 
 * +javascript_include_tag+ and +stylesheet_link_tag+ support a new +:recursive+ option to be used along with +:all+, so that you can load an entire tree of files with a single line of code.
-* The included Prototype javascript library has been upgraded to version 1.6.0.3.
-* +RJS#page.reload+ to reload the browser's current location via javascript
+* The included Prototype JavaScript library has been upgraded to version 1.6.0.3.
+* +RJS#page.reload+ to reload the browser's current location via JavaScript
 * The +atom_feed+ helper now takes an +:instruct+ option to let you insert XML processing instructions.
 
 h3. Action Mailer
@@ -385,7 +385,7 @@ You can unpack or install a single gem by specifying +GEM=_gem_name_+ on the com
 h4. Other Railties Changes
 
 * If you're a fan of the "Thin":http://code.macournoyer.com/thin/ web server, you'll be happy to know that +script/server+ now supports Thin directly.
-* +script/plugin install <plugin> -r <revision>+ now works with git-based as well as svn-based plugins.
+* +script/plugin install &lt;plugin&gt; -r &lt;revision&gt;+ now works with git-based as well as svn-based plugins.
 * +script/console+ now supports a +--debugger+ option
 * Instructions for setting up a continuous integration server to build Rails itself are included in the Rails source
 * +rake notes:custom ANNOTATION=MYFLAG+ lets you list out custom annotations.

@@ -1,8 +1,8 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/session_migration/session_migration_generator'
 
-class SessionMigrationGeneratorTest < GeneratorsTestCase
+class SessionMigrationGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
 
   def test_session_migration_with_default_name
     run_generator
@@ -18,17 +18,10 @@ class SessionMigrationGeneratorTest < GeneratorsTestCase
     ActiveRecord::SessionStore::Session.table_name = "custom_table_name"
     run_generator
     assert_migration "db/migrate/add_sessions_table.rb" do |migration|
-      assert_match /class AddSessionsTable < ActiveRecord::Migration/, migration
-      assert_match /create_table :custom_table_name/, migration
+      assert_match(/class AddSessionsTable < ActiveRecord::Migration/, migration)
+      assert_match(/create_table :custom_table_name/, migration)
     end
   ensure
     ActiveRecord::SessionStore::Session.table_name = "sessions"
   end
-
-  protected
-
-    def run_generator(args=[])
-      silence(:stdout) { Rails::Generators::SessionMigrationGenerator.start args }
-    end
-
 end

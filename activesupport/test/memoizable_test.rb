@@ -2,7 +2,9 @@ require 'abstract_unit'
 
 class MemoizableTest < ActiveSupport::TestCase
   class Person
-    extend ActiveSupport::Memoizable
+    ActiveSupport::Deprecation.silence do
+      extend ActiveSupport::Memoizable
+    end
 
     attr_reader :name_calls, :age_calls, :is_developer_calls, :name_query_calls
 
@@ -36,6 +38,13 @@ class MemoizableTest < ActiveSupport::TestCase
 
     memoize :name, :age
 
+    protected
+
+    def memoize_protected_test
+      'protected'
+    end
+    memoize :memoize_protected_test
+
     private
 
     def is_developer?
@@ -58,7 +67,9 @@ class MemoizableTest < ActiveSupport::TestCase
   end
 
   module Rates
-    extend ActiveSupport::Memoizable
+    ActiveSupport::Deprecation.silence do
+      extend ActiveSupport::Memoizable
+    end
 
     attr_reader :sales_tax_calls
     def sales_tax(price)
@@ -70,7 +81,9 @@ class MemoizableTest < ActiveSupport::TestCase
   end
 
   class Calculator
-    extend ActiveSupport::Memoizable
+    ActiveSupport::Deprecation.silence do
+      extend ActiveSupport::Memoizable
+    end
     include Rates
 
     attr_reader :fib_calls
@@ -88,6 +101,15 @@ class MemoizableTest < ActiveSupport::TestCase
       end
     end
     memoize :fib
+
+    def add_or_subtract(i, j, add)
+      if add
+        i + j
+      else
+        i - j
+      end
+    end
+    memoize :add_or_subtract
 
     def counter
       @count ||= 0
@@ -134,7 +156,6 @@ class MemoizableTest < ActiveSupport::TestCase
   end
 
   def test_reloadable
-    counter = @calculator.counter
     assert_equal 1, @calculator.counter
     assert_equal 2, @calculator.counter(:reload)
     assert_equal 2, @calculator.counter
@@ -193,9 +214,16 @@ class MemoizableTest < ActiveSupport::TestCase
     assert_equal 13, @calculator.fib_calls
   end
 
+  def test_memoization_with_boolean_arg
+    assert_equal 4, @calculator.add_or_subtract(2, 2, true)
+    assert_equal 2, @calculator.add_or_subtract(4, 2, false)
+  end
+
   def test_object_memoization
     [Company.new, Company.new, Company.new].each do |company|
-      company.extend ActiveSupport::Memoizable
+      ActiveSupport::Deprecation.silence do
+        company.extend ActiveSupport::Memoizable
+      end
       company.memoize :name
 
       assert_equal "37signals", company.name
@@ -229,13 +257,24 @@ class MemoizableTest < ActiveSupport::TestCase
   def test_double_memoization
     assert_raise(RuntimeError) { Person.memoize :name }
     person = Person.new
-    person.extend ActiveSupport::Memoizable
+    ActiveSupport::Deprecation.silence do
+      person.extend ActiveSupport::Memoizable
+    end
     assert_raise(RuntimeError) { person.memoize :name }
 
     company = Company.new
-    company.extend ActiveSupport::Memoizable
+    ActiveSupport::Deprecation.silence do
+      company.extend ActiveSupport::Memoizable
+    end
     company.memoize :name
     assert_raise(RuntimeError) { company.memoize :name }
+  end
+
+  def test_protected_method_memoization
+    person = Person.new
+
+    assert_raise(NoMethodError) { person.memoize_protected_test }
+    assert_equal "protected", person.send(:memoize_protected_test)
   end
 
   def test_private_method_memoization

@@ -1,6 +1,5 @@
 require 'abstract_unit'
 require 'active_support/core_ext/array'
-require 'active_support/core_ext/symbol'
 require 'active_support/core_ext/enumerable'
 
 Payment = Struct.new(:price)
@@ -91,14 +90,8 @@ class EnumerableTests < Test::Unit::TestCase
     assert [ 1, 2, 2 ].many? {|x| x > 1 }
   end
 
-  def test_none
-    assert [].none?
-    assert [nil, false].none?
-    assert ![1].none?
-
-    assert [].none? {|x| x > 1 }
-    assert ![ 2 ].none? {|x| x > 1 }
-    assert ![ 1, 2 ].none? {|x| x > 1 }
-    assert [ 1, 1 ].none? {|x| x > 1 }
+  def test_exclude?
+    assert [ 1 ].exclude?(2)
+    assert ![ 1 ].exclude?(1)
   end
 end

@@ -1,4 +1,5 @@
 require "cases/helper"
+require 'active_support/core_ext/object/inclusion'
 require 'models/default'
 require 'models/entrant'
 
@@ -24,33 +25,33 @@ class DefaultTest < ActiveRecord::TestCase
       assert_instance_of Fixnum, default.positive_integer
       assert_equal 1, default.positive_integer
       assert_instance_of Fixnum, default.negative_integer
-      assert_equal -1, default.negative_integer
+      assert_equal(-1, default.negative_integer)
       assert_instance_of BigDecimal, default.decimal_number
       assert_equal BigDecimal.new("2.78"), default.decimal_number
     end
   end
-  
+
   if current_adapter?(:PostgreSQLAdapter)
     def test_multiline_default_text
       # older postgres versions represent the default with escapes ("\\012" for a newline)
-      assert ( "--- []\n\n" == Default.columns_hash['multiline_default'].default ||
+      assert( "--- []\n\n" == Default.columns_hash['multiline_default'].default ||
                "--- []\\012\\012" == Default.columns_hash['multiline_default'].default)
     end
   end
 end
 
-if current_adapter?(:MysqlAdapter)
+if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
   class DefaultsTestWithoutTransactionalFixtures < ActiveRecord::TestCase
     # ActiveRecord::Base#create! (and #save and other related methods) will
     # open a new transaction. When in transactional fixtures mode, this will
-    # cause ActiveRecord to create a new savepoint. However, since MySQL doesn't
+    # cause Active Record to create a new savepoint. However, since MySQL doesn't
     # support DDL transactions, creating a table will result in any created
     # savepoints to be automatically released. This in turn causes the savepoint
     # release code in AbstractAdapter#transaction to fail.
     #
     # We don't want that to happen, so we disable transactional fixtures here.
     self.use_transactional_fixtures = false
-    
+
     # MySQL 5 and higher is quirky with not null text/blob columns.
     # With MySQL Text/blob columns cannot have defaults. If the column is not
     # null MySQL will report that the column has a null default
@@ -67,8 +68,8 @@ if current_adapter?(:MysqlAdapter)
       assert_equal '', klass.columns_hash['non_null_blob'].default
       assert_equal '', klass.columns_hash['non_null_text'].default
 
-      assert_equal nil, klass.columns_hash['null_blob'].default
-      assert_equal nil, klass.columns_hash['null_text'].default
+      assert_nil klass.columns_hash['null_blob'].default
+      assert_nil klass.columns_hash['null_text'].default
 
       assert_nothing_raised do
         instance = klass.create!
@@ -80,7 +81,7 @@ if current_adapter?(:MysqlAdapter)
     ensure
       klass.connection.drop_table(klass.table_name) rescue nil
     end
-    
+
     # MySQL uses an implicit default 0 rather than NULL unless in strict mode.
     # We use an implicit NULL so schema.rb is compatible with other databases.
     def test_mysql_integer_not_null_defaults
@@ -94,7 +95,7 @@ if current_adapter?(:MysqlAdapter)
       assert_equal 0, klass.columns_hash['zero'].default
       assert !klass.columns_hash['zero'].null
       # 0 in MySQL 4, nil in 5.
-      assert [0, nil].include?(klass.columns_hash['omit'].default)
+      assert klass.columns_hash['omit'].default.in?([0, nil])
       assert !klass.columns_hash['omit'].null
 
       assert_raise(ActiveRecord::StatementInvalid) { klass.create! }

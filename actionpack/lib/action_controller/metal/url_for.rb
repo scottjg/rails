@@ -1,41 +1,47 @@
+# Includes +url_for+ into the host class. The class has to provide a +RouteSet+ by implementing 
+# the <tt>_routes</tt> method. Otherwise, an exception will be raised.
+#
+# In addition to <tt>AbstractController::UrlFor</tt>, this module accesses the HTTP layer to define 
+# url options like the +host+. In order to do so, this module requires the host class
+# to implement +env+ and +request+, which need to be a Rack-compatible.
+#
+# Example:
+#
+#   class RootUrl
+#     include ActionController::UrlFor
+#     include Rails.application.routes.url_helpers
+#
+#     delegate :env, :request, :to => :controller
+#
+#     def initialize(controller)
+#       @controller = controller
+#       @url        = root_path # named route from the application.
+#     end
+#   end
+# => 
 module ActionController
   module UrlFor
     extend ActiveSupport::Concern
 
-    include RackConvenience
+    include AbstractController::UrlFor
 
-    # Overwrite to implement a number of default options that all url_for-based methods will use. The default options should come in
-    # the form of a hash, just like the one you would use for url_for directly. Example:
-    #
-    #   def default_url_options(options)
-    #     { :project => @project.active? ? @project.url_name : "unknown" }
-    #   end
-    #
-    # As you can infer from the example, this is mostly useful for situations where you want to centralize dynamic decisions about the
-    # urls as they stem from the business domain. Please note that any individual url_for call can always override the defaults set
-    # by this method.
-    def default_url_options(options = nil)
-    end
+    def url_options
+      @_url_options ||= super.reverse_merge(
+        :host => request.host,
+        :port => request.optional_port,
+        :protocol => request.protocol,
+        :_path_segments => request.symbolized_path_parameters
+      ).freeze
 
-    def rewrite_options(options) #:nodoc:
-      if defaults = default_url_options(options)
-        defaults.merge(options)
+      if _routes.equal?(env["action_dispatch.routes"])
+        @_url_options.dup.tap do |options|
+          options[:script_name] = request.script_name.dup
+          options.freeze
+        end
       else
-        options
+        @_url_options
       end
     end
 
-    def url_for(options = {})
-      options ||= {}
-      case options
-        when String
-          options
-        when Hash
-          @url ||= UrlRewriter.new(request, params)
-          @url.rewrite(rewrite_options(options))
-        else
-          polymorphic_url(options)
-      end
-    end
   end
 end

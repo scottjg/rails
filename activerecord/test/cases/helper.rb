@@ -1,29 +1,27 @@
-root = File.expand_path('../../../..', __FILE__)
-begin
-  require "#{root}/vendor/gems/environment"
-rescue LoadError
-  $:.unshift("#{root}/activesupport/lib")
-  $:.unshift("#{root}/activerecord/lib")
-end
+require File.expand_path('../../../../load_paths', __FILE__)
 
 require 'config'
 
-require 'rubygems'
 require 'test/unit'
 require 'stringio'
+require 'mocha'
 
 require 'active_record'
-require 'active_record/test_case'
-require 'active_record/fixtures'
-require 'connection'
+require 'active_support/dependencies'
 
-begin
-  require 'ruby-debug'
-rescue LoadError
-end
+require 'support/config'
+require 'support/connection'
+
+# TODO: Move all these random hacks into the ARTest namespace and into the support/ dir
 
 # Show backtraces for deprecated behavior for quicker cleanup.
 ActiveSupport::Deprecation.debug = true
+
+# Enable Identity Map only when ENV['IM'] is set to "true"
+ActiveRecord::IdentityMap.enabled = (ENV['IM'] == "true")
+
+# Connect to the database
+ARTest.connect
 
 # Quote "type" if it's a reserved word for the current connection.
 QUOTED_TYPE = ActiveRecord::Base.connection.quote_column_name('type')
@@ -35,21 +33,53 @@ def current_adapter?(*types)
   end
 end
 
-ActiveRecord::Base.connection.class.class_eval do
-  IGNORED_SQL = [/^PRAGMA/, /^SELECT currval/, /^SELECT CAST/, /^SELECT @@IDENTITY/, /^SELECT @@ROWCOUNT/, /^SAVEPOINT/, /^ROLLBACK TO SAVEPOINT/, /^RELEASE SAVEPOINT/, /SHOW FIELDS/]
-
-  def execute_with_query_record(sql, name = nil, &block)
-    $queries_executed ||= []
-    $queries_executed << sql unless IGNORED_SQL.any? { |r| sql =~ r }
-    execute_without_query_record(sql, name, &block)
-  end
-
-  alias_method_chain :execute, :query_record
+def in_memory_db?
+  current_adapter?(:SQLiteAdapter) &&
+  ActiveRecord::Base.connection_pool.spec.config[:database] == ":memory:"
 end
 
-# Make with_scope public for tests
-class << ActiveRecord::Base
-  public :with_scope, :with_exclusive_scope
+def supports_savepoints?
+  ActiveRecord::Base.connection.supports_savepoints?
+end
+
+def with_env_tz(new_tz = 'US/Eastern')
+  old_tz, ENV['TZ'] = ENV['TZ'], new_tz
+  yield
+ensure
+  old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
+end
+
+def with_active_record_default_timezone(zone)
+  old_zone, ActiveRecord::Base.default_timezone = ActiveRecord::Base.default_timezone, zone
+  yield
+ensure
+  ActiveRecord::Base.default_timezone = old_zone
+end
+
+module ActiveRecord
+  class SQLCounter
+    cattr_accessor :ignored_sql
+    self.ignored_sql = [/^PRAGMA (?!(table_info))/, /^SELECT currval/, /^SELECT CAST/, /^SELECT @@IDENTITY/, /^SELECT @@ROWCOUNT/, /^SAVEPOINT/, /^ROLLBACK TO SAVEPOINT/, /^RELEASE SAVEPOINT/, /^SHOW max_identifier_length/, /^BEGIN/, /^COMMIT/]
+
+    # FIXME: this needs to be refactored so specific database can add their own
+    # ignored SQL.  This ignored SQL is for Oracle.
+    ignored_sql.concat [/^select .*nextval/i, /^SAVEPOINT/, /^ROLLBACK TO/, /^\s*select .* from all_triggers/im]
+
+    cattr_accessor :log
+    self.log = []
+
+    def call(name, start, finish, message_id, values)
+      sql = values[:sql]
+
+      # FIXME: this seems bad. we should probably have a better way to indicate
+      # the query was cached
+      unless 'CACHE' == values[:name]
+        self.class.log << sql unless self.class.ignored_sql.any? { |r| sql =~ r }
+      end
+    end
+  end
+
+  ActiveSupport::Notifications.subscribe('sql.active_record', SQLCounter.new)
 end
 
 unless ENV['FIXTURE_DEBUG']
@@ -62,24 +92,25 @@ unless ENV['FIXTURE_DEBUG']
   end
 end
 
+require "cases/validations_repair_helper"
 class ActiveSupport::TestCase
   include ActiveRecord::TestFixtures
-  include ActiveModel::ValidationsRepairHelper
+  include ActiveRecord::ValidationsRepairHelper
 
   self.fixture_path = FIXTURES_ROOT
   self.use_instantiated_fixtures  = false
   self.use_transactional_fixtures = true
 
   def create_fixtures(*table_names, &block)
-    Fixtures.create_fixtures(ActiveSupport::TestCase.fixture_path, table_names, {}, &block)
+    ActiveRecord::Fixtures.create_fixtures(ActiveSupport::TestCase.fixture_path, table_names, fixture_class_names, &block)
   end
 end
 
-# silence verbose schema loading
-original_stdout = $stdout
-$stdout = StringIO.new
+def load_schema
+  # silence verbose schema loading
+  original_stdout = $stdout
+  $stdout = StringIO.new
 
-begin
   adapter_name = ActiveRecord::Base.connection.adapter_name.downcase
   adapter_specific_schema_file = SCHEMA_ROOT + "/#{adapter_name}_specific_schema.rb"
 
@@ -90,4 +121,23 @@ begin
   end
 ensure
   $stdout = original_stdout
+end
+
+load_schema
+
+class << Time
+  unless method_defined? :now_before_time_travel
+    alias_method :now_before_time_travel, :now
+  end
+
+  def now
+    (@now ||= nil) || now_before_time_travel
+  end
+
+  def travel_to(time, &block)
+    @now = time
+    block.call
+  ensure
+    @now = nil
+  end
 end

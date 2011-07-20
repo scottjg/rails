@@ -1,3 +1,94 @@
+*Rails 3.1.0 (unreleased)*
+
+* No changes
+
+
+*Rails 3.0.7 (April 18, 2011)*
+
+* remove AM delegating register_observer and register_interceptor to Mail [Josh Kalderimis]
+
+
+*Rails 3.0.6 (April 5, 2011)
+
+* Don't allow i18n to change the minor version, version now set to ~> 0.5.0 [Santiago Pastorino]
+
+
+*Rails 3.0.5 (February 26, 2011)*
+
+* No changes.
+
+
+*Rails 3.0.4 (February 8, 2011)*
+
+* No changes.
+
+
+*Rails 3.0.3 (November 16, 2010)*
+
+* No changes.
+
+
+*Rails 3.0.2 (November 15, 2010)*
+
+* No changes
+
+
+*Rails 3.0.1 (October 15, 2010)*
+
+* No Changes, just a version bump.
+
+
+*Rails 3.0.0 (August 29, 2010)*
+
+* subject is automatically looked up on I18n using mailer_name and action_name as scope as in t(".subject") [JK]
+
+* Changed encoding behaviour of mail, so updated tests in actionmailer and bumped mail version to 2.2.1 [ML]
+
+* Added ability to pass Proc objects to the defaults hash [ML]
+
+* Removed all quoting.rb type files from ActionMailer and put Mail 2.2.0 in instead [ML]
+
+* Lot of updates to various test cases that now work better with the new Mail and so have different expectations
+
+* Added interceptors and observers from Mail [ML]
+
+    ActionMailer::Base.register_interceptor calls Mail.register_interceptor
+    ActionMailer::Base.register_observer calls Mail.register_observer
+
+* Mail::Part now no longer has nil as a default charset, it is always set to something, and defaults to UTF-8
+
+* Added explict setting of charset in set_fields! method to make sure Mail has the user defined default
+
+* Removed quoting.rb and refactored for Mail to take responsibility of all quoting and auto encoding requirements for the header.
+
+* Fixed several tests which had incorrect encoding.
+
+* Changed all utf-8 to UTF-8 for consistency
+
+* Whole new API added with tests.  See base.rb for full details.  Old API is deprecated.
+
+* The Mail::Message class has helped methods for all the field types that return 'common' defaults for the common use case, so to get the subject, mail.subject will give you a string, mail.date will give you a DateTime object, mail.from will give you an array of address specs (mikel@test.lindsaar.net) etc.  If you want to access the field object itself, call mail[:field_name] which will return the field object you want, which you can then chain, like mail[:from].formatted
+
+* Mail#content_type now returns the content_type field as a string. If you want the mime type of a mail, then you call Mail#mime_type (eg, text/plain), if you want the parameters of the content type field, you call Mail#content_type_parameters which gives you a hash, eg {'format' => 'flowed', 'charset' => 'utf-8'}
+
+* ActionMailer::Base :default_implicit_parts_order now is in the sequence of the order you want, no reversing of ordering takes place.  The default order now is text/plain, then text/enriched, then text/html and then any other part that is not one of these three.
+
+* Mail does not have "quoted_body", "quoted_subject" etc.  All of these are accessed via body.encoded, subject.encoded etc
+
+* Every object in a Mail object returns an object, never a string.  So Mail.body returns a Mail::Body class object, need to call #encoded or #decoded to get the string you want.
+* Mail::Message#set_content_type does not exist, it is simply Mail::Message#content_type
+
+* Every mail message gets a unique message_id unless you specify one, had to change all the tests that check for equality with expected.encoded == actual.encoded to first replace their message_ids with control values
+
+* Mail now has a proper concept of parts, remove the ActionMailer::Part and ActionMailer::PartContainer classes
+
+* Calling #encoded on any object returns it as a string ready to go into the output stream of an email, this means it includes the \r\n at the end of the lines and the object is pre-wrapped with \r\n\t if it is a header field.  Also, the "encoded" value includes the field name if it is a header field.
+
+* Attachments are only the actual attachment, with filename etc.  A part contains an attachment.  The part has the content_type etc.  So attachments.last.content_type is invalid.  But parts.last.content_type
+
+* There is no idea of a "sub_head" in Mail.  A part is just a Message with some extra functionality, so it just has a "header" like a normal mail message
+
+
 *2.3.2 [Final] (March 15, 2009)*
 
 * Fixed that ActionMailer should send correctly formatted Return-Path in MAIL FROM for SMTP #1842 [Matt Jones]
@@ -116,7 +207,7 @@
 
 * ActionMailer::Base documentation rewrite. Closes #4991 [Kevin Clark, Marcel Molina Jr.]
 
-* Replace alias method chaining with Module#alias_method_chain. [Marcel Molina Jr.] 
+* Replace alias method chaining with Module#alias_method_chain. [Marcel Molina Jr.]
 
 * Replace Ruby's deprecated append_features in favor of included. [Marcel Molina Jr.]
 
@@ -262,7 +353,7 @@
 
 * Added that deliver_* will now return the email that was sent
 
-* Added that quoting to UTF-8 only happens if the characters used are in that range #955 [Jamis Buck] 
+* Added that quoting to UTF-8 only happens if the characters used are in that range #955 [Jamis Buck]
 
 * Fixed quoting for all address headers, not just to #955 [Jamis Buck]
 
@@ -301,7 +392,7 @@
       @body       = "Nothing to see here."
       @charset    = "iso-8859-1"
     end
-    
+
     def unencoded_subject(recipient)
       @recipients = recipient
       @subject    = "testing unencoded subject"
@@ -310,7 +401,7 @@
       @encode_subject = false
       @charset    = "iso-8859-1"
     end
-    
+
 
 *0.6.1* (January 18th, 2005)
 

@@ -1,11 +1,12 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/helper/helper_generator'
 
 ObjectHelper = Class.new
 AnotherObjectHelperTest = Class.new
 
-class HelperGeneratorTest < GeneratorsTestCase
+class HelperGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  arguments %w(admin)
 
   def test_helper_skeleton_is_created
     run_generator
@@ -19,17 +20,17 @@ class HelperGeneratorTest < GeneratorsTestCase
 
   def test_logs_if_the_test_framework_cannot_be_found
     content = run_generator ["admin", "--test-framework=rspec"]
-    assert_match /rspec \[not found\]/, content
+    assert_match(/rspec \[not found\]/, content)
   end
 
   def test_check_class_collision
     content = capture(:stderr){ run_generator ["object"] }
-    assert_match /The name 'ObjectHelper' is either already used in your application or reserved/, content
+    assert_match(/The name 'ObjectHelper' is either already used in your application or reserved/, content)
   end
 
   def test_check_class_collision_on_tests
     content = capture(:stderr){ run_generator ["another_object"] }
-    assert_match /The name 'AnotherObjectHelperTest' is either already used in your application or reserved/, content
+    assert_match(/The name 'AnotherObjectHelperTest' is either already used in your application or reserved/, content)
   end
 
   def test_namespaced_and_not_namespaced_helpers
@@ -50,11 +51,4 @@ class HelperGeneratorTest < GeneratorsTestCase
       end
     end
   end
-
-  protected
-
-    def run_generator(args=["admin"])
-      silence(:stdout) { Rails::Generators::HelperGenerator.start args }
-    end
-
 end

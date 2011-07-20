@@ -1,6 +1,5 @@
+require 'abstract_unit'
 require 'test/unit'
-$:.unshift "#{File.dirname(__FILE__)}/../lib"
-require 'active_support'
 
 class GrandParent
   include ActiveSupport::Callbacks
@@ -56,6 +55,55 @@ class Child < GrandParent
   end
 end
 
+class EmptyParent
+  include ActiveSupport::Callbacks
+
+  def performed?
+    @performed ||= false
+  end
+
+  define_callbacks :dispatch
+
+  def perform!
+    @performed = true
+  end
+
+  def dispatch
+    run_callbacks :dispatch
+    self
+  end
+end
+
+class EmptyChild < EmptyParent
+  set_callback :dispatch, :before, :do_nothing
+
+  def do_nothing
+  end
+end
+
+class CountingParent
+  include ActiveSupport::Callbacks
+
+  attr_reader :count
+
+  define_callbacks :dispatch
+
+  def initialize
+    @count = 0
+  end
+
+  def count!
+    @count += 1
+  end
+
+  def dispatch
+    run_callbacks(:dispatch)
+    self
+  end
+end
+
+class CountingChild < CountingParent
+end
 
 class BasicCallbacksTest < Test::Unit::TestCase
   def setup
@@ -111,5 +159,21 @@ class InheritedCallbacksTest2 < Test::Unit::TestCase
 
   def test_crazy_mix_off
     assert_equal %w(before1 before2 update after2 after1), @update2.log
+  end
+end
+
+class DynamicInheritedCallbacks < Test::Unit::TestCase
+  def test_callbacks_looks_to_the_superclass_before_running
+    child = EmptyChild.new.dispatch
+    assert !child.performed?
+    EmptyParent.set_callback :dispatch, :before, :perform!
+    child = EmptyChild.new.dispatch
+    assert child.performed?
+  end
+
+  def test_callbacks_should_be_performed_once_in_child_class
+    CountingParent.set_callback(:dispatch, :before) { count! }
+    child = CountingChild.new.dispatch
+    assert_equal 1, child.count
   end
 end

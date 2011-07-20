@@ -1,8 +1,24 @@
+require 'rbconfig'
 module ActiveSupport
   module Testing
+    class RemoteError < StandardError
+
+      attr_reader :message, :backtrace
+
+      def initialize(exception)
+        @message = "caught #{exception.class.name}: #{exception.message}"
+        @backtrace = exception.backtrace
+      end
+    end
+
     class ProxyTestResult
       def initialize
         @calls = []
+      end
+
+      def add_error(e)
+        e = Test::Unit::Error.new(e.test_name, RemoteError.new(e.exception))
+        @calls << [:add_error, e]
       end
 
       def __replay__(result)
@@ -18,31 +34,60 @@ module ActiveSupport
 
     module Isolation
       def self.forking_env?
-        !ENV["NO_FORK"] && RUBY_PLATFORM !~ /mswin|mingw|java/
+        !ENV["NO_FORK"] && ((RbConfig::CONFIG['host_os'] !~ /mswin|mingw/) && (RUBY_PLATFORM !~ /java/))
       end
 
-      def run(result)
-        unless defined?(@@ran_class_setup)
+      def self.included(base)
+        if defined?(::MiniTest) && base < ::MiniTest::Unit::TestCase
+          base.send :include, MiniTest
+        elsif defined?(Test::Unit)
+          base.send :include, TestUnit
+        end
+      end
+
+      def _run_class_setup      # class setup method should only happen in parent
+        unless defined?(@@ran_class_setup) || ENV['ISOLATION_TEST']
           self.class.setup if self.class.respond_to?(:setup)
           @@ran_class_setup = true
         end
+      end
 
-        yield(Test::Unit::TestCase::STARTED, name)
+      module TestUnit
+        def run(result)
+          _run_class_setup
 
-        @_result = result
+          yield(Test::Unit::TestCase::STARTED, name)
 
-        serialized = run_in_isolation do |proxy|
-          begin
-            super(proxy) { }
-          rescue Exception => e
-            proxy.add_error(Test::Unit::Error.new(name, e))
+          @_result = result
+
+          serialized = run_in_isolation do |proxy|
+            begin
+              super(proxy) { }
+            rescue Exception => e
+              proxy.add_error(Test::Unit::Error.new(name, e))
+            end
           end
+
+          retval, proxy = Marshal.load(serialized)
+          proxy.__replay__(@_result)
+
+          yield(Test::Unit::TestCase::FINISHED, name)
+          retval
         end
+      end
 
-        proxy = Marshal.load(serialized)
-        proxy.__replay__(@_result)
+      module MiniTest
+        def run(runner)
+          _run_class_setup
 
-        yield(Test::Unit::TestCase::FINISHED, name)
+          serialized = run_in_isolation do |isolated_runner|
+            super(isolated_runner)
+          end
+
+          retval, proxy = Marshal.load(serialized)
+          proxy.__replay__(runner)
+          retval
+        end
       end
 
       module Forking
@@ -52,8 +97,8 @@ module ActiveSupport
           pid = fork do
             read.close
             proxy = ProxyTestResult.new
-            yield proxy
-            write.puts [Marshal.dump(proxy)].pack("m")
+            retval = yield proxy
+            write.puts [Marshal.dump([retval, proxy])].pack("m")
             exit!
           end
 
@@ -65,6 +110,8 @@ module ActiveSupport
       end
 
       module Subprocess
+        ORIG_ARGV = ARGV.dup unless defined?(ORIG_ARGV)
+
         # Crazy H4X to get this working in windows / jruby with
         # no forking.
         def run_in_isolation(&blk)
@@ -72,9 +119,9 @@ module ActiveSupport
 
           if ENV["ISOLATION_TEST"]
             proxy = ProxyTestResult.new
-            yield proxy
+            retval = yield proxy
             File.open(ENV["ISOLATION_OUTPUT"], "w") do |file|
-              file.puts [Marshal.dump(proxy)].pack("m")
+              file.puts [Marshal.dump([retval, proxy])].pack("m")
             end
             exit!
           else

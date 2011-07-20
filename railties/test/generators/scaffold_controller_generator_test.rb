@@ -1,4 +1,3 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/scaffold_controller/scaffold_controller_generator'
 
@@ -7,45 +6,47 @@ module Unknown
   end
 end
 
-class ScaffoldControllerGeneratorTest < GeneratorsTestCase
+class ScaffoldControllerGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  arguments %w(User name:string age:integer)
 
   def test_controller_skeleton_is_created
     run_generator
 
     assert_file "app/controllers/users_controller.rb" do |content|
-      assert_match /class UsersController < ApplicationController/, content
+      assert_match(/class UsersController < ApplicationController/, content)
 
-      assert_instance_method content, :index do |m|
-        assert_match /@users = User\.all/, m
+      assert_instance_method :index, content do |m|
+        assert_match(/@users = User\.all/, m)
       end
 
-      assert_instance_method content, :show do |m|
-        assert_match /@user = User\.find\(params\[:id\]\)/, m
+      assert_instance_method :show, content do |m|
+        assert_match(/@user = User\.find\(params\[:id\]\)/, m)
       end
 
-      assert_instance_method content, :new do |m|
-        assert_match /@user = User\.new/, m
+      assert_instance_method :new, content do |m|
+        assert_match(/@user = User\.new/, m)
       end
 
-      assert_instance_method content, :edit do |m|
-        assert_match /@user = User\.find\(params\[:id\]\)/, m
+      assert_instance_method :edit, content do |m|
+        assert_match(/@user = User\.find\(params\[:id\]\)/, m)
       end
 
-      assert_instance_method content, :create do |m|
-        assert_match /@user = User\.new\(params\[:user\]\)/, m
-        assert_match /@user\.save/, m
-        assert_match /@user\.errors/, m
+      assert_instance_method :create, content do |m|
+        assert_match(/@user = User\.new\(params\[:user\]\)/, m)
+        assert_match(/@user\.save/, m)
+        assert_match(/@user\.errors/, m)
       end
 
-      assert_instance_method content, :update do |m|
-        assert_match /@user = User\.find\(params\[:id\]\)/, m
-        assert_match /@user\.update_attributes\(params\[:user\]\)/, m
-        assert_match /@user\.errors/, m
+      assert_instance_method :update, content do |m|
+        assert_match(/@user = User\.find\(params\[:id\]\)/, m)
+        assert_match(/@user\.update_attributes\(params\[:user\]\)/, m)
+        assert_match(/@user\.errors/, m)
       end
 
-      assert_instance_method content, :destroy do |m|
-        assert_match /@user = User\.find\(params\[:id\]\)/, m
-        assert_match /@user\.destroy/, m
+      assert_instance_method :destroy, content do |m|
+        assert_match(/@user = User\.find\(params\[:id\]\)/, m)
+        assert_match(/@user\.destroy/, m)
       end
     end
   end
@@ -65,30 +66,16 @@ class ScaffoldControllerGeneratorTest < GeneratorsTestCase
       new
       show
     ).each { |view| assert_file "app/views/users/#{view}.html.erb" }
-    assert_file "app/views/layouts/users.html.erb"
+    assert_no_file "app/views/layouts/users.html.erb"
   end
 
   def test_functional_tests
     run_generator
 
     assert_file "test/functional/users_controller_test.rb" do |content|
-      assert_match /class UsersControllerTest < ActionController::TestCase/, content
-      assert_match /test "should get index"/, content
+      assert_match(/class UsersControllerTest < ActionController::TestCase/, content)
+      assert_match(/test "should get index"/, content)
     end
-  end
-
-  def test_generates_singleton_controller
-    run_generator ["User", "name:string", "age:integer", "--singleton"]
-
-    assert_file "app/controllers/users_controller.rb" do |content|
-      assert_no_match /def index/, content
-    end
-
-    assert_file "test/functional/users_controller_test.rb" do |content|
-      assert_no_match /test "should get index"/, content
-    end
-
-    assert_no_file "app/views/users/index.html.erb"
   end
 
   def test_skip_helper_if_required
@@ -106,10 +93,10 @@ class ScaffoldControllerGeneratorTest < GeneratorsTestCase
     run_generator ["User", "--orm=unknown"]
 
     assert_file "app/controllers/users_controller.rb" do |content|
-      assert_match /class UsersController < ApplicationController/, content
+      assert_match(/class UsersController < ApplicationController/, content)
 
-      assert_instance_method content, :index do |m|
-        assert_match /@users = User\.all/, m
+      assert_instance_method :index, content do |m|
+        assert_match(/@users = User\.all/, m)
       end
     end
   end
@@ -125,21 +112,32 @@ class ScaffoldControllerGeneratorTest < GeneratorsTestCase
     run_generator ["User", "--orm=unknown"]
 
     assert_file "app/controllers/users_controller.rb" do |content|
-      assert_match /class UsersController < ApplicationController/, content
+      assert_match(/class UsersController < ApplicationController/, content)
 
-      assert_instance_method content, :index do |m|
-        assert_match /@users = User\.find\(:all\)/, m
-        assert_no_match /@users = User\.all/, m
+      assert_instance_method :index, content do |m|
+        assert_match(/@users = User\.find\(:all\)/, m)
+        assert_no_match(/@users = User\.all/, m)
       end
     end
   ensure
     Unknown::Generators.send :remove_const, :ActiveModel
   end
 
-  protected
-
-    def run_generator(args=["User", "name:string", "age:integer"])
-      silence(:stdout) { Rails::Generators::ScaffoldControllerGenerator.start args }
+  def test_new_hash_style
+    run_generator
+    assert_file "app/controllers/users_controller.rb" do |content|
+      if RUBY_VERSION < "1.9"
+        assert_match(/\{ render :action => "new" \}/, content)
+      else
+        assert_match(/\{ render action: "new" \}/, content)
+      end
     end
+  end
 
+  def test_force_old_style_hash
+    run_generator ["User", "--old-style-hash"]
+    assert_file "app/controllers/users_controller.rb" do |content|
+      assert_match(/\{ render :action => "new" \}/, content)
+    end
+  end
 end

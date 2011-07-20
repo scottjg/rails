@@ -1,6 +1,6 @@
 require 'abstract_unit'
+require 'active_support/time'
 require 'active_support/core_ext/range'
-require 'active_support/core_ext/date/conversions'
 
 class RangeTest < Test::Unit::TestCase
   def test_to_s_from_dates
@@ -61,5 +61,17 @@ class RangeTest < Test::Unit::TestCase
     array = []
     (1..10).step(2) {|i| array << i }
     assert_equal [1,3,5,7,9], array
+  end
+
+  if RUBY_VERSION < '1.9'
+    def test_cover
+      assert((1..3).cover?(2))
+      assert !(1..3).cover?(4)
+    end
+  else
+    def test_cover_is_not_override
+      range = (1..3)
+      assert range.method(:include?) != range.method(:cover?)
+    end
   end
 end

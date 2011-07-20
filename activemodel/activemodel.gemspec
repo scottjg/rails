@@ -1,19 +1,23 @@
+version = File.read(File.expand_path('../../RAILS_VERSION', __FILE__)).strip
+
 Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
-  s.name = 'activemodel'
-  s.version = '3.0.pre'
-  s.summary = "A toolkit for building other modeling frameworks like ActiveRecord"
-  s.description = %q{Extracts common modeling concerns from ActiveRecord to share between similar frameworks like ActiveResource.}
+  s.platform    = Gem::Platform::RUBY
+  s.name        = 'activemodel'
+  s.version     = version
+  s.summary     = 'A toolkit for building modeling frameworks (part of Rails).'
+  s.description = 'A toolkit for building modeling frameworks like Active Record and Active Resource. Rich support for attributes, callbacks, validations, observers, serialization, internationalization, and testing.'
 
-  s.author = "David Heinemeier Hansson"
-  s.email = "david@loudthinking.com"
-  s.rubyforge_project = "activemodel"
-  s.homepage = "http://www.rubyonrails.org"
+  s.required_ruby_version = '>= 1.8.7'
 
-  s.has_rdoc = true
+  s.author            = 'David Heinemeier Hansson'
+  s.email             = 'david@loudthinking.com'
+  s.homepage          = 'http://www.rubyonrails.org'
 
-  s.add_dependency('activesupport', '= 3.0.pre')
-
+  s.files        = Dir['CHANGELOG', 'MIT-LICENSE', 'README.rdoc', 'lib/**/*']
   s.require_path = 'lib'
-  s.files = Dir["CHANGELOG", "MIT-LICENSE", "README", "lib/**/*"]
+
+  s.add_dependency('activesupport', version)
+  s.add_dependency('builder',       '~> 3.0.0')
+  s.add_dependency('i18n',          '~> 0.6')
+  s.add_dependency('bcrypt-ruby',   '~> 2.1.4')
 end

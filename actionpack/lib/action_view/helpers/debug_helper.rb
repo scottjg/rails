@@ -1,6 +1,8 @@
 module ActionView
+  # = Action View Debug Helper
+  #
+  # Provides a set of methods for making it easier to debug Rails objects.
   module Helpers
-    # Provides a set of methods for making it easier to debug Rails objects.
     module DebugHelper
       # Returns a YAML representation of +object+ wrapped with <pre> and </pre>.
       # If the object cannot be converted to YAML using +to_yaml+, +inspect+ will be called instead.
@@ -27,10 +29,10 @@ module ActionView
       def debug(object)
         begin
           Marshal::dump(object)
-          "<pre class='debug_dump'>#{h(object.to_yaml).gsub("  ", "&nbsp; ")}</pre>"
-        rescue Exception => e  # errors from Marshal or YAML
+          "<pre class='debug_dump'>#{h(object.to_yaml).gsub("  ", "&nbsp; ")}</pre>".html_safe
+        rescue Exception  # errors from Marshal or YAML
           # Object couldn't be dumped, perhaps because of singleton methods -- this is the fallback
-          "<code class='debug_dump'>#{h(object.inspect)}</code>"
+          "<code class='debug_dump'>#{h(object.inspect)}</code>".html_safe
         end
       end
     end

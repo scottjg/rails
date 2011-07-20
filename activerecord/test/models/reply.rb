@@ -1,20 +1,30 @@
 require 'models/topic'
 
 class Reply < Topic
-  named_scope :base
+  scope :base
 
   belongs_to :topic, :foreign_key => "parent_id", :counter_cache => true
   belongs_to :topic_with_primary_key, :class_name => "Topic", :primary_key => "title", :foreign_key => "parent_title", :counter_cache => "replies_count"
   has_many :replies, :class_name => "SillyReply", :dependent => :destroy, :foreign_key => "parent_id"
 
+  attr_accessible :title, :author_name, :author_email_address, :written_on, :content, :last_read, :parent_title
+end
+
+class UniqueReply < Reply
+  validates_uniqueness_of :content, :scope => 'parent_id'
+end
+
+class SillyUniqueReply < UniqueReply
+end
+
+class WrongReply < Reply
   validate :errors_on_empty_content
   validate :title_is_wrong_create, :on => :create
-
-  attr_accessible :title, :author_name, :author_email_address, :written_on, :content, :last_read, :parent_title
 
   validate :check_empty_title
   validate :check_content_mismatch, :on => :create
   validate :check_wrong_update, :on => :update
+  validate :check_author_name_is_secret, :on => :special_case
 
   def check_empty_title
     errors[:title] << "Empty" unless attribute_present?("title")
@@ -36,6 +46,10 @@ class Reply < Topic
 
   def check_wrong_update
     errors[:title] << "is Wrong Update" if attribute_present?("title") && title == "Wrong Update"
+  end
+
+  def check_author_name_is_secret
+    errors[:author_name] << "Invalid" unless author_name == "secret"
   end
 end
 

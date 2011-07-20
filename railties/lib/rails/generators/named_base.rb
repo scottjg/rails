@@ -1,3 +1,4 @@
+require 'active_support/core_ext/module/introspection'
 require 'rails/generators/base'
 require 'rails/generators/generated_attribute'
 
@@ -5,70 +6,157 @@ module Rails
   module Generators
     class NamedBase < Base
       argument :name, :type => :string
+      class_option :skip_namespace, :type => :boolean, :default => false,
+                                    :desc => "Skip namespace (affects only isolated applications)"
 
-      attr_reader :class_name, :singular_name, :plural_name, :table_name,
-                  :class_path, :file_path, :class_nesting_depth
+      class_option :old_style_hash, :type => :boolean, :default => false,
+                                    :desc => "Force using old style hash (:foo => 'bar') on Ruby >= 1.9"
 
-      alias :file_name :singular_name
-
-      def initialize(*args) #:nodoc:
+      def initialize(args, *options) #:nodoc:
+        @inside_template = nil
+        # Unfreeze name in case it's given as a frozen string
+        args[0] = args[0].dup if args[0].is_a?(String) && args[0].frozen?
         super
         assign_names!(self.name)
         parse_attributes! if respond_to?(:attributes)
       end
 
+      no_tasks do
+        def template(source, *args, &block)
+          inside_template do
+            super
+          end
+        end
+      end
+
       protected
+        attr_reader :file_name
+        alias :singular_name :file_name
 
-        def assign_names!(given_name) #:nodoc:
-          base_name, @class_path, @file_path, class_nesting, @class_nesting_depth = extract_modules(given_name)
-          class_name_without_nesting, @singular_name, @plural_name = inflect_names(base_name)
-
-          @table_name = if pluralize_table_names?
-            plural_name
-          else
-            singular_name
-          end
-
-          if class_nesting.empty?
-            @class_name = class_name_without_nesting
-          else
-            @table_name = class_nesting.underscore << "_" << @table_name
-            @class_name = "#{class_nesting}::#{class_name_without_nesting}"
-          end
-
-          @table_name.gsub!('/', '_')
+        # Wrap block with namespace of current application
+        # if namespace exists and is not skipped
+        def module_namespacing(&block)
+          content = capture(&block)
+          content = wrap_with_namespace(content) if namespaced?
+          concat(content)
         end
 
-        # Convert attributes hash into an array with GeneratedAttribute objects.
-        #
+        def indent(content, multiplier = 2)
+          spaces = " " * multiplier
+          content = content.each_line.map {|line| "#{spaces}#{line}" }.join
+        end
+
+        def wrap_with_namespace(content)
+          content = indent(content).chomp
+          "module #{namespace.name}\n#{content}\nend\n"
+        end
+
+        def inside_template
+          @inside_template = true
+          yield
+        ensure
+          @inside_template = false
+        end
+
+        def inside_template?
+          @inside_template
+        end
+
+        def namespace
+          Rails::Generators.namespace
+        end
+
+        def namespaced?
+          !options[:skip_namespace] && namespace
+        end
+
+        def file_path
+          @file_path ||= (class_path + [file_name]).join('/')
+        end
+
+        def class_path
+          inside_template? || !namespaced? ? regular_class_path : namespaced_class_path
+        end
+
+        def regular_class_path
+          @class_path
+        end
+
+        def namespaced_class_path
+          @namespaced_class_path ||= begin
+            namespace_path = namespace.name.split("::").map {|m| m.underscore }
+            namespace_path + @class_path
+          end
+        end
+
+        def class_name
+          (class_path + [file_name]).map!{ |m| m.camelize }.join('::')
+        end
+
+        def human_name
+          @human_name ||= singular_name.humanize
+        end
+
+        def plural_name
+          @plural_name ||= singular_name.pluralize
+        end
+
+        def i18n_scope
+          @i18n_scope ||= file_path.gsub('/', '.')
+        end
+
+        def table_name
+          @table_name ||= begin
+            base = pluralize_table_names? ? plural_name : singular_name
+            (class_path + [base]).join('_')
+          end
+        end
+
+        def uncountable?
+          singular_name == plural_name
+        end
+
+        def index_helper
+          uncountable? ? "#{plural_table_name}_index" : plural_table_name
+        end
+
+        def singular_table_name
+          @singular_table_name ||= (pluralize_table_names? ? table_name.singularize : table_name)
+        end
+
+        def plural_table_name
+          @plural_table_name ||= (pluralize_table_names? ? table_name : table_name.pluralize)
+        end
+
+        def plural_file_name
+          @plural_file_name ||= file_name.pluralize
+        end
+
+        def route_url
+          @route_url ||= class_path.collect{|dname| "/" + dname  }.join('') + "/" + plural_file_name
+        end
+
+        # Tries to retrieve the application name or simple return application.
+        def application_name
+          if defined?(Rails) && Rails.application
+            Rails.application.class.name.split('::').first.underscore
+          else
+            "application"
+          end
+        end
+
+        def assign_names!(name) #:nodoc:
+          @class_path = name.include?('/') ? name.split('/') : name.split('::')
+          @class_path.map! { |m| m.underscore }
+          @file_name = @class_path.pop
+        end
+
+        # Convert attributes array into GeneratedAttribute objects.
         def parse_attributes! #:nodoc:
           self.attributes = (attributes || []).map do |key_value|
             name, type = key_value.split(':')
             Rails::Generators::GeneratedAttribute.new(name, type)
           end
-        end
-
-        # Extract modules from filesystem-style or ruby-style path. Both
-        # good/fun/stuff and Good::Fun::Stuff produce the same results.
-        #
-        def extract_modules(name) #:nodoc:
-          modules = name.include?('/') ? name.split('/') : name.split('::')
-          name    = modules.pop
-          path    = modules.map { |m| m.underscore }
-
-          file_path = (path + [name.underscore]).join('/')
-          nesting   = modules.map { |m| m.camelize }.join('::')
-
-          [name, path, file_path, nesting, modules.size]
-        end
-
-        # Receives name and return camelized, underscored and pluralized names.
-        #
-        def inflect_names(name) #:nodoc:
-          camel  = name.camelize
-          under  = camel.underscore
-          plural = under.pluralize
-          [camel, under, plural]
         end
 
         def pluralize_table_names?
@@ -94,6 +182,16 @@ module Rails
             end
 
             class_collisions "#{options[:prefix]}#{name}#{options[:suffix]}"
+          end
+        end
+
+        # Returns Ruby 1.9 style key-value pair if current code is running on
+        # Ruby 1.9.x. Returns the old-style (with hash rocket) otherwise.
+        def key_value(key, value)
+          if options[:old_style_hash] || RUBY_VERSION < '1.9'
+            ":#{key} => #{value}"
+          else
+            "#{key}: #{value}"
           end
         end
     end

@@ -1,4 +1,6 @@
 require 'active_support/core_ext/benchmark'
+require 'active_support/core_ext/uri'
+require 'active_support/core_ext/object/inclusion'
 require 'net/https'
 require 'date'
 require 'time'
@@ -28,7 +30,7 @@ module ActiveResource
 
     # The +site+ parameter is required and will set the +site+
     # attribute to the URI for the remote resource service.
-    def initialize(site, format = ActiveResource::Formats::XmlFormat)
+    def initialize(site, format = ActiveResource::Formats::JsonFormat)
       raise ArgumentError, 'Missing site URI' unless site
       @user = @password = nil
       self.site = site
@@ -37,14 +39,14 @@ module ActiveResource
 
     # Set URI for remote service.
     def site=(site)
-      @site = site.is_a?(URI) ? site : URI.parse(site)
-      @user = URI.decode(@site.user) if @site.user
-      @password = URI.decode(@site.password) if @site.password
+      @site = site.is_a?(URI) ? site : URI.parser.parse(site)
+      @user = URI.parser.unescape(@site.user) if @site.user
+      @password = URI.parser.unescape(@site.password) if @site.password
     end
 
     # Set the proxy for remote service.
     def proxy=(proxy)
-      @proxy = proxy.is_a?(URI) ? proxy : URI.parse(proxy)
+      @proxy = proxy.is_a?(URI) ? proxy : URI.parser.parse(proxy)
     end
 
     # Sets the user for remote service.
@@ -75,7 +77,7 @@ module ActiveResource
     # Executes a GET request.
     # Used to get (find) resources.
     def get(path, headers = {})
-      with_auth { format.decode(request(:get, path, build_request_headers(headers, :get, self.site.merge(path))).body) }
+      with_auth { request(:get, path, build_request_headers(headers, :get, self.site.merge(path))) }
     end
 
     # Executes a DELETE request (see HTTP protocol documentation if unfamiliar).
@@ -102,14 +104,14 @@ module ActiveResource
       with_auth { request(:head, path, build_request_headers(headers, :head, self.site.merge(path))) }
     end
 
-
     private
       # Makes a request to the remote service.
       def request(method, path, *arguments)
-        logger.info "#{method.to_s.upcase} #{site.scheme}://#{site.host}:#{site.port}#{path}" if logger
-        result = nil
-        ms = Benchmark.ms { result = http.send(method, path, *arguments) }
-        logger.info "--> %d %s (%d %.0fms)" % [result.code, result.message, result.body ? result.body.length : 0, ms] if logger
+        result = ActiveSupport::Notifications.instrument("request.active_resource") do |payload|
+          payload[:method]      = method
+          payload[:request_uri] = "#{site.scheme}://#{site.host}:#{site.port}#{path}"
+          payload[:result]      = http.send(method, path, *arguments)
+        end
         handle_response(result)
       rescue Timeout::Error => e
         raise TimeoutError.new(e.message)
@@ -273,14 +275,10 @@ module ActiveResource
         {HTTP_FORMAT_HEADER_NAMES[http_method] => format.mime_type}
       end
 
-      def logger #:nodoc:
-        Base.logger
-      end
-
       def legitimize_auth_type(auth_type)
         return :basic if auth_type.nil?
         auth_type = auth_type.to_sym
-        [:basic, :digest].include?(auth_type) ? auth_type : :basic
+        auth_type.in?([:basic, :digest]) ? auth_type : :basic
       end
   end
 end

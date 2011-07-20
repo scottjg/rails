@@ -1,23 +1,30 @@
 class Topic < ActiveRecord::Base
-  named_scope :base
-  named_scope :written_before, lambda { |time|
+  scope :base
+  scope :written_before, lambda { |time|
     if time
       { :conditions => ['written_on < ?', time] }
     end
   }
-  named_scope :approved, :conditions => {:approved => true}
-  named_scope :rejected, :conditions => {:approved => false}
+  scope :approved, :conditions => {:approved => true}
+  scope :rejected, :conditions => {:approved => false}
 
-  named_scope :by_lifo, :conditions => {:author_name => 'lifo'}
-  
-  named_scope :approved_as_hash_condition, :conditions => {:topics => {:approved => true}}
-  named_scope 'approved_as_string', :conditions => {:approved => true}
-  named_scope :replied, :conditions => ['replies_count > 0']
-  named_scope :anonymous_extension do
+  scope :by_lifo, :conditions => {:author_name => 'lifo'}
+
+  scope :approved_as_hash_condition, :conditions => {:topics => {:approved => true}}
+  scope 'approved_as_string', :conditions => {:approved => true}
+  scope :replied, :conditions => ['replies_count > 0']
+  scope :anonymous_extension do
     def one
       1
     end
   end
+
+  scope :with_object, Class.new(Struct.new(:klass)) {
+    def call
+      klass.where(:approved => true)
+    end
+  }.new(self)
+
   module NamedExtension
     def two
       2
@@ -33,15 +40,25 @@ class Topic < ActiveRecord::Base
       2
     end
   end
-  named_scope :named_extension, :extend => NamedExtension
-  named_scope :multiple_extensions, :extend => [MultipleExtensionTwo, MultipleExtensionOne]
+  scope :named_extension, :extend => NamedExtension
+  scope :multiple_extensions, :extend => [MultipleExtensionTwo, MultipleExtensionOne]
 
   has_many :replies, :dependent => :destroy, :foreign_key => "parent_id"
   has_many :replies_with_primary_key, :class_name => "Reply", :dependent => :destroy, :primary_key => "title", :foreign_key => "parent_title"
+
+  has_many :unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :silly_unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+
   serialize :content
 
   before_create  :default_written_on
   before_destroy :destroy_children
+
+  # Explicitly define as :date column so that returned Oracle DATE values would be typecasted to Date and not Time.
+  # Some tests depend on assumption that this attribute will have Date values.
+  if current_adapter?(:OracleEnhancedAdapter)
+    set_date_columns :last_read
+  end
 
   def parent
     Topic.find(parent_id)
@@ -76,7 +93,7 @@ class Topic < ActiveRecord::Base
     end
 
     def set_email_address
-      if self.new_record?
+      unless self.persisted?
         self.author_email_address = 'test@test.com'
       end
     end

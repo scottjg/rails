@@ -4,13 +4,10 @@ require 'rails/initializable'
 module InitializableTests
 
   class Foo
-    extend Rails::Initializable
+    include Rails::Initializable
+    attr_accessor :foo, :bar
 
-    class << self
-      attr_accessor :foo, :bar
-    end
-
-    initializer :omg do
+    initializer :start do
       @foo ||= 0
       @foo += 1
     end
@@ -24,7 +21,7 @@ module InitializableTests
   end
 
   module Word
-    extend Rails::Initializable
+    include Rails::Initializable
 
     initializer :word do
       $word = "bird"
@@ -32,7 +29,7 @@ module InitializableTests
   end
 
   class Parent
-    extend Rails::Initializable
+    include Rails::Initializable
 
     initializer :one do
       $arr << 1
@@ -44,13 +41,13 @@ module InitializableTests
   end
 
   class Child < Parent
-    extend Rails::Initializable
+    include Rails::Initializable
 
     initializer :three, :before => :one do
       $arr << 3
     end
 
-    initializer :four, :after => :one do
+    initializer :four, :after => :one, :before => :two do
       $arr << 4
     end
   end
@@ -72,12 +69,85 @@ module InitializableTests
       $arr << 2
     end
 
-    initializer :three, :global => true do
+    initializer :three do
       $arr << 3
     end
 
-    initializer :four, :global => true do
+    initializer :four do
       $arr << 4
+    end
+  end
+
+  class WithArgs
+    include Rails::Initializable
+
+    initializer :foo do |arg|
+      $with_arg = arg
+    end
+  end
+
+  class OverriddenInitializer
+    class MoreInitializers
+      include Rails::Initializable
+
+      initializer :startup, :before => :last do
+        $arr << 3
+      end
+
+      initializer :terminate, :after => :first, :before => :startup do
+        $arr << two
+      end
+
+      def two
+        2
+      end
+    end
+
+    include Rails::Initializable
+
+    initializer :first do
+      $arr << 1
+    end
+
+    initializer :last do
+      $arr << 4
+    end
+
+    def self.initializers
+      super + MoreInitializers.new.initializers
+    end
+  end
+
+  module Interdependent
+    class PluginA
+      include Rails::Initializable
+
+      initializer "plugin_a.startup" do
+        $arr << 1
+      end
+
+      initializer "plugin_a.terminate" do
+        $arr << 4
+      end
+    end
+
+    class PluginB
+      include Rails::Initializable
+
+      initializer "plugin_b.startup", :after => "plugin_a.startup" do
+        $arr << 2
+      end
+
+      initializer "plugin_b.terminate", :before => "plugin_a.terminate" do
+        $arr << 3
+      end
+    end
+
+    class Application
+      include Rails::Initializable
+      def self.initializers
+        PluginB.initializers + PluginA.initializers
+      end
     end
   end
 
@@ -85,44 +155,52 @@ module InitializableTests
     include ActiveSupport::Testing::Isolation
 
     test "initializers run" do
-      Foo.run_initializers
-      assert_equal 1, Foo.foo
+      foo = Foo.new
+      foo.run_initializers
+      assert_equal 1, foo.foo
     end
 
     test "initializers are inherited" do
-      Bar.run_initializers
-      assert_equal [1, 1], [Bar.foo, Bar.bar]
+      bar = Bar.new
+      bar.run_initializers
+      assert_equal [1, 1], [bar.foo, bar.bar]
     end
 
     test "initializers only get run once" do
-      Foo.run_initializers
-      Foo.run_initializers
-      assert_equal 1, Foo.foo
+      foo = Foo.new
+      foo.run_initializers
+      foo.run_initializers
+      assert_equal 1, foo.foo
     end
 
-    test "running initializers on children does not effect the parent" do
-      Bar.run_initializers
-      assert_nil Foo.foo
-      assert_nil Foo.bar
-    end
+    test "creating initializer without a block raises an error" do
+      assert_raise(ArgumentError) do
+        Class.new do
+          include Rails::Initializable
 
-    test "initializing with modules" do
-      Word.run_initializers
-      assert_equal "bird", $word
+          initializer :foo
+        end
+      end
     end
   end
 
   class BeforeAfter < ActiveSupport::TestCase
     test "running on parent" do
       $arr = []
-      Parent.run_initializers
+      Parent.new.run_initializers
       assert_equal [5, 1, 2], $arr
     end
 
     test "running on child" do
       $arr = []
-      Child.run_initializers
+      Child.new.run_initializers
       assert_equal [5, 3, 1, 4, 2], $arr
+    end
+
+    test "handles dependencies introduced before all initializers are loaded" do
+      $arr = []
+      Interdependent::Application.new.run_initializers
+      assert_equal [1, 2, 3, 4], $arr
     end
   end
 
@@ -131,13 +209,23 @@ module InitializableTests
       $arr = []
       instance = Instance.new
       instance.run_initializers
-      assert_equal [1, 2], $arr
+      assert_equal [1, 2, 3, 4], $arr
     end
+  end
 
-    test "running globals" do
+  class WithArgsTest < ActiveSupport::TestCase
+    test "running initializers with args" do
+      $with_arg = nil
+      WithArgs.new.run_initializers('foo')
+      assert_equal 'foo', $with_arg
+    end
+  end
+
+  class OverriddenInitializerTest < ActiveSupport::TestCase
+    test "merges in the initializers from the parent in the right order" do
       $arr = []
-      Instance.run_initializers
-      assert_equal [3, 4], $arr
+      OverriddenInitializer.new.run_initializers
+      assert_equal [1, 2, 3, 4], $arr
     end
   end
 end

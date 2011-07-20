@@ -26,14 +26,10 @@ module Yz
   end
 end
 
-class De
-end
-
 Somewhere = Struct.new(:street, :city)
 
 Someone   = Struct.new(:name, :place) do
   delegate :street, :city, :to_f, :to => :place
-  delegate :state, :to => :@place
   delegate :upcase, :to => "place.city"
 end
 
@@ -47,6 +43,14 @@ Project   = Struct.new(:description, :person) do
   delegate :to_f, :to => :description, :allow_nil => true
 end
 
+Developer = Struct.new(:client) do
+  delegate :name, :to => :client, :prefix => nil
+end
+
+Tester = Struct.new(:client) do
+  delegate :name, :to => :client, :prefix => false
+end
+
 class Name
   delegate :upcase, :to => :@full_name
 
@@ -55,28 +59,9 @@ class Name
   end
 end
 
-$nowhere = <<-EOF
-class Name
-  delegate :nowhere
-end
-EOF
-
-$noplace = <<-EOF
-class Name
-  delegate :noplace, :tos => :hollywood
-end
-EOF
-
 class ModuleTest < Test::Unit::TestCase
   def setup
     @david = Someone.new("David", Somewhere.new("Paulina", "Chicago"))
-  end
-
-  def test_included_in_classes
-    assert One.included_in_classes.include?(Ab)
-    assert One.included_in_classes.include?(Xy::Bc)
-    assert One.included_in_classes.include?(Yz::Zy::Cd)
-    assert !One.included_in_classes.include?(De)
   end
 
   def test_delegation_to_methods
@@ -94,8 +79,12 @@ class ModuleTest < Test::Unit::TestCase
   end
 
   def test_missing_delegation_target
-    assert_raise(ArgumentError) { eval($nowhere) }
-    assert_raise(ArgumentError) { eval($noplace) }
+    assert_raise(ArgumentError) do
+      Name.send :delegate, :nowhere
+    end
+    assert_raise(ArgumentError) do
+      Name.send :delegate, :noplace, :tos => :hollywood
+    end
   end
 
   def test_delegation_prefix
@@ -110,6 +99,11 @@ class ModuleTest < Test::Unit::TestCase
     assert_equal invoice.customer_name, "David"
     assert_equal invoice.customer_street, "Paulina"
     assert_equal invoice.customer_city, "Chicago"
+  end
+
+  def test_delegation_prefix_with_nil_or_false
+    assert_equal Developer.new(@david).name, "David"
+    assert_equal Tester.new(@david).name, "David"
   end
 
   def test_delegation_prefix_with_instance_variable
@@ -156,6 +150,20 @@ class ModuleTest < Test::Unit::TestCase
     assert_equal 0.0, nil_project.to_f
   end
 
+  def test_delegation_does_not_raise_error_when_removing_singleton_instance_methods
+    parent = Class.new do
+      def self.parent_method; end
+    end
+
+    assert_nothing_raised do
+      Class.new(parent) do
+        class << self
+          delegate :parent_method, :to => :superclass
+        end
+      end
+    end
+  end
+
   def test_parent
     assert_equal Yz::Zy, Yz::Zy::Cd.parent
     assert_equal Yz, Yz::Zy.parent
@@ -169,11 +177,6 @@ class ModuleTest < Test::Unit::TestCase
 
   def test_local_constants
     assert_equal %w(Constant1 Constant3), Ab.local_constants.sort.map(&:to_s)
-  end
-
-  def test_as_load_path
-    assert_equal 'yz/zy', Yz::Zy.as_load_path
-    assert_equal 'yz', Yz.as_load_path
   end
 end
 
@@ -231,7 +234,7 @@ class MethodAliasingTest < Test::Unit::TestCase
     FooClassWithBarMethod.class_eval { include BarMethodAliaser }
 
     feature_aliases.each do |method|
-      assert @instance.respond_to?(method)
+      assert_respond_to @instance, method
     end
 
     assert_equal 'bar_with_baz', @instance.bar
@@ -248,7 +251,7 @@ class MethodAliasingTest < Test::Unit::TestCase
       include BarMethodAliaser
       alias_method_chain :quux!, :baz
     end
-    assert @instance.respond_to?(:quux_with_baz!)
+    assert_respond_to @instance, :quux_with_baz!
 
     assert_equal 'quux_with_baz', @instance.quux!
     assert_equal 'quux', @instance.quux_without_baz!
@@ -266,9 +269,9 @@ class MethodAliasingTest < Test::Unit::TestCase
     assert !@instance.respond_to?(:quux_with_baz=)
 
     FooClassWithBarMethod.class_eval { include BarMethodAliaser }
-    assert @instance.respond_to?(:quux_with_baz!)
-    assert @instance.respond_to?(:quux_with_baz?)
-    assert @instance.respond_to?(:quux_with_baz=)
+    assert_respond_to @instance, :quux_with_baz!
+    assert_respond_to @instance, :quux_with_baz?
+    assert_respond_to @instance, :quux_with_baz=
 
 
     FooClassWithBarMethod.alias_method_chain :quux!, :baz

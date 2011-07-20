@@ -1,6 +1,6 @@
 h2. Rails nested model forms
 
-Creating a form for a model _and_ its associations can become quite tedious. Therefor Rails provides helpers to assist in dealing with the complexities of generating these forms _and_ the required CRUD operations to create, update, and destroy associations.
+Creating a form for a model _and_ its associations can become quite tedious. Therefore Rails provides helpers to assist in dealing with the complexities of generating these forms _and_ the required CRUD operations to create, update, and destroy associations.
 
 In this guide you will:
 
@@ -63,7 +63,7 @@ class Person
   def address
     Address.new
   end
-  
+
   def address_attributes=(attributes)
     # ...
   end
@@ -77,7 +77,7 @@ class Person
   def projects
     [Project.new, Project.new]
   end
-  
+
   def projects_attributes=(attributes)
     # ...
   end
@@ -90,7 +90,7 @@ h3. Views
 
 h4. Controller code
 
-A nested model form will _only_ be build if the associated object(s) exist. This means that for a new model instance you would probably want to build the associated object(s) first.
+A nested model form will _only_ be built if the associated object(s) exist. This means that for a new model instance you would probably want to build the associated object(s) first.
 
 Consider the following typical RESTful controller which will prepare a new Person instance and its +address+ and +projects+ associations before rendering the +new+ template:
 
@@ -101,7 +101,7 @@ class PeopleController < ActionController:Base
     @person.built_address
     2.times { @person.projects.build }
   end
-  
+
   def create
     @person = Person.new(params[:person])
     if @person.save
@@ -122,7 +122,7 @@ h5. Standard form
 Start out with a regular RESTful form:
 
 <erb>
-<% form_for @person do |f| %>
+<%= form_for @person do |f| %>
   <%= f.text_field :name %>
 <% end %>
 </erb>
@@ -140,11 +140,11 @@ h5. Nested form for a single associated object
 Now add a nested form for the +address+ association:
 
 <erb>
-<% form_for @person do |f| %>
+<%= form_for @person do |f| %>
   <%= f.text_field :name %>
-  
-  <% f.fields_for :address do |af| %>
-    <%= f.text_field :street %>
+
+  <%= f.fields_for :address do |af| %>
+    <%= af.text_field :street %>
   <% end %>
 <% end %>
 </erb>
@@ -154,12 +154,12 @@ This generates:
 <html>
 <form action="/people" class="new_person" id="new_person" method="post">
   <input id="person_name" name="person[name]" size="30" type="text" />
-  
+
   <input id="person_address_attributes_street" name="person[address_attributes][street]" size="30" type="text" />
 </form>
 </html>
 
-Notice that +fields_for+ recognized the +address+ as an association for which a nested model form should be build by the way it has namespaced the +name+ attribute.
+Notice that +fields_for+ recognized the +address+ as an association for which a nested model form should be built by the way it has namespaced the +name+ attribute.
 
 When this form is posted the Rails parameter parser will construct a hash like the following:
 
@@ -181,11 +181,11 @@ h5. Nested form for a collection of associated objects
 The form code for an association collection is pretty similar to that of a single associated object:
 
 <erb>
-<% form_for @person do |f| %>
+<%= form_for @person do |f| %>
   <%= f.text_field :name %>
-  
-  <% f.fields_for :projects do |pf| %>
-    <%= f.text_field :name %>
+
+  <%= f.fields_for :projects do |pf| %>
+    <%= pf.text_field :name %>
   <% end %>
 <% end %>
 </erb>
@@ -195,13 +195,13 @@ Which generates:
 <html>
 <form action="/people" class="new_person" id="new_person" method="post">
   <input id="person_name" name="person[name]" size="30" type="text" />
-  
+
   <input id="person_projects_attributes_0_name" name="person[projects_attributes][0][name]" size="30" type="text" />
   <input id="person_projects_attributes_1_name" name="person[projects_attributes][1][name]" size="30" type="text" />
 </form>
 </html>
 
-As you can see it has generated 2 +project name+ inputs, one for each new +project+ that’s build in the controllers +new+ action. Only this time the +name+ attribute of the input contains a digit as an extra namespace. This will be parsed by the Rails parameter parser as:
+As you can see it has generated 2 +project name+ inputs, one for each new +project+ that was built in the controller's +new+ action. Only this time the +name+ attribute of the input contains a digit as an extra namespace. This will be parsed by the Rails parameter parser as:
 
 <ruby>
 {
@@ -215,7 +215,7 @@ As you can see it has generated 2 +project name+ inputs, one for each new +proje
 }
 </ruby>
 
-You can basically see the +projects_attributes+ hash as an array of attribute hashes. One for each model instance.
+You can basically see the +projects_attributes+ hash as an array of attribute hashes, one for each model instance.
 
 NOTE: The reason that +fields_for+ constructed a form which would result in a hash instead of an array is that it won't work for any forms nested deeper than one level deep.
 

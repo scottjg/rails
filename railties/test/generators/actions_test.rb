@@ -1,12 +1,30 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/app/app_generator'
 
-class ActionsTest < GeneratorsTestCase
+class ActionsTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  tests Rails::Generators::AppGenerator
+  arguments [destination_root]
+
   def setup
+    Rails.application = TestApp::Application
     super
     @git_plugin_uri = 'git://github.com/technoweenie/restful-authentication.git'
     @svn_plugin_uri = 'svn://svnhub.com/technoweenie/restful-authentication/trunk'
+  end
+
+  def teardown
+    Rails.application = TestApp::Application.instance
+  end
+
+  def test_invoke_other_generator_with_shortcut
+    action :invoke, 'model', ['my_model']
+    assert_file 'app/models/my_model.rb', /MyModel/
+  end
+
+  def test_invoke_other_generator_with_full_namespace
+    action :invoke, 'rails:model', ['my_model']
+    assert_file 'app/models/my_model.rb', /MyModel/
   end
 
   def test_create_file_should_write_data_to_file_path
@@ -20,22 +38,22 @@ class ActionsTest < GeneratorsTestCase
   end
 
   def test_plugin_with_git_option_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install #{@git_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install #{@git_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :git => @git_plugin_uri
   end
 
   def test_plugin_with_svn_option_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install #{@svn_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install #{@svn_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :svn => @svn_plugin_uri
   end
 
   def test_plugin_with_git_option_and_branch_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install -b stable #{@git_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install -b stable #{@git_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :git => @git_plugin_uri, :branch => 'stable'
   end
 
   def test_plugin_with_svn_option_and_revision_should_run_plugin_install
-    generator.expects(:run_ruby_script).once.with("script/plugin install -r 1234 #{@svn_plugin_uri}", :verbose => false)
+    generator.expects(:run_ruby_script).once.with("script/rails plugin install -r 1234 #{@svn_plugin_uri}", :verbose => false)
     action :plugin, 'restful-authentication', :svn => @svn_plugin_uri, :revision => 1234
   end
 
@@ -54,44 +72,48 @@ class ActionsTest < GeneratorsTestCase
     action :plugin, 'rest_auth', {}
   end
 
-  def test_gem_should_put_gem_dependency_in_enviroment
+  def test_add_source_adds_source_to_gemfile
+    run_generator
+    action :add_source, 'http://gems.github.com'
+    assert_file 'Gemfile', /source "http:\/\/gems\.github\.com"/
+  end
+
+  def test_gem_should_put_gem_dependency_in_gemfile
     run_generator
     action :gem, 'will-paginate'
-    assert_file 'config/application.rb', /config\.gem 'will\-paginate'/
+    assert_file 'Gemfile', /gem "will\-paginate"/
   end
 
-  def test_gem_with_options_should_include_options_in_gem_dependency_in_environment
+  def test_gem_with_version_should_include_version_in_gemfile
     run_generator
-    action :gem, 'mislav-will-paginate', :lib => 'will-paginate', :source => 'http://gems.github.com'
 
-    regexp = /#{Regexp.escape("config.gem 'mislav-will-paginate', :lib => 'will-paginate', :source => 'http://gems.github.com'")}/
-    assert_file 'config/application.rb', regexp
+    action :gem, 'rspec', '>=2.0.0.a5'
+
+    assert_file 'Gemfile', /gem "rspec", ">=2.0.0.a5"/
   end
 
-  def test_gem_with_env_string_should_put_gem_dependency_in_specified_environment
+  def test_gem_should_insert_on_separate_lines
     run_generator
-    action :gem, 'rspec', :env => 'test'
-    assert_file 'config/environments/test.rb', /config\.gem 'rspec'/
-  end
 
-  def test_gem_with_env_array_should_put_gem_dependency_in_specified_environments
-    run_generator
-    action :gem, 'quietbacktrace', :env => %w[ development test ]
-    assert_file 'config/environments/development.rb', /config\.gem 'quietbacktrace'/
-    assert_file 'config/environments/test.rb', /config\.gem 'quietbacktrace'/
-  end
+    action :gem, 'rspec'
+    action :gem, 'rspec-rails'
 
-  def test_gem_with_lib_option_set_to_false_should_put_gem_dependency_in_enviroment_correctly
-    run_generator
-    action :gem, 'mislav-will-paginate', :lib => false
-    assert_file 'config/application.rb', /config\.gem 'mislav\-will\-paginate'\, :lib => false/
+    assert_file 'Gemfile', /gem "rspec"$/
+    assert_file 'Gemfile', /gem "rspec-rails"$/
   end
 
   def test_environment_should_include_data_in_environment_initializer_block
     run_generator
-    load_paths = 'config.load_paths += %w["#{Rails.root}/app/extras"]'
-    action :environment, load_paths
-    assert_file 'config/application.rb', /#{Regexp.escape(load_paths)}/
+    autoload_paths = 'config.autoload_paths += %w["#{Rails.root}/app/extras"]'
+    action :environment, autoload_paths
+    assert_file 'config/application.rb', /#{Regexp.escape(autoload_paths)}/
+  end
+
+  def test_environment_should_include_data_in_environment_initializer_block_with_env_option
+    run_generator
+    autoload_paths = 'config.autoload_paths += %w["#{Rails.root}/app/extras"]'
+    action :environment, autoload_paths, :env => 'development'
+    assert_file "config/environments/development.rb", /Application\.configure do\n  #{Regexp.escape(autoload_paths)}/
   end
 
   def test_environment_with_block_should_include_block_contents_in_environment_initializer_block
@@ -103,8 +125,8 @@ class ActionsTest < GeneratorsTestCase
     end
 
     assert_file 'config/application.rb' do |content|
-      assert_match /# This will be added/, content
-      assert_no_match /# This wont be added/, content
+      assert_match(/# This will be added/, content)
+      assert_no_match(/# This wont be added/, content)
     end
   end
 
@@ -139,7 +161,7 @@ class ActionsTest < GeneratorsTestCase
   end
 
   def test_generate_should_run_script_generate_with_argument_and_options
-    generator.expects(:run_ruby_script).once.with('script/generate model MyModel', :verbose => false)
+    generator.expects(:run_ruby_script).once.with('script/rails generate model MyModel', :verbose => false)
     action :generate, 'model', 'MyModel'
   end
 
@@ -163,27 +185,45 @@ class ActionsTest < GeneratorsTestCase
     action :capify!
   end
 
-  def test_freeze_should_freeze_rails_edge
-    generator.expects(:run).once.with('rake rails:freeze:edge', :verbose => false)
-    action :freeze!
-  end
-
   def test_route_should_add_data_to_the_routes_block_in_config_routes
     run_generator
-    route_command = "map.route '/login', :controller => 'sessions', :action => 'new'"
+    route_command = "route '/login', :controller => 'sessions', :action => 'new'"
     action :route, route_command
     assert_file 'config/routes.rb', /#{Regexp.escape(route_command)}/
   end
 
+  def test_readme
+    run_generator
+    Rails::Generators::AppGenerator.expects(:source_root).times(2).returns(destination_root)
+    assert_match(/Welcome to Rails/, action(:readme, "README"))
+  end
+
+  def test_readme_with_quiet
+    generator(default_arguments, :quiet => true)
+    run_generator
+    Rails::Generators::AppGenerator.expects(:source_root).times(2).returns(destination_root)
+    assert_no_match(/Welcome to Rails/, action(:readme, "README"))
+  end
+
+  def test_log
+    assert_equal("YES\n", action(:log, "YES"))
+  end
+
+  def test_log_with_status
+    assert_equal("         yes  YES\n", action(:log, :yes, "YES"))
+  end
+
+  def test_log_with_quiet
+    generator(default_arguments, :quiet => true)
+    assert_equal("", action(:log, "YES"))
+  end
+
+  def test_log_with_status_with_quiet
+    generator(default_arguments, :quiet => true)
+    assert_equal("", action(:log, :yes, "YES"))
+  end
+
   protected
-
-    def run_generator
-      silence(:stdout) { Rails::Generators::AppGenerator.start [destination_root] }
-    end
-
-    def generator(config={})
-      @generator ||= Rails::Generators::Base.new([], {}, config)
-    end
 
     def action(*args, &block)
       silence(:stdout){ generator.send(*args, &block) }

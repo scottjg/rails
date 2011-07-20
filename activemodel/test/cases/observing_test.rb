@@ -43,6 +43,11 @@ class ObservingTest < ActiveModel::TestCase
     assert ObservedModel.observers.include?(:bar), ":bar not in #{ObservedModel.observers.inspect}"
   end
 
+  test "uses an ObserverArray so observers can be disabled" do
+    ObservedModel.observers = [:foo, :bar]
+    assert ObservedModel.observers.is_a?(ActiveModel::ObserverArray)
+  end
+
   test "instantiates observer names passed as strings" do
     ObservedModel.observers << 'foo_observer'
     FooObserver.expects(:instance)
@@ -121,13 +126,11 @@ class ObserverTest < ActiveModel::TestCase
     foo = Foo.new
     FooObserver.instance.stub = stub
     FooObserver.instance.stub.expects(:event_with).with(foo)
-    Foo.send(:changed)
     Foo.send(:notify_observers, :on_spec, foo)
   end
 
   test "skips nonexistent observer event" do
     foo = Foo.new
-    Foo.send(:changed)
     Foo.send(:notify_observers, :whatever, foo)
   end
 end

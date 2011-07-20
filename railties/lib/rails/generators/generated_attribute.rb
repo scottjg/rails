@@ -1,20 +1,25 @@
+require 'active_support/time'
+require 'active_support/core_ext/object/inclusion'
+
 module Rails
   module Generators
     class GeneratedAttribute
       attr_accessor :name, :type
 
       def initialize(name, type)
+        type = :string if type.blank?
         @name, @type = name, type.to_sym
       end
 
       def field_type
         @field_type ||= case type
-          when :integer, :float, :decimal   then :text_field
-          when :datetime, :timestamp, :time then :datetime_select
-          when :date                        then :date_select
-          when :string                      then :text_field
-          when :text                        then :text_area
-          when :boolean                     then :check_box
+          when :integer              then :number_field
+          when :float, :decimal      then :text_field
+          when :time                 then :time_select
+          when :datetime, :timestamp then :datetime_select
+          when :date                 then :date_select
+          when :text                 then :text_area
+          when :boolean              then :check_box
           else
             :text_field
         end
@@ -27,7 +32,7 @@ module Rails
           when :decimal                     then "9.99"
           when :datetime, :timestamp, :time then Time.now.to_s(:db)
           when :date                        then Date.today.to_s(:db)
-          when :string                      then "MyString"
+          when :string                      then name == "type" ? "" : "MyString"
           when :text                        then "MyText"
           when :boolean                     then false
           when :references, :belongs_to     then nil
@@ -41,7 +46,7 @@ module Rails
       end
 
       def reference?
-        [ :references, :belongs_to ].include?(self.type)
+        self.type.in?([:references, :belongs_to])
       end
     end
   end

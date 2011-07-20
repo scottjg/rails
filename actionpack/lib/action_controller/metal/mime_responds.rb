@@ -1,53 +1,64 @@
+require 'abstract_controller/collector'
+require 'active_support/core_ext/class/attribute'
+require 'active_support/core_ext/object/inclusion'
+
 module ActionController #:nodoc:
-  module MimeResponds #:nodoc:
+  module MimeResponds
     extend ActiveSupport::Concern
 
+    include ActionController::ImplicitRender
+
     included do
-      extlib_inheritable_accessor :responder, :mimes_for_respond_to, :instance_writer => false
+      class_attribute :responder, :mimes_for_respond_to
       self.responder = ActionController::Responder
       clear_respond_to
     end
 
     module ClassMethods
-      # Defines mimes that are rendered by default when invoking respond_with.
+      # Defines mime types that are rendered by default when invoking
+      # <tt>respond_with</tt>.
       #
       # Examples:
       #
       #   respond_to :html, :xml, :json
       #
-      # All actions on your controller will respond to :html, :xml and :json.
+      # Specifies that all actions in the controller respond to requests
+      # for <tt>:html</tt>, <tt>:xml</tt> and <tt>:json</tt>.
       #
-      # But if you want to specify it based on your actions, you can use only and
-      # except:
+      # To specify on per-action basis, use <tt>:only</tt> and
+      # <tt>:except</tt> with an array of actions or a single action:
       #
       #   respond_to :html
       #   respond_to :xml, :json, :except => [ :edit ]
       #
-      # The definition above explicits that all actions respond to :html. And all
-      # actions except :edit respond to :xml and :json.
+      # This specifies that all actions respond to <tt>:html</tt>
+      # and all actions except <tt>:edit</tt> respond to <tt>:xml</tt> and
+      # <tt>:json</tt>.
       #
-      # You can specify also only parameters:
+      #   respond_to :json, :only => :create
       #
-      #   respond_to :rjs, :only => :create
-      #
+      # This specifies that the <tt>:create</tt> action and no other responds
+      # to <tt>:json</tt>.
       def respond_to(*mimes)
         options = mimes.extract_options!
 
         only_actions   = Array(options.delete(:only))
         except_actions = Array(options.delete(:except))
 
+        new = mimes_for_respond_to.dup
         mimes.each do |mime|
           mime = mime.to_sym
-          mimes_for_respond_to[mime]          = {}
-          mimes_for_respond_to[mime][:only]   = only_actions   unless only_actions.empty?
-          mimes_for_respond_to[mime][:except] = except_actions unless except_actions.empty?
+          new[mime]          = {}
+          new[mime][:only]   = only_actions   unless only_actions.empty?
+          new[mime][:except] = except_actions unless except_actions.empty?
         end
+        self.mimes_for_respond_to = new.freeze
       end
 
-      # Clear all mimes in respond_to.
+      # Clear all mime types in <tt>respond_to</tt>.
       #
       def clear_respond_to
-        self.mimes_for_respond_to = ActiveSupport::OrderedHash.new
+        self.mimes_for_respond_to = ActiveSupport::OrderedHash.new.freeze
       end
     end
 
@@ -55,13 +66,13 @@ module ActionController #:nodoc:
     # might look something like this:
     #
     #   def index
-    #     @people = Person.find(:all)
+    #     @people = Person.all
     #   end
     #
     # Here's the same action, with web-service support baked in:
     #
     #   def index
-    #     @people = Person.find(:all)
+    #     @people = Person.all
     #
     #     respond_to do |format|
     #       format.html
@@ -97,8 +108,8 @@ module ActionController #:nodoc:
     #     end
     #   end
     #
-    # If the client wants HTML, we just redirect them back to the person list. If they want Javascript
-    # (format.js), then it is an RJS request and we render the RJS template associated with this action.
+    # If the client wants HTML, we just redirect them back to the person list. If they want JavaScript,
+    # then it is an Ajax request and we render the JavaScript template associated with this action.
     # Lastly, if the client wants XML, we render the created person as XML, but with a twist: we also
     # include the person's company in the rendered XML, so you get something like this:
     #
@@ -140,14 +151,14 @@ module ActionController #:nodoc:
     # and accept Rails' defaults, life will be much easier.
     #
     # If you need to use a MIME type which isn't supported by default, you can register your own handlers in
-    # environment.rb as follows.
+    # config/initializers/mime_types.rb as follows.
     #
     #   Mime::Type.register "image/jpg", :jpg
     #
     # Respond to also allows you to specify a common block for different formats by using any:
     #
     #   def index
-    #     @people = Person.find(:all)
+    #     @people = Person.all
     #
     #     respond_to do |format|
     #       format.html
@@ -170,7 +181,7 @@ module ActionController #:nodoc:
     #     respond_to :html, :xml, :json
     #
     #     def index
-    #       @people = Person.find(:all)
+    #       @people = Person.all
     #       respond_with(@person)
     #     end
     #   end
@@ -181,7 +192,7 @@ module ActionController #:nodoc:
       raise ArgumentError, "respond_to takes either types or a block, never both" if mimes.any? && block_given?
 
       if response = retrieve_response_from_mimes(mimes, &block)
-        response.call
+        response.call(nil)
       end
     end
 
@@ -200,8 +211,8 @@ module ActionController #:nodoc:
     # It also accepts a block to be given. It's used to overwrite a default
     # response:
     #
-    #   def destroy
-    #     @user = User.find(params[:id])
+    #   def create
+    #     @user = User.new(params[:user])
     #     flash[:notice] = "User was successfully created." if @user.save
     #
     #     respond_with(@user) do |format|
@@ -214,11 +225,17 @@ module ActionController #:nodoc:
     # is quite simple (it just needs to respond to call), you can even give
     # a proc to it.
     #
+    # In order to use respond_with, first you need to declare the formats your
+    # controller responds to in the class level with a call to <tt>respond_to</tt>.
+    #
     def respond_with(*resources, &block)
-      if response = retrieve_response_from_mimes([], &block)
-        options = resources.extract_options!
+      raise "In order to use respond_with, first you need to declare the formats your " <<
+            "controller responds to in the class level" if self.class.mimes_for_respond_to.empty?
+
+      if response = retrieve_response_from_mimes(&block)
+        options = resources.size == 1 ? {} : resources.extract_options!
         options.merge!(:default_response => response)
-        (options.delete(:responder) || responder).call(self, resources, options)
+        (options.delete(:responder) || self.class.responder).call(self, resources, options)
       end
     end
 
@@ -230,13 +247,13 @@ module ActionController #:nodoc:
     def collect_mimes_from_class_level #:nodoc:
       action = action_name.to_sym
 
-      mimes_for_respond_to.keys.select do |mime|
-        config = mimes_for_respond_to[mime]
+      self.class.mimes_for_respond_to.keys.select do |mime|
+        config = self.class.mimes_for_respond_to[mime]
 
         if config[:except]
-          !config[:except].include?(action)
+          !action.in?(config[:except])
         elsif config[:only]
-          config[:only].include?(action)
+          action.in?(config[:only])
         else
           true
         end
@@ -246,14 +263,14 @@ module ActionController #:nodoc:
     # Collects mimes and return the response for the negotiated format. Returns
     # nil if :not_acceptable was sent to the client.
     #
-    def retrieve_response_from_mimes(mimes, &block)
-      collector = Collector.new { default_render }
-      mimes = collect_mimes_from_class_level if mimes.empty?
-      mimes.each { |mime| collector.send(mime) }
+    def retrieve_response_from_mimes(mimes=nil, &block) #:nodoc:
+      mimes ||= collect_mimes_from_class_level
+      collector = Collector.new(mimes) { |options| default_render(options || {}) }
       block.call(collector) if block_given?
 
       if format = request.negotiate_mime(collector.order)
-        self.formats = [format.to_sym]
+        self.content_type ||= format.to_s
+        lookup_context.freeze_formats([format.to_sym])
         collector.response_for(format)
       else
         head :not_acceptable
@@ -262,10 +279,12 @@ module ActionController #:nodoc:
     end
 
     class Collector #:nodoc:
+      include AbstractController::Collector
       attr_accessor :order
 
-      def initialize(&block)
+      def initialize(mimes, &block)
         @order, @responses, @default_response = [], {}, block
+        mimes.each { |mime| send(mime) }
       end
 
       def any(*args, &block)
@@ -278,7 +297,7 @@ module ActionController #:nodoc:
       alias :all :any
 
       def custom(mime_type, &block)
-        mime_type = mime_type.is_a?(Mime::Type) ? mime_type : Mime::Type.lookup(mime_type.to_s)
+        mime_type = Mime::Type.lookup(mime_type.to_s) unless mime_type.is_a?(Mime::Type)
         @order << mime_type
         @responses[mime_type] ||= block
       end
@@ -286,32 +305,6 @@ module ActionController #:nodoc:
       def response_for(mime)
         @responses[mime] || @responses[Mime::ALL] || @default_response
       end
-
-      def self.generate_method_for_mime(mime)
-        sym = mime.is_a?(Symbol) ? mime : mime.to_sym
-        const = sym.to_s.upcase
-        class_eval <<-RUBY, __FILE__, __LINE__ + 1
-          def #{sym}(&block)                # def html(&block)
-            custom(Mime::#{const}, &block)  #   custom(Mime::HTML, &block)
-          end                               # end
-        RUBY
-      end
-
-      Mime::SET.each do |mime|
-        generate_method_for_mime(mime)
-      end
-
-      def method_missing(symbol, &block)
-        mime_constant = Mime.const_get(symbol.to_s.upcase)
-
-        if Mime::SET.include?(mime_constant)
-          self.class.generate_method_for_mime(mime_constant)
-          send(symbol, &block)
-        else
-          super
-        end
-      end
-
     end
   end
 end

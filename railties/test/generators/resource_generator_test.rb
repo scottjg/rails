@@ -1,23 +1,16 @@
-require 'abstract_unit'
 require 'generators/generators_test_helper'
 require 'rails/generators/rails/resource/resource_generator'
 
-class ResourceGeneratorTest < GeneratorsTestCase
+class ResourceGeneratorTest < Rails::Generators::TestCase
+  include GeneratorsTestHelper
+  arguments %w(account)
 
-  def setup
-    super
-    routes = Rails::Generators::ResourceGenerator.source_root
-    routes = File.join(routes, "..", "..", "app", "templates", "config", "routes.rb")
-    destination = File.join(destination_root, "config")
-
-    FileUtils.mkdir_p(destination)
-    FileUtils.cp File.expand_path(routes), destination
-  end
+  setup :copy_routes
 
   def test_help_with_inherited_options
     content = run_generator ["--help"]
-    assert_match /ActiveRecord options:/, content
-    assert_match /TestUnit options:/, content
+    assert_match(/ActiveRecord options:/, content)
+    assert_match(/TestUnit options:/, content)
   end
 
   def test_files_from_inherited_invocation
@@ -50,8 +43,8 @@ class ResourceGeneratorTest < GeneratorsTestCase
     run_generator ["account", "--actions", "index", "new"]
 
     assert_file "app/controllers/accounts_controller.rb" do |controller|
-      assert_instance_method controller, :index
-      assert_instance_method controller, :new
+      assert_instance_method :index, controller
+      assert_instance_method :new, controller
     end
 
     assert_file "app/views/accounts/index.html.erb"
@@ -62,30 +55,27 @@ class ResourceGeneratorTest < GeneratorsTestCase
     run_generator
 
     assert_file "config/routes.rb" do |route|
-      assert_match /map\.resources :accounts$/, route
-    end
-  end
-
-  def test_singleton_resource
-    run_generator ["account", "--singleton"]
-
-    assert_file "config/routes.rb" do |route|
-      assert_match /map\.resource :account$/, route
+      assert_match(/resources :accounts$/, route)
     end
   end
 
   def test_plural_names_are_singularized
-    content = run_generator ["accounts"]
+    content = run_generator ["accounts".freeze]
     assert_file "app/models/account.rb", /class Account < ActiveRecord::Base/
     assert_file "test/unit/account_test.rb", /class AccountTest/
-    assert_match /Plural version of the model detected, using singularized version. Override with --force-plural./, content
+    assert_match(/Plural version of the model detected, using singularized version. Override with --force-plural./, content)
   end
 
   def test_plural_names_can_be_forced
     content = run_generator ["accounts", "--force-plural"]
     assert_file "app/models/accounts.rb", /class Accounts < ActiveRecord::Base/
     assert_file "test/unit/accounts_test.rb", /class AccountsTest/
-    assert_no_match /Plural version of the model detected/, content
+    assert_no_match(/Plural version of the model detected/, content)
+  end
+
+  def test_mass_nouns_do_not_throw_warnings
+    content = run_generator ["sheep".freeze]
+    assert_no_match(/Plural version of the model detected/, content)
   end
 
   def test_route_is_removed_on_revoke
@@ -93,14 +83,7 @@ class ResourceGeneratorTest < GeneratorsTestCase
     run_generator ["account"], :behavior => :revoke
 
     assert_file "config/routes.rb" do |route|
-      assert_no_match /map\.resources :accounts$/, route
+      assert_no_match(/resources :accounts$/, route)
     end
   end
-
-  protected
-
-    def run_generator(args=["account"], config={})
-      silence(:stdout) { Rails::Generators::ResourceGenerator.start args, config }
-    end
-
 end

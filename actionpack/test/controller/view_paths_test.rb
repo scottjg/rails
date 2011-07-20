@@ -20,7 +20,7 @@ class ViewLoadPathsTest < ActionController::TestCase
     layout 'test/sub'
     def hello_world; render(:template => 'test/hello_world'); end
   end
-  
+
   def setup
     # TestController.view_paths = nil
 
@@ -32,14 +32,11 @@ class ViewLoadPathsTest < ActionController::TestCase
     @controller.send :assign_shortcuts, @request, @response
     @controller.send :initialize_template_class, @response
 
-    # Track the last warning.
-    @old_behavior = ActiveSupport::Deprecation.behavior
-    @last_message = nil
-    ActiveSupport::Deprecation.behavior = Proc.new { |message, callback| @last_message = message }
+    @paths = TestController.view_paths
   end
 
   def teardown
-    ActiveSupport::Deprecation.behavior = @old_behavior
+    TestController.view_paths = @paths
   end
 
   def expand(array)
@@ -61,7 +58,7 @@ class ViewLoadPathsTest < ActionController::TestCase
 
     @controller.append_view_path(%w(bar baz))
     assert_paths(FIXTURE_LOAD_PATH, "foo", "bar", "baz")
-    
+
     @controller.append_view_path(FIXTURE_LOAD_PATH)
     assert_paths(FIXTURE_LOAD_PATH, "foo", "bar", "baz", FIXTURE_LOAD_PATH)
   end
@@ -128,6 +125,35 @@ class ViewLoadPathsTest < ActionController::TestCase
     assert_equal "Hello overridden world!", @response.body
   end
 
+  def test_decorate_view_paths_with_custom_resolver
+    decorator_class = Class.new(ActionView::PathResolver) do
+      def initialize(path_set)
+        @path_set = path_set
+      end
+
+      def find_all(*args)
+        @path_set.find_all(*args).collect do |template|
+          ::ActionView::Template.new(
+            "Decorated body",
+            template.identifier,
+            template.handler,
+            {
+              :virtual_path => template.virtual_path,
+              :format => template.formats
+            }
+          )
+        end
+      end
+    end
+
+    decorator = decorator_class.new(TestController.view_paths)
+    TestController.view_paths = ActionView::PathSet.new.push(decorator)
+
+    get :hello_world
+    assert_response :success
+    assert_equal "Decorated body", @response.body
+  end
+
   def test_inheritance
     original_load_paths = ActionController::Base.view_paths
 
@@ -142,9 +168,13 @@ class ViewLoadPathsTest < ActionController::TestCase
     assert_paths A, "a/path"
     assert_paths A, *B.view_paths
     assert_paths C, *original_load_paths
-    
+
     C.view_paths = []
-    assert_nothing_raised { C.view_paths << 'c/path' }
+    assert_nothing_raised { C.append_view_path 'c/path' }
     assert_paths C, "c/path"
+  end
+
+  def test_lookup_context_accessor
+    assert_equal ["test"], TestController.new.lookup_context.prefixes
   end
 end
