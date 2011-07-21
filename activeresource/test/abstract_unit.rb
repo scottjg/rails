@@ -34,6 +34,7 @@ def setup_response
                            { :person => { :id => 2, :name => 'David', :hair_color => "black", :age => 32 } }
                          ]
             }.to_json
+  @two_matz_records = { :people => [{ :person => { :id => 1, :name => 'Matz' } },{ :person => { :id => 1965, :name => 'Matz' } }] }.to_json
   @people_david = { :people => [ { :person => { :id => 2, :name => 'David' } }] }.to_json
   @addresses = { :addresses => [{ :address => { :id => 1, :street => '12345 Street', :country => 'Australia' } }] }.to_json
 
@@ -120,7 +121,8 @@ def setup_response
     mock.get    "/people/99.json",              {}, nil, 404
     mock.post   "/people.json",                 {}, @rick, 201, 'Location' => '/people/5.xml'
     mock.get    "/people.json",                 {}, @people
-    mock.get    "/people.json?name%5B%5D=Matz", {}, @matz
+    mock.get    "/people.json?name=Matz",       {}, @two_matz_records
+    mock.get    "/people.json?name=Rails",      {}, nil, 404
     mock.get    "/people/1/addresses.json",     {}, @addresses
     mock.get    "/people/1/addresses/1.json",   {}, @addy
     mock.get    "/people/1/addresses/2.xml",    {}, nil, 404

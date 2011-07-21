@@ -966,7 +966,7 @@ module ActiveResource
           case method_symbol.to_s
           when /^find_by_([_a-zA-Z]\w*)$/
             attribute = $1
-            params = { attribute.to_sym => arguments }
+            params = { attribute.to_sym => arguments.first }
             if self.schema.key?(attribute)
               self.find(:all, :params => params)
             else

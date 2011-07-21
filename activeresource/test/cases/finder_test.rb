@@ -136,13 +136,15 @@ class FinderTest < Test::Unit::TestCase
     david = Person.find(:one, :from => :leader)
     assert_equal "David", david.name
   end
-  
+
   def test_find_by_known_attribute_with_schema_block
-    matz = Person.find_by_name('Matz')
-    assert_kind_of Person, matz
-    assert_equal "Matz", matz.name
+    matz_records = Person.find_by_name('Matz')
+    assert_kind_of Array, matz_records
+    assert_equal 2, matz_records.size
+    assert_equal "Matz", matz_records.first.name
+    assert_equal "Matz", matz_records.last.name
   end
-  
+
   def test_find_by_unknown_attribute_with_schema_block
     assert_raise(RuntimeError) { Person.find_by_birthmonth("December") }
   end
