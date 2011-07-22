@@ -632,6 +632,11 @@ module ActionView
       def image_tag(source, options = {})
         options.symbolize_keys!
 
+        if Jammit::CdnConfig.enabled?
+          cdn_source = Jammit::CdnConfig.etag_name(source)
+          source = "#{Jammit::CdnConfig.build_host(request)}#{cdn_source}" if cdn_source != source
+        end
+
         src = options[:src] = path_to_image(source)
 
         unless src =~ /^cid:/
