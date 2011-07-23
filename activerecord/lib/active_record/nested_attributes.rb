@@ -276,15 +276,15 @@ module ActiveRecord
 
             type = (reflection.collection? ? :collection : :one_to_one)
 
-            # def pirate_attributes=(attributes, assignment_opts = {})
-            #   assign_nested_attributes_for_one_to_one_association(:pirate, attributes, assignment_opts)
+            # def pirate_attributes=(attributes)
+            #   assign_nested_attributes_for_one_to_one_association(:pirate, attributes, mass_assignment_options)
             # end
             class_eval <<-eoruby, __FILE__, __LINE__ + 1
               if method_defined?(:#{association_name}_attributes=)
                 remove_method(:#{association_name}_attributes=)
               end
-              def #{association_name}_attributes=(attributes, assignment_opts = {})
-                assign_nested_attributes_for_#{type}_association(:#{association_name}, attributes, assignment_opts)
+              def #{association_name}_attributes=(attributes)
+                assign_nested_attributes_for_#{type}_association(:#{association_name}, attributes, mass_assignment_options)
               end
             eoruby
           else
@@ -383,7 +383,7 @@ module ActiveRecord
         attributes_collection = if keys.include?('id') || keys.include?(:id)
           Array.wrap(attributes_collection)
         else
-          attributes_collection.sort_by { |i, _| i.to_i }.map { |_, attributes| attributes }
+          attributes_collection.values
         end
       end
 

@@ -11,7 +11,7 @@ module Rails
   # == Initialization
   #
   # Rails::Application is responsible for executing all railties, engines and plugin
-  # initializers. Besides, it also executed some bootstrap initializers (check
+  # initializers. It also executes some bootstrap initializers (check
   # Rails::Application::Bootstrap) and finishing initializers, after all the others
   # are executed (check Rails::Application::Finisher).
   #
@@ -106,6 +106,15 @@ module Rails
       self
     end
 
+    # Rails.application.env_config stores some of the Rails initial environment parameters.
+    # Currently stores:
+    #
+    #   * action_dispatch.parameter_filter" => config.filter_parameters,
+    #   * action_dispatch.secret_token"     => config.secret_token,
+    #   * action_dispatch.show_exceptions"  => config.action_dispatch.show_exceptions
+    #
+    # These parameters will be used by middlewares and engines to configure themselves.
+    #
     def env_config
       @env_config ||= super.merge({
         "action_dispatch.parameter_filter" => config.filter_parameters,

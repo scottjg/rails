@@ -159,6 +159,14 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
     assert_match(/1 tests, 1 assertions, 0 failures, 0 errors/, `bundle exec rake test`)
   end
 
+  def test_ensure_that_migration_tasks_work_with_mountable_option
+    run_generator [destination_root, "--mountable"]
+    FileUtils.cd destination_root
+    quietly { system 'bundle install' }
+    `bundle exec rake db:migrate`
+    assert_equal 0, $?.exitstatus
+  end
+
   def test_creating_engine_in_full_mode
     run_generator [destination_root, "--full"]
     assert_file "app/assets/javascripts/bukkits"
@@ -198,7 +206,7 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
   def test_creating_gemspec
     run_generator
     assert_file "bukkits.gemspec", /s.name = "bukkits"/
-    assert_file "bukkits.gemspec", /s.files = Dir\["\{app,config,lib\}\/\*\*\/\*"\]/
+    assert_file "bukkits.gemspec", /s.files = Dir\["\{app,config,db,lib\}\/\*\*\/\*"\]/
     assert_file "bukkits.gemspec", /s.test_files = Dir\["test\/\*\*\/\*"\]/
     assert_file "bukkits.gemspec", /s.version = "0.0.1"/
   end

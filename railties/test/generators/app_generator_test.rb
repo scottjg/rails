@@ -35,6 +35,7 @@ DEFAULT_APP_FILES = %w(
   vendor/assets
   vendor/plugins
   tmp/cache
+  tmp/cache/assets
 )
 
 class AppGeneratorTest < Rails::Generators::TestCase

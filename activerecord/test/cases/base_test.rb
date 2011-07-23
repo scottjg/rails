@@ -53,6 +53,16 @@ class Weird < ActiveRecord::Base; end
 
 class Boolean < ActiveRecord::Base; end
 
+class LintTest < ActiveRecord::TestCase
+  include ActiveModel::Lint::Tests
+
+  class LintModel < ActiveRecord::Base; end
+
+  def setup
+    @model = LintModel.new
+  end
+end
+
 class BasicsTest < ActiveRecord::TestCase
   fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts
 
@@ -478,11 +488,11 @@ class BasicsTest < ActiveRecord::TestCase
   def test_hashing
     assert_equal [ Topic.find(1) ], [ Topic.find(2).topic ] & [ Topic.find(1) ]
   end
-  
+
   def test_comparison
     topic_1 = Topic.create!
     topic_2 = Topic.create!
-    
+
     assert_equal [topic_2, topic_1].sort, [topic_1, topic_2]
   end
 
@@ -1101,6 +1111,17 @@ class BasicsTest < ActiveRecord::TestCase
 
   class NumericData < ActiveRecord::Base
     self.table_name = 'numeric_data'
+  end
+
+  def test_big_decimal_conditions
+    m = NumericData.new(
+      :bank_balance => 1586.43,
+      :big_bank_balance => BigDecimal("1000234000567.95"),
+      :world_population => 6000000000,
+      :my_house_population => 3
+    )
+    assert m.save
+    assert_equal 0, NumericData.where("bank_balance > ?", 2000.0).count
   end
 
   def test_numeric_fields
@@ -1824,5 +1845,30 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_attribtue_names_on_abstract_class
     assert_equal [], AbstractCompany.attribute_names
+  end
+
+  def test_cache_key_for_existing_record_is_not_timezone_dependent
+    ActiveRecord::Base.time_zone_aware_attributes = true
+
+    Time.zone = "UTC"
+    utc_key = Developer.first.cache_key
+
+    Time.zone = "EST"
+    est_key = Developer.first.cache_key
+
+    assert_equal utc_key, est_key
+  ensure
+    ActiveRecord::Base.time_zone_aware_attributes = false
+  end
+
+  def test_cache_key_format_for_existing_record_with_updated_at
+    dev = Developer.first
+    assert_equal "developers/#{dev.id}-#{dev.updated_at.utc.to_s(:number)}", dev.cache_key
+  end
+
+  def test_cache_key_format_for_existing_record_with_nil_updated_at
+    dev = Developer.first
+    dev.update_attribute(:updated_at, nil)
+    assert_match /\/#{dev.id}$/, dev.cache_key
   end
 end

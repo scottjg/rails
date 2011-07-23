@@ -96,11 +96,11 @@ module ActiveRecord
       relation
     end
 
-    def having(*args)
-      return self if args.blank?
+    def having(opts, *rest)
+      return self if opts.blank?
 
       relation = clone
-      relation.having_values += build_where(*args)
+      relation.having_values += build_where(opts, rest)
       relation
     end
 
@@ -307,7 +307,7 @@ module ActiveRecord
 
       order_query.map do |o|
         case o
-        when Arel::Nodes::Ascending, Arel::Nodes::Descending
+        when Arel::Nodes::Ordering
           o.reverse
         when String, Symbol
           o.to_s.split(',').collect do |s|

@@ -81,12 +81,6 @@ class AdapterTest < ActiveRecord::TestCase
     end
   end
 
-  if current_adapter?(:PostgreSQLAdapter)
-    def test_encoding
-      assert_not_nil @connection.encoding
-    end
-  end
-
   def test_table_alias
     def @connection.test_table_alias_length() 10; end
     class << @connection
@@ -136,6 +130,20 @@ class AdapterTest < ActiveRecord::TestCase
   def test_foreign_key_violations_are_translated_to_specific_exception
     unless @connection.adapter_name == 'SQLite'
       assert_raises(ActiveRecord::InvalidForeignKey) do
+        # Oracle adapter uses prefetched primary key values from sequence and passes them to connection adapter insert method
+        if @connection.prefetch_primary_key?
+          id_value = @connection.next_sequence_value(@connection.default_sequence_name("fk_test_has_fk", "id"))
+          @connection.execute "INSERT INTO fk_test_has_fk (id, fk_id) VALUES (#{id_value},0)"
+        else
+          @connection.execute "INSERT INTO fk_test_has_fk (fk_id) VALUES (0)"
+        end
+      end
+    end
+  end
+
+  def test_disable_referential_integrity
+    assert_nothing_raised do
+      @connection.disable_referential_integrity do
         # Oracle adapter uses prefetched primary key values from sequence and passes them to connection adapter insert method
         if @connection.prefetch_primary_key?
           id_value = @connection.next_sequence_value(@connection.default_sequence_name("fk_test_has_fk", "id"))

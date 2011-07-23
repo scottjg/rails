@@ -1052,20 +1052,15 @@ module ActiveRecord #:nodoc:
         # Each dynamic finder using <tt>scoped_by_*</tt> is also defined in the class after it
         # is first invoked, so that future attempts to use it do not run through method_missing.
         def method_missing(method_id, *arguments, &block)
-          if match = DynamicFinderMatch.match(method_id)
+          if match = (DynamicFinderMatch.match(method_id) || DynamicScopeMatch.match(method_id))
             attribute_names = match.attribute_names
             super unless all_attributes_exists?(attribute_names)
-            if match.finder?
-              options = arguments.extract_options!
-              relation = options.any? ? scoped(options) : scoped
-              relation.send :find_by_attributes, match, attribute_names, *arguments
-            elsif match.instantiator?
-              scoped.send :find_or_instantiator_by_attributes, match, attribute_names, *arguments, &block
+            if arguments.size < attribute_names.size
+              method_trace = "#{__FILE__}:#{__LINE__}:in `#{method_id}'"
+              backtrace = [method_trace] + caller
+              raise ArgumentError, "wrong number of arguments (#{arguments.size} for #{attribute_names.size})", backtrace
             end
-          elsif match = DynamicScopeMatch.match(method_id)
-            attribute_names = match.attribute_names
-            super unless all_attributes_exists?(attribute_names)
-            if match.scope?
+            if match.respond_to?(:scope?) && match.scope?
               self.class_eval <<-METHOD, __FILE__, __LINE__ + 1
                 def self.#{method_id}(*args)                                    # def self.scoped_by_user_name_and_password(*args)
                   attributes = Hash[[:#{attribute_names.join(',:')}].zip(args)] #   attributes = Hash[[:user_name, :password].zip(args)]
@@ -1074,6 +1069,12 @@ module ActiveRecord #:nodoc:
                 end                                                             # end
               METHOD
               send(method_id, *arguments)
+            elsif match.finder?
+              options = arguments.extract_options!
+              relation = options.any? ? scoped(options) : scoped
+              relation.send :find_by_attributes, match, attribute_names, *arguments, &block
+            elsif match.instantiator?
+              scoped.send :find_or_instantiator_by_attributes, match, attribute_names, *arguments, &block
             end
           else
             super
@@ -1638,7 +1639,8 @@ MSG
         when new_record?
           "#{self.class.model_name.cache_key}/new"
         when timestamp = self[:updated_at]
-          "#{self.class.model_name.cache_key}/#{id}-#{timestamp.to_s(:number)}"
+          timestamp = timestamp.utc.to_s(:number)
+          "#{self.class.model_name.cache_key}/#{id}-#{timestamp}"
         else
           "#{self.class.model_name.cache_key}/#{id}"
         end
@@ -1709,27 +1711,24 @@ MSG
         return unless new_attributes
 
         attributes = new_attributes.stringify_keys
-        role = options[:as] || :default
-
         multi_parameter_attributes = []
+        @mass_assignment_options = options
 
         unless options[:without_protection]
-          attributes = sanitize_for_mass_assignment(attributes, role)
+          attributes = sanitize_for_mass_assignment(attributes, mass_assignment_role)
         end
 
         attributes.each do |k, v|
           if k.include?("(")
             multi_parameter_attributes << [ k, v ]
+          elsif respond_to?("#{k}=")
+            send("#{k}=", v)
           else
-            method_name = "#{k}="
-            if respond_to?(method_name)
-              method(method_name).arity == -2 ? send(method_name, v, options) : send(method_name, v)
-            else
-              raise(UnknownAttributeError, "unknown attribute: #{k}")
-            end
+            raise(UnknownAttributeError, "unknown attribute: #{k}")
           end
         end
 
+        @mass_assignment_options = nil
         assign_multiparameter_attributes(multi_parameter_attributes)
       end
 
@@ -1739,7 +1738,7 @@ MSG
       end
 
       # Returns an <tt>#inspect</tt>-like string for the value of the
-      # attribute +attr_name+. String attributes are elided after 50
+      # attribute +attr_name+. String attributes are truncated upto 50
       # characters, and Date and Time attributes are returned in the
       # <tt>:db</tt> format. Other attributes return the value of
       # <tt>#inspect</tt> without modification.
@@ -1892,6 +1891,14 @@ MSG
         value.duplicable? ? value.clone : value
       rescue TypeError, NoMethodError
         value
+      end
+
+      def mass_assignment_options
+        @mass_assignment_options ||= {}
+      end
+
+      def mass_assignment_role
+        mass_assignment_options[:as] || :default
       end
 
     private
