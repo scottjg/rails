@@ -100,4 +100,16 @@ class RoutingAssertionsTest < ActionController::TestCase
       end
     end
   end
+  
+  def test_using_scope_with_parameter
+    with_routing do |routes|
+      routes.draw do
+        scope ':classified' do
+          resources :documents
+        end
+      end
+      
+      assert_routing('/cia/documents', :controller => 'documents', :action => 'index')
+    end
+  end
 end

@@ -295,6 +295,9 @@ module ActionController
 end
 
 class ::ApplicationController < ActionController::Base
+  def default_url_options
+    { :classified => 'cia' }
+  end
 end
 
 module ActionView

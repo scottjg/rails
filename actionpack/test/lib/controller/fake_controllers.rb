@@ -29,6 +29,7 @@ class BraveController < ActionController::Base; end
 class CarsController < ActionController::Base; end
 class CcController < ActionController::Base; end
 class CController < ActionController::Base; end
+class DocumentController < ActionController::Base; end
 class ElsewhereController < ActionController::Base; end
 class FooController < ActionController::Base; end
 class GeocodeController < ActionController::Base; end
