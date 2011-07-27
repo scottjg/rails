@@ -504,8 +504,7 @@ module ActiveRecord #:nodoc:
         if attributes.is_a?(Array)
           attributes.collect { |attr| create(attr, options, &block) }
         else
-          object = new(attributes, options)
-          yield(object) if block_given?
+          object = new(attributes, options, &block)
           object.save
           object
         end
@@ -1052,20 +1051,15 @@ module ActiveRecord #:nodoc:
         # Each dynamic finder using <tt>scoped_by_*</tt> is also defined in the class after it
         # is first invoked, so that future attempts to use it do not run through method_missing.
         def method_missing(method_id, *arguments, &block)
-          if match = DynamicFinderMatch.match(method_id)
+          if match = (DynamicFinderMatch.match(method_id) || DynamicScopeMatch.match(method_id))
             attribute_names = match.attribute_names
             super unless all_attributes_exists?(attribute_names)
-            if match.finder?
-              options = arguments.extract_options!
-              relation = options.any? ? scoped(options) : scoped
-              relation.send :find_by_attributes, match, attribute_names, *arguments, &block
-            elsif match.instantiator?
-              scoped.send :find_or_instantiator_by_attributes, match, attribute_names, *arguments, &block
+            if arguments.size < attribute_names.size
+              method_trace = "#{__FILE__}:#{__LINE__}:in `#{method_id}'"
+              backtrace = [method_trace] + caller
+              raise ArgumentError, "wrong number of arguments (#{arguments.size} for #{attribute_names.size})", backtrace
             end
-          elsif match = DynamicScopeMatch.match(method_id)
-            attribute_names = match.attribute_names
-            super unless all_attributes_exists?(attribute_names)
-            if match.scope?
+            if match.respond_to?(:scope?) && match.scope?
               self.class_eval <<-METHOD, __FILE__, __LINE__ + 1
                 def self.#{method_id}(*args)                                    # def self.scoped_by_user_name_and_password(*args)
                   attributes = Hash[[:#{attribute_names.join(',:')}].zip(args)] #   attributes = Hash[[:user_name, :password].zip(args)]
@@ -1074,6 +1068,12 @@ module ActiveRecord #:nodoc:
                 end                                                             # end
               METHOD
               send(method_id, *arguments)
+            elsif match.finder?
+              options = arguments.extract_options!
+              relation = options.any? ? scoped(options) : scoped
+              relation.send :find_by_attributes, match, attribute_names, *arguments, &block
+            elsif match.instantiator?
+              scoped.send :find_or_instantiator_by_attributes, match, attribute_names, *arguments, &block
             end
           else
             super
@@ -1638,7 +1638,8 @@ MSG
         when new_record?
           "#{self.class.model_name.cache_key}/new"
         when timestamp = self[:updated_at]
-          "#{self.class.model_name.cache_key}/#{id}-#{timestamp.to_s(:number)}"
+          timestamp = timestamp.utc.to_s(:number)
+          "#{self.class.model_name.cache_key}/#{id}-#{timestamp}"
         else
           "#{self.class.model_name.cache_key}/#{id}"
         end
@@ -1736,7 +1737,7 @@ MSG
       end
 
       # Returns an <tt>#inspect</tt>-like string for the value of the
-      # attribute +attr_name+. String attributes are elided after 50
+      # attribute +attr_name+. String attributes are truncated upto 50
       # characters, and Date and Time attributes are returned in the
       # <tt>:db</tt> format. Other attributes return the value of
       # <tt>#inspect</tt> without modification.
@@ -2025,15 +2026,18 @@ MSG
         # If Date bits were not provided, error
         raise "Missing Parameter" if [1,2,3].any?{|position| !values_hash_from_param.has_key?(position)}
         max_position = extract_max_param_for_multiparameter_attributes(values_hash_from_param, 6)
+        # If Date bits were provided but blank, then return nil
+        return nil if (1..3).any? {|position| values_hash_from_param[position].blank?}
+
         set_values = (1..max_position).collect{|position| values_hash_from_param[position] }
-        # If Date bits were provided but blank, then default to 1
         # If Time bits are not there, then default to 0
-        [1,1,1,0,0,0].each_with_index{|v,i| set_values[i] = set_values[i].blank? ? v : set_values[i]}
+        (3..5).each {|i| set_values[i] = set_values[i].blank? ? 0 : set_values[i]}
         instantiate_time_object(name, set_values)
       end
 
       def read_date_parameter_value(name, values_hash_from_param)
-        set_values = (1..3).collect{|position| values_hash_from_param[position].blank? ? 1 : values_hash_from_param[position]}
+        return nil if (1..3).any? {|position| values_hash_from_param[position].blank?}
+        set_values = [values_hash_from_param[1], values_hash_from_param[2], values_hash_from_param[3]]
         begin
           Date.new(*set_values)
         rescue ArgumentError # if Date.new raises an exception on an invalid date
@@ -2161,6 +2165,4 @@ MSG
   end
 end
 
-# TODO: Remove this and make it work with LAZY flag
-require 'active_record/connection_adapters/abstract_adapter'
 ActiveSupport.run_load_hooks(:active_record, ActiveRecord::Base)
