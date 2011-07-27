@@ -80,13 +80,20 @@ db_namespace = namespace :db do
         else
           error_class = config['adapter'] =~ /mysql2/ ? Mysql2::Error : Mysql::Error
         end
-        access_denied_error = 1045
+        access_denied_error_codes = [1044, 1045]
         begin
-          ActiveRecord::Base.establish_connection(config.merge('database' => nil))
-          ActiveRecord::Base.connection.create_database(config['database'], mysql_creation_options(config))
-          ActiveRecord::Base.establish_connection(config)
+          begin
+            ActiveRecord::Base.establish_connection(config.merge('database' => nil))
+            ActiveRecord::Base.connection.create_database(config['database'], mysql_creation_options(config))
+            ActiveRecord::Base.establish_connection(config)
+          rescue ActiveRecord::WrappedDatabaseException => e
+            original = e.original_exception
+            # unpack the original exception and raise it if it will be handled by the following block
+            raise original if original.is_a? error_class and access_denied_error_codes.include? original.errno
+            raise
+          end
         rescue error_class => sqlerr
-          if sqlerr.errno == access_denied_error
+          if access_denied_error_codes.include? sqlerr.errno
             print "#{sqlerr.error}. \nPlease provide the root password for your mysql installation\n>"
             root_password = $stdin.gets.strip
             grant_statement = "GRANT ALL PRIVILEGES ON #{config['database']}.* " \
