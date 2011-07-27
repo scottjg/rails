@@ -595,6 +595,10 @@ module ActiveRecord
             RecordNotUnique.new(message, exception)
           when 1452
             InvalidForeignKey.new(message, exception)
+          when 1044
+            WrappedDatabaseException.new(message, exception)
+          when 1045
+            WrappedDatabaseException.new(message, exception)
           else
             super
           end
