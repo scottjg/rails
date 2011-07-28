@@ -1,6 +1,7 @@
 dgeb - test1+
 dgeb - test2+
 dgeb - test3
+dgeb - test4
 
 == Welcome to Rails
 
