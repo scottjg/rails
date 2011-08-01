@@ -38,6 +38,10 @@ module Rails
         @assets.precompile = [ /\w+\.(?!js|css).+/, /application.(css|js)$/ ]
         @assets.prefix     = "/assets"
 
+        @assets.fingerprinting = ActiveSupport::OrderedOptions.new
+        @assets.fingerprinting.enabled = false
+        @assets.fingerprinting.exclude = []
+
         @assets.cache_store    = [ :file_store, "#{root}/tmp/cache/assets/" ]
         @assets.js_compressor  = nil
         @assets.css_compressor = nil

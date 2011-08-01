@@ -43,6 +43,9 @@ module Sprockets
       next unless app.assets
       config = app.config
 
+      app.assets.fingerprinting_enabled    = config.assets.fingerprinting.enabled
+      app.assets.fingerprinting_exclusions = config.assets.fingerprinting.exclude
+
       config.assets.paths.each { |path| app.assets.append_path(path) }
 
       if config.assets.compress

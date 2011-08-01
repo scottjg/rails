@@ -116,7 +116,7 @@ module Sprockets
           if source[0] == ?/
             source
           else
-            asset_environment.path(source, performing_caching?, dir)
+            asset_environment.path(source, dir)
           end
         end
 
@@ -126,11 +126,6 @@ module Sprockets
           else
             source
           end
-        end
-
-        # When included in Sprockets::Context, we need to ask the top-level config as the controller is not available
-        def performing_caching?
-          config.action_controller.present? ? config.action_controller.perform_caching : config.perform_caching
         end
       end
     end
