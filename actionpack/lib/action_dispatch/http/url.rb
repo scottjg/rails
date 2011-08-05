@@ -70,7 +70,7 @@ module ActionDispatch
 
           host = ""
           host << (options[:subdomain] || extract_subdomain(options[:host], tld_length))
-          host << "."
+          host << "." unless host.blank?
           host << (options[:domain]    || extract_domain(options[:host], tld_length))
           host
         end
