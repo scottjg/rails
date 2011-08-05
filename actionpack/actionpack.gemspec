@@ -23,9 +23,9 @@ Gem::Specification.new do |s|
   s.add_dependency('activemodel',   version)
   s.add_dependency('builder',       '~> 2.1.2')
   s.add_dependency('i18n',          '~> 0.5.0')
-  s.add_dependency('rack',          '~> 1.2.1')
-  s.add_dependency('rack-test',     '~> 0.5.7')
-  s.add_dependency('rack-mount',    '~> 0.6.14')
+  s.add_dependency('rack',          '~> 1.3.2')
+  s.add_dependency('rack-test',     '~> 0.6.1')
+  s.add_dependency('rack-mount',    '~> 0.8.1')
   s.add_dependency('tzinfo',        '~> 0.3.23')
   s.add_dependency('erubis',        '~> 2.6.6')
 end
