@@ -156,6 +156,29 @@ module ActiveRecord
     def update_all(updates, conditions = nil, options = {})
       if conditions || options.present?
         where(conditions).apply_finder_options(options.slice(:limit, :order)).update_all(updates)
+      elsif @joins_values.present?
+        # The current ARel query contains joins. Most RDBMSs won't execute an UPDATE with JOINs.
+        # To work around this, we'll put the current query into a subquery to fetch the IDs,
+        # and update all rows with the fetched IDs.
+        # E.g. insert of "UPDATE posts SET active = 1 FROM posts INNER JOIN authors on posts.author_id = authors.id"
+        # we will do "UPDATE posts SET active = 1 WHERE id IN
+        #   (SELECT posts.id FROM posts INNER JOIN authors on posts.author_id = authors.id)"
+
+        # Make sure we're selecting only the primary key field. Call it "id", since we have to refer to it later.
+        @select_values = []
+        select("#{@klass.table_name}.#{@klass.primary_key} as id")
+        # Capture the current query for use as the subquery later on.
+        find_id_sql = arel.to_sql
+        # Reset all of the parts of the current query so we can construct a new one.
+        @joins_values = @where_values = @group_values = @having_values = @order_values = []
+        @limit_value = @offset_value = @from_value = nil
+        @arel = build_arel
+
+        # Construct the new query without joins and call update_all on it.
+        # (The extra "SELECT id from" puts our subquery into a sub-subquery, which allows MySQL to update
+        # the table even though it's referenced in a FROM clause somewhere in the overall query.
+        # See http://www.xaprb.com/blog/2006/06/23/how-to-select-from-an-update-target-in-mysql/)
+        from("#{@klass.table_name}").where("#{@klass.table_name}.id IN (SELECT id from (#{find_id_sql}) x)").update_all(updates)
       else
         # Apply limit and order only if they're both present
         if @limit_value.present? == @order_values.present?

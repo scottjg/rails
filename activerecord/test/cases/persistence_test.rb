@@ -5,6 +5,8 @@ require 'models/author'
 require 'models/topic'
 require 'models/reply'
 require 'models/category'
+require 'models/reader'
+require 'models/person'
 require 'models/company'
 require 'models/developer'
 require 'models/project'
@@ -18,7 +20,7 @@ require 'active_support/core_ext/exception'
 
 class PersistencesTest < ActiveRecord::TestCase
 
-  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts, :minivans
+  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts, :minivans, :people
 
   # Oracle UPDATE does not support ORDER BY
   unless current_adapter?(:OracleAdapter)
@@ -289,6 +291,32 @@ class PersistencesTest < ActiveRecord::TestCase
   def test_update_all_with_non_standard_table_name
     assert_equal 1, WarehouseThing.update_all(['value = ?', 0], ['id = ?', 1])
     assert_equal 0, WarehouseThing.find(1).value
+  end
+
+  def test_update_all_has_many_through
+    post = posts(:thinking)
+    david = people(:david)
+    michael = people(:michael)
+    susan = people(:susan)
+
+    post.people << david << michael << susan
+    post.save
+
+    # Update just the first two people (alphabetically by name)
+    post.people.update_all({:first_name => 'Aaron'}, nil, {:limit => 2, :order => :first_name})
+    david.reload
+    michael.reload
+    susan.reload
+    assert_equal 'Aaron', david.first_name
+    assert_equal 'Aaron', michael.first_name
+    assert_equal 'Susan', susan.first_name
+
+    # Now update everyone
+    post.people.update_all :first_name => 'Bob'
+    [david, michael, susan].each do |p|
+      p.reload
+      assert_equal 'Bob', p.first_name
+    end
   end
 
   def test_delete_new_record
