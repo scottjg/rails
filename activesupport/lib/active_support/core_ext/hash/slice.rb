@@ -30,11 +30,21 @@ class Hash
     omit
   end
 
+# <<<<<<< HEAD
   # Removes and returns the key/value pairs matching the given keys.
   #
   #   { a: 1, b: 2, c: 3, d: 4 }.extract!(:a, :b) # => {:a=>1, :b=>2}
   #   { a: 1, b: 2 }.extract!(:a, :x)             # => {:a=>1}
   def extract!(*keys)
     keys.each_with_object(self.class.new) { |key, result| result[key] = delete(key) if has_key?(key) }
+# =======
+#   # Extracts the given keys from the hash and create a new Hash with the given
+#   # keys.  In other words, this is the opposite of slice!
+#   def extract!(*keys)
+#     keys = keys.map! { |key| convert_key(key) } if respond_to?(:convert_key)
+#     result = self.class.new
+#     keys.each {|k| result[k] = delete(k) if has_key?(k) }
+#     result
+# >>>>>>> fix Hash#extract! to work properly with HashWithIndifferentAccess to not return nil values for keys that don't exist
   end
 end
