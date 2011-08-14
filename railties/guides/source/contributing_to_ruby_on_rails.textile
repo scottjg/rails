@@ -152,9 +152,9 @@ In order to be able to run the test suite against MySQL you need to create a use
 
 <shell>
 mysql> GRANT ALL PRIVILEGES ON activerecord_unittest.*
-       to 'rails'@'localhost';
+       to 'rails'@'localhost' WITH GRANT OPTION;
 mysql> GRANT ALL PRIVILEGES ON activerecord_unittest2.*
-       to 'rails'@'localhost';
+       to 'rails'@'localhost' WITH GRANT OPTION;
 </shell>
 
 and create the test databases:
