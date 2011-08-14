@@ -62,6 +62,13 @@ module ActiveRecord
           ActiveRecord::Base.connection.execute("USE #{@db}")
         end
       end
+
+      def test_authorisation_failure_raises_structured_error
+        assert_raises(ActiveRecord::WrappedDatabaseException) do
+          ActiveRecord::Base.establish_connection(@unpriv_config.except('database'))
+          ActiveRecord::Base.connection.execute("USE #{@db}")
+        end
+      end
     end
   end
 end
