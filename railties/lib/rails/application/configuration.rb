@@ -35,7 +35,7 @@ module Rails
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled    = false
         @assets.paths      = []
-        @assets.precompile = [ /\w+\.(?!js|css).+/, /application.(css|js)$/ ]
+        @assets.precompile = [ /^(?!.*\.(js|css)(\..*|$))/, /application.(css|js)$/ ]
         @assets.prefix     = "/assets"
         @assets.version    = ''
 
