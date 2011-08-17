@@ -1,5 +1,5 @@
 fixtures = File.join(File.dirname(__FILE__), 'test', 'fixtures')
-version = "2.3.11"
+version = "2.3.14"
 
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
