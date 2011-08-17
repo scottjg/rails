@@ -1,4 +1,17 @@
-*Rails 3.0.9 (unreleased)*
+*Rails 3.0.10 (unreleased)*
+
+* Fixes an issue where cache sweepers with only after filters would have no
+controller object, it would raise undefined method controller_name for nil [jeroenj]
+
+* Ensure status codes are logged when exceptions are raised.
+
+* Subclasses of OutputBuffer are respected.
+
+* Fixed ActionView::FormOptionsHelper#select with :multiple => false
+
+* Avoid extra call to Cache#read in case of a fragment cache hit
+
+*Rails 3.0.9 (June 16, 2011)*
 
 * json_escape will now return a SafeBuffer string if it receives SafeBuffer string [tenderlove]
 
@@ -2102,7 +2115,7 @@ superclass' view_paths.  [Rick Olson]
 
 * Update documentation for erb trim syntax. #5651 [matt@mattmargolis.net]
 
-* Pass :id => nil or :class => nil to error_messages_for to supress that html attribute. #3586 [olivier_ansaldi@yahoo.com, sebastien@goetzilla.info]
+* Pass :id => nil or :class => nil to error_messages_for to supress that html attribute. #3586 [olivier_ansaldi@yahoo.com]
 
 * Reset @html_document between requests so assert_tag works. #4810 [Jarkko Laine, easleydp@gmail.com]
 
@@ -2699,7 +2712,7 @@ superclass' view_paths.  [Rick Olson]
 
 * Provide support for decimal columns to form helpers. Closes #5672. [Dave Thomas]
 
-* Pass :id => nil or :class => nil to error_messages_for to supress that html attribute. #3586 [olivier_ansaldi@yahoo.com, sebastien@goetzilla.info]
+* Pass :id => nil or :class => nil to error_messages_for to supress that html attribute. #3586 [olivier_ansaldi@yahoo.com]
 
 * Reset @html_document between requests so assert_tag works. #4810 [Jarkko Laine, easleydp@gmail.com]
 
