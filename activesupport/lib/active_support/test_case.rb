@@ -21,7 +21,7 @@ module ActiveSupport
       Assertion = MiniTest::Assertion
     end
 
-    # TODO: Figure out how to get the Rails::BacktraceFilter into minitest/unit
+  # TODO: Figure out how to get the Rails::BacktraceFilter into minitest/unit
   # Test::Unit compatibility.
   rescue LoadError
     require 'test/unit/testcase'
@@ -35,7 +35,7 @@ module ActiveSupport
     class TestCase < ::Test::Unit::TestCase
       Assertion = Test::Unit::AssertionFailedError
       include ActiveSupport::Testing::Default
-    end    
+    end
   end
 
   class TestCase
