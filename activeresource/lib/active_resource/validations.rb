@@ -27,8 +27,18 @@ module ActiveResource
 
     # Grabs errors from a json response.
     def from_json(json, save_cache = false)
-      array = Array.wrap(ActiveSupport::JSON.decode(json)['errors']) rescue []
-      from_array array, save_cache
+      errors = ActiveSupport::JSON.decode(json)
+      if errors['errors']
+        # ActiveRecord 2.x errors array
+        array = Array.wrap(errors['errors'])
+        from_array array, save_cache
+      else
+        # ActiveModel errors hash
+        clear unless save_cache
+        errors.each do |attr_name, messages|
+          Array.wrap(messages).each { |message| add(attr_name.to_sym, message) }
+        end
+      end
     end
 
     # Grabs errors from an XML response.
