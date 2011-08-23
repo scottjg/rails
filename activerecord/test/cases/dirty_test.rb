@@ -54,6 +54,21 @@ class DirtyTest < ActiveRecord::TestCase
     assert_nil pirate.catchphrase_change
   end
 
+  def test_in_place_attribute_changes
+    # New record, with a catchphrase. - no changes.
+    pirate = Pirate.new
+    pirate.catchphrase = 'arrr'
+    pirate.save!
+    assert !pirate.catchphrase_changed?
+    assert_nil pirate.catchphrase_change
+
+    # Edit the attribute in place
+    pirate.catchphrase.upcase!
+    assert pirate.catchphrase_changed?
+    assert_equal ['arrr', 'ARRR'], pirate.catchphrase_change
+    assert_equal 'arrr', pirate.catchphrase_was
+  end
+
   def test_time_attributes_changes_with_time_zone
     in_time_zone 'Paris' do
       target = Class.new(ActiveRecord::Base)
