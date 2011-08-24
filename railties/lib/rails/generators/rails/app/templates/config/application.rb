@@ -8,13 +8,16 @@ require 'rails/all'
 require "action_controller/railtie"
 require "action_mailer/railtie"
 require "active_resource/railtie"
-<%= comment_if :skip_test_unit %> require "rails/test_unit/railtie"
+<%= comment_if :skip_sprockets %>require "sprockets/railtie"
+<%= comment_if :skip_test_unit %>require "rails/test_unit/railtie"
 <% end -%>
 
-# If you have a Gemfile, require the default gems, the ones in the
-# current environment and also include :assets gems if in development
-# or test environments.
-Bundler.require *Rails.groups(:assets => %w(development test)) if defined?(Bundler)
+if defined?(Bundler)
+  # If you precompile assets before deploying to production, use this line
+  Bundler.require *Rails.groups(:assets => %w(development test))
+  # If you want your assets lazily compiled in production, use this line
+  # Bundler.require(:default, :assets, Rails.env)
+end
 
 module <%= app_const_base %>
   class Application < Rails::Application
@@ -46,7 +49,9 @@ module <%= app_const_base %>
     # Configure sensitive parameters which will be filtered from the log file.
     config.filter_parameters += [:password]
 
+<% unless options.skip_sprockets? -%>
     # Enable the asset pipeline
     config.assets.enabled = true
+<% end -%>
   end
 end

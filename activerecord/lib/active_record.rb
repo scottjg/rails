@@ -41,6 +41,7 @@ module ActiveRecord
   eager_autoload do
     autoload :ActiveRecordError, 'active_record/errors'
     autoload :ConnectionNotEstablished, 'active_record/errors'
+    autoload :ConnectionAdapters, 'active_record/connection_adapters/abstract_adapter'
 
     autoload :Aggregations
     autoload :Associations
@@ -71,6 +72,7 @@ module ActiveRecord
     autoload :Persistence
     autoload :QueryCache
     autoload :Reflection
+    autoload :Result
     autoload :Schema
     autoload :SchemaDumper
     autoload :Serialization

@@ -4,6 +4,7 @@ require 'action_view/helpers/tag_helper'
 require 'action_view/helpers/form_tag_helper'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/module/method_names'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/array/extract_options'
@@ -48,7 +49,7 @@ module ActionView
     #     <label for="person_last_name">Last name</label>:
     #     <input id="person_last_name" name="person[last_name]" size="30" type="text" /><br />
     #
-    #     <input id="person_submit" name="commit" type="submit" value="Create Person" />
+    #     <input name="commit" type="submit" value="Create Person" />
     #   </form>
     #
     # As you see, the HTML reflects knowledge about the resource in several spots,
@@ -79,7 +80,7 @@ module ActionView
     #     <label for="person_last_name">Last name</label>:
     #     <input id="person_last_name" name="person[last_name]" size="30" type="text" value="Smith" /><br />
     #
-    #     <input id="person_submit" name="commit" type="submit" value="Update Person" />
+    #     <input name="commit" type="submit" value="Update Person" />
     #   </form>
     #
     # Note that the endpoint, default values, and submit button label are tailored for <tt>@person</tt>.
@@ -232,7 +233,7 @@ module ActionView
       #   <% end %>
       #
       # If your resource has associations defined, for example, you want to add comments
-      # to the post given that the routes are set correctly:
+      # to the document given that the routes are set correctly:
       #
       #   <%= form_for([@document, @comment]) do |f| %>
       #    ...
@@ -258,8 +259,8 @@ module ActionView
       #    :remote => true
       #
       # in the options hash creates a form that will allow the unobtrusive JavaScript drivers to modify its
-      # behaviour. The expected default behaviour is an XMLHttpRequest in the background instead of the regular
-      # POST arrangement, but ultimately the behaviour is the choice of the JavaScript driver implementor.
+      # behavior. The expected default behavior is an XMLHttpRequest in the background instead of the regular
+      # POST arrangement, but ultimately the behavior is the choice of the JavaScript driver implementor.
       # Even though it's using JavaScript to serialize the form elements, the form submission will work just like
       # a regular submission as viewed by the receiving side (all elements available in <tt>params</tt>).
       #
@@ -364,7 +365,7 @@ module ActionView
           apply_form_for_options!(record, options)
         end
 
-        options[:html][:remote] = options.delete(:remote)
+        options[:html][:remote] = options.delete(:remote) if options.has_key?(:remote)
         options[:html][:method] = options.delete(:method) if options.has_key?(:method)
         options[:html][:authenticity_token] = options.delete(:authenticity_token)
 
@@ -567,18 +568,13 @@ module ActionView
       #     ...
       #   <% end %>
       #
-      # In addition, you may want to have access to the current iteration index.
-      # In that case, you can use a similar method called fields_for_with_index
-      # which receives a block with an extra parameter:
+      # When projects is already an association on Person you can use
+      # +accepts_nested_attributes_for+ to define the writer method for you:
       #
-      #   <%= form_for @person do |person_form| %>
-      #     ...
-      #     <%= person_form.fields_for_with_index :projects do |project_fields, index| %>
-      #       Position: <%= index %>
-      #       Name: <%= project_fields.text_field :name %>
-      #     <% end %>
-      #     ...
-      #   <% end %>
+      #   class Person < ActiveRecord::Base
+      #     has_many :projects
+      #     accepts_nested_attributes_for :projects
+      #   end
       #
       # If you want to destroy any of the associated models through the
       # form, you have to enable it first using the <tt>:allow_destroy</tt>
@@ -863,7 +859,28 @@ module ActionView
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_radio_button_tag(tag_value, options)
       end
 
-      # Returns a text_field of type "search".
+      # Returns an input of type "search" for accessing a specified attribute (identified by +method+) on an object
+      # assigned to the template (identified by +object_name+). Inputs of type "search" may be styled differently by
+      # some browsers.
+      #
+      # ==== Examples
+      #
+      #   search_field(:user, :name)
+      #   # => <input id="user_name" name="user[name]" size="30" type="search" />
+      #   search_field(:user, :name, :autosave => false)
+      #   # => <input autosave="false" id="user_name" name="user[name]" size="30" type="search" />
+      #   search_field(:user, :name, :results => 3)
+      #   # => <input id="user_name" name="user[name]" results="3" size="30" type="search" />
+      #   #  Assume request.host returns "www.example.com"
+      #   search_field(:user, :name, :autosave => true)
+      #   # => <input autosave="com.example.www" id="user_name" name="user[name]" results="10" size="30" type="search" />
+      #   search_field(:user, :name, :onsearch => true)
+      #   # => <input id="user_name" incremental="true" name="user[name]" onsearch="true" size="30" type="search" />
+      #   search_field(:user, :name, :autosave => false, :onsearch => true)
+      #   # => <input autosave="false" id="user_name" incremental="true" name="user[name]" onsearch="true" size="30" type="search" />
+      #   search_field(:user, :name, :autosave => true, :onsearch => true)
+      #   # => <input autosave="com.example.www" id="user_name" incremental="true" name="user[name]" onsearch="true" results="10" size="30" type="search" />
+      #
       def search_field(object_name, method, options = {})
         options = options.stringify_keys
 
@@ -882,17 +899,29 @@ module ActionView
       end
 
       # Returns a text_field of type "tel".
+      #
+      #   telephone_field("user", "phone")
+      #   # => <input id="user_phone" name="user[phone]" size="30" type="tel" />
+      #
       def telephone_field(object_name, method, options = {})
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("tel", options)
       end
       alias phone_field telephone_field
 
       # Returns a text_field of type "url".
+      #
+      #   url_field("user", "homepage")
+      #   # => <input id="user_homepage" size="30" name="user[homepage]" type="url" />
+      #
       def url_field(object_name, method, options = {})
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("url", options)
       end
 
       # Returns a text_field of type "email".
+      #
+      #   email_field("user", "address")
+      #   # => <input id="user_address" size="30" name="user[address]" type="email" />
+      #
       def email_field(object_name, method, options = {})
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_input_field_tag("email", options)
       end
@@ -1153,7 +1182,7 @@ module ActionView
             options["name"] ||= tag_name_with_index(@auto_index)
             options["id"] = options.fetch("id"){ tag_id_with_index(@auto_index) }
           else
-            options["name"] ||= tag_name + (options.has_key?('multiple') ? '[]' : '')
+            options["name"] ||= tag_name + (options['multiple'] ? '[]' : '')
             options["id"] = options.fetch("id"){ tag_id }
           end
         end
@@ -1198,8 +1227,12 @@ module ActionView
         parent_builder.multipart = multipart if parent_builder
       end
 
-      def self.model_name
-        @model_name ||= Struct.new(:partial_path).new(name.demodulize.underscore.sub!(/_builder$/, ''))
+      def self._to_partial_path
+        @_to_partial_path ||= name.demodulize.underscore.sub!(/_builder$/, '')
+      end
+
+      def to_partial_path
+        self.class._to_partial_path
       end
 
       def to_model
@@ -1231,13 +1264,6 @@ module ActionView
               objectify_options(options))        #     objectify_options(options))
           end                                    # end
         RUBY_EVAL
-      end
-
-      # Check +fields_for+ for docs and examples.
-      def fields_for_with_index(record_name, record_object = nil, fields_options = {}, &block)
-        index = fields_options[:index] || options[:child_index] || nested_child_index(@object_name)
-        block_with_index = Proc.new{ |obj| block.call(obj, index) }
-        fields_for(record_name, record_object, fields_options, &block_with_index)
       end
 
       def fields_for(record_name, record_object = nil, fields_options = {}, &block)

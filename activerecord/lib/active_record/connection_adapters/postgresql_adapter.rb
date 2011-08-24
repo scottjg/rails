@@ -265,6 +265,10 @@ module ActiveRecord
         @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
       end
 
+      def self.visitor_for(pool) # :nodoc:
+        Arel::Visitors::PostgreSQL.new(pool)
+      end
+
       # Clears the prepared statements cache.
       def clear_cache!
         @statements.each_value do |value|
@@ -614,9 +618,11 @@ module ActiveRecord
 
       # SCHEMA STATEMENTS ========================================
 
-      def recreate_database(name) #:nodoc:
+      # Drops the database specified on the +name+ attribute
+      # and creates it again using the provided +options+.
+      def recreate_database(name, options = {}) #:nodoc:
         drop_database(name)
-        create_database(name)
+        create_database(name, options)
       end
 
       # Create a new PostgreSQL database. Options include <tt>:owner</tt>, <tt>:template</tt>,
@@ -670,7 +676,7 @@ module ActiveRecord
       # If the schema is not specified as part of +name+ then it will only find tables within
       # the current schema search path (regardless of permissions to access tables in other schemas)
       def table_exists?(name)
-        schema, table = extract_schema_and_table(name.to_s)
+        schema, table = Utils.extract_schema_and_table(name.to_s)
         return false unless table
 
         binds = [[nil, table]]
@@ -940,11 +946,28 @@ module ActiveRecord
 
         # Construct a clean list of column names from the ORDER BY clause, removing
         # any ASC/DESC modifiers
-        order_columns = orders.collect { |s| s =~ /^(.+)\s+(ASC|DESC)\s*$/i ? $1 : s }
+        order_columns = orders.collect { |s| s.gsub(/\s+(ASC|DESC)\s*/i, '') }
         order_columns.delete_if { |c| c.blank? }
         order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
         "DISTINCT #{columns}, #{order_columns * ', '}"
+      end
+
+      module Utils
+        # Returns an array of <tt>[schema_name, table_name]</tt> extracted from +name+.
+        # +schema_name+ is nil if not specified in +name+.
+        # +schema_name+ and +table_name+ exclude surrounding quotes (regardless of whether provided in +name+)
+        # +name+ supports the range of schema/table references understood by PostgreSQL, for example:
+        #
+        # * <tt>table_name</tt>
+        # * <tt>"table.name"</tt>
+        # * <tt>schema_name.table_name</tt>
+        # * <tt>schema_name."table.name"</tt>
+        # * <tt>"schema.name"."table name"</tt>
+        def self.extract_schema_and_table(name)
+          table, schema = name.scan(/[^".\s]+|"[^"]*"/)[0..1].collect{|m| m.gsub(/(^"|"$)/,'') }.reverse
+          [schema, table]
+        end
       end
 
       protected
@@ -1083,21 +1106,6 @@ module ActiveRecord
             rest = rest[1, rest.length] if rest.start_with? "."
             [match_data[1], (rest.length > 0 ? rest : nil)]
           end
-        end
-
-        # Returns an array of <tt>[schema_name, table_name]</tt> extracted from +name+.
-        # +schema_name+ is nil if not specified in +name+.
-        # +schema_name+ and +table_name+ exclude surrounding quotes (regardless of whether provided in +name+)
-        # +name+ supports the range of schema/table references understood by PostgreSQL, for example:
-        #
-        # * <tt>table_name</tt>
-        # * <tt>"table.name"</tt>
-        # * <tt>schema_name.table_name</tt>
-        # * <tt>schema_name."table.name"</tt>
-        # * <tt>"schema.name"."table name"</tt>
-        def extract_schema_and_table(name)
-          table, schema = name.scan(/[^".\s]+|"[^"]*"/)[0..1].collect{|m| m.gsub(/(^"|"$)/,'') }.reverse
-          [schema, table]
         end
 
         def extract_table_ref_from_insert_sql(sql)

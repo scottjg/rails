@@ -20,7 +20,7 @@ class ERB
       if s.html_safe?
         s
       else
-        s.gsub(/[&"><]/) { |special| HTML_ESCAPE[special] }.html_safe
+        s.to_s.gsub(/&/, "&amp;").gsub(/\"/, "&quot;").gsub(/>/, "&gt;").gsub(/</, "&lt;").html_safe
       end
     end
 
@@ -67,7 +67,7 @@ class Object
   end
 end
 
-class Fixnum
+class Numeric
   def html_safe?
     true
   end
@@ -84,6 +84,12 @@ module ActiveSupport #:nodoc:
       def initialize
         super "Could not concatenate to the buffer because it is not html safe."
       end
+    end
+
+    def[](*args)
+      new_safe_buffer = super
+      new_safe_buffer.instance_eval { @dirty = false }
+      new_safe_buffer
     end
 
     def safe_concat(value)
@@ -137,14 +143,14 @@ module ActiveSupport #:nodoc:
 
     UNSAFE_STRING_METHODS.each do |unsafe_method|
       class_eval <<-EOT, __FILE__, __LINE__
-        def #{unsafe_method}(*args, &block)
-          to_str.#{unsafe_method}(*args, &block)
-        end
+        def #{unsafe_method}(*args, &block)       # def gsub(*args, &block)
+          to_str.#{unsafe_method}(*args, &block)  #   to_str.gsub(*args, &block)
+        end                                       # end
 
-        def #{unsafe_method}!(*args)
-          @dirty = true
-          super
-        end
+        def #{unsafe_method}!(*args)              # def gsub!(*args)
+          @dirty = true                           #   @dirty = true
+          super                                   #   super
+        end                                       # end
       EOT
     end
 

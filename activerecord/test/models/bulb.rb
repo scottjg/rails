@@ -4,11 +4,16 @@ class Bulb < ActiveRecord::Base
 
   attr_protected :car_id, :frickinawesome
 
-  attr_reader :scope_after_initialize
+  attr_reader :scope_after_initialize, :attributes_after_initialize
 
   after_initialize :record_scope_after_initialize
   def record_scope_after_initialize
     @scope_after_initialize = self.class.scoped
+  end
+
+  after_initialize :record_attributes_after_initialize
+  def record_attributes_after_initialize
+    @attributes_after_initialize = attributes.dup
   end
 
   def color=(color)
@@ -28,4 +33,9 @@ class Bulb < ActiveRecord::Base
 end
 
 class CustomBulb < Bulb
+  after_initialize :set_awesomeness
+
+  def set_awesomeness
+    self.frickinawesome = true if name == 'Dude'
+  end
 end

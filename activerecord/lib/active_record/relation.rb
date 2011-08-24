@@ -1,4 +1,5 @@
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/module/delegation'
 
 module ActiveRecord
   # = Active Record Relation
@@ -6,7 +7,7 @@ module ActiveRecord
     JoinOperation = Struct.new(:relation, :join_class, :on)
     ASSOCIATION_METHODS = [:includes, :eager_load, :preload]
     MULTI_VALUE_METHODS = [:select, :group, :order, :joins, :where, :having, :bind]
-    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :create_with, :from, :reorder, :reverse_order]
+    SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :from, :reorder, :reverse_order]
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches
 
@@ -29,6 +30,7 @@ module ActiveRecord
       SINGLE_VALUE_METHODS.each {|v| instance_variable_set(:"@#{v}_value", nil)}
       (ASSOCIATION_METHODS + MULTI_VALUE_METHODS).each {|v| instance_variable_set(:"@#{v}_values", [])}
       @extensions = []
+      @create_with_value = {}
     end
 
     def insert(values)
@@ -66,7 +68,7 @@ module ActiveRecord
       end
 
       conn.insert(
-        im.to_sql,
+        im,
         'SQL',
         primary_key,
         primary_key_value,
@@ -106,10 +108,10 @@ module ActiveRecord
 
       if default_scoped.equal?(self)
         @records = if @readonly_value.nil? && !@klass.locking_enabled?
-          eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, @bind_values)
+          eager_loading? ? find_with_associations : @klass.find_by_sql(arel, @bind_values)
         else
           IdentityMap.without do
-            eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, @bind_values)
+            eager_loading? ? find_with_associations : @klass.find_by_sql(arel, @bind_values)
           end
         end
 
@@ -214,19 +216,21 @@ module ActiveRecord
       if conditions || options.present?
         where(conditions).apply_finder_options(options.slice(:limit, :order)).update_all(updates)
       else
-        limit = nil
-        order = []
-        # Apply limit and order only if they're both present
-        if @limit_value.present? == @order_values.present?
-          limit = arel.limit
-          order = arel.orders
+        stmt = Arel::UpdateManager.new(arel.engine)
+
+        stmt.set Arel.sql(@klass.send(:sanitize_sql_for_assignment, updates))
+        stmt.table(table)
+        stmt.key = table[primary_key]
+
+        if joins_values.any?
+          @klass.connection.join_to_update(stmt, arel)
+        else
+          stmt.take(arel.limit)
+          stmt.order(*arel.orders)
+          stmt.wheres = arel.constraints
         end
 
-        stmt = arel.compile_update(Arel.sql(@klass.send(:sanitize_sql_for_assignment, updates)))
-        stmt.take limit if limit
-        stmt.order(*order)
-        stmt.key = table[primary_key]
-        @klass.connection.update stmt.to_sql, 'SQL', bind_values
+        @klass.connection.update stmt, 'SQL', bind_values
       end
     end
 
@@ -248,8 +252,7 @@ module ActiveRecord
     #   Person.update(people.keys, people.values)
     def update(id, attributes)
       if id.is_a?(Array)
-        idx = -1
-        id.collect { |one_id| idx += 1; update(one_id, attributes[idx]) }
+        id.each.with_index.map {|one_id, idx| update(one_id, attributes[idx])}
       else
         object = find(id)
         object.update_attributes(attributes)
@@ -344,8 +347,7 @@ module ActiveRecord
         where(conditions).delete_all
       else
         statement = arel.compile_delete
-        affected = @klass.connection.delete(
-          statement.to_sql, 'SQL', bind_values)
+        affected = @klass.connection.delete(statement, 'SQL', bind_values)
 
         reset
         affected
@@ -391,7 +393,7 @@ module ActiveRecord
     end
 
     def to_sql
-      @to_sql ||= arel.to_sql
+      @to_sql ||= klass.connection.to_sql(arel)
     end
 
     def where_values_hash
@@ -403,11 +405,21 @@ module ActiveRecord
     end
 
     def scope_for_create
-      @scope_for_create ||= where_values_hash.merge(@create_with_value || {})
+      @scope_for_create ||= where_values_hash.merge(create_with_value)
     end
 
     def eager_loading?
-      @should_eager_load ||= (@eager_load_values.any? || (@includes_values.any? && references_eager_loaded_tables?))
+      @should_eager_load ||=
+        @eager_load_values.any? ||
+        @includes_values.any? && (joined_includes_values.any? || references_eager_loaded_tables?)
+    end
+
+    # Joins that are also marked for preloading. In which case we should just eager load them.
+    # Note that this is a naive implementation because we could have strings and symbols which
+    # represent the same association, but that aren't matched by this. Also, we could have
+    # nested hashes which partially match, e.g. { :a => :b } & { :a => [:b, :c] }
+    def joined_includes_values
+      @includes_values & @joins_values
     end
 
     def ==(other)

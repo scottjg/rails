@@ -78,11 +78,13 @@ The following values are considered to be blank in a Rails application:
 
 * +nil+ and +false+,
 
-* strings composed only of whitespace, i.e. matching +/\A\s*\z/+,
+* strings composed only of whitespace (see note below),
 
 * empty arrays and hashes, and
 
 * any other object that responds to +empty?+ and it is empty.
+
+INFO: In Ruby 1.9 the predicate for strings uses the Unicode-aware character class <tt>[:space:]</tt>, so for example U+2029 (paragraph separator) is considered to be whitespace. In Ruby 1.8 whitespace is considered to be <tt>\s</tt> together with the ideographic space U+3000.
 
 WARNING: Note that numbers are not mentioned, in particular 0 and 0.0 are *not* blank.
 
@@ -450,6 +452,30 @@ Examples of +in?+:
 
 NOTE: Defined in +active_support/core_ext/object/inclusion.rb+.
 
+h4. +public_send+
+
+This method is available by default in Ruby 1.9, and is backported to Ruby 1.8 by Active Support. Like the regular +send+ method, +public_send+ allows you to call a method when the name is not known until runtime. However, if the method is not public then a +NoMethodError+ exception will be raised.
+
+<ruby>
+class Greeter
+  def hello(who)
+    "Hello " + who
+  end
+
+  private
+
+  def secret
+    "sauce"
+  end
+end
+
+greeter = Greeter.new
+greeter.public_send(:hello, 'Jim') # => "Hello Jim"
+greeter.public_send(:secret)       # => NoMethodError
+</ruby>
+
+NOTE: Defined in +active_support/core_ext/object/public_send.rb+.
+
 h3. Extensions to +Module+
 
 h4. +alias_method_chain+
@@ -498,7 +524,7 @@ ActionController::TestCase.class_eval do
 end
 </ruby>
 
-Rails uses +alias_method_chain+ all over the code base. For example validations are added to +ActiveRecord::Base#save+ by wrapping the method that way in a separate module specialised in validations.
+Rails uses +alias_method_chain+ all over the code base. For example validations are added to +ActiveRecord::Base#save+ by wrapping the method that way in a separate module specialized in validations.
 
 NOTE: Defined in +active_support/core_ext/module/aliasing.rb+.
 
@@ -862,7 +888,9 @@ end
 
 It is shorter, and the intention more obvious.
 
-The macro accepts several methods:
+The method must be public in the target.
+
+The +delegate+ macro accepts several methods:
 
 <ruby>
 delegate :name, :age, :address, :twitter, :to => :profile
@@ -1496,7 +1524,15 @@ end
 
 That may be handy to compute method names in a language that follows that convention, for example JavaScript.
 
-INFO: As a rule of thumb you can think of +camelize+ as the inverse of +underscore+, though there are cases where that does not hold: <tt>"SSLError".underscore.camelize</tt> gives back <tt>"SslError"</tt>.
+INFO: As a rule of thumb you can think of +camelize+ as the inverse of +underscore+, though there are cases where that does not hold: <tt>"SSLError".underscore.camelize</tt> gives back <tt>"SslError"</tt>. To support cases such as this, Active Support allows you to specify acronyms in +config/initializers/inflections.rb+:
+
+<ruby>
+ActiveSupport::Inflector.inflections do |inflect|
+  inflect.acronym 'SSL'
+end
+
+"SSLError".underscore.camelize #=> "SSLError"
+</ruby>
 
 +camelize+ is aliased to +camelcase+.
 
@@ -2059,6 +2095,30 @@ shape_types = [Circle, Square, Triangle].sample(2)
 
 NOTE: Defined in +active_support/core_ext/array/random_access.rb+.
 
+h4. Adding Elements
+
+h5. +prepend+
+
+This method is an alias of <tt>Array#unshift</tt>.
+
+<ruby>
+%w(a b c d).prepend('e')  # => %w(e a b c d)
+[].prepend(10)            # => [10]
+</ruby>
+
+NOTE: Defined in +active_support/core_ext/array/prepend_and_append.rb+.
+
+h5. +append+
+
+This method is an alias of <tt>Array#<<</tt>.
+
+<ruby>
+%w(a b c d).append('e')  # => %w(a b c d e)
+[].append([1,2])         # => [[1,2]]
+</ruby>
+
+NOTE: Defined in +active_support/core_ext/array/prepend_and_append.rb+.
+
 h4. Options Extraction
 
 When the last argument in a method call is a hash, except perhaps for a +&block+ argument, Ruby allows you to omit the brackets:
@@ -2241,8 +2301,8 @@ The method +Array.wrap+ wraps its argument in an array unless it is already an a
 Specifically:
 
 * If the argument is +nil+ an empty list is returned.
-* Otherwise, if the argument responds to +to_ary+ it is invoked, and its result returned.
-* Otherwise, returns an array with the argument as its single element.
+* Otherwise, if the argument responds to +to_ary+ it is invoked, and if the value of +to_ary+ is not +nil+, it is returned.
+* Otherwise, an array with the argument as its single element is returned.
 
 <ruby>
 Array.wrap(nil)       # => []
@@ -2682,6 +2742,18 @@ There's also +slice!+ which in addition to perform a slice in place returns what
 hash = {:a => 1, :b => 2}
 rest = hash.slice!(:a) # => {:b => 2}
 hash                   # => {:a => 1}
+</ruby>
+
+NOTE: Defined in +active_support/core_ext/hash/slice.rb+.
+
+h4. Extracting
+
+The method +extract!+ removes and returns the key/value pairs matching the given keys.
+
+<ruby>
+hash = {:a => 1, :b => 2}
+rest = hash.extract!(:a) # => {:a => 1}
+hash                     # => {:b => 2}
 </ruby>
 
 NOTE: Defined in +active_support/core_ext/hash/slice.rb+.

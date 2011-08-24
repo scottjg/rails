@@ -29,7 +29,7 @@ module ActiveModel
   #
   #     include ActiveModel::Dirty
   #
-  #     define_attribute_methods [:name]
+  #     define_attribute_methods = [:name]
   #
   #     def name
   #       @name
@@ -156,7 +156,7 @@ module ActiveModel
         rescue TypeError, NoMethodError
         end
 
-        changed_attributes[attr] = value
+        changed_attributes[attr] = value unless changed_attributes.include?(attr)
       end
 
       # Handle <tt>reset_*!</tt> for +method_missing+.

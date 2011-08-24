@@ -60,6 +60,7 @@ module ActiveRecord
       attr_accessor :automatic_reconnect
       attr_reader :spec, :connections
       attr_reader :columns, :columns_hash, :primary_keys, :tables
+      attr_reader :column_defaults
 
       # Creates a new ConnectionPool object. +spec+ is a ConnectionSpecification
       # object which describes database connection information (e.g. adapter,
@@ -81,10 +82,11 @@ module ActiveRecord
         # default max pool size to 5
         @size = (spec.config[:pool] && spec.config[:pool].to_i) || 5
 
-        @connections = []
-        @checked_out = []
+        @connections         = []
+        @checked_out         = []
         @automatic_reconnect = true
-        @tables = {}
+        @tables              = {}
+        @visitor             = nil
 
         @columns     = Hash.new do |h, table_name|
           h[table_name] = with_connection do |conn|
@@ -103,6 +105,12 @@ module ActiveRecord
         @columns_hash = Hash.new do |h, table_name|
           h[table_name] = Hash[columns[table_name].map { |col|
             [col.name, col]
+          }]
+        end
+
+        @column_defaults = Hash.new do |h, table_name|
+          h[table_name] = Hash[columns[table_name].map { |col|
+            [col.name, col.default]
           }]
         end
 
@@ -133,6 +141,7 @@ module ActiveRecord
       def clear_cache!
         @columns.clear
         @columns_hash.clear
+        @column_defaults.clear
         @tables.clear
       end
 
@@ -140,6 +149,7 @@ module ActiveRecord
       def clear_table_cache!(table_name)
         @columns.delete table_name
         @columns_hash.delete table_name
+        @column_defaults.delete table_name
         @primary_keys.delete table_name
       end
 
@@ -289,8 +299,18 @@ module ActiveRecord
         :connected?, :disconnect!, :with => :@connection_mutex
 
       private
+
       def new_connection
-        ActiveRecord::Base.send(spec.adapter_method, spec.config)
+        connection = ActiveRecord::Base.send(spec.adapter_method, spec.config)
+
+        # TODO: This is a bit icky, and in the long term we may want to change the method
+        #       signature for connections. Also, if we switch to have one visitor per
+        #       connection (and therefore per thread), we can get rid of the thread-local
+        #       variable in Arel::Visitors::ToSql.
+        @visitor ||= connection.class.visitor_for(self)
+        connection.visitor = @visitor
+
+        connection
       end
 
       def current_connection_id #:nodoc:

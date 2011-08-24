@@ -53,6 +53,10 @@ module ActiveRecord
         @config = config
       end
 
+      def self.visitor_for(pool) # :nodoc:
+        Arel::Visitors::SQLite.new(pool)
+      end
+
       def adapter_name #:nodoc:
         'SQLite'
       end
@@ -144,7 +148,7 @@ module ActiveRecord
       end
 
       def quote_column_name(name) #:nodoc:
-        %Q("#{name}")
+        %Q("#{name.to_s.gsub('"', '""')}")
       end
 
       # Quote date/time values for use in SQL input. Includes microseconds
@@ -157,6 +161,11 @@ module ActiveRecord
         end
       end
 
+      def type_cast(value, column) # :nodoc:
+        return super unless BigDecimal === value
+
+        value.to_f
+      end
 
       # DATABASE STATEMENTS ======================================
 
@@ -233,15 +242,15 @@ module ActiveRecord
       end
 
       def begin_db_transaction #:nodoc:
-        @connection.transaction
+        log('begin transaction',nil) { @connection.transaction }
       end
 
       def commit_db_transaction #:nodoc:
-        @connection.commit
+        log('commit transaction',nil) { @connection.commit }
       end
 
       def rollback_db_transaction #:nodoc:
-        @connection.rollback
+        log('rollback transaction',nil) { @connection.rollback }
       end
 
       # SCHEMA STATEMENTS ========================================

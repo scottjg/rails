@@ -40,6 +40,25 @@ module ActiveRecord
         end
       end
 
+      ##
+      # Collects attributes from scopes that should be applied when creating
+      # an AR instance for the particular class this is called on.
+      def scope_attributes # :nodoc:
+        if current_scope
+          current_scope.scope_for_create
+        else
+          scope = relation.clone
+          scope.default_scoped = true
+          scope.scope_for_create
+        end
+      end
+
+      ##
+      # Are there default attributes associated with this scope?
+      def scope_attributes? # :nodoc:
+        current_scope || default_scopes.any?
+      end
+
       # Adds a class method for retrieving and querying objects. A \scope represents a narrowing of a database query,
       # such as <tt>where(:color => :red).select('shirts.*').includes(:washing_instructions)</tt>.
       #

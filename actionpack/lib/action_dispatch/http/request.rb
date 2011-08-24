@@ -6,6 +6,7 @@ require 'active_support/core_ext/hash/indifferent_access'
 require 'active_support/core_ext/string/access'
 require 'active_support/inflector'
 require 'action_dispatch/http/headers'
+require 'action_controller/metal/exceptions'
 
 module ActionDispatch
   class Request < Rack::Request
@@ -28,9 +29,9 @@ module ActionDispatch
 
     ENV_METHODS.each do |env|
       class_eval <<-METHOD, __FILE__, __LINE__ + 1
-        def #{env.sub(/^HTTP_/n, '').downcase}
-          @env["#{env}"]
-        end
+        def #{env.sub(/^HTTP_/n, '').downcase}  # def accept_charset
+          @env["#{env}"]                        #   @env["HTTP_ACCEPT_CHARSET"]
+        end                                     # end
       METHOD
     end
 

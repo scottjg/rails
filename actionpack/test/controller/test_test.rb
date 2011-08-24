@@ -50,6 +50,10 @@ class TestTest < ActionController::TestCase
       render :text => request.query_string
     end
 
+    def test_protocol
+      render :text => request.protocol
+    end
+
     def test_html_output
       render :text => <<HTML
 <html>
@@ -515,6 +519,12 @@ XML
     )
   end
 
+  def test_params_passing_doesnt_modify_in_place
+    page = {:name => "Page name", :month => 4, :year => 2004, :day => 6}
+    get :test_params, :page => page
+    assert_equal 2004, page[:year]
+  end
+
   def test_id_converted_to_string
     get :test_params, :id => 20, :foo => Object.new
     assert_kind_of String, @request.path_parameters['id']
@@ -592,6 +602,19 @@ XML
     assert_nil @request.symbolized_path_parameters[:id]
   end
 
+  def test_request_protocol_is_reset_after_request
+    get :test_protocol
+    assert_equal "http://", @response.body
+
+    @request.env["HTTPS"] = "on"
+    get :test_protocol
+    assert_equal "https://", @response.body
+
+    @request.env.delete("HTTPS")
+    get :test_protocol
+    assert_equal "http://", @response.body
+  end
+
   def test_should_have_knowledge_of_client_side_cookie_state_even_if_they_are_not_set
     cookies['foo'] = 'bar'
     get :no_op
@@ -647,6 +670,13 @@ XML
     file.content_type = new_content_type
     assert_equal new_content_type, file.content_type
 
+  end
+
+  def test_fixture_path_is_accessed_from_self_instead_of_active_support_test_case
+    TestTest.stubs(:fixture_path).returns(FILES_DIR)
+
+    uploaded_file = fixture_file_upload('/mona_lisa.jpg', 'image/png')
+    assert_equal File.open("#{FILES_DIR}/mona_lisa.jpg", READ_PLAIN).read, uploaded_file.read
   end
 
   def test_test_uploaded_file_with_binary

@@ -50,7 +50,7 @@ module ActiveRecord
         else
           column  = "#{reflection.quoted_table_name}.#{reflection.association_primary_key}"
 
-          scoped.select(column).except(:includes).map! do |record|
+          scoped.select(column).map! do |record|
             record.send(reflection.association_primary_key)
           end
         end
@@ -78,10 +78,14 @@ module ActiveRecord
       end
 
       def find(*args)
-        if options[:finder_sql]
-          find_by_scan(*args)
+        if block_given?
+          load_target.find(*args) { |*block_args| yield(*block_args) }
         else
-          scoped.find(*args)
+          if options[:finder_sql]
+            find_by_scan(*args)
+          else
+            scoped.find(*args)
+          end
         end
       end
 
@@ -378,7 +382,7 @@ module ActiveRecord
 
           persisted.map! do |record|
             # Unfortunately we cannot simply do memory.delete(record) since on 1.8 this returns
-            # record rather than memory.at(memory.index(record)). The behaviour is fixed in 1.9.
+            # record rather than memory.at(memory.index(record)). The behavior is fixed in 1.9.
             mem_index = memory.index(record)
 
             if mem_index
@@ -421,12 +425,6 @@ module ActiveRecord
 
         def create_scope
           scoped.scope_for_create.stringify_keys
-        end
-
-        def build_record(attributes, options)
-          record = reflection.build_association(attributes, options)
-          record.assign_attributes(create_scope.except(*record.changed), :without_protection => true)
-          record
         end
 
         def delete_or_destroy(records, method)

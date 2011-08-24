@@ -15,6 +15,18 @@ class RelationScopingTest < ActiveRecord::TestCase
     assert_equal Developer.order("id DESC").to_a.reverse, Developer.order("id DESC").reverse_order
   end
 
+  def test_reverse_order_with_arel_node
+    assert_equal Developer.order("id DESC").to_a.reverse, Developer.order(Developer.arel_table[:id].desc).reverse_order
+  end
+
+  def test_reverse_order_with_multiple_arel_nodes
+    assert_equal Developer.order("id DESC").order("name DESC").to_a.reverse, Developer.order(Developer.arel_table[:id].desc).order(Developer.arel_table[:name].desc).reverse_order
+  end
+
+  def test_reverse_order_with_arel_nodes_and_strings
+    assert_equal Developer.order("id DESC").order("name DESC").to_a.reverse, Developer.order("id DESC").order(Developer.arel_table[:name].desc).reverse_order
+  end
+
   def test_double_reverse_order_produces_original_order
     assert_equal Developer.order("name DESC"), Developer.order("name DESC").reverse_order.reverse_order
   end
@@ -158,7 +170,7 @@ class NestedRelationScopingTest < ActiveRecord::TestCase
     Developer.where('salary = 80000').scoping do
       Developer.limit(10).scoping do
         devs = Developer.scoped
-        assert_match '(salary = 80000)', devs.arel.to_sql
+        assert_match '(salary = 80000)', devs.to_sql
         assert_equal 10, devs.taken
       end
     end
@@ -472,6 +484,13 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 'Jamis', jamis.name
   end
 
+  # FIXME: I don't know if this is *desired* behavior, but it is *today's*
+  # behavior.
+  def test_create_with_empty_hash_will_not_reset
+    jamis = PoorDeveloperCalledJamis.create_with(:name => 'Aaron').create_with({}).new
+    assert_equal 'Aaron', jamis.name
+  end
+
   def test_unscoped_with_named_scope_should_not_have_default_scope
     assert_equal [DeveloperCalledJamis.find(developers(:poor_jamis).id)], DeveloperCalledJamis.poor
 
@@ -504,5 +523,23 @@ class DefaultScopingTest < ActiveRecord::TestCase
     d.audit_logs.create! :message => 'foo'
 
     assert_equal 1, DeveloperWithIncludes.where(:audit_logs => { :message => 'foo' }).count
+  end
+
+  def test_default_scope_is_threadsafe
+    if in_memory_db?
+      skip "in memory db can't share a db between threads"
+    end
+
+    threads = []
+    assert_not_equal 1, ThreadsafeDeveloper.unscoped.count
+
+    threads << Thread.new do
+      Thread.current[:long_default_scope] = true
+      assert_equal 1, ThreadsafeDeveloper.all.count
+    end
+    threads << Thread.new do
+      assert_equal 1, ThreadsafeDeveloper.all.count
+    end
+    threads.each(&:join)
   end
 end
