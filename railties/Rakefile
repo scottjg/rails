@@ -45,6 +45,12 @@ task :generate_guides do
   ruby "guides/rails_guides.rb"
 end
 
+desc 'Generate guides pdf (for authors), use ONLY=foo to process just "foo.textile"'
+task :generate_guides_pdf do
+  ENV["WARN_BROKEN_LINKS"] = "1" # authors can't disable this
+  ruby "guides/rails_guides_pdf.rb"
+end
+
 # Validate guides -------------------------------------------------------------------------
 desc 'Validate guides, use ONLY=foo to process just "foo.html"'
 task :validate_guides do

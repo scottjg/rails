@@ -109,7 +109,7 @@ Using generators will save you a large amount of time by writing *boilerplate co
 
 Let's make our own controller with the controller generator. But what command should we use? Let's ask the generator:
 
-INFO: All Rails console utilities have help text. As with most *nix utilities, you can try adding +--help+ or +-h+ to the end, for example +rails server --help+.
+INFO: All Rails console utilities have help text. As with most '*nix' utilities, you can try adding +--help+ or +-h+ to the end, for example +rails server --help+.
 
 <shell>
 $ rails generate controller
