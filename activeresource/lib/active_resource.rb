@@ -36,6 +36,7 @@ module ActiveResource
 
   autoload :Base
   autoload :Connection
+  autoload :Callbacks
   autoload :CustomMethods
   autoload :Formats
   autoload :HttpMock
