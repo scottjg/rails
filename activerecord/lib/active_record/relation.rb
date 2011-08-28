@@ -94,6 +94,14 @@ module ActiveRecord
       scoping { @klass.create!(*args, &block) }
     end
 
+    def first_or_create(*args, &block)
+      first || create(*args, &block)
+    end
+
+    def first_or_create!(*args, &block)
+      first || create!(*args, &block)
+    end
+
     def respond_to?(method, include_private = false)
       arel.respond_to?(method, include_private)     ||
         Array.method_defined?(method)               ||
