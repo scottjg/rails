@@ -864,8 +864,6 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_first_or_create
-    assert Bird.respond_to?(:first_or_create)
-
     parrot = Bird.where(:color => 'green').first_or_create(:name => 'parrot')
     assert_kind_of Bird, parrot
     assert parrot.persisted?
@@ -879,8 +877,6 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_first_or_create_bang
-    assert Bird.respond_to?(:first_or_create!)
-
     assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create!(:pirate_id => 1) }
 
     parrot = Bird.where(:color => 'green').first_or_create!(:name => 'parrot')
