@@ -8,9 +8,16 @@ require 'active_support/core_ext/string'
 require 'active_support/time'
 require 'active_support/core_ext/kernel/reporting'
 require 'active_support/core_ext/string/strip'
+require 'active_support/core_ext/string/output_safety'
 
 class StringInflectionsTest < Test::Unit::TestCase
   include InflectorTestCases
+
+  def test_erb_escape
+    string = [192, 60].pack('CC')
+    expected = 192.chr + "&lt;"
+    assert_equal expected, ERB::Util.html_escape(string)
+  end
 
   def test_strip_heredoc_on_an_empty_string
     assert_equal '', ''.strip_heredoc
@@ -251,7 +258,7 @@ class StringInflectionsTest < Test::Unit::TestCase
     # And changes the original string:
     assert_equal original, expected
   end
-  
+
   def test_string_inquiry
     assert "production".inquiry.production?
     assert !"production".inquiry.development?
@@ -353,6 +360,10 @@ class OutputSafetyTest < ActiveSupport::TestCase
   test "A fixnum is safe by default" do
     assert 5.html_safe?
   end
+  
+  test "a float is safe by default" do
+    assert 5.7.html_safe?
+  end
 
   test "An object is unsafe by default" do
     assert !@object.html_safe?
@@ -450,6 +461,12 @@ class OutputSafetyTest < ActiveSupport::TestCase
     else
       assert !'ruby'.encoding_aware?
     end
+  end
+
+  test "call to_param returns a normal string" do
+    string = @string.html_safe
+    assert string.html_safe?
+    assert !string.to_param.html_safe?
   end
 end
 

@@ -1,20 +1,37 @@
 module Sprockets
   autoload :Helpers, "sprockets/helpers"
+  autoload :LazyCompressor, "sprockets/compressors"
+  autoload :NullCompressor, "sprockets/compressors"
 
+  # TODO: Get rid of config.assets.enabled
   class Railtie < ::Rails::Railtie
-    def self.using_coffee?
-      require 'coffee-script'
-      defined?(CoffeeScript)
-    rescue LoadError
-      false
+    config.default_asset_host_protocol = :relative
+
+    rake_tasks do
+      load "sprockets/assets.rake"
     end
 
-    config.app_generators.javascript_engine :coffee if using_coffee?
+    initializer "sprockets.environment" do |app|
+      config = app.config
+      next unless config.assets.enabled
 
-    # Configure ActionController to use sprockets.
-    initializer "sprockets.set_configs", :after => "action_controller.set_configs" do |app|
-      ActiveSupport.on_load(:action_controller) do
-        self.use_sprockets = app.config.assets.enabled
+      require 'sprockets'
+
+      app.assets = Sprockets::Environment.new(app.root.to_s) do |env|
+        env.logger  = ::Rails.logger
+        env.version = ::Rails.env + "-#{config.assets.version}"
+
+        if config.assets.cache_store != false
+          env.cache = ActiveSupport::Cache.lookup_store(config.assets.cache_store) || ::Rails.cache
+        end
+      end
+
+      ActiveSupport.on_load(:action_view) do
+        include ::Sprockets::Helpers::RailsHelper
+
+        app.assets.context_class.instance_eval do
+          include ::Sprockets::Helpers::RailsHelper
+        end
       end
     end
 
@@ -23,21 +40,25 @@ module Sprockets
     # are compiled, and so that other Railties have an opportunity to
     # register compressors.
     config.after_initialize do |app|
-      assets = app.config.assets
-      next unless assets.enabled
+      next unless app.assets
+      config = app.config
 
-      app.assets = asset_environment(app)
+      config.assets.paths.each { |path| app.assets.append_path(path) }
 
-      ActiveSupport.on_load(:action_view) do
-        include ::Sprockets::Helpers::RailsHelper
-        
-        app.assets.context_class.instance_eval do
-          include ::Sprockets::Helpers::RailsHelper
+      if config.assets.compress
+        # temporarily hardcode default JS compressor to uglify. Soon, it will work
+        # the same as SCSS, where a default plugin sets the default.
+        unless config.assets.js_compressor == false
+          app.assets.js_compressor = LazyCompressor.new { expand_js_compressor(config.assets.js_compressor || :uglifier) }
+        end
+
+        unless config.assets.css_compressor == false
+          app.assets.css_compressor = LazyCompressor.new { expand_css_compressor(config.assets.css_compressor) }
         end
       end
 
       app.routes.prepend do
-        mount app.assets => assets.prefix
+        mount app.assets => config.assets.prefix
       end
 
       if config.action_controller.perform_caching
@@ -46,24 +67,6 @@ module Sprockets
     end
 
     protected
-      def asset_environment(app)
-        require "sprockets"
-
-        assets = app.config.assets
-
-        env = Sprockets::Environment.new(app.root.to_s)
-
-        env.static_root = File.join(app.root.join("public"), assets.prefix)
-        env.paths.concat assets.paths
-
-        env.logger = Rails.logger
-
-        env.js_compressor  = expand_js_compressor(assets.js_compressor)
-        env.css_compressor = expand_css_compressor(assets.css_compressor)
-
-        env
-      end
-
       def expand_js_compressor(sym)
         case sym
         when :closure

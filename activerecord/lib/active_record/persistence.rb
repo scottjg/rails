@@ -79,6 +79,8 @@ module ActiveRecord
     # Deletes the record in the database and freezes this instance to reflect
     # that no changes should be made (since they can't be persisted).
     def destroy
+      destroy_associations
+
       if persisted?
         IdentityMap.remove(self) if IdentityMap.enabled?
         pk         = self.class.primary_key
@@ -282,6 +284,11 @@ module ActiveRecord
     end
 
   private
+
+    # A hook to be overridden by association modules.
+    def destroy_associations
+    end
+
     def create_or_update
       raise ReadOnlyRecord if readonly?
       result = new_record? ? create : update
@@ -295,7 +302,7 @@ module ActiveRecord
       return 0 if attributes_with_values.empty?
       klass = self.class
       stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(attributes_with_values)
-      klass.connection.update stmt.to_sql
+      klass.connection.update stmt
     end
 
     # Creates a record with values matching those of the instance attributes
@@ -317,9 +324,7 @@ module ActiveRecord
     # that a new instance, or one populated from a passed-in Hash, still has all the attributes
     # that instances loaded from the database would.
     def attributes_from_column_definition
-      Hash[self.class.columns.map do |column|
-        [column.name, column.default]
-      end]
+      self.class.column_defaults.dup
     end
   end
 end

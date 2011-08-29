@@ -145,6 +145,18 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal topics(:first).title, topics.first.title
   end
 
+
+  def test_finding_with_arel_order
+    topics = Topic.order(Topic.arel_table[:id].asc)
+    assert_equal 4, topics.to_a.size
+    assert_equal topics(:first).title, topics.first.title
+  end
+
+  def test_finding_last_with_arel_order
+    topics = Topic.order(Topic.arel_table[:id].asc)
+    assert_equal topics(:fourth).title, topics.last.title
+  end
+
   def test_finding_with_order_concatenated
     topics = Topic.order('author_name').order('title')
     assert_equal 4, topics.to_a.size
@@ -162,6 +174,13 @@ class RelationTest < ActiveRecord::TestCase
 
     assert_equal 2, entrants.size
     assert_equal entrants(:first).name, entrants.first.name
+  end
+
+  def test_finding_with_cross_table_order_and_limit
+    tags = Tag.includes(:taggings).
+              order("tags.name asc", "taggings.taggable_id asc", "REPLACE('abc', taggings.taggable_type, taggings.taggable_type)").
+              limit(1).to_a
+    assert_equal 1, tags.length
   end
 
   def test_finding_with_complex_order_and_limit
@@ -510,6 +529,29 @@ class RelationTest < ActiveRecord::TestCase
       relation = Author.where(:id => Author.where(:id => david.id))
       assert_equal [david], relation.all
     }
+  end
+
+  def test_find_all_using_where_with_relation_and_alternate_primary_key
+    cool_first = minivans(:cool_first)
+    # switching the lines below would succeed in current rails
+    # assert_queries(2) {
+    assert_queries(1) {
+      relation = Minivan.where(:minivan_id => Minivan.where(:name => cool_first.name))
+      assert_equal [cool_first], relation.all
+    }
+  end
+
+  def test_find_all_using_where_with_relation_does_not_alter_select_values
+    david = authors(:david)
+
+    subquery = Author.where(:id => david.id)
+
+    assert_queries(1) {
+      relation = Author.where(:id => subquery)
+      assert_equal [david], relation.all
+    }
+
+    assert_equal 0, subquery.select_values.size
   end
 
   def test_find_all_using_where_with_relation_with_joins
@@ -932,5 +974,43 @@ class RelationTest < ActiveRecord::TestCase
     )
 
     assert scope.eager_loading?
+  end
+
+  def test_update_all_with_joins
+    comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id)
+    count    = comments.count
+
+    assert_equal count, comments.update_all(:post_id => posts(:thinking).id)
+    assert_equal posts(:thinking), comments(:greetings).post
+  end
+
+  def test_update_all_with_joins_and_limit
+    comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).limit(1)
+    assert_equal 1, comments.update_all(:post_id => posts(:thinking).id)
+  end
+
+  def test_update_all_with_joins_and_limit_and_order
+    comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).order('comments.id').limit(1)
+    assert_equal 1, comments.update_all(:post_id => posts(:thinking).id)
+    assert_equal posts(:thinking), comments(:greetings).post
+    assert_equal posts(:welcome),  comments(:more_greetings).post
+  end
+
+  def test_update_all_with_joins_and_offset
+    all_comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id)
+    count        = all_comments.count
+    comments     = all_comments.offset(1)
+
+    assert_equal count - 1, comments.update_all(:post_id => posts(:thinking).id)
+  end
+
+  def test_update_all_with_joins_and_offset_and_order
+    all_comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).order('posts.id')
+    count        = all_comments.count
+    comments     = all_comments.offset(1)
+
+    assert_equal count - 1, comments.update_all(:post_id => posts(:thinking).id)
+    assert_equal posts(:thinking), comments(:more_greetings).post
+    assert_equal posts(:welcome),  comments(:greetings).post
   end
 end

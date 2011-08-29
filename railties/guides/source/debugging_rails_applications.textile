@@ -127,7 +127,7 @@ When something is logged it's printed into the corresponding log if the log leve
 The available log levels are: +:debug+, +:info+, +:warn+, +:error+, and +:fatal+, corresponding to the log level numbers from 0 up to 4 respectively. To change the default log level, use
 
 <ruby>
-config.log_level = Logger::WARN # In any environment initializer, or
+config.log_level = :warn # In any environment initializer, or
 Rails.logger.level = 0 # at any time
 </ruby>
 
@@ -493,7 +493,7 @@ TIP: You can use ruby-debug while using +rails console+. Just remember to +requi
 
 <shell>
 $ rails console
-Loading development environment (Rails 2.1.0)
+Loading development environment (Rails 3.1.0)
 >> require "ruby-debug"
 => []
 >> author = Author.first

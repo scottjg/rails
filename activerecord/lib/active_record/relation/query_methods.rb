@@ -96,11 +96,11 @@ module ActiveRecord
       relation
     end
 
-    def having(*args)
-      return self if args.blank?
+    def having(opts, *rest)
+      return self if opts.blank?
 
       relation = clone
-      relation.having_values += build_where(*args)
+      relation.having_values += build_where(opts, rest)
       relation
     end
 
@@ -137,7 +137,7 @@ module ActiveRecord
 
     def create_with(value)
       relation = clone
-      relation.create_with_value = value && (@create_with_value || {}).merge(value)
+      relation.create_with_value = value ? create_with_value.merge(value) : {}
       relation
     end
 
@@ -305,9 +305,18 @@ module ActiveRecord
     def reverse_sql_order(order_query)
       order_query = ["#{quoted_table_name}.#{quoted_primary_key} ASC"] if order_query.empty?
 
-      order_query.join(', ').split(',').collect do |s|
-        s.gsub!(/\sasc\Z/i, ' DESC') || s.gsub!(/\sdesc\Z/i, ' ASC') || s.concat(' DESC')
-      end
+      order_query.map do |o|
+        case o
+        when Arel::Nodes::Ascending, Arel::Nodes::Descending
+          o.reverse
+        when String, Symbol
+          o.to_s.split(',').collect do |s|
+            s.gsub!(/\sasc\Z/i, ' DESC') || s.gsub!(/\sdesc\Z/i, ' ASC') || s.concat(' DESC')
+          end
+        else
+          o
+        end
+      end.flatten
     end
 
     def array_of_strings?(o)

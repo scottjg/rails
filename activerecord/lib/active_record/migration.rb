@@ -1,3 +1,5 @@
+require "active_support/core_ext/module/delegation"
+require "active_support/core_ext/class/attribute_accessors"
 require "active_support/core_ext/array/wrap"
 
 module ActiveRecord
@@ -116,8 +118,10 @@ module ActiveRecord
   #   with the name of the column. Other options include
   #   <tt>:name</tt> and <tt>:unique</tt> (e.g.
   #   <tt>{ :name => "users_name_index", :unique => true }</tt>).
-  # * <tt>remove_index(table_name, index_name)</tt>: Removes the index specified
-  #   by +index_name+.
+  # * <tt>remove_index(table_name, :column => column_name)</tt>: Removes the index
+  #   specified by +column_name+.
+  # * <tt>remove_index(table_name, :name => index_name)</tt>: Removes the index
+  #   specified by +index_name+.
   #
   # == Irreversible transformations
   #
@@ -326,6 +330,10 @@ module ActiveRecord
 
     def self.method_missing(name, *args, &block) # :nodoc:
       (delegate || superclass.delegate).send(name, *args, &block)
+    end
+
+    def self.migrate(direction)
+      new.migrate direction
     end
 
     cattr_accessor :verbose
@@ -555,7 +563,7 @@ module ActiveRecord
 
       def get_all_versions
         table = Arel::Table.new(schema_migrations_table_name)
-        Base.connection.select_values(table.project(table['version']).to_sql).map{ |v| v.to_i }.sort
+        Base.connection.select_values(table.project(table['version'])).map{ |v| v.to_i }.sort
       end
 
       def current_version
@@ -712,11 +720,11 @@ module ActiveRecord
         if down?
           @migrated_versions.delete(version)
           stmt = table.where(table["version"].eq(version.to_s)).compile_delete
-          Base.connection.delete stmt.to_sql
+          Base.connection.delete stmt
         else
           @migrated_versions.push(version).sort!
           stmt = table.compile_insert table["version"] => version.to_s
-          Base.connection.insert stmt.to_sql
+          Base.connection.insert stmt
         end
       end
 

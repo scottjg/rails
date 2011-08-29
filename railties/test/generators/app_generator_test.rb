@@ -10,6 +10,7 @@ DEFAULT_APP_FILES = %w(
   config.ru
   app/assets/javascripts
   app/assets/stylesheets
+  app/assets/images
   app/controllers
   app/helpers
   app/mailers
@@ -22,8 +23,8 @@ DEFAULT_APP_FILES = %w(
   doc
   lib
   lib/tasks
+  lib/assets
   log
-  app/assets/images
   script/rails
   test/fixtures
   test/functional
@@ -34,6 +35,7 @@ DEFAULT_APP_FILES = %w(
   vendor/assets
   vendor/plugins
   tmp/cache
+  tmp/cache/assets
 )
 
 class AppGeneratorTest < Rails::Generators::TestCase
@@ -47,11 +49,12 @@ class AppGeneratorTest < Rails::Generators::TestCase
     ::DEFAULT_APP_FILES
   end
 
-  def test_application_controller_and_layout_files
+  def test_assets
     run_generator
     assert_file "app/views/layouts/application.html.erb", /stylesheet_link_tag\s+"application"/
     assert_file "app/views/layouts/application.html.erb", /javascript_include_tag\s+"application"/
     assert_file "app/assets/stylesheets/application.css"
+    assert_file "config/application.rb", /config\.assets\.enabled = true/
   end
 
   def test_invalid_application_name_raises_an_error
@@ -123,13 +126,21 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_config_database_is_added_by_default
     run_generator
     assert_file "config/database.yml", /sqlite3/
-    assert_file "Gemfile", /^gem\s+["']sqlite3["']$/
+    unless defined?(JRUBY_VERSION)
+      assert_file "Gemfile", /^gem\s+["']sqlite3["']$/
+    else
+      assert_file "Gemfile", /^gem\s+["']activerecord-jdbcsqlite3-adapter["']$/
+    end
   end
 
   def test_config_another_database
     run_generator([destination_root, "-d", "mysql"])
     assert_file "config/database.yml", /mysql/
-    assert_file "Gemfile", /^gem\s+["']mysql2["']$/
+    unless defined?(JRUBY_VERSION)
+      assert_file "Gemfile", /^gem\s+["']mysql2["']$/
+    else
+      assert_file "Gemfile", /^gem\s+["']activerecord-jdbcmysql-adapter["']$/
+    end
   end
 
   def test_config_jdbcmysql_database
@@ -156,15 +167,20 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_generator_if_skip_active_record_is_given
     run_generator [destination_root, "--skip-active-record"]
     assert_no_file "config/database.yml"
+    assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
     assert_file "test/test_helper.rb" do |helper_content|
       assert_no_match(/fixtures :all/, helper_content)
     end
     assert_file "test/performance/browsing_test.rb"
   end
 
-  def test_active_record_is_removed_from_frameworks_if_skip_active_record_is_given
-    run_generator [destination_root, "--skip-active-record"]
-    assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
+  def test_generator_if_skip_sprockets_is_given
+    run_generator [destination_root, "--skip-sprockets"]
+    assert_file "config/application.rb" do |content|
+      assert_match(/#\s+require\s+["']sprockets\/railtie["']/, content)
+      assert_no_match(/config\.assets\.enabled = true/, content)
+    end
+    assert_file "test/performance/browsing_test.rb"
   end
 
   def test_creation_of_a_test_directory
@@ -280,6 +296,15 @@ class AppGeneratorTest < Rails::Generators::TestCase
     run_generator [destination_root, "--old-style-hash"]
     assert_file "config/initializers/session_store.rb" do |file|
       assert_match(/config.session_store :cookie_store, :key => '_.+_session'/, file)
+    end
+  end
+
+  def test_generated_environments_file_for_sanitizer
+    run_generator [destination_root, "--skip-active-record"]
+    ["config/environments/development.rb", "config/environments/test.rb"].each do |env_file|
+      assert_file env_file do |file|
+        assert_no_match(/config.active_record.mass_assignment_sanitizer = :strict/, file)
+      end
     end
   end
 

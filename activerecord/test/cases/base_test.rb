@@ -56,6 +56,23 @@ class Boolean < ActiveRecord::Base; end
 class BasicsTest < ActiveRecord::TestCase
   fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts
 
+  def test_column_names_are_escaped
+    conn      = ActiveRecord::Base.connection
+    classname = conn.class.name[/[^:]*$/]
+    badchar   = {
+      'SQLite3Adapter'    => '"',
+      'MysqlAdapter'      => '`',
+      'Mysql2Adapter'     => '`',
+      'PostgreSQLAdapter' => '"',
+      'OracleAdapter'     => '"',
+    }.fetch(classname) {
+      raise "need a bad char for #{classname}"
+    }
+
+    quoted = conn.quote_column_name "foo#{badchar}bar"
+    assert_equal("#{badchar}foo#{badchar * 2}bar#{badchar}", quoted)
+  end
+
   def test_columns_should_obey_set_primary_key
     pk = Subscriber.columns.find { |x| x.name == 'nick' }
     assert pk.primary, 'nick should be primary key'
@@ -131,25 +148,6 @@ class BasicsTest < ActiveRecord::TestCase
         "The last_read attribute should be of the Date class"
       )
     end
-  end
-
-  def test_use_table_engine_for_quoting_where
-    relation = Topic.where(Topic.arel_table[:id].eq(1))
-    engine = relation.table.engine
-
-    fakepool = Class.new(Struct.new(:spec)) {
-      def with_connection; yield self; end
-      def connection_pool; self; end
-      def table_exists?(name); false; end
-      def quote_table_name(*args); raise "lol quote_table_name"; end
-    }
-
-    relation.table.engine = fakepool.new(engine.connection_pool.spec)
-
-    error = assert_raises(RuntimeError) { relation.to_a }
-    assert_match('lol', error.message)
-  ensure
-    relation.table.engine = engine
   end
 
   def test_preserving_time_objects
@@ -477,6 +475,19 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_hashing
     assert_equal [ Topic.find(1) ], [ Topic.find(2).topic ] & [ Topic.find(1) ]
+  end
+
+  def test_comparison
+    topic_1 = Topic.create!
+    topic_2 = Topic.create!
+
+    assert_equal [topic_2, topic_1].sort, [topic_1, topic_2]
+  end
+
+  def test_comparison_with_different_objects
+    topic = Topic.create
+    category = Category.create(:name => "comparison")
+    assert_nil topic <=> category
   end
 
   def test_readonly_attributes
@@ -1095,6 +1106,17 @@ class BasicsTest < ActiveRecord::TestCase
 
   class NumericData < ActiveRecord::Base
     self.table_name = 'numeric_data'
+  end
+
+  def test_big_decimal_conditions
+    m = NumericData.new(
+      :bank_balance => 1586.43,
+      :big_bank_balance => BigDecimal("1000234000567.95"),
+      :world_population => 6000000000,
+      :my_house_population => 3
+    )
+    assert m.save
+    assert_equal 0, NumericData.where("bank_balance > ?", 2000.0).count
   end
 
   def test_numeric_fields
@@ -1802,9 +1824,27 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_marshal_round_trip
     expected = posts(:welcome)
-    actual   = Marshal.load(Marshal.dump(expected))
+    marshalled = Marshal.dump(expected)
+    actual   = Marshal.load(marshalled)
 
     assert_equal expected.attributes, actual.attributes
+  end
+
+  def test_marshal_new_record_round_trip
+    marshalled = Marshal.dump(Post.new)
+    post       = Marshal.load(marshalled)
+
+    assert post.new_record?, "should be a new record"
+  end
+
+  def test_marshalling_with_associations
+    post = Post.new
+    post.comments.build
+
+    marshalled = Marshal.dump(post)
+    post       = Marshal.load(marshalled)
+
+    assert_equal 1, post.comments.length
   end
 
   def test_attribute_names
@@ -1818,5 +1858,30 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_attribtue_names_on_abstract_class
     assert_equal [], AbstractCompany.attribute_names
+  end
+
+  def test_cache_key_for_existing_record_is_not_timezone_dependent
+    ActiveRecord::Base.time_zone_aware_attributes = true
+
+    Time.zone = "UTC"
+    utc_key = Developer.first.cache_key
+
+    Time.zone = "EST"
+    est_key = Developer.first.cache_key
+
+    assert_equal utc_key, est_key
+  ensure
+    ActiveRecord::Base.time_zone_aware_attributes = false
+  end
+
+  def test_cache_key_format_for_existing_record_with_updated_at
+    dev = Developer.first
+    assert_equal "developers/#{dev.id}-#{dev.updated_at.utc.to_s(:number)}", dev.cache_key
+  end
+
+  def test_cache_key_format_for_existing_record_with_nil_updated_at
+    dev = Developer.first
+    dev.update_attribute(:updated_at, nil)
+    assert_match /\/#{dev.id}$/, dev.cache_key
   end
 end

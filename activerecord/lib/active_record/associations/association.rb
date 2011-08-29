@@ -1,5 +1,6 @@
 require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/object/inclusion'
+require 'active_support/deprecation'
 
 module ActiveRecord
   module Associations
@@ -30,7 +31,7 @@ module ActiveRecord
         @updated = false
 
         reset
-        construct_scope
+        reset_scope
       end
 
       # Returns the name of the table of the related class:
@@ -51,7 +52,7 @@ module ActiveRecord
       # Reloads the \target and returns +self+ on success.
       def reload
         reset
-        construct_scope
+        reset_scope
         load_target
         self unless target.nil?
       end
@@ -84,19 +85,23 @@ module ActiveRecord
       end
 
       def scoped
-        target_scope.merge(@association_scope)
+        target_scope.merge(association_scope)
       end
 
-      # Construct the scope for this association.
+      # The scope for this association.
       #
       # Note that the association_scope is merged into the target_scope only when the
       # scoped method is called. This is because at that point the call may be surrounded
       # by scope.scoping { ... } or with_scope { ... } etc, which affects the scope which
       # actually gets built.
-      def construct_scope
+      def association_scope
         if klass
-          @association_scope = AssociationScope.new(self).scope
+          @association_scope ||= AssociationScope.new(self).scope
         end
+      end
+
+      def reset_scope
+        @association_scope = nil
       end
 
       # Set the inverse association, if possible
@@ -147,18 +152,18 @@ module ActiveRecord
         reset
       end
 
+      def interpolate(sql, record = nil)
+        if sql.respond_to?(:to_proc)
+          owner.send(:instance_exec, record, &sql)
+        else
+          sql
+        end
+      end
+
       private
 
         def find_target?
           !loaded? && (!owner.new_record? || foreign_key_present?) && klass
-        end
-
-        def interpolate(sql, record = nil)
-          if sql.respond_to?(:to_proc)
-            owner.send(:instance_exec, record, &sql)
-          else
-            sql
-          end
         end
 
         def creation_attributes
@@ -223,6 +228,51 @@ module ActiveRecord
 
         def association_class
           @reflection.klass
+        end
+
+        def build_record(attributes, options)
+          reflection.original_build_association_called = false
+
+          record = reflection.build_association(attributes, options) do |r|
+            r.assign_attributes(
+              create_scope.except(*r.changed),
+              :without_protection => true
+            )
+          end
+
+          if !reflection.original_build_association_called &&
+             (record.changed & create_scope.keys) != create_scope.keys
+            # We have detected that there is an overridden AssociationReflection#build_association
+            # method, but it looks like it has not passed through the block above. So try again and
+            # show a noisy deprecation warning.
+
+            record.assign_attributes(
+              create_scope.except(*record.changed),
+              :without_protection => true
+            )
+
+            method = reflection.method(:build_association)
+            if RUBY_VERSION >= '1.9.2'
+              source = method.source_location
+              debug_info = "It looks like the method is defined in #{source[0]} at line #{source[1]}."
+            else
+              debug_info = "This might help you find the method: #{method}. If you run this on Ruby 1.9.2 we can tell you exactly where the method is."
+            end
+
+            ActiveSupport::Deprecation.warn <<-WARN
+It looks like ActiveRecord::Reflection::AssociationReflection#build_association has been redefined, either by you or by a plugin or library that you are using. The signature of this method has changed.
+
+  Before: def build_association(*options)
+  After:  def build_association(*options, &block)
+
+The block argument now needs to be passed through to ActiveRecord::Base#new when this method is overridden, or else your associations will not function correctly in Rails 3.2.
+
+#{debug_info}
+
+            WARN
+          end
+
+          record
         end
     end
   end

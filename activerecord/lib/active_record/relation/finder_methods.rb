@@ -194,7 +194,7 @@ module ActiveRecord
         relation = relation.where(table[primary_key].eq(id)) if id
       end
 
-      connection.select_value(relation.to_sql) ? true : false
+      connection.select_value(relation) ? true : false
     end
 
     protected
@@ -202,7 +202,7 @@ module ActiveRecord
     def find_with_associations
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)
-      rows = connection.select_all(relation.to_sql, 'SQL', relation.bind_values)
+      rows = connection.select_all(relation, 'SQL', relation.bind_values)
       join_dependency.instantiate(rows)
     rescue ThrowResult
       []
@@ -243,7 +243,7 @@ module ActiveRecord
     end
 
     def construct_limited_ids_condition(relation)
-      orders = relation.order_values
+      orders = relation.order_values.map { |val| val.presence }.compact
       values = @klass.connection.distinct("#{@klass.connection.quote_table_name table_name}.#{primary_key}", orders)
 
       relation = relation.dup

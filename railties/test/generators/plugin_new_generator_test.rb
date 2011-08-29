@@ -12,7 +12,6 @@ DEFAULT_PLUGIN_FILES = %w(
   lib
   lib/bukkits.rb
   lib/tasks/bukkits_tasks.rake
-  script/rails
   test/bukkits_test.rb
   test/test_helper.rb
   test/dummy
@@ -70,13 +69,13 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
   def test_database_entry_is_assed_by_default_in_full_mode
     run_generator([destination_root, "--full"])
     assert_file "test/dummy/config/database.yml", /sqlite/
-    assert_file "Gemfile", /^gem\s+["']sqlite3["']$/
+    assert_file "bukkits.gemspec", /sqlite3/
   end
 
   def test_config_another_database
     run_generator([destination_root, "-d", "mysql", "--full"])
     assert_file "test/dummy/config/database.yml", /mysql/
-    assert_file "Gemfile", /^gem\s+["']mysql2["']$/
+    assert_file "bukkits.gemspec", /mysql/
   end
 
   def test_active_record_is_removed_from_frameworks_if_skip_active_record_is_given
@@ -102,19 +101,41 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
 
   def test_skipping_javascripts_without_mountable_option
     run_generator
-    assert_no_file "app/assets/javascripts/application.js"
+    assert_no_file "app/assets/javascripts/bukkits/application.js"
     assert_no_file "vendor/assets/javascripts/jquery.js"
     assert_no_file "vendor/assets/javascripts/jquery_ujs.js"
   end
 
   def test_javascripts_generation
     run_generator [destination_root, "--mountable"]
-    assert_file "app/assets/javascripts/application.js"
+    assert_file "app/assets/javascripts/bukkits/application.js"
+  end
+
+  def test_jquery_is_the_default_javascript_library
+    run_generator [destination_root, "--mountable"]
+    assert_file "app/assets/javascripts/bukkits/application.js" do |contents|
+      assert_match %r{^//= require jquery}, contents
+      assert_match %r{^//= require jquery_ujs}, contents
+    end
+    assert_file 'bukkits.gemspec' do |contents|
+      assert_match(/jquery-rails/, contents)
+    end
+  end
+
+  def test_other_javascript_libraries
+    run_generator [destination_root, "--mountable", '-j', 'prototype']
+    assert_file "app/assets/javascripts/bukkits/application.js" do |contents|
+      assert_match %r{^//= require prototype}, contents
+      assert_match %r{^//= require prototype_ujs}, contents
+    end
+    assert_file 'bukkits.gemspec' do |contents|
+      assert_match(/prototype-rails/, contents)
+    end
   end
 
   def test_skip_javascripts
     run_generator [destination_root, "--skip-javascript", "--mountable"]
-    assert_no_file "app/assets/javascripts/application.js"
+    assert_no_file "app/assets/javascripts/bukkits/application.js"
     assert_no_file "vendor/assets/javascripts/jquery.js"
     assert_no_file "vendor/assets/javascripts/jquery_ujs.js"
   end
@@ -140,9 +161,9 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
 
   def test_creating_engine_in_full_mode
     run_generator [destination_root, "--full"]
-    assert_file "app/assets/javascripts"
-    assert_file "app/assets/stylesheets"
-    assert_file "app/assets/images"
+    assert_file "app/assets/javascripts/bukkits"
+    assert_file "app/assets/stylesheets/bukkits"
+    assert_file "app/assets/images/bukkits"
     assert_file "app/models"
     assert_file "app/controllers"
     assert_file "app/views"
@@ -158,15 +179,27 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
 
   def test_create_mountable_application_with_mountable_option
     run_generator [destination_root, "--mountable"]
-    assert_file "app/assets/javascripts"
-    assert_file "app/assets/stylesheets"
-    assert_file "app/assets/images"
+    assert_file "app/assets/javascripts/bukkits"
+    assert_file "app/assets/stylesheets/bukkits"
+    assert_file "app/assets/images/bukkits"
     assert_file "config/routes.rb", /Bukkits::Engine.routes.draw do/
     assert_file "lib/bukkits/engine.rb", /isolate_namespace Bukkits/
     assert_file "test/dummy/config/routes.rb", /mount Bukkits::Engine => "\/bukkits"/
     assert_file "app/controllers/bukkits/application_controller.rb", /module Bukkits\n  class ApplicationController < ActionController::Base/
     assert_file "app/helpers/bukkits/application_helper.rb", /module Bukkits\n  module ApplicationHelper/
-    assert_file "app/views/layouts/bukkits/application.html.erb", /<title>Bukkits<\/title>/
+    assert_file "app/views/layouts/bukkits/application.html.erb" do |contents|
+      assert_match "<title>Bukkits</title>", contents
+      assert_match /stylesheet_link_tag\s+['"]bukkits\/application['"]/, contents
+      assert_match /javascript_include_tag\s+['"]bukkits\/application['"]/, contents
+    end
+  end
+
+  def test_creating_gemspec
+    run_generator
+    assert_file "bukkits.gemspec", /s.name\s+= "bukkits"/
+    assert_file "bukkits.gemspec", /s.files = Dir\["\{app,config,db,lib\}\/\*\*\/\*"\]/
+    assert_file "bukkits.gemspec", /s.test_files = Dir\["test\/\*\*\/\*"\]/
+    assert_file "bukkits.gemspec", /s.version\s+ = Bukkits::VERSION/
   end
 
   def test_passing_dummy_path_as_a_parameter
@@ -174,6 +207,21 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
     assert_file "spec/dummy"
     assert_file "spec/dummy/config/application.rb"
     assert_no_file "test/dummy"
+  end
+
+  def test_creating_dummy_without_tests_but_with_dummy_path
+    run_generator [destination_root, "--dummy_path", "spec/dummy", "--skip-test-unit"]
+    assert_file "spec/dummy"
+    assert_file "spec/dummy/config/application.rb"
+    assert_no_file "test"
+  end
+
+  def test_skipping_test_unit
+    run_generator [destination_root, "--skip-test-unit"]
+    assert_no_file "test"
+    assert_file "bukkits.gemspec" do |contents|
+      assert_no_match /s.test_files = Dir\["test\/\*\*\/\*"\]/, contents
+    end
   end
 
   def test_skipping_gemspec
@@ -204,7 +252,6 @@ class CustomPluginGeneratorTest < Rails::Generators::TestCase
     assert_file 'spec/dummy'
     assert_file 'Rakefile', /task :default => :spec/
     assert_file 'Rakefile', /# spec tasks in rakefile/
-    assert_file 'script/rails', %r{spec/dummy}
   end
 
 protected

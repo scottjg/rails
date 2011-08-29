@@ -48,7 +48,7 @@ module ActiveRecord
         super || delegate.respond_to?(*args)
       end
 
-      [:create_table, :rename_table, :add_column, :remove_column, :rename_index, :rename_column, :add_index, :remove_index, :add_timestamps, :remove_timestamps, :change_column, :change_column_default].each do |method|
+      [:create_table, :change_table, :rename_table, :add_column, :remove_column, :rename_index, :rename_column, :add_index, :remove_index, :add_timestamps, :remove_timestamps, :change_column, :change_column_default].each do |method|
         class_eval <<-EOV, __FILE__, __LINE__ + 1
           def #{method}(*args)          # def create_table(*args)
             record(:"#{method}", args)  #   record(:create_table, args)
@@ -79,8 +79,10 @@ module ActiveRecord
       end
 
       def invert_add_index(args)
-        table, columns, _ = *args
-        [:remove_index, [table, {:column => columns}]]
+        table, columns, options = *args
+        index_name = options.try(:[], :name)
+        options_hash =  index_name ? {:name => index_name} : {:column => columns}
+        [:remove_index, [table, options_hash]]
       end
 
       def invert_remove_timestamps(args)

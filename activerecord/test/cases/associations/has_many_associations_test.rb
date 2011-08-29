@@ -1494,4 +1494,50 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, contract.hi_count
     assert_equal 1, contract.bye_count
   end
+
+  def test_association_attributes_are_available_to_after_initialize
+    car = Car.create(:name => 'honda')
+    bulb = car.bulbs.build
+
+    assert_equal car.id, bulb.attributes_after_initialize['car_id']
+  end
+
+  def test_overriding_reflection_build_association_with_deprecated_method_signature
+    ActiveRecord::Reflection::AssociationReflection.class_eval do
+      alias_method :old_build_association, :build_association
+
+      def build_association(*options)
+        klass.new(*options)
+      end
+    end
+
+    car = Car.create(:name => 'honda')
+    bulb = assert_deprecated { car.bulbs.build }
+
+    assert_equal car, bulb.car
+  ensure
+    ActiveRecord::Reflection::AssociationReflection.class_eval do
+      alias_method :build_association, :old_build_association
+      undef_method :old_build_association
+    end
+  end
+
+  def test_AssociationCollection_deprecated
+    assert_deprecated do
+      ActiveRecord::Associations::AssociationCollection.class_eval do
+        def foo
+          "bar"
+        end
+      end
+    end
+
+    author = Author.new
+    assert_equal "bar", author.posts.foo
+  ensure
+    ActiveSupport::Deprecation.silence do
+      ActiveRecord::Associations::AssociationCollection.class_eval do
+        undef_method :foo
+      end
+    end
+  end
 end

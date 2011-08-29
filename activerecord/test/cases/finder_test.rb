@@ -140,23 +140,30 @@ class FinderTest < ActiveRecord::TestCase
 
 
   def test_find_with_group
-    developers =  Developer.find(:all, :group => "salary", :select => "salary")
+    developers = Developer.find(:all, :group => "salary", :select => "salary")
     assert_equal 4, developers.size
     assert_equal 4, developers.map(&:salary).uniq.size
   end
 
   def test_find_with_group_and_having
-    developers =  Developer.find(:all, :group => "salary", :having => "sum(salary) >  10000", :select => "salary")
+    developers = Developer.find(:all, :group => "salary", :having => "sum(salary) > 10000", :select => "salary")
     assert_equal 3, developers.size
     assert_equal 3, developers.map(&:salary).uniq.size
-    assert developers.all? { |developer|  developer.salary > 10000 }
+    assert developers.all? { |developer| developer.salary > 10000 }
   end
 
   def test_find_with_group_and_sanitized_having
-    developers =  Developer.find(:all, :group => "salary", :having => ["sum(salary) > ?", 10000], :select => "salary")
+    developers = Developer.find(:all, :group => "salary", :having => ["sum(salary) > ?", 10000], :select => "salary")
     assert_equal 3, developers.size
     assert_equal 3, developers.map(&:salary).uniq.size
-    assert developers.all? { |developer|  developer.salary > 10000 }
+    assert developers.all? { |developer| developer.salary > 10000 }
+  end
+
+  def test_find_with_group_and_sanitized_having_method
+    developers = Developer.group(:salary).having("sum(salary) > ?", 10000).select('salary').all
+    assert_equal 3, developers.size
+    assert_equal 3, developers.map(&:salary).uniq.size
+    assert developers.all? { |developer| developer.salary > 10000 }
   end
 
   def test_find_with_entire_select_statement
@@ -654,9 +661,23 @@ class FinderTest < ActiveRecord::TestCase
     assert_raise(NoMethodError) { Topic.find_or_create_by_title?("Nonexistent Title") }
   end
 
+  def test_dynamic_finder_with_hash
+    assert_not_deprecated do
+      topic = Topic.find_or_create_by_title_and_author_name(
+        :title => "hi aaron!",
+        :author_name => "Aaron"
+      )
+      assert_equal 'hi aaron!', topic.title
+    end
+  end
+
   def test_find_by_two_attributes
     assert_equal topics(:first), Topic.find_by_title_and_author_name("The First Topic", "David")
     assert_nil Topic.find_by_title_and_author_name("The First Topic", "Mary")
+  end
+
+  def test_find_by_two_attributes_but_passing_only_one
+    assert_deprecated { Topic.find_by_title_and_author_name("The First Topic") }
   end
 
   def test_find_last_by_one_attribute
@@ -850,6 +871,10 @@ class FinderTest < ActiveRecord::TestCase
     sig38 = Company.find_or_initialize_by_name("38signals")
     assert_equal "38signals", sig38.name
     assert !sig38.persisted?
+  end
+
+  def test_find_or_initialize_from_two_attributes_but_passing_only_one
+    assert_deprecated { Topic.find_or_initialize_by_title_and_author_name("Another topic") }
   end
 
   def test_find_or_initialize_from_one_aggregate_attribute

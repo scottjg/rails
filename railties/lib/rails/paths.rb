@@ -7,8 +7,8 @@ module Rails
         match = id.to_s.match(/^(.*)=$/)
         full  = [@current, $1 || id].compact.join("/")
 
-        ActiveSupport::Deprecation.warn 'config.paths.app.controller API is deprecated in ' <<
-          'favor of config.paths["app/controller"] API.'
+        ActiveSupport::Deprecation.warn 'Accessing paths using dot style as in `config.paths.app.controller` is deprecated. Please use ' <<
+          '`config.paths["app/controller"]` style instead.'
 
         if match || args.any?
           @root[full] = Path.new(@root, full, *args)
@@ -49,8 +49,8 @@ module Rails
     #   root.add "config/routes", :with => "config/routes.rb"
     #   root["config/routes"].inspect # => ["config/routes.rb"]
     #
-    # #add also accepts the following options as argument: eager_load, autoload,
-    # autoload_once and glob.
+    # The #add method accepts the following options as arguments:
+    # eager_load, autoload, autoload_once and glob.
     #
     # Finally, the Path object also provides a few helpers:
     #
@@ -179,7 +179,7 @@ module Rails
           path = File.expand_path(p, @root.path)
 
           if @glob
-            result.concat Dir[File.join(path, @glob)]
+            result.concat Dir[File.join(path, @glob)].sort
           else
             result << path
           end
@@ -192,6 +192,10 @@ module Rails
       # Returns all expanded paths but only if they exist in the filesystem.
       def existent
         expanded.select { |f| File.exists?(f) }
+      end
+
+      def existent_directories
+        expanded.select { |d| File.directory?(d) }
       end
 
       def paths

@@ -1,6 +1,6 @@
 h2. Rails Application Templates
 
-Application templates are simple ruby files containing DSL for adding plugins/gems/initializers etc. to your freshly created Rails project or an existing Rails project.
+Application templates are simple Ruby files containing DSL for adding plugins/gems/initializers etc. to your freshly created Rails project or an existing Rails project.
 
 By referring to this guide, you will be able to:
 
@@ -11,22 +11,18 @@ endprologue.
 
 h3. Usage
 
-To apply a template, you need to provide the Rails generator with the location of the template you wish to apply, using -m option:
+To apply a template, you need to provide the Rails generator with the location of the template you wish to apply, using -m option. This can either be path to a file or a URL.
 
 <shell>
 $ rails new blog -m ~/template.rb
+$ rails new blog -m http://example.com/template.rb
 </shell>
 
-It's also possible to apply a template using a URL:
-
-<shell>
-$ rails new blog -m https://gist.github.com/755496.txt
-</shell>
-
-Alternatively, you can use the rake task +rails:template+ to apply a template to an existing Rails application:
+You can use the rake task +rails:template+ to apply templates to an existing Rails application. The location of the template needs to be passed in to an environment variable named LOCATION. Again, this can either be path to a file or a URL.
 
 <shell>
 $ rake rails:template LOCATION=~/template.rb
+$ rake rails:template LOCATION=http://example.com/template.rb
 </shell>
 
 h3. Template API
@@ -58,13 +54,11 @@ gem "bj"
 gem "nokogiri"
 </ruby>
 
-Please note that this will NOT install the gems for you. So you may want to run the +rake gems:install+ task too:
+Please note that this will NOT install the gems for you and you will have to run +bundle install+ to do that.
 
 <ruby>
-rake "gems:install"
+bundle install
 </ruby>
-
-And let Rails take care of installing the required gems if they’re not already installed.
 
 h4. add_source(source, options = {})
 
@@ -154,7 +148,7 @@ The above creates +lib/tasks/bootstrap.rake+ with a +boot:strap+ rake task.
 
 h4. generate(what, args)
 
-Runs the supplied rails generator with given arguments. For example, I love to scaffold some whenever I’m playing with Rails:
+Runs the supplied rails generator with given arguments.
 
 <ruby>
 generate(:scaffold, "person", "name:string", "address:text", "age:number")
@@ -180,12 +174,6 @@ You can also run rake tasks with a different Rails environment:
 
 <ruby>
 rake "db:migrate", :env => 'production'
-</ruby>
-
-Or even use sudo:
-
-<ruby>
-rake "gems:install", :sudo => true
 </ruby>
 
 h4. route(routing_code)
@@ -229,7 +217,7 @@ rake("rails:freeze:gems") if yes?("Freeze rails gems ?")
 no?(question) acts just the opposite.
 </ruby>
 
-h4. git(:must => "-a love")
+h4. git(:command)
 
 Rails templates let you run any git command:
 

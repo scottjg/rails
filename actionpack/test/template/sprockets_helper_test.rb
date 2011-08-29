@@ -14,7 +14,6 @@ class SprocketsHelperTest < ActionView::TestCase
     super
 
     @controller = BasicController.new
-    @controller.stubs(:params).returns({})
 
     @request = Class.new do
       def protocol() 'http://' end
@@ -25,26 +24,27 @@ class SprocketsHelperTest < ActionView::TestCase
     @controller.request = @request
 
     @assets = Sprockets::Environment.new
-    @assets.paths << FIXTURES.join("sprockets/app/javascripts")
-    @assets.paths << FIXTURES.join("sprockets/app/stylesheets")
-    @assets.paths << FIXTURES.join("sprockets/app/images")
+    @assets.append_path(FIXTURES.join("sprockets/app/javascripts"))
+    @assets.append_path(FIXTURES.join("sprockets/app/stylesheets"))
+    @assets.append_path(FIXTURES.join("sprockets/app/images"))
 
-    application = Object.new
+    application = Struct.new(:config, :assets).new(config, @assets)
     Rails.stubs(:application).returns(application)
-    application.stubs(:config).returns(config)
-    application.stubs(:assets).returns(@assets)
-
-    config.perform_caching = true
+    @config = config
+    @config.action_controller ||= ActiveSupport::InheritableOptions.new
+    @config.perform_caching = true
   end
 
   def url_for(*args)
     "http://www.example.com"
   end
 
-  test "asset path" do
-    assert_equal "/assets/logo-9c0a079bdd7701d7e729bd956823d153.png",
+  test "asset_path" do
+    assert_match %r{/assets/logo-[0-9a-f]+.png},
       asset_path("logo.png")
+  end
 
+  test "asset_path with root relative assets" do
     assert_equal "/images/logo",
       asset_path("/images/logo")
     assert_equal "/images/logo.gif",
@@ -52,11 +52,71 @@ class SprocketsHelperTest < ActionView::TestCase
 
     assert_equal "/dir/audio",
       asset_path("/dir/audio")
+  end
 
+  test "asset_path with absolute urls" do
     assert_equal "http://www.example.com/video/play",
       asset_path("http://www.example.com/video/play")
     assert_equal "http://www.example.com/video/play.mp4",
       asset_path("http://www.example.com/video/play.mp4")
+  end
+
+  test "with a simple asset host the url should default to protocol relative" do
+    @controller.config.asset_host = "assets-%d.example.com"
+    assert_match %r{//assets-\d.example.com/assets/logo-[0-9a-f]+.png},
+      asset_path("logo.png")
+  end
+
+  test "with a simple asset host the url can be changed to use the request protocol" do
+    @controller.config.asset_host = "assets-%d.example.com"
+    @controller.config.default_asset_host_protocol = :request
+    assert_match %r{http://assets-\d.example.com/assets/logo-[0-9a-f]+.png},
+      asset_path("logo.png")
+  end
+
+  test "With a proc asset host that returns no protocol the url should be protocol relative" do
+    @controller.config.asset_host = Proc.new do |asset|
+      "assets-999.example.com"
+    end
+    assert_match %r{//assets-999.example.com/assets/logo-[0-9a-f]+.png},
+      asset_path("logo.png")
+  end
+
+  test "with a proc asset host that returns a protocol the url use it" do
+    @controller.config.asset_host = Proc.new do |asset|
+      "http://assets-999.example.com"
+    end
+    assert_match %r{http://assets-999.example.com/assets/logo-[0-9a-f]+.png},
+      asset_path("logo.png")
+  end
+
+  test "stylesheets served with a controller in scope can access the request" do
+    config.asset_host = Proc.new do |asset, request|
+      assert_not_nil request
+      "http://assets-666.example.com"
+    end
+    assert_match %r{http://assets-666.example.com/assets/logo-[0-9a-f]+.png},
+      asset_path("logo.png")
+  end
+
+  test "stylesheets served without a controller in scope cannot access the request" do
+    remove_instance_variable("@controller")
+    @config.action_controller.asset_host = Proc.new do |asset, request|
+      fail "This should not have been called."
+    end
+    assert_raises ActionController::RoutingError do
+      asset_path("logo.png")
+    end
+  end
+
+  test "stylesheets served without a controller in do not use asset hosts when the default protocol is :request" do
+    remove_instance_variable("@controller")
+    @config.action_controller.asset_host = "assets-%d.example.com"
+    @config.action_controller.default_asset_host_protocol = :request
+    @config.action_controller.perform_caching = true
+
+    assert_match %r{/assets/logo-[0-9a-f]+.png},
+      asset_path("logo.png")
   end
 
   test "asset path with relavtive url root" do
@@ -66,12 +126,12 @@ class SprocketsHelperTest < ActionView::TestCase
   end
 
   test "javascript path" do
-    assert_equal "/assets/application-d41d8cd98f00b204e9800998ecf8427e.js",
+    assert_match %r{/assets/application-[0-9a-f]+.js},
       asset_path(:application, "js")
 
-    assert_equal "/assets/xmlhr-d41d8cd98f00b204e9800998ecf8427e.js",
+    assert_match %r{/assets/xmlhr-[0-9a-f]+.js},
       asset_path("xmlhr", "js")
-    assert_equal "/assets/dir/xmlhr-d41d8cd98f00b204e9800998ecf8427e.js",
+    assert_match %r{/assets/dir/xmlhr-[0-9a-f]+.js},
       asset_path("dir/xmlhr.js", "js")
 
     assert_equal "/dir/xmlhr.js",
@@ -84,28 +144,33 @@ class SprocketsHelperTest < ActionView::TestCase
   end
 
   test "javascript include tag" do
-    assert_equal '<script src="/assets/application-d41d8cd98f00b204e9800998ecf8427e.js" type="text/javascript"></script>',
+    assert_match %r{<script src="/assets/application-[0-9a-f]+.js" type="text/javascript"></script>},
       javascript_include_tag(:application)
 
-    assert_equal '<script src="/assets/xmlhr-d41d8cd98f00b204e9800998ecf8427e.js" type="text/javascript"></script>',
+    assert_match %r{<script src="/assets/xmlhr-[0-9a-f]+.js" type="text/javascript"></script>},
       javascript_include_tag("xmlhr")
-    assert_equal '<script src="/assets/xmlhr-d41d8cd98f00b204e9800998ecf8427e.js" type="text/javascript"></script>',
+    assert_match %r{<script src="/assets/xmlhr-[0-9a-f]+.js" type="text/javascript"></script>},
       javascript_include_tag("xmlhr.js")
     assert_equal '<script src="http://www.example.com/xmlhr" type="text/javascript"></script>',
       javascript_include_tag("http://www.example.com/xmlhr")
 
-    assert_equal "<script src=\"/assets/xmlhr-d41d8cd98f00b204e9800998ecf8427e.js?body=1\" type=\"text/javascript\"></script>\n<script src=\"/assets/application-d41d8cd98f00b204e9800998ecf8427e.js?body=1\" type=\"text/javascript\"></script>",
+    assert_match %r{<script src=\"/assets/xmlhr-[0-9a-f]+.js" type=\"text/javascript\"></script>\n<script src=\"/assets/extra-[0-9a-f]+.js" type=\"text/javascript\"></script>},
+      javascript_include_tag("xmlhr", "extra")
+
+    assert_match %r{<script src="/assets/xmlhr-[0-9a-f]+.js\?body=1" type="text/javascript"></script>\n<script src="/assets/application-[0-9a-f]+.js\?body=1" type="text/javascript"></script>},
       javascript_include_tag(:application, :debug => true)
 
-    assert_equal  "<script src=\"/assets/xmlhr-d41d8cd98f00b204e9800998ecf8427e.js\" type=\"text/javascript\"></script>\n<script src=\"/assets/extra-d41d8cd98f00b204e9800998ecf8427e.js\" type=\"text/javascript\"></script>",
-      javascript_include_tag("xmlhr", "extra")
+    @config.assets.allow_debugging = true
+    @config.assets.debug = true
+    assert_match %r{<script src="/assets/xmlhr-[0-9a-f]+.js\?body=1" type="text/javascript"></script>\n<script src="/assets/application-[0-9a-f]+.js\?body=1" type="text/javascript"></script>},
+      javascript_include_tag(:application)
   end
 
   test "stylesheet path" do
-    assert_equal "/assets/application-68b329da9893e34099c7d8ad5cb9c940.css", asset_path(:application, "css")
+    assert_match %r{/assets/application-[0-9a-f]+.css}, asset_path(:application, "css")
 
-    assert_equal "/assets/style-d41d8cd98f00b204e9800998ecf8427e.css", asset_path("style", "css")
-    assert_equal "/assets/dir/style-d41d8cd98f00b204e9800998ecf8427e.css", asset_path("dir/style.css", "css")
+    assert_match %r{/assets/style-[0-9a-f]+.css}, asset_path("style", "css")
+    assert_match %r{/assets/dir/style-[0-9a-f]+.css}, asset_path("dir/style.css", "css")
     assert_equal "/dir/style.css", asset_path("/dir/style.css", "css")
 
     assert_equal "http://www.example.com/css/style",
@@ -115,25 +180,58 @@ class SprocketsHelperTest < ActionView::TestCase
   end
 
   test "stylesheet link tag" do
-    assert_equal '<link href="/assets/application-68b329da9893e34099c7d8ad5cb9c940.css" media="screen" rel="stylesheet" type="text/css" />',
+    assert_match %r{<link href="/assets/application-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag(:application)
 
-    assert_equal '<link href="/assets/style-d41d8cd98f00b204e9800998ecf8427e.css" media="screen" rel="stylesheet" type="text/css" />',
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag("style")
-    assert_equal '<link href="/assets/style-d41d8cd98f00b204e9800998ecf8427e.css" media="screen" rel="stylesheet" type="text/css" />',
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag("style.css")
 
     assert_equal '<link href="http://www.example.com/style.css" media="screen" rel="stylesheet" type="text/css" />',
       stylesheet_link_tag("http://www.example.com/style.css")
-    assert_equal '<link href="/assets/style-d41d8cd98f00b204e9800998ecf8427e.css" media="all" rel="stylesheet" type="text/css" />',
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css" media="all" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag("style", :media => "all")
-    assert_equal '<link href="/assets/style-d41d8cd98f00b204e9800998ecf8427e.css" media="print" rel="stylesheet" type="text/css" />',
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css" media="print" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag("style", :media => "print")
 
-    assert_equal "<link href=\"/assets/style-d41d8cd98f00b204e9800998ecf8427e.css?body=1\" media=\"screen\" rel=\"stylesheet\" type=\"text/css\" />\n<link href=\"/assets/application-68b329da9893e34099c7d8ad5cb9c940.css?body=1\" media=\"screen\" rel=\"stylesheet\" type=\"text/css\" />",
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />\n<link href="/assets/extra-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />},
+      stylesheet_link_tag("style", "extra")
+
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css\?body=1" media="screen" rel="stylesheet" type="text/css" />\n<link href="/assets/application-[0-9a-f]+.css\?body=1" media="screen" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag(:application, :debug => true)
 
-    assert_equal "<link href=\"/assets/style-d41d8cd98f00b204e9800998ecf8427e.css\" media=\"screen\" rel=\"stylesheet\" type=\"text/css\" />\n<link href=\"/assets/extra-d41d8cd98f00b204e9800998ecf8427e.css\" media=\"screen\" rel=\"stylesheet\" type=\"text/css\" />",
-      stylesheet_link_tag("style", "extra")
+    @config.assets.allow_debugging = true
+    @config.assets.debug = true
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css\?body=1" media="screen" rel="stylesheet" type="text/css" />\n<link href="/assets/application-[0-9a-f]+.css\?body=1" media="screen" rel="stylesheet" type="text/css" />},
+      stylesheet_link_tag(:application)
+
+    assert_match %r{<link href="/assets/style-[0-9a-f]+.css\?body=1" media="print" rel="stylesheet" type="text/css" />\n<link href="/assets/application-[0-9a-f]+.css\?body=1" media="print" rel="stylesheet" type="text/css" />},
+      stylesheet_link_tag(:application, :media => "print")
+  end
+
+  test "alternate asset prefix" do
+    stubs(:asset_prefix).returns("/themes/test")
+    assert_match %r{/themes/test/style-[0-9a-f]+.css}, asset_path("style", "css")
+  end
+
+  test "alternate asset environment" do
+    assets = Sprockets::Environment.new
+    assets.append_path(FIXTURES.join("sprockets/alternate/stylesheets"))
+    stubs(:asset_environment).returns(assets)
+    assert_match %r{/assets/style-[0-9a-f]+.css}, asset_path("style", "css")
+  end
+
+  test "alternate hash based on environment" do
+    assets = Sprockets::Environment.new
+    assets.version = 'development'
+    assets.append_path(FIXTURES.join("sprockets/alternate/stylesheets"))
+    stubs(:asset_environment).returns(assets)
+    dev_path = asset_path("style", "css")
+
+    assets.version = 'production'
+    prod_path = asset_path("style", "css")
+
+    assert_not_equal prod_path, dev_path
   end
 end

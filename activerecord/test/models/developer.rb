@@ -91,6 +91,12 @@ class DeveloperWithSelect < ActiveRecord::Base
   default_scope select('name')
 end
 
+class DeveloperWithIncludes < ActiveRecord::Base
+  self.table_name = 'developers'
+  has_many :audit_logs, :foreign_key => :developer_id
+  default_scope includes(:audit_logs)
+end
+
 class DeveloperOrderedBySalary < ActiveRecord::Base
   self.table_name = 'developers'
   default_scope :order => 'salary DESC'
@@ -220,4 +226,13 @@ class EagerDeveloperWithCallableDefaultScope < ActiveRecord::Base
   has_and_belongs_to_many :projects, :foreign_key => 'developer_id', :join_table => 'developers_projects', :order => 'projects.id'
 
   default_scope OpenStruct.new(:call => includes(:projects))
+end
+
+class ThreadsafeDeveloper < ActiveRecord::Base
+  self.table_name = 'developers'
+
+  def self.default_scope
+    sleep 0.05 if Thread.current[:long_default_scope]
+    limit(1)
+  end
 end

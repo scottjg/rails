@@ -13,6 +13,32 @@ class QueryCacheTest < ActiveRecord::TestCase
     ActiveRecord::Base.connection.disable_query_cache!
   end
 
+  def test_exceptional_middleware_clears_and_disables_cache_on_error
+    assert !ActiveRecord::Base.connection.query_cache_enabled, 'cache off'
+
+    mw = ActiveRecord::QueryCache.new lambda { |env|
+      Task.find 1
+      Task.find 1
+      assert_equal 1, ActiveRecord::Base.connection.query_cache.length
+      raise "lol borked"
+    }
+    assert_raises(RuntimeError) { mw.call({}) }
+
+    assert_equal 0, ActiveRecord::Base.connection.query_cache.length
+    assert !ActiveRecord::Base.connection.query_cache_enabled, 'cache off'
+  end
+
+  def test_exceptional_middleware_leaves_enabled_cache_alone
+    ActiveRecord::Base.connection.enable_query_cache!
+
+    mw = ActiveRecord::QueryCache.new lambda { |env|
+      raise "lol borked"
+    }
+    assert_raises(RuntimeError) { mw.call({}) }
+
+    assert ActiveRecord::Base.connection.query_cache_enabled, 'cache off'
+  end
+
   def test_middleware_delegates
     called = false
     mw = ActiveRecord::QueryCache.new lambda { |env|
@@ -202,4 +228,15 @@ class QueryCacheExpiryTest < ActiveRecord::TestCase
       p.categories.delete_all
     end
   end
+end
+
+class QueryCacheBodyProxyTest < ActiveRecord::TestCase
+
+  test "is polite to it's body and responds to it" do
+    body = Class.new(String) { def to_path; "/path"; end }.new
+    proxy = ActiveRecord::QueryCache::BodyProxy.new(nil, body)
+    assert proxy.respond_to?(:to_path)
+    assert_equal proxy.to_path, "/path"
+  end
+
 end

@@ -116,6 +116,8 @@ module ActionDispatch
               path
             elsif path.include?(":format") || path.end_with?('/')
               path
+            elsif @options[:format] == true
+              "#{path}.:format"
             else
               "#{path}(.:format)"
             end
@@ -187,13 +189,12 @@ module ActionDispatch
           end
 
           def blocks
-            block = @scope[:blocks] || []
-
-            if @options[:constraints].present? && !@options[:constraints].is_a?(Hash)
-              block << @options[:constraints]
+            constraints = @options[:constraints]
+            if constraints.present? && !constraints.is_a?(Hash)
+              [constraints]
+            else
+              @scope[:blocks] || []
             end
-
-            block
           end
 
           def constraints
@@ -876,9 +877,9 @@ module ActionDispatch
 
           def initialize(entities, options = {})
             @name       = entities.to_s
-            @path       = (options.delete(:path) || @name).to_s
-            @controller = (options.delete(:controller) || @name).to_s
-            @as         = options.delete(:as)
+            @path       = (options[:path] || @name).to_s
+            @controller = (options[:controller] || @name).to_s
+            @as         = options[:as]
             @options    = options
           end
 
@@ -940,12 +941,11 @@ module ActionDispatch
           DEFAULT_ACTIONS = [:show, :create, :update, :destroy, :new, :edit]
 
           def initialize(entities, options)
+            super
+
             @as         = nil
-            @name       = entities.to_s
-            @path       = (options.delete(:path) || @name).to_s
-            @controller = (options.delete(:controller) || plural).to_s
-            @as         = options.delete(:as)
-            @options    = options
+            @controller = (options[:controller] || plural).to_s
+            @as         = options[:as]
           end
 
           def plural
@@ -1102,9 +1102,9 @@ module ActionDispatch
         #
         #   The +comments+ resource here will have the following routes generated for it:
         #
-        #     post_comments    GET    /sekret/posts/:post_id/comments(.:format)
-        #     post_comments    POST   /sekret/posts/:post_id/comments(.:format)
-        #     new_post_comment GET    /sekret/posts/:post_id/comments/new(.:format)
+        #     post_comments    GET    /posts/:post_id/comments(.:format)
+        #     post_comments    POST   /posts/:post_id/comments(.:format)
+        #     new_post_comment GET    /posts/:post_id/comments/new(.:format)
         #     edit_comment     GET    /sekret/comments/:id/edit(.:format)
         #     comment          GET    /sekret/comments/:id(.:format)
         #     comment          PUT    /sekret/comments/:id(.:format)

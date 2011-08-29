@@ -791,6 +791,23 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_for_with_remote_in_html
+    form_for(@post, :url => '/', :html => { :remote => true, :id => 'create-post', :method => :put }) do |f|
+      concat f.text_field(:title)
+      concat f.text_area(:body)
+      concat f.check_box(:secret)
+    end
+
+    expected =  whole_form("/", "create-post", "edit_post", :method => "put", :remote => true) do
+      "<input name='post[title]' size='30' type='text' id='post_title' value='Hello World' />" +
+      "<textarea name='post[body]' id='post_body' rows='20' cols='40'>Back to the hill and over it again!</textarea>" +
+      "<input name='post[secret]' type='hidden' value='0' />" +
+      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_form_for_with_remote_without_html
     @post.persisted = false
     form_for(@post, :remote => true) do |f|
@@ -1559,6 +1576,22 @@ class FormHelperTest < ActionView::TestCase
       '<input id="post_tags_attributes_1_relevances_attributes_0_value" name="post[tags_attributes][1][relevances_attributes][0][value]" size="30" type="text" value="tagrelevance #31415" />' +
       '<input id="post_tags_attributes_1_relevances_attributes_0_id" name="post[tags_attributes][1][relevances_attributes][0][id]" type="hidden" value="31415" />' +
       '<input id="post_tags_attributes_1_id" name="post[tags_attributes][1][id]" type="hidden" value="456" />'
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_nested_fields_for_with_hash_like_model
+    @author = HashBackedAuthor.new
+
+    form_for(@post) do |f|
+      concat f.fields_for(:author, @author) { |af|
+        concat af.text_field(:name)
+      }
+    end
+
+    expected = whole_form('/posts/123', 'edit_post_123', 'edit_post', :method => 'put') do
+      '<input id="post_author_attributes_name" name="post[author_attributes][name]" size="30" type="text" value="hash backed author" />'
     end
 
     assert_dom_equal expected, output_buffer

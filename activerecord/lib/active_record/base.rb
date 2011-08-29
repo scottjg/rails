@@ -23,6 +23,7 @@ require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/object/duplicable'
 require 'active_support/core_ext/object/blank'
+require 'active_support/deprecation'
 require 'arel'
 require 'active_record/errors'
 require 'active_record/log_subscriber'
@@ -428,10 +429,6 @@ module ActiveRecord #:nodoc:
     class_attribute :default_scopes, :instance_writer => false
     self.default_scopes = []
 
-    # Boolean flag to prevent infinite recursion when evaluating default scopes
-    class_attribute :apply_default_scope, :instance_writer => false
-    self.apply_default_scope = true
-
     # Returns a hash of all the attributes that have been specified for serialization as
     # keys and their class restriction as values.
     class_attribute :serialized_attributes
@@ -714,6 +711,12 @@ module ActiveRecord #:nodoc:
         connection_pool.columns_hash[table_name]
       end
 
+      # Returns a hash where the keys are column names and the values are
+      # default values when instantiating the AR object for this table.
+      def column_defaults
+        connection_pool.column_defaults[table_name]
+      end
+
       # Returns an array of column names as strings.
       def column_names
         @column_names ||= columns.map { |column| column.name }
@@ -937,17 +940,6 @@ module ActiveRecord #:nodoc:
         self.current_scope = nil
       end
 
-      # Specifies how the record is loaded by +Marshal+.
-      #
-      # +_load+ sets an instance variable for each key in the hash it takes as input.
-      # Override this method if you require more complex marshalling.
-      def _load(data)
-        record = allocate
-        record.init_with(Marshal.load(data))
-        record
-      end
-
-
       # Finder methods must instantiate through this method to work with the
       # single-table inheritance model that makes it possible to create
       # objects of different types from the same table.
@@ -1054,6 +1046,11 @@ module ActiveRecord #:nodoc:
           if match = DynamicFinderMatch.match(method_id)
             attribute_names = match.attribute_names
             super unless all_attributes_exists?(attribute_names)
+            if !arguments.first.is_a?(Hash) && arguments.size < attribute_names.size
+              ActiveSupport::Deprecation.warn(<<-eowarn)
+Calling dynamic finder with less number of arguments than the number of attributes in method name is deprecated and will raise an ArguementError in the next version of Rails. Please passing `nil' to the argument you want it to be nil.
+                eowarn
+            end
             if match.finder?
               options = arguments.extract_options!
               relation = options.any? ? scoped(options) : scoped
@@ -1064,6 +1061,13 @@ module ActiveRecord #:nodoc:
           elsif match = DynamicScopeMatch.match(method_id)
             attribute_names = match.attribute_names
             super unless all_attributes_exists?(attribute_names)
+            if arguments.size < attribute_names.size
+              ActiveSupport::Deprecation.warn(
+                "Calling dynamic scope with less number of arguments than the number of attributes in " \
+                "method name is deprecated and will raise an ArguementError in the next version of Rails. " \
+                "Please passing `nil' to the argument you want it to be nil."
+              )
+            end
             if match.scope?
               self.class_eval <<-METHOD, __FILE__, __LINE__ + 1
                 def self.#{method_id}(*args)                                    # def self.scoped_by_user_name_and_password(*args)
@@ -1209,11 +1213,11 @@ MSG
         end
 
         def current_scope #:nodoc:
-          Thread.current[:"#{self}_current_scope"]
+          Thread.current["#{self}_current_scope"]
         end
 
         def current_scope=(scope) #:nodoc:
-          Thread.current[:"#{self}_current_scope"] = scope
+          Thread.current["#{self}_current_scope"] = scope
         end
 
         # Use this macro in your model to set a default scope for all operations on
@@ -1266,27 +1270,43 @@ MSG
           self.default_scopes = default_scopes + [scope]
         end
 
-        # The apply_default_scope flag is used to prevent an infinite recursion situation where
-        # a default scope references a scope which has a default scope which references a scope...
         def build_default_scope #:nodoc:
-          return unless apply_default_scope
-          self.apply_default_scope = false
-
           if method(:default_scope).owner != Base.singleton_class
-            default_scope
+            evaluate_default_scope { default_scope }
           elsif default_scopes.any?
-            default_scopes.inject(relation) do |default_scope, scope|
-              if scope.is_a?(Hash)
-                default_scope.apply_finder_options(scope)
-              elsif !scope.is_a?(Relation) && scope.respond_to?(:call)
-                default_scope.merge(scope.call)
-              else
-                default_scope.merge(scope)
+            evaluate_default_scope do
+              default_scopes.inject(relation) do |default_scope, scope|
+                if scope.is_a?(Hash)
+                  default_scope.apply_finder_options(scope)
+                elsif !scope.is_a?(Relation) && scope.respond_to?(:call)
+                  default_scope.merge(scope.call)
+                else
+                  default_scope.merge(scope)
+                end
               end
             end
           end
-        ensure
-          self.apply_default_scope = true
+        end
+
+        def ignore_default_scope? #:nodoc:
+          Thread.current["#{self}_ignore_default_scope"]
+        end
+
+        def ignore_default_scope=(ignore) #:nodoc:
+          Thread.current["#{self}_ignore_default_scope"] = ignore
+        end
+
+        # The ignore_default_scope flag is used to prevent an infinite recursion situation where
+        # a default scope references a scope which has a default scope which references a scope...
+        def evaluate_default_scope
+          return if ignore_default_scope?
+
+          begin
+            self.ignore_default_scope = true
+            yield
+          ensure
+            self.ignore_default_scope = false
+          end
         end
 
         # Returns the class type of the record using the current module as a prefix. So descendants of
@@ -1408,9 +1428,8 @@ MSG
           attrs = expand_hash_conditions_for_aggregates(attrs)
 
           table = Arel::Table.new(table_name).alias(default_table_name)
-          viz = Arel::Visitors.for(arel_engine)
           PredicateBuilder.build_from_hash(arel_engine, attrs, table).map { |b|
-            viz.accept b
+            connection.visitor.accept b
           }.join(' AND ')
         end
         alias_method :sanitize_sql_hash, :sanitize_sql_hash_for_conditions
@@ -1532,6 +1551,7 @@ MSG
         @marked_for_destruction = false
         @previously_changed = {}
         @changed_attributes = {}
+        @relation = nil
 
         ensure_proper_type
         set_serialized_attributes
@@ -1540,9 +1560,8 @@ MSG
 
         assign_attributes(attributes, options) if attributes
 
-        result = yield self if block_given?
+        yield self if block_given?
         run_callbacks :initialize
-        result
       end
 
       # Populate +coder+ with attributes about this record that should be
@@ -1573,6 +1592,7 @@ MSG
       #   post.title # => 'hello world'
       def init_with(coder)
         @attributes = coder['attributes']
+        @relation = nil
 
         set_serialized_attributes
 
@@ -1585,16 +1605,6 @@ MSG
         run_callbacks :initialize
 
         self
-      end
-
-      # Specifies how the record is dumped by +Marshal+.
-      #
-      # +_dump+ emits a marshalled hash which has been passed to +encode_with+. Override this
-      # method if you require more complex marshalling.
-      def _dump(level)
-        dump = {}
-        encode_with(dump)
-        Marshal.dump(dump)
       end
 
       # Returns a String, which Action Pack uses for constructing an URL to this
@@ -1636,7 +1646,8 @@ MSG
         when new_record?
           "#{self.class.model_name.cache_key}/new"
         when timestamp = self[:updated_at]
-          "#{self.class.model_name.cache_key}/#{id}-#{timestamp.to_s(:number)}"
+          timestamp = timestamp.utc.to_s(:number)
+          "#{self.class.model_name.cache_key}/#{id}-#{timestamp}"
         else
           "#{self.class.model_name.cache_key}/#{id}"
         end
@@ -1720,12 +1731,11 @@ MSG
         return unless new_attributes
 
         attributes = new_attributes.stringify_keys
-        role = options[:as] || :default
-
         multi_parameter_attributes = []
+        @mass_assignment_options = options
 
         unless options[:without_protection]
-          attributes = sanitize_for_mass_assignment(attributes, role)
+          attributes = sanitize_for_mass_assignment(attributes, mass_assignment_role)
         end
 
         attributes.each do |k, v|
@@ -1738,6 +1748,7 @@ MSG
           end
         end
 
+        @mass_assignment_options = nil
         assign_multiparameter_attributes(multi_parameter_attributes)
       end
 
@@ -1747,7 +1758,7 @@ MSG
       end
 
       # Returns an <tt>#inspect</tt>-like string for the value of the
-      # attribute +attr_name+. String attributes are elided after 50
+      # attribute +attr_name+. String attributes are truncated upto 50
       # characters, and Date and Time attributes are returned in the
       # <tt>:db</tt> format. Other attributes return the value of
       # <tt>#inspect</tt> without modification.
@@ -1792,16 +1803,12 @@ MSG
       # Note also that destroying a record preserves its ID in the model instance, so deleted
       # models are still comparable.
       def ==(comparison_object)
-        comparison_object.equal?(self) ||
+        super ||
           comparison_object.instance_of?(self.class) &&
           id.present? &&
           comparison_object.id == id
       end
-
-      # Delegates to ==
-      def eql?(comparison_object)
-        self == comparison_object
-      end
+      alias :eql? :==
 
       # Delegates to id in order to allow two records of the same type and id to work with something like:
       #   [ Person.find(1), Person.find(2), Person.find(3) ] & [ Person.find(1), Person.find(4) ] # => [ Person.find(1) ]
@@ -1817,6 +1824,15 @@ MSG
       # Returns +true+ if the attributes hash has been frozen.
       def frozen?
         @attributes.frozen?
+      end
+
+      # Allows sort on objects
+      def <=>(other_object)
+        if other_object.is_a?(self.class)
+          self.to_key <=> other_object.to_key
+        else
+          nil
+        end
       end
 
       # Backport dup from 1.9 so that initialize_dup() gets called
@@ -1893,12 +1909,33 @@ MSG
         value
       end
 
+      def mass_assignment_options
+        @mass_assignment_options ||= {}
+      end
+
+      def mass_assignment_role
+        mass_assignment_options[:as] || :default
+      end
+
     private
 
+      # Under Ruby 1.9, Array#flatten will call #to_ary (recursively) on each of the elements
+      # of the array, and then rescues from the possible NoMethodError. If those elements are
+      # ActiveRecord::Base's, then this triggers the various method_missing's that we have,
+      # which significantly impacts upon performance.
+      #
+      # So we can avoid the method_missing hit by explicitly defining #to_ary as nil here.
+      #
+      # See also http://tenderlovemaking.com/2011/06/28/til-its-ok-to-return-nil-from-to_ary/
+      def to_ary # :nodoc:
+        nil
+      end
+
       def set_serialized_attributes
-        (@attributes.keys & self.class.serialized_attributes.keys).each do |key|
-          coder = self.class.serialized_attributes[key]
-          @attributes[key] = coder.load @attributes[key]
+        sattrs = self.class.serialized_attributes
+
+        sattrs.each do |key, coder|
+          @attributes[key] = coder.load @attributes[key] if @attributes.key?(key)
         end
       end
 
@@ -1908,8 +1945,9 @@ MSG
       # do Reply.new without having to set <tt>Reply[Reply.inheritance_column] = "Reply"</tt> yourself.
       # No such attribute would be set for objects of the Message class in that example.
       def ensure_proper_type
-        unless self.class.descends_from_active_record?
-          write_attribute(self.class.inheritance_column, self.class.sti_name)
+        klass = self.class
+        if klass.finder_needs_type_condition?
+          write_attribute(klass.inheritance_column, klass.sti_name)
         end
       end
 
@@ -2083,8 +2121,10 @@ MSG
       end
 
       def populate_with_current_scope_attributes
-        self.class.scoped.scope_for_create.each do |att,value|
-          respond_to?("#{att}=") && send("#{att}=", value)
+        return unless self.class.scope_attributes?
+
+        self.class.scope_attributes.each do |att,value|
+          send("#{att}=", value) if respond_to?("#{att}=")
         end
       end
 
