@@ -876,9 +876,7 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal parrot, the_same_parrot
   end
 
-  def test_first_or_create_bang
-    assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create!(:pirate_id => 1) }
-
+  def test_first_or_create_bang_with_valid_options
     parrot = Bird.where(:color => 'green').first_or_create!(:name => 'parrot')
     assert_kind_of Bird, parrot
     assert parrot.persisted?
@@ -889,6 +887,10 @@ class RelationTest < ActiveRecord::TestCase
     assert_kind_of Bird, the_same_parrot
     assert the_same_parrot.persisted?
     assert_equal parrot, the_same_parrot
+  end
+
+  def test_first_or_create_bang_with_invalid_options
+    assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create!(:pirate_id => 1) }
   end
 
   def test_explicit_create_scope
