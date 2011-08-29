@@ -24,12 +24,20 @@ module ActiveRecord::Associations::Builder
         cache_column = reflection.counter_cache_column
         name         = self.name
 
-        method_name = "belongs_to_counter_cache_after_create_for_#{name}"
+        method_name = "belongs_to_counter_cache_before_save_for_#{name}"
         model.redefine_method(method_name) do
           record = send(name)
           record.class.increment_counter(cache_column, record.id) unless record.nil?
+          if persisted? && send("#{reflection.foreign_key}_changed?")
+            target_id = if reflection.options[:primary_key]
+              reflection.klass.select(:id).where(reflection.options[:primary_key] => send("#{reflection.foreign_key}_was")).first.try(:id)
+            else
+              send("#{reflection.foreign_key}_was")
+            end
+            reflection.klass.decrement_counter(cache_column, target_id)
+          end
         end
-        model.after_create(method_name)
+        model.before_save(method_name)
 
         method_name = "belongs_to_counter_cache_before_destroy_for_#{name}"
         model.redefine_method(method_name) do

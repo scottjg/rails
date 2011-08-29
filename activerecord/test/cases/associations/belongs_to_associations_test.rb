@@ -195,15 +195,16 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_belongs_to_counter_with_assigning_nil
-    p = Post.find(1)
-    c = Comment.find(1)
+    topic = Topic.create("title" => "debate")
+    reply = topic.replies.create("title" => "blah!", "content" => "world around!")
 
-    assert_equal p.id, c.post_id
-    assert_equal 2, Post.find(p.id).comments.size
+    assert_equal topic.id, reply.parent_id
+    assert_equal 1, Topic.find(topic.id).replies.size
 
-    c.post = nil
+    reply.topic = nil
+    reply.save
 
-    assert_equal 1, Post.find(p.id).comments.size
+    assert_equal 0, Topic.find(topic.id).replies.size
   end
 
   def test_belongs_to_with_primary_key_counter
@@ -215,11 +216,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 0, debate2.reload.replies_count
 
     reply.topic_with_primary_key = debate2
+    reply.save
 
     assert_equal 0, debate.reload.replies_count
     assert_equal 1, debate2.reload.replies_count
 
     reply.topic_with_primary_key = nil
+    reply.save
 
     assert_equal 0, debate.reload.replies_count
     assert_equal 0, debate2.reload.replies_count
@@ -246,11 +249,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, Topic.find(t2.id).replies.size
 
     r1.topic = nil
+    r1.save
 
     assert_equal 0, Topic.find(t1.id).replies.size
     assert_equal 0, Topic.find(t2.id).replies.size
 
     r1.topic = t1
+    r1.save
 
     assert_equal 1, Topic.find(t1.id).replies.size
     assert_equal 0, Topic.find(t2.id).replies.size
@@ -363,6 +368,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     reply = Reply.create(:title => "re: zoom", :content => "speedy quick!")
     reply.topic = topic
+    reply.save
 
     assert_equal 1, topic.reload[:replies_count]
     assert_equal 1, topic.replies.size
@@ -371,12 +377,24 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 15, topic.replies.size
   end
 
+  def test_counter_cache_updates_with_foreign_key_change
+    new_topic = topics(:third)
+    old_topic = topics(:first)
+    reply = old_topic.replies.first
+
+    reply.update_attribute :parent_id, new_topic.id
+
+    assert_equal 2, new_topic.reload.replies_count
+    assert_equal 0, old_topic.reload.replies_count
+  end
+
   def test_custom_counter_cache
     reply = Reply.create(:title => "re: zoom", :content => "speedy quick!")
     assert_equal 0, reply[:replies_count]
 
     silly = SillyReply.create(:title => "gaga", :content => "boo-boo")
     silly.reply = reply
+    silly.save
 
     assert_equal 1, reply.reload[:replies_count]
     assert_equal 1, reply.replies.size
@@ -603,6 +621,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_difference lambda { post.reload.taggings_count }, -1 do
       assert_difference 'comment.reload.taggings_count', +1 do
         tagging.taggable = comment
+        tagging.save
       end
     end
   end

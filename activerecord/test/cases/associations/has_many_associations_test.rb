@@ -493,6 +493,16 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal natural, companies(:first_firm).clients_of_firm.last
   end
 
+  def test_moving_updates_counter_cache
+    old_topic = topics(:first)
+    new_topic = topics(:third)
+
+    new_topic.replies << old_topic.replies
+
+    assert_equal 2, new_topic.reload.replies_count
+    assert_equal 0, old_topic.reload.replies_count
+  end
+
   def test_adding_using_create
     first_firm = companies(:first_firm)
     assert_equal 2, first_firm.plain_clients.size
