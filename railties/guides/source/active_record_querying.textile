@@ -1067,6 +1067,31 @@ Client.where(:first_name => 'Andy').first_or_create!(:locked => false)
 
 NOTE: Be sure to check the extensive *Active Record Validations and Callbacks Guide* for more information about validations.
 
+h3. First or new
+
+The +first_or_new+ method will work just like the +first_or_create+ but it will not call the +create+ action but the +new+ one.
+
+This means that a new model instance will be created in memory but it won't be saved in the database. Continuing with the +first_or_create+ example, we now want the client named 'Nick':
+
+<ruby>
+nick = Client.where(:first_name => 'Nick').first_or_new(:locked => false)
+# => <Client id: nil, first_name: "Nick", orders_count: 0, locked: false, created_at: "2011-08-30 06:09:27", updated_at: "2011-08-30 06:09:27">
+
+nick.persisted?
+# => false
+
+nick.new_record?
+# => true
+</ruby>
+
+Because the object is not stored in the database, the SQL generated looks like this:
+
+<sql>
+SELECT * FROM clients WHERE (clients.first_name = 'Nick') LIMIT 1
+</sql>
+
+Just like you can use *+build+* instead of *+new+*, you can use *+first_or_build+* instead of *+first_or_new+*.
+
 h3. Finding by SQL
 
 If you'd like to use your own SQL to find records in a table you can use +find_by_sql+. The +find_by_sql+ method will return an array of objects even if the underlying query returns just a single record. For example you could run this query:
