@@ -1,24 +1,21 @@
-== Branch of Rails project to generate PDF files out of Rails Doc Guides
+== Rails project branch for PDF generation of Rails Doc Guides
 
-This is a fork of the {Rails project}[https://github.com/rails/rails] to create a generator of PDF versions of the {Rails Guides}[http://guides.rubyonrails.org/getting_started.html]. The project is still ongoing.
+This is a {Rails project}[https://github.com/rails/rails] fork to create a PDF generator for the {Rails Guides}[http://guides.rubyonrails.org/getting_started.html]. The project is still ongoing.
 
 Preliminary PDF versions of the guides (not yet fine enough) can be generated as follows
 
+<pre>
  ..$ git clone git@github.com:jquemada/rails
- ..$ cd railties
+ ..$ cd rails/railties
  ..$ rake generate_guides_pdf   # New command generating pdf guides in railties/guides/pdf
 
  ..$ rake generate_guides       # Existing command generating html guides in railties/guides/output
+</pre>
 
+"rake generate_guides_pdf" generates the pdf guides in the railties/guides/pdf directory in two steps:
 
-"rake generate_guides_pdf" generates the pdf guides in the railties/guides/pdf directory i two steps:
+Step 1: transforms the textile source file of the guides (in "railties/guides/sources") into an enriched textile source file (in "railties/guides/pdf"), which includes everything necessary for proper PDF generation with {gimli}[https://github.com/walle/gimli]. Most of the transformations are made with RegExps in method "generate_guide(guide, output_file)" in class "RailsGuides::GeneratorPdf" defined in "railties/guides/rails_guides/generator_pdf.rb".
 
-Step 1: generates a preprocessed version guide source info "railties/guides/sources" in "railties/guides/pdf"  
+Step 2: transforms the enriched textile source file in (railties/guides/pdf) into a PDF file (in railties/guides/pdf) using {gimli}[https://github.com/walle/gimli]. Invoked also in the "generate_guide(guide, output_file)" method.
 
-Step 2: transforms prepocessed source in "railties/guides/pdf" in to PDF file with {gimli}[https://github.com/walle/gimli] into "railties/guides/pdf"
-
-The "rake generate_guides_pdf" command is similar to the old "rake generate_guides" command used to generate HTML guides out of the textile RDoc sources of the guides and reuses a lot of the old code. The following files have been modified:
-
- 
-
-
+The "rake generate_guides_pdf" command is similar to the old "rake generate_guides" command used to generate HTML guides out of the textile RDoc sources of the guides and reuses a lot of the old code. 
