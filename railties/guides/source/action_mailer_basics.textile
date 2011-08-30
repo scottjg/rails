@@ -98,7 +98,7 @@ To login to the site, just follow this link: <%= @url %>.
 Thanks for joining and have a great day!
 </erb>
 
-When you call the +mail+ method now, Action Mailer will detect the two templates (text and HTML) and automatically generate a <tt>multipart/alternative</tt> email.
+When you call the +mail+ method now, 'Action Mailer' will detect the two templates (text and HTML) and automatically generate a <tt>multipart/alternative</tt> email.
 
 h5. Wire It Up So That the System Sends the Email When a User Signs Up
 

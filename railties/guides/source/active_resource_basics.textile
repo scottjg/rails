@@ -12,8 +12,7 @@ Active Resource allows you to connect with RESTful web services. So, in Rails, R
 
 h3. Configuration and Usage
 
-Putting Active Resource to use is very similar to Active Record.  It's as simple as creating a model class
-that inherits from ActiveResource::Base and providing a <tt>site</tt> class variable to it:
+Putting Active Resource to use is very similar to Active Record.  It's as simple as creating a model class that inherits from ActiveResource::Base and providing a <tt>site</tt> class variable to it:
 
 <ruby>
 class Person < ActiveResource::Base
