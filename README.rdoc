@@ -2,15 +2,15 @@
 
 This is a {Rails project}[https://github.com/rails/rails] fork to create a PDF generator for the {Rails Guides}[http://guides.rubyonrails.org/getting_started.html]. The project is still ongoing.
 
-Preliminary PDF versions of the guides (not yet fine enough) can be generated as follows
+Download actual PDF versions of the guides from (here)[https://public.me.com/juan.quemada/DocRails] (not yet fine enough, but usefull). 
 
-<pre>
+PDF guides can be generated as follows
+
  ..$ git clone git@github.com:jquemada/rails
  ..$ cd rails/railties
  ..$ rake generate_guides_pdf   # New command generating pdf guides in railties/guides/pdf
 
  ..$ rake generate_guides       # Existing command generating html guides in railties/guides/output
-</pre>
 
 "rake generate_guides_pdf" generates the pdf guides in the railties/guides/pdf directory in two steps:
 
