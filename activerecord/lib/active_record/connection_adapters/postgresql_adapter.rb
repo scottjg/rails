@@ -287,7 +287,7 @@ module ActiveRecord
 
       # Close then reopen the connection.
       def reconnect!
-        clear_cache!
+        @statements.clear
         @connection.reset
         configure_connection
       end
