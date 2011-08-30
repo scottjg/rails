@@ -956,6 +956,32 @@ class RelationTest < ActiveRecord::TestCase
     assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create!([ {:name => 'parrot'}, {:pirate_id => 1} ]) }
   end
 
+  def test_first_or_new
+    parrot = Bird.where(:color => 'green').first_or_new(:name => 'parrot')
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert parrot.valid?
+    assert_equal 'parrot', parrot.name
+    assert_equal 'green', parrot.color
+  end
+
+  def test_first_or_new_with_no_parameters
+    parrot = Bird.where(:color => 'green').first_or_new
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert !parrot.valid?
+    assert_equal 'green', parrot.color
+  end
+
+  def test_first_or_new_with_block
+    parrot = Bird.where(:color => 'green').first_or_new { |bird| bird.name = 'parrot' }
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert parrot.valid?
+    assert_equal 'green', parrot.color
+    assert_equal 'parrot', parrot.name
+  end
+
   def test_explicit_create_scope
     hens = Bird.where(:name => 'hen')
     assert_equal 'hen', hens.new.name

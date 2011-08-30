@@ -129,6 +129,13 @@ module ActiveRecord
       first || create!(*args, &block)
     end
 
+    # Like <tt>first_or_create</tt> but calls <tt>new</tt> instead of <tt>create</tt>.
+    #
+    # Expects arguments in the same format as <tt>Base.new</tt>.
+    def first_or_new(*args, &block)
+      first || new(*args, &block)
+    end
+
     def respond_to?(method, include_private = false)
       arel.respond_to?(method, include_private)     ||
         Array.method_defined?(method)               ||
