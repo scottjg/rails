@@ -4,25 +4,32 @@
 --------------------------------------- */
 
 * {
-	font-size: 10pt;
+	font-size: 11pt;
 }
 
 p {
 	text-align: justify;
 	padding: 0pt;
 	margin: 0pt;
-	padding-bottom: 5pt;
-	text-align: justify;
+	margin-bottom: 3pt;
+	padding-bottom: 0pt;
+}
+
+.prologue {
+	background-color: #FBB;
+   	padding: 10pt;
+   	margin: 0pt;
 }
 
 
+
 h2 {
-	font-size: 24pt;
+	font-size: 30pt;
 }
 
 
 h3 {
-	font-size: 17pt;
+	font-size: 19pt;
    	padding: 0pt;
 	margin: 0pt;
 	padding-top: 13pt;
@@ -31,7 +38,7 @@ h3 {
 
 
 h4 {
-	font-size: 15pt;
+	font-size: 17pt;
    	padding: 0pt;
 	margin: 0pt;
 	padding-top: 6pt;
@@ -40,7 +47,7 @@ h4 {
 
 
 h5 {
-	font-size: 13pt;
+	font-size: 15pt;
    	padding: 0pt;
 	margin: 0pt;
 	padding-top: 6pt;
@@ -48,7 +55,7 @@ h5 {
 }
 
 h6 {
-	font-size: 11pt;
+	font-size: 13pt;
    	padding: 0pt;
 	margin: 0pt;
 	padding-top: 6pt;
@@ -68,7 +75,7 @@ td {
 
 
 .ruby, .shell, .html, .yaml, .erb, .plain, .pre {
-	background-color: #F8F8F8;    
+	background-color: #EFEFEF;    
 	font-size: 9pt;
    	padding: 2pt;
    	padding-left: 4pt;
@@ -79,33 +86,34 @@ td {
 
 
 .tt {
-	background-color: transparent;    
+    background-color: transparent;    
     border: none;
+    font-size: 11pt;
 }
 
 
 .tip {
 	background-color: #DEF;
-   	margin-top: 5pt;
-   	margin-bottom: 5pt;
+   	padding: 2pt;
+   	margin: 10pt;
 }
 
 .note {
-	background-color: #FFC;
-   	margin-top: 5pt;
-   	margin-bottom: 5pt;
+	background-color: #FFA;
+   	padding: 2pt;
+   	margin: 10pt;
 }
 
 .info {
-	background-color: #FFC;
-   	margin-top: 5pt;
-   	margin-bottom: 5pt;
+	background-color: #DFD;
+   	padding: 2pt;
+   	margin: 10pt;
 }
 
 .warning {
 	background-color: #FEE;
-   	margin-top: 5pt;
-   	margin-bottom: 5pt;
+   	padding: 2pt;
+   	margin: 10pt;
 }
 
 

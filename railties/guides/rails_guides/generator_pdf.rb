@@ -146,38 +146,66 @@ module RailsGuides
       puts "Preparing Textile for #{output_file}"
 
       File.open(File.join(output_dir, output_file), 'w') do |f|
-		body = File.read(File.join(source_dir, guide))
-		
-		body = body.gsub(/endprologue./, '')
 
-#PDF:   body = body.gsub(%r{([a-zA-Z0-9.,:;!?<>'"'-\(\)])(\n\r|\r\n|\r|\n)([a-zA-Z0-9.,:;!?<>'"'-\(\)])}, '\1 \3')
 		
-		body = body.gsub(%r{<pre>}, "<pre class=pre>")
+ 		body = File.read(File.join(source_dir, guide))
+		
+		index =  %x{grep "^h[3-4].*$" #{File.join(source_dir, guide)}}
+		
 
-		body = body.gsub(%r{<ruby>}, "<pre class=ruby>")
+#		index = body.gsub(/([^h][^3-4][^.].*$)/, '')
+
+#		index = index.gsub(/^(h3\.[ ]*)(.*)$/, "<span class='h3'>\\2</span>")
+#		index = index.gsub(/^(h4\.[ ]*)(.*)$/, "<span class='h4'>\\2</span>")
+		
+#		index = index.gsub(/^(h3\.[ ]*)(.*)$/, "\# *\"\\2\":(\#" + (("\\2").gsub(/a/, '-')) + ")*")
+
+		index = index.gsub(/^(h3\.[ ]*)(.*)$/, "\# *\\2*")
+		index = index.gsub(/^(h4\.[ ]*)(.*)$/, " ** \\2")
+		
+
+		body = body.gsub(/h2\.(.*)$/, "<div class='guide'>\n\nh2. \\1 \n\n<div class='prologue'>")
+		body = body.gsub(/endprologue./, '</div>' + "\n\nh3. INDEX\n\n" + index)
+
+#        puts "step 1"
+
+
+#        body = body.gsub(%r{([a-zA-Z0-9.,:;!?<>'"'_*+\^\~%-\(\)])(\n\r|\r\n|\r|\n)([a-zA-Z0-9.,:;!?<>'"'_*+\^\~%-\(\)])}, '\1 \3')
+		
+		body = body.gsub(%r{<pre>}, "<pre class='pre'>")
+		
+#	    puts "step 2"
+
+
+		body = body.gsub(%r{<ruby>}, "<pre class='ruby'>")
 		body = body.gsub(%r{</ruby>}, "</pre>")
 
-		body = body.gsub(%r{<shell>}, "<pre class=shell>")
+		body = body.gsub(%r{<shell>}, "<pre class='shell'>")
 		body = body.gsub(%r{</shell>}, "</pre>")
 
-		body = body.gsub(%r{<yaml>}, "<pre class=yaml>")
+		body = body.gsub(%r{<yaml>}, "<pre class='yaml'>")
 		body = body.gsub(%r{</yaml>}, "</pre>")
 
-		body = body.gsub(%r{<html>}, "<pre class=html>")
+		body = body.gsub(%r{<html>}, "<pre class='html'>")
 		body = body.gsub(%r{</html>}, "</pre>")
 
-		body = body.gsub(%r{<erb>}, "<pre class=erb>")
+		body = body.gsub(%r{<erb>}, "<pre class='erb'>")
 		body = body.gsub(%r{</erb>}, "</pre>")
 		
-		body = body.gsub(%r{<plain>}, "<pre class=plain>")
+		body = body.gsub(%r{<plain>}, "<pre class='plain'>")
 		body = body.gsub(%r{</plain>}, "</pre>")
 		
-		body = body.gsub(%r{<tt>}, "<tt class=tt>")
+		body = body.gsub(%r{<tt>}, "<tt class='tt'>")
+
+#        puts "step 3"
 
 		body = body.gsub(%r{TIP:|TIP.}, 'p(tip). *TIP:*')
 		body = body.gsub(%r{NOTE:|NOTE.}, 'p(note). *NOTE:*')
 		body = body.gsub(%r{INFO:|INFO.}, 'p(info). *INFO:*')
-		body = body.gsub(%r{WARNING.|WARNING.}, 'p(warning). *WARNING:*')		
+		body = body.gsub(%r{WARNING.|WARNING.}, 'p(warning). *WARNING:*')
+		body = body + '</div>'
+
+#        puts "step 4"
 
         f.write body
       end
@@ -187,93 +215,6 @@ module RailsGuides
       #PDF: generate PDF using gimli      
 	  %x{gimli -f #{File.join(output_dir, output_file)} -s 'guides/assets/stylesheets/pdf.css' -o #{output_dir}}
 
-    end
-
-    def set_header_section(body, view)
-      new_body = body.gsub(/(.*?)endprologue\./m, '').strip
-      header = $1
-
-      header =~ /h2\.(.*)/
-      page_title = "Ruby on Rails Guides: #{$1.strip}"
-
-      header = textile(header)
-
-      view.content_for(:page_title) { page_title.html_safe }
-      view.content_for(:header_section) { header.html_safe }
-      new_body
-    end
-
-    def set_index(body, view)
-      index = <<-INDEX
-      <div id="subCol">
-        <h3 class="chapter"><img src="images/chapters_icon.gif" alt="" />Chapters</h3>
-        <ol class="chapters">
-      INDEX
-
-      i = Indexer.new(body, warnings)
-      i.index
-
-      # Set index for 2 levels
-      i.level_hash.each do |key, value|
-        link = view.content_tag(:a, :href => key[:id]) { textile(key[:title], true).html_safe }
-
-        children = value.keys.map do |k|
-          view.content_tag(:li,
-            view.content_tag(:a, :href => k[:id]) { textile(k[:title], true).html_safe })
-        end
-
-        children_ul = children.empty? ? "" : view.content_tag(:ul, children.join(" ").html_safe)
-
-        index << view.content_tag(:li, link.html_safe + children_ul.html_safe)
-      end
-
-      index << '</ol>'
-      index << '</div>'
-
-      view.content_for(:index_section) { index.html_safe }
-
-      i.result
-    end
-
-    def textile(body, lite_mode=false)
-      t = RedCloth.new(body)
-      t.hard_breaks = false
-      t.lite_mode = lite_mode
-      t.to_html(:notestuff, :plusplus, :code)
-    end
-
-    def warn_about_broken_links(html)
-      anchors = extract_anchors(html)
-      check_fragment_identifiers(html, anchors)
-    end
-
-    def extract_anchors(html)
-      # Textile generates headers with IDs computed from titles.
-      anchors = Set.new
-      html.scan(/<h\d\s+id="([^"]+)/).flatten.each do |anchor|
-        if anchors.member?(anchor)
-          puts "*** DUPLICATE ID: #{anchor}, please put and explicit ID, e.g. h4(#explicit-id), or consider rewording"
-        else
-          anchors << anchor
-        end
-      end
-
-      # Footnotes.
-      anchors += Set.new(html.scan(/<p\s+class="footnote"\s+id="([^"]+)/).flatten)
-      anchors += Set.new(html.scan(/<sup\s+class="footnote"\s+id="([^"]+)/).flatten)
-      return anchors
-    end
-
-    def check_fragment_identifiers(html, anchors)
-      html.scan(/<a\s+href="#([^"]+)/).flatten.each do |fragment_identifier|
-        next if fragment_identifier == 'mainCol' # in layout, jumps to some DIV
-        unless anchors.member?(fragment_identifier)
-          guess = anchors.min { |a, b|
-            Levenshtein.distance(fragment_identifier, a) <=> Levenshtein.distance(fragment_identifier, b)
-          }
-          puts "*** BROKEN LINK: ##{fragment_identifier}, perhaps you meant ##{guess}."
-        end
-      end
     end
   end
 end

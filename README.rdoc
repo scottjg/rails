@@ -2,7 +2,7 @@
 
 This is a {Rails project}[https://github.com/rails/rails] fork to create a PDF generator for the {Rails Guides}[http://guides.rubyonrails.org/getting_started.html]. The project is still ongoing.
 
-Download actual PDF versions of the guides from (here)[https://public.me.com/juan.quemada/DocRails] (not yet fine enough, but usefull). 
+Download actual PDF versions of the guides from {here}[https://public.me.com/juan.quemada/DocRails] (not yet fine enough, but usefull). 
 
 PDF guides can be generated as follows
 
