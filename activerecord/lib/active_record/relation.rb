@@ -135,6 +135,7 @@ module ActiveRecord
     def first_or_new(*args, &block)
       first || new(*args, &block)
     end
+    alias :first_or_build :first_or_new
 
     def respond_to?(method, include_private = false)
       arel.respond_to?(method, include_private)     ||

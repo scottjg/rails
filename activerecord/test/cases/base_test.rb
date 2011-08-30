@@ -272,24 +272,33 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_first_or_create
-    parrot = Bird.first_or_create(:color => "green", :name => "parrot")
+    parrot = Bird.first_or_create(:color => 'green', :name => 'parrot')
     assert parrot.persisted?
-    the_same_parrot = Bird.first_or_create(:color => "yellow", :name => "macaw")
+    the_same_parrot = Bird.first_or_create(:color => 'yellow', :name => 'macaw')
     assert_equal parrot, the_same_parrot
   end
 
   def test_first_or_create_bang
     assert_raises(ActiveRecord::RecordInvalid) { Bird.first_or_create! }
-    parrot = Bird.first_or_create!(:color => "green", :name => "parrot")
+    parrot = Bird.first_or_create!(:color => 'green', :name => 'parrot')
     assert parrot.persisted?
-    the_same_parrot = Bird.first_or_create!(:color => "yellow", :name => "macaw")
+    the_same_parrot = Bird.first_or_create!(:color => 'yellow', :name => 'macaw')
     assert_equal parrot, the_same_parrot
   end
 
   def test_first_or_new
-    parrot = Bird.first_or_new(:color => "green", :name => "parrot")
+    parrot = Bird.first_or_new(:color => 'green', :name => 'parrot')
     assert_kind_of Bird, parrot
     assert !parrot.persisted?
+    assert parrot.new_record?
+    assert parrot.valid?
+  end
+
+  def test_first_or_build
+    parrot = Bird.first_or_build(:color => 'green', :name => 'parrot')
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert parrot.new_record?
     assert parrot.valid?
   end
 
