@@ -188,8 +188,6 @@ module ActiveRecord
         arel = arel.having(Arel::Nodes::Grouping.new(having))
       end 
 
-      #arel = arel.having(*@having_values.uniq.reject{|h| h.blank?}) unless @having_values.empty?
-
       arel = arel.take(@limit_value) if @limit_value
       arel = arel.skip(@offset_value) if @offset_value
 
@@ -288,6 +286,5 @@ module ActiveRecord
     def array_of_strings?(o)
       o.is_a?(Array) && o.all?{|obj| obj.is_a?(String)}
     end
-
   end
 end
