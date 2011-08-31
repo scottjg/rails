@@ -181,7 +181,6 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal [[2,7]], last_posts.map { |p| [p.author_id, p.id] }
   end
 
-
   def test_find_with_group
     developers =  Developer.find(:all, :group => "salary", :select => "salary")
     assert_equal 4, developers.size
@@ -200,6 +199,20 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal 3, developers.size
     assert_equal 3, developers.map(&:salary).uniq.size
     assert developers.all? { |developer|  developer.salary > 10000 }
+  end
+
+  def test_find_with_group_and_multiple_having
+    developers = Developer.select("salary").group("salary").having("sum(salary) > 10000").having("salary < 150000").all
+    assert_equal 2, developers.size
+    assert_equal 2, developers.map(&:salary).uniq.size
+    assert developers.all? { |developer| developer.salary > 10000 && developer.salary < 150000 }
+  end
+
+  def test_find_with_group_and_multiple_sanitized_having
+    developers = Developer.select("salary").group("salary").having(["sum(salary) > ?", 10000]).having(["salary < ?", 150000]).all
+    assert_equal 2, developers.size
+    assert_equal 2, developers.map(&:salary).uniq.size
+    assert developers.all? { |developer|  developer.salary > 10000 && developer.salary < 150000 }
   end
 
   def test_find_with_entire_select_statement
