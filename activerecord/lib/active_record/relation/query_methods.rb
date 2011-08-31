@@ -78,9 +78,11 @@ module ActiveRecord
       relation
     end
 
-    def having(*args)
+    def having(opts, *rest)
+      return self if opts.blank?
+
       relation = clone
-      relation.having_values += build_where(*args) unless args.blank?
+      relation.having_values += build_where(opts, *rest) 
       relation
     end
 
