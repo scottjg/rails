@@ -13,12 +13,15 @@ namespace :assets do
       # Ensure that action view is loaded and the appropriate sprockets hooks get executed
       ActionView::Base
 
-      # Always perform caching so that asset_path appends the timestamps to file references.
-      Rails.application.config.action_controller.perform_caching = true
+      # Always calculate digests and compile files
+      Rails.application.config.assets.digest = true
+      Rails.application.config.assets.compile = true
 
       config = Rails.application.config
       env    = Rails.application.assets
-      target = Rails.root.join("public#{config.assets.prefix}")
+      target = Pathname.new(File.join(Rails.public_path, config.assets.prefix))
+      manifest = {}
+      manifest_path = config.assets.manifest || target
 
       if env.respond_to?(:each_logical_path)
         config.assets.precompile.each do |path|
@@ -30,6 +33,7 @@ namespace :assets do
             end
 
             if asset = env.find_asset(logical_path)
+              manifest[logical_path] = asset.digest_path
               filename = target.join(asset.digest_path)
               mkdir_p filename.dirname
               asset.write_to(filename)
@@ -42,6 +46,10 @@ namespace :assets do
         assets = config.assets.precompile.dup
         assets << {:to => target}
         env.precompile(*assets)
+      end
+
+      File.open("#{manifest_path}/manifest.yml", 'w') do |f|
+        YAML.dump(manifest, f)
       end
     end
   end
