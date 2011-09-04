@@ -60,7 +60,7 @@ module ActiveModel
 
     included do
       class_attribute :attribute_method_matchers, :instance_writer => false
-      self.attribute_method_matchers = []
+      self.attribute_method_matchers = [ClassMethods::AttributeMethodMatcher.new]
     end
 
 
@@ -364,8 +364,11 @@ module ActiveModel
           if attribute_method_matchers_cache.key?(method_name)
             attribute_method_matchers_cache[method_name]
           else
+            # Must try to match prefixes/suffixes first, or else the matcher with no prefix/suffix
+            # will match every time.
+            matchers = attribute_method_matchers.partition(&:plain?).reverse.flatten(1)
             match = nil
-            attribute_method_matchers.detect { |method| match = method.match(method_name) }
+            matchers.detect { |method| match = method.match(method_name) }
             attribute_method_matchers_cache[method_name] = match
           end
         end
@@ -393,6 +396,10 @@ module ActiveModel
 
           def method_name(attr_name)
             @method_name % attr_name
+          end
+
+          def plain?
+            prefix.empty? && suffix.empty?
           end
         end
     end
