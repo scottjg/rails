@@ -16,6 +16,9 @@ module ActionView
     # unchanged if can't be converted into a valid number.
     module NumberHelper
 
+      DEFAULT_NUMBER_VALUES = { :precision => 3, :separator => ".", :delimiter => "", :significant => false, :strip_insignificant_zeros => false }
+
+
       DEFAULT_CURRENCY_VALUES = { :format => "%u%n", :negative_format => "-%u%n", :unit => "$", :separator => ".", :delimiter => ",",
                                   :precision => 2, :significant => false, :strip_insignificant_zeros => false }
 
@@ -304,7 +307,7 @@ module ActionView
         number = (parse_float(number, options[:raise]) or return number)
 
         defaults = format_translations('precision', options[:locale])
-        options  = defaults.merge!(options)
+        options  = DEFAULT_NUMBER_VALUES.merge(defaults).merge!(options)
 
         precision = options.delete :precision
         significant = options.delete :significant
