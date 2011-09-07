@@ -100,7 +100,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'c1', record[0]
     assert_equal 't1', record[1]
   end
-  
+
   def test_proper_usage_of_primary_keys_and_join_table
     setup_data_for_habtm_case
 
@@ -638,6 +638,30 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     welcome = categories(:technology).posts.first
     welcome.title = "Something else"
     assert welcome.save!
+  end
+
+  # This test works in Rails 3.0.x, fails with 3.1.
+  # When using habtm associations, you can't specify certain column to select.
+  #
+  # So, if you try to do something like
+  # developer.projects.select('name'), you won't get back only the name columns,
+  # you'll get back all the columns.
+  #
+  # This is annoying, especially if you try to do something like
+  # developer.projects.active
+  # where the active scope uses DISTINCT in the select list.
+  def test_habtm_selects_properly
+    # This works for non-habtm cases
+    assert_equal ["id"], Project.select('id').first.attributes.keys
+
+    puts Developer.first.projects.select('id').to_sql
+    # Outputs SELECT "projects".*, id FROM "projects" INNER JOIN "developers_projects" ON "projects"."id" = "developers_projects"."project_id" WHERE "developers_projects"."developer_id" = 1
+    # Note the columns selected don't look correct.
+
+    assert_equal ["id"], Developer.first.projects.select('id').first.attributes.keys
+    # Fails with
+    # <["id"]> expected but was
+    # <["id", "name", "type"]>.
   end
 
   def test_habtm_respects_select
