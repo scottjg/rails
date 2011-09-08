@@ -37,7 +37,7 @@ module ApplicationTests
 
     test "assets do not require compressors until it is used" do
       app_file "app/assets/javascripts/demo.js.erb", "<%= :alert %>();"
-      app_file "config/initializers/compile.rb", "Rails.application.config.assets.compile = true"
+      add_to_config "config.assets.compile = true"
 
       ENV["RAILS_ENV"] = "production"
       require "#{app_path}/config/environment"
@@ -64,9 +64,21 @@ module ApplicationTests
       end
     end
 
+    test "asset pipeline should use a Sprockets::Index when config.assets.digest is true" do
+      add_to_config "config.assets.digest = true"
+      add_to_config "config.action_controller.perform_caching = false"
+
+      ENV["RAILS_ENV"] = "production"
+      require "#{app_path}/config/environment"
+
+      assert_equal Sprockets::Index, Rails.application.assets.class
+    end
+
     test "precompile creates a manifest file with all the assets listed" do
       app_file "app/assets/stylesheets/application.css.erb", "<%= asset_path('rails.png') %>"
       app_file "app/assets/javascripts/application.js", "alert();"
+      # digest is default in false, we must enable it for test environment
+      add_to_config "config.assets.digest = true"
 
       capture(:stdout) do
         Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
@@ -75,15 +87,17 @@ module ApplicationTests
       manifest = "#{app_path}/public/assets/manifest.yml"
 
       assets = YAML.load_file(manifest)
-      assert_match /application-([0-z]+)\.js/, assets["application.js"]
-      assert_match /application-([0-z]+)\.css/, assets["application.css"]
+      assert_match(/application-([0-z]+)\.js/, assets["application.js"])
+      assert_match(/application-([0-z]+)\.css/, assets["application.css"])
     end
 
     test "precompile creates a manifest file in a custom path with all the assets listed" do
       app_file "app/assets/stylesheets/application.css.erb", "<%= asset_path('rails.png') %>"
       app_file "app/assets/javascripts/application.js", "alert();"
+      # digest is default in false, we must enable it for test environment
+      add_to_config "config.assets.digest = true"
+      add_to_config "config.assets.manifest = '#{app_path}/shared'"
       FileUtils.mkdir "#{app_path}/shared"
-      app_file "config/initializers/manifest.rb", "Rails.application.config.assets.manifest = '#{app_path}/shared'"
 
       capture(:stdout) do
         Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
@@ -92,8 +106,43 @@ module ApplicationTests
       manifest = "#{app_path}/shared/manifest.yml"
 
       assets = YAML.load_file(manifest)
-      assert_match /application-([0-z]+)\.js/, assets["application.js"]
-      assert_match /application-([0-z]+)\.css/, assets["application.css"]
+      assert_match(/application-([0-z]+)\.js/, assets["application.js"])
+      assert_match(/application-([0-z]+)\.css/, assets["application.css"])
+    end
+
+
+    test "the manifest file should be saved by default in the same assets folder" do
+      app_file "app/assets/javascripts/application.js", "alert();"
+      # digest is default in false, we must enable it for test environment
+      add_to_config "config.assets.digest = true"
+      add_to_config "config.assets.prefix = '/x'"
+
+      capture(:stdout) do
+        Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
+      end
+
+      manifest = "#{app_path}/public/x/manifest.yml"
+      assets = YAML.load_file(manifest)
+      assert_match(/application-([0-z]+)\.js/, assets["application.js"])
+    end
+
+    test "precompile does not append asset digests when config.assets.digest is false" do
+      app_file "app/assets/stylesheets/application.css.erb", "<%= asset_path('rails.png') %>"
+      app_file "app/assets/javascripts/application.js", "alert();"
+      add_to_config "config.assets.digest = false"
+
+      capture(:stdout) do
+        Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
+      end
+
+      assert File.exists?("#{app_path}/public/assets/application.js")
+      assert File.exists?("#{app_path}/public/assets/application.css")
+
+      manifest = "#{app_path}/public/assets/manifest.yml"
+
+      assets = YAML.load_file(manifest)
+      assert_equal "application.js", assets["application.js"]
+      assert_equal "application.css", assets["application.css"]
     end
 
     test "assets do not require any assets group gem when manifest file is present" do
@@ -137,32 +186,58 @@ module ApplicationTests
       class ::PostsController < ActionController::Base ; end
 
       get '/posts'
-      assert_match /AssetNotPrecompiledError/, last_response.body
-      assert_match /app.js isn't precompiled/, last_response.body
+      assert_match(/AssetNotPrecompiledError/, last_response.body)
+      assert_match(/app.js isn't precompiled/, last_response.body)
+    end
+
+    test "assets raise AssetNotPrecompiledError when manifest file is present and requested file isn't precompiled if digest is disabled" do
+      app_file "app/views/posts/index.html.erb", "<%= javascript_include_tag 'app' %>"
+      add_to_config "config.assets.compile = false"
+
+      app_file "config/routes.rb", <<-RUBY
+        AppTemplate::Application.routes.draw do
+          match '/posts', :to => "posts#index"
+        end
+      RUBY
+
+      ENV["RAILS_ENV"] = "development"
+      capture(:stdout) do
+        Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
+      end
+
+      # Create file after of precompile
+      app_file "app/assets/javascripts/app.js", "alert();"
+
+      require "#{app_path}/config/environment"
+      class ::PostsController < ActionController::Base ; end
+
+      get '/posts'
+      assert_match(/AssetNotPrecompiledError/, last_response.body)
+      assert_match(/app.js isn't precompiled/, last_response.body)
     end
 
     test "precompile appends the md5 hash to files referenced with asset_path and run in the provided RAILS_ENV" do
       app_file "app/assets/stylesheets/application.css.erb", "<%= asset_path('rails.png') %>"
       # digest is default in false, we must enable it for test environment
-      app_file "config/initializers/compile.rb", "Rails.application.config.assets.digest = true"
+      add_to_config "config.assets.digest = true"
 
       # capture(:stdout) do
         Dir.chdir(app_path){ `bundle exec rake assets:precompile RAILS_ENV=test` }
       # end
       file = Dir["#{app_path}/public/assets/application-*.css"].first
-      assert_match /\/assets\/rails-([0-z]+)\.png/, File.read(file)
+      assert_match(/\/assets\/rails-([0-z]+)\.png/, File.read(file))
     end
 
     test "precompile appends the md5 hash to files referenced with asset_path and run in production as default even using RAILS_GROUPS=assets" do
       app_file "app/assets/stylesheets/application.css.erb", "<%= asset_path('rails.png') %>"
-      app_file "config/initializers/compile.rb", "Rails.application.config.assets.compile = true"
+      add_to_config "config.assets.compile = true"
 
       ENV["RAILS_ENV"] = nil
       capture(:stdout) do
         Dir.chdir(app_path){ `bundle exec rake assets:precompile RAILS_GROUPS=assets` }
       end
       file = Dir["#{app_path}/public/assets/application-*.css"].first
-      assert_match /\/assets\/rails-([0-z]+)\.png/, File.read(file)
+      assert_match(/\/assets\/rails-([0-z]+)\.png/, File.read(file))
     end
 
     test "assets are cleaned up properly" do
@@ -232,8 +307,8 @@ module ApplicationTests
 
       # the debug_assets params isn't used if compile is off
       get '/posts?debug_assets=true'
-      assert_match /<script src="\/assets\/application-([0-z]+)\.js" type="text\/javascript"><\/script>/, last_response.body
-      assert_no_match /<script src="\/assets\/xmlhr-([0-z]+)\.js" type="text\/javascript"><\/script>/, last_response.body
+      assert_match(/<script src="\/assets\/application-([0-z]+)\.js" type="text\/javascript"><\/script>/, last_response.body)
+      assert_no_match(/<script src="\/assets\/xmlhr-([0-z]+)\.js" type="text\/javascript"><\/script>/, last_response.body)
     end
 
     test "assets aren't concatened when compile is true is on and debug_assets params is true" do
@@ -246,8 +321,8 @@ module ApplicationTests
       class ::PostsController < ActionController::Base ; end
 
       get '/posts?debug_assets=true'
-      assert_match /<script src="\/assets\/application-([0-z]+)\.js\?body=1" type="text\/javascript"><\/script>/, last_response.body
-      assert_match /<script src="\/assets\/xmlhr-([0-z]+)\.js\?body=1" type="text\/javascript"><\/script>/, last_response.body
+      assert_match(/<script src="\/assets\/application-([0-z]+)\.js\?body=1" type="text\/javascript"><\/script>/, last_response.body)
+      assert_match(/<script src="\/assets\/xmlhr-([0-z]+)\.js\?body=1" type="text\/javascript"><\/script>/, last_response.body)
     end
 
     private
