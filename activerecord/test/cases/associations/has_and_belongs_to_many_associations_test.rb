@@ -6,6 +6,7 @@ require 'models/customer'
 require 'models/order'
 require 'models/categorization'
 require 'models/category'
+require 'models/comment'
 require 'models/post'
 require 'models/author'
 require 'models/tag'
@@ -100,7 +101,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'c1', record[0]
     assert_equal 't1', record[1]
   end
-  
+
   def test_proper_usage_of_primary_keys_and_join_table
     setup_data_for_habtm_case
 
@@ -225,6 +226,12 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   def test_habtm_unique_order_preserved
     assert_equal developers(:poor_jamis, :jamis, :david), projects(:active_record).non_unique_developers
     assert_equal developers(:poor_jamis, :jamis, :david), projects(:active_record).developers
+  end
+
+  def test_habtm_with_scope_with_join
+    category = categories(:general)
+    puts category.posts.join_with_categories.to_sql
+    assert_nothing_raised { category.posts.join_with_categories.all }
   end
 
   def test_build

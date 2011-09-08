@@ -26,6 +26,7 @@ class Post < ActiveRecord::Base
 
   has_one :last_comment, :class_name => 'Comment', :order => 'id desc'
 
+  scope :join_with_categories, :joins => :categories
   scope :with_special_comments, :joins => :comments, :conditions => {:comments => {:type => 'SpecialComment'} }
   scope :with_very_special_comments, joins(:comments).where(:comments => {:type => 'VerySpecialComment'})
   scope :with_post, lambda {|post_id|
