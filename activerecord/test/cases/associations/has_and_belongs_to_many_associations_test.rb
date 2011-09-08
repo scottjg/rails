@@ -100,7 +100,7 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'c1', record[0]
     assert_equal 't1', record[1]
   end
-  
+
   def test_proper_usage_of_primary_keys_and_join_table
     setup_data_for_habtm_case
 
@@ -502,6 +502,11 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
 
     assert ! project.developers.loaded?
     assert ! project.developers.include?(developer)
+  end
+
+  def test_habtm_with_join
+    category = categories(:general)
+    category.posts.joins(:categories).all
   end
 
   def test_find_in_association_with_custom_finder_sql
