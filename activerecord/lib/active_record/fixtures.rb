@@ -558,6 +558,7 @@ module ActiveRecord
 
       # track any join tables we need to insert later
       rows = Hash.new { |h,table| h[table] = [] }
+      habtm_rows = Hash.new { |h,table| h[table] = [] }
 
       rows[table_name] = fixtures.map do |label, fixture|
         row = fixture.to_hash
@@ -606,7 +607,7 @@ module ActiveRecord
               if (targets = row.delete(association.name.to_s))
                 targets = targets.is_a?(Array) ? targets : targets.split(/\s*,\s*/)
                 table_name = association.options[:join_table]
-                rows[table_name].concat targets.map { |target|
+                habtm_rows[table_name].concat targets.map { |target|
                   { association.foreign_key             => row[primary_key_name],
                     association.association_foreign_key => ActiveRecord::Fixtures.identify(target) }
                 }
@@ -617,7 +618,7 @@ module ActiveRecord
 
         row
       end
-      rows
+      rows.merge(habtm_rows)
     end
 
     private
