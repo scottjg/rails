@@ -10,7 +10,7 @@ module Rails
                     :dependency_loading, :filter_parameters,
                     :force_ssl, :helpers_paths, :logger, :preload_frameworks,
                     :reload_plugins, :secret_token, :serve_static_assets,
-                    :static_cache_control, :session_options, :time_zone, :whiny_nils
+                    :static_cache_control, :session_options, :time_zone, :whiny_nils, :halt_on_redirect
 
       attr_writer :log_level
       attr_reader :encoding
@@ -22,6 +22,7 @@ module Rails
         @consider_all_requests_local = false
         @filter_parameters           = []
         @helpers_paths               = []
+        @halt_on_redirect            = false
         @dependency_loading          = true
         @serve_static_assets         = true
         @static_cache_control        = nil

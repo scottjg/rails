@@ -237,6 +237,55 @@ module ApplicationTests
       assert_equal 'b3c631c314c0bbca50c1b2843150fe33', last_response.body
     end
 
+    def self.set_called(val)
+      @@called = val
+    end
+
+    test "config.halt_on_redirect as true halts execution" do
+      make_basic_app do |app|
+        app.config.halt_on_redirect = true
+      end
+
+      @@called = false
+
+      class ::OmgController < ActionController::Base
+        def index
+          redirect_to("/")
+          ConfigurationTest::set_called(true)
+        end
+      end
+
+      get "/"
+      assert !@@called
+    end
+
+    test "config.halt_on_redirect as false continues execution" do
+      make_basic_app do |app|
+        app.config.halt_on_redirect = false
+      end
+
+      @@called = false
+
+      class ::OmgController < ActionController::Base
+        def index
+          redirect_to("/")
+          ConfigurationTest::set_called(true)
+        end
+      end
+
+      get "/"
+      assert @@called
+    end
+
+    test "config.halt_on_redirect defaults to false" do
+      
+      make_basic_app do |app|
+        assert !app.config.halt_on_redirect
+      end
+
+    end
+
+
     test "protect from forgery is the default in a new app" do
       make_basic_app
 

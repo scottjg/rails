@@ -184,6 +184,7 @@ module ActionController
       AbstractController::Translation,
       AbstractController::AssetPaths,
 
+      HaltOnRedirectCatch,               
       Helpers,
       HideActions,
       UrlFor,
@@ -221,7 +222,12 @@ module ActionController
 
       # Params wrapper should come before instrumentation so they are
       # properly showed in logs
-      ParamsWrapper
+      ParamsWrapper,
+
+      # Halt on Redirect should be the last module loaded because it needs to wrap
+      # the redirect_to method               
+      HaltOnRedirect
+
     ]
 
     MODULES.each do |mod|

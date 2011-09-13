@@ -16,6 +16,8 @@ module ActionController
     autoload :DataStreaming
     autoload :Flash
     autoload :ForceSSL
+    autoload :HaltOnRedirect
+    autoload :HaltOnRedirectCatch
     autoload :Head
     autoload :Helpers
     autoload :HideActions
