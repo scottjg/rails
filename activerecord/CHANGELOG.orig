@@ -1,7 +1,5 @@
 *2.0.5* (October 19th, 2008)
 
-* Track changes to unsaved attributes.  [Jeremy Kemper]
-
 * Added SQL escaping for :limit and :offset in MySQL [Jonathan Wiess]
 
 
