@@ -25,6 +25,10 @@ module ActiveRecord
         @target
       end
 
+      def to_a
+        Array(@target)
+      end
+      
       def respond_to?(symbol, include_priv = false)
         proxy_respond_to?(symbol, include_priv) || (load_target && @target.respond_to?(symbol, include_priv))
       end
