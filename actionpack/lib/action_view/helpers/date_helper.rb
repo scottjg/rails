@@ -919,7 +919,6 @@ module ActionView
         #  => post[written_on(1i)]
         def input_name_from_type(type)
           prefix = @options[:prefix] || ActionView::Helpers::DateTimeSelector::DEFAULT_PREFIX
-          prefix += "[#{@options[:index]}]" if @options.has_key?(:index)
 
           field_name = @options[:field_name] || type
           if @options[:include_position]
@@ -986,8 +985,8 @@ module ActionView
           options = options.dup
           options[:field_name]           = @method_name
           options[:include_position]     = true
-          options[:prefix]             ||= @object_name
           options[:index]                = @auto_index if @auto_index && !options.has_key?(:index)
+          options[:prefix]             ||= tag_name_with_index(options["index"])
 
           DateTimeSelector.new(datetime, options, html_options)
         end
