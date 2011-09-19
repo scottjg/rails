@@ -12,7 +12,7 @@ gem "jquery-rails"
 if ENV['JOURNEY']
   gem "journey", :path => ENV['JOURNEY']
 else
-  gem "journey", :git => "git://github.com/rails/journey"
+  gem "journey", :git => "git://github.com/rails/journey.git"
 end
 
 # This needs to be with require false to avoid
