@@ -188,7 +188,7 @@ module ActionDispatch
         session["flash"] = flash_hash
       end
 
-      if session.key?('flash') && session['flash'].empty?
+      if session.key?('flash') && session['flash'] && session['flash'].empty?
         session.delete('flash')
       end
     end
