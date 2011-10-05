@@ -6,8 +6,6 @@ module ActiveRecord
       ATTRIBUTE_TYPES_CACHED_BY_DEFAULT = [:datetime, :timestamp, :time, :date]
 
       included do
-        attribute_method_suffix ""
-
         cattr_accessor :attribute_types_cached_by_default, :instance_writer => false
         self.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
 
@@ -42,7 +40,7 @@ module ActiveRecord
               define_read_method(attr_name, attr_name, columns_hash[attr_name])
             end
 
-            if attr_name == primary_key && attr_name != "id"
+            if primary_key? && attr_name == primary_key && attr_name != "id"
               define_read_method('id', attr_name, columns_hash[attr_name])
             end
           end
@@ -65,7 +63,7 @@ module ActiveRecord
             cast_code = column.type_cast_code('v')
             access_code = "(v=@attributes['#{attr_name}']) && #{cast_code}"
 
-            unless attr_name.to_s == self.primary_key.to_s
+            unless primary_key? && attr_name.to_s == primary_key.to_s
               access_code.insert(0, "missing_attribute('#{attr_name}', caller) unless @attributes.has_key?('#{attr_name}'); ")
             end
 
@@ -109,7 +107,7 @@ module ActiveRecord
 
       def _read_attribute(attr_name)
         attr_name = attr_name.to_s
-        attr_name = self.class.primary_key if attr_name == 'id'
+        attr_name = self.class.primary_key? && self.class.primary_key if attr_name == 'id'
         value = @attributes[attr_name]
         unless value.nil?
           if column = column_for_attribute(attr_name)

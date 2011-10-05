@@ -54,10 +54,8 @@ module ActionView
         end
 
         def determine_default_helper_class(name)
-          mod = name.sub(/Test$/, '').constantize
+          mod = name.sub(/Test$/, '').safe_constantize
           mod.is_a?(Class) ? nil : mod
-        rescue NameError
-          nil
         end
 
         def helper_method(*methods)
@@ -65,7 +63,7 @@ module ActionView
           methods.flatten.each do |method|
             _helpers.module_eval <<-end_eval
               def #{method}(*args, &block)                    # def current_user(*args, &block)
-                _test_case.send(%(#{method}), *args, &block)  #   test_case.send(%(current_user), *args, &block)
+                _test_case.send(%(#{method}), *args, &block)  #   _test_case.send(%(current_user), *args, &block)
               end                                             # end
             end_eval
           end

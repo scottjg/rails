@@ -2,17 +2,30 @@
 require 'date'
 require 'abstract_unit'
 require 'inflector_test_cases'
-require 'builder'
+require 'constantize_test_cases'
 
 require 'active_support/inflector'
 require 'active_support/core_ext/string'
 require 'active_support/time'
-require 'active_support/core_ext/kernel/reporting'
 require 'active_support/core_ext/string/strip'
-require 'active_support/core_ext/string/xchar'
+require 'active_support/core_ext/string/output_safety'
+
+module Ace
+  module Base
+    class Case
+    end
+  end
+end
 
 class StringInflectionsTest < Test::Unit::TestCase
   include InflectorTestCases
+  include ConstantizeTestCases
+  
+  def test_erb_escape
+    string = [192, 60].pack('CC')
+    expected = 192.chr + "&lt;"
+    assert_equal expected, ERB::Util.html_escape(string)
+  end
 
   def test_strip_heredoc_on_an_empty_string
     assert_equal '', ''.strip_heredoc
@@ -286,6 +299,18 @@ class StringInflectionsTest < Test::Unit::TestCase
     def test_truncate_multibyte
       assert_equal "\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 ...".force_encoding('UTF-8'),
         "\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 \354\225\204\353\235\274\353\246\254\354\230\244".force_encoding('UTF-8').truncate(10)
+    end
+  end
+  
+  def test_constantize
+    run_constantize_tests_on do |string|
+      string.constantize
+    end
+  end
+  
+  def test_safe_constantize
+    run_safe_constantize_tests_on do |string|
+      string.safe_constantize
     end
   end
 end

@@ -3,11 +3,10 @@ module ActiveRecord
     module PrimaryKey
       extend ActiveSupport::Concern
 
-      # Returns this record's primary key value wrapped in an Array or nil if
-      # the record is not persisted? or has just been destroyed.
+      # Returns this record's primary key value wrapped in an Array if one is available
       def to_key
         key = send(self.class.primary_key)
-        persisted? && key ? [key] : nil
+        [key] if key
       end
 
       module ClassMethods
@@ -15,6 +14,8 @@ module ActiveRecord
         # primary_key_prefix_type setting, though.
         def primary_key
           @primary_key ||= reset_primary_key
+          raise ActiveRecord::UnknownPrimaryKey.new(self) unless @primary_key
+          @primary_key
         end
 
         # Returns a quoted version of the primary key name, used to construct SQL statements.
@@ -28,6 +29,11 @@ module ActiveRecord
 
           set_primary_key(key)
           key
+        end
+
+        def primary_key? #:nodoc:
+          @primary_key ||= reset_primary_key
+          !@primary_key.nil?
         end
 
         def get_primary_key(base_name) #:nodoc:
@@ -67,7 +73,6 @@ module ActiveRecord
           @primary_key ||= ''
           self.original_primary_key = @primary_key
           value &&= value.to_s
-          connection_pool.primary_keys[table_name] = value
           self.primary_key = block_given? ? instance_eval(&block) : value
         end
       end

@@ -4,21 +4,32 @@ gemspec
 
 if ENV['AREL']
   gem "arel", :path => ENV['AREL']
-else
-  gem "arel", '~> 2.1.3'
 end
 
+gem "bcrypt-ruby", "~> 3.0.0"
 gem "jquery-rails"
+
+if ENV['JOURNEY']
+  gem "journey", :path => ENV['JOURNEY']
+else
+  gem "journey", :git => "git://github.com/rails/journey"
+end
+
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
-gem "uglifier", ">= 1.0.0", :require => false
+gem "uglifier", ">= 1.0.3", :require => false
 
-gem "rake",  ">= 0.8.7"
+# Temp fix until rake 0.9.3 is out
+if RUBY_VERSION >= "1.9.3"
+  gem "rake", "0.9.3.beta.1"
+else
+  gem "rake", ">= 0.8.7"
+end
 gem "mocha", ">= 0.9.8"
 
 group :doc do
   gem "rdoc",  "~> 3.4"
-  gem "horo",  "= 1.0.3"
+  gem "sdoc",  "~> 0.3"
   gem "RedCloth", "~> 4.2" if RUBY_VERSION < "1.9.3"
   gem "w3c_validators"
 end
@@ -52,7 +63,7 @@ platforms :ruby do
   gem "nokogiri", ">= 1.4.5"
 
   # AR
-  gem "sqlite3", "~> 1.3.3"
+  gem "sqlite3", "~> 1.3.4"
 
   group :db do
     gem "pg", ">= 0.11.0" unless ENV['TRAVIS'] # once pg is on travis this can be removed
@@ -64,7 +75,7 @@ end
 platforms :jruby do
   gem "ruby-debug", ">= 0.10.3"
   gem "json"
-  gem "activerecord-jdbcsqlite3-adapter"
+  gem "activerecord-jdbcsqlite3-adapter", ">= 1.2.0"
 
   # This is needed by now to let tests work on JRuby
   # TODO: When the JRuby guys merge jruby-openssl in
@@ -72,8 +83,8 @@ platforms :jruby do
   gem "jruby-openssl"
 
   group :db do
-    gem "activerecord-jdbcmysql-adapter"
-    gem "activerecord-jdbcpostgresql-adapter"
+    gem "activerecord-jdbcmysql-adapter", ">= 1.2.0"
+    gem "activerecord-jdbcpostgresql-adapter", ">= 1.2.0"
   end
 end
 
@@ -88,3 +99,6 @@ if ENV['ORACLE_ENHANCED_PATH'] || ENV['ORACLE_ENHANCED']
     gem "activerecord-oracle_enhanced-adapter", :git => "git://github.com/rsim/oracle-enhanced.git"
   end
 end
+
+# A gem necessary for ActiveRecord tests with IBM DB
+gem "ibm_db" if ENV['IBM_DB']

@@ -851,6 +851,29 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  # tests the use of dup in url_for
+  def test_url_for_with_no_side_effects
+    # without dup, additional (and possibly unwanted) values will be present in the options (eg. :host)
+    original_options = {:controller => 'projects', :action => 'status'}
+    options = original_options.dup
+
+    url_for options
+
+    # verify that the options passed in have not changed from the original ones
+    assert_equal original_options, options
+  end
+
+  # tests the arguments modification free version of define_hash_access
+  def test_named_route_with_no_side_effects
+    original_options = { :host => 'test.host' }
+    options = original_options.dup
+
+    profile_customer_url("customer_model", options)
+
+    # verify that the options passed in have not changed from the original ones
+    assert_equal original_options, options
+  end
+
   def test_projects_status
     with_test_routes do
       assert_equal '/projects/status', url_for(:controller => 'projects', :action => 'status', :only_path => true)

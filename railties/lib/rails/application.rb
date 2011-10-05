@@ -55,6 +55,11 @@ module Rails
 
     delegate :default_url_options, :default_url_options=, :to => :routes
 
+    def initialize
+      super
+      @initialized = false
+    end
+
     # This method is called just after an application inherits from Rails::Application,
     # allowing the developer to load classes in lib and use them during application
     # configuration.
@@ -78,7 +83,6 @@ module Rails
       require environment if environment
     end
 
-
     def reload_routes!
       routes_reloader.reload!
     end
@@ -87,9 +91,9 @@ module Rails
       @routes_reloader ||= RoutesReloader.new
     end
 
-    def initialize!
+    def initialize!(group=:default)
       raise "Application has been already initialized." if @initialized
-      run_initializers(self)
+      run_initializers(group, self)
       @initialized = true
       self
     end
@@ -150,7 +154,7 @@ module Rails
 
         if config.force_ssl
           require "rack/ssl"
-          middleware.use ::Rack::SSL
+          middleware.use ::Rack::SSL, config.ssl_options
         end
 
         if config.serve_static_assets

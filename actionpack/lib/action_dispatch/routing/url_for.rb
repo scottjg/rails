@@ -116,9 +116,10 @@ module ActionDispatch
       #   If <tt>:only_path</tt> is false, this option must be
       #   provided either explicitly, or via +default_url_options+.
       # * <tt>:subdomain</tt> - Specifies the subdomain of the link, using the +tld_length+
-      #   to split the domain from the host.
-      # * <tt>:domain</tt> - Specifies the domain of the link, using the +tld_length+
       #   to split the subdomain from the host.
+      #   If false, removes all subdomains from the host part of the link.
+      # * <tt>:domain</tt> - Specifies the domain of the link, using the +tld_length+
+      #   to split the domain from the host.
       # * <tt>:tld_length</tt> - Number of labels the TLD id composed of, only used if
       #   <tt>:subdomain</tt> or <tt>:domain</tt> are supplied. Defaults to
       #   <tt>ActionDispatch::Http::URL.tld_length</tt>, which in turn defaults to 1.
@@ -131,16 +132,20 @@ module ActionDispatch
       #
       # Examples:
       #
-      #    url_for :controller => 'tasks', :action => 'testing', :host => 'somehost.org', :port => '8080'    # => 'http://somehost.org:8080/tasks/testing'
-      #    url_for :controller => 'tasks', :action => 'testing', :host => 'somehost.org', :anchor => 'ok', :only_path => true    # => '/tasks/testing#ok'
-      #    url_for :controller => 'tasks', :action => 'testing', :trailing_slash => true  # => 'http://somehost.org/tasks/testing/'
-      #    url_for :controller => 'tasks', :action => 'testing', :host => 'somehost.org', :number => '33'  # => 'http://somehost.org/tasks/testing?number=33'
+      #    url_for :controller => 'tasks', :action => 'testing', :host => 'somehost.org', :port => '8080'
+      #    # => 'http://somehost.org:8080/tasks/testing'
+      #    url_for :controller => 'tasks', :action => 'testing', :host => 'somehost.org', :anchor => 'ok', :only_path => true
+      #    # => '/tasks/testing#ok'
+      #    url_for :controller => 'tasks', :action => 'testing', :trailing_slash => true
+      #    # => 'http://somehost.org/tasks/testing/'
+      #    url_for :controller => 'tasks', :action => 'testing', :host => 'somehost.org', :number => '33'
+      #    # => 'http://somehost.org/tasks/testing?number=33'
       def url_for(options = nil)
         case options
         when String
           options
         when nil, Hash
-          _routes.url_for((options || {}).reverse_merge!(url_options).symbolize_keys)
+          _routes.url_for((options || {}).reverse_merge(url_options).symbolize_keys)
         else
           polymorphic_url(options)
         end

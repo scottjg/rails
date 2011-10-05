@@ -1,12 +1,46 @@
 *Rails 3.2.0 (unreleased)*
 
+* Default options to `rails new` can be set in ~/.railsrc [Guillermo Iguaran]
+
+* Added destroy alias to Rails engines. [Guillermo Iguaran]
+
+* Added destroy alias for Rails command line. This allows the following: `rails d model post`. [Andrey Ognevsky]
+
 * Attributes on scaffold and model generators default to string. This allows the following: "rails g scaffold Post title body:text author" [José Valim]
 
 * Removed old plugin generator (`rails generate plugin`) in favor of `rails plugin new` command. [Guillermo Iguaran]
 
 * Removed old 'config.paths.app.controller' API in favor of 'config.paths["app/controller"]' API. [Guillermo Iguaran]
 
-*Rails 3.1.0 (unreleased)*
+
+*Rails 3.1.1
+
+* Add jquery-rails to Gemfile of plugins, test/dummy app needs it. Closes #3091. [Santiago Pastorino]
+
+* Add config.assets.initialize_on_precompile which, when set to false, forces
+  `rake assets:precompile` to load the application but does not initialize it.
+
+  To the app developer, this means configuration add in
+  config/initializers/* will not be executed.
+
+  Plugins developers need to special case their initializers that are
+  meant to be run in the assets group by adding :group => :assets.
+
+
+*Rails 3.1.0 (August 30, 2011)*
+
+* The default database schema file is written as UTF-8. [Aaron Patterson]
+
+* Generated apps with --dev or --edge flags depend on git versions of
+sass-rails and coffee-rails. [Santiago Pastorino]
+
+* Rack::Sendfile middleware is used only if x_sendfile_header is present. [Santiago Pastorino]
+
+* Add JavaScript Runtime name to the Rails Info properties. [DHH]
+
+* Make pp enabled by default in Rails console. [Akira Matsuda]
+
+* Add alias `r` for rails runner. [Jordi Romero]
 
 * Make sprockets/railtie require explicit and add --skip-sprockets to app generator [José Valim]
 

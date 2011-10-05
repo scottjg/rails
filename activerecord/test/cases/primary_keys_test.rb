@@ -5,6 +5,7 @@ require 'models/subscriber'
 require 'models/movie'
 require 'models/keyboard'
 require 'models/mixed_case_monkey'
+require 'models/edge'
 
 class PrimaryKeysTest < ActiveRecord::TestCase
   fixtures :topics, :subscribers, :movies, :mixed_case_monkeys
@@ -26,7 +27,7 @@ class PrimaryKeysTest < ActiveRecord::TestCase
   def test_to_key_with_primary_key_after_destroy
     topic = Topic.find(1)
     topic.destroy
-    assert_equal nil, topic.to_key
+    assert_equal [1], topic.to_key
   end
 
   def test_integer_key
@@ -144,5 +145,34 @@ class PrimaryKeysTest < ActiveRecord::TestCase
     assert_equal k.connection.quote_column_name("foo"), k.quoted_primary_key
     k.set_primary_key "bar"
     assert_equal k.connection.quote_column_name("bar"), k.quoted_primary_key
+  end
+
+  def test_set_primary_key_with_no_connection
+    return skip("disconnect wipes in-memory db") if in_memory_db?
+
+    connection = ActiveRecord::Base.remove_connection
+
+    model = Class.new(ActiveRecord::Base) do
+      set_primary_key 'foo'
+    end
+
+    assert_equal 'foo', model.primary_key
+
+    ActiveRecord::Base.establish_connection(connection)
+
+    assert_equal 'foo', model.primary_key
+  end
+
+  def test_no_primary_key_raises
+    assert_raises(ActiveRecord::UnknownPrimaryKey) do
+      Edge.primary_key
+    end
+
+    begin
+      Edge.primary_key
+    rescue ActiveRecord::UnknownPrimaryKey => e
+      assert e.message.include?('edges')
+      assert e.message.include?('Edge')
+    end
   end
 end

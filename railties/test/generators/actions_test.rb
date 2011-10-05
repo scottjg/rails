@@ -102,11 +102,25 @@ class ActionsTest < Rails::Generators::TestCase
     assert_file 'Gemfile', /gem "rspec-rails"$/
   end
 
+  def test_gem_group_should_wrap_gems_in_a_group
+    run_generator
+
+    action :gem_group, :development, :test do
+      gem 'rspec-rails'
+    end
+
+    action :gem_group, :test do
+      gem 'fakeweb'
+    end
+
+    assert_file 'Gemfile', /\ngroup :development, :test do\n  gem "rspec-rails"\nend\n\ngroup :test do\n  gem "fakeweb"\nend/
+  end
+
   def test_environment_should_include_data_in_environment_initializer_block
     run_generator
     autoload_paths = 'config.autoload_paths += %w["#{Rails.root}/app/extras"]'
     action :environment, autoload_paths
-    assert_file 'config/application.rb', /#{Regexp.escape(autoload_paths)}/
+    assert_file 'config/application.rb', /  class Application < Rails::Application\n    #{Regexp.escape(autoload_paths)}/
   end
 
   def test_environment_should_include_data_in_environment_initializer_block_with_env_option
@@ -173,6 +187,22 @@ class ActionsTest < Rails::Generators::TestCase
   def test_rake_with_env_option_should_run_rake_command_in_env
     generator.expects(:run).once.with('rake log:clear RAILS_ENV=production', :verbose => false)
     action :rake, 'log:clear', :env => 'production'
+  end
+
+  def test_rake_with_rails_env_variable_should_run_rake_command_in_env
+    generator.expects(:run).once.with('rake log:clear RAILS_ENV=production', :verbose => false)
+    old_env, ENV["RAILS_ENV"] = ENV["RAILS_ENV"], "production"
+    action :rake, 'log:clear'
+  ensure
+    ENV["RAILS_ENV"] = old_env
+  end
+
+  def test_env_option_should_win_over_rails_env_variable_when_running_rake
+    generator.expects(:run).once.with('rake log:clear RAILS_ENV=production', :verbose => false)
+    old_env, ENV["RAILS_ENV"] = ENV["RAILS_ENV"], "staging"
+    action :rake, 'log:clear', :env => 'production'
+  ensure
+    ENV["RAILS_ENV"] = old_env
   end
 
   def test_rake_with_sudo_option_should_run_rake_command_with_sudo

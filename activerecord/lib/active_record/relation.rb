@@ -13,7 +13,7 @@ module ActiveRecord
 
     # These are explicitly delegated to improve performance (avoids method_missing)
     delegate :to_xml, :to_yaml, :length, :collect, :map, :each, :all?, :include?, :to => :to_a
-    delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key, :connection, :column_hash,:to => :klass
+    delegate :table_name, :quoted_table_name, :primary_key, :primary_key?, :quoted_primary_key, :connection, :column_hash,:to => :klass
 
     attr_reader :table, :klass, :loaded
     attr_accessor :extensions, :default_scoped
@@ -36,7 +36,7 @@ module ActiveRecord
     def insert(values)
       primary_key_value = nil
 
-      if primary_key && Hash === values
+      if primary_key? && Hash === values
         primary_key_value = values[values.keys.find { |k|
           k.name == primary_key
         }]
@@ -68,9 +68,9 @@ module ActiveRecord
       end
 
       conn.insert(
-        im.to_sql,
+        im,
         'SQL',
-        primary_key,
+        primary_key? && primary_key,
         primary_key_value,
         nil,
         binds)
@@ -94,6 +94,48 @@ module ActiveRecord
       scoping { @klass.create!(*args, &block) }
     end
 
+    # Tries to load the first record; if it fails, then <tt>create</tt> is called with the same arguments as this method.
+    #
+    # Expects arguments in the same format as <tt>Base.create</tt>.
+    #
+    # ==== Examples
+    #   # Find the first user named Penélope or create a new one.
+    #   User.where(:first_name => 'Penélope').first_or_create
+    #   # => <User id: 1, first_name: 'Penélope', last_name: nil>
+    #
+    #   # Find the first user named Penélope or create a new one.
+    #   # We already have one so the existing record will be returned.
+    #   User.where(:first_name => 'Penélope').first_or_create
+    #   # => <User id: 1, first_name: 'Penélope', last_name: nil>
+    #
+    #   # Find the first user named Scarlett or create a new one with a particular last name.
+    #   User.where(:first_name => 'Scarlett').first_or_create(:last_name => 'Johansson')
+    #   # => <User id: 2, first_name: 'Scarlett', last_name: 'Johansson'>
+    #
+    #   # Find the first user named Scarlett or create a new one with a different last name.
+    #   # We already have one so the existing record will be returned.
+    #   User.where(:first_name => 'Scarlett').first_or_create do |user|
+    #     user.last_name = "O'Hara"
+    #   end
+    #   # => <User id: 2, first_name: 'Scarlett', last_name: 'Johansson'>
+    def first_or_create(attributes = nil, options = {}, &block)
+      first || create(attributes, options, &block)
+    end
+
+    # Like <tt>first_or_create</tt> but calls <tt>create!</tt> so an exception is raised if the created record is invalid.
+    #
+    # Expects arguments in the same format as <tt>Base.create!</tt>.
+    def first_or_create!(attributes = nil, options = {}, &block)
+      first || create!(attributes, options, &block)
+    end
+
+    # Like <tt>first_or_create</tt> but calls <tt>new</tt> instead of <tt>create</tt>.
+    #
+    # Expects arguments in the same format as <tt>Base.new</tt>.
+    def first_or_initialize(attributes = nil, options = {}, &block)
+      first || new(attributes, options, &block)
+    end
+
     def respond_to?(method, include_private = false)
       arel.respond_to?(method, include_private)     ||
         Array.method_defined?(method)               ||
@@ -108,10 +150,10 @@ module ActiveRecord
 
       if default_scoped.equal?(self)
         @records = if @readonly_value.nil? && !@klass.locking_enabled?
-          eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, @bind_values)
+          eager_loading? ? find_with_associations : @klass.find_by_sql(arel, @bind_values)
         else
           IdentityMap.without do
-            eager_loading? ? find_with_associations : @klass.find_by_sql(arel.to_sql, @bind_values)
+            eager_loading? ? find_with_associations : @klass.find_by_sql(arel, @bind_values)
           end
         end
 
@@ -216,15 +258,21 @@ module ActiveRecord
       if conditions || options.present?
         where(conditions).apply_finder_options(options.slice(:limit, :order)).update_all(updates)
       else
-        stmt = arel.compile_update(Arel.sql(@klass.send(:sanitize_sql_for_assignment, updates)))
+        stmt = Arel::UpdateManager.new(arel.engine)
 
-        if limit = arel.limit
-          stmt.take limit
+        stmt.set Arel.sql(@klass.send(:sanitize_sql_for_assignment, updates))
+        stmt.table(table)
+        stmt.key = table[primary_key]
+
+        if joins_values.any?
+          @klass.connection.join_to_update(stmt, arel)
+        else
+          stmt.take(arel.limit)
+          stmt.order(*arel.orders)
+          stmt.wheres = arel.constraints
         end
 
-        stmt.order(*arel.orders)
-        stmt.key = table[primary_key]
-        @klass.connection.update stmt.to_sql, 'SQL', bind_values
+        @klass.connection.update stmt, 'SQL', bind_values
       end
     end
 
@@ -341,8 +389,7 @@ module ActiveRecord
         where(conditions).delete_all
       else
         statement = arel.compile_delete
-        affected = @klass.connection.delete(
-          statement.to_sql, 'SQL', bind_values)
+        affected = @klass.connection.delete(statement, 'SQL', bind_values)
 
         reset
         affected
@@ -388,7 +435,7 @@ module ActiveRecord
     end
 
     def to_sql
-      @to_sql ||= arel.to_sql
+      @to_sql ||= klass.connection.to_sql(arel)
     end
 
     def where_values_hash
