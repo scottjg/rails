@@ -1,5 +1,81 @@
 *Rails 3.1.1 (unreleased)*
 
+* stylesheet_link_tag('/stylesheets/application') and similar helpers doesn't
+throw Sprockets::FileOutsidePaths exception anymore [Santiago Pastorino]
+
+* Ensure default_asset_host_protocol is respected, closes #2980. [José Valim]
+
+  Changing rake db:schema:dump to run :environment as well as :load_config,
+  as running :load_config alone will lead to the dumper being run without
+  including extensions such as those included in foreigner and
+  spatial_adapter.
+
+  This reverses a change made here:
+  https://github.com/rails/rails/commit/5df72a238e9fcb18daf6ab6e6dc9051c9106d7bb#L0L324
+
+  I'm assuming here that :load_config needs to be invoked
+  separately from :environment, as it is elsewhere in the
+  file for db operations, if not the alternative is to go
+  back to "task :dump => :environment do".
+
+  [Ben Woosley]
+
+* Update to rack-cache 1.1.
+
+  Versions prior to 1.1 delete the If-Modified-Since and If-Not-Modified
+  headers when config.action_controller.perform_caching is true. This has two
+  problems:
+    * unexpected inconsistent behaviour between development &
+      production environments
+    * breaks applications that use of these headers
+
+  [Brendan Ribera]
+
+* Ensure that enhancements to assets:precompile task are only run once [Sam Pohlenz]
+
+* TestCase should respect the view_assigns API instead of pulling variables on
+its own. [José Valim]
+
+* javascript_path and stylesheet_path now refer to /assets if asset pipelining
+is on. [Santiago Pastorino]
+
+* button_to support form option. Now you're able to pass for example
+'data-type' => 'json'. [ihower]
+
+* image_path and image_tag should use /assets if asset pipelining is turned
+on. Closes #3126 [Santiago Pastorino and christos]
+
+* Avoid use of existing precompiled assets during rake assets:precompile run.
+Closes #3119 [Guillermo Iguaran]
+
+* Copy assets to nondigested filenames too [Santiago Pastorino]
+
+* Give precedence to `config.digest = false` over the existence of
+manifest.yml asset digests [christos]
+
+* escape options for the stylesheet_link_tag method [Alexey Vakhov]
+
+* Re-launch assets:precompile task using (Rake.)ruby instead of Kernel.exec so
+it works on Windows [cablegram]
+
+* env var passed to process shouldn't be modified in process method. [Santiago
+Pastorino]
+
+* `rake assets:precompile` loads the application but does not initialize
+it.
+
+  To the app developer, this means configuration add in
+	config/initializers/* will not be executed.
+
+  Plugins developers need to special case their initializers that are
+  meant to be run in the assets group by adding :group => :assets. [José Valim]
+
+* Sprockets uses config.assets.prefix for asset_path [asee]
+
+* FileStore key_file_path properly limit filenames to 255 characters. [phuibonhoa]
+
+* Fix Hash#to_query edge case with html_safe strings. [brainopia]
+
 * Allow asset tag helper methods to accept :digest => false option in order to completely avoid the digest generation.
 Useful for linking assets from static html files or from emails when the user
 could probably look at an older html email with an older asset. [Santiago Pastorino]

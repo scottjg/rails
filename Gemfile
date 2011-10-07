@@ -56,7 +56,7 @@ platforms :ruby do
   gem "nokogiri", ">= 1.4.4"
 
   # AR
-  gem "sqlite3", "~> 1.3.3"
+  gem "sqlite3", "~> 1.3.4"
 
   group :db do
     gem "pg", ">= 0.11.0" unless ENV['TRAVIS'] # once pg is on travis this can be removed
@@ -68,7 +68,7 @@ end
 platforms :jruby do
   gem "ruby-debug", ">= 0.10.3"
   gem "json"
-  gem "activerecord-jdbcsqlite3-adapter"
+  gem "activerecord-jdbcsqlite3-adapter", ">= 1.2.0"
 
   # This is needed by now to let tests work on JRuby
   # TODO: When the JRuby guys merge jruby-openssl in
@@ -76,8 +76,8 @@ platforms :jruby do
   gem "jruby-openssl"
 
   group :db do
-    gem "activerecord-jdbcmysql-adapter"
-    gem "activerecord-jdbcpostgresql-adapter"
+    gem "activerecord-jdbcmysql-adapter", ">= 1.2.0"
+    gem "activerecord-jdbcpostgresql-adapter", ">= 1.2.0"
   end
 end
 
