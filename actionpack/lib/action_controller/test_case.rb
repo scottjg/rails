@@ -503,9 +503,12 @@ module ActionController
             :action => action,
             :relative_url_root => nil,
             :_path_segments => @request.symbolized_path_parameters)
+          options[:protocol] ||= "http://"
 
           url, query_string = @routes.url_for(options).split("?", 2)
 
+          @request.env["HTTPS"] = options[:protocol] == "https://" ? "on" : "off"
+          @request.env["rack.url_scheme"] = options[:protocol]
           @request.env["SCRIPT_NAME"] = @controller.config.relative_url_root
           @request.env["PATH_INFO"] = url
           @request.env["QUERY_STRING"] = query_string || ""
