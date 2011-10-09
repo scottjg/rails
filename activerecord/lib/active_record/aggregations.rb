@@ -186,8 +186,8 @@ module ActiveRecord
       #   The default is <tt>:new</tt>.
       # * <tt>:converter</tt> - A symbol specifying the name of a class method of <tt>:class_name</tt>
       #   or a Proc that is called when a new value is assigned to the value object. The converter is
-      #   passed the single value that is used in the assignment and is only called if the new value is
-      #   not an instance of <tt>:class_name</tt>.
+      #   passed the value that is used in the assignment as well as the record itself. It is only called
+      #   if the new value is not an instance of <tt>:class_name</tt>.
       #
       # Option examples:
       #   composed_of :temperature, :mapping => %w(reading celsius)
@@ -195,6 +195,10 @@ module ActiveRecord
       #   composed_of :address, :mapping => [ %w(address_street street), %w(address_city city) ]
       #   composed_of :gps_location
       #   composed_of :gps_location, :allow_nil => true
+      #   composed_of :credit_limit,
+      #               :class_name => "Money",
+      #               :mapping => %w(credit_limit amount),
+      #               :converter => Proc.new { |credit_limit, record| Money.new(credit_limit, record.currency) }
       #   composed_of :ip_address,
       #               :class_name => 'IPAddr',
       #               :mapping => %w(ip to_i),
