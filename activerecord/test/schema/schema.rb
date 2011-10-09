@@ -190,6 +190,8 @@ ActiveRecord::Schema.define do
     t.string  :address_city
     t.string  :address_country
     t.string  :gps_location
+    t.decimal :credit_limit, :precision => 10, :scale => 2
+    t.string  :currency, :limit => 3
   end
 
   create_table :dashboards, :force => true, :id => false do |t|

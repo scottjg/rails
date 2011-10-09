@@ -240,7 +240,7 @@ module ActiveRecord
             else
               unless part.is_a?(class_name.constantize) || converter.nil?
                 part = converter.respond_to?(:call) ?
-                  converter.call(part) :
+                  converter.call(part, self) :
                   class_name.constantize.send(converter, part)
               end
 

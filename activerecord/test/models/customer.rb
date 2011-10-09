@@ -3,6 +3,7 @@ class Customer < ActiveRecord::Base
   composed_of :balance, :class_name => "Money", :mapping => %w(balance amount), :converter => Proc.new { |balance| balance.to_money }
   composed_of :gps_location, :allow_nil => true
   composed_of :fullname, :mapping => %w(name to_s), :constructor => Proc.new { |name| Fullname.parse(name) }, :converter => :parse
+  composed_of :credit_limit, :class_name => "Money", :mapping => %w(credit_limit amount), :converter => Proc.new { |value, customer| Money.new(value, customer.currency) }
 end
 
 class Address

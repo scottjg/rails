@@ -119,6 +119,14 @@ class AggregationsTest < ActiveRecord::TestCase
     assert_equal 'Barnoit GUMBLEAU', customers(:barney).fullname.to_s
     assert_kind_of Fullname, customers(:barney).fullname
   end
+
+  def test_custom_converter_with_arity_2
+    customers(:barney).credit_limit = 1_000
+    money = customers(:barney).credit_limit
+
+    assert_equal 1_000, money.amount
+    assert_equal 'EUR', money.currency
+  end
 end
 
 class OverridingAggregationsTest < ActiveRecord::TestCase

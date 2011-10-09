@@ -24,3 +24,4 @@ barney:
   address_city: Peaceful Town
   address_country: Tranquil Land
   gps_location: NULL
+  currency: EUR
