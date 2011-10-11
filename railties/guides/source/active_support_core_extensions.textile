@@ -3355,6 +3355,8 @@ ago
 since (in)
 beginning_of_day (midnight, at_midnight, at_beginning_of_day)
 end_of_day
+beginning_of_hour (at_beginning_of_hour)
+end_of_hour
 beginning_of_week (monday, at_beginning_of_week)
 end_on_week (at_end_of_week)
 weeks_ago
@@ -3425,6 +3427,26 @@ now.all_quarter
 now.all_year
 # => Fri, 01 Jan 2010 00:00:00 UTC <plus>00:00..Fri, 31 Dec 2010 23:59:59 UTC <plus>00:00
 </ruby>
+
+h5. Timestamps
+
+INFO: The following methods return a +Time+ object. If set, they honor the user time zone.
+
+h6. +beginning_of_hour+, +end_of_hour+
+
+The method +beginning_of_hour+ returns a timestamp at the beginning of the hour:
+
+<ruby>
+date = Time.new(2010, 6, 7, 10, 10)
+date.beginning_of_hour # => Sun Jun 07 10:00:00 +0200 2010
+</ruby>
+
+<ruby>
+date = Date.new(2010, 6, 7, 10, 10)
+date.end_of_hour # => Sun Jun 07 10:59:59 +0200 2010
+</ruby>
+
++beginning_of_hour+ is aliased to +at_beginning_of_hour+
 
 h4. Time Constructors
 

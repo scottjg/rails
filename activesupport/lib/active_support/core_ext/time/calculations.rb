@@ -199,6 +199,19 @@ class Time
   def end_of_day
     change(:hour => 23, :min => 59, :sec => 59, :usec => 999999.999)
   end
+  alias :at_end_of_day, :end_of_day
+
+  # Returns a new Time representing the start of the hour
+  def beginning_of_hour
+    change(:min => 00, :sec => 00)
+  end
+  alias :at_beginning_of_hour :beginning_of_hour
+
+  # Returns a new Time representing the end of the hour
+  def end_of_hour
+    change(:min => 59, :sec => 59, :usec => 999999.999)
+  end
+  alias :at_end_of_hour, :end_of_hour
 
   # Returns a new Time representing the start of the month (1st of the month, 0:00)
   def beginning_of_month

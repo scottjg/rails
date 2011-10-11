@@ -73,6 +73,18 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_beginning_of_hour
+    assert_equal Time.local(2005,2,4,10,0,0), Time.local(2005,2,4,10,10,10).beginning_of_hour
+    with_env_tz 'US/Eastern' do
+      assert_equal Time.local(2006,4,2,10,0,0), Time.local(2006,4,2,10,10,10).beginning_of_hour, 'start DST'
+      assert_equal Time.local(2006,10,29,10,0,0), Time.local(2006,10,29,10,10,10).beginning_of_hour, 'ends DST'
+    end
+    with_env_tz 'NZ' do
+      assert_equal Time.local(2006,3,19,10,0,0), Time.local(2006,3,19,10,10,10).beginning_of_hour, 'ends DST'
+      assert_equal Time.local(2006,10,1,10,0,0), Time.local(2006,10,1,10,10,10).beginning_of_hour, 'start DST'
+    end
+  end
+
   def test_beginning_of_month
     assert_equal Time.local(2005,2,1,0,0,0), Time.local(2005,2,22,10,10,10).beginning_of_month
   end
@@ -93,6 +105,18 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     with_env_tz 'NZ' do
       assert_equal Time.local(2006,3,19,23,59,59,999999.999), Time.local(2006,3,19,10,10,10).end_of_day, 'ends DST'
       assert_equal Time.local(2006,10,1,23,59,59,999999.999), Time.local(2006,10,1,10,10,10).end_of_day, 'start DST'
+    end
+  end
+
+  def test_end_of_hour
+    assert_equal Time.local(2007,8,12,10,59,59,999999.999), Time.local(2007,8,12,10,10,10).end_of_hour
+    with_env_tz 'US/Eastern' do
+      assert_equal Time.local(2007,4,2,10,59,59,999999.999), Time.local(2007,4,2,10,10,10).end_of_hour, 'start DST'
+      assert_equal Time.local(2007,10,29,10,59,59,999999.999), Time.local(2007,10,29,10,10,10).end_of_hour, 'ends DST'
+    end
+    with_env_tz 'NZ' do
+      assert_equal Time.local(2006,3,19,10,59,59,999999.999), Time.local(2006,3,19,10,10,10).end_of_hour, 'ends DST'
+      assert_equal Time.local(2006,10,1,10,59,59,999999.999), Time.local(2006,10,1,10,10,10).end_of_hour, 'start DST'
     end
   end
 
