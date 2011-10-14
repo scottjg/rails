@@ -243,7 +243,7 @@ module ActiveRecord
     # unless the parent is/was a new record itself.
     def associated_records_to_validate_or_save(association, new_record, autosave)
       if new_record
-        association && association.target
+        association && association.target && association.target.dup
       elsif autosave
         association.target.find_all { |record| record.changed_for_autosave? }
       else
