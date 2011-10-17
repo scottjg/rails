@@ -339,6 +339,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
 
       scope '(:locale)', :locale => /en|pl/ do
+        get "registrations/new"
         resources :descriptions
         root :to => 'projects#index'
       end
@@ -1471,6 +1472,16 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_nested_optional_path_shorthand
+    with_test_routes do
+      get '/registrations/new'
+      assert @request.params[:locale].nil?
+
+      get '/en/registrations/new'
+      assert 'en', @request.params[:locale]
+    end
+  end
+
   def test_default_params
     with_test_routes do
       get '/inline_pages'
@@ -2515,5 +2526,42 @@ class TestHttpMethods < ActionDispatch::IntegrationTest
       get '/', nil, 'REQUEST_METHOD' => method
       assert_equal method, @response.body
     end
+  end
+end
+
+class TestUriPathEscaping < ActionDispatch::IntegrationTest
+  Routes = ActionDispatch::Routing::RouteSet.new.tap do |app|
+    app.draw do
+      match '/:segment' => lambda { |env|
+        path_params = env['action_dispatch.request.path_parameters']
+        [200, { 'Content-Type' => 'text/plain' }, [path_params[:segment]]]
+      }, :as => :segment
+
+      match '/*splat' => lambda { |env|
+        path_params = env['action_dispatch.request.path_parameters']
+        [200, { 'Content-Type' => 'text/plain' }, [path_params[:splat]]]
+      }, :as => :splat
+    end
+  end
+
+  include Routes.url_helpers
+  def app; Routes end
+
+  test 'escapes generated path segment' do
+    assert_equal '/a%20b/c+d', segment_path(:segment => 'a b/c+d')
+  end
+
+  test 'unescapes recognized path segment' do
+    get '/a%20b%2Fc+d'
+    assert_equal 'a b/c+d', @response.body
+  end
+
+  test 'escapes generated path splat' do
+    assert_equal '/a%20b/c+d', splat_path(:splat => 'a b/c+d')
+  end
+
+  test 'unescapes recognized path splat' do
+    get '/a%20b/c+d'
+    assert_equal 'a b/c+d', @response.body
   end
 end

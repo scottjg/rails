@@ -1,4 +1,4 @@
-require 'journey/router'
+require 'journey'
 require 'forwardable'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/object/to_query'
@@ -394,10 +394,9 @@ module ActionDispatch
           if name == :controller
             value
           elsif value.is_a?(Array)
-            value.map { |v| Journey::Router::Utils.escape_uri(v.to_param) }.join('/')
-          else
-            return nil unless param = value.to_param
-            param.split('/').map { |v| Journey::Router::Utils.escape_uri(v) }.join("/")
+            value.map { |v| v.to_param }.join('/')
+          elsif param = value.to_param
+            param
           end
         end
 

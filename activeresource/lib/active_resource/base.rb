@@ -170,8 +170,8 @@ module ActiveResource
   # <tt>404</tt> is just one of the HTTP error response codes that Active Resource will handle with its own exception. The
   # following HTTP response codes will also result in these exceptions:
   #
-  # * 200..399 - Valid response, no exception (other than 301, 302)
-  # * 301, 302 - ActiveResource::Redirection
+  # * 200..399 - Valid response. No exceptions, other than these redirects:
+  # * 301, 302, 303, 307 - ActiveResource::Redirection
   # * 400 - ActiveResource::BadRequest
   # * 401 - ActiveResource::UnauthorizedAccess
   # * 403 - ActiveResource::ForbiddenAccess
@@ -637,6 +637,10 @@ module ActiveResource
       #   Post.element_path(1)
       #   # => /posts/1.json
       #
+      #   class Comment < ActiveResource::Base
+      #     self.site = "http://37s.sunrise.i/posts/:post_id/"
+      #   end
+      #
       #   Comment.element_path(1, :post_id => 5)
       #   # => /posts/5/comments/1.json
       #
@@ -662,6 +666,10 @@ module ActiveResource
       # ==== Examples
       #   Post.new_element_path
       #   # => /posts/new.json
+      #
+      #   class Comment < ActiveResource::Base
+      #     self.site = "http://37s.sunrise.i/posts/:post_id/"
+      #   end
       #
       #   Comment.collection_path(:post_id => 5)
       #   # => /posts/5/comments/new.json

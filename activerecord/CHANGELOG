@@ -1,4 +1,35 @@
-*Rails 3.1.1 (unreleased)*
+*Rails 3.2.0 (unreleased)*
+
+* Added ActiveRecord::Base.store for declaring simple single-column key/value stores [DHH]
+
+    class User < ActiveRecord::Base
+      store :settings, accessors: [ :color, :homepage ]
+    end
+    
+    u = User.new(color: 'black', homepage: '37signals.com')
+    u.color                          # Accessor stored attribute
+    u.settings[:country] = 'Denmark' # Any attribute, even if not specified with an accessor
+
+
+* MySQL: case-insensitive uniqueness validation avoids calling LOWER when
+  the column already uses a case-insensitive collation. Fixes #561.
+
+  [Joseph Palermo]
+
+* Transactional fixtures enlist all active database connections. You can test
+  models on different connections without disabling transactional fixtures.
+
+  [Jeremy Kemper]
+
+* Add first_or_create, first_or_create!, first_or_initialize methods to Active Record. This is a
+  better approach over the old find_or_create_by dynamic methods because it's clearer which
+  arguments are used to find the record and which are used to create it:
+
+    User.where(:first_name => "Scarlett").first_or_create!(:last_name => "Johansson")
+
+  [Andrés Mejía]
+
+*Rails 3.1.1 (October 7, 2011)*
 
 * Add deprecation for the preload_associations method. Fixes #3022.
 
@@ -28,13 +59,7 @@
 	  keys are per process id.
 	* lib/active_record/connection_adapters/sqlite_adapter.rb: ditto
 
-* Add first_or_create, first_or_create!, first_or_initialize methods to Active Record. This is a
-  better approach over the old find_or_create_by dynamic methods because it's clearer which
-  arguments are used to find the record and which are used to create it:
-
-    User.where(:first_name => "Scarlett").first_or_create!(:last_name => "Johansson")
-
-  [Andrés Mejía]
+  [Aaron Patterson]
 
 * Support bulk change_table in mysql2 adapter, as well as the mysql one. [Jon Leighton]
 
@@ -59,6 +84,7 @@ a URI that specifies the connection configuration.  For example:
     User.find_by_username_and_group("sikachu", nil)
 
   [Prem Sichanugrist]
+
 
 *Rails 3.1.0 (August 30, 2011)*
 

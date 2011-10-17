@@ -8,9 +8,6 @@ module Sprockets
 
       def asset_paths
         @asset_paths ||= begin
-          config     = self.config if respond_to?(:config)
-          config   ||= Rails.application.config
-          controller = self.controller if respond_to?(:controller)
           paths = RailsHelper::AssetPaths.new(config, controller)
           paths.asset_environment = asset_environment
           paths.asset_digests     = asset_digests
@@ -126,6 +123,8 @@ module Sprockets
           return nil if is_uri?(source)
           source = rewrite_extension(source, nil, ext)
           asset_environment[source]
+        rescue Sprockets::FileOutsidePaths
+          nil
         end
 
         def digest_for(logical_path)
