@@ -63,9 +63,11 @@ class SchemaTest < ActiveRecord::TestCase
   end
 
   def test_schema_change_with_prepared_stmt
-    @connection.exec_query "select * from developers where id = $1", 'sql', [[nil, 1]]
-    @connection.exec_query "alter table developers add column zomg int", 'sql', []
-    @connection.exec_query "select * from developers where id = $1", 'sql', [[nil, 1]]
+    @connection.transaction do
+      @connection.exec_query "select * from developers where id = $1", 'sql', [[nil, 1]]
+      @connection.exec_query "alter table developers add column zomg int", 'sql', []
+      @connection.exec_query "select * from developers where id = $1", 'sql', [[nil, 1]]
+    end
   ensure
     @connection.exec_query "alter table developers drop column if exists zomg", 'sql', []
   end
