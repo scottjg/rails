@@ -53,7 +53,6 @@ module ActiveSupport
     class << self
       remove_method :logger
       def logger
-        puts "RCA retrieve logger: Rails.logger: #{Rails.logger.inspect}"
         @logger ||= Rails.logger if defined?(Rails)
       end
 
