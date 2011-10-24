@@ -147,13 +147,16 @@ class QueryCacheTest < ActiveRecord::TestCase
   end
 
   def test_cache_does_not_wrap_string_results_in_arrays
-    require 'sqlite3/version' if current_adapter?(:SQLite3Adapter)
+    if current_adapter?(:SQLite3Adapter)
+      require 'sqlite3/version'
+      sqlite3_version = RUBY_PLATFORM =~ /java/ ? Jdbc::SQLite3::VERSION : SQLite3::VERSION
+    end
 
     Task.cache do
       # Oracle adapter returns count() as Fixnum or Float
       if current_adapter?(:OracleAdapter)
         assert_kind_of Numeric, Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
-      elsif current_adapter?(:SQLite3Adapter) && SQLite3::VERSION > '1.2.5' || current_adapter?(:Mysql2Adapter) || current_adapter?(:MysqlAdapter)
+      elsif current_adapter?(:SQLite3Adapter) && sqlite3_version > '1.2.5' || current_adapter?(:Mysql2Adapter) || current_adapter?(:MysqlAdapter)
         # Future versions of the sqlite3 adapter will return numeric
         assert_instance_of Fixnum,
          Task.connection.select_value("SELECT count(*) AS count_all FROM tasks")
@@ -234,7 +237,7 @@ class QueryCacheBodyProxyTest < ActiveRecord::TestCase
 
   test "is polite to it's body and responds to it" do
     body = Class.new(String) { def to_path; "/path"; end }.new
-    proxy = ActiveRecord::QueryCache::BodyProxy.new(nil, body)
+    proxy = ActiveRecord::QueryCache::BodyProxy.new(nil, body, ActiveRecord::Base.connection_id)
     assert proxy.respond_to?(:to_path)
     assert_equal proxy.to_path, "/path"
   end

@@ -116,8 +116,8 @@ module ActiveRecord #:nodoc:
   # When joining tables, nested hashes or keys written in the form 'table_name.column_name'
   # can be used to qualify the table name of a particular condition. For instance:
   #
-  #   Student.joins(:schools).where(:schools => { :type => 'public' })
-  #   Student.joins(:schools).where('schools.type' => 'public' )
+  #   Student.joins(:schools).where(:schools => { :category => 'public' })
+  #   Student.joins(:schools).where('schools.category' => 'public' )
   #
   # == Overwriting default accessors
   #
@@ -705,6 +705,10 @@ module ActiveRecord #:nodoc:
 
       # Returns an array of column objects for the table associated with this class.
       def columns
+        if defined?(@primary_key)
+          connection_pool.primary_keys[table_name] ||= primary_key
+        end
+
         connection_pool.columns[table_name]
       end
 
