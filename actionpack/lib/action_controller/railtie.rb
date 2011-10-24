@@ -31,8 +31,10 @@ module ActionController
       end
     end
 
+    puts "RCA before initializer for action_controller.logger"
     initializer "action_controller.logger" do
-      ActiveSupport.on_load(:action_controller) { self.logger ||= Rails.logger }
+      puts "RCA in action_controller.logger initializer block"
+      ActiveSupport.on_load(:action_controller) { puts "RCA self: #{self.logger.class} Rails: #{Rails.logger.class}"; self.logger ||= Rails.logger }
     end
 
     initializer "action_controller.initialize_framework_caches" do
