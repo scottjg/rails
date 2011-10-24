@@ -8,6 +8,7 @@ module ActionController
       payload = event.payload
       params  = payload[:params].except(*INTERNAL_PARAMS)
 
+      puts "RCA got here?"
       info "  Processing by #{payload[:controller]}##{payload[:action]} as #{payload[:formats].first.to_s.upcase}"
       info "  Parameters: #{params.inspect}" unless params.empty?
     end
@@ -52,6 +53,7 @@ module ActionController
     end
 
     def logger
+      puts "RCA getting logger from actioncontroller: #{ActionController::Base.logger}"
       ActionController::Base.logger
     end
   end
