@@ -138,7 +138,7 @@ module Rails
         if options.dev?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     :path => '#{Rails::Generators::RAILS_DEV_PATH}'
-            gem 'journey',   :path => '#{Rails::Generators::JOURNEY_DEV_PATH}'
+            gem 'journey',   :git => 'git://github.com/rails/journey.git'
           GEMFILE
         elsif options.edge?
           <<-GEMFILE.strip_heredoc
@@ -187,17 +187,6 @@ module Rails
           "gem 'ruby-debug'"
         else
           "gem 'ruby-debug19', :require => 'ruby-debug'"
-        end
-      end
-
-      def turn_gemfile_entry
-        unless RUBY_VERSION < "1.9.2" || options[:skip_test_unit]
-          <<-GEMFILE.strip_heredoc
-            group :test do
-              # Pretty printed test output
-              gem 'turn', :require => false
-            end
-          GEMFILE
         end
       end
 
