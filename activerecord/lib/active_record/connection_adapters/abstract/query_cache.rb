@@ -29,6 +29,10 @@ module ActiveRecord
         @query_cache_enabled = old
       end
 
+      def query_cache_mutex
+        @query_cache_mutex ||= Mutex.new
+      end
+
       def enable_query_cache!
         @query_cache_enabled = true
       end
@@ -52,7 +56,9 @@ module ActiveRecord
       # the same SQL query and repeatedly return the same result each time, silently
       # undermining the randomness you were expecting.
       def clear_query_cache
-        @query_cache.clear
+        query_cache_mutex.synchronize do
+          @query_cache.clear
+        end
       end
 
       def select_all(arel, name = nil, binds = [])
@@ -66,7 +72,7 @@ module ActiveRecord
 
       private
         def cache_sql(sql, binds)
-          result =
+          result = query_cache_mutex.synchronize do
             if @query_cache[sql].key?(binds)
               ActiveSupport::Notifications.instrument("sql.active_record",
                 :sql => sql, :name => "CACHE", :connection_id => object_id)
@@ -74,6 +80,7 @@ module ActiveRecord
             else
               @query_cache[sql][binds] = yield
             end
+          end
 
           result.collect { |row| row.dup }
         end
