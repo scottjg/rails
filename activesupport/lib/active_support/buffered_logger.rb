@@ -94,7 +94,7 @@ module ActiveSupport
         end                                                             # end
 
         def #{severity.downcase}?                                       # def debug?
-          #{severity} >= level                                         #   DEBUG >= @level
+          #{severity} >= level                                          #   DEBUG >= @level
         end                                                             # end
       EOT
     end

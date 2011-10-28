@@ -231,7 +231,7 @@ class BufferedLoggerTest < Test::Unit::TestCase
     a = Thread.new do
       @logger.info("a")
     end
-    
+
     keep_running = true
     b = Thread.new do
       @logger.info("b")
@@ -248,7 +248,7 @@ class BufferedLoggerTest < Test::Unit::TestCase
     assert @output.string.include?("x")
     assert @output.string.include?("a")
     assert !@output.string.include?("b")
-    
+
     keep_running = false
   end
 end
