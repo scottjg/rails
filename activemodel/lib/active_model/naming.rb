@@ -37,16 +37,16 @@ module ActiveModel
 
   # ActiveModel::Naming is a module that creates a +model_name+ method on your
   # object.
-  # 
+  #
   # To implement, just extend ActiveModel::Naming in your object:
-  # 
+  #
   #   class BookCover
   #     extend ActiveModel::Naming
   #   end
-  # 
+  #
   #   BookCover.model_name        #=> "BookCover"
   #   BookCover.model_name.human  #=> "Book cover"
-  # 
+  #
   # Providing the functionality that ActiveModel::Naming provides in your object
   # is required to pass the ActiveModel Lint test.  So either extending the provided
   # method below, or rolling your own is required..

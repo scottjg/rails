@@ -121,7 +121,7 @@ class ValidatesWithTest < ActiveRecord::TestCase
     Topic.validates_with(validator, :if => "1 == 1", :foo => :bar)
     assert topic.valid?
   end
- 
+
   test "calls setup method of validator passing in self when validator has setup method" do
     topic = Topic.new
     validator = stub_everything
@@ -132,7 +132,7 @@ class ValidatesWithTest < ActiveRecord::TestCase
     Topic.validates_with(validator)
     assert topic.valid?
   end
-  
+
   test "doesn't call setup method of validator when validator has no setup method" do
     topic = Topic.new
     validator = stub_everything

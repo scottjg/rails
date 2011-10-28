@@ -473,7 +473,7 @@ module ActiveSupport
       def set_callback(name, *filter_list, &block)
         __update_callbacks(name, filter_list, block) do |chain, type, filters, options|
           filters.map! do |filter|
-            removed = chain.delete_if {|c| c.matches?(type, filter) } 
+            removed = chain.delete_if {|c| c.matches?(type, filter) }
             send("_removed_#{name}_callbacks").push(*removed)
             Callback.new(chain, filter, type, options.dup, self)
           end

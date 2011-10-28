@@ -134,9 +134,9 @@ module RailsGuides
         code_blocks << %{<div class="code_container"><code class="#{css_class}">#{es}</code></div>}
         "\ndirty_workaround_for_notextile_#{code_blocks.size - 1}\n"
       end
-      
+
       body = yield body
-      
+
       body.gsub(%r{<p>dirty_workaround_for_notextile_(\d+)</p>}) do |_|
         code_blocks[$1.to_i]
       end
@@ -146,7 +146,7 @@ module RailsGuides
       anchors = extract_anchors(html)
       check_fragment_identifiers(html, anchors)
     end
-    
+
     def extract_anchors(html)
       # Textile generates headers with IDs computed from titles.
       anchors = Set.new
@@ -162,7 +162,7 @@ module RailsGuides
       anchors += Set.new(html.scan(/<p\s+class="footnote"\s+id="([^"]+)/).flatten)
       return anchors
     end
-    
+
     def check_fragment_identifiers(html, anchors)
       html.scan(/<a\s+href="#([^"]+)/).flatten.each do |fragment_identifier|
         next if fragment_identifier == 'mainCol' # in layout, jumps to some DIV

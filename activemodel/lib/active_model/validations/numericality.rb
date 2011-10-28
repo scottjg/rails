@@ -44,7 +44,7 @@ module ActiveModel
               record.errors.add(attr_name, option, :default => options[:message], :value => value, :count => option_value)
             end
           end
-        end      
+        end
       end
 
     protected

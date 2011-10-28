@@ -19,7 +19,7 @@ class Stargate
   rescue_from NuclearExplosion do
     @result = 'alldead'
   end
-  
+
   rescue_from MadRonon do |e|
     @result = e.message
   end
@@ -56,14 +56,14 @@ class RescueableTest < Test::Unit::TestCase
     @stargate.dispatch :attack
     assert_equal 'killed', @stargate.result
   end
-  
+
   def test_rescue_from_with_block
     @stargate.dispatch :nuke
     assert_equal 'alldead', @stargate.result
   end
-  
+
   def test_rescue_from_with_block_with_args
     @stargate.dispatch :ronanize
     assert_equal 'dex', @stargate.result
-  end  
+  end
 end

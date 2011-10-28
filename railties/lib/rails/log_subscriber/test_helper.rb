@@ -8,7 +8,7 @@ module Rails
     #   class SyncLogSubscriberTest < ActiveSupport::TestCase
     #     include Rails::LogSubscriber::TestHelper
     #     Rails::LogSubscriber.add(:active_record, ActiveRecord::Railties::LogSubscriber.new)
-    # 
+    #
     #     def test_basic_query_logging
     #       Developer.all
     #       wait
@@ -16,12 +16,12 @@ module Rails
     #       assert_match /Developer Load/, @logger.logged(:debug).last
     #       assert_match /SELECT \* FROM "developers"/, @logger.logged(:debug).last
     #     end
-    # 
+    #
     #     class SyncLogSubscriberTest < ActiveSupport::TestCase
     #       include Rails::LogSubscriber::SyncTestHelper
     #       include LogSubscriberTest
     #     end
-    # 
+    #
     #     class AsyncLogSubscriberTest < ActiveSupport::TestCase
     #       include Rails::LogSubscriber::AsyncTestHelper
     #       include LogSubscriberTest

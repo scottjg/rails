@@ -1010,7 +1010,7 @@ module ActiveRecord
           end
           self.client_min_messages = @config[:min_messages] if @config[:min_messages]
           self.schema_search_path = @config[:schema_search_path] || @config[:schema_order]
-          
+
           # If using ActiveRecord's time zone support configure the connection to return
           # TIMESTAMP WITH ZONE types in UTC.
           execute("SET time zone 'UTC'") if ActiveRecord::Base.default_timezone == :utc

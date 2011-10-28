@@ -29,7 +29,7 @@ module Rails
   # This is useful because it avoids spanning several log subscribers just for logging
   # purposes(which slows down the main thread). Besides of providing a centralized
   # facility on top of Rails.logger.
-  # 
+  #
   # Log subscriber also has some helpers to deal with logging and automatically flushes
   # all logs when the request finishes (via action_dispatch.callback notification).
   class LogSubscriber

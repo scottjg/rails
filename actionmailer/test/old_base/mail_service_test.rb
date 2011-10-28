@@ -106,7 +106,7 @@ class TestMailer < ActionMailer::Base
     cc         "Foo áëô îü <extended@example.net>"
     bcc        "Foo áëô îü <extended@example.net>"
     charset    "utf-8"
-    
+
     body       "åœö blah"
   end
 
@@ -360,7 +360,7 @@ class ActionMailerTest < Test::Unit::TestCase
     assert_equal "text/plain", created.parts[0].parts[0].mime_type
     assert_equal "text/html", created.parts[0].parts[1].mime_type
     assert_equal "application/octet-stream", created.parts[1].mime_type
-    
+
   end
 
   def test_nested_parts_with_body
@@ -400,7 +400,7 @@ class ActionMailerTest < Test::Unit::TestCase
     created = nil
     assert_nothing_raised { created = TestMailer.signed_up(@recipient) }
     assert_not_nil created
-    
+
     expected.message_id = '<123@456>'
     created.message_id = '<123@456>'
 
@@ -507,7 +507,7 @@ class ActionMailerTest < Test::Unit::TestCase
     delivered = ActionMailer::Base.deliveries.first
     expected.message_id = '<123@456>'
     delivered.message_id = '<123@456>'
-    
+
     assert_equal expected.encoded, delivered.encoded
   end
 
@@ -550,10 +550,10 @@ class ActionMailerTest < Test::Unit::TestCase
       created = TestMailer.different_reply_to @recipient
     end
     assert_not_nil created
-    
+
     expected.message_id = '<123@456>'
     created.message_id = '<123@456>'
-    
+
     assert_equal expected.encoded, created.encoded
 
     assert_nothing_raised do
@@ -562,10 +562,10 @@ class ActionMailerTest < Test::Unit::TestCase
 
     delivered = ActionMailer::Base.deliveries.first
     assert_not_nil delivered
-    
+
     expected.message_id = '<123@456>'
     delivered.message_id = '<123@456>'
-    
+
     assert_equal expected.encoded, delivered.encoded
   end
 
@@ -586,7 +586,7 @@ class ActionMailerTest < Test::Unit::TestCase
       created = TestMailer.iso_charset @recipient
     end
     assert_not_nil created
-    
+
     expected.message_id = '<123@456>'
     created.message_id = '<123@456>'
 
@@ -601,7 +601,7 @@ class ActionMailerTest < Test::Unit::TestCase
 
     expected.message_id = '<123@456>'
     delivered.message_id = '<123@456>'
-    
+
     assert_equal expected.encoded, delivered.encoded
   end
 
@@ -636,7 +636,7 @@ class ActionMailerTest < Test::Unit::TestCase
 
     expected.message_id = '<123@456>'
     delivered.message_id = '<123@456>'
-    
+
     assert_equal expected.encoded, delivered.encoded
   end
 
@@ -766,10 +766,10 @@ EOF
 
     delivered = ActionMailer::Base.deliveries.first
     assert_not_nil delivered
-    
+
     expected.message_id = '<123@456>'
     delivered.message_id = '<123@456>'
-    
+
     assert_equal expected.encoded, delivered.encoded
   end
 
@@ -883,7 +883,7 @@ EOF
     assert_equal "iso-8859-1", mail.parts[1].charset
 
     assert_equal "image/jpeg", mail.parts[2].mime_type
-    
+
     assert_equal "attachment", mail.parts[2][:content_disposition].disposition_type
     assert_equal "foo.jpg", mail.parts[2][:content_disposition].filename
     assert_equal "foo.jpg", mail.parts[2][:content_type].filename
@@ -1001,7 +1001,7 @@ EOF
     attachment = mail.attachments.last
 
     expected = "01 Quien Te Dij\212at. Pitbull.mp3"
-    
+
     if expected.respond_to?(:force_encoding)
       result = attachment.filename.dup
       expected.force_encoding(Encoding::ASCII_8BIT)

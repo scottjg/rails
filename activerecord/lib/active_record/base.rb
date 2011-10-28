@@ -551,7 +551,7 @@ module ActiveRecord #:nodoc:
     class << self # Class methods
       def colorize_logging(*args)
         ActiveSupport::Deprecation.warn "ActiveRecord::Base.colorize_logging and " <<
-          "config.active_record.colorize_logging are deprecated. Please use " << 
+          "config.active_record.colorize_logging are deprecated. Please use " <<
           "Rails::LogSubscriber.colorize_logging or config.colorize_logging instead", caller
       end
       alias :colorize_logging= :colorize_logging

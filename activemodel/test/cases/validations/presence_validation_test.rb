@@ -53,7 +53,7 @@ class PresenceValidationTest < ActiveModel::TestCase
   ensure
     Person.reset_callbacks(:validate)
   end
-  
+
   def test_validates_presence_of_for_ruby_class_with_custom_reader
     CustomReader.validates_presence_of :karma
 

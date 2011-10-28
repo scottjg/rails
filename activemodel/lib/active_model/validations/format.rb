@@ -8,7 +8,7 @@ module ActiveModel
           record.errors.add(attribute, :invalid, :default => options[:message], :value => value)
         end
       end
-      
+
       def check_validity!
         unless options.include?(:with) ^ options.include?(:without)  # ^ == xor, or "exclusive or"
           raise ArgumentError, "Either :with or :without must be supplied (but not both)"

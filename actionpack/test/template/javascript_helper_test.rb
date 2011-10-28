@@ -16,7 +16,7 @@ class JavaScriptHelperTest < ActionView::TestCase
     ActiveSupport.escape_html_entities_in_json  = true
     @template = self
   end
-  
+
   def teardown
     ActiveSupport.escape_html_entities_in_json  = false
   end

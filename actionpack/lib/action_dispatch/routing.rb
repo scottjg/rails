@@ -15,7 +15,7 @@ module ActionDispatch
   #   match ':controller(/:action(/:id(.:format)))'
   #
   # This route states that it expects requests to consist of a
-  # <tt>:controller</tt> followed optionally by an <tt>:action</tt> that in 
+  # <tt>:controller</tt> followed optionally by an <tt>:action</tt> that in
   # turn is followed optionally by an <tt>:id</tt>, which in turn is followed
   # optionally by a <tt>:format</tt>
   #

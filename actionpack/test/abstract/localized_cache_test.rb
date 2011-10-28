@@ -2,7 +2,7 @@ require 'abstract_unit'
 
 module AbstractController
   module Testing
-  
+
     class CachedController < AbstractController::Base
       include AbstractController::Rendering
       include AbstractController::LocalizedCache

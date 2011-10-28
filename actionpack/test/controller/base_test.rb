@@ -78,7 +78,7 @@ class ControllerClassTests < ActiveSupport::TestCase
     assert_equal 'empty', EmptyController.controller_name
     assert_equal 'contained_empty', Submodule::ContainedEmptyController.controller_name
   end
- 
+
   def test_filter_parameter_logging
     parameters = []
     config = mock(:config => mock(:filter_parameters => parameters))

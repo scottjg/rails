@@ -55,7 +55,7 @@ module ActiveSupport
         end
         super
       end
-      
+
       def delete_if
         super
         sync_keys!

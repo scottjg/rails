@@ -4,41 +4,41 @@ require 'active_support/core_ext/hash/keys'
 require 'active_model/errors'
 
 module ActiveModel
-  
+
   # Provides a full validation framework to your objects.
-  # 
+  #
   # A minimal implementation could be:
-  # 
+  #
   #   class Person
   #     include ActiveModel::Validations
-  # 
+  #
   #     attr_accessor :first_name, :last_name
   #
   #     validates_each :first_name, :last_name do |record, attr, value|
   #       record.errors.add attr, 'starts with z.' if value.to_s[0] == ?z
   #     end
   #   end
-  # 
+  #
   # Which provides you with the full standard validation stack that you
   # know from ActiveRecord.
-  # 
+  #
   #   person = Person.new
   #   person.valid?
   #   #=> true
   #   person.invalid?
   #   #=> false
   #   person.first_name = 'zoolander'
-  #   person.valid?         
+  #   person.valid?
   #   #=> false
   #   person.invalid?
   #   #=> true
   #   person.errors
   #   #=> #<OrderedHash {:first_name=>["starts with z."]}>
-  # 
+  #
   # Note that ActiveModel::Validations automatically adds an +errors+ method
   # to your instances initialized with a new ActiveModel::Errors object, so
   # there is no need for you to add this manually.
-  # 
+  #
   module Validations
     extend ActiveSupport::Concern
     include ActiveSupport::Callbacks
@@ -56,7 +56,7 @@ module ActiveModel
       #
       #   class Person
       #     include ActiveModel::Validations
-      # 
+      #
       #     attr_accessor :first_name, :last_name
       #
       #     validates_each :first_name, :last_name do |record, attr, value|
@@ -90,7 +90,7 @@ module ActiveModel
       #
       #   class Comment
       #     include ActiveModel::Validations
-      # 
+      #
       #     validate :must_be_friends
       #
       #     def must_be_friends

@@ -24,7 +24,7 @@ module ActiveRecord
 
   module ConnectionAdapters #:nodoc:
     class SQLite3Adapter < SQLiteAdapter # :nodoc:
-      
+
       # Returns the current database encoding format as a string, eg: 'UTF-8'
       def encoding
         if @connection.respond_to?(:encoding)

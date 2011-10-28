@@ -10,7 +10,7 @@ class ConditionalValidationTest < ActiveModel::TestCase
   def teardown
     Topic.reset_callbacks(:validate)
   end
-  
+
   def test_if_validation_using_method_true
     # When the method returns true
     Topic.validates_length_of( :title, :maximum=>5, :too_long=>"hoo {{count}}", :if => :condition_is_true )

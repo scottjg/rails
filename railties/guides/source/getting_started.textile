@@ -1207,7 +1207,7 @@ class Post < ActiveRecord::Base
   validates_length_of :title, :minimum => 5
   has_many :comments, :dependent => :destroy
 end
-</ruby> 
+</ruby>
 
 h3. Building a Multi-Model Form
 

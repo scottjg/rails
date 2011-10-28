@@ -427,7 +427,7 @@ class BaseTest < ActiveSupport::TestCase
     mail = BaseMailer.html_only
     assert_equal('text/html', mail.mime_type)
   end
-  
+
   test "should set a content type if only has an plain text part" do
     mail = BaseMailer.plain_text_only
     assert_equal('text/plain', mail.mime_type)
@@ -468,7 +468,7 @@ class BaseTest < ActiveSupport::TestCase
     BaseMailer.welcome.deliver
     assert_equal(1, BaseMailer.deliveries.length)
   end
-  
+
   test "calling deliver, ActionMailer should yield back to mail to let it call :do_delivery on itself" do
     mail = Mail::Message.new
     mail.expects(:do_delivery).once
@@ -502,14 +502,14 @@ class BaseTest < ActiveSupport::TestCase
     mail = BaseMailer.welcome_from_another_path(['unknown/invalid', 'another.path/base_mailer'])
     assert_equal("Welcome from another path", mail.body.encoded)
   end
-  
+
   # Before and After hooks
-  
+
   class MyObserver
     def self.delivered_email(mail)
     end
   end
-  
+
   test "you can register an observer to the mail object that gets informed on email delivery" do
     ActionMailer::Base.register_observer(MyObserver)
     mail = BaseMailer.welcome

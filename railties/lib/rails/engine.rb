@@ -43,7 +43,7 @@ module Rails
     delegate :middleware, :paths, :root, :to => :config
 
     def load_tasks
-      super 
+      super
       config.paths.lib.tasks.to_a.sort.each { |ext| load(ext) }
     end
 

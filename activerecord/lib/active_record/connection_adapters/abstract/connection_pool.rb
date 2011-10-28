@@ -109,7 +109,7 @@ module ActiveRecord
       end
 
       # If a connection already exists yield it to the block.  If no connection
-      # exists checkout a connection, yield it to the block, and checkin the 
+      # exists checkout a connection, yield it to the block, and checkin the
       # connection when finished.
       def with_connection
         fresh_connection = true unless @reserved_connections[current_connection_id]

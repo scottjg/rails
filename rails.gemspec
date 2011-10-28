@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.email             = 'david@loudthinking.com'
   s.homepage          = 'http://www.rubyonrails.org'
   s.rubyforge_project = 'rails'
-  
+
   s.files = []
   s.require_path = []
 

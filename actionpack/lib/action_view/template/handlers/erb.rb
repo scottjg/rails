@@ -42,7 +42,7 @@ module ActionView
       self.erb_trim_mode = '-'
 
       self.default_format = Mime::HTML
-      
+
       cattr_accessor :erb_implementation
       self.erb_implementation = Erubis
 

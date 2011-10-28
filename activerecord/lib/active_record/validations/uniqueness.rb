@@ -158,7 +158,7 @@ module ActiveRecord
       #   ActiveRecord::ConnectionAdapters::SchemaStatements#add_index. In the
       #   rare case that a race condition occurs, the database will guarantee
       #   the field's uniqueness.
-      #   
+      #
       #   When the database catches such a duplicate insertion,
       #   ActiveRecord::Base#save will raise an ActiveRecord::StatementInvalid
       #   exception. You can either choose to let this error propagate (which
@@ -167,7 +167,7 @@ module ActiveRecord
       #   that the title already exists, and asking him to re-enter the title).
       #   This technique is also known as optimistic concurrency control:
       #   http://en.wikipedia.org/wiki/Optimistic_concurrency_control
-      #   
+      #
       #   Active Record currently provides no way to distinguish unique
       #   index constraint errors from other types of database errors, so you
       #   will have to parse the (database-specific) exception message to detect

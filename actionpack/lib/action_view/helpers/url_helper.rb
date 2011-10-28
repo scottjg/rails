@@ -117,7 +117,7 @@ module ActionView
       #   end
       #
       # ==== Options
-      # * <tt>:confirm => 'question?'</tt> - This will allow the unobtrusive JavaScript 
+      # * <tt>:confirm => 'question?'</tt> - This will allow the unobtrusive JavaScript
       #   driver to prompt with the question specified. If the user accepts, the link is
       #   processed normally, otherwise no action is taken.
       # * <tt>:method => symbol of HTTP verb</tt> - This modifier will dynamically
@@ -251,10 +251,10 @@ module ActionView
       # There are a few special +html_options+:
       # * <tt>:method</tt> - Specifies the anchor name to be appended to the path.
       # * <tt>:disabled</tt> - Specifies the anchor name to be appended to the path.
-      # * <tt>:confirm</tt> - This will use the unobtrusive JavaScript driver to 
+      # * <tt>:confirm</tt> - This will use the unobtrusive JavaScript driver to
       #   prompt with the question specified. If the user accepts, the link is
       #   processed normally, otherwise no action is taken.
-      # * <tt>:remote</tt> -  If set to true, will allow the Unobtrusive JavaScript drivers to control the 
+      # * <tt>:remote</tt> -  If set to true, will allow the Unobtrusive JavaScript drivers to control the
       #   submit behaviour. By default this behaviour is an ajax submit.
       #
       # ==== Examples
@@ -274,7 +274,7 @@ module ActionView
       #   #    </form>"
       #
       #
-      #   <%= button_to('Destroy', 'http://www.example.com', :confirm => 'Are you sure?', 
+      #   <%= button_to('Destroy', 'http://www.example.com', :confirm => 'Are you sure?',
       #             :method => "delete", :remote => true, :disable_with => 'loading...') %>
       #   # => "<form class='button-to' method='post' action='http://www.example.com' data-remote='true'>
       #   #       <div>

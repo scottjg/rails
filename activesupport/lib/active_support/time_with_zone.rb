@@ -35,7 +35,7 @@ module ActiveSupport
     def self.name
       'Time' # Report class name as 'Time' to thwart type checking
     end
-    
+
     include Comparable
     attr_reader :time_zone
 

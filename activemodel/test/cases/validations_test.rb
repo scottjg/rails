@@ -109,7 +109,7 @@ class ValidationsTest < ActiveModel::TestCase
     assert_equal %w(gotcha gotcha), t.errors[:title]
     assert_equal %w(gotcha gotcha), t.errors[:content]
   end
-  
+
   def test_validates_each_custom_reader
     hits = 0
     CustomReader.validates_each(:title, :content, [:title, :content]) do |record, attr|

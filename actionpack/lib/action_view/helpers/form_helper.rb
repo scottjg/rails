@@ -226,15 +226,15 @@ module ActionView
       #   <% end %>
       #
       # === Unobtrusive JavaScript
-      # 
-      # Specifying:  
-      #  
+      #
+      # Specifying:
+      #
       #    :remote => true
       #
       # in the options hash creates a form that will allow the unobtrusive JavaScript drivers to modify its
-      # behaviour. The expected default behaviour is an XMLHttpRequest in the background instead of the regular 
+      # behaviour. The expected default behaviour is an XMLHttpRequest in the background instead of the regular
       # POST arrangement, but ultimately the behaviour is the choice of the JavaScript driver implementor.
-      # Even though it's using JavaScript to serialize the form elements, the form submission will work just like 
+      # Even though it's using JavaScript to serialize the form elements, the form submission will work just like
       # a regular submission as viewed by the receiving side (all elements available in <tt>params</tt>).
       #
       # Example:
@@ -1111,7 +1111,7 @@ module ActionView
       #   <% form_for @post do |f| %>
       #     <%= f.submit %>
       #   <% end %>
-      # 
+      #
       # In the example above, if @post is a new record, it will use "Create Post" as
       # submit button label, otherwise, it uses "Update Post".
       #

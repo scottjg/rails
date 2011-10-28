@@ -31,7 +31,7 @@ module ActiveModel
           end
         end
       end
-        
+
       def validate_each(record, attribute, value)
         value = options[:tokenizer].call(value) if value.kind_of?(String)
 

@@ -60,7 +60,7 @@ class ActionMailerUrlTest < Test::Unit::TestCase
 
   def test_signed_up_with_url
     TestMailer.delivery_method = :test
-    
+
     ActionDispatch::Routing::Routes.draw do |map|
       map.connect ':controller/:action/:id'
       map.welcome 'welcome', :controller=>"foo", :action=>"bar"
@@ -84,7 +84,7 @@ class ActionMailerUrlTest < Test::Unit::TestCase
     assert_nothing_raised { TestMailer.signed_up_with_url(@recipient).deliver }
     assert_not_nil ActionMailer::Base.deliveries.first
     delivered = ActionMailer::Base.deliveries.first
-    
+
     delivered.message_id = '<123@456>'
     assert_equal expected.encoded, delivered.encoded
   end

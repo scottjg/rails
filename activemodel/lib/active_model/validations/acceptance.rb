@@ -10,12 +10,12 @@ module ActiveModel
           record.errors.add(attribute, :accepted, :default => options[:message])
         end
       end
-      
+
       def setup(klass)
         # Note: instance_methods.map(&:to_s) is important for 1.9 compatibility
         # as instance_methods returns symbols unlike 1.8 which returns strings.
         new_attributes = attributes.reject { |name| klass.instance_methods.map(&:to_s).include?("#{name}=") }
-        klass.send(:attr_accessor, *new_attributes)        
+        klass.send(:attr_accessor, *new_attributes)
       end
     end
 

@@ -6,9 +6,9 @@ module ActiveModel
         return if confirmed.nil? || value == confirmed
         record.errors.add(attribute, :confirmation, :default => options[:message])
       end
-      
+
       def setup(klass)
-        klass.send(:attr_accessor, *attributes.map { |attribute| :"#{attribute}_confirmation" })        
+        klass.send(:attr_accessor, *attributes.map { |attribute| :"#{attribute}_confirmation" })
       end
     end
 

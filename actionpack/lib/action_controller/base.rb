@@ -7,7 +7,7 @@ module ActionController
     include AbstractController::Translation
 
     include ActionController::Helpers
-    
+
     include ActionController::HideActions
     include ActionController::UrlFor
     include ActionController::Redirecting
