@@ -1027,6 +1027,8 @@ module ActionView
 
       def to_number_field_tag(field_type, options = {})
         options = options.stringify_keys
+        options['size'] = nil unless options.key?('size')
+
         if range = options.delete("in") || options.delete("within")
           options.update("min" => range.min, "max" => range.max)
         end
