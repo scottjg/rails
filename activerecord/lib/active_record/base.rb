@@ -406,6 +406,14 @@ module ActiveRecord #:nodoc:
         generated_feature_methods
       end
 
+      delegate :find, :first, :first!, :last, :last!, :all, :exists?, :any?, :many?, :to => :scoped
+      delegate :destroy, :destroy_all, :delete, :delete_all, :update, :update_all, :to => :scoped
+      delegate :find_each, :find_in_batches, :to => :scoped
+      delegate :select, :group, :order, :except, :reorder, :limit, :offset, :joins,
+               :where, :preload, :eager_load, :includes, :from, :lock, :readonly,
+               :having, :create_with, :uniq, :to => :scoped
+      delegate :count, :average, :minimum, :maximum, :sum, :calculate, :to => :scoped
+
       def generated_feature_methods
         @generated_feature_methods ||= begin
           mod = const_set(:GeneratedFeatureMethods, Module.new)
