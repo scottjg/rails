@@ -1847,7 +1847,7 @@ MSG
 
         @changed_attributes = {}
         attributes_from_column_definition.each do |attr, orig_value|
-          @changed_attributes[attr] = orig_value if field_changed?(attr, orig_value, @attributes[attr])
+          @changed_attributes[attr] = orig_value if _field_changed?(attr, orig_value, @attributes[attr])
         end
 
         @aggregation_cache = {}
