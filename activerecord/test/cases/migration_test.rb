@@ -121,6 +121,18 @@ if ActiveRecord::Base.connection.supports_migrations?
         assert_nothing_raised { Person.connection.add_index("people", %w(last_name first_name administrator), :name => "named_admin") }
         assert_nothing_raised { Person.connection.remove_index("people", :name => "named_admin") }
       end
+
+      # Selected adapters support index sort order
+      if current_adapter?(:SQLite3Adapter, :MysqlAdapter, :Mysql2Adapter, :PostgreSQLAdapter)
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name"], :order => {:last_name => :desc}) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name"]) }
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"], :order => {:last_name => :desc}) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name", "first_name"]) }
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"], :order => {:last_name => :desc, :first_name => :asc}) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name", "first_name"]) }
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"], :order => :desc) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name", "first_name"]) }
+      end
     end
 
     def test_index_symbol_names
@@ -1711,6 +1723,26 @@ if ActiveRecord::Base.connection.supports_migrations?
     end
 
   end # SexyMigrationsTest
+
+  class SexierMigrationsTest < ActiveRecord::TestCase
+    def test_create_table_with_column_without_block_parameter
+      Person.connection.create_table :testings, :force => true do
+        column :foo, :string
+      end
+      assert Person.connection.column_exists?(:testings, :foo, :string)
+    ensure
+      Person.connection.drop_table :testings rescue nil
+    end
+
+    def test_create_table_with_sexy_column_without_block_parameter
+      Person.connection.create_table :testings, :force => true do
+        integer :bar
+      end
+      assert Person.connection.column_exists?(:testings, :bar, :integer)
+    ensure
+      Person.connection.drop_table :testings rescue nil
+    end
+  end # SexierMigrationsTest
 
   class MigrationLoggerTest < ActiveRecord::TestCase
     def test_migration_should_be_run_without_logger

@@ -445,7 +445,9 @@ module ActiveRecord #:nodoc:
       delegate :first_or_create, :first_or_create!, :first_or_initialize, :to => :scoped
       delegate :destroy, :destroy_all, :delete, :delete_all, :update, :update_all, :to => :scoped
       delegate :find_each, :find_in_batches, :to => :scoped
-      delegate :select, :group, :order, :except, :reorder, :limit, :offset, :joins, :where, :preload, :eager_load, :includes, :from, :lock, :readonly, :having, :create_with, :to => :scoped
+      delegate :select, :group, :order, :except, :reorder, :limit, :offset, :joins,
+               :where, :preload, :eager_load, :includes, :from, :lock, :readonly,
+               :having, :create_with, :uniq, :to => :scoped
       delegate :count, :average, :minimum, :maximum, :sum, :calculate, :to => :scoped
 
       # Executes a custom SQL query against your database and returns all the results. The results will
@@ -1769,7 +1771,8 @@ MSG
       # Returns true if the specified +attribute+ has been set by the user or by a database load and is neither
       # nil nor empty? (the latter only applies to objects that respond to empty?, most notably Strings).
       def attribute_present?(attribute)
-        !_read_attribute(attribute).blank?
+        value = _read_attribute(attribute)
+        !value.nil? || (value.respond_to?(:empty?) && !value.empty?)
       end
 
       # Returns the column object for the named attribute.
