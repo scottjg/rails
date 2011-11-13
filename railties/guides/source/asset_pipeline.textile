@@ -234,6 +234,8 @@ The directives that work in the JavaScript files also work in stylesheets, obvio
 
 In this example +require_self+ is used. This puts the CSS contained within the file (if any) at the precise location of the +require_self+ call. If +require_self+ is called more than once, only the last call is respected.
 
+NOTE. If you want to use multiple Sass files, use the "Sass +@import+ rule":http://sass-lang.com/docs/yardoc/file.SASS_REFERENCE.html#import instead of the Sprockets directives. Using Sprockets directives all Sass files exist within their own scope, making variables or mixins only available within the document they were defined in.
+
 You can have as many manifest files as you need. For example the +admin.css+ and +admin.js+ manifest could contain the JS and CSS files that are used for the admin section of an application.
 
 The same remarks about ordering made above apply. In particular, you can specify individual files and they are compiled in the order specified:
@@ -347,7 +349,7 @@ bundle exec rake assets:precompile
 </plain>
 
 For faster asset precompiles, you can partially load your application by setting
-+config.assets.initialize_on_precompile+ to false, though in that case templates
++config.assets.initialize_on_precompile+ to false in +config/application.rb+, though in that case templates
 cannot see application objects or methods. *Heroku requires this to be false.*
 
 WARNING: If you set +config.assets.initialize_on_precompile+ to false, be sure to
@@ -436,7 +438,7 @@ location ~ ^/assets/ {
 }
 </plain>
 
-When files are precompiled, Sprockets also creates a "gzipped":http://en.wikipedia.org/wiki/Gzip (.gz) version of your assets. Web servers are typically configured to use a moderate compression ratio as a compromise, but since precompilation happens once Sprockets uses the maximum compression ratio, thus reducing the size of the data transfer to the minimum. One the other hand, web servers can be configured to serve compressed content directly from disk, rather than deflating non-compressed files themselves.
+When files are precompiled, Sprockets also creates a "gzipped":http://en.wikipedia.org/wiki/Gzip (.gz) version of your assets. Web servers are typically configured to use a moderate compression ratio as a compromise, but since precompilation happens once Sprockets uses the maximum compression ratio, thus reducing the size of the data transfer to the minimum. On the other hand, web servers can be configured to serve compressed content directly from disk, rather than deflating non-compressed files themselves.
 
 Nginx is able to do this automatically enabling +gzip_static+:
 
