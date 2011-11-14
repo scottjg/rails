@@ -1,5 +1,11 @@
 ## Rails 3.1.2 (unreleased) ##
 
+*   Update to sprockets 2.1.0
+
+    This version brings bug fixes for performance and caching.
+
+    *Guillermo Iguaran*
+
 *   Implement a workaround for a bug in ruby-1.9.3p0 where an error would be raised
     while attempting to convert a template from one encoding to another.
 
