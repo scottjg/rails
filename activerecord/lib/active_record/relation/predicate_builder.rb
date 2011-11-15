@@ -31,10 +31,10 @@ module ActiveRecord
               if values.empty?
                 attribute.eq nil
               else
-                attribute.in(values.compact).or attribute.eq(nil)
+                from_array_with_ranges(attribute, values).or attribute.eq(nil)
               end
             else
-              attribute.in(values)
+              from_array_with_ranges(attribute, values)
             end
 
           when Range, Arel::Relation
@@ -51,6 +51,18 @@ module ActiveRecord
       end
 
       predicates.flatten
+    end
+
+    def self.from_array_with_ranges(attribute, values)
+      ranges, other = values.partition { |v|
+        v.is_a?(Range) || v.is_a?(Arel::Relation)
+      }
+
+      if ranges.empty?
+        attribute.in(values)
+      else
+        attribute.in_any(ranges + [other])
+      end
     end
   end
 end

@@ -374,6 +374,14 @@ class FinderTest < ActiveRecord::TestCase
     assert_equal [1], Comment.find(:all, :conditions => { :id => 1..1, :post_id => 1..10 }).map(&:id).sort
   end
 
+  def test_find_on_hash_conditions_with_array_of_integers_and_ranges
+    assert_equal [1,2,3,11], Comment.find(:all, :conditions => { :post_id => [1..2, 7] }).map(&:id).sort
+    assert_equal [1,2,3], Comment.find(:all, :conditions => { :post_id => [1..2] }).map(&:id).sort
+    assert_equal [1,2,3], Comment.find(:all, :conditions => { :post_id => [1,2] }).map(&:id).sort
+    assert_equal [], Comment.find(:all, :conditions => { :post_id => nil }).map(&:id).sort
+    assert_equal [1,2,3,9,10,11], Comment.find(:all, :conditions => { :post_id => [1..2, 7, 5..5, nil, 14, 88] }).map(&:id).sort
+  end
+
   def test_find_on_multiple_hash_conditions
     assert Topic.find(1, :conditions => { :author_name => "David", :title => "The First Topic", :replies_count => 1, :approved => false })
     assert_raise(ActiveRecord::RecordNotFound) { Topic.find(1, :conditions => { :author_name => "David", :title => "The First Topic", :replies_count => 1, :approved => true }) }
