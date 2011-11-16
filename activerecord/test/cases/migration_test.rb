@@ -483,7 +483,7 @@ if ActiveRecord::Base.connection.supports_migrations?
 
       # Do a manual insertion
       if current_adapter?(:OracleAdapter)
-        Person.connection.execute "insert into people (id, wealth, created_at, updated_at) values (people_seq.nextval, 12345678901234567890.0123456789, 0, 0)"
+        Person.connection.execute "insert into people (id, wealth, created_at, updated_at) values (people_seq.nextval, 12345678901234567890.0123456789, sysdate, sysdate)"
       elsif current_adapter?(:OpenBaseAdapter) || (current_adapter?(:MysqlAdapter) && Mysql.client_version < 50003) #before mysql 5.0.3 decimals stored as strings
         Person.connection.execute "insert into people (wealth, created_at, updated_at) values ('12345678901234567890.0123456789', 0, 0)"
       elsif current_adapter?(:PostgreSQLAdapter)
@@ -1741,6 +1741,75 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert Person.connection.column_exists?(:testings, :bar, :integer)
     ensure
       Person.connection.drop_table :testings rescue nil
+    end
+
+    def test_create_table_should_not_have_mixed_syntax
+      assert_raise(NoMethodError) do
+        Person.connection.create_table :testings, :force => true do |t|
+          t.string :foo
+          integer :bar
+        end
+      end
+      assert_raise(NameError) do
+        Person.connection.create_table :testings, :force => true do
+          t.string :foo
+          integer :bar
+        end
+      end
+    end
+
+    def test_change_table_without_block_parameter_no_bulk
+      Person.connection.create_table :testings, :force => true do
+        string :foo
+      end
+      assert Person.connection.column_exists?(:testings, :foo, :string)
+
+      Person.connection.change_table :testings do
+        remove :foo
+        integer :bar
+      end
+
+      assert_equal %w(bar id), Person.connection.columns(:testings).map { |c| c.name }.sort
+    ensure
+      Person.connection.drop_table :testings rescue nil
+    end
+
+    if ActiveRecord::Base.connection.supports_bulk_alter?
+      def test_change_table_without_block_parameter_with_bulk
+        Person.connection.create_table :testings, :force => true do
+          string :foo
+        end
+        assert Person.connection.column_exists?(:testings, :foo, :string)
+
+        assert_queries(1) do
+          Person.connection.change_table(:testings, :bulk => true) do
+            integer :bar
+            string :foo_bar
+          end
+        end
+
+        assert_equal %w(bar foo foo_bar id), Person.connection.columns(:testings).map { |c| c.name }.sort
+      ensure
+        Person.connection.drop_table :testings rescue nil
+      end
+    end
+
+    def test_change_table_should_not_have_mixed_syntax
+      Person.connection.create_table :testings, :force => true do
+        string :foo
+      end
+      assert_raise(NoMethodError) do
+        Person.connection.change_table :testings do |t|
+          t.remove :foo
+          integer :bar
+        end
+      end
+      assert_raise(NameError) do
+        Person.connection.change_table :testings do
+          t.remove :foo
+          integer :bar
+        end
+      end
     end
   end # SexierMigrationsTest
 

@@ -123,8 +123,7 @@ namespace :test do
 
       unit_tests       = models.map { |model| "test/unit/#{File.basename(model, '.rb')}_test.rb" }
       functional_tests = controllers.map { |controller| "test/functional/#{File.basename(controller, '.rb')}_test.rb" }
-
-      unit_tests.uniq + functional_tests.uniq
+      (unit_tests + functional_tests).uniq.select { |file| File.exist?(file) }
     end
 
     t.libs << 'test'
