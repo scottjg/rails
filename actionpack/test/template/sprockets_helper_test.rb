@@ -44,54 +44,54 @@ class SprocketsHelperTest < ActionView::TestCase
     @controller ? @controller.config : @config
   end
 
-  test "asset_path" do
+  test "pipeline_path" do
     assert_match %r{/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
     assert_match %r{/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png", :digest => true)
+      pipeline_path("logo.png", :digest => true)
     assert_match %r{/assets/logo.png},
-      asset_path("logo.png", :digest => false)
+      pipeline_path("logo.png", :digest => false)
   end
 
   test "custom_asset_path" do
     @config.assets.prefix = '/s'
     assert_match %r{/s/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
     assert_match %r{/s/logo-[0-9a-f]+.png},
-      asset_path("logo.png", :digest => true)
+      pipeline_path("logo.png", :digest => true)
     assert_match %r{/s/logo.png},
-      asset_path("logo.png", :digest => false)
+      pipeline_path("logo.png", :digest => false)
   end
 
-  test "asset_path with root relative assets" do
+  test "pipeline_path with root relative assets" do
     assert_equal "/images/logo",
-      asset_path("/images/logo")
+      pipeline_path("/images/logo")
     assert_equal "/images/logo.gif",
-      asset_path("/images/logo.gif")
+      pipeline_path("/images/logo.gif")
 
     assert_equal "/dir/audio",
-      asset_path("/dir/audio")
+      pipeline_path("/dir/audio")
   end
 
-  test "asset_path with absolute urls" do
+  test "pipeline_path with absolute urls" do
     assert_equal "http://www.example.com/video/play",
-      asset_path("http://www.example.com/video/play")
+      pipeline_path("http://www.example.com/video/play")
     assert_equal "http://www.example.com/video/play.mp4",
-      asset_path("http://www.example.com/video/play.mp4")
+      pipeline_path("http://www.example.com/video/play.mp4")
   end
 
   test "with a simple asset host the url should default to protocol relative" do
     @controller.config.default_asset_host_protocol = :relative
     @controller.config.asset_host = "assets-%d.example.com"
     assert_match %r{^//assets-\d.example.com/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 
   test "with a simple asset host the url can be changed to use the request protocol" do
     @controller.config.asset_host = "assets-%d.example.com"
     @controller.config.default_asset_host_protocol = :request
     assert_match %r{http://assets-\d.example.com/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 
   test "With a proc asset host that returns no protocol the url should be protocol relative" do
@@ -100,7 +100,7 @@ class SprocketsHelperTest < ActionView::TestCase
       "assets-999.example.com"
     end
     assert_match %r{^//assets-999.example.com/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 
   test "with a proc asset host that returns a protocol the url use it" do
@@ -108,7 +108,7 @@ class SprocketsHelperTest < ActionView::TestCase
       "http://assets-999.example.com"
     end
     assert_match %r{http://assets-999.example.com/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 
   test "stylesheets served with a controller in scope can access the request" do
@@ -117,7 +117,7 @@ class SprocketsHelperTest < ActionView::TestCase
       "http://assets-666.example.com"
     end
     assert_match %r{http://assets-666.example.com/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 
   test "stylesheets served without a controller in scope cannot access the request" do
@@ -126,7 +126,7 @@ class SprocketsHelperTest < ActionView::TestCase
       fail "This should not have been called."
     end
     assert_raises ActionController::RoutingError do
-      asset_path("logo.png")
+      pipeline_path("logo.png")
     end
   end
 
@@ -165,38 +165,38 @@ class SprocketsHelperTest < ActionView::TestCase
     @config.perform_caching = true
 
     assert_match %r{/assets/logo-[0-9a-f]+.png},
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 
   test "asset path with relavtive url root" do
     @controller.config.relative_url_root = "/collaboration/hieraki"
     assert_equal "/collaboration/hieraki/images/logo.gif",
-     asset_path("/images/logo.gif")
+     pipeline_path("/images/logo.gif")
   end
 
   test "asset path with relative url root when controller isn't present but relative_url_root is" do
     @controller = nil
     @config.relative_url_root = "/collaboration/hieraki"
     assert_equal "/collaboration/hieraki/images/logo.gif",
-     asset_path("/images/logo.gif")
+     pipeline_path("/images/logo.gif")
   end
 
-  test "javascript path through asset_path" do
+  test "javascript path through pipeline_path" do
     assert_match %r{/assets/application-[0-9a-f]+.js},
-      asset_path(:application, :ext => "js")
+      pipeline_path(:application, :ext => "js")
 
     assert_match %r{/assets/xmlhr-[0-9a-f]+.js},
-      asset_path("xmlhr", :ext => "js")
+      pipeline_path("xmlhr", :ext => "js")
     assert_match %r{/assets/dir/xmlhr-[0-9a-f]+.js},
-      asset_path("dir/xmlhr.js", :ext => "js")
+      pipeline_path("dir/xmlhr.js", :ext => "js")
 
     assert_equal "/dir/xmlhr.js",
-      asset_path("/dir/xmlhr", :ext => "js")
+      pipeline_path("/dir/xmlhr", :ext => "js")
 
     assert_equal "http://www.example.com/js/xmlhr",
-      asset_path("http://www.example.com/js/xmlhr", :ext => "js")
+      pipeline_path("http://www.example.com/js/xmlhr", :ext => "js")
     assert_equal "http://www.example.com/js/xmlhr.js",
-      asset_path("http://www.example.com/js/xmlhr.js", :ext => "js")
+      pipeline_path("http://www.example.com/js/xmlhr.js", :ext => "js")
   end
 
   test "javascript include tag" do
@@ -228,17 +228,17 @@ class SprocketsHelperTest < ActionView::TestCase
       javascript_include_tag(:application)
   end
 
-  test "stylesheet path through asset_path" do
-    assert_match %r{/assets/application-[0-9a-f]+.css}, asset_path(:application, :ext => "css")
+  test "stylesheet path through pipeline_path" do
+    assert_match %r{/assets/application-[0-9a-f]+.css}, pipeline_path(:application, :ext => "css")
 
-    assert_match %r{/assets/style-[0-9a-f]+.css}, asset_path("style", :ext => "css")
-    assert_match %r{/assets/dir/style-[0-9a-f]+.css}, asset_path("dir/style.css", :ext => "css")
-    assert_equal "/dir/style.css", asset_path("/dir/style.css", :ext => "css")
+    assert_match %r{/assets/style-[0-9a-f]+.css}, pipeline_path("style", :ext => "css")
+    assert_match %r{/assets/dir/style-[0-9a-f]+.css}, pipeline_path("dir/style.css", :ext => "css")
+    assert_equal "/dir/style.css", pipeline_path("/dir/style.css", :ext => "css")
 
     assert_equal "http://www.example.com/css/style",
-      asset_path("http://www.example.com/css/style", :ext => "css")
+      pipeline_path("http://www.example.com/css/style", :ext => "css")
     assert_equal "http://www.example.com/css/style.css",
-      asset_path("http://www.example.com/css/style.css", :ext => "css")
+      pipeline_path("http://www.example.com/css/style.css", :ext => "css")
   end
 
   test "stylesheet link tag" do
@@ -281,14 +281,14 @@ class SprocketsHelperTest < ActionView::TestCase
 
   test "alternate asset prefix" do
     stubs(:asset_prefix).returns("/themes/test")
-    assert_match %r{/themes/test/style-[0-9a-f]+.css}, asset_path("style", :ext => "css")
+    assert_match %r{/themes/test/style-[0-9a-f]+.css}, pipeline_path("style", :ext => "css")
   end
 
   test "alternate asset environment" do
     assets = Sprockets::Environment.new
     assets.append_path(FIXTURES.join("sprockets/alternate/stylesheets"))
     stubs(:asset_environment).returns(assets)
-    assert_match %r{/assets/style-[0-9a-f]+.css}, asset_path("style", :ext => "css")
+    assert_match %r{/assets/style-[0-9a-f]+.css}, pipeline_path("style", :ext => "css")
   end
 
   test "alternate hash based on environment" do
@@ -296,10 +296,10 @@ class SprocketsHelperTest < ActionView::TestCase
     assets.version = 'development'
     assets.append_path(FIXTURES.join("sprockets/alternate/stylesheets"))
     stubs(:asset_environment).returns(assets)
-    dev_path = asset_path("style", :ext => "css")
+    dev_path = pipeline_path("style", :ext => "css")
 
     assets.version = 'production'
-    prod_path = asset_path("style", :ext => "css")
+    prod_path = pipeline_path("style", :ext => "css")
 
     assert_not_equal prod_path, dev_path
   end
@@ -309,6 +309,6 @@ class SprocketsHelperTest < ActionView::TestCase
     @config.assets.digest = false
 
     assert_equal '/assets/logo.png',
-      asset_path("logo.png")
+      pipeline_path("logo.png")
   end
 end
