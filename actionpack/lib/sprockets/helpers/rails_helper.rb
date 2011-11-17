@@ -26,10 +26,10 @@ module Sprockets
         sources.collect do |source|
           if debug && asset = asset_paths.asset_for(source, 'js')
             asset.to_a.map { |dep|
-              super(dep.to_s, { :src => asset_path(dep, :ext => 'js', :body => true, :digest => digest) }.merge!(options))
+              super(dep.to_s, { :src => pipeline_path(dep, :ext => 'js', :body => true, :digest => digest) }.merge!(options))
             }
           else
-            super(source.to_s, { :src => asset_path(source, :ext => 'js', :body => body, :digest => digest) }.merge!(options))
+            super(source.to_s, { :src => pipeline_path(source, :ext => 'js', :body => body, :digest => digest) }.merge!(options))
           end
         end.join("\n").html_safe
       end
@@ -43,32 +43,32 @@ module Sprockets
         sources.collect do |source|
           if debug && asset = asset_paths.asset_for(source, 'css')
             asset.to_a.map { |dep|
-              super(dep.to_s, { :href => asset_path(dep, :ext => 'css', :body => true, :protocol => :request, :digest => digest) }.merge!(options))
+              super(dep.to_s, { :href => pipeline_path(dep, :ext => 'css', :body => true, :protocol => :request, :digest => digest) }.merge!(options))
             }
           else
-            super(source.to_s, { :href => asset_path(source, :ext => 'css', :body => body, :protocol => :request, :digest => digest) }.merge!(options))
+            super(source.to_s, { :href => pipeline_path(source, :ext => 'css', :body => body, :protocol => :request, :digest => digest) }.merge!(options))
           end
         end.join("\n").html_safe
       end
 
-      def asset_path(source, options = {})
+      def pipeline_path(source, options = {})
         source = source.logical_path if source.respond_to?(:logical_path)
         path = asset_paths.compute_public_path(source, asset_prefix, options.merge(:body => true))
         options[:body] ? "#{path}?body=1" : path
       end
 
       def image_path(source)
-        asset_path(source)
+        pipeline_path(source)
       end
       alias_method :path_to_image, :image_path # aliased to avoid conflicts with an image_path named route
 
       def javascript_path(source)
-        asset_path(source)
+        pipeline_path(source)
       end
       alias_method :path_to_javascript, :javascript_path # aliased to avoid conflicts with an javascript_path named route
 
       def stylesheet_path(source)
-        asset_path(source)
+        pipeline_path(source)
       end
       alias_method :path_to_stylesheet, :stylesheet_path # aliased to avoid conflicts with an stylesheet_path named route
 
@@ -91,7 +91,7 @@ module Sprockets
       # If you only want to change where the assets are mounted, refer to
       # +config.assets.prefix+ instead.
       def asset_prefix
-        Rails.application.config.assets.prefix
+        Rails.application.config.assets.prefix || 'assets'
       end
 
       def asset_digests
