@@ -104,7 +104,6 @@ module ActionView
           args = [source]
           arity = arity_of(host)
           if arity > 1 && !has_request?
-            #invalid_asset_host!("Remove the second argument to your asset_host Proc if you do not need the request.")
             return nil
           end
           args << current_request if (arity > 1 || arity < 0) && has_request?
