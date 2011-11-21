@@ -139,11 +139,13 @@ module Rails
           <<-GEMFILE.strip_heredoc
             gem 'rails',     :path => '#{Rails::Generators::RAILS_DEV_PATH}'
             gem 'journey',   :git => 'git://github.com/rails/journey.git'
+            gem 'arel',      :git => 'git://github.com/rails/arel.git'
           GEMFILE
         elsif options.edge?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     :git => 'git://github.com/rails/rails.git'
             gem 'journey',   :git => 'git://github.com/rails/journey.git'
+            gem 'arel',      :git => 'git://github.com/rails/arel.git'
           GEMFILE
         else
           <<-GEMFILE.strip_heredoc
@@ -197,6 +199,7 @@ module Rails
           group :assets do
             gem 'sass-rails',   :git => 'git://github.com/rails/sass-rails.git'
             gem 'coffee-rails', :git => 'git://github.com/rails/coffee-rails.git'
+            #{"gem 'therubyrhino'\n" if defined?(JRUBY_VERSION)}
             gem 'uglifier', '>= 1.0.3'
           end
         GEMFILE

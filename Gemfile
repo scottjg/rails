@@ -4,6 +4,8 @@ gemspec
 
 if ENV['AREL']
   gem "arel", :path => ENV['AREL']
+else
+  gem "arel", :git => "git://github.com/rails/arel"
 end
 
 gem "bcrypt-ruby", "~> 3.0.0"
@@ -34,14 +36,11 @@ gem "memcache-client", ">= 1.8.5"
 
 platforms :mri_18 do
   gem "system_timer"
-  gem "ruby-debug", ">= 0.10.3" unless ENV['TRAVIS']
   gem "json"
 end
 
-platforms :mri_19 do
-  # TODO: Remove the conditional when ruby-debug19 supports Ruby >= 1.9.3
-  gem "ruby-debug19", :require => "ruby-debug" unless RUBY_VERSION > "1.9.2" || ENV['TRAVIS']
-end
+# Add your own local bundler stuff
+instance_eval File.read ".Gemfile" if File.exists? ".Gemfile"
 
 platforms :mri do
   group :test do
@@ -68,7 +67,6 @@ platforms :ruby do
 end
 
 platforms :jruby do
-  gem "ruby-debug", ">= 0.10.3"
   gem "json"
   gem "activerecord-jdbcsqlite3-adapter", ">= 1.2.0"
 

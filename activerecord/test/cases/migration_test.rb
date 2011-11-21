@@ -121,6 +121,18 @@ if ActiveRecord::Base.connection.supports_migrations?
         assert_nothing_raised { Person.connection.add_index("people", %w(last_name first_name administrator), :name => "named_admin") }
         assert_nothing_raised { Person.connection.remove_index("people", :name => "named_admin") }
       end
+
+      # Selected adapters support index sort order
+      if current_adapter?(:SQLite3Adapter, :MysqlAdapter, :Mysql2Adapter, :PostgreSQLAdapter)
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name"], :order => {:last_name => :desc}) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name"]) }
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"], :order => {:last_name => :desc}) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name", "first_name"]) }
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"], :order => {:last_name => :desc, :first_name => :asc}) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name", "first_name"]) }
+        assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"], :order => :desc) }
+        assert_nothing_raised { Person.connection.remove_index("people", ["last_name", "first_name"]) }
+      end
     end
 
     def test_index_symbol_names
@@ -471,7 +483,7 @@ if ActiveRecord::Base.connection.supports_migrations?
 
       # Do a manual insertion
       if current_adapter?(:OracleAdapter)
-        Person.connection.execute "insert into people (id, wealth, created_at, updated_at) values (people_seq.nextval, 12345678901234567890.0123456789, 0, 0)"
+        Person.connection.execute "insert into people (id, wealth, created_at, updated_at) values (people_seq.nextval, 12345678901234567890.0123456789, sysdate, sysdate)"
       elsif current_adapter?(:OpenBaseAdapter) || (current_adapter?(:MysqlAdapter) && Mysql.client_version < 50003) #before mysql 5.0.3 decimals stored as strings
         Person.connection.execute "insert into people (wealth, created_at, updated_at) values ('12345678901234567890.0123456789', 0, 0)"
       elsif current_adapter?(:PostgreSQLAdapter)
@@ -1626,91 +1638,6 @@ if ActiveRecord::Base.connection.supports_migrations?
       end
 
   end
-
-  class SexyMigrationsTest < ActiveRecord::TestCase
-    def test_references_column_type_adds_id
-      with_new_table do |t|
-        t.expects(:column).with('customer_id', :integer, {})
-        t.references :customer
-      end
-    end
-
-    def test_references_column_type_with_polymorphic_adds_type
-      with_new_table do |t|
-        t.expects(:column).with('taggable_type', :string, {})
-        t.expects(:column).with('taggable_id', :integer, {})
-        t.references :taggable, :polymorphic => true
-      end
-    end
-
-    def test_references_column_type_with_polymorphic_and_options_null_is_false_adds_table_flag
-      with_new_table do |t|
-        t.expects(:column).with('taggable_type', :string, {:null => false})
-        t.expects(:column).with('taggable_id', :integer, {:null => false})
-        t.references :taggable, :polymorphic => true, :null => false
-      end
-    end
-
-    def test_belongs_to_works_like_references
-      with_new_table do |t|
-        t.expects(:column).with('customer_id', :integer, {})
-        t.belongs_to :customer
-      end
-    end
-
-    def test_timestamps_creates_updated_at_and_created_at
-      with_new_table do |t|
-        t.expects(:column).with(:created_at, :datetime, kind_of(Hash))
-        t.expects(:column).with(:updated_at, :datetime, kind_of(Hash))
-        t.timestamps
-      end
-    end
-
-    def test_integer_creates_integer_column
-      with_new_table do |t|
-        t.expects(:column).with(:foo, 'integer', {})
-        t.expects(:column).with(:bar, 'integer', {})
-        t.integer :foo, :bar
-      end
-    end
-
-    def test_string_creates_string_column
-      with_new_table do |t|
-        t.expects(:column).with(:foo, 'string', {})
-        t.expects(:column).with(:bar, 'string', {})
-        t.string :foo, :bar
-      end
-    end
-
-    if current_adapter?(:PostgreSQLAdapter) || current_adapter?(:SQLite3Adapter) || current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter)
-      def test_xml_creates_xml_column
-        type = current_adapter?(:PostgreSQLAdapter) ? 'xml' : :text
-
-        with_new_table do |t|
-          t.expects(:column).with(:data, type, {})
-          t.xml :data
-        end
-      end
-    else
-      def test_xml_creates_xml_column
-        with_new_table do |t|
-          assert_raises(NotImplementedError) do
-            t.xml :data
-          end
-        end
-      end
-    end
-
-    protected
-    def with_new_table
-      Person.connection.create_table :delete_me, :force => true do |t|
-        yield t
-      end
-    ensure
-      Person.connection.drop_table :delete_me rescue nil
-    end
-
-  end # SexyMigrationsTest
 
   class MigrationLoggerTest < ActiveRecord::TestCase
     def test_migration_should_be_run_without_logger
