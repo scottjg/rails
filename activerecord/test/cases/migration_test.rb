@@ -588,14 +588,14 @@ class ChangeTableMigrationsTest < ActiveRecord::TestCase
 
   def test_remove_drops_single_column
     with_change_table do |t|
-      @connection.expects(:remove_column).with(:delete_me, [:bar])
+      @connection.expects(:remove_column).with(:delete_me, :bar)
       t.remove :bar
     end
   end
 
   def test_remove_drops_multiple_columns
     with_change_table do |t|
-      @connection.expects(:remove_column).with(:delete_me, [:bar, :baz])
+      @connection.expects(:remove_column).with(:delete_me, :bar, :baz)
       t.remove :bar, :baz
     end
   end
@@ -883,8 +883,8 @@ class CopyMigrationsTest < ActiveRecord::TestCase
   def test_skipping_migrations
     @migrations_path = MIGRATIONS_ROOT + "/valid_with_timestamps"
     @existing_migrations = Dir[@migrations_path + "/*.rb"]
-    
-    sources = {} 
+
+    sources = {}
     sources[:bukkits] = MIGRATIONS_ROOT + "/to_copy_with_timestamps"
     sources[:omg]     = MIGRATIONS_ROOT + "/to_copy_with_name_collision"
 
