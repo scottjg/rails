@@ -471,10 +471,23 @@ module Rails
       @routes
     end
 
+    def ordered_railties
+      railties.all
+    end
+
     def initializers
       initializers = []
-      railties.all { |r| initializers += r.initializers }
-      initializers += super
+
+      called_super = false
+      ordered_railties.each do |r|
+        if r == self
+          initializers += super
+          called_super = true
+        else
+          initializers += r.initializers
+        end
+      end
+      initializers += super unless called_super
       initializers
     end
 
