@@ -54,10 +54,10 @@ module ActionController
     #   redirect_to post_url(@post), :status => 301, :flash => { :updated_post_id => @post.id }
     #   redirect_to { :action=>'atom' }, :alert => "Something serious happened"
     #
-    # When using <tt>redirect_to :back</tt>, if there is no referrer, RedirectBackError will be raised. You may specify some fallback
-    # behavior for this case by rescuing RedirectBackError.
+    # When using <tt>redirect_to :back</tt>, if there is no referrer, ActionController::RedirectBackError will be raised. You may specify some fallback
+    # behavior for this case by rescuing ActionController::RedirectBackError.
     def redirect_to(options = {}, response_status = {}) #:doc:
-      raise ActionControllerError.new("Cannot redirect to nil!") if options.nil?
+      raise ActionControllerError.new("Cannot redirect to nil!") unless options
       raise AbstractController::DoubleRenderError if response_body
 
       self.status        = _extract_redirect_to_status(options, response_status)

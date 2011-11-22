@@ -17,6 +17,7 @@ require 'models/invoice'
 require 'models/line_item'
 require 'models/car'
 require 'models/bulb'
+require 'models/engine'
 
 class HasManyAssociationsTestForCountWithFinderSql < ActiveRecord::TestCase
   class Invoice < ActiveRecord::Base
@@ -37,6 +38,21 @@ class HasManyAssociationsTestForCountWithCountSql < ActiveRecord::TestCase
     assert_raise(ArgumentError) do
       Invoice.create.custom_line_items.count(:conditions => {:amount => 0})
     end
+  end
+end
+
+class HasManyAssociationsTestForCountDistinctWithFinderSql < ActiveRecord::TestCase
+  class Invoice < ActiveRecord::Base
+    has_many :custom_line_items, :class_name => 'LineItem', :finder_sql => "SELECT DISTINCT line_items.amount from line_items"
+  end
+
+  def test_should_count_distinct_results
+    invoice = Invoice.new
+    invoice.custom_line_items << LineItem.new(:amount => 0)
+    invoice.custom_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 1, invoice.custom_line_items.count
   end
 end
 
@@ -484,6 +500,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 0, authors(:mary).popular_grouped_posts.length
   end
 
+  def test_default_select
+    assert_equal Comment.column_names.sort, posts(:welcome).comments.first.attributes.keys.sort
+  end
+
+  def test_select_query_method
+    assert_equal ['id'], posts(:welcome).comments.select(:id).first.attributes.keys
+  end
+
   def test_adding
     force_signal37_to_load_all_clients_of_firm
     natural = Client.new("name" => "Natural Company")
@@ -847,6 +871,15 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_difference 'topic.reload.replies_count', -1 do
       topic.replies.clear
+    end
+  end
+
+  def test_clearing_updates_counter_cache_when_inverse_counter_cache_is_a_symbol_with_dependent_destroy
+    car = Car.first
+    car.engines.create!
+
+    assert_difference 'car.reload.engines_count', -1 do
+      car.engines.clear
     end
   end
 
@@ -1567,5 +1600,16 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     bulb = car.bulbs.build
 
     assert_equal car.id, bulb.attributes_after_initialize['car_id']
+  end
+
+  def test_replace
+    car = Car.create(:name => 'honda')
+    bulb1 = car.bulbs.create
+    bulb2 = Bulb.create
+
+    assert_equal [bulb1], car.bulbs
+    car.bulbs.replace([bulb2])
+    assert_equal [bulb2], car.bulbs
+    assert_equal [bulb2], car.reload.bulbs
   end
 end
