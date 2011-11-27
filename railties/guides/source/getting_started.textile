@@ -308,6 +308,14 @@ manually with the application.
 * The +test+ environment is used when running automated tests.
 * The +production+ environment is used when you deploy your application for the world to use.
 
+TIP: You don't have to update the database configurations manually. If you look at the
+options of the application generator, you will see that one of the options
+is named <tt>--database</tt>. This option allows you to choose an adapter from a
+list of the most used relational databases. You can even run the generator
+repeatedly: <tt>cd .. && rails new blog --database=mysql</tt>. When you confirm the overwriting
+ of the +config/database.yml+ file, your application will be configured for MySQL
+instead of SQLite.  Detailed examples of the common database connections are below.
+
 h5. Configuring an SQLite3 Database
 
 Rails comes with built-in support for "SQLite3":http://www.sqlite.org, which is
@@ -411,14 +419,6 @@ development:
 
 Change the username and password in the +development+ section as appropriate.
 
-TIP: You don't have to update the database configurations manually. If you look at the
-options of the application generator, you will see that one of the options
-is named <tt>--database</tt>. This option allows you to choose an adapter from a
-list of the most used relational databases. You can even run the generator
-repeatedly: <tt>cd .. && rails new blog --database=mysql</tt>. When you confirm the overwriting
- of the +config/database.yml+ file, your application will be configured for MySQL
-instead of SQLite.
-
 h4. Creating the Database
 
 Now that you have your database configured, it's time to have Rails create an
@@ -449,6 +449,8 @@ start a web server on your development machine. You can do this by running:
 <shell>
 $ rails server
 </shell>
+
+TIP: Compiling CoffeeScript to JavaScript requires a JavaScript runtime and the absence of a runtime will give you an +execjs+ error. Usually Mac OS X and Windows come with a JavaScript runtime installed. +therubyracer+ and +therubyrhino+ are the commonly used runtimes for Ruby and JRuby respectively. You can also investigate a list of runtimes at "ExecJS":https://github.com/sstephenson/execjs.
 
 This will fire up an instance of the WEBrick web server by default (Rails can
 also use several other web servers). To see your application in action, open a

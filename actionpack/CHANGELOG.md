@@ -1,5 +1,9 @@
 ## Rails 3.2.0 (unreleased) ##
 
+*   Refactor ActionDispatch::ShowExceptions. Controller is responsible for choice to show exceptions. *Sergey Nartimov*
+
+    It's possible to override +show_detailed_exceptions?+ in controllers to specify which requests should provide debugging information on errors.
+
 *   Responders now return 204 No Content for API requests without a response body (as in the new scaffold) *José Valim*
 
 *   Added ActionDispatch::RequestId middleware that'll make a unique X-Request-Id header available to the response and enables the ActionDispatch::Request#uuid method. This makes it easy to trace requests from end-to-end in the stack and to identify individual requests in mixed logs like Syslog *DHH*
@@ -62,7 +66,28 @@
     persistent between requests so if you need to manipulate the environment
     for your test you need to do it before the cookie jar is created.
 
+## Rails 3.1.3 (unreleased) ##
+
+*   Fix using `tranlate` helper with a html translation which uses the `:count` option for
+    pluralization.
+
+    *Jon Leighton*
+
 ## Rails 3.1.2 (unreleased) ##
+
+*   Fix XSS security vulnerability in the `translate` helper method. When using interpolation
+    in combination with HTML-safe translations, the interpolated input would not get HTML
+    escaped. *GH 3664*
+
+    Before:
+
+        translate('foo_html', :something => '<script>') # => "...<script>..."
+
+    After:
+
+        translate('foo_html', :something => '<script>') # => "...&lt;script&gt;..."
+
+    *Sergey Nartimov*
 
 *   Upgrade sprockets dependency to ~> 2.1.0
 

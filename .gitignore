@@ -24,7 +24,6 @@ railties/tmp
 .rvmrc
 .rbenv-version
 RDOC_MAIN.rdoc
-.DS_Store
 /.bundle
 /.rbenv-version
 /.rvmrc
