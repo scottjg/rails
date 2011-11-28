@@ -185,6 +185,13 @@ class TimeZoneTest < Test::Unit::TestCase
     assert_equal zone, twz.time_zone
   end
 
+  def test_parse_date_with_some_formatted_date_string
+    zone = ActiveSupport::TimeZone['Pacific Time (US & Canada)']
+    twz = zone.parse('Mon Nov 28 2011 09:00:00 GMT-0800 (PST)')
+    assert_equal [0,0,9,28,11,2011], twz.to_a[0,6]
+    assert_equal zone, twz.time_zone
+  end
+
   def test_parse_returns_nil_when_string_without_date_information_is_passed_in
     zone = ActiveSupport::TimeZone['Eastern Time (US & Canada)']
     assert_nil zone.parse('foobar')
