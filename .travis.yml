@@ -3,7 +3,6 @@ rvm:
   - 1.8.7
   - 1.9.3
 env:
-  - "GEM=ar:mysql2"
   - "GEM=ar:postgresql"
 notifications:
   email: false
