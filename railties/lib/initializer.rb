@@ -434,8 +434,10 @@ Run `rake gems:install` to install the missing gems.
     # and then establishes the connection.
     def initialize_database
       if configuration.frameworks.include?(:active_record)
-        ActiveRecord::Base.configurations = configuration.database_configuration
-        ActiveRecord::Base.establish_connection
+        # we don't need DB at all.
+        # PATCH -  remove any access to DB so we don't have to install sqlite everywhere        
+        # ActiveRecord::Base.configurations = configuration.database_configuration
+        # ActiveRecord::Base.establish_connection
       end
     end
 

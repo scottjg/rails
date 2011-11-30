@@ -20,7 +20,9 @@ class MissingSourceFile < LoadError #:nodoc:
   REGEXPS = [
     [/^no such file to load -- (.+)$/i, 1],
     [/^Missing \w+ (file\s*)?([^\s]+.rb)$/i, 2],
-    [/^Missing API definition file in (.+)$/i, 1]
+    [/^Missing API definition file in (.+)$/i, 1],
+    # ruby 1.9.3 changed the string used in LoadError, and Rails 2.3.14 gave up ruby193. We have to added it on our own.    
+    [/^cannot load such file -- (.+)$/i, 1] 
   ] unless defined?(REGEXPS)
 end
 
