@@ -1,3 +1,78 @@
+## Rails 3.1.4 (unreleased) ##
+
+*   Fix a custom primary key regression *GH 3987*
+
+*   Implemented ActiveRecord::Relation#pluck method
+
+    Method returns Array of column value from table under ActiveRecord model
+
+        Client.pluck(:id)
+
+    *Bogdan Gusiev*
+
+*   Automatic closure of connections in threads is deprecated.  For example
+    the following code is deprecated:
+
+    Thread.new { Post.find(1) }.join
+
+    It should be changed to close the database connection at the end of
+    the thread:
+
+    Thread.new {
+      Post.find(1)
+      Post.connection.close
+    }.join
+
+    Only people who spawn threads in their application code need to worry
+    about this change.
+
+*   Deprecated:
+
+      * `set_table_name`
+      * `set_inheritance_column`
+      * `set_sequence_name`
+      * `set_primary_key`
+      * `set_locking_column`
+
+    Use an assignment method instead. For example, instead of `set_table_name`, use `self.table_name=`:
+
+         class Project < ActiveRecord::Base
+           self.table_name = "project"
+         end
+
+    Or define your own `self.table_name` method:
+
+         class Post < ActiveRecord::Base
+           def self.table_name
+             "special_" + super
+           end
+         end
+         Post.table_name # => "special_posts"
+
+    *Jon Leighton*
+
+*   Perf fix (second try): don't load records for `has many :dependent =>
+    :delete_all` *GH 3672*
+
+    *Jon Leighton*
+
+*   Fix accessing `proxy_association` method from an association extension
+    where the calls are chained. *GH #3890*
+
+    (E.g. `post.comments.where(bla).my_proxy_method`)
+
+    *Jon Leighton*
+
+*   Perf fix: MySQL primary key lookup was still slow for very large
+    tables. *GH 3678*
+
+    *Kenny J*
+
+*   Perf fix: If a table has no primary key, don't repeatedly ask the database for it.
+
+    *Julius de Bruijn*
+
+>>>>>>> ded26b7... ActiveRecord::Relation#pluck method
 ## Rails 3.1.3 (unreleased) ##
 
 *   Perf fix: If we're deleting all records in an association, don't add a IN(..) clause
