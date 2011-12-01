@@ -12,6 +12,15 @@ class ConnectionPostgresqlTest < ActiveRecord::TestCase
     assert @connection.active?
   end
 
+  def test_set_spid_on_connect
+    assert_instance_of Fixnum, @connection.spid
+  end
+
+  def test_reset_spid_on_disconnect!
+    @connection.disconnect!
+    assert @connection.spid.nil?
+  end
+
   def test_be_able_to_disconnect_and_reconnect_at_will
     @connection.disconnect!
     assert !@connection.active?
