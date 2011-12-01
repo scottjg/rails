@@ -1084,6 +1084,18 @@ module ActiveRecord
         "DISTINCT #{columns}, #{order_columns * ', '}"
       end
 
+      # Provide the database statistics for all tables and indexes
+      def statistics
+        return select(<<-SQL, "Statistics")
+          SELECT relname AS name,
+                 reltuples AS rows,
+                 (relpages*8) AS kb,
+                 (relpages/(reltuples+1)*8*1024) AS average_row_size
+          FROM pg_class
+          ORDER BY reltuples DESC, relpages DESC
+        SQL
+      end
+
       def with_auto_reconnect
         begin
           yield
