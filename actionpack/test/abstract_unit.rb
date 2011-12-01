@@ -356,3 +356,5 @@ module RoutingTestHelpers
     set.send(:url_for, options.merge(:only_path => true, :_path_segments => recall))
   end
 end
+
+ActionView::Template.register_template_handler :ruby, :source.to_proc

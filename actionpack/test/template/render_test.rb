@@ -5,6 +5,21 @@ require 'controller/fake_models'
 class TestController < ActionController::Base
 end
 
+class Appendable
+  def initialize(hash)
+    @as = hash
+  end
+
+  def <<(other)
+    @as = [@as] unless @as.respond_to?(:<<)
+    @as << other.as
+  end
+
+  def as
+    @as
+  end
+end
+
 module RenderTestCases
   def setup_view(paths)
     @assigns = { :secret => 'in the sauce' }
@@ -308,9 +323,22 @@ module RenderTestCases
       "@output_buffer << 'source: #{template.source.inspect}'\n"
   end
 
+  def test_render_returning_an_array
+    assert_equal [1,2,3], @view.render(:inline => "[1,2,3]", :type => :ruby)
+  end
+
+  def test_render_partial_returning_object
+    assert_equal({ :name => "jose" }, @view.render("test/hash_customer", :customer => Customer.new("jose")).as)
+  end
+
+  def test_render_collection_returning_object
+    customers = [Customer.new("jose"), Customer.new("yehuda")]
+    rendered  = @view.render(:partial => "test/hash_customer", :collection => customers, :as => :customer)
+    assert_equal([{ :name => "jose" }, { :name => "yehuda"}], rendered.as)
+  end
+
   def test_render_inline_with_render_from_to_proc
-    ActionView::Template.register_template_handler :ruby_handler, :source.to_proc
-    assert_equal '3', @view.render(:inline => "(1 + 2).to_s", :type => :ruby_handler)
+    assert_equal '3', @view.render(:inline => "(1 + 2).to_s", :type => :ruby)
   end
 
   def test_render_inline_with_compilable_custom_type

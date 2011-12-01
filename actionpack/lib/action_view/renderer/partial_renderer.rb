@@ -232,12 +232,16 @@ module ActionView
     def render_collection
       return nil if @collection.blank?
 
+      initial = nil
+
       if @options.key?(:spacer_template)
-        spacer = find_template(@options[:spacer_template]).render(@view, @locals)
+        spacer  = find_template(@options[:spacer_template]).render(@view, @locals)
+        initial = []
       end
 
-      result = @template ? collection_with_template : collection_without_template
-      result.join(spacer).html_safe
+      result = @template ? collection_with_template(initial) : collection_without_template(initial)
+      result = result.join(spacer) if spacer
+      result.respond_to?(:html_safe) ? result.html_safe : result
     end
 
     def render_partial
@@ -328,23 +332,24 @@ module ActionView
       @lookup_context.find_template(path, prefixes, true, locals, @details)
     end
 
-    def collection_with_template
-      segments, locals, template = [], @locals, @template
-      as, counter = @variable, @variable_counter
+    def collection_with_template(initial)
+      segments, locals, template = initial, @locals, @template
+      view, as, counter = @view, @variable, @variable_counter
 
       locals[counter] = -1
 
       @collection.each do |object|
         locals[counter] += 1
         locals[as] = object
-        segments << template.render(@view, locals)
+        result = template.render(view, locals)
+        segments ? segments << result : (segments = result.dup)
       end
 
       segments
     end
 
-    def collection_without_template
-      segments, locals, collection_data = [], @locals, @collection_data
+    def collection_without_template(initial)
+      segments, locals, collection_data = initial, @locals, @collection_data
       index, template, cache = -1, nil, {}
       keys = @locals.keys
 
@@ -353,7 +358,8 @@ module ActionView
         template = (cache[path] ||= find_template(path, keys + data))
         locals[data[0]] = object
         locals[data[1]] = (index += 1)
-        segments << template.render(@view, locals)
+        result = template.render(@view, locals)
+        segments ? segments << result : (segments = result.dup)
       end
 
       @template = template
