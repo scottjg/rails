@@ -7,6 +7,7 @@ module ActionView
     config.action_view = ActiveSupport::OrderedOptions.new
     config.action_view.stylesheet_expansions = {}
     config.action_view.javascript_expansions = { :defaults => %w(jquery jquery_ujs) }
+    config.action_view.logger = Rails.logger
 
     initializer "action_view.cache_asset_ids" do |app|
       unless app.config.cache_classes

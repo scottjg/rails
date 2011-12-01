@@ -209,10 +209,6 @@ class TestController < ActionController::Base
     render :inline =>  "Hello: <%= request.host %>"
   end
 
-  def accessing_logger_in_template
-    render :inline =>  "<%= logger.class %>"
-  end
-
   def accessing_action_name_in_template
     render :inline =>  "<%= action_name %>"
   end
@@ -680,7 +676,6 @@ class RenderTest < ActionController::TestCase
     # a more accurate simulation of what happens in "real life".
     super
     @controller.logger = Logger.new(nil)
-
     @request.host = "www.nextangle.com"
   end
 
@@ -888,11 +883,6 @@ class RenderTest < ActionController::TestCase
   def test_access_to_request_in_view
     get :accessing_request_in_template
     assert_equal "Hello: www.nextangle.com", @response.body
-  end
-
-  def test_access_to_logger_in_view
-    get :accessing_logger_in_template
-    assert_equal "Logger", @response.body
   end
 
   # :ported:
