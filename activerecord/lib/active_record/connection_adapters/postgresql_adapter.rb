@@ -8,6 +8,9 @@ gem 'pg', '~> 0.11'
 require 'pg'
 
 module ActiveRecord
+  class LostConnection < WrappedDatabaseException
+  end
+
   class Base
     # Establishes a connection to the database that's used by all Active Record objects
     def self.postgresql_connection(config) # :nodoc:
@@ -26,6 +29,14 @@ module ActiveRecord
       # The postgres drivers don't allow the creation of an unconnected PGconn object,
       # so just pass a nil connection object for the time being.
       ConnectionAdapters::PostgreSQLAdapter.new(nil, logger, [host, port, nil, nil, database, username, password], config)
+    end
+
+    def self.did_retry_db_connection(connection,count)
+      logger.info "CONNECTION RETRY: #{connection.class.name} retry ##{count}."
+    end
+
+    def self.did_lose_db_connection(connection)
+      logger.info "CONNECTION LOST: #{connection.class.name}"
     end
   end
 
@@ -206,6 +217,7 @@ module ActiveRecord
     # * <tt>:min_messages</tt> - An optional client min messages that is used in a
     #   <tt>SET client_min_messages TO <min_messages></tt> call on the connection.
     class PostgreSQLAdapter < AbstractAdapter
+      cattr_accessor :auto_connect, :auto_connect_duration
       class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
         def xml(*args)
           options = args.extract_options!
@@ -247,6 +259,22 @@ module ActiveRecord
       def supports_statement_cache?
         true
       end
+
+      module Errors
+        LOST_CONNECTION_EXCEPTIONS  = ['PGError']
+        LOST_CONNECTION_MESSAGES    = [/no connection to the server/, /FATAL:  terminating connection due to administrator command/, /closed connection/, /server closed the connection unexpectedly/, /not connected/, /socket not open/]
+
+        def lost_connection_exceptions
+          exceptions = LOST_CONNECTION_EXCEPTIONS
+          @lost_connection_exceptions ||= exceptions ? exceptions.map{ |e| e.constantize rescue nil }.compact : []
+        end
+
+        def lost_connection_messages
+          LOST_CONNECTION_MESSAGES
+        end
+      end
+
+      include Errors
 
       class StatementPool < ConnectionAdapters::StatementPool
         def initialize(connection, max)
@@ -327,9 +355,20 @@ module ActiveRecord
 
       # Close then reopen the connection.
       def reconnect!
-        clear_cache!
-        @connection.reset
-        configure_connection
+        disable_auto_reconnect do
+          begin
+            clear_cache!
+            @connection.reset
+          rescue *lost_connection_exceptions => e
+            if e.message =~ Regexp.union(*lost_connection_messages)
+              @statements.send(:cache).clear
+              connect
+            end
+          else
+            configure_connection
+          end
+        end
+        active?
       end
 
       def reset!
@@ -356,6 +395,14 @@ module ActiveRecord
       # Does PostgreSQL support finding primary key on non-Active Record tables?
       def supports_primary_key? #:nodoc:
         true
+      end
+
+      def auto_connect
+        @@auto_connect.is_a?(FalseClass) ? false : true
+      end
+
+      def auto_connect_duration
+        @@auto_connect_duration ||= 10
       end
 
       # Enable standard-conforming strings if available.
@@ -569,16 +616,20 @@ module ActiveRecord
 
       # Queries the database and returns the results in an Array-like object
       def query(sql, name = nil) #:nodoc:
-        log(sql, name) do
-          result_as_array @connection.async_exec(sql)
+        with_auto_reconnect do
+          log(sql, name) do
+            result_as_array @connection.async_exec(sql)
+          end
         end
       end
 
       # Executes an SQL statement, returning a PGresult object on success
       # or raising a PGError exception otherwise.
       def execute(sql, name = nil)
-        log(sql, name) do
-          @connection.async_exec(sql)
+        with_auto_reconnect do
+          log(sql, name) do
+            @connection.async_exec(sql)
+          end
         end
       end
 
@@ -632,12 +683,12 @@ module ActiveRecord
 
       # Commits a transaction.
       def commit_db_transaction
-        execute "COMMIT"
+        disable_auto_reconnect { execute "COMMIT" }
       end
 
       # Aborts a transaction.
       def rollback_db_transaction
-        execute "ROLLBACK"
+        disable_auto_reconnect { execute "ROLLBACK" }
       end
 
       def outside_transaction?
@@ -645,15 +696,15 @@ module ActiveRecord
       end
 
       def create_savepoint
-        execute("SAVEPOINT #{current_savepoint_name}")
+        disable_auto_reconnect { execute("SAVEPOINT #{current_savepoint_name}") }
       end
 
       def rollback_to_savepoint
-        execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+        disable_auto_reconnect { execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}") }
       end
 
       def release_savepoint
-        execute("RELEASE SAVEPOINT #{current_savepoint_name}")
+        disable_auto_reconnect { execute("RELEASE SAVEPOINT #{current_savepoint_name}") }
       end
 
       # SCHEMA STATEMENTS ========================================
@@ -981,6 +1032,41 @@ module ActiveRecord
         "DISTINCT #{columns}, #{order_columns * ', '}"
       end
 
+      def with_auto_reconnect
+        begin
+          yield
+        rescue Exception => e
+          case translate_exception(e,e.message)
+            when LostConnection; retry if auto_reconnected?
+          end
+          raise
+        end
+      end
+
+     def disable_auto_reconnect
+        old_auto_connect, self.class.auto_connect = self.class.auto_connect, false
+        yield
+      ensure
+        self.class.auto_connect = old_auto_connect
+      end
+
+      def auto_reconnected?
+        return false unless auto_connect
+        return false if self.open_transactions > 0 # don't switch connection if in the middle of a transaction
+        @auto_connecting = true
+        count = 0
+        while count <= (auto_connect_duration / 2)
+          sleep 2** count
+          ActiveRecord::Base.did_retry_db_connection(self,count)
+          return true if reconnect!
+          count += 1
+        end
+        ActiveRecord::Base.did_lose_db_connection(self)
+        false
+      ensure
+        @auto_connecting = false
+      end
+
       protected
         # Returns the version of the connected PostgreSQL server.
         def postgresql_version
@@ -993,6 +1079,8 @@ module ActiveRecord
             RecordNotUnique.new(message, exception)
           when /violates foreign key constraint/
             InvalidForeignKey.new(message, exception)
+          when *lost_connection_messages
+            LostConnection.new(message,exception)
           else
             super
           end
@@ -1000,25 +1088,29 @@ module ActiveRecord
 
       private
       def exec_no_cache(sql, binds)
-        @connection.async_exec(sql)
+        with_auto_reconnect do
+          @connection.async_exec(sql)
+        end
       end
 
       def exec_cache(sql, binds)
-        unless @statements.key? sql
-          nextkey = @statements.next_key
-          @connection.prepare nextkey, sql
-          @statements[sql] = nextkey
+        with_auto_reconnect do
+          unless @statements.key? sql
+            nextkey = @statements.next_key
+            @connection.prepare nextkey, sql
+            @statements[sql] = nextkey
+          end
+
+          key = @statements[sql]
+
+          # Clear the queue
+          @connection.get_last_result
+          @connection.send_query_prepared(key, binds.map { |col, val|
+            type_cast(val, col)
+          })
+          @connection.block
+          @connection.get_last_result
         end
-
-        key = @statements[sql]
-
-        # Clear the queue
-        @connection.get_last_result
-        @connection.send_query_prepared(key, binds.map { |col, val|
-          type_cast(val, col)
-        })
-        @connection.block
-        @connection.get_last_result
       end
 
         # The internal PostgreSQL identifier of the money data type.
@@ -1036,7 +1128,7 @@ module ActiveRecord
           # should know about this but can't detect it there, so deal with it here.
           PostgreSQLColumn.money_precision = (postgresql_version >= 80300) ? 19 : 10
 
-          configure_connection
+          disable_auto_reconnect { configure_connection }
         end
 
         # Configures the encoding, verbosity, schema search path, and time zone of the connection.
