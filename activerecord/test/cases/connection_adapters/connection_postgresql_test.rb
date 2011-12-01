@@ -12,6 +12,10 @@ class ConnectionPostgresqlTest < ActiveRecord::TestCase
     assert @connection.active?
   end
 
+  def test_database_version_returns_a_version_string
+    assert_match /PostgreSQL\s+\d/i, @connection.database_version
+  end
+
   def test_set_spid_on_connect
     assert_instance_of Fixnum, @connection.spid
   end
