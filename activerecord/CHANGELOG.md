@@ -1,5 +1,61 @@
 ## Rails 3.2.0 (unreleased) ##
 
+
+*   Implemented ActiveRecord::Relation#pluck method
+
+    Method returns Array of column value from table under ActiveRecord model
+        
+        Client.pluck(:id)
+
+    *Bogdan Gusiev*
+
+*   Automatic closure of connections in threads is deprecated.  For example
+    the following code is deprecated:
+
+    Thread.new { Post.find(1) }.join
+
+    It should be changed to close the database connection at the end of
+    the thread:
+
+    Thread.new {
+      Post.find(1)
+      Post.connection.close
+    }.join
+    
+    Only people who spawn threads in their application code need to worry
+    about this change.
+
+*   Deprecated:
+
+      * `set_table_name`
+      * `set_inheritance_column`
+      * `set_sequence_name`
+      * `set_primary_key`
+      * `set_locking_column`
+
+    Use an assignment method instead. For example, instead of `set_table_name`, use `self.table_name=`:
+
+         class Project < ActiveRecord::Base
+           self.table_name = "project"
+         end
+
+    Or define your own `self.table_name` method:
+
+         class Post < ActiveRecord::Base
+           def self.table_name
+             "special_" + super
+           end
+         end
+         Post.table_name # => "special_posts"
+
+    *Jon Leighton*
+
+*   Generated association methods are created within a separate module to allow overriding and
+    composition using `super`. For a class named `MyModel`, the module is named
+    `MyModel::GeneratedFeatureMethods`. It is included into the model class immediately after
+    the `generated_attributes_methods` module defined in ActiveModel, so association methods
+    override attribute methods of the same name. *Josh Susser*
+
 *   Implemented ActiveRecord::Relation#explain. *fxn*
 
 *   Add ActiveRecord::Relation#uniq for generating unique queries.

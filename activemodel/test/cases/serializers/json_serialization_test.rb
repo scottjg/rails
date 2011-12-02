@@ -5,7 +5,7 @@ require 'active_support/core_ext/object/instance_variables'
 
 class Contact
   extend ActiveModel::Naming
-  include ActiveModel::Serializable::JSON
+  include ActiveModel::Serializers::JSON
   include ActiveModel::Validations
 
   def attributes=(hash)
@@ -14,9 +14,11 @@ class Contact
     end
   end
 
+  remove_method :attributes if method_defined?(:attributes)
+
   def attributes
     instance_values
-  end unless method_defined?(:attributes)
+  end
 end
 
 class JsonSerializationTest < ActiveModel::TestCase

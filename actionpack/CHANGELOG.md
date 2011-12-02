@@ -1,5 +1,23 @@
 ## Rails 3.2.0 (unreleased) ##
 
+*   Allow rescue responses to be configured through a railtie as in `config.action_dispatch.rescue_responses`. Please look at ActiveRecord::Railtie for an example *José Valim*
+
+*   Allow fresh_when/stale? to take a record instead of an options hash *DHH*
+
+*   Assets should use the request protocol by default or default to relative if no request is available *Jonathan del Strother*
+
+*   Log "Filter chain halted as CALLBACKNAME rendered or redirected" every time a before callback halts *José Valim*
+
+*   You can provide a namespace for your form to ensure uniqueness of id attributes on form elements.
+    The namespace attribute will be prefixed with underscore on the generate HTML id. *Vasiliy Ermolovich*
+
+    Example:
+
+        <%= form_for(@offer, :namespace => 'namespace') do |f| %>
+          <%= f.label :version, 'Version' %>:
+          <%= f.text_field :version %>
+        <% end %>
+
 *   Refactor ActionDispatch::ShowExceptions. Controller is responsible for choice to show exceptions. *Sergey Nartimov*
 
     It's possible to override +show_detailed_exceptions?+ in controllers to specify which requests should provide debugging information on errors.

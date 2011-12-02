@@ -53,6 +53,12 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert Boolean.find(b4.id).attribute_present?(:value)
   end
 
+  def test_caching_nil_primary_key
+    klass = Class.new(Minimalistic)
+    klass.expects(:reset_primary_key).returns(nil).once
+    2.times { klass.primary_key }
+  end
+
   def test_attribute_keys_on_new_instance
     t = Topic.new
     assert_equal nil, t.title, "The topics table has a title column, so it should be nil"
@@ -106,6 +112,11 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_respond_to topic, "attribute_names"
     assert !topic.respond_to?("nothingness")
     assert !topic.respond_to?(:nothingness)
+  end
+
+  def test_deprecated_underscore_method
+    topic = Topic.find(1)
+    assert_equal topic.title, assert_deprecated { topic._title }
   end
 
   def test_respond_to_with_custom_primary_key
@@ -675,7 +686,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic = Topic.new(:id => 5)
     topic.id = 5
 
-    topic.method(:id).owner.send(:remove_method, :id)
+    topic.method(:id).owner.send(:undef_method, :id)
 
     assert_deprecated do
       assert_equal 5, topic.id
@@ -686,15 +697,11 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   private
   def cached_columns
-    @cached_columns ||= (time_related_columns_on_topic + serialized_columns_on_topic).map(&:name)
+    @cached_columns ||= time_related_columns_on_topic.map(&:name)
   end
 
   def time_related_columns_on_topic
     Topic.columns.select { |c| c.type.in?([:time, :date, :datetime, :timestamp]) }
-  end
-
-  def serialized_columns_on_topic
-    Topic.columns.select { |c| Topic.serialized_attributes.include?(c.name) }
   end
 
   def in_time_zone(zone)
