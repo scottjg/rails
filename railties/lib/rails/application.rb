@@ -34,9 +34,10 @@ module Rails
   # The Application is also responsible for building the middleware stack.
   #
   class Application < Engine
-    autoload :Bootstrap,      'rails/application/bootstrap'
+    require 'rails/application/bootstrap'
+    require 'rails/application/finisher'
+
     autoload :Configuration,  'rails/application/configuration'
-    autoload :Finisher,       'rails/application/finisher'
     autoload :Railties,       'rails/application/railties'
     autoload :RoutesReloader, 'rails/application/routes_reloader'
 

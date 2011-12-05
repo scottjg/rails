@@ -533,14 +533,9 @@ module Rails
     #
     # This needs to be an initializer, since it needs to run once
     # per engine and get the engine as a block parameter
-    initializer :set_autoload_paths, :before => :bootstrap_hook do |app|
-      ActiveSupport::Dependencies.autoload_paths.unshift(*_all_autoload_paths)
-      ActiveSupport::Dependencies.autoload_once_paths.unshift(*_all_autoload_once_paths)
-
-      # Freeze so future modifications will fail rather than do nothing mysteriously
-      config.autoload_paths.freeze
-      config.eager_load_paths.freeze
-      config.autoload_once_paths.freeze
+    initializer :set_autoload_paths do |app|
+      app.config.all_autoload_paths.unshift(*_all_autoload_paths)
+      app.config.all_autoload_once_paths.unshift(*_all_autoload_once_paths)
     end
 
     initializer :add_routing_paths do |app|
@@ -583,10 +578,8 @@ module Rails
       end
     end
 
-    initializer :load_config_initializers do
-      config.paths["config/initializers"].existent.sort.each do |initializer|
-        load(initializer)
-      end
+    initializer :load_config_initializers do |app|
+      app.config.all_initializers.concat config.paths["config/initializers"].existent.sort
     end
 
     initializer :engines_blank_point do

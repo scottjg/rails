@@ -11,7 +11,8 @@ module Rails
                     :force_ssl, :helpers_paths, :logger, :log_tags, :preload_frameworks,
                     :reload_plugins, :secret_token, :serve_static_assets,
                     :ssl_options, :static_cache_control, :session_options,
-                    :time_zone, :whiny_nils, :railties_order
+                    :time_zone, :whiny_nils, :railties_order,
+                    :all_initializers, :all_autoload_paths, :all_autoload_once_paths
 
       attr_writer :log_level
       attr_reader :encoding
@@ -36,6 +37,10 @@ module Rails
         @generators                  = app_generators
         @cache_store                 = [ :file_store, "#{root}/tmp/cache/" ]
         @railties_order              = [:all]
+
+        @all_initializers            = []
+        @all_autoload_paths          = []
+        @all_autoload_once_paths     = []
 
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled                  = false

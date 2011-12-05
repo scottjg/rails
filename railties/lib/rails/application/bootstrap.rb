@@ -1,5 +1,8 @@
-require "active_support/notifications"
 require "active_support/dependencies"
+# Default to require until we start to load user code
+ActiveSupport::Dependencies.mechanism = :require
+
+require "active_support/notifications"
 require "active_support/descendants_tracker"
 
 module Rails
@@ -56,12 +59,6 @@ module Rails
           ActiveSupport::DescendantsTracker.clear
           ActiveSupport::Dependencies.clear
         end
-      end
-
-      # Sets the dependency loading mechanism.
-      # TODO: Remove files from the $" and always use require.
-      initializer :initialize_dependency_mechanism, :group => :all do
-        ActiveSupport::Dependencies.mechanism = config.cache_classes ? :require : :load
       end
 
       initializer :bootstrap_hook, :group => :all do |app|

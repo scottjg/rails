@@ -4,6 +4,21 @@ module Rails
       include Initializable
       $rails_rake_task = nil
 
+      # Sets the dependency loading mechanism.
+      # TODO: Remove files from the $" and always use require.
+      initializer :initialize_dependency_mechanism, :group => :all do
+        ActiveSupport::Dependencies.mechanism = config.cache_classes ? :require : :load
+      end
+
+      initializer :set_all_autoload_paths do
+        ActiveSupport::Dependencies.autoload_paths.concat(config.all_autoload_paths)
+        ActiveSupport::Dependencies.autoload_once_paths.concat(config.all_autoload_once_paths)
+      end
+
+      initializer :load_all_config_initializers do
+        config.all_initializers.each { |init| load(init) }
+      end
+
       initializer :add_generator_templates do
         config.generators.templates.unshift(*paths["lib/templates"].existent)
       end
