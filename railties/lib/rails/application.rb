@@ -33,6 +33,46 @@ module Rails
   #
   # The Application is also responsible for building the middleware stack.
   #
+  # == Booting process
+  #
+  # The booting process, from the moment you require "config/application.rb" in your
+  # app, goes like this:
+  #
+  #   1)  require "config/boot.rb" to setup load paths
+  #   2)  require railties and engines
+  #   3)  Define Rails.application as "class MyApp::Application < Rails::Application"
+  #   4)  Run config.before_configuration callbacks
+  #   5)  Load config/environments/ENV.rb
+  #   6)  Run config.before_initialize callbacks
+  #   7)  Run Railtie#initializer defined by railties, engines and application
+  #   8)  Set ActiveSupport::Dependencies.autoload_paths.
+  #       From this point on, accessing models, controllers and so on is possible.
+  #   9)  Run config.before_initializers callbacks
+  #   10) Run config/initializers/* and plugin's init.rb
+  #   11) Run config.after_initializers callbacks
+  #   12) Build the middleware stack and run to_prepare callbacks
+  #   13) Run config.before_eager_load and eager_load if cache classes is true
+  #   14) Run config.after_initialize callbacks
+  #
+  # Notice that, models, controllers and other autoloaded entities are just available
+  # right before loading config/initializers/*. That said, trying to reference a
+  # model in an `Engine#initializer` is going to fail:
+  #
+  #     class MyEngine < Rails::Engine
+  #       initializer "my_engine.register_user" do
+  #         MyEngine.register User
+  #       end
+  #     end
+  #
+  # To solve the problem, the initializer could be moved to "config/initializers" inside
+  # the engine or moved to a config.before_initializers or config.after_initializers callback:
+  #
+  #     class MyEngine < Rails::Engine
+  #       config.after_initializers do
+  #         MyEngine.register User
+  #       end
+  #     end
+  #
   class Application < Engine
     require 'rails/application/bootstrap'
     require 'rails/application/finisher'

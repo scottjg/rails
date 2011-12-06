@@ -31,18 +31,33 @@ module Rails
         ActiveSupport.on_load(:before_configuration, :yield => true, &block)
       end
 
-      # Third configurable block to run. Does not run if config.cache_classes
+      # Second configurable block to run. Called before railties initialize.
+      def before_initialize(&block)
+        ActiveSupport.on_load(:before_initialize, :yield => true, &block)
+      end
+
+      # Third configurable block to run. Invoked after autoload paths are set
+      # but exactly before initializers (config/initializers/* and plugins
+      # init.rb) are run.
+      def before_initializers(&block)
+        ActiveSupport.on_load(:before_initializers, :yield => true, &block)
+      end
+
+      # Fourth configurable block to run. Invoked after all initializers
+      # are executed.
+      def after_initializers(&block)
+        ActiveSupport.on_load(:after_initializers, :yield => true, &block)
+      end
+
+      # Fifth configurable block to run. Does not run if config.cache_classes
       # set to false.
       def before_eager_load(&block)
         ActiveSupport.on_load(:before_eager_load, :yield => true, &block)
       end
 
-      # Second configurable block to run. Called before frameworks initialize.
-      def before_initialize(&block)
-        ActiveSupport.on_load(:before_initialize, :yield => true, &block)
-      end
-
-      # Last configurable block to run. Called after frameworks initialize.
+      # Last configurable block to run. Called after railties initialize.
+      # At this point, the middleware stack was built, prepare callbacks
+      # were executed, eager load already happened.
       def after_initialize(&block)
         ActiveSupport.on_load(:after_initialize, :yield => true, &block)
       end

@@ -71,15 +71,9 @@ module Rails
       autoload.concat paths["lib"].existent
     end
 
-    initializer :load_init_rb, :before => :load_config_initializers do |app|
+    initializer :add_init_rb do |app|
       init_rb = File.expand_path("init.rb", root)
-      if File.file?(init_rb)
-        # This double assignment is to prevent an "unused variable" warning on Ruby 1.9.3.
-        config = config = app.config
-        # TODO: think about evaling initrb in context of Engine (currently it's
-        # always evaled in context of Rails::Application)
-        eval(File.read(init_rb), binding, init_rb)
-      end
+      app.config.all_eval_initializers << init_rb if File.file?(init_rb)
     end
 
     initializer :sanity_check_railties_collision do

@@ -15,8 +15,22 @@ module Rails
         ActiveSupport::Dependencies.autoload_once_paths.concat(config.all_autoload_once_paths)
       end
 
-      initializer :load_all_config_initializers do
+      initializer :before_initializers_hook do
+        ActiveSupport.run_load_hooks(:before_initializers, self)
+      end
+
+      initializer :load_init_rb do
+        config.all_eval_initializers.each do |init_rb|
+          eval(File.read(init_rb), binding, init_rb)
+        end
+      end
+
+      initializer :load_config_initializers do
         config.all_initializers.each { |init| load(init) }
+      end
+
+      initializer :after_initializers_hook do
+        ActiveSupport.run_load_hooks(:after_initializers, self)
       end
 
       initializer :add_generator_templates do
@@ -53,12 +67,12 @@ module Rails
         build_middleware_stack
       end
 
-      initializer :run_prepare_callbacks do
-        ActionDispatch::Reloader.prepare!
-      end
-
       initializer :define_main_app_helper do |app|
         app.routes.define_mounted_helper(:main_app)
+      end
+
+      initializer :run_prepare_callbacks do
+        ActionDispatch::Reloader.prepare!
       end
 
       initializer :eager_load! do

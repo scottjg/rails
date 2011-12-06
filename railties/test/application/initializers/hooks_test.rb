@@ -27,12 +27,14 @@ module ApplicationTests
         config.cache_classes = false
         config.before_configuration { $initialization_callbacks << 1 }
         config.before_initialize    { $initialization_callbacks << 2 }
+        config.before_initializers  { $initialization_callbacks << 3 }
+        config.after_initializers   { $initialization_callbacks << 4 }
         config.before_eager_load    { Boom }
-        config.after_initialize     { $initialization_callbacks << 3 }
+        config.after_initialize     { $initialization_callbacks << 5 }
       RUBY
 
       require "#{app_path}/config/environment"
-      assert_equal [1,2,3], $initialization_callbacks
+      assert_equal [1,2,3,4,5], $initialization_callbacks
     end
 
     test "hooks block works correctly with cache classes" do
@@ -42,12 +44,39 @@ module ApplicationTests
         config.cache_classes = true
         config.before_configuration { $initialization_callbacks << 1 }
         config.before_initialize    { $initialization_callbacks << 2 }
-        config.before_eager_load    { $initialization_callbacks << 3 }
-        config.after_initialize     { $initialization_callbacks << 4 }
+        config.before_initializers  { $initialization_callbacks << 3 }
+        config.after_initializers   { $initialization_callbacks << 4 }
+        config.before_eager_load    { $initialization_callbacks << 5 }
+        config.after_initialize     { $initialization_callbacks << 6 }
       RUBY
 
       require "#{app_path}/config/environment"
-      assert_equal [1,2,3,4], $initialization_callbacks
+      assert_equal [1,2,3,4,5,6], $initialization_callbacks
+    end
+
+    test "hooks relation with autoload paths" do
+      add_to_config <<-RUBY
+        $autoload_paths = ActiveSupport::Dependencies.autoload_paths.dup
+
+        def assert_no_change
+          raise "Load paths changed" if $autoload_paths != ActiveSupport::Dependencies.autoload_paths
+        end
+
+        def assert_change
+          raise "Load paths did not change" if $autoload_paths == ActiveSupport::Dependencies.autoload_paths
+        end
+
+        initializer "assert" do
+          assert_no_change
+        end
+
+        config.root = "#{app_path}"
+        config.cache_classes = true
+        config.before_initialize    { assert_no_change }
+        config.before_initializers  { assert_change }
+      RUBY
+
+      require "#{app_path}/config/environment"
     end
 
     test "after_initialize runs after frameworks have been initialized" do

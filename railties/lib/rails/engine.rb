@@ -578,7 +578,7 @@ module Rails
       end
     end
 
-    initializer :load_config_initializers do |app|
+    initializer :add_config_initializers do |app|
       app.config.all_initializers.concat config.paths["config/initializers"].existent.sort
     end
 

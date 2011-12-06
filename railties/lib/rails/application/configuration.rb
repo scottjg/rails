@@ -12,7 +12,7 @@ module Rails
                     :reload_plugins, :secret_token, :serve_static_assets,
                     :ssl_options, :static_cache_control, :session_options,
                     :time_zone, :whiny_nils, :railties_order,
-                    :all_initializers, :all_autoload_paths, :all_autoload_once_paths
+                    :all_initializers, :all_autoload_paths, :all_autoload_once_paths, :all_eval_initializers
 
       attr_writer :log_level
       attr_reader :encoding
@@ -39,6 +39,7 @@ module Rails
         @railties_order              = [:all]
 
         @all_initializers            = []
+        @all_eval_initializers       = []
         @all_autoload_paths          = []
         @all_autoload_once_paths     = []
 
