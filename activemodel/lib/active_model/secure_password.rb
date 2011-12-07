@@ -31,6 +31,10 @@ module ActiveModel
       #   user.authenticate("mUc3m00RsqyRe")                             # => user
       #   User.find_by_name("david").try(:authenticate, "notright")      # => nil
       #   User.find_by_name("david").try(:authenticate, "mUc3m00RsqyRe") # => user
+      #
+      #   user = User.new(:name => "david")
+      #   user.valid?                                                    # => true, password can be nil
+      #   user.save!                                                     # => true, but cannot be authenticated
       def has_secure_password
         # Load bcrypt-ruby only when has_secure_password is used.
         # This is to avoid ActiveModel (and by extension the entire framework) being dependent on a binary library.
@@ -40,7 +44,7 @@ module ActiveModel
         attr_reader :password
 
         validates_confirmation_of :password
-        validates_presence_of     :password_digest
+        validates_presence_of     :password_digest, :if => :password
 
         include InstanceMethodsOnActivation
 
@@ -55,7 +59,7 @@ module ActiveModel
     module InstanceMethodsOnActivation
       # Returns self if the password is correct, otherwise false.
       def authenticate(unencrypted_password)
-        if BCrypt::Password.new(password_digest) == unencrypted_password
+        if password_digest && BCrypt::Password.new(password_digest) == unencrypted_password
           self
         else
           false

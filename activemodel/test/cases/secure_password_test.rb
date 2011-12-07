@@ -14,14 +14,13 @@ class SecurePasswordTest < ActiveModel::TestCase
     assert !@user.valid?, 'user should be invalid'
   end
 
-  test "nil password" do
+  test "nil password may be allowed" do
     @user.password = nil
-    assert !@user.valid?, 'user should be invalid'
+    assert @user.valid?
   end
 
-  test "password must be present" do
-    assert !@user.valid?
-    assert_equal 1, @user.errors.size
+  test "password may not be present" do
+    assert @user.valid?
   end
 
   test "password must match confirmation" do
@@ -40,6 +39,11 @@ class SecurePasswordTest < ActiveModel::TestCase
 
     assert !@user.authenticate("wrong")
     assert @user.authenticate("secret")
+  end
+
+  test "never authenticate if password_digest is nil" do
+    assert !@user.authenticate("")
+    assert !@user.authenticate(nil)
   end
 
   test "visitor#password_digest should be protected against mass assignment" do
