@@ -20,7 +20,14 @@ class ERB
       if s.html_safe?
         s
       else
-        s.gsub(/[&"><]/n) { |special| HTML_ESCAPE[special] }.html_safe
+        if force_binarize = ("".respond_to?(:force_encoding) && s.size != s.bytesize)
+          s = s.dup if s.frozen?
+          encoding = s.encoding
+          s.force_encoding("ASCII-8BIT")
+        end
+        s = s.gsub(/[&"><]/n) { |special| HTML_ESCAPE[special] }.html_safe
+        s.force_encoding(encoding) if force_binarize
+        s
       end
     end
 
