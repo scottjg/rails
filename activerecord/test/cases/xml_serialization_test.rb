@@ -275,6 +275,13 @@ class DatabaseConnectedXmlSerializationTest < ActiveRecord::TestCase
     assert xml.include?("<firm>")
   end
 
+  def test_including_has_and_belongs_to_many_associations
+    #xml = authors(:david).to_xml(:indent => 0, :skip_instruct => true, :include => [:favorite_authors])
+    #assert xml.include?(%(<rick type="array"><rick>)), xml
+    xml = Author.includes(:favorite_authors).to_xml
+    assert false, "TODO"
+  end
+
   def test_including_multiple_associations
     xml = companies(:first_firm).to_xml(:indent => 0, :skip_instruct => true, :include => [ :clients, :account ])
     assert_equal "<firm>", xml.first(6)
