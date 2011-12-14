@@ -46,7 +46,7 @@ module ActiveModel
       defaults = []
       lookup_ancestors.each do |klass|
         if attribute.match(/\./)
-          defaults << :"#{self.i18n_scope}.attributes.#{klass.model_name.i18n_key}.#{attribute.gsub(/\./, '/')}"
+          defaults << :"#{self.i18n_scope}.attributes.#{klass.model_name.i18n_key}.#{attribute.to_s.gsub(/\./, '/')}"
         end
         defaults << :"#{self.i18n_scope}.attributes.#{klass.model_name.i18n_key}.#{attribute}"
       end
