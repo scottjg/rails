@@ -29,7 +29,8 @@ begin
             sid ||= generate_sid
             begin
               session = @pool.get(sid) || {}
-            rescue MemCache::MemCacheError, Errno::ECONNREFUSED
+            rescue MemCache::MemCacheError, Errno::ECONNREFUSED => e
+              Rails.logger.info "MemCacheStore: error getting sid[#{sid}]: #{e}"
               session = {}
             end
             [sid, session]
@@ -40,7 +41,8 @@ begin
             expiry  = options[:expire_after] || 0
             @pool.set(sid, session_data, expiry)
             return true
-          rescue MemCache::MemCacheError, Errno::ECONNREFUSED
+          rescue MemCache::MemCacheError, Errno::ECONNREFUSED => e
+            Rails.logger.info "MemCacheStore: error setting sid[#{sid}]: #{e}"
             return false
           end
       end

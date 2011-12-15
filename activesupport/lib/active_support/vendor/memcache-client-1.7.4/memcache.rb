@@ -1,6 +1,7 @@
 $TESTING = defined?($TESTING) && $TESTING
 
 require 'socket'
+require 'timeout'
 require 'thread'
 require 'zlib'
 require 'digest/sha1'
@@ -789,8 +790,15 @@ class MemCache
   # raises MemCacheError.  Note that the socket connect code marks a server
   # dead for a timeout period, so retrying does not apply to connection attempt
   # failures (but does still apply to unexpectedly lost connections etc.).
-
   def with_socket_management(server, &block)
+    begin
+      execution_with_socket_management(server, &block)
+    rescue Timeout::Error
+      @mutex.unlock if @multithread && @mutex.locked?
+    end
+  end
+
+  def execution_with_socket_management(server, &block)
     check_multithread_status!
 
     @mutex.lock if @multithread
@@ -818,7 +826,7 @@ class MemCache
       retry
     end
   ensure
-    @mutex.unlock if @multithread
+    @mutex.unlock if @multithread && @mutex.locked?
   end
 
   def with_server(key)
@@ -988,10 +996,11 @@ class MemCache
 
       # Attempt to connect if not already connected.
       begin
-        @sock = connect_to(@host, @port, @timeout)
-        @sock.setsockopt Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1
-        @retry  = nil
-        @status = 'CONNECTED'
+        if @sock = connect_to(@host, @port, @timeout)
+          @sock.setsockopt Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1
+          @retry  = nil
+          @status = 'CONNECTED'
+        end
       rescue SocketError, SystemCallError, IOError => err
         logger.warn { "Unable to open socket: #{err.class.name}, #{err.message}" } if logger
         mark_dead err
@@ -1001,9 +1010,16 @@ class MemCache
     end
 
     def connect_to(host, port, timeout=nil)
-      io = MemCache::BufferedIO.new(TCPSocket.new(host, port))
-      io.read_timeout = timeout
-      io
+      begin
+        Timeout.timeout(timeout) do
+          io = MemCache::BufferedIO.new(TCPSocket.new(host, port))
+          io.read_timeout = timeout
+          io
+        end
+      rescue Timeout::Error => err
+        logger.warn { "Exceeded timeout on connect: #{err.class.name}, #{err.message}" } if logger
+        return nil
+      end
     end
 
     ##

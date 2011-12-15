@@ -52,11 +52,11 @@ module ActiveRecord
             :conditions => conditions,
             :include    => @reflection.options[:include],
             :readonly   => @reflection.options[:readonly]
-          ) if @owner[@reflection.primary_key_name]
+          ) if @owner[@reflection.primary_key_name] && foreign_key_present
         end
 
         def foreign_key_present
-          !@owner[@reflection.primary_key_name].nil?
+          @owner[@reflection.primary_key_name].to_i > 0
         end
 
         def record_id(record)

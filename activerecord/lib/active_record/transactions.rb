@@ -193,11 +193,19 @@ module ActiveRecord
     end
 
     def save_with_transactions(perform_validation = true) #:nodoc:
-      rollback_active_record_state! { with_transaction_returning_status(:save_without_transactions, perform_validation) }
+      unless send(:changed_attributes).try(:empty?)
+        rollback_active_record_state! { with_transaction_returning_status(:save_without_transactions, perform_validation) }
+      else
+        save_without_transactions(perform_validation)
+      end
     end
 
     def save_with_transactions! #:nodoc:
-      rollback_active_record_state! { self.class.transaction { save_without_transactions! } }
+      unless send(:changed_attributes).try(:empty?)
+        rollback_active_record_state! { self.class.transaction { save_without_transactions! } }
+      else
+        save_without_transactions!
+      end
     end
 
     # Reset id and @new_record if the transaction rolls back.

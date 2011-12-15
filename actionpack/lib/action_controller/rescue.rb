@@ -77,6 +77,7 @@ module ActionController #:nodoc:
       # Overwrite to implement custom logging of errors. By default
       # logs as fatal.
       def log_error(exception) #:doc:
+        return if defined?(IGNORE_ACTION_CONTROLLER_ERRORS) && IGNORE_ACTION_CONTROLLER_ERRORS.include?(exception.class.name)
         ActiveSupport::Deprecation.silence do
           if ActionView::TemplateError === exception
             logger.fatal(exception.to_s)
