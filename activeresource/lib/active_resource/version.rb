@@ -3,7 +3,8 @@ module ActiveResource
     MAJOR = 2
     MINOR = 3
     TINY  = 5
+    IDEELI = 1
 
-    STRING = [MAJOR, MINOR, TINY].join('.')
+    STRING = [MAJOR, MINOR, TINY, IDEELI].join('.')
   end
 end
