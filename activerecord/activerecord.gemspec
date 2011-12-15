@@ -3,7 +3,7 @@ require File.expand_path(File.dirname(__FILE__)) + "/test/config"
 
 pkg_build     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 pkg_name      = 'activerecord'
-pkg_version   = ActiveRecord::VERSION::STRING + PKG_BUILD
+pkg_version   = ActiveRecord::VERSION::STRING + pkg_build
 pkg_file_name = "#{pkg_name}-#{pkg_version}"
 
 
