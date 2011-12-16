@@ -64,11 +64,11 @@ module ActionMailer
       end
 
       # Adds a debug logger for the supplied delivery method. The parameters
-      # passed will define which delivery method the debug logger is for and
-      # which class and attribute is called to set the logger on the receiving
-      # delivery method. Accepts the delivery method symbol, the class to send
-      # the set method to, and the method name to send to that class. It then
-      # passes ActionMailer::Base.connection_debug_logger to that method.
+      # passed will define which class and reciever is called to set the logger
+      # on the receiving delivery method. Accepts the delivery method symbol,
+      # the class to send the set method to, and the method name to send to
+      # that class. It then passes ActionMailer::Base.connection_debug_logger
+      # to that method.
       #
       # Example:
       #
@@ -80,8 +80,12 @@ module ActionMailer
       #
       # The Mail class has a connection_debug_logger method defined and writes
       # to it appropriately if the :enable_debug_logging setting is true.
-      def set_debug_logger(symbol, klass, receiver)
-        delivery_methods[symbol].send(:"#{receiver}=", connection_debug_logger)
+      def set_debug_logger(klass, receiver)
+        if klass.respond_to?(:"#{receiver}=")
+          klass.send(:"#{receiver}=", connection_debug_logger)
+        else
+          raise "#{klass} does not respond to '#{receiver}='!"
+        end
       end
 
       def wrap_delivery_behavior(mail, method=nil) #:nodoc:
