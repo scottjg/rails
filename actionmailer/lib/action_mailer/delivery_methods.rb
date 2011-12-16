@@ -32,7 +32,7 @@ module ActionMailer
         :enable_starttls_auto => true,
         :enable_debug_logging => nil
 
-      set_debug_logger :smtp, Mail, :connection_debug_logger
+      set_debug_logger Mail, :connection_debug_logger
 
       add_delivery_method :file, Mail::FileDelivery,
         :location => defined?(Rails.root) ? "#{Rails.root}/tmp/mails" : "#{Dir.tmpdir}/mails"
