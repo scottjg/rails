@@ -16,6 +16,9 @@ module ActionMailer
       cattr_accessor :perform_deliveries
       self.perform_deliveries = true
 
+      cattr_accessor :connection_debug_logger
+      self.connection_debug_logger = nil
+
       self.delivery_methods = {}.freeze
       self.delivery_method  = :smtp
 
@@ -26,7 +29,10 @@ module ActionMailer
         :user_name            => nil,
         :password             => nil,
         :authentication       => nil,
-        :enable_starttls_auto => true
+        :enable_starttls_auto => true,
+        :enable_debug_logging => nil
+
+      set_debug_logger :smtp, Mail, :connection_debug_logger
 
       add_delivery_method :file, Mail::FileDelivery,
         :location => defined?(Rails.root) ? "#{Rails.root}/tmp/mails" : "#{Dir.tmpdir}/mails"
@@ -55,6 +61,27 @@ module ActionMailer
         class_attribute(:"#{symbol}_settings") unless respond_to?(:"#{symbol}_settings")
         send(:"#{symbol}_settings=", default_options)
         self.delivery_methods = delivery_methods.merge(symbol.to_sym => klass).freeze
+      end
+
+      # Adds a debug logger for the supplied delivery method. The parameters
+      # passed will define which delivery method the debug logger is for and
+      # which class and attribute is called to set the logger on the receiving
+      # delivery method. Accepts the delivery method symbol, the class to send
+      # the set method to, and the method name to send to that class. It then
+      # passes ActionMailer::Base.connection_debug_logger to that method.
+      #
+      # Example:
+      #
+      #   set_debug_logger :smtp, Mail, :connection_debug_logger
+      #
+      # Which will then call:
+      #
+      #   Mail.connection_debug_logger = connection_debug_logger
+      #
+      # The Mail class has a connection_debug_logger method defined and writes
+      # to it appropriately if the :enable_debug_logging setting is true.
+      def set_debug_logger(symbol, klass, receiver)
+        delivery_methods[symbol].send(:"#{receiver}=", connection_debug_logger)
       end
 
       def wrap_delivery_behavior(mail, method=nil) #:nodoc:
