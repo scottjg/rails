@@ -119,5 +119,45 @@ module RailtiesTest
 
       assert rescued, "Expected boot rails to fail"
     end
+
+    def test_using_helper_all_when_controller_is_loaded_early
+      app_file "app/controllers/application_controller.rb", <<-RUBY
+        class ApplicationController < ActionController::Base
+          helper :all
+        end
+      RUBY
+
+      @plugin.write "init.rb", "AccountsController"
+
+      @plugin.write "app/helpers/my_helper.rb", <<-RUBY
+        module MyHelper
+          def foo
+            "foo inside MyHelper"
+          end
+        end
+      RUBY
+
+      @plugin.write "app/controllers/accounts_controller.rb", <<-RUBY
+        class AccountsController < ApplicationController
+
+          def index
+            render :inline => "<%= foo %>"
+          end
+        end
+      RUBY
+
+      @plugin.write "config/routes.rb", <<-RUBY
+        Rails.application.routes.draw do
+          match "/accounts" => "accounts#index"
+        end
+      RUBY
+
+      boot_rails
+      require 'rack/test'
+      extend Rack::Test::Methods
+
+      get "/accounts"
+      assert_equal "foo inside MyHelper", last_response.body
+    end
   end
 end
