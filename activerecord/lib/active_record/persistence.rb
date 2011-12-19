@@ -210,7 +210,7 @@ module ActiveRecord
       # attributes assignment. For example, setting the IDs of a child collection.
       with_transaction_returning_status do
         self.assign_attributes(attributes, options)
-        save
+        save(options)
       end
     end
 
@@ -221,7 +221,7 @@ module ActiveRecord
       # attributes assignment. For example, setting the IDs of a child collection.
       with_transaction_returning_status do
         self.assign_attributes(attributes, options)
-        save!
+        save!(options)
       end
     end
 
