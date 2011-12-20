@@ -208,7 +208,7 @@ module ActiveSupport
       # unknown.
       def constantize(camel_cased_word)
         names = camel_cased_word.split('::')
-        names.shift if names.empty? || names.first.empty?
+        names.shift if names.first.empty?
 
         constant = Object
         names.each do |name|
@@ -219,7 +219,7 @@ module ActiveSupport
     else
       def constantize(camel_cased_word) #:nodoc:
         names = camel_cased_word.split('::')
-        names.shift if names.empty? || names.first.empty?
+        names.shift if names.first.empty?
 
         constant = Object
         names.each do |name|
