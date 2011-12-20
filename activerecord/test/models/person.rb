@@ -60,6 +60,7 @@ class LoosePerson < ActiveRecord::Base
   has_one    :best_friend,    :class_name => 'LoosePerson', :foreign_key => :best_friend_id
   belongs_to :best_friend_of, :class_name => 'LoosePerson', :foreign_key => :best_friend_of_id
   has_many   :best_friends,   :class_name => 'LoosePerson', :foreign_key => :best_friend_id
+  has_many   :protected_readers, :foreign_key => :person_id
 
   accepts_nested_attributes_for :best_friend, :best_friend_of, :best_friends
 end

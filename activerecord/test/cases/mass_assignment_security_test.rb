@@ -2,6 +2,7 @@ require "cases/helper"
 require 'models/company'
 require 'models/subscriber'
 require 'models/keyboard'
+require 'models/reader'
 require 'models/task'
 require 'models/person'
 
@@ -497,6 +498,11 @@ class MassAssignmentSecurityHasManyRelationsTest < ActiveRecord::TestCase
   def test_has_many_build_without_protection
     best_friend = @person.best_friends.build(attributes_hash, :without_protection => true)
     assert_all_attributes(best_friend)
+  end
+
+  def test_has_many_build_with_protected_associated_id
+    reader = @person.protected_readers.build
+    assert_equal @person.id, reader.person_id
   end
 
   # create
