@@ -485,9 +485,10 @@ module ActiveRecord #:nodoc:
 
         populate_with_current_scope_attributes
 
+        yield self if block_given?
+
         assign_attributes(attributes, options) if attributes
 
-        yield self if block_given?
         run_callbacks :initialize
       end
 
