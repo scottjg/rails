@@ -209,7 +209,7 @@ module ActiveRecord
       # The following transaction covers any possible database side-effects of the
       # attributes assignment. For example, setting the IDs of a child collection.
       with_transaction_returning_status do
-        self.assign_attributes(attributes, options)
+        assign_attributes(attributes, options)
         save
       end
     end
@@ -220,7 +220,7 @@ module ActiveRecord
       # The following transaction covers any possible database side-effects of the
       # attributes assignment. For example, setting the IDs of a child collection.
       with_transaction_returning_status do
-        self.assign_attributes(attributes, options)
+        assign_attributes(attributes, options)
         save!
       end
     end
@@ -285,7 +285,7 @@ module ActiveRecord
       clear_association_cache
 
       IdentityMap.without do
-        fresh_object = self.class.unscoped { self.class.find(self.id, options) }
+        fresh_object = self.class.unscoped { self.class.find(id, options) }
         @attributes.update(fresh_object.instance_variable_get('@attributes'))
       end
 
@@ -367,14 +367,6 @@ module ActiveRecord
       IdentityMap.add(self) if IdentityMap.enabled?
       @new_record = false
       id
-    end
-
-    # Initializes the attributes array with keys matching the columns from the linked table and
-    # the values matching the corresponding default value of that column, so
-    # that a new instance, or one populated from a passed-in Hash, still has all the attributes
-    # that instances loaded from the database would.
-    def attributes_from_column_definition
-      self.class.column_defaults.dup
     end
   end
 end
