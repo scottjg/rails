@@ -24,6 +24,7 @@ module Rails
           opts.on("-P","--pid=pid",String,
                   "Specifies the PID file.",
                   "Default: tmp/pids/server.pid") { |v| options[:pid] = v }
+          opts.on("-S", "--ssl", "Enable SSL.") { |v| options[:SSLEnable] = true }
 
           opts.separator ""
 
