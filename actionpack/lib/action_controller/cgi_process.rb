@@ -48,7 +48,7 @@ module ActionController #:nodoc:
 
         headers['Status'] = status.to_s
 
-        if headers.include?('Set-Cookie')
+        if headers['Set-Cookie']
           headers['cookie'] = headers.delete('Set-Cookie').split("\n")
         end
 
