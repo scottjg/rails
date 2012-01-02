@@ -1,0 +1,10 @@
+<%%= f.error_messages %>
+<% for attribute in attributes -%>
+<p>
+  <%%= f.label :<%= attribute.name %> %><br />
+  <%%= f.<%= attribute.field_type %> :<%= attribute.name %> %>
+</p>
+<% end -%>
+<p>
+  <%%= f.submit "Submit", :class => "button" %> <%%= link_to "Cancel", {:action => "index"}, :class => "cancel_link" %>
+</p>
