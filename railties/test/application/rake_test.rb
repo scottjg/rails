@@ -138,5 +138,27 @@ module ApplicationTests
       end
       assert File.exists?(File.join(app_path, 'db', 'my_structure.sql'))
     end
+
+    def test_model_loading_when_we_use_observers
+      Dir.chdir(app_path) do
+        `bundle exec rails generate model user`
+        `bundle exec rake db:migrate`
+      end
+      app_file "app/models/user_observer.rb", <<-RUBY
+        class UserObserver < ActiveRecord::Observer
+        end
+      RUBY
+      app_file "lib/tasks/count_user.rake", <<-RUBY
+        namespace :user do
+          task :count => :environment do
+            p User.count
+          end
+        end
+      RUBY
+      add_to_config "config.active_record.observers = :user_observer"
+
+      output = Dir.chdir(app_path) { `bundle exec rake user:count` }
+      assert_equal "0", output.strip
+    end
   end
 end
