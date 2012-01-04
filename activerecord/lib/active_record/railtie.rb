@@ -115,5 +115,10 @@ module ActiveRecord
         end
       end
     end
+
+    config.after_initialize do
+      # If config.active_record.observers is not nil, we must load ActiveRecord::Base forcibly.
+      _ = ActiveRecord::Base if config.active_record.observers
+    end
   end
 end
