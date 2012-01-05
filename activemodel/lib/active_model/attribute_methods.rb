@@ -61,69 +61,12 @@ module ActiveModel
     CALL_COMPILABLE_REGEXP = /\A[a-zA-Z_]\w*[!?]?\z/
 
     included do
-      class_attribute :attribute_method_matchers, :instance_writer => false
+      extend ActiveModel::Configuration
+      config_attribute :attribute_method_matchers
       self.attribute_method_matchers = [ClassMethods::AttributeMethodMatcher.new]
     end
 
     module ClassMethods
-      # Defines an "attribute" method (like +inheritance_column+ or +table_name+).
-      # A new (class) method will be created with the given name. If a value is
-      # specified, the new method will return that value (as a string).
-      # Otherwise, the given block will be used to compute the value of the
-      # method.
-      #
-      # The original method will be aliased, with the new name being prefixed
-      # with "original_". This allows the new method to access the original
-      # value.
-      #
-      # Example:
-      #
-      #   class Person
-      #
-      #     include ActiveModel::AttributeMethods
-      #
-      #     cattr_accessor :primary_key
-      #     cattr_accessor :inheritance_column
-      #
-      #     define_attr_method :primary_key, "sysid"
-      #     define_attr_method( :inheritance_column ) do
-      #       original_inheritance_column + "_id"
-      #     end
-      #
-      #   end
-      #
-      # Provides you with:
-      #
-      #   Person.primary_key
-      #   # => "sysid"
-      #   Person.inheritance_column = 'address'
-      #   Person.inheritance_column
-      #   # => 'address_id'
-      def define_attr_method(name, value=nil, &block)
-        sing = singleton_class
-        sing.class_eval <<-eorb, __FILE__, __LINE__ + 1
-          if method_defined?('original_#{name}')
-            undef :'original_#{name}'
-          end
-          alias_method :'original_#{name}', :'#{name}'
-        eorb
-        if block_given?
-          sing.send :define_method, name, &block
-        else
-          # If we can compile the method name, do it. Otherwise use define_method.
-          # This is an important *optimization*, please don't change it. define_method
-          # has slower dispatch and consumes more memory.
-          if name =~ NAME_COMPILABLE_REGEXP
-            sing.class_eval <<-RUBY, __FILE__, __LINE__ + 1
-              def #{name}; #{value.nil? ? 'nil' : value.to_s.inspect}; end
-            RUBY
-          else
-            value = value.to_s if value
-            sing.send(:define_method, name) { value }
-          end
-        end
-      end
-
       # Declares a method available for all attributes with the given prefix.
       # Uses +method_missing+ and <tt>respond_to?</tt> to rewrite the method.
       #

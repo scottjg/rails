@@ -60,7 +60,8 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
 
   def test_add_migration_with_attributes_and_indices
     migration = "add_title_with_index_and_body_to_posts"
-    run_generator [migration, "title:string:index", "body:text", "user_id:integer:unique"]
+
+    run_generator [migration, "title:string:index", "body:text", "user_id:integer:uniq"]
 
     assert_migration "db/migrate/#{migration}.rb" do |content|
       assert_method :change, content do |up|
@@ -69,7 +70,7 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
         assert_match(/add_column :posts, :user_id, :integer/, up)
       end
       assert_match(/add_index :posts, :title/, content)
-      assert_match(/add_index :posts, :user_id, :unique => true/, content)
+      assert_match(/add_index :posts, :user_id, unique: true/, content)
     end
   end
 
@@ -83,8 +84,8 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
         assert_match(/add_column :books, :content, :text/, up)
         assert_match(/add_column :books, :user_id, :integer/, up)
       end
-      assert_not_match(/add_index :books, :title/, content)
-      assert_not_match(/add_index :books, :user_id/, content)
+      assert_no_match(/add_index :books, :title/, content)
+      assert_no_match(/add_index :books, :user_id/, content)
     end
   end
 
@@ -99,7 +100,7 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
         assert_match(/add_column :posts, :user_uuid, :string/, up)
       end
       assert_match(/add_index :posts, :title/, content)
-      assert_match(/add_index :posts, :user_uuid, :unique => true/, content)
+      assert_match(/add_index :posts, :user_uuid, unique: true/, content)
     end
   end
 
@@ -109,14 +110,14 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
 
     assert_migration "db/migrate/#{migration}.rb" do |content|
       assert_method :change, content do |up|
-        assert_match(/add_column :books, :title, :string, :limit=>40/, up)
-        assert_match(/add_column :books, :content, :string, :limit=>255/, up)
-        assert_match(/add_column :books, :price, :decimal, :precision=>5, :scale=>2/, up)
-        assert_match(/add_column :books, :discount, :decimal, :precision=>3, :scale=>2/, up)
+        assert_match(/add_column :books, :title, :string, limit: 40/, up)
+        assert_match(/add_column :books, :content, :string, limit: 255/, up)
+        assert_match(/add_column :books, :price, :decimal, precision: 5, scale: 2/, up)
+        assert_match(/add_column :books, :discount, :decimal, precision: 3, scale: 2/, up)
       end
       assert_match(/add_index :books, :title/, content)
       assert_match(/add_index :books, :price/, content)
-      assert_match(/add_index :books, :discount, :unique => true/, content)
+      assert_match(/add_index :books, :discount, unique: true/, content)
     end
   end
 

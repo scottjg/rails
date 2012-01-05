@@ -7,7 +7,8 @@ module ActiveRecord
     extend ActiveSupport::Concern
 
     included do
-      class_attribute :reflections
+      extend ActiveModel::Configuration
+      config_attribute :reflections
       self.reflections = {}
     end
 
@@ -262,6 +263,10 @@ module ActiveRecord
         [self]
       end
 
+      def nested?
+        false
+      end
+
       # An array of arrays of conditions. Each item in the outside array corresponds to a reflection
       # in the #chain. The inside arrays are simply conditions (and each condition may itself be
       # a hash, array, arel predicate, etc...)
@@ -457,7 +462,7 @@ module ActiveRecord
         source_reflection.source_macro
       end
 
-      # A through association is nested iff there would be more than one join table
+      # A through association is nested if there would be more than one join table
       def nested?
         chain.length > 2 || through_reflection.macro == :has_and_belongs_to_many
       end

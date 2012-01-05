@@ -668,7 +668,7 @@ module ActionMailer #:nodoc:
       end
     end
 
-    # Translates the +subject+ using Rails I18n class under <tt>[:actionmailer, mailer_scope, action_name]</tt> scope.
+    # Translates the +subject+ using Rails I18n class under <tt>[mailer_scope, action_name]</tt> scope.
     # If it does not find a translation for the +subject+ under the specified scope it will default to a
     # humanized version of the <tt>action_name</tt>.
     def default_i18n_subject #:nodoc:
@@ -708,7 +708,7 @@ module ActionMailer #:nodoc:
 
     def each_template(paths, name, &block) #:nodoc:
       templates = lookup_context.find_all(name, Array.wrap(paths))
-      templates.uniq_by { |t| t.formats }.each(&block)
+      templates.uniq { |t| t.formats }.each(&block)
     end
 
     def create_parts_from_responses(m, responses) #:nodoc:

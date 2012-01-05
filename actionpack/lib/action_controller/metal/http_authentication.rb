@@ -1,4 +1,4 @@
-require 'active_support/base64'
+require 'base64'
 require 'active_support/core_ext/object/blank'
 
 module ActionController
@@ -141,11 +141,11 @@ module ActionController
       end
 
       def decode_credentials(request)
-        ActiveSupport::Base64.decode64(request.authorization.split(' ', 2).last || '')
+        ::Base64.decode64(request.authorization.split(' ', 2).last || '')
       end
 
       def encode_credentials(user_name, password)
-        "Basic #{ActiveSupport::Base64.encode64s("#{user_name}:#{password}")}"
+        "Basic #{::Base64.strict_encode64("#{user_name}:#{password}")}"
       end
 
       def authentication_request(controller, realm)
@@ -192,12 +192,15 @@ module ActionController
           return false unless password
 
           method = request.env['rack.methodoverride.original_method'] || request.env['REQUEST_METHOD']
-          uri    = credentials[:uri][0,1] == '/' ? request.fullpath : request.url
+          uri    = credentials[:uri][0,1] == '/' ? request.original_fullpath : request.original_url
 
-         [true, false].any? do |password_is_ha1|
-           expected = expected_response(method, uri, credentials, password, password_is_ha1)
-           expected == credentials[:response]
-         end
+          [true, false].any? do |trailing_question_mark|
+            [true, false].any? do |password_is_ha1|
+              _uri = trailing_question_mark ? uri + "?" : uri
+              expected = expected_response(method, _uri, credentials, password, password_is_ha1)
+              expected == credentials[:response]
+            end
+          end
         end
       end
 
@@ -286,7 +289,7 @@ module ActionController
         t = time.to_i
         hashed = [t, secret_key]
         digest = ::Digest::MD5.hexdigest(hashed.join(":"))
-        ActiveSupport::Base64.encode64("#{t}:#{digest}").gsub("\n", '')
+        ::Base64.strict_encode64("#{t}:#{digest}")
       end
 
       # Might want a shorter timeout depending on whether the request
@@ -295,7 +298,7 @@ module ActionController
       # allow a user to use new nonce without prompting user again for their
       # username and password.
       def validate_nonce(secret_key, request, value, seconds_to_timeout=5*60)
-        t = ActiveSupport::Base64.decode64(value).split(":").first.to_i
+        t = ::Base64.decode64(value).split(":").first.to_i
         nonce(secret_key, t) == value && (t - Time.now.to_i).abs <= seconds_to_timeout
       end
 

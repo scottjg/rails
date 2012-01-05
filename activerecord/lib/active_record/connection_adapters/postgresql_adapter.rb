@@ -7,9 +7,9 @@ gem 'pg', '~> 0.11'
 require 'pg'
 
 module ActiveRecord
-  class Base
+  module ConnectionHandling
     # Establishes a connection to the database that's used by all Active Record objects
-    def self.postgresql_connection(config) # :nodoc:
+    def postgresql_connection(config) # :nodoc:
       config = config.symbolize_keys
       host     = config[:host]
       port     = config[:port] || 5432
@@ -49,6 +49,42 @@ module ActiveRecord
             super
           end
         end
+
+        def cast_hstore(object)
+          if Hash === object
+            object.map { |k,v|
+              "#{escape_hstore(k)}=>#{escape_hstore(v)}"
+            }.join ', '
+          else
+            kvs = object.scan(/(?<!\\)".*?(?<!\\)"/).map { |o|
+              unescape_hstore(o[1...-1])
+            }
+            Hash[kvs.each_slice(2).to_a]
+          end
+        end
+
+        private
+        HSTORE_ESCAPE = {
+            ' '  => '\\ ',
+            '\\' => '\\\\',
+            '"'  => '\\"',
+            '='  => '\\=',
+        }
+        HSTORE_ESCAPE_RE   = Regexp.union(HSTORE_ESCAPE.keys)
+        HSTORE_UNESCAPE    = HSTORE_ESCAPE.invert
+        HSTORE_UNESCAPE_RE = Regexp.union(HSTORE_UNESCAPE.keys)
+
+        def unescape_hstore(value)
+          value.gsub(HSTORE_UNESCAPE_RE) do |match|
+            HSTORE_UNESCAPE[match]
+          end
+        end
+
+        def escape_hstore(value)
+          value.gsub(HSTORE_ESCAPE_RE) do |match|
+            HSTORE_ESCAPE[match]
+          end
+        end
       end
       # :startdoc:
 
@@ -79,53 +115,55 @@ module ActiveRecord
         # Maps PostgreSQL-specific data types to logical Rails types.
         def simplified_type(field_type)
           case field_type
-            # Numeric and monetary types
-            when /^(?:real|double precision)$/
-              :float
-            # Monetary types
-            when 'money'
-              :decimal
-            # Character types
-            when /^(?:character varying|bpchar)(?:\(\d+\))?$/
-              :string
-            # Binary data types
-            when 'bytea'
-              :binary
-            # Date/time types
-            when /^timestamp with(?:out)? time zone$/
-              :datetime
-            when 'interval'
-              :string
-            # Geometric types
-            when /^(?:point|line|lseg|box|"?path"?|polygon|circle)$/
-              :string
-            # Network address types
-            when /^(?:cidr|inet|macaddr)$/
-              :string
-            # Bit strings
-            when /^bit(?: varying)?(?:\(\d+\))?$/
-              :string
-            # XML type
-            when 'xml'
-              :xml
-            # tsvector type
-            when 'tsvector'
-              :tsvector
-            # Arrays
-            when /^\D+\[\]$/
-              :string
-            # Object identifier types
-            when 'oid'
-              :integer
-            # UUID type
-            when 'uuid'
-              :string
-            # Small and big integer types
-            when /^(?:small|big)int$/
-              :integer
-            # Pass through all types that are not specific to PostgreSQL.
-            else
-              super
+          # Numeric and monetary types
+          when /^(?:real|double precision)$/
+            :float
+          # Monetary types
+          when 'money'
+            :decimal
+          when 'hstore'
+            :hstore
+          # Character types
+          when /^(?:character varying|bpchar)(?:\(\d+\))?$/
+            :string
+          # Binary data types
+          when 'bytea'
+            :binary
+          # Date/time types
+          when /^timestamp with(?:out)? time zone$/
+            :datetime
+          when 'interval'
+            :string
+          # Geometric types
+          when /^(?:point|line|lseg|box|"?path"?|polygon|circle)$/
+            :string
+          # Network address types
+          when /^(?:cidr|inet|macaddr)$/
+            :string
+          # Bit strings
+          when /^bit(?: varying)?(?:\(\d+\))?$/
+            :string
+          # XML type
+          when 'xml'
+            :xml
+          # tsvector type
+          when 'tsvector'
+            :tsvector
+          # Arrays
+          when /^\D+\[\]$/
+            :string
+          # Object identifier types
+          when 'oid'
+            :integer
+          # UUID type
+          when 'uuid'
+            :string
+          # Small and big integer types
+          when /^(?:small|big)int$/
+            :integer
+          # Pass through all types that are not specific to PostgreSQL.
+          else
+            super
           end
         end
 
@@ -214,6 +252,10 @@ module ActiveRecord
         def tsvector(*args)
           options = args.extract_options!
           column(args[0], 'tsvector', options)
+        end
+
+        def hstore(name, options = {})
+          column(name, 'hstore', options)
         end
       end
 
@@ -390,6 +432,11 @@ module ActiveRecord
         true
       end
 
+      # Returns true.
+      def supports_explain?
+        true
+      end
+
       # Returns the configured supported identifier length supported by PostgreSQL
       def table_alias_length
         @table_alias_length ||= query('SHOW max_identifier_length')[0][0].to_i
@@ -514,9 +561,9 @@ module ActiveRecord
 
       # DATABASE STATEMENTS ======================================
 
-      def explain(arel)
+      def explain(arel, binds = [])
         sql = "EXPLAIN #{to_sql(arel)}"
-        ExplainPrettyPrinter.new.pp(exec_query(sql))
+        ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))
       end
 
       class ExplainPrettyPrinter # :nodoc:
@@ -829,7 +876,7 @@ module ActiveRecord
           # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
           desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
           orders = desc_order_columns.any? ? Hash[desc_order_columns.map {|order_column| [order_column, :desc]}] : {}
-      
+
           column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
         end.compact
       end

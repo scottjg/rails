@@ -8,10 +8,8 @@ class <%= migration_class_name %> < ActiveRecord::Migration
       t.timestamps
 <% end -%>
     end
-<% if options[:indexes] -%>
-<% attributes.select {|attr| attr.reference? }.each do |attribute| -%>
-    add_index :<%= table_name %>, :<%= attribute.name %>_id<%= attribute.inject_index_options %>
-<% end -%>
+<% attributes_with_index.each do |attribute| -%>
+    add_index :<%= table_name %>, :<%= attribute.index_name %><%= attribute.inject_index_options %>
 <% end -%>
 <% attributes.select {|attr| attr.has_index? }.each do |attribute| -%>
     add_index :<%= table_name %>, :<%= attribute.name %><%= attribute.inject_index_options %>

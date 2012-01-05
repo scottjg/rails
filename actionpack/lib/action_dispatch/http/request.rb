@@ -35,14 +35,6 @@ module ActionDispatch
       METHOD
     end
 
-    def self.new(env)
-      if request = env["action_dispatch.request"] && request.instance_of?(self)
-        return request
-      end
-
-      super
-    end
-
     def key?(key)
       @env.key?(key)
     end
@@ -94,31 +86,31 @@ module ActionDispatch
     end
 
     # Is this a GET (or HEAD) request?
-    # Equivalent to <tt>request.request_method == :get</tt>.
+    # Equivalent to <tt>request.request_method_symbol == :get</tt>.
     def get?
       HTTP_METHOD_LOOKUP[request_method] == :get
     end
 
     # Is this a POST request?
-    # Equivalent to <tt>request.request_method == :post</tt>.
+    # Equivalent to <tt>request.request_method_symbol == :post</tt>.
     def post?
       HTTP_METHOD_LOOKUP[request_method] == :post
     end
 
     # Is this a PUT request?
-    # Equivalent to <tt>request.request_method == :put</tt>.
+    # Equivalent to <tt>request.request_method_symbol == :put</tt>.
     def put?
       HTTP_METHOD_LOOKUP[request_method] == :put
     end
 
     # Is this a DELETE request?
-    # Equivalent to <tt>request.request_method == :delete</tt>.
+    # Equivalent to <tt>request.request_method_symbol == :delete</tt>.
     def delete?
       HTTP_METHOD_LOOKUP[request_method] == :delete
     end
 
     # Is this a HEAD request?
-    # Equivalent to <tt>request.method == :head</tt>.
+    # Equivalent to <tt>request.method_symbol == :head</tt>.
     def head?
       HTTP_METHOD_LOOKUP[method] == :head
     end
@@ -130,8 +122,16 @@ module ActionDispatch
       Http::Headers.new(@env)
     end
 
+    def original_fullpath
+      @original_fullpath ||= (env["ORIGINAL_FULLPATH"] || fullpath)
+    end
+
     def fullpath
       @fullpath ||= super
+    end
+
+    def original_url
+      base_url + original_fullpath
     end
 
     def media_type
@@ -189,7 +189,7 @@ module ActionDispatch
     # variable is already set, wrap it in a StringIO.
     def body
       if raw_post = @env['RAW_POST_DATA']
-        raw_post.force_encoding(Encoding::BINARY) if raw_post.respond_to?(:force_encoding)
+        raw_post.force_encoding(Encoding::BINARY)
         StringIO.new(raw_post)
       else
         @env['rack.input']

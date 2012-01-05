@@ -6,12 +6,15 @@ require 'models/reader'
 require 'models/legacy_thing'
 require 'models/reference'
 require 'models/string_key_object'
+require 'models/car'
+require 'models/engine'
+require 'models/wheel'
 
 class LockWithoutDefault < ActiveRecord::Base; end
 
 class LockWithCustomColumnWithoutDefault < ActiveRecord::Base
-  set_table_name :lock_without_defaults_cust
-  set_locking_column :custom_lock_version
+  self.table_name = :lock_without_defaults_cust
+  self.locking_column = :custom_lock_version
 end
 
 class ReadonlyFirstNamePerson < Person
@@ -224,6 +227,15 @@ class OptimisticLockingTest < ActiveRecord::TestCase
       assert_equal lock_version, p1.lock_version
     end
   end
+
+  def test_polymorphic_destroy_with_dependencies_and_lock_version
+    car = Car.create!
+    car.wheels << Wheel.create!
+    assert_equal 1, car.wheels.count
+    assert car.destroy
+    assert_equal 0, car.wheels.count
+    assert car.destroyed?
+  end
 end
 
 class OptimisticLockingWithSchemaChangeTest < ActiveRecord::TestCase
@@ -278,6 +290,8 @@ class OptimisticLockingWithSchemaChangeTest < ActiveRecord::TestCase
     assert_equal true, p1.frozen?
     assert_raises(ActiveRecord::RecordNotFound) { Person.find(p1.id) }
     assert_raises(ActiveRecord::RecordNotFound) { LegacyThing.find(t.id) }
+  ensure
+    remove_counter_column_from(Person, 'legacy_things_count')
   end
 
   private
@@ -289,8 +303,8 @@ class OptimisticLockingWithSchemaChangeTest < ActiveRecord::TestCase
       model.update_all(col => 0) if current_adapter?(:OpenBaseAdapter)
     end
 
-    def remove_counter_column_from(model)
-      model.connection.remove_column model.table_name, :test_count
+    def remove_counter_column_from(model, col = :test_count)
+      model.connection.remove_column model.table_name, col
       model.reset_column_information
     end
 
@@ -375,16 +389,6 @@ unless current_adapter?(:SybaseAdapter, :OpenBaseAdapter) || in_memory_db?
       def test_no_locks_no_wait
         first, second = duel { Person.find 1 }
         assert first.end > second.end
-      end
-
-      # Hit by ruby deadlock detection since connection checkout is mutexed.
-      if RUBY_VERSION < '1.9.0'
-        def test_second_lock_waits
-          assert [0.2, 1, 5].any? { |zzz|
-            first, second = duel(zzz) { Person.find 1, :lock => true }
-            second.end > first.end
-          }
-        end
       end
 
       protected
