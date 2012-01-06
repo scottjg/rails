@@ -93,4 +93,22 @@ class CounterCacheTest < ActiveRecord::TestCase
       Topic.update_counters([t1.id, t2.id], :replies_count => 2)
     end
   end
+
+  module Namespaced
+    class Reply < ::Reply
+      belongs_to :special_topic, :foreign_key => 'parent_id', :counter_cache => 'replies_count'
+    end
+
+    class Topic < ::Topic
+    end
+  end
+
+  test "namespaced models reset counters as expected" do
+    namespaced = Namespaced::Topic.create!(:title => 'namespaced')
+    Namespaced::Topic.increment_counter(:replies_count, namespaced.id)
+
+    assert_difference 'namespaced.reload.replies_count', -1 do
+      Namespaced::Topic.reset_counters(namespaced.id, :replies)
+    end
+  end
 end
