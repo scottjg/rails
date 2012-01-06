@@ -13,8 +13,7 @@ module ActiveModel
       def initialize(options)
         if range = (options.delete(:in) || options.delete(:within))
           raise ArgumentError, ":in and :within must be a Range" unless range.is_a?(Range)
-          options[:minimum], options[:maximum] = range.begin, range.end
-          options[:maximum] -= 1 if range.exclude_end?
+          options[:minimum], options[:maximum] = range.min, range.max
         end
 
         super
@@ -57,12 +56,8 @@ module ActiveModel
       private
 
       def tokenize(value)
-        if value.kind_of?(String)
-          if options[:tokenizer]
-            options[:tokenizer].call(value)
-          elsif !value.encoding_aware?
-            value.mb_chars
-          end
+        if options[:tokenizer] && value.kind_of?(String)
+          options[:tokenizer].call(value)
         end || value
       end
     end

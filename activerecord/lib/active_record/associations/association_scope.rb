@@ -15,12 +15,12 @@ module ActiveRecord
 
       def scope
         scope = klass.unscoped
-        scope = scope.extending(*Array.wrap(options[:extend]))
+        scope = scope.extending(*Array(options[:extend]))
 
         # It's okay to just apply all these like this. The options will only be present if the
         # association supports that option; this is enforced by the association builder.
         scope = scope.apply_finder_options(options.slice(
-          :readonly, :include, :order, :limit, :joins, :group, :having, :offset, :select))
+          :readonly, :include, :eager_load, :order, :limit, :joins, :group, :having, :offset, :select))
 
         if options[:through] && !options[:include]
           scope = scope.includes(source_options[:include])

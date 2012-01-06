@@ -23,6 +23,7 @@ require 'models/edge'
 require 'models/joke'
 require 'models/bulb'
 require 'models/bird'
+require 'models/teapot'
 require 'rexml/document'
 require 'active_support/core_ext/exception'
 require 'bcrypt'
@@ -76,6 +77,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert(modules.index(Computer.generated_attribute_methods) > modules.index(Computer.generated_feature_methods),
            "generated_attribute_methods must be higher in inheritance hierarchy than generated_feature_methods")
     assert_not_equal Computer.generated_feature_methods, Post.generated_feature_methods
+    assert(modules.index(Computer.generated_attribute_methods) < modules.index(ActiveRecord::Base.ancestors[1]))
   end
 
   def test_column_names_are_escaped
@@ -1233,6 +1235,27 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal(myobj, topic.content)
   end
 
+  def test_serialized_attribute_in_base_class
+    Topic.serialize("content", Hash)
+
+    hash = { 'content1' => 'value1', 'content2' => 'value2' }
+    important_topic = ImportantTopic.create("content" => hash)
+    assert_equal(hash, important_topic.content)
+
+    important_topic.reload
+    assert_equal(hash, important_topic.content)
+  end
+
+  def test_serialized_attribute_declared_in_subclass
+    hash = { 'important1' => 'value1', 'important2' => 'value2' }
+    important_topic = ImportantTopic.create("important" => hash)
+    assert_equal(hash, important_topic.important)
+
+    important_topic.reload
+    assert_equal(hash, important_topic.important)
+    assert_equal(hash, important_topic.read_attribute(:important))
+  end
+
   def test_serialized_time_attribute
     myobj = Time.local(2008,1,1,1,0)
     topic = Topic.create("content" => myobj).reload
@@ -1612,10 +1635,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_descends_from_active_record
-    # Tries to call Object.abstract_class?
-    assert_raise(NoMethodError) do
-      ActiveRecord::Base.descends_from_active_record?
-    end
+    assert !ActiveRecord::Base.descends_from_active_record?
 
     # Abstract subclass of AR::Base.
     assert LoosePerson.descends_from_active_record?
@@ -1638,6 +1658,10 @@ class BasicsTest < ActiveRecord::TestCase
 
     # Concrete subclasses an abstract class which has a type column.
     assert !SubStiPost.descends_from_active_record?
+
+    assert Teapot.descends_from_active_record?
+    assert !OtherTeapot.descends_from_active_record?
+    assert CoolTeapot.descends_from_active_record?
   end
 
   def test_find_on_abstract_base_class_doesnt_use_type_condition
@@ -1671,7 +1695,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_inspect_instance
     topic = topics(:first)
-    assert_equal %(#<Topic id: 1, title: "The First Topic", author_name: "David", author_email_address: "david@loudthinking.com", written_on: "#{topic.written_on.to_s(:db)}", bonus_time: "#{topic.bonus_time.to_s(:db)}", last_read: "#{topic.last_read.to_s(:db)}", content: "Have a nice day", approved: false, replies_count: 1, parent_id: nil, parent_title: nil, type: nil, group: nil, created_at: "#{topic.created_at.to_s(:db)}", updated_at: "#{topic.updated_at.to_s(:db)}">), topic.inspect
+    assert_equal %(#<Topic id: 1, title: "The First Topic", author_name: "David", author_email_address: "david@loudthinking.com", written_on: "#{topic.written_on.to_s(:db)}", bonus_time: "#{topic.bonus_time.to_s(:db)}", last_read: "#{topic.last_read.to_s(:db)}", content: "Have a nice day", important: nil, approved: false, replies_count: 1, parent_id: nil, parent_title: nil, type: nil, group: nil, created_at: "#{topic.created_at.to_s(:db)}", updated_at: "#{topic.updated_at.to_s(:db)}">), topic.inspect
   end
 
   def test_inspect_new_instance
@@ -1870,5 +1894,14 @@ class BasicsTest < ActiveRecord::TestCase
     scope = stub
     Bird.stubs(:scoped).returns(mock(:uniq => scope))
     assert_equal scope, Bird.uniq
+  end
+
+  def test_active_record_super
+    assert_equal ActiveRecord::Model, ActiveRecord::Base.active_record_super
+    assert_equal ActiveRecord::Base,  Topic.active_record_super
+    assert_equal Topic,               ImportantTopic.active_record_super
+    assert_equal ActiveRecord::Model, Teapot.active_record_super
+    assert_equal Teapot,              OtherTeapot.active_record_super
+    assert_equal ActiveRecord::Model, CoolTeapot.active_record_super
   end
 end

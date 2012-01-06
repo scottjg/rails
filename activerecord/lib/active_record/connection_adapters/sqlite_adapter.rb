@@ -16,7 +16,7 @@ module ActiveRecord
         end
 
         def binary_to_string(value)
-          if value.respond_to?(:force_encoding) && value.encoding != Encoding::ASCII_8BIT
+          if value.encoding != Encoding::ASCII_8BIT
             value = value.force_encoding(Encoding::ASCII_8BIT)
           end
 
@@ -201,25 +201,17 @@ module ActiveRecord
         end
       end
 
-      if "<3".encoding_aware?
-        def type_cast(value, column) # :nodoc:
-          return value.to_f if BigDecimal === value
-          return super unless String === value
-          return super unless column && value
+      def type_cast(value, column) # :nodoc:
+        return value.to_f if BigDecimal === value
+        return super unless String === value
+        return super unless column && value
 
-          value = super
-          if column.type == :string && value.encoding == Encoding::ASCII_8BIT
-            @logger.error "Binary data inserted for `string` type on column `#{column.name}`"
-            value.encode! 'utf-8'
-          end
-          value
+        value = super
+        if column.type == :string && value.encoding == Encoding::ASCII_8BIT
+          @logger.error "Binary data inserted for `string` type on column `#{column.name}`"
+          value.encode! 'utf-8'
         end
-      else
-        def type_cast(value, column) # :nodoc:
-          return super unless BigDecimal === value
-
-          value.to_f
-        end
+        value
       end
 
       # DATABASE STATEMENTS ======================================

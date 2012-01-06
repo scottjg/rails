@@ -16,7 +16,7 @@ module ActionDispatch
           end
         end
 
-        attr_reader :app
+        attr_reader :app, :constraints
 
         def initialize(app, constraints, request)
           @app, @constraints, @request = app, constraints, request
@@ -1053,6 +1053,13 @@ module ActionDispatch
         #
         #   The above example will now change /posts/new to /posts/brand_new
         #
+        # [:path]
+        #   Allows you to change the path prefix for the resource.
+        #
+        #     resources :posts, :path => 'postings'
+        #
+        #   The resource and all segments will now route to /postings instead of /posts
+        #
         # [:only]
         #   Only generate routes for the given actions.
         #
@@ -1432,8 +1439,7 @@ module ActionDispatch
           end
 
           def action_path(name, path = nil) #:nodoc:
-            # Ruby 1.8 can't transform empty strings to symbols
-            name = name.to_sym if name.is_a?(String) && !name.empty?
+            name = name.to_sym if name.is_a?(String)
             path || @scope[:path_names][name] || name.to_s
           end
 

@@ -49,7 +49,7 @@ module ActiveRecord
       extend ActiveSupport::Concern
 
       included do
-        cattr_accessor :lock_optimistically, :instance_writer => false
+        config_attribute :lock_optimistically, :global => true
         self.lock_optimistically = true
       end
 

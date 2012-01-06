@@ -3,12 +3,9 @@ require 'active_support/core_ext/class/attribute'
 module ActiveRecord
   module Explain
     def self.extended(base)
-      base.class_eval do
-        # If a query takes longer than these many seconds we log its query plan
-        # automatically. nil disables this feature.
-        class_attribute :auto_explain_threshold_in_seconds, :instance_writer => false
-        self.auto_explain_threshold_in_seconds = nil
-      end
+      # If a query takes longer than these many seconds we log its query plan
+      # automatically. nil disables this feature.
+      base.config_attribute :auto_explain_threshold_in_seconds, :global => true
     end
 
     # If auto explain is enabled, this method triggers EXPLAIN logging for the

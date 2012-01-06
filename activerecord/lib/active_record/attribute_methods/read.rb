@@ -6,7 +6,7 @@ module ActiveRecord
       ATTRIBUTE_TYPES_CACHED_BY_DEFAULT = [:datetime, :timestamp, :time, :date]
 
       included do
-        cattr_accessor :attribute_types_cached_by_default, :instance_writer => false
+        config_attribute :attribute_types_cached_by_default, :global => true
         self.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
       end
 
@@ -30,10 +30,8 @@ module ActiveRecord
         end
 
         def undefine_attribute_methods
-          if base_class == self
-            generated_external_attribute_methods.module_eval do
-              instance_methods.each { |m| undef_method(m) }
-            end
+          generated_external_attribute_methods.module_eval do
+            instance_methods.each { |m| undef_method(m) }
           end
 
           super

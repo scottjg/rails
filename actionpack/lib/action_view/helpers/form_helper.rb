@@ -5,7 +5,6 @@ require 'action_view/helpers/form_tag_helper'
 require 'action_view/helpers/active_model_helper'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/hash/slice'
-require 'active_support/core_ext/module/method_names'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/array/extract_options'
@@ -1092,9 +1091,9 @@ module ActionView
         else
           add_default_name_and_id(options)
         end
-        hidden = tag("input", "name" => options["name"], "type" => "hidden", "value" => options['disabled'] && checked ? checked_value : unchecked_value)
+        hidden = unchecked_value ? tag("input", "name" => options["name"], "type" => "hidden", "value" => unchecked_value, "disabled" => options["disabled"]) : ""
         checkbox = tag("input", options)
-        (hidden + checkbox).html_safe
+        hidden + checkbox
       end
 
       def to_boolean_select_tag(options = {})
@@ -1232,7 +1231,7 @@ module ActionView
     class FormBuilder
       # The methods which wrap a form helper call.
       class_attribute :field_helpers
-      self.field_helpers = FormHelper.instance_method_names - %w(form_for convert_to_model)
+      self.field_helpers = FormHelper.instance_methods - [:form_for, :convert_to_model]
 
       attr_accessor :object_name, :object, :options
 
@@ -1271,7 +1270,7 @@ module ActionView
         @multipart = nil
       end
 
-      (field_helpers - %w(label check_box radio_button fields_for hidden_field file_field)).each do |selector|
+      (field_helpers - [:label, :check_box, :radio_button, :fields_for, :hidden_field, :file_field]).each do |selector|
         class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
           def #{selector}(method, options = {})  # def text_field(method, options = {})
             @template.send(                      #   @template.send(

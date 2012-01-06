@@ -7,10 +7,10 @@ module ActiveRecord
       extend ActiveSupport::Concern
 
       included do
-        cattr_accessor :time_zone_aware_attributes, :instance_writer => false
+        config_attribute :time_zone_aware_attributes, :global => true
         self.time_zone_aware_attributes = false
 
-        class_attribute :skip_time_zone_conversion_for_attributes, :instance_writer => false
+        config_attribute :skip_time_zone_conversion_for_attributes
         self.skip_time_zone_conversion_for_attributes = []
       end
 

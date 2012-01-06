@@ -1,6 +1,5 @@
 require 'active_support/core_ext/hash/reverse_merge'
 require 'fileutils'
-require 'rails/plugin'
 require 'rails/engine'
 
 module Rails
@@ -9,7 +8,7 @@ module Rails
   #
   # == Initialization
   #
-  # Rails::Application is responsible for executing all railties, engines and plugin
+  # Rails::Application is responsible for executing all railties and engines
   # initializers. It also executes some bootstrap initializers (check
   # Rails::Application::Bootstrap) and finishing initializers, after all the others
   # are executed (check Rails::Application::Finisher).
@@ -19,7 +18,7 @@ module Rails
   # Besides providing the same configuration as Rails::Engine and Rails::Railtie,
   # the application object has several specific configurations, for example
   # "allow_concurrency", "cache_classes", "consider_all_requests_local", "filter_parameters",
-  # "logger", "reload_plugins" and so forth.
+  # "logger" and so forth.
   #
   # Check Rails::Application::Configuration to see them all.
   #
@@ -154,15 +153,8 @@ module Rails
       self
     end
 
-    # Rails.application.env_config stores some of the Rails initial environment parameters.
-    # Currently stores:
-    #
-    #   * action_dispatch.parameter_filter" => config.filter_parameters,
-    #   * action_dispatch.secret_token"     => config.secret_token,
-    #   * action_dispatch.show_exceptions"  => config.action_dispatch.show_exceptions
-    #
-    # These parameters will be used by middlewares and engines to configure themselves.
-    #
+    # Stores some of the Rails initial environment parameters which
+    # will be used by middlewares and engines to configure themselves.
     def env_config
       @env_config ||= super.merge({
         "action_dispatch.parameter_filter" => config.filter_parameters,

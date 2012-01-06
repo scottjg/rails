@@ -14,7 +14,7 @@ end
 class ::MyOtherMailObserver < ::MyMailObserver; end
 
 module ApplicationTests
-  class ConfigurationTest < Test::Unit::TestCase
+  class ConfigurationTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::Isolation
     include Rack::Test::Methods
 
@@ -280,6 +280,11 @@ module ApplicationTests
       res = last_response.body
       get "/"
       assert_equal res, last_response.body # value should be unchanged
+    end
+
+    test "sets ActionDispatch.test_app" do
+      make_basic_app
+      assert_equal Rails.application, ActionDispatch.test_app
     end
 
     test "sets all Active Record models to whitelist all attributes by default" do
