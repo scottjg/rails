@@ -34,6 +34,10 @@ class NamingTest < ActiveModel::TestCase
   def test_human
     assert_equal 'Track back', @model_name.human
   end
+
+  def test_i18n_key
+    assert_equal :"post/track_back", @model_name.i18n_key
+  end
 end
 
 class NamingWithNamespacedModelInIsolatedNamespaceTest < ActiveModel::TestCase
@@ -73,6 +77,10 @@ class NamingWithNamespacedModelInIsolatedNamespaceTest < ActiveModel::TestCase
 
   def test_param_key
     assert_equal 'post', @model_name.param_key
+  end
+
+  def test_i18n_key
+    assert_equal :"blog/post", @model_name.i18n_key
   end
 end
 
@@ -114,6 +122,10 @@ class NamingWithNamespacedModelInSharedNamespaceTest < ActiveModel::TestCase
   def test_param_key
     assert_equal 'blog_post', @model_name.param_key
   end
+
+  def test_i18n_key
+    assert_equal :"blog/post", @model_name.i18n_key
+  end
 end
 
 class NamingWithSuppliedModelNameTest < ActiveModel::TestCase
@@ -154,6 +166,10 @@ class NamingWithSuppliedModelNameTest < ActiveModel::TestCase
   def test_param_key
     assert_equal 'article', @model_name.param_key
   end
+
+  def test_i18n_key
+    assert_equal :"article", @model_name.i18n_key
+  end
 end
 
 class NamingUsingRelativeModelNameTest < ActiveModel::TestCase
@@ -188,15 +204,20 @@ class NamingUsingRelativeModelNameTest < ActiveModel::TestCase
   def test_param_key
     assert_equal 'post', @model_name.param_key
   end
+
+  def test_i18n_key
+    assert_equal :"blog/post", @model_name.i18n_key
+  end
 end
 
-class NamingHelpersTest < Test::Unit::TestCase
+class NamingHelpersTest < ActiveModel::TestCase
   def setup
     @klass  = Contact
     @record = @klass.new
     @singular = 'contact'
     @plural = 'contacts'
     @uncountable = Sheep
+    @singular_route_key = 'contact'
     @route_key = 'contacts'
     @param_key = 'contact'
   end
@@ -223,10 +244,12 @@ class NamingHelpersTest < Test::Unit::TestCase
 
   def test_route_key
     assert_equal @route_key, route_key(@record)
+    assert_equal @singular_route_key, singular_route_key(@record)
   end
 
   def test_route_key_for_class
     assert_equal @route_key, route_key(@klass)
+    assert_equal @singular_route_key, singular_route_key(@klass)
   end
 
   def test_param_key
@@ -242,13 +265,18 @@ class NamingHelpersTest < Test::Unit::TestCase
     assert !uncountable?(@klass), "Expected 'contact' to be countable"
   end
 
+  def test_uncountable_route_key
+    assert_equal "sheep", singular_route_key(@uncountable)
+    assert_equal "sheep_index", route_key(@uncountable)
+  end
+
   private
     def method_missing(method, *args)
       ActiveModel::Naming.send(method, *args)
     end
 end
 
-class NameWithAnonymousClassTest < Test::Unit::TestCase
+class NameWithAnonymousClassTest < ActiveModel::TestCase
   def test_anonymous_class_without_name_argument
     assert_raises(ArgumentError) do
       ActiveModel::Name.new(Class.new)

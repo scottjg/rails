@@ -19,7 +19,7 @@ module ActiveSupport
 
     def tagged(*new_tags)
       tags     = current_tags
-      new_tags = Array.wrap(new_tags).flatten.reject(&:blank?)
+      new_tags = Array(new_tags).flatten.reject(&:blank?)
       tags.concat new_tags
       yield
     ensure
@@ -32,15 +32,15 @@ module ActiveSupport
 
     %w( fatal error warn info debug unknown ).each do |severity|
       eval <<-EOM, nil, __FILE__, __LINE__ + 1
-        def #{severity}(progname = nil, &block)
-          add(Logger::#{severity.upcase}, progname, &block)
-        end
+        def #{severity}(progname = nil, &block)              # def warn(progname = nil, &block)
+          add(Logger::#{severity.upcase}, progname, &block)  #   add(Logger::WARN, progname, &block)
+        end                                                  # end
       EOM
     end
 
-    def flush(*args)
+    def flush
       @tags.delete(Thread.current)
-      @logger.flush(*args) if @logger.respond_to?(:flush)
+      @logger.flush if @logger.respond_to?(:flush)
     end
 
     def method_missing(method, *args)

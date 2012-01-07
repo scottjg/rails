@@ -1,4 +1,20 @@
+## Rails 4.0.0 (unreleased) ##
+
+*   Rails::Plugin has gone. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies. *Santiago Pastorino*
+
 ## Rails 3.2.0 (unreleased) ##
+
+*   Rails::Plugin is deprecated and will be removed in Rails 4.0. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies. *Santiago Pastorino*
+
+*   Guides are available as a single .mobi for the Kindle and free Kindle readers apps. *Michael Pearson & Xavier Noria*
+
+*   Allow scaffold/model/migration generators to accept a "index" and "uniq" modifiers, as in: "tracking_id:integer:uniq" in order to generate (unique) indexes. Some types also accept custom options, for instance, you can specify the precision and scale for decimals as "price:decimal{7,2}". *Dmitrii Samoilov*
+
+*   Added `config.exceptions_app` to set the exceptions application invoked by the ShowException middleware when an exception happens. Defaults to `ActionDispatch::PublicExceptions.new(Rails.public_path)`. *José Valim*
+
+*   Speed up development by only reloading classes if dependencies files changed. This can be turned off by setting `config.reload_classes_only_on_change` to false. *José Valim*
+
+*   New applications get a flag `config.active_record.auto_explain_threshold_in_seconds` in the environments configuration files. With a value of 0.5 in development.rb, and commented out in production.rb. No mention in test.rb. *fxn*
 
 *   Add DebugExceptions middleware which contains features extracted from ShowExceptions middleware *José Valim*
 
@@ -26,19 +42,6 @@
 *   Remove old 'config.paths.app.controller' API in favor of 'config.paths["app/controller"]' API *Guillermo Iguaran*
 
 
-*   Rails 3.1.1
-
-*   Add jquery-rails to Gemfile of plugins, test/dummy app needs it. Closes #3091. *Santiago Pastorino*
-
-*   Add config.assets.initialize_on_precompile which, when set to false, forces
-    `rake assets:precompile` to load the application but does not initialize it.
-
-    To the app developer, this means configuration add in
-    config/initializers/* will not be executed.
-
-    Plugins developers need to special case their initializers that are
-    meant to be run in the assets group by adding :group => :assets.
-
 ## Rails 3.1.2 (unreleased) ##
 
 *   Engines: don't blow up if db/seeds.rb is missing.
@@ -49,6 +52,19 @@
     *GH 2564*
 
     *José Valim*
+    
+## Rails 3.1.1 (October 07, 2011) ##
+
+*   Add jquery-rails to Gemfile of plugins, test/dummy app needs it. Closes #3091. *Santiago Pastorino*
+
+*   Add config.assets.initialize_on_precompile which, when set to false, forces
+    `rake assets:precompile` to load the application but does not initialize it.
+
+    To the app developer, this means configuration add in
+    config/initializers/* will not be executed.
+
+    Plugins developers need to special case their initializers that are
+    meant to be run in the assets group by adding :group => :assets.    
 
 ## Rails 3.1.0 (August 30, 2011) ##
 

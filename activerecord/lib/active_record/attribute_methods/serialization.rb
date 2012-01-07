@@ -6,7 +6,7 @@ module ActiveRecord
       included do
         # Returns a hash of all the attributes that have been specified for serialization as
         # keys and their class restriction as values.
-        class_attribute :serialized_attributes
+        config_attribute :serialized_attributes
         self.serialized_attributes = {}
       end
 
@@ -58,6 +58,18 @@ module ActiveRecord
           self.serialized_attributes = serialized_attributes.merge(attr_name.to_s => coder)
         end
 
+        def initialize_attributes(attributes) #:nodoc:
+          super
+
+          serialized_attributes.each do |key, coder|
+            if attributes.key?(key)
+              attributes[key] = Attribute.new(coder, attributes[key], :serialized)
+            end
+          end
+
+          attributes
+        end
+
         private
 
         def attribute_cast_code(attr_name)
@@ -65,14 +77,6 @@ module ActiveRecord
             "v.unserialized_value"
           else
             super
-          end
-        end
-      end
-
-      def set_serialized_attributes
-        self.class.serialized_attributes.each do |key, coder|
-          if @attributes.key?(key)
-            @attributes[key] = Attribute.new(coder, @attributes[key], :serialized)
           end
         end
       end

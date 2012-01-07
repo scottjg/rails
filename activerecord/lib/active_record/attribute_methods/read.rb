@@ -6,7 +6,7 @@ module ActiveRecord
       ATTRIBUTE_TYPES_CACHED_BY_DEFAULT = [:datetime, :timestamp, :time, :date]
 
       included do
-        cattr_accessor :attribute_types_cached_by_default, :instance_writer => false
+        config_attribute :attribute_types_cached_by_default, :global => true
         self.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
       end
 
@@ -30,13 +30,31 @@ module ActiveRecord
         end
 
         def undefine_attribute_methods
-          if base_class == self && attribute_methods_generated?
-            column_names.each do |name|
-              generated_attribute_methods.singleton_class.send(:undef_method, name)
-            end
+          generated_external_attribute_methods.module_eval do
+            instance_methods.each { |m| undef_method(m) }
           end
 
           super
+        end
+
+        def type_cast_attribute(attr_name, attributes, cache = {}) #:nodoc:
+          return unless attr_name
+          attr_name = attr_name.to_s
+
+          if generated_external_attribute_methods.method_defined?(attr_name)
+            if attributes.has_key?(attr_name) || attr_name == 'id'
+              generated_external_attribute_methods.send(attr_name, attributes[attr_name], attributes, cache, attr_name)
+            end
+          elsif !attribute_methods_generated?
+            # If we haven't generated the caster methods yet, do that and
+            # then try again
+            define_attribute_methods
+            type_cast_attribute(attr_name, attributes, cache)
+          else
+            # If we get here, the attribute has no associated DB column, so
+            # just return it verbatim.
+            attributes[attr_name]
+          end
         end
 
         protected
@@ -50,20 +68,18 @@ module ActiveRecord
           # rename it to what we want.
           def define_method_attribute(attr_name)
             cast_code = attribute_cast_code(attr_name)
-            internal  = internal_attribute_access_code(attr_name, cast_code)
-            external  = external_attribute_access_code(attr_name, cast_code)
 
-            generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__
+            generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
               def __temp__
-                #{internal}
+                #{internal_attribute_access_code(attr_name, cast_code)}
               end
               alias_method '#{attr_name}', :__temp__
               undef_method :__temp__
             STR
 
-            generated_attribute_methods.singleton_class.module_eval <<-STR, __FILE__, __LINE__
+            generated_external_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
               def __temp__(v, attributes, attributes_cache, attr_name)
-                #{external}
+                #{external_attribute_access_code(attr_name, cast_code)}
               end
               alias_method '#{attr_name}', :__temp__
               undef_method :__temp__
@@ -107,23 +123,7 @@ module ActiveRecord
       # Returns the value of the attribute identified by <tt>attr_name</tt> after it has been typecast (for example,
       # "2004-12-12" in a data column is cast to a date object, like Date.new(2004, 12, 12)).
       def read_attribute(attr_name)
-        attr_name = attr_name.to_s
-        methods   = self.class.generated_attribute_methods
-
-        if methods.respond_to?(attr_name)
-          if @attributes.has_key?(attr_name) || attr_name == 'id'
-            methods.send(attr_name, @attributes[attr_name], @attributes, @attributes_cache, attr_name)
-          end
-        elsif !self.class.attribute_methods_generated?
-          # If we haven't generated the caster methods yet, do that and
-          # then try again
-          self.class.define_attribute_methods
-          read_attribute(attr_name)
-        else
-          # If we get here, the attribute has no associated DB column, so
-          # just return it verbatim.
-          @attributes[attr_name]
-        end
+        self.class.type_cast_attribute(attr_name, @attributes, @attributes_cache)
       end
 
       private

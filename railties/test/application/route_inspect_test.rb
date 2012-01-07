@@ -1,10 +1,10 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'rails/application/route_inspector'
 require 'action_controller'
 require 'rails/engine'
 
 module ApplicationTests
-  class RouteInspectTest < Test::Unit::TestCase
+  class RouteInspectTest < ActiveSupport::TestCase
     def setup
       @set = ActionDispatch::Routing::RouteSet.new
       @inspector = Rails::Application::RouteInspector.new
@@ -126,6 +126,23 @@ module ApplicationTests
       end
       output = @inspector.format @set.routes
       assert_equal ["  /foo/:id(.:format) #{RackApp.name} {:id=>/[A-Z]\\d{5}/}"], output
+    end
+
+    def test_rake_routes_shows_route_with_rack_app_nested_with_dynamic_constraints
+      constraint = Class.new do
+        def to_s
+          "( my custom constraint )"
+        end
+      end
+
+      @set.draw do
+        scope :constraint => constraint.new do
+          mount RackApp => '/foo'
+        end
+      end
+
+      output = @inspector.format @set.routes
+      assert_equal ["  /foo #{RackApp.name} {:constraint=>( my custom constraint )}"], output
     end
   end
 end

@@ -1,4 +1,5 @@
 require "isolation/abstract_unit"
+require 'rack/test'
 
 class ::MyMailInterceptor
   def self.delivering_email(email); email; end
@@ -13,8 +14,9 @@ end
 class ::MyOtherMailObserver < ::MyMailObserver; end
 
 module ApplicationTests
-  class ConfigurationTest < Test::Unit::TestCase
+  class ConfigurationTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::Isolation
+    include Rack::Test::Methods
 
     def new_app
       File.expand_path("#{app_path}/../new_app")
@@ -181,20 +183,14 @@ module ApplicationTests
       assert !$prepared
 
       require "#{app_path}/config/environment"
-      require 'rack/test'
-      extend Rack::Test::Methods
 
       get "/"
       assert $prepared
     end
 
     def assert_utf8
-      if RUBY_VERSION < '1.9'
-        assert_equal "UTF8", $KCODE
-      else
-        assert_equal Encoding::UTF_8, Encoding.default_external
-        assert_equal Encoding::UTF_8, Encoding.default_internal
-      end
+      assert_equal Encoding::UTF_8, Encoding.default_external
+      assert_equal Encoding::UTF_8, Encoding.default_internal
     end
 
     test "skipping config.encoding still results in 'utf-8' as the default" do
@@ -284,6 +280,11 @@ module ApplicationTests
       res = last_response.body
       get "/"
       assert_equal res, last_response.body # value should be unchanged
+    end
+
+    test "sets ActionDispatch.test_app" do
+      make_basic_app
+      assert_equal Rails.application, ActionDispatch.test_app
     end
 
     test "sets all Active Record models to whitelist all attributes by default" do
@@ -483,14 +484,12 @@ module ApplicationTests
       RUBY
 
       add_to_config <<-RUBY
-        routes.append do
+        routes.prepend do
           resources :posts
         end
       RUBY
 
       require "#{app_path}/config/environment"
-      require "rack/test"
-      extend Rack::Test::Methods
 
       post "/posts.json", '{ "title": "foo", "name": "bar" }', "CONTENT_TYPE" => "application/json"
       assert_equal '{"title"=>"foo"}', last_response.body

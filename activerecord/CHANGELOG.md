@@ -1,10 +1,73 @@
+## Rails 4.0.0 (unreleased) ##
+
+*   Connections *must* be closed at the end of a thread.  If not, your
+    connection pool can fill and an exception will be raised.
+
+*   Added the `ActiveRecord::Model` module which can be included in a
+    class as an alternative to inheriting from `ActiveRecord::Base`:
+
+        class Post
+          include ActiveRecord::Model
+        end
+
+    Please note:
+
+      * Up until now it has been safe to assume that all AR models are
+        descendants of `ActiveRecord::Base`. This is no longer a safe
+        assumption, but it may transpire that there are areas of the
+        code which still make this assumption. So there may be
+        'teething difficulties' with this feature. (But please do try it
+        and report bugs.)
+
+      * Plugins & libraries etc that add methods to `ActiveRecord::Base`
+        will not be compatible with `ActiveRecord::Model`. Those libraries
+        should add to `ActiveRecord::Model` instead (which is included in
+        `Base`), or better still, avoid monkey-patching AR and instead
+        provide a module that users can include where they need it.
+
+      * To minimise the risk of conflicts with other code, it is
+        advisable to include `ActiveRecord::Model` early in your class
+        definition.
+
+    *Jon Leighton*
+
+*   PostgreSQL hstore records can be created.
+
+*   PostgreSQL hstore types are automatically deserialized from the database.
+
 ## Rails 3.2.0 (unreleased) ##
 
+*   Added ability to run migrations only for given scope, which allows
+    to run migrations only from one engine (for example to revert changes
+    from engine that you want to remove).
+
+    Example:
+      rake db:migrate SCOPE=blog
+
+   *Piotr Sarnacki*
+
+*   Migrations copied from engines are now scoped with engine's name,
+    for example 01_create_posts.blog.rb. *Piotr Sarnacki*
+
+*   Implements `AR::Base.silence_auto_explain`. This method allows the user to
+    selectively disable automatic EXPLAINs within a block. *fxn*
+
+*   Implements automatic EXPLAIN logging for slow queries.
+
+    A new configuration parameter `config.active_record.auto_explain_threshold_in_seconds`
+    determines what's to be considered a slow query. Setting that to `nil` disables
+    this feature. Defaults are 0.5 in development mode, and `nil` in test and production
+    modes.
+
+    As of this writing there's support for SQLite, MySQL (mysql2 adapter), and
+    PostgreSQL.
+
+    *fxn*
 
 *   Implemented ActiveRecord::Relation#pluck method
 
     Method returns Array of column value from table under ActiveRecord model
-        
+
         Client.pluck(:id)
 
     *Bogdan Gusiev*
@@ -21,7 +84,7 @@
       Post.find(1)
       Post.connection.close
     }.join
-    
+
     Only people who spawn threads in their application code need to worry
     about this change.
 

@@ -91,6 +91,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       match "/local/:action", :controller => "local"
 
       match "/projects/status(.:format)"
+      match "/404", :to => lambda { |env| [404, {"Content-Type" => "text/plain"}, ["NOT FOUND"]] }
 
       constraints(:ip => /192\.168\.1\.\d\d\d/) do
         get 'admin' => "queenbee#index"
@@ -1442,10 +1443,10 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
   def test_nested_optional_path_shorthand
     with_test_routes do
       get '/registrations/new'
-      assert @request.params[:locale].nil?
+      assert_nil @request.params[:locale]
 
       get '/en/registrations/new'
-      assert 'en', @request.params[:locale]
+      assert_equal 'en', @request.params[:locale]
     end
   end
 
@@ -2296,7 +2297,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
   def test_named_routes_collision_is_avoided_unless_explicitly_given_as
     assert_equal "/c/1", routes_collision_path(1)
-    assert_equal "/forced_collision", routes_forced_collision_path
+    assert_equal "/fc", routes_forced_collision_path
   end
 
   def test_redirect_argument_error
@@ -2413,7 +2414,8 @@ class TestAppendingRoutes < ActionDispatch::IntegrationTest
     lambda { |e| [ 200, { 'Content-Type' => 'text/plain' }, [resp] ] }
   end
 
-  setup do
+  def setup
+    super
     s = self
     @app = ActionDispatch::Routing::RouteSet.new
     @app.append do

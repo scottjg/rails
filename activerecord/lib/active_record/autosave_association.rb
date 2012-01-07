@@ -1,5 +1,3 @@
-require 'active_support/core_ext/array/wrap'
-
 module ActiveRecord
   # = Active Record Autosave Association
   #
@@ -343,7 +341,7 @@ module ActiveRecord
               if autosave
                 saved = association.insert_record(record, false)
               else
-                association.insert_record(record)
+                association.insert_record(record) unless reflection.nested?
               end
             elsif autosave
               saved = record.save(:validate => false)

@@ -11,6 +11,7 @@ module ActiveRecord
     extend ActiveSupport::Autoload
 
     autoload :Column
+    autoload :ConnectionSpecification
 
     autoload_under 'abstract' do
       autoload :IndexDefinition,  'active_record/connection_adapters/abstract/schema_definitions'
@@ -26,7 +27,6 @@ module ActiveRecord
       autoload :ConnectionPool
       autoload :ConnectionHandler,       'active_record/connection_adapters/abstract/connection_pool'
       autoload :ConnectionManagement,    'active_record/connection_adapters/abstract/connection_pool'
-      autoload :ConnectionSpecification
 
       autoload :QueryCache
     end
@@ -139,6 +139,12 @@ module ActiveRecord
 
       # Does this adapter support index sort order?
       def supports_index_sort_order?
+        false
+      end
+
+      # Does this adapter support explain? As of this writing sqlite3,
+      # mysql2, and postgresql are the only ones that do.
+      def supports_explain?
         false
       end
 

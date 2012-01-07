@@ -228,23 +228,19 @@ module ActionView
         )
       end
 
-      # Web browsers cache favicons. If you just throw a <tt>favicon.ico</tt> into the document
-      # root of your application and it changes later, clients that have it in their cache
-      # won't see the update. Using this helper prevents that because it appends an asset ID:
-      #
       #   <%= favicon_link_tag %>
       #
       # generates
       #
-      #   <link href="/favicon.ico?4649789979" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+      #   <link href="/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
       #
       # You may specify a different file in the first argument:
       #
-      #   <%= favicon_link_tag 'favicon.ico' %>
+      #   <%= favicon_link_tag '/myicon.ico' %>
       #
       # That's passed to +path_to_image+ as is, so it gives
       #
-      #   <link href="/images/favicon.ico?4649789979" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+      #   <link href="/myicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
       #
       # The helper accepts an additional options hash where you can override "rel" and "type".
       #
@@ -309,6 +305,20 @@ module ActionView
         asset_paths.compute_public_path(source, 'audios')
       end
       alias_method :path_to_audio, :audio_path # aliased to avoid conflicts with an audio_path named route
+
+      # Computes the path to a font asset in the public fonts directory.
+      # Full paths from the document root will be passed through.
+      #
+      # ==== Examples
+      #   font_path("font")                                           # => /fonts/font
+      #   font_path("font.ttf")                                       # => /fonts/font.ttf
+      #   font_path("dir/font.ttf")                                   # => /fonts/dir/font.ttf
+      #   font_path("/dir/font.ttf")                                  # => /dir/font.ttf
+      #   font_path("http://www.example.com/dir/font.ttf")            # => http://www.example.com/dir/font.ttf
+      def font_path(source)
+        asset_paths.compute_public_path(source, 'fonts')
+      end
+      alias_method :path_to_font, :font_path # aliased to avoid conflicts with an font_path named route
 
       # Returns an html image tag for the +source+. The +source+ can be a full
       # path or a file that exists in your public images directory.

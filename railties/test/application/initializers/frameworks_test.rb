@@ -1,7 +1,7 @@
 require "isolation/abstract_unit"
 
 module ApplicationTests
-  class FrameworksTest < Test::Unit::TestCase
+  class FrameworksTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::Isolation
 
     def setup
@@ -134,6 +134,13 @@ module ApplicationTests
       add_to_config "config.action_dispatch.tld_length = 2"
       require "#{app_path}/config/environment"
       assert_equal 2, ActionDispatch::Http::URL.tld_length
+    end
+
+    test "assignment config.encoding to default_charset" do
+      charset = 'Shift_JIS'
+      add_to_config "config.encoding = '#{charset}'"
+      require "#{app_path}/config/environment"
+      assert_equal charset, ActionDispatch::Response.default_charset
     end
 
     # AS

@@ -20,7 +20,7 @@ class ERB
       if s.html_safe?
         s
       else
-        s.gsub(/&/, "&amp;").gsub(/\"/, "&quot;").gsub(/>/, "&gt;").gsub(/</, "&lt;").html_safe
+        s.encode(s.encoding, :xml => :attr)[1...-1].html_safe
       end
     end
 
@@ -134,11 +134,6 @@ module ActiveSupport #:nodoc:
 
     def encode_with(coder)
       coder.represent_scalar nil, to_str
-    end
-
-    def to_yaml(*args)
-      return super() if defined?(YAML::ENGINE) && !YAML::ENGINE.syck?
-      to_str.to_yaml(*args)
     end
 
     UNSAFE_STRING_METHODS.each do |unsafe_method|

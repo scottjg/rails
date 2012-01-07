@@ -528,6 +528,12 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal [posts(:welcome).id, posts(:authorless).id].sort, people(:michael).post_ids.sort
   end
 
+  def test_get_ids_for_has_many_through_with_conditions_should_not_preload
+    Tagging.create!(:taggable_type => 'Post', :taggable_id => posts(:welcome).id, :tag => tags(:misc))
+    ActiveRecord::Associations::Preloader.expects(:new).never
+    posts(:welcome).misc_tag_ids
+  end
+
   def test_get_ids_for_loaded_associations
     person = people(:michael)
     person.posts(true)
@@ -841,7 +847,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
   def test_preloading_empty_through_association_via_joins
     person = Person.create!(:first_name => "Gaga")
-    person = Person.where(:id => person.id).where('readers.id = 1 or 1=1').includes(:posts).to_a.first
+    person = Person.where(:id => person.id).where('readers.id = 1 or 1=1').eager_load(:posts).to_a.first
 
     assert person.posts.loaded?, 'person.posts should be loaded'
     assert_equal [], person.posts

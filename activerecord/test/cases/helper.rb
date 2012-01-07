@@ -2,12 +2,14 @@ require File.expand_path('../../../../load_paths', __FILE__)
 
 require 'config'
 
-require 'test/unit'
+require 'minitest/autorun'
 require 'stringio'
 require 'mocha'
 
 require 'active_record'
+require 'active_record/test_case'
 require 'active_support/dependencies'
+require 'active_support/logger'
 
 require 'support/config'
 require 'support/connection'
@@ -68,14 +70,19 @@ module ActiveRecord
     cattr_accessor :log
     self.log = []
 
+    attr_reader :ignore
+
+    def initialize(ignore = Regexp.union(self.class.ignored_sql))
+      @ignore = ignore
+    end
+
     def call(name, start, finish, message_id, values)
       sql = values[:sql]
 
       # FIXME: this seems bad. we should probably have a better way to indicate
       # the query was cached
-      unless 'CACHE' == values[:name]
-        self.class.log << sql unless self.class.ignored_sql.any? { |r| sql =~ r }
-      end
+      return if 'CACHE' == values[:name] || ignore =~ sql
+      self.class.log << sql
     end
   end
 
@@ -85,7 +92,10 @@ end
 unless ENV['FIXTURE_DEBUG']
   module ActiveRecord::TestFixtures::ClassMethods
     def try_to_load_dependency_with_silence(*args)
-      ActiveRecord::Base.logger.silence { try_to_load_dependency_without_silence(*args)}
+      old = ActiveRecord::Base.logger.level
+      ActiveRecord::Base.logger.level = ActiveSupport::Logger::ERROR
+      try_to_load_dependency_without_silence(*args)
+      ActiveRecord::Base.logger.level = old
     end
 
     alias_method_chain :try_to_load_dependency, :silence

@@ -9,15 +9,12 @@ module ActiveRecord
       cleanup_identity_map
     end
 
-    def cleanup_identity_map
-      ActiveRecord::IdentityMap.clear
+    def teardown
+      ActiveRecord::SQLCounter.log.clear
     end
 
-    # Backport skip to Ruby 1.8. test/unit doesn't support it, so just
-    # make it a noop.
-    unless instance_methods.map(&:to_s).include?("skip")
-      def skip(message)
-      end
+    def cleanup_identity_map
+      ActiveRecord::IdentityMap.clear
     end
 
     def assert_date_from_db(expected, actual, message = nil)
@@ -57,17 +54,8 @@ module ActiveRecord
       ActiveRecord::SQLCounter.ignored_sql = prev_ignored_sql
     end
 
-    def with_kcode(kcode)
-      if RUBY_VERSION < '1.9'
-        orig_kcode, $KCODE = $KCODE, kcode
-        begin
-          yield
-        ensure
-          $KCODE = orig_kcode
-        end
-      else
-        yield
-      end
+    def sqlite3? connection
+      connection.class.name.split('::').last == "SQLite3Adapter"
     end
   end
 end

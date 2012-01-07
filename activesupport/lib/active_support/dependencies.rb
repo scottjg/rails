@@ -87,6 +87,10 @@ module ActiveSupport #:nodoc:
         @stack.each(&block)
       end
 
+      def watching?
+        !@watching.empty?
+      end
+
       # return a list of new constants found since the last call to watch_namespaces
       def new_constants
         constants = []
@@ -226,8 +230,8 @@ module ActiveSupport #:nodoc:
       end
 
       def load_dependency(file)
-        if Dependencies.load?
-          Dependencies.new_constants_in(Object) { yield }.presence
+        if Dependencies.load? && ActiveSupport::Dependencies.constant_watch_stack.watching?
+          Dependencies.new_constants_in(Object) { yield }
         else
           yield
         end
@@ -236,13 +240,13 @@ module ActiveSupport #:nodoc:
         raise
       end
 
-      def load(file, *)
+      def load(file, wrap = false)
         result = false
         load_dependency(file) { result = super }
         result
       end
 
-      def require(file, *)
+      def require(file)
         result = false
         load_dependency(file) { result = super }
         result
@@ -365,26 +369,12 @@ module ActiveSupport #:nodoc:
     end
 
     # Is the provided constant path defined?
-    if Module.method(:const_defined?).arity == 1
-      def qualified_const_defined?(path)
-        Object.qualified_const_defined?(path.sub(/^::/, ''))
-      end
-    else
-      def qualified_const_defined?(path)
-        Object.qualified_const_defined?(path.sub(/^::/, ''), false)
-      end
+    def qualified_const_defined?(path)
+      Object.qualified_const_defined?(path.sub(/^::/, ''), false)
     end
 
-    if Module.method(:const_defined?).arity == 1
-      # Does this module define this constant?
-      # Wrapper to accommodate changing Module#const_defined? in Ruby 1.9
-      def local_const_defined?(mod, const)
-        mod.const_defined?(const)
-      end
-    else
-      def local_const_defined?(mod, const) #:nodoc:
-        mod.const_defined?(const, false)
-      end
+    def local_const_defined?(mod, const) #:nodoc:
+      mod.const_defined?(const, false)
     end
 
     # Given +path+, a filesystem path to a ruby file, return an array of constant

@@ -1,6 +1,6 @@
 require 'abstract_unit'
 
-class ReloaderTest < Test::Unit::TestCase
+class ReloaderTest < ActiveSupport::TestCase
   Reloader = ActionDispatch::Reloader
 
   def test_prepare_callbacks
@@ -41,6 +41,19 @@ class ReloaderTest < Test::Unit::TestCase
   def test_returned_body_object_always_responds_to_close
     body = call_and_return_body
     assert_respond_to body, :close
+  end
+
+  def test_condition_specifies_when_to_reload
+    i, j = 0, 0, 0, 0
+    Reloader.to_prepare { |*args| i += 1 }
+    Reloader.to_cleanup { |*args| j += 1 }
+    app = Reloader.new(lambda { |env| [200, {}, []] }, lambda { i < 3 })
+    5.times do
+      resp = app.call({})
+      resp[2].close
+    end
+    assert_equal 3, i
+    assert_equal 3, j
   end
 
   def test_returned_body_object_behaves_like_underlying_object
@@ -114,6 +127,15 @@ class ReloaderTest < Test::Unit::TestCase
     Reloader.cleanup!
     assert !prepared
     assert cleaned
+  end
+
+  def test_prepend_prepare_callback
+    i = 10
+    Reloader.to_prepare { i += 1 }
+    Reloader.to_prepare(:prepend => true) { i = 0 }
+
+    Reloader.prepare!
+    assert_equal 1, i
   end
 
   def test_cleanup_callbacks_are_called_on_exceptions

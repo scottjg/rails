@@ -2,9 +2,9 @@ require 'cgi'
 require 'action_view/helpers/date_helper'
 require 'action_view/helpers/tag_helper'
 require 'action_view/helpers/form_tag_helper'
+require 'action_view/helpers/active_model_helper'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/core_ext/hash/slice'
-require 'active_support/core_ext/module/method_names'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/array/extract_options'
@@ -387,8 +387,8 @@ module ActionView
         as = options[:as]
         action, method = object.respond_to?(:persisted?) && object.persisted? ? [:edit, :put] : [:new, :post]
         options[:html].reverse_merge!(
-          :class  => as ? "#{as}_#{action}" : dom_class(object, action),
-          :id     => as ? "#{as}_#{action}" : [options[:namespace], dom_id(object, action)].compact.join("_").presence,
+          :class  => as ? "#{action}_#{as}" : dom_class(object, action),
+          :id     => as ? "#{action}_#{as}" : [options[:namespace], dom_id(object, action)].compact.join("_").presence,
           :method => method
         )
 
@@ -963,7 +963,7 @@ module ActionView
     end
 
     class InstanceTag
-      include Helpers::TagHelper, Helpers::FormTagHelper
+      include Helpers::ActiveModelInstanceTag, Helpers::TagHelper, Helpers::FormTagHelper
 
       attr_reader :object, :method_name, :object_name
 
@@ -1091,9 +1091,9 @@ module ActionView
         else
           add_default_name_and_id(options)
         end
-        hidden = tag("input", "name" => options["name"], "type" => "hidden", "value" => options['disabled'] && checked ? checked_value : unchecked_value)
+        hidden = unchecked_value ? tag("input", "name" => options["name"], "type" => "hidden", "value" => unchecked_value, "disabled" => options["disabled"]) : ""
         checkbox = tag("input", options)
-        (hidden + checkbox).html_safe
+        hidden + checkbox
       end
 
       def to_boolean_select_tag(options = {})
@@ -1231,7 +1231,7 @@ module ActionView
     class FormBuilder
       # The methods which wrap a form helper call.
       class_attribute :field_helpers
-      self.field_helpers = FormHelper.instance_method_names - %w(form_for convert_to_model)
+      self.field_helpers = FormHelper.instance_methods - [:form_for, :convert_to_model]
 
       attr_accessor :object_name, :object, :options
 
@@ -1270,7 +1270,7 @@ module ActionView
         @multipart = nil
       end
 
-      (field_helpers - %w(label check_box radio_button fields_for hidden_field file_field)).each do |selector|
+      (field_helpers - [:label, :check_box, :radio_button, :fields_for, :hidden_field, :file_field]).each do |selector|
         class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
           def #{selector}(method, options = {})  # def text_field(method, options = {})
             @template.send(                      #   @template.send(
@@ -1362,6 +1362,39 @@ module ActionView
         value, options = nil, value if value.is_a?(Hash)
         value ||= submit_default_value
         @template.submit_tag(value, options)
+      end
+
+      # Add the submit button for the given form. When no value is given, it checks
+      # if the object is a new resource or not to create the proper label:
+      #
+      #   <%= form_for @post do |f| %>
+      #     <%= f.button %>
+      #   <% end %>
+      #
+      # In the example above, if @post is a new record, it will use "Create Post" as
+      # submit button label, otherwise, it uses "Update Post".
+      #
+      # Those labels can be customized using I18n, under the helpers.submit key and accept
+      # the %{model} as translation interpolation:
+      #
+      #   en:
+      #     helpers:
+      #       button:
+      #         create: "Create a %{model}"
+      #         update: "Confirm changes to %{model}"
+      #
+      # It also searches for a key specific for the given object:
+      #
+      #   en:
+      #     helpers:
+      #       button:
+      #         post:
+      #           create: "Add %{model}"
+      #
+      def button(value=nil, options={})
+        value, options = nil, value if value.is_a?(Hash)
+        value ||= submit_default_value
+        @template.button_tag(value, options)
       end
 
       def emitted_hidden_id?

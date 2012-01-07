@@ -134,7 +134,7 @@ module ActiveRecord
     def last(*args)
       if args.any?
         if args.first.kind_of?(Integer) || (loaded? && !args.first.kind_of?(Hash))
-          if order_values.empty? && reorder_value.nil?
+          if order_values.empty?
             order("#{primary_key} DESC").limit(*args).reverse
           else
             to_a.last(*args)
@@ -187,7 +187,7 @@ module ActiveRecord
     def exists?(id = false)
       return false if id.nil?
 
-      id = id.id if ActiveRecord::Base === id
+      id = id.id if ActiveRecord::Model === id
 
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)

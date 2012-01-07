@@ -1,4 +1,3 @@
-require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/enumerable'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/object/blank'
@@ -70,7 +69,7 @@ module ActiveRecord
     end
   end
 
-  class HasManyThroughNestedAssociationsAreReadonly < ActiveRecordError #:nodoc
+  class HasManyThroughNestedAssociationsAreReadonly < ActiveRecordError #:nodoc:
     def initialize(owner, reflection)
       super("Cannot modify association '#{owner.class.name}##{reflection.name}' because it goes through more than one other association.")
     end
@@ -1185,7 +1184,7 @@ module ActiveRecord
       #   has_many :subscribers, :through => :subscriptions, :source => :user
       #   has_many :subscribers, :class_name => "Person", :finder_sql => Proc.new {
       #       %Q{
-      #         SELECT DISTINCT people.*
+      #         SELECT DISTINCT *
       #         FROM people p, post_subscriptions ps
       #         WHERE ps.post_id = #{id} AND ps.person_id = p.id
       #         ORDER BY p.first_name

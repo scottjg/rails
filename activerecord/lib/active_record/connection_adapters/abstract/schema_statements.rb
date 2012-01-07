@@ -1,4 +1,3 @@
-require 'active_support/core_ext/array/wrap'
 require 'active_support/deprecation/reporting'
 
 module ActiveRecord
@@ -15,8 +14,6 @@ module ActiveRecord
       def table_alias_for(table_name)
         table_name[0...table_alias_length].gsub(/\./, '_')
       end
-
-      # def tables(name = nil) end
 
       # Checks to see if the table +table_name+ exists on the database.
       #
@@ -44,7 +41,7 @@ module ActiveRecord
       #  # Check an index with a custom name exists
       #  index_exists?(:suppliers, :company_id, :name => "idx_company_id"
       def index_exists?(table_name, column_name, options = {})
-        column_names = Array.wrap(column_name)
+        column_names = Array(column_name)
         index_name = options.key?(:name) ? options[:name].to_s : index_name(table_name, :column => column_names)
         if options[:unique]
           indexes(table_name).any?{ |i| i.unique && i.name == index_name }
@@ -303,15 +300,8 @@ module ActiveRecord
       # Adds a new index to the table. +column_name+ can be a single Symbol, or
       # an Array of Symbols.
       #
-      # The index will be named after the table and the first column name,
-      # unless you pass <tt>:name</tt> as an option.
-      #
-      # When creating an index on multiple columns, the first column is used as a name
-      # for the index. For example, when you specify an index on two columns
-      # [<tt>:first</tt>, <tt>:last</tt>], the DBMS creates an index for both columns as well as an
-      # index for the first column <tt>:first</tt>. Using just the first name for this index
-      # makes sense, because you will never have to create a singular index with this
-      # name.
+      # The index will be named after the table and the column name(s), unless
+      # you pass <tt>:name</tt> as an option.
       #
       # ===== Examples
       #
@@ -386,7 +376,7 @@ module ActiveRecord
       def index_name(table_name, options) #:nodoc:
         if Hash === options # legacy support
           if options[:column]
-            "index_#{table_name}_on_#{Array.wrap(options[:column]) * '_and_'}"
+            "index_#{table_name}_on_#{Array(options[:column]) * '_and_'}"
           elsif options[:name]
             options[:name]
           else
@@ -445,7 +435,7 @@ module ActiveRecord
       end
 
       def assume_migrated_upto_version(version, migrations_paths = ActiveRecord::Migrator.migrations_paths)
-        migrations_paths = Array.wrap(migrations_paths)
+        migrations_paths = Array(migrations_paths)
         version = version.to_i
         sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
 
@@ -560,7 +550,7 @@ module ActiveRecord
         end
 
         def add_index_options(table_name, column_name, options = {})
-          column_names = Array.wrap(column_name)
+          column_names = Array(column_name)
           index_name   = index_name(table_name, :column => column_names)
 
           if Hash === options # legacy support, since this param was a string

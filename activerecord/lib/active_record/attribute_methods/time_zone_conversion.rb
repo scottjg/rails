@@ -7,31 +7,25 @@ module ActiveRecord
       extend ActiveSupport::Concern
 
       included do
-        cattr_accessor :time_zone_aware_attributes, :instance_writer => false
+        config_attribute :time_zone_aware_attributes, :global => true
         self.time_zone_aware_attributes = false
 
-        class_attribute :skip_time_zone_conversion_for_attributes, :instance_writer => false
+        config_attribute :skip_time_zone_conversion_for_attributes
         self.skip_time_zone_conversion_for_attributes = []
       end
 
       module ClassMethods
         protected
-          # Defined for all +datetime+ and +timestamp+ attributes when +time_zone_aware_attributes+ are enabled.
-          # This enhanced read method automatically converts the UTC time stored in the database to the time
+          # The enhanced read method automatically converts the UTC time stored in the database to the time
           # zone stored in Time.zone.
-          def internal_attribute_access_code(attr_name, cast_code)
+          def attribute_cast_code(attr_name)
             column = columns_hash[attr_name]
 
             if create_time_zone_conversion_attribute?(attr_name, column)
-              super(attr_name, "(v=#{column.type_cast_code('v')}) && #{cast_code}")
-            else
-              super
-            end
-          end
+              typecast             = "v = #{super}"
+              time_zone_conversion = "v.acts_like?(:time) ? v.in_time_zone : v"
 
-          def attribute_cast_code(attr_name)
-            if create_time_zone_conversion_attribute?(attr_name, columns_hash[attr_name])
-              "(v.acts_like?(:time) ? v.in_time_zone : v)"
+              "((#{typecast}) && (#{time_zone_conversion}))"
             else
               super
             end

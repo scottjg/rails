@@ -5,7 +5,6 @@ require 'active_support/ordered_hash'
 
 require 'bigdecimal'
 require 'active_support/core_ext/big_decimal/conversions' # for #to_s
-require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/object/instance_variables'
@@ -119,9 +118,7 @@ module ActiveSupport
         end
 
         def escape(string)
-          if string.respond_to?(:force_encoding)
-            string = string.encode(::Encoding::UTF_8, :undef => :replace).force_encoding(::Encoding::BINARY)
-          end
+          string = string.encode(::Encoding::UTF_8, :undef => :replace).force_encoding(::Encoding::BINARY)
           json = string.
             gsub(escape_regex) { |s| ESCAPED_CHARS[s] }.
             gsub(/([\xC0-\xDF][\x80-\xBF]|
@@ -130,7 +127,7 @@ module ActiveSupport
             s.unpack("U*").pack("n*").unpack("H*")[0].gsub(/.{4}/n, '\\\\u\&')
           }
           json = %("#{json}")
-          json.force_encoding(::Encoding::UTF_8) if json.respond_to?(:force_encoding)
+          json.force_encoding(::Encoding::UTF_8)
           json
         end
       end
@@ -208,6 +205,10 @@ module Enumerable
   end
 end
 
+class Range
+  def as_json(options = nil) to_s end #:nodoc:
+end
+
 class Array
   def as_json(options = nil) #:nodoc:
     # use encoder as a proxy to call as_json on all elements, to protect from circular references
@@ -226,9 +227,9 @@ class Hash
     # create a subset of the hash by applying :only or :except
     subset = if options
       if attrs = options[:only]
-        slice(*Array.wrap(attrs))
+        slice(*Array(attrs))
       elsif attrs = options[:except]
-        except(*Array.wrap(attrs))
+        except(*Array(attrs))
       else
         self
       end
