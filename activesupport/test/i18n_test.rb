@@ -97,4 +97,33 @@ class I18nTest < Test::Unit::TestCase
     I18n.backend.store_translations 'en', :support => { :array => { :two_words_connector => default_two_words_connector } }
     I18n.backend.store_translations 'en', :support => { :array => { :last_word_connector => default_last_word_connector } }
   end
+
+  def test_localize_number
+    # I need a different languaje to localize numbers
+    I18n.backend.store_translations 'pirate',
+      "number" => {
+        "percentage" => { "format" => { "delimiter" => "," } },
+        "currency" => {
+          "format" => {
+            "format" => "%u %n", "unit" => "$", "separator" => ",",
+            "delimiter" => ".", "precision"=>2, "significant" => false,
+            "strip_insignificant_zeros" => false } },
+        "format" => { "thousands_separator" => ".", "decimal_mark" => ",",
+          "delimiter" => ",", "precision" => 2, "significant" => false,
+          "strip_insignificant_zeros" => false, "separator" => "."},
+        "human" => {
+          "format" => {"delimiter" => ",", "precision" => 3,
+            "significant" => true, "strip_insignificant_zeros" => true },
+          "storage_units" => { "format" => "%n %u",
+            "units" => {"byte"=>{"one" => "Byte", "other" => "Bytes"},
+              "kb" => "KB", "mb" => "MB", "gb" => "GB", "tb" => "TB" } },
+            "decimal_units" => { "format" => "%n %u",
+              "units"=> { "unit" => "", "thousand" => "Mil",
+                "million" => "Millon", "billion" => "Mil Millones",
+                "trillion" => "Billon", "quadrillion" => "Mil Billones" } } },
+        "precision" => { "format" => { "delimiter" => "," } } }
+
+    assert_equal "12,5", I18n.localize(12.5)
+  end
 end
+
