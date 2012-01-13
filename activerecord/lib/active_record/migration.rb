@@ -1,5 +1,6 @@
 require "active_support/core_ext/module/delegation"
 require "active_support/core_ext/class/attribute_accessors"
+require 'active_support/deprecation'
 
 module ActiveRecord
   # Exception that can be raised to stop migrations from going backwards.
@@ -344,11 +345,23 @@ module ActiveRecord
       @name       = self.class.name
       @version    = nil
       @connection = nil
+      @reverting  = false
     end
 
     # instantiate the delegate object after initialize is defined
     self.verbose  = true
     self.delegate = new
+
+    def revert
+      @reverting = true
+      yield
+    ensure
+      @reverting = false
+    end
+
+    def reverting?
+      @reverting
+    end
 
     def up
       self.class.delegate = self
@@ -383,9 +396,11 @@ module ActiveRecord
             end
             @connection = conn
             time = Benchmark.measure {
-              recorder.inverse.each do |cmd, args|
-                send(cmd, *args)
-              end
+              self.revert {
+                recorder.inverse.each do |cmd, args|
+                  send(cmd, *args)
+                end
+              }
             }
           else
             time = Benchmark.measure { change }
@@ -440,9 +455,11 @@ module ActiveRecord
       arg_list = arguments.map{ |a| a.inspect } * ', '
 
       say_with_time "#{method}(#{arg_list})" do
-        unless arguments.empty? || method == :execute
-          arguments[0] = Migrator.proper_table_name(arguments.first)
-          arguments[1] = Migrator.proper_table_name(arguments.second) if method == :rename_table
+        unless reverting?
+          unless arguments.empty? || method == :execute
+            arguments[0] = Migrator.proper_table_name(arguments.first)
+            arguments[1] = Migrator.proper_table_name(arguments.second) if method == :rename_table
+          end
         end
         return super unless connection.respond_to?(method)
         connection.send(method, *arguments, &block)
@@ -507,7 +524,7 @@ module ActiveRecord
       File.basename(filename)
     end
 
-    delegate :migrate, :announce, :write, :to=>:migration
+    delegate :migrate, :announce, :write, :to => :migration
 
     private
 
@@ -593,11 +610,10 @@ module ActiveRecord
         migrations_paths.first
       end
 
-      def migrations(paths, subdirectories = true)
+      def migrations(paths)
         paths = Array(paths)
 
-        glob = subdirectories ? "**/" : ""
-        files = Dir[*paths.map { |p| "#{p}/#{glob}[0-9]*_*.rb" }]
+        files = Dir[*paths.map { |p| "#{p}/**/[0-9]*_*.rb" }]
 
         seen = Hash.new false
 
