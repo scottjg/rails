@@ -167,7 +167,7 @@ module ActionController
 
         unless options[:include] || options[:exclude]
           model ||= _default_wrap_model
-          role = options[:as]
+          role = options.has_key?(:as) ? options[:as] : :default
           if model.respond_to?(:accessible_attributes) && model.accessible_attributes(role).present?
             options[:include] = model.accessible_attributes(role).to_a
           elsif model.respond_to?(:attribute_names) && model.attribute_names.present?
