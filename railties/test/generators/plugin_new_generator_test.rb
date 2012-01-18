@@ -198,6 +198,7 @@ class PluginNewGeneratorTest < Rails::Generators::TestCase
     assert_file "config/routes.rb", /Bukkits::Engine.routes.draw do/
     assert_file "lib/bukkits/engine.rb", /isolate_namespace Bukkits/
     assert_file "test/dummy/config/routes.rb", /mount Bukkits::Engine => "\/bukkits"/
+    assert_file "test/dummy/app/helpers/bukkits/application_helper.rb", /module Bukkits\n  module ApplicationHelper/
     assert_file "app/controllers/bukkits/application_controller.rb", /module Bukkits\n  class ApplicationController < ActionController::Base/
     assert_file "app/helpers/bukkits/application_helper.rb", /module Bukkits\n  module ApplicationHelper/
     assert_file "app/views/layouts/bukkits/application.html.erb" do |contents|
