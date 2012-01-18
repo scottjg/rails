@@ -38,3 +38,27 @@ class RecordIdentifierTest < ActiveSupport::TestCase
     assert_equal "custom_prefix_#{@singular}", dom_class(@record, :custom_prefix)
   end
 end
+
+class RecordIdentifierWithDelimiterTest < ActiveSupport::TestCase
+  include ActionController::RecordIdentifier
+
+  def setup
+    @record = Comment.new
+    @record.save
+    ActionController::RecordIdentifier.delimiter = '-'
+  end
+
+  def teardown
+    ActionController::RecordIdentifier.delimiter = '-'
+  end
+
+  def test_dom_id
+    assert_equal "foo-comment-1", dom_id(@record, 'foo')
+  end
+
+  def test_dom_class
+    assert_equal "foo-comment", dom_class(@record, 'foo')
+  end
+end
+
+

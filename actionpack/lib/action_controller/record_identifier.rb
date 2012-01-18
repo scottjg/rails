@@ -27,7 +27,11 @@ module ActionController
   module RecordIdentifier
     extend self
 
-    JOIN = '_'.freeze
+    class << self
+      attr_accessor :delimiter
+    end
+    self.delimiter = '_'.freeze
+
     NEW = 'new'.freeze
 
     # The DOM class convention is to use the singular form of an object or class. Examples:
@@ -41,7 +45,7 @@ module ActionController
     #   dom_class(Person, :edit) # => "edit_person"
     def dom_class(record_or_class, prefix = nil)
       singular = ActiveModel::Naming.param_key(record_or_class)
-      prefix ? "#{prefix}#{JOIN}#{singular}" : singular
+      prefix ? "#{prefix}#{RecordIdentifier.delimiter}#{singular}" : singular
     end
 
     # The DOM id convention is to use the singular form of an object or class with the id following an underscore.
@@ -55,7 +59,7 @@ module ActionController
     #   dom_id(Post.find(45), :edit) # => "edit_post_45"
     def dom_id(record, prefix = nil)
       if record_id = record_key_for_dom_id(record)
-        "#{dom_class(record, prefix)}#{JOIN}#{record_id}"
+        "#{dom_class(record, prefix)}#{RecordIdentifier.delimiter}#{record_id}"
       else
         dom_class(record, prefix || NEW)
       end
