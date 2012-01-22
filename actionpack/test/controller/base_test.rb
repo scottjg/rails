@@ -116,6 +116,12 @@ class ControllerInstanceTests < Test::Unit::TestCase
                               Submodule::ContainedNonEmptyController.new]
   end
 
+  def test_performed?
+    assert !@empty.performed?
+    @empty.response_body = ["sweet"]
+    assert @empty.performed?
+  end
+
   def test_action_methods
     @empty_controllers.each do |c|
       assert_equal Set.new, c.class.action_methods, "#{c.controller_path} should be empty!"
@@ -161,7 +167,9 @@ class PerformActionTest < ActionController::TestCase
 
   def test_get_on_priv_should_show_selector
     use_controller MethodMissingController
-    get :shouldnt_be_called
+    assert_deprecated /Using `method_missing` to handle .* use `action_missing` instead/ do
+      get :shouldnt_be_called
+    end
     assert_response :success
     assert_equal 'shouldnt_be_called', @response.body
   end
@@ -170,21 +178,25 @@ class PerformActionTest < ActionController::TestCase
     use_controller MethodMissingController
     assert !@controller.__send__(:action_method?, 'method_missing')
 
-    get :method_missing
+    assert_deprecated /Using `method_missing` to handle .* use `action_missing` instead/ do
+      get :method_missing
+    end
     assert_response :success
     assert_equal 'method_missing', @response.body
   end
 
   def test_method_missing_should_recieve_symbol
     use_controller AnotherMethodMissingController
-    get :some_action
+    assert_deprecated /Using `method_missing` to handle .* use `action_missing` instead/ do
+      get :some_action
+    end
     assert_kind_of NameError, @controller._exception
   end
 
   def test_get_on_hidden_should_fail
     use_controller NonEmptyController
-    assert_raise(ActionController::UnknownAction) { get :hidden_action }
-    assert_raise(ActionController::UnknownAction) { get :another_hidden_action }
+    assert_raise(AbstractController::ActionNotFound) { get :hidden_action }
+    assert_raise(AbstractController::ActionNotFound) { get :another_hidden_action }
   end
 end
 
