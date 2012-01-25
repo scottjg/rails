@@ -31,6 +31,24 @@ class SerializationTest < ActiveModel::TestCase
     end
   end
 
+  class BusinessCard
+    include ActiveModel::Serialization
+
+    attr_accessor :user, :address
+
+    def initialize(args)
+      args.each do |k, v|
+        send("#{k}=", v)
+      end
+    end
+
+    def attributes
+      { :user_name => user.name,
+        :address_city => address.city,
+        :address_state => address.state }
+    end
+  end
+
   setup do
     @user = User.new('David', 'david@example.com', 'male')
     @user.address = Address.new
@@ -40,6 +58,12 @@ class SerializationTest < ActiveModel::TestCase
     @user.address.zip = 11111
     @user.friends = [User.new('Joe', 'joe@example.com', 'male'),
                      User.new('Sue', 'sue@example.com', 'female')]
+  end
+
+  def test_method_serializable_hash_should_use_right_hand_value
+    expected = {"user_name" => "David", :address_city => "Springfield", :address_state => "CA"}
+    business_card = BusinessCard.new(:address => @user.address, :user => @user)
+    assert_equal expected, business_card.serializable_hash
   end
 
   def test_method_serializable_hash_should_work
