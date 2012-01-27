@@ -1,3 +1,4 @@
+require 'active_support/core_ext/array/extract_options'
 require 'active_support/deprecation/reporting'
 require 'active_record/schema_migration'
 
@@ -170,6 +171,20 @@ module ActiveRecord
         execute create_sql
       end
 
+      # Creates a new join table.
+      def create_join_table(*table_name_or_options)
+        table_name, from, to, options = parse_arguments(table_name_or_options)
+
+        create_table(table_name, options.merge(:id => false)) do |t|
+          t.references from, to, :null => false
+        end
+
+        if options.delete(:index)
+          add_index table_name, "#{from}_id"
+          add_index table_name, "#{to}_id"
+        end
+      end
+
       # A block for changing columns in +table+.
       #
       # === Example
@@ -254,6 +269,12 @@ module ActiveRecord
       # Drops a table from the database.
       def drop_table(table_name)
         execute "DROP TABLE #{quote_table_name(table_name)}"
+      end
+
+      # Drops a join table from the database.
+      def drop_join_table(*table_name_or_options)
+        table_name, _ = parse_arguments(table_name_or_options)
+        drop_table table_name
       end
 
       # Adds a new column to the named table.
@@ -569,6 +590,23 @@ module ActiveRecord
 
           raise ArgumentError.new("You must specify at least one column name. Example: remove_column(:people, :first_name)") if column_names.blank?
           column_names.map {|column_name| quote_column_name(column_name) }
+        end
+
+        def extract_references(options)
+          [options.delete(:tie), options.delete(:to)].sort
+        end
+  
+        def join_table_name(from, to)
+          "#{from.to_s.pluralize}_#{to.to_s.pluralize}"
+        end
+
+        def parse_arguments(table_name_or_options)
+          options = table_name_or_options.extract_options!
+  
+          from, to   = extract_references(options)
+          table_name = table_name_or_options.empty? ? join_table_name(from, to) : table_name_or_options.first
+  
+          [table_name, from, to, options]
         end
 
       private
