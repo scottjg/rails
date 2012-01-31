@@ -50,6 +50,22 @@ module ActiveRecord
             super
           end
         end
+
+        def add_custom_type options
+          options.each do |name, type|
+            custom_types[name] = type
+          end
+        end
+
+        def custom_type_for field_type
+          custom_types[field_type]
+        end
+
+        private
+
+        def custom_types
+          Thread.current[:custom_types] ||= {}
+        end
       end
       # :startdoc:
 
@@ -126,7 +142,7 @@ module ActiveRecord
               :integer
             # Pass through all types that are not specific to PostgreSQL.
             else
-              super
+              self.class.custom_type_for(field_type) || super
           end
         end
 
