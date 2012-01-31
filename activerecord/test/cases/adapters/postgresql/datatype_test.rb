@@ -12,7 +12,7 @@ end
 class PostgresqlDomain < ActiveRecord::Base
   ActiveRecord::ConnectionAdapters::PostgreSQLColumn.add_custom_type(
     'custom_money'  => :decimal,
-    'email_address' => :text
+    :email_address  => :text
   )
 end
 

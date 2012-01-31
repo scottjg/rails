@@ -53,12 +53,12 @@ module ActiveRecord
 
         def add_custom_type options
           options.each do |name, type|
-            custom_types[name] = type
+            custom_types[name.to_s] = type
           end
         end
 
         def custom_type_for field_type
-          custom_types[field_type]
+          custom_types[field_type.to_s]
         end
 
         private
