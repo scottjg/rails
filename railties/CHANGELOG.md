@@ -1,5 +1,7 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Allow to set console other than IRB with `Rails.application.config.console=`. *Piotr Sarnacki*
+
 *   Add convenience `hide!` method to Rails generators to hide current generator
     namespace from showing when running `rails generate`. *Carlos Antonio da Silva*
 
