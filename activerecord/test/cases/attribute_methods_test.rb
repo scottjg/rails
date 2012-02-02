@@ -770,6 +770,23 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "lol", topic.author_name
   end
 
+  def test_inherited_hook_removed
+    parent = Class.new(ActiveRecord::Base)
+    parent.table_name = "posts"
+    def parent.inherited(k)
+    end
+
+    klass = Class.new(parent)
+    assert_deprecated { klass.define_attribute_methods }
+  end
+
+  def test_setting_new_attributes_deprecated
+    t = Topic.new
+    assert_deprecated { t[:foo] = "bar" }
+    assert_equal "bar", t.foo
+    assert_equal "bar", t[:foo]
+  end
+
   private
   def cached_columns
     @cached_columns ||= time_related_columns_on_topic.map(&:name)
