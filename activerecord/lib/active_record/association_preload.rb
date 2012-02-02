@@ -362,9 +362,9 @@ module ActiveRecord
 
         if interface = reflection.options[:as]
           parent_type = if reflection.active_record.abstract_class?
-            self.base_class.sti_name
+            self.base_class.name
           else
-            reflection.active_record.sti_name
+            reflection.active_record.name
           end
 
           conditions = "#{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_id"} #{in_or_equals_for_ids(ids)} and #{reflection.klass.quoted_table_name}.#{connection.quote_column_name "#{interface}_type"} = '#{parent_type}'"
