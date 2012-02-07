@@ -80,6 +80,10 @@ module Mime
     end
 
     class << self
+
+      TRAILING_STAR_REGEXP = /(text|application)\/\*/
+      Q_SEPARATOR_REGEXP = /;\s*q=/
+
       def lookup(string)
         LOOKUP[string]
       end
@@ -105,13 +109,18 @@ module Mime
 
       def parse(accept_header)
         if accept_header !~ /,/
-          [Mime::Type.lookup(accept_header)]
+          accept_header = accept_header.split(Q_SEPARATOR_REGEXP).first
+          if accept_header =~ TRAILING_STAR_REGEXP
+            parse_data_with_trailing_star($1)
+          else
+            [Mime::Type.lookup(accept_header)]
+          end
         else
           # keep track of creation order to keep the subsequent sort stable
-          list = []
-          accept_header.split(/,/).each_with_index do |header, index|
-            params, q = header.split(/;\s*q=/)
-            if params
+          list, index = [], 0
+          accept_header.split(/,/).each do |header|
+            params, q = header.split(Q_SEPARATOR_REGEXP)
+            if params.present?
               params.strip!
               list << AcceptItem.new(index, params, q) unless params.empty?
             end
