@@ -173,9 +173,9 @@ module ActiveRecord
     #   Person.where(:confirmed => true).limit(5).pluck(:id)
     #
     def pluck(column_name)
-      column_name = column_name.to_s
-      klass.connection.select_all(select(column_name).arel).map! do |attributes|
-        klass.type_cast_attribute(attributes.keys.first, klass.initialize_attributes(attributes))
+      scope = self.select(column_name)
+      self.connection.select_values(scope.to_sql).map! do |value|
+        type_cast_using_column(value, column_for(column_name))
       end
     end
 
