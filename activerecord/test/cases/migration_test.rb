@@ -161,6 +161,13 @@ if ActiveRecord::Base.connection.supports_migrations?
       Person.connection.remove_index("people", :name => good_index_name)
     end
 
+    def test_add_index_attribute_length_limit
+      Person.connection.add_index :people, [:first_name, :primary_contact_id], :length => {:first_name => 10, :primary_contact_id => nil}, :name => "attribute_length"
+      assert Person.connection.index_exists?(:people, [:first_name, :primary_contact_id], :name => "attribute_length")
+    ensure
+      Person.connection.remove_index(:people, :name => "attribute_length")
+    end
+
     def test_remove_nonexistent_index
       # we do this by name, so OpenBase is a wash as noted above
       unless current_adapter?(:OpenBaseAdapter)
