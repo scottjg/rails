@@ -6,7 +6,7 @@ require 'rails/engine/configuration'
 module Rails
   class Application
     class Configuration < ::Rails::Engine::Configuration
-      attr_accessor :allow_concurrency, :asset_host, :asset_path, :assets,
+      attr_accessor :allow_concurrency, :asset_host, :asset_path, :assets, :autoflush_log,
                     :cache_classes, :cache_store, :consider_all_requests_local,
                     :dependency_loading, :exceptions_app, :file_watcher, :filter_parameters,
                     :force_ssl, :helpers_paths, :logger, :log_tags, :preload_frameworks,
@@ -14,7 +14,7 @@ module Rails
                     :serve_static_assets, :ssl_options, :static_cache_control, :session_options,
                     :time_zone, :reload_classes_only_on_change, :whiny_nils
 
-      attr_writer :autoflush_log, :log_level
+      attr_writer :log_level
       attr_reader :encoding
 
       def initialize(*)
@@ -41,6 +41,7 @@ module Rails
         @reload_classes_only_on_change = true
         @file_watcher                  = ActiveSupport::FileUpdateChecker
         @exceptions_app                = nil
+        @autoflush_log                 = !Rails.env.production?
 
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled                  = false
@@ -113,10 +114,6 @@ module Rails
       def database_configuration
         require 'erb'
         YAML::load(ERB.new(IO.read(paths["config/database"].first)).result)
-      end
-
-      def autoflush_log
-        @autoflush_log ||= !Rails.env.production?
       end
 
       def log_level
