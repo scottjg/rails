@@ -14,7 +14,7 @@ module Rails
                     :serve_static_assets, :ssl_options, :static_cache_control, :session_options,
                     :time_zone, :reload_classes_only_on_change, :whiny_nils
 
-      attr_writer :log_level
+      attr_writer :autoflush_log, :log_level
       attr_reader :encoding
 
       def initialize(*)
@@ -113,6 +113,10 @@ module Rails
       def database_configuration
         require 'erb'
         YAML::load(ERB.new(IO.read(paths["config/database"].first)).result)
+      end
+
+      def autoflush_log
+        @autoflush_log ||= !Rails.env.production?
       end
 
       def log_level
