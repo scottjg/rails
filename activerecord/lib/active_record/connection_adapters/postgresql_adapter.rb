@@ -763,17 +763,35 @@ module ActiveRecord
       end
       alias :exec_update :exec_delete
 
-      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+
+      def exec_insert(sql, name, binds, sequence_name = nil, pk = nil)
+        exec_query(sql, name, binds)
         unless pk
           # Extract the table from the insert sql. Yuck.
           table_ref = extract_table_ref_from_insert_sql(sql)
           pk = primary_key(table_ref) if table_ref
         end
+        last_insert_id(sequence_name) if pk
+      end
 
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
+      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+#         unless pk
+          # Extract the table from the insert sql. Yuck.
+#           table_ref = extract_table_ref_from_insert_sql(sql)
+#           pk = primary_key(table_ref) if table_ref
+#         end
+
+#         sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
 
         [sql, binds]
       end
+
+      def last_inserted_id(result)
+#         row = result.rows.first
+#         row && row.first
+        result
+      end
+
 
       # Executes an UPDATE query and returns the number of affected tuples.
       def update_sql(sql, name = nil)
@@ -994,7 +1012,9 @@ module ActiveRecord
 
       # Returns the sequence name for a table's primary key or some other specified key.
       def default_sequence_name(table_name, pk = nil) #:nodoc:
-        serial_sequence(table_name, pk || 'id').split('.').last
+        qualified_sequence_name = serial_sequence(table_name, pk || 'id')
+        return nil unless qualified_sequence_name
+        qualified_sequence_name.split('.').last
       rescue ActiveRecord::StatementInvalid
         "#{table_name}_#{pk || 'id'}_seq"
       end
@@ -1307,6 +1327,7 @@ module ActiveRecord
 
         # Returns the current ID of a table's sequence.
         def last_insert_id(sequence_name) #:nodoc:
+          return unless sequence_name
           r = exec_query("SELECT currval($1)", 'SQL', [[nil, sequence_name]])
           Integer(r.rows.first.first)
         end

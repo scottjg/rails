@@ -69,7 +69,7 @@ module ActiveRecord
         'SQL',
         primary_key,
         primary_key_value,
-        nil,
+        sequence_name,
         binds)
     end
 
