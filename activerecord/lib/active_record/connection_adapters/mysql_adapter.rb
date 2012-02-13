@@ -755,13 +755,16 @@ module ActiveRecord
 
       # Returns a table's primary key and belonging sequence.
       def pk_and_sequence_for(table) #:nodoc:
-        keys = []
-        result = execute("describe #{quote_table_name(table)}", 'SCHEMA')
-        result.each_hash do |h|
-          keys << h["Field"]if h["Key"] == "PRI"
-        end
+        result = execute("SHOW CREATE TABLE #{quote_table_name(table)}", 'SCHEMA')
+        create_table = result.fetch_hash["Create Table"]
         result.free
-        keys.length == 1 ? [keys.first, nil] : nil
+
+        if create_table.to_s =~ /PRIMARY KEY\s+\((.+)\)/
+          keys = $1.split(",").map { |key| key.gsub(/[`"]/, "") }
+          keys.length == 1 ? [keys.first, nil] : nil
+        else
+          nil
+        end
       end
 
       # Returns just a table's primary key
