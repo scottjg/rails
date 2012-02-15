@@ -9,6 +9,12 @@ end
 class PostgresqlMoney < ActiveRecord::Base
 end
 
+ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::OID.register_type('custom_money', 'decimal')
+ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::OID.register_type('email_address', 'text')
+
+class PostgresqlDomain < ActiveRecord::Base
+end
+
 class PostgresqlNumber < ActiveRecord::Base
 end
 
@@ -45,6 +51,9 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
     @first_money = PostgresqlMoney.find(1)
     @second_money = PostgresqlMoney.find(2)
 
+    PostgresqlDomain.create! :amount => 3.333333333333, :email => 'joe@email.com'
+    @first_domain = PostgresqlDomain.first
+
     @connection.execute("INSERT INTO postgresql_numbers (single, double) VALUES (123.456, 123456.789)")
     @first_number = PostgresqlNumber.find(1)
 
@@ -61,6 +70,18 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
     @first_oid = PostgresqlOid.find(1)
 
     @connection.execute("INSERT INTO postgresql_timestamp_with_zones (time) VALUES ('2010-01-01 10:00:00-1')")
+  end
+
+  # Fails (expected decimal/text, got nil)
+  def test_custom_domain_type
+    assert_equal :decimal, @first_domain.column_for_attribute(:amount).type
+    assert_equal :text,    @first_domain.column_for_attribute(:email).type
+  end
+
+  # Works
+  def test_custom_domain_value
+    assert_equal BigDecimal.new('3.33'), @first_domain.amount
+    assert_equal 'joe@email.com', @first_domain.email
   end
 
   def test_data_type_of_array_types
