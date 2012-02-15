@@ -236,6 +236,11 @@ class RelationTest < ActiveRecord::TestCase
     firms = DependentFirm.joins(:account).where({:name => 'RailsCore', :accounts => { :credit_limit => 55..60 }}).to_a
     assert_equal 1, firms.size
     assert_equal companies(:rails_core), firms.first
+
+    #test_finding_with_hash_conditions_on_joined_table(RelationTest) [test/cases/relations_test.rb:243]:
+      #Expected: 105
+      #Actual: "105"
+    assert_equal 105, DependentFirm.joins(:account).sum(:credit_limit)
   end
 
   def test_find_all_with_join
