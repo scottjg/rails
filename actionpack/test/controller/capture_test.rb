@@ -28,6 +28,16 @@ class CaptureController < ActionController::Base
   def proper_block_detection
     @todo = "some todo"
   end
+
+  def prepend_content_for
+    @title = nil
+    render :layout => "talk_from_action"
+  end
+
+  def replace_content_for
+    @title = nil
+    render :layout => "talk_from_action"
+  end
 end
 
 class CaptureTest < ActionController::TestCase
@@ -70,6 +80,16 @@ class CaptureTest < ActionController::TestCase
   def test_proper_block_detection
     get :proper_block_detection
     assert_equal "some todo", @response.body
+  end
+
+  def test_should_prepend_content_for
+    get :prepend_content_for
+    assert_equal expected_content_for_output, @response.body
+  end
+
+  def test_should_replace_content_for
+    get :replace_content_for
+    assert_equal expected_content_for_output, @response.body
   end
 
   private

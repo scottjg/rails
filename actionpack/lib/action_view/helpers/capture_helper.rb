@@ -127,7 +127,13 @@ module ActionView
       #
       #   <ul><%= content_for :navigation %></ul>
       #
-      # If the flush parameter is true content_for replaces the blocks it is given. For example:
+      # The <tt>action</tt> parameter can be used to customize what happens with the content.
+      # Available options are:
+      #   * :append (default)
+      #   * :prepend
+      #   * :replace
+      #
+      # The <tt>:replace</tt> action will copletely replace the content block it is given. For example:
       #
       #   <% content_for :navigation do %>
       #     <li><%= link_to 'Home', :action => 'index' %></li>
@@ -135,7 +141,7 @@ module ActionView
       #
       #   <%#  Add some other content, or use a different template: %>
       #
-      #   <% content_for :navigation, true do %>
+      #   <% content_for :navigation, :flush do %>
       #     <li><%= link_to 'Login', :action => 'login' %></li>
       #   <% end %>
       #
@@ -149,14 +155,21 @@ module ActionView
       #
       # WARNING: content_for is ignored in caches. So you shouldn't use it
       # for elements that will be fragment cached.
-      def content_for(name, content = nil, flush = false, &block)
+      def content_for(name, content = nil, action = :append, &block)
         if content || block_given?
           if block_given?
-            flush = content if content
+            action = content if content
             content = capture(&block)
           end
           if content
-            flush ? @view_flow.set(name, content) : @view_flow.append(name, content)
+            case action
+            when :append, "append", false
+              @view_flow.append(name, content)
+            when :replace, "replace", true
+              @view_flow.set(name, content)
+            when :prepend, "prepend"
+              @view_flow.prepend(name, content)
+            end
           end
           nil
         else

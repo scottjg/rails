@@ -23,6 +23,10 @@ module ActionView
       @content[key] << value
     end
     alias_method :append!, :append
+    
+    def prepend(key, value)
+      @content[key] = value << @content[key]
+    end
 
   end
 
