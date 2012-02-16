@@ -47,6 +47,13 @@ module ActionView
       # You can make subsequent calls to the stored content in other templates, helper modules
       # or the layout by passing the identifier as an argument to <tt>content_for</tt>.
       #
+      # The <tt>action</tt> parameter can be used to specify what happens with the content
+      # (or captured block). Available options are:
+      #
+      # * +:append+ - Appends the content to the specified identifier -- *Default*
+      # * +:prepend+ - Prepends the content to the specified identifier
+      # * +:replace+ - Replaces (or flushes) the content currently associated with the identifier
+      #
       # Note: <tt>yield</tt> can still be used to retrieve the stored content, but calling
       # <tt>yield</tt> doesn't work in helper modules, while <tt>content_for</tt> does.
       #
@@ -127,13 +134,26 @@ module ActionView
       #
       #   <ul><%= content_for :navigation %></ul>
       #
-      # The <tt>action</tt> parameter can be used to customize what happens with the content.
-      # Available options are:
-      #   * :append (default)
-      #   * :prepend
-      #   * :replace
+      # Using <tt>:prepend</tt> as the action option will add the content or block it is given
+      # to the beginning of the identified name. For example:
       #
-      # The <tt>:replace</tt> action will copletely replace the content block it is given. For example:
+      #   <% content_for :navigation do %>
+      #     <li><%= link_to 'Login', :action => 'login' %></li>
+      #   <% end %>
+      #
+      #   <%# Add some other content, or use a different template: %>
+      #
+      #   <% content_for :navigation, :prepend do %>
+      #     <li><%= link_to 'Home', :action => 'index %></li>
+      #   <% end %>
+      #
+      # Then, in another template or layout, this code would render the home link before the
+      # login link:
+      #
+      #   <ul><%= content_for :navigation %></ul>
+      #
+      # Using <tt>:replace</tt> as the action option will completely replace the content block
+      # it is given. For example:
       #
       #   <% content_for :navigation do %>
       #     <li><%= link_to 'Home', :action => 'index' %></li>
