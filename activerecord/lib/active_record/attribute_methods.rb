@@ -20,23 +20,29 @@ module ActiveRecord
       # Returns the value of the attribute identified by <tt>attr_name</tt> after it has been typecast (for example,
       # "2004-12-12" in a data column is cast to a date object, like Date.new(2004, 12, 12)).
       # (Alias for the protected read_attribute method).
-      alias [] read_attribute
+      def [](attr_name)
+        read_attribute(attr_name)
+      end
 
       # Updates the attribute identified by <tt>attr_name</tt> with the specified +value+.
       # (Alias for the protected write_attribute method).
-      alias []= write_attribute
-
-      public :[], :[]=
+      def []=(attr_name, value)
+        write_attribute(attr_name, value)
+      end
     end
 
     module ClassMethods
       # Generates all the attribute related methods for columns in the database
       # accessors, mutators and query methods.
       def define_attribute_methods
-        return if attribute_methods_generated?
-        superclass.define_attribute_methods unless self == base_class
-        super(column_names)
-        @attribute_methods_generated = true
+        # Use a mutex; we don't want two thread simaltaneously trying to define
+        # attribute methods.
+        @attribute_methods_mutex.synchronize do
+          return if attribute_methods_generated?
+          superclass.define_attribute_methods unless self == base_class
+          super(column_names)
+          @attribute_methods_generated = true
+        end
       end
 
       def attribute_methods_generated?
@@ -188,6 +194,7 @@ module ActiveRecord
 
     # Returns the column object for the named attribute.
     def column_for_attribute(name)
+      # FIXME: should this return a null object for columns that don't exist?
       self.class.columns_hash[name.to_s]
     end
 
@@ -237,7 +244,7 @@ module ActiveRecord
     end
 
     def attribute_method?(attr_name)
-      attr_name == 'id' || (defined?(@attributes) && @attributes.include?(attr_name))
+      defined?(@attributes) && @attributes.include?(attr_name)
     end
   end
 end

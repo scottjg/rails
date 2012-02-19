@@ -80,6 +80,7 @@ module ActiveRecord
         disconnect!
         connect
       end
+      alias :reset! :reconnect!
 
       # Disconnects from the database if already connected.
       # Otherwise, this method does nothing.
@@ -88,11 +89,6 @@ module ActiveRecord
           @connection.close
           @connection = nil
         end
-      end
-
-      def reset!
-        disconnect!
-        connect
       end
 
       # DATABASE STATEMENTS ======================================
@@ -225,7 +221,7 @@ module ActiveRecord
       # column values as values.
       def select(sql, name = nil, binds = [])
         binds = binds.dup
-        exec_query(sql.gsub("\0") { quote(*binds.shift.reverse) }, name).to_a
+        exec_query(sql.gsub("\0") { quote(*binds.shift.reverse) }, name)
       end
 
       def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)

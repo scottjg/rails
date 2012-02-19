@@ -121,6 +121,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert keyboard.respond_to?('id')
   end
 
+  def test_id_before_type_cast_with_custom_primary_key
+    keyboard = Keyboard.create
+    keyboard.key_number = '10'
+    assert_equal '10', keyboard.id_before_type_cast
+    assert_equal nil, keyboard.read_attribute_before_type_cast('id')
+    assert_equal '10', keyboard.read_attribute_before_type_cast('key_number')
+  end
+
   # Syck calls respond_to? before actually calling initialize
   def test_respond_to_with_allocated_object
     topic = Topic.allocate
@@ -258,8 +266,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic.send(:write_attribute, :title, "Still another topic")
     assert_equal "Still another topic", topic.title
 
-    topic.send(:write_attribute, "title", "Still another topic: part 2")
+    topic[:title] = "Still another topic: part 2"
     assert_equal "Still another topic: part 2", topic.title
+
+    topic.send(:write_attribute, "title", "Still another topic: part 3")
+    assert_equal "Still another topic: part 3", topic.title
+
+    topic["title"] = "Still another topic: part 4"
+    assert_equal "Still another topic: part 4", topic.title
   end
 
   def test_read_attribute
@@ -310,6 +324,39 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     # puts topic.inspect
     assert topic.approved?, "approved should be true"
     # puts ""
+  end
+
+  def test_overridden_write_attribute
+    topic = Topic.new
+    def topic.write_attribute(attr_name, value)
+      super(attr_name, value.downcase)
+    end
+
+    topic.send(:write_attribute, :title, "Yet another topic")
+    assert_equal "yet another topic", topic.title
+
+    topic[:title] = "Yet another topic: part 2"
+    assert_equal "yet another topic: part 2", topic.title
+
+    topic.send(:write_attribute, "title", "Yet another topic: part 3")
+    assert_equal "yet another topic: part 3", topic.title
+
+    topic["title"] = "Yet another topic: part 4"
+    assert_equal "yet another topic: part 4", topic.title
+  end
+
+  def test_overridden_read_attribute
+    topic = Topic.new
+    topic.title = "Stop changing the topic"
+    def topic.read_attribute(attr_name)
+      super(attr_name).upcase
+    end
+
+    assert_equal "STOP CHANGING THE TOPIC", topic.send(:read_attribute, "title")
+    assert_equal "STOP CHANGING THE TOPIC", topic["title"]
+
+    assert_equal "STOP CHANGING THE TOPIC", topic.send(:read_attribute, :title)
+    assert_equal "STOP CHANGING THE TOPIC", topic[:title]
   end
 
   def test_read_overridden_attribute
@@ -733,11 +780,13 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   private
   def cached_columns
-    @cached_columns ||= time_related_columns_on_topic.map(&:name)
+    Topic.columns.find_all { |column|
+      !Topic.serialized_attributes.include? column.name
+    }.map(&:name)
   end
 
   def time_related_columns_on_topic
-    Topic.columns.select { |c| c.type.in?([:time, :date, :datetime, :timestamp]) }
+    Topic.columns.select { |c| [:time, :date, :datetime, :timestamp].include?(c.type) }
   end
 
   def in_time_zone(zone)

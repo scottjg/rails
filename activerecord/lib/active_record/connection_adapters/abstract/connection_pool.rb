@@ -328,16 +328,18 @@ module ActiveRecord
     # ActiveRecord::Base.connection_handler. Active Record models use this to
     # determine that connection pool that they should use.
     class ConnectionHandler
-      attr_reader :connection_pools
-
-      def initialize(pools = {})
+      def initialize(pools = Hash.new { |h,k| h[k] = {} })
         @connection_pools = pools
-        @class_to_pool    = {}
+        @class_to_pool    = Hash.new { |h,k| h[k] = {} }
+      end
+
+      def connection_pools
+        @connection_pools[Process.pid]
       end
 
       def establish_connection(name, spec)
-        @connection_pools[spec] ||= ConnectionAdapters::ConnectionPool.new(spec)
-        @class_to_pool[name] = @connection_pools[spec]
+        set_pool_for_spec spec, ConnectionAdapters::ConnectionPool.new(spec)
+        set_class_to_pool name, connection_pools[spec]
       end
 
       # Returns true if there are any active connections among the connection
@@ -350,21 +352,21 @@ module ActiveRecord
       # and also returns connections to the pool cached by threads that are no
       # longer alive.
       def clear_active_connections!
-        @connection_pools.each_value {|pool| pool.release_connection }
+        connection_pools.each_value {|pool| pool.release_connection }
       end
 
       # Clears the cache which maps classes.
       def clear_reloadable_connections!
-        @connection_pools.each_value {|pool| pool.clear_reloadable_connections! }
+        connection_pools.each_value {|pool| pool.clear_reloadable_connections! }
       end
 
       def clear_all_connections!
-        @connection_pools.each_value {|pool| pool.disconnect! }
+        connection_pools.each_value {|pool| pool.disconnect! }
       end
 
       # Verify active connections.
       def verify_active_connections! #:nodoc:
-        @connection_pools.each_value {|pool| pool.verify_active_connections! }
+        connection_pools.each_value {|pool| pool.verify_active_connections! }
       end
 
       # Locate the connection of the nearest super class. This can be an
@@ -388,53 +390,56 @@ module ActiveRecord
       # can be used as an argument for establish_connection, for easily
       # re-establishing the connection.
       def remove_connection(klass)
-        pool = @class_to_pool.delete(klass.name)
+        pool = class_to_pool.delete(klass.name)
         return nil unless pool
 
-        @connection_pools.delete pool.spec
+        connection_pools.delete pool.spec
         pool.automatic_reconnect = false
         pool.disconnect!
         pool.spec.config
       end
 
       def retrieve_connection_pool(klass)
-        pool = @class_to_pool[klass.name]
+        pool = get_pool_for_class klass.name
         return pool if pool
         return nil if ActiveRecord::Model == klass
         retrieve_connection_pool klass.active_record_super
       end
+
+      private
+
+      def class_to_pool
+        @class_to_pool[Process.pid]
+      end
+
+      def set_pool_for_spec(spec, pool)
+        @connection_pools[Process.pid][spec] = pool
+      end
+
+      def set_class_to_pool(name, pool)
+        @class_to_pool[Process.pid][name] = pool
+        pool
+      end
+
+      def get_pool_for_class(klass)
+        @class_to_pool[Process.pid].fetch(klass) {
+          c_to_p = @class_to_pool.values.find { |class_to_pool|
+            class_to_pool[klass]
+          }
+
+          if c_to_p
+            pool = c_to_p[klass]
+            pool = ConnectionAdapters::ConnectionPool.new pool.spec
+            set_pool_for_spec pool.spec, pool
+            set_class_to_pool klass, pool
+          else
+            set_class_to_pool klass, nil
+          end
+        }
+      end
     end
 
     class ConnectionManagement
-      class Proxy # :nodoc:
-        attr_reader :body, :testing
-
-        def initialize(body, testing = false)
-          @body    = body
-          @testing = testing
-        end
-
-        def method_missing(method_sym, *arguments, &block)
-          @body.send(method_sym, *arguments, &block)
-        end
-
-        def respond_to?(method_sym, include_private = false)
-          super || @body.respond_to?(method_sym)
-        end
-
-        def each(&block)
-          body.each(&block)
-        end
-
-        def close
-          body.close if body.respond_to?(:close)
-
-          # Don't return connection (and perform implicit rollback) if
-          # this request is a part of integration test
-          ActiveRecord::Base.clear_active_connections! unless testing
-        end
-      end
-
       def initialize(app)
         @app = app
       end
@@ -442,9 +447,12 @@ module ActiveRecord
       def call(env)
         testing = env.key?('rack.test')
 
-        status, headers, body = @app.call(env)
+        response = @app.call(env)
+        response[2] = ::Rack::BodyProxy.new(response[2]) do
+          ActiveRecord::Base.clear_active_connections! unless testing
+        end
 
-        [status, headers, Proxy.new(body, testing)]
+        response
       rescue
         ActiveRecord::Base.clear_active_connections! unless testing
         raise

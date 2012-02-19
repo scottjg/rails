@@ -114,11 +114,8 @@ module Rails
     # Returns an array of file paths appended with a hash of directories-extensions
     # suitable for ActiveSupport::FileUpdateChecker API.
     def watchable_args
-      files = []
-      files.concat config.watchable_files
+      files, dirs = config.watchable_files.dup, config.watchable_dirs.dup
 
-      dirs = {}
-      dirs.merge! config.watchable_dirs
       ActiveSupport::Dependencies.autoload_paths.each do |path|
         dirs[path.to_s] = [:rb]
       end
@@ -258,6 +255,9 @@ module Rails
         middleware.use ::ActionDispatch::Cookies
 
         if config.session_store
+          if config.force_ssl && !config.session_options.key?(:secure)
+            config.session_options[:secure] = true
+          end
           middleware.use config.session_store, config.session_options
           middleware.use ::ActionDispatch::Flash
         end

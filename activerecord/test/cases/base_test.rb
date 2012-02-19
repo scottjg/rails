@@ -28,6 +28,13 @@ require 'rexml/document'
 require 'active_support/core_ext/exception'
 require 'bcrypt'
 
+class FirstAbstractClass < ActiveRecord::Base
+  self.abstract_class = true
+end
+class SecondAbstractClass < FirstAbstractClass
+  self.abstract_class = true
+end
+class Photo < SecondAbstractClass; end
 class Category < ActiveRecord::Base; end
 class Categorization < ActiveRecord::Base; end
 class Smarts < ActiveRecord::Base; end
@@ -178,6 +185,31 @@ class BasicsTest < ActiveRecord::TestCase
         "The last_read attribute should be of the Date class"
       )
     end
+  end
+
+  def test_previously_changed
+    topic = Topic.find :first
+    topic.title = '<3<3<3'
+    assert_equal({}, topic.previous_changes)
+
+    topic.save!
+    expected = ["The First Topic", "<3<3<3"]
+    assert_equal(expected, topic.previous_changes['title'])
+  end
+
+  def test_previously_changed_dup
+    topic = Topic.find :first
+    topic.title = '<3<3<3'
+    topic.save!
+
+    t2 = topic.dup
+
+    assert_equal(topic.previous_changes, t2.previous_changes)
+
+    topic.title = "lolwut"
+    topic.save!
+
+    assert_not_equal(topic.previous_changes, t2.previous_changes)
   end
 
   def test_preserving_time_objects
@@ -657,7 +689,7 @@ class BasicsTest < ActiveRecord::TestCase
     }
     topic = Topic.find(1)
     topic.attributes = attributes
-    assert_equal Time.local(2004, 6, 24, 16, 24, 0), topic.written_on
+    assert_equal Time.utc(2004, 6, 24, 16, 24, 0), topic.written_on
   end
 
   def test_multiparameter_attributes_on_time_with_no_date
@@ -906,7 +938,7 @@ class BasicsTest < ActiveRecord::TestCase
     }
     topic = Topic.find(1)
     topic.attributes = attributes
-    assert_equal Time.local(2000, 1, 1, 5, 42, 0), topic.bonus_time
+    assert_equal Time.utc(2000, 1, 1, 5, 42, 0), topic.bonus_time
   end
 
   def test_boolean
@@ -960,10 +992,9 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal "b", duped_topic.title
 
     # test if the attribute values have been duped
-    topic.title = {"a" => "b"}
     duped_topic = topic.dup
-    duped_topic.title["a"] = "c"
-    assert_equal "b", topic.title["a"]
+    duped_topic.title.replace "c"
+    assert_equal "a", topic.title
 
     # test if attributes set as part of after_initialize are duped correctly
     assert_equal topic.author_email_address, duped_topic.author_email_address
@@ -974,8 +1005,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_not_equal duped_topic.id, topic.id
 
     duped_topic.reload
-    # FIXME: I think this is poor behavior, and will fix it with #5686
-    assert_equal({'a' => 'c'}.to_yaml, duped_topic.title)
+    assert_equal("c", duped_topic.title)
   end
 
   def test_dup_with_aggregate_of_same_name_as_attribute
@@ -1074,7 +1104,10 @@ class BasicsTest < ActiveRecord::TestCase
   # TODO: extend defaults tests to other databases!
   if current_adapter?(:PostgreSQLAdapter)
     def test_default
+      tz = Default.default_timezone
+      Default.default_timezone = :local
       default = Default.new
+      Default.default_timezone = tz
 
       # fixed dates / times
       assert_equal Date.new(2004, 1, 1), default.fixed_date
@@ -1117,7 +1150,8 @@ class BasicsTest < ActiveRecord::TestCase
 
       # use a geometric function to test for an open path
       objs = Geometric.find_by_sql ["select isopen(a_path) from geometrics where id = ?", g.id]
-      assert_equal objs[0].isopen, 't'
+
+      assert_equal true, objs[0].isopen
 
       # test alternate formats when defining the geometric types
 
@@ -1145,7 +1179,8 @@ class BasicsTest < ActiveRecord::TestCase
 
       # use a geometric function to test for an closed path
       objs = Geometric.find_by_sql ["select isclosed(a_path) from geometrics where id = ?", g.id]
-      assert_equal objs[0].isclosed, 't'
+
+      assert_equal true, objs[0].isclosed
     end
   end
 
@@ -1246,6 +1281,21 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal(hash, important_topic.content)
   end
 
+  # This test was added to fix GH #4004. Obviously the value returned
+  # is not really the value 'before type cast' so we should maybe think
+  # about changing that in the future.
+  def test_serialized_attribute_before_type_cast_returns_unserialized_value
+    klass = Class.new(ActiveRecord::Base)
+    klass.table_name = "topics"
+    klass.serialize :content, Hash
+
+    t = klass.new(:content => { :foo => :bar })
+    assert_equal({ :foo => :bar }, t.content_before_type_cast)
+    t.save!
+    t.reload
+    assert_equal({ :foo => :bar }, t.content_before_type_cast)
+  end
+
   def test_serialized_attribute_declared_in_subclass
     hash = { 'important1' => 'value1', 'important2' => 'value2' }
     important_topic = ImportantTopic.create("important" => hash)
@@ -1268,9 +1318,22 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal(myobj, topic.content)
   end
 
-  def test_nil_serialized_attribute_with_class_constraint
+  def test_nil_serialized_attribute_without_class_constraint
     topic = Topic.new
     assert_nil topic.content
+  end
+
+  def test_nil_not_serialized_without_class_constraint
+    assert Topic.new(:content => nil).save
+    assert_equal 1, Topic.where(:content => nil).count
+  end
+
+  def test_nil_not_serialized_with_class_constraint
+    Topic.serialize :content, Hash
+    assert Topic.new(:content => nil).save
+    assert_equal 1, Topic.where(:content => nil).count
+  ensure
+    Topic.serialize(:content)
   end
 
   def test_should_raise_exception_on_serialized_attribute_with_type_mismatch
@@ -1416,6 +1479,11 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_set_table_name_symbol_converted_to_string
+    Joke.table_name = :cold_jokes
+    assert_equal 'cold_jokes', Joke.table_name
+  end
+
   def test_quoted_table_name_after_set_table_name
     klass = Class.new(ActiveRecord::Base)
 
@@ -1544,7 +1612,7 @@ class BasicsTest < ActiveRecord::TestCase
       Developer.find(:all)
     end
     assert developers.size >= 2
-    for i in 1...developers.size
+    (1...developers.size).each do |i|
       assert developers[i-1].salary >= developers[i].salary
     end
   end
@@ -1861,7 +1929,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal [], NonExistentTable.attribute_names
   end
 
-  def test_attribtue_names_on_abstract_class
+  def test_attribute_names_on_abstract_class
     assert_equal [], AbstractCompany.attribute_names
   end
 
@@ -1903,5 +1971,33 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal ActiveRecord::Model, Teapot.active_record_super
     assert_equal Teapot,              OtherTeapot.active_record_super
     assert_equal ActiveRecord::Model, CoolTeapot.active_record_super
+  end
+
+  def test_table_name_with_2_abstract_subclasses
+    assert_equal "photos", Photo.table_name
+  end
+
+  def test_column_types_typecast
+    topic = Topic.first
+    refute_equal 't.lo', topic.author_name
+
+    attrs = topic.attributes.dup
+    attrs.delete 'id'
+
+    typecast = Class.new {
+      def type_cast value
+        "t.lo"
+      end
+    }
+
+    types = { 'author_name' => typecast.new }
+    topic = Topic.allocate.init_with 'attributes' => attrs,
+                                     'column_types' => types
+
+    assert_equal 't.lo', topic.author_name
+  end
+
+  def test_typecasting_aliases
+    assert_equal 10, Topic.select('10 as tenderlove').first.tenderlove
   end
 end

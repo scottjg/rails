@@ -4,12 +4,11 @@ require 'active_support/core_ext/array/conversions'
 require 'active_support/core_ext/string/inflections'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/hash/reverse_merge'
-require 'active_support/ordered_hash'
 
 module ActiveModel
   # == Active Model Errors
   #
-  # Provides a modified +OrderedHash+ that you can include in your object
+  # Provides a modified +Hash+ that you can include in your object
   # for handling error messages and interacting with Action Pack helpers.
   #
   # A minimal implementation could be:
@@ -75,7 +74,12 @@ module ActiveModel
     #   end
     def initialize(base)
       @base     = base
-      @messages = ActiveSupport::OrderedHash.new
+      @messages = {}
+    end
+
+    def initialize_dup(other)
+      @messages = other.messages.dup
+      super
     end
 
     # Clear the messages
@@ -99,6 +103,11 @@ module ActiveModel
       messages[key] = value
     end
 
+    # Delete messages for +key+
+    def delete(key)
+      messages.delete(key)
+    end
+
     # When passed a symbol or a name of a method, returns an array of errors
     # for the method.
     #
@@ -113,7 +122,7 @@ module ActiveModel
     #   p.errors[:name] = "must be set"
     #   p.errors[:name] # => ['must be set']
     def []=(attribute, error)
-      self[attribute.to_sym] << error
+      self[attribute] << error
     end
 
     # Iterates through each error key, value pair in the error messages hash.
@@ -196,7 +205,7 @@ module ActiveModel
       to_a.to_xml options.reverse_merge(:root => "errors", :skip_types => true)
     end
 
-    # Returns an ActiveSupport::OrderedHash that can be used as the JSON representation for this object.
+    # Returns an Hash that can be used as the JSON representation for this object.
     def as_json(options=nil)
       to_hash
     end
@@ -209,12 +218,12 @@ module ActiveModel
     # +attribute+.
     # If no +message+ is supplied, <tt>:invalid</tt> is assumed.
     #
-    # If +message+ is a symbol, it will be translated using the appropriate scope (see +translate_error+).
+    # If +message+ is a symbol, it will be translated using the appropriate scope (see +generate_message+).
     # If +message+ is a proc, it will be called, allowing for things like <tt>Time.now</tt> to be used within an error.
     def add(attribute, message = nil, options = {})
       message = normalize_message(attribute, message, options)
       if options[:strict]
-        raise ActiveModel::StrictValidationFailed,  message
+        raise ActiveModel::StrictValidationFailed, full_message(attribute, message)
       end
 
       self[attribute] << message

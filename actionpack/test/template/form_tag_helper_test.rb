@@ -457,9 +457,14 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal(expected, search_field_tag("query"))
   end
 
-  def telephone_field_tag
+  def test_telephone_field_tag
     expected = %{<input id="cell" name="cell" type="tel" />}
     assert_dom_equal(expected, telephone_field_tag("cell"))
+  end
+
+  def test_date_field_tag
+    expected = %{<input id="cell" name="cell" type="date" />}
+    assert_dom_equal(expected, date_field_tag("cell"))
   end
 
   def test_url_field_tag
@@ -480,10 +485,6 @@ class FormTagHelperTest < ActionView::TestCase
   def test_range_input_tag
     expected = %{<input name="volume" step="0.1" max="11" id="volume" type="range" min="0" />}
     assert_dom_equal(expected, range_field_tag("volume", nil, :in => 0..11, :step => 0.1))
-  end
-
-  def test_pass
-    assert_equal 1, 1
   end
 
   def test_field_set_tag_in_erb

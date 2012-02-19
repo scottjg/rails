@@ -54,6 +54,7 @@ module ActionDispatch
 
         def initialize(set, scope, path, options)
           @set, @scope = set, scope
+          @segment_keys = nil
           @options = (@scope[:options] || {}).merge(options)
           @path = normalize_path(path)
           normalize_options!
@@ -213,7 +214,9 @@ module ActionDispatch
           end
 
           def segment_keys
-            @segment_keys ||= Journey::Path::Pattern.new(
+            return @segment_keys if @segment_keys
+
+            @segment_keys = Journey::Path::Pattern.new(
               Journey::Router::Strexp.compile(@path, requirements, SEPARATORS)
             ).names
           end
@@ -464,7 +467,7 @@ module ActionDispatch
         #
         # get 'bacon', :to => 'food#bacon'
         def get(*args, &block)
-          map_method(:get, *args, &block)
+          map_method(:get, args, &block)
         end
 
         # Define a route that only recognizes HTTP POST.
@@ -474,7 +477,7 @@ module ActionDispatch
         #
         # post 'bacon', :to => 'food#bacon'
         def post(*args, &block)
-          map_method(:post, *args, &block)
+          map_method(:post, args, &block)
         end
 
         # Define a route that only recognizes HTTP PUT.
@@ -484,25 +487,24 @@ module ActionDispatch
         #
         # put 'bacon', :to => 'food#bacon'
         def put(*args, &block)
-          map_method(:put, *args, &block)
+          map_method(:put, args, &block)
         end
 
-        # Define a route that only recognizes HTTP PUT.
+        # Define a route that only recognizes HTTP DELETE.
         # For supported arguments, see <tt>Base#match</tt>.
         #
         # Example:
         #
         # delete 'broccoli', :to => 'food#broccoli'
         def delete(*args, &block)
-          map_method(:delete, *args, &block)
+          map_method(:delete, args, &block)
         end
 
         private
-          def map_method(method, *args, &block)
+          def map_method(method, args, &block)
             options = args.extract_options!
             options[:via] = method
-            args.push(options)
-            match(*args, &block)
+            match(*args, options, &block)
             self
           end
       end
@@ -1247,6 +1249,9 @@ module ActionDispatch
           parent_resource.instance_of?(Resource) && @scope[:shallow]
         end
 
+        # match 'path' => 'controller#action'
+        # match 'path', to: 'controller#action'
+        # match 'path', 'otherpath', on: :member, via: :get
         def match(path, *rest)
           if rest.empty? && Hash === path
             options  = path

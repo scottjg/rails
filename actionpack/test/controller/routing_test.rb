@@ -6,7 +6,6 @@ require 'active_support/core_ext/object/with_options'
 class MilestonesController < ActionController::Base
   def index() head :ok end
   alias_method :show, :index
-  def rescue_action(e) raise e end
 end
 
 ROUTING = ActionDispatch::Routing
@@ -74,23 +73,102 @@ end
 
 class LegacyRouteSetTests < ActiveSupport::TestCase
   include RoutingTestHelpers
+  include ActionDispatch::RoutingVerbs
 
   attr_reader :rs
+  alias :routes :rs
 
   def setup
     @rs       = ::ActionDispatch::Routing::RouteSet.new
     @response = nil
   end
 
-  def get(uri_or_host, path = nil, port = nil)
-    host = uri_or_host.host unless path
-    path ||= uri_or_host.path
+  def test_symbols_with_dashes
+    rs.draw do
+      match '/:artist/:song-omg', :to => lambda { |env|
+        resp = JSON.dump env[ActionDispatch::Routing::RouteSet::PARAMETERS_KEY]
+        [200, {}, [resp]]
+      }
+    end
 
-    params = {'PATH_INFO'      => path,
-              'REQUEST_METHOD' => 'GET',
-              'HTTP_HOST'      => host}
+    hash = JSON.load get(URI('http://example.org/journey/faithfully-omg'))
+    assert_equal({"artist"=>"journey", "song"=>"faithfully"}, hash)
+  end
 
-    @rs.call(params)[2].join
+  def test_id_with_dash
+    rs.draw do
+      match '/journey/:id', :to => lambda { |env|
+        resp = JSON.dump env[ActionDispatch::Routing::RouteSet::PARAMETERS_KEY]
+        [200, {}, [resp]]
+      }
+    end
+
+    hash = JSON.load get(URI('http://example.org/journey/faithfully-omg'))
+    assert_equal({"id"=>"faithfully-omg"}, hash)
+  end
+
+  def test_dash_with_custom_regexp
+    rs.draw do
+      match '/:artist/:song-omg', :constraints => { :song => /\d+/ }, :to => lambda { |env|
+        resp = JSON.dump env[ActionDispatch::Routing::RouteSet::PARAMETERS_KEY]
+        [200, {}, [resp]]
+      }
+    end
+
+    hash = JSON.load get(URI('http://example.org/journey/123-omg'))
+    assert_equal({"artist"=>"journey", "song"=>"123"}, hash)
+    assert_equal 'Not Found', get(URI('http://example.org/journey/faithfully-omg'))
+  end
+
+  def test_pre_dash
+    rs.draw do
+      match '/:artist/omg-:song', :to => lambda { |env|
+        resp = JSON.dump env[ActionDispatch::Routing::RouteSet::PARAMETERS_KEY]
+        [200, {}, [resp]]
+      }
+    end
+
+    hash = JSON.load get(URI('http://example.org/journey/omg-faithfully'))
+    assert_equal({"artist"=>"journey", "song"=>"faithfully"}, hash)
+  end
+
+  def test_pre_dash_with_custom_regexp
+    rs.draw do
+      match '/:artist/omg-:song', :constraints => { :song => /\d+/ }, :to => lambda { |env|
+        resp = JSON.dump env[ActionDispatch::Routing::RouteSet::PARAMETERS_KEY]
+        [200, {}, [resp]]
+      }
+    end
+
+    hash = JSON.load get(URI('http://example.org/journey/omg-123'))
+    assert_equal({"artist"=>"journey", "song"=>"123"}, hash)
+    assert_equal 'Not Found', get(URI('http://example.org/journey/omg-faithfully'))
+  end
+
+  def test_star_paths_are_greedy
+    rs.draw do
+      match "/(*filters)", :to => lambda { |env|
+        x = env["action_dispatch.request.path_parameters"][:filters]
+        [200, {}, [x]]
+      }, :format => false
+    end
+
+    u = URI('http://example.org/ne_27.065938,-80.6092/sw_25.489856,-82.542794')
+    assert_equal u.path.sub(/^\//, ''), get(u)
+  end
+
+  def test_star_paths_are_greedy_but_not_too_much
+    rs.draw do
+      match "/(*filters).:format", :to => lambda { |env|
+        x = JSON.dump env["action_dispatch.request.path_parameters"]
+        [200, {}, [x]]
+      }
+    end
+
+    expected = { "filters" => "ne_27.065938,-80.6092/sw_25.489856,-82",
+                 "format"  => "542794" }
+    u = URI('http://example.org/ne_27.065938,-80.6092/sw_25.489856,-82.542794')
+    assert_equal expected, JSON.parse(get(u))
   end
 
   def test_regexp_precidence
@@ -188,36 +266,6 @@ class LegacyRouteSetTests < ActiveSupport::TestCase
     @rs.clear!
     @rs.draw { match '/:controller(/:action(/:id))'}
     test_default_setup
-  end
-
-  def test_time_recognition
-    # We create many routes to make situation more realistic
-    @rs = ::ActionDispatch::Routing::RouteSet.new
-    @rs.draw {
-      root :to => "search#new", :as => "frontpage"
-      resources :videos do
-        resources :comments
-        resource  :file,      :controller => 'video_file'
-        resource  :share,     :controller => 'video_shares'
-        resource  :abuse,     :controller => 'video_abuses'
-      end
-      resources :abuses, :controller => 'video_abuses'
-      resources :video_uploads
-      resources :video_visits
-
-      resources :users do
-        resource  :settings
-        resources :videos
-      end
-      resources :channels do
-        resources :videos, :controller => 'channel_videos'
-      end
-      resource  :session
-      resource  :lost_password
-      match 'search' => 'search#index', :as => 'search'
-      resources :pages
-      match ':controller/:action/:id'
-    }
   end
 
   def test_route_with_colon_first
@@ -1328,7 +1376,20 @@ class RouteSetTest < ActiveSupport::TestCase
       end
     end
   end
-
+  
+  def test_route_with_subdomain_and_constraints_must_receive_params
+    name_param = nil
+    set.draw do
+      match 'page/:name' => 'pages#show', :constraints => lambda {|request|
+        name_param = request.params[:name]
+        return true
+      }
+    end
+    assert_equal({:controller => 'pages', :action => 'show', :name => 'mypage'},
+      set.recognize_path('http://subdomain.example.org/page/mypage'))
+    assert_equal(name_param, 'mypage')
+  end
+  
   def test_route_requirement_recognize_with_ignore_case
     set.draw do
       match 'page/:name' => 'pages#show',

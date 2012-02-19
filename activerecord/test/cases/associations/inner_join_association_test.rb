@@ -42,7 +42,7 @@ class InnerJoinAssociationTest < ActiveRecord::TestCase
   end
 
   def test_join_conditions_allow_nil_associations
-    authors = Author.eager_load(:essays).where(:essays => {:id => nil})
+    authors = Author.includes(:essays).where(:essays => {:id => nil})
     assert_equal 2, authors.count
   end
 
@@ -67,7 +67,7 @@ class InnerJoinAssociationTest < ActiveRecord::TestCase
   def test_find_with_implicit_inner_joins_does_not_set_associations
     authors = Author.joins(:posts).select('authors.*')
     assert !authors.empty?, "expected authors to be non-empty"
-    assert authors.all? {|a| !a.send(:instance_variable_names).include?("@posts")}, "expected no authors to have the @posts association loaded"
+    assert authors.all? { |a| !a.instance_variable_defined?(:@posts) }, "expected no authors to have the @posts association loaded"
   end
 
   def test_count_honors_implicit_inner_joins

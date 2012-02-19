@@ -251,6 +251,7 @@ module ActionController
   #   def test_create
   #     json = {:book => { :title => "Love Hina" }}.to_json
   #     post :create, json
+  #   end
   #
   # == Special instance variables
   #
@@ -350,7 +351,7 @@ module ActionController
         def tests(controller_class)
           case controller_class
           when String, Symbol
-            self.controller_class = "#{controller_class.to_s.underscore}_controller".camelize.constantize
+            self.controller_class = "#{controller_class.to_s.camelize}Controller".constantize
           when Class
             self.controller_class = controller_class
           else
@@ -403,7 +404,7 @@ module ActionController
 
       # Executes a request simulating HEAD HTTP method and set/volley the response
       def head(action, parameters = nil, session = nil, flash = nil)
-        process(action, parameters, session, flash, "HEAD")
+        process(action, "HEAD", parameters, session, flash)
       end
 
       def xml_http_request(request_method, action, parameters = nil, session = nil, flash = nil)
@@ -431,9 +432,9 @@ module ActionController
 
       def process(action, http_method = 'GET', *args)
         check_required_ivars
-        http_method, args = handle_old_process_api(http_method, args) 
+        http_method, args = handle_old_process_api(http_method, args)
 
-        if args.first.is_a?(String)
+        if args.first.is_a?(String) && http_method != 'HEAD'
           @request.env['RAW_POST_DATA'] = args.shift
         end
 
@@ -506,8 +507,8 @@ module ActionController
       def check_required_ivars
         # Sanity check for required instance variables so we can give an
         # understandable error message.
-        %w(@routes @controller @request @response).each do |iv_name|
-          if !(instance_variable_names.include?(iv_name) || instance_variable_names.include?(iv_name.to_sym)) || instance_variable_get(iv_name).nil?
+        [:@routes, :@controller, :@request, :@response].each do |iv_name|
+          if !instance_variable_defined?(iv_name) || instance_variable_get(iv_name).nil?
             raise "#{iv_name} is nil: make sure you set it in your test's setup method."
           end
         end

@@ -17,10 +17,6 @@ module ApplicationTests
       teardown_app
     end
 
-    def app
-      @app ||= Rails.application
-    end
-
     def precompile!
       quietly do
         Dir.chdir(app_path){ `bundle exec rake assets:precompile` }
@@ -68,7 +64,7 @@ module ApplicationTests
       files << Dir["#{app_path}/public/assets/foo/application.js"].first
       files.each do |file|
         assert_not_nil file, "Expected application.js asset to be generated, but none found"
-        assert_equal "alert()", File.read(file)
+        assert_equal "alert();", File.read(file)
       end
     end
 
@@ -318,7 +314,7 @@ module ApplicationTests
         Dir.chdir(app_path){ `bundle exec rake assets:clean` }
       end
 
-      files = Dir["#{app_path}/public/assets/**/*", "#{app_path}/tmp/cache/*"]
+      files = Dir["#{app_path}/public/assets/**/*", "#{app_path}/tmp/cache/assets/*"]
       assert_equal 0, files.length, "Expected no assets, but found #{files.join(', ')}"
     end
 
@@ -427,6 +423,12 @@ module ApplicationTests
       assert_equal "NoPost;\n", File.read("#{app_path}/public/assets/application.js")
     end
 
+    test "initialization on the assets group should set assets_dir" do
+      require "#{app_path}/config/application"
+      Rails.application.initialize!(:assets)
+      assert_not_nil Rails.application.config.action_controller.assets_dir
+    end
+
     test "enhancements to assets:precompile should only run once" do
       app_file "lib/tasks/enhance.rake", "Rake::Task['assets:precompile'].enhance { puts 'enhancement' }"
       output = precompile!
@@ -488,6 +490,18 @@ module ApplicationTests
       precompile!
 
       assert_match 'src="/sub/uri/assets/rails.png"', File.read("#{app_path}/public/assets/app.js")
+    end
+
+    test "assets:cache:clean should clean cache" do
+      ENV["RAILS_ENV"] = "production"
+      precompile!
+
+      quietly do
+        Dir.chdir(app_path){ `bundle exec rake assets:cache:clean` }
+      end
+
+      require "#{app_path}/config/environment"
+      assert_equal 0, Dir.entries(Rails.application.assets.cache.cache_path).size - 2 # reject [".", ".."]
     end
 
     private

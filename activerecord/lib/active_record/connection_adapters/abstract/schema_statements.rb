@@ -1,8 +1,12 @@
 require 'active_support/deprecation/reporting'
+require 'active_record/schema_migration'
+require 'active_record/migration/join_table'
 
 module ActiveRecord
   module ConnectionAdapters # :nodoc:
     module SchemaStatements
+      include ActiveRecord::Migration::JoinTable
+
       # Returns a Hash of mappings from the abstract data types to the native
       # database types. See TableDefinition#column for details on the recognized
       # abstract data types.
@@ -52,7 +56,7 @@ module ActiveRecord
 
       # Returns an array of Column objects for the table specified by +table_name+.
       # See the concrete implementation for details on the expected parameter values.
-      def columns(table_name, name = nil) end
+      def columns(table_name) end
 
       # Checks to see if a column exists in a given table.
       #
@@ -159,7 +163,7 @@ module ActiveRecord
         yield td if block_given?
 
         if options[:force] && table_exists?(table_name)
-          drop_table(table_name)
+          drop_table(table_name, options)
         end
 
         create_sql = "CREATE#{' TEMPORARY' if options[:temporary]} TABLE "
@@ -167,6 +171,45 @@ module ActiveRecord
         create_sql << td.to_sql
         create_sql << ") #{options[:options]}"
         execute create_sql
+      end
+
+      # Creates a new join table with the name created using the lexical order of the first two
+      # arguments. These arguments can be be a String or a Symbol.
+      #
+      #  # Creates a table called 'assemblies_parts' with no id.
+      #  create_join_table(:assemblies, :parts)
+      #
+      # You can pass a +options+ hash can include the following keys:
+      # [<tt>:table_name</tt>]
+      #   Sets the table name overriding the default
+      # [<tt>:column_options</tt>]
+      #   Any extra options you want appended to the columns definition.
+      # [<tt>:options</tt>]
+      #   Any extra options you want appended to the table definition.
+      # [<tt>:temporary</tt>]
+      #   Make a temporary table.
+      # [<tt>:force</tt>]
+      #   Set to true to drop the table before creating it.
+      #   Defaults to false.
+      #
+      # ===== Examples
+      # ====== Add a backend specific option to the generated SQL (MySQL)
+      #  create_join_table(:assemblies, :parts, :options => 'ENGINE=InnoDB DEFAULT CHARSET=utf8')
+      # generates:
+      #  CREATE TABLE assemblies_parts (
+      #    assembly_id int NOT NULL,
+      #    part_id int NOT NULL,
+      #  ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+      def create_join_table(table_1, table_2, options = {})
+        join_table_name = find_join_table_name(table_1, table_2, options)
+
+        column_options = options.delete(:column_options) || {}
+        column_options.reverse_merge!({:null => false})
+
+        create_table(join_table_name, options.merge!(:id => false)) do |td|
+          td.integer :"#{table_1.to_s.singularize}_id", column_options
+          td.integer :"#{table_2.to_s.singularize}_id", column_options
+        end
       end
 
       # A block for changing columns in +table+.
@@ -251,7 +294,7 @@ module ActiveRecord
       end
 
       # Drops a table from the database.
-      def drop_table(table_name)
+      def drop_table(table_name, options = {})
         execute "DROP TABLE #{quote_table_name(table_name)}"
       end
 
@@ -338,9 +381,16 @@ module ActiveRecord
       #
       # Note: mysql doesn't yet support index order (it accepts the syntax but ignores it)
       #
+      # ====== Creating a partial index
+      #  add_index(:accounts, [:branch_id, :party_id], :unique => true, :where => "active")
+      # generates
+      #  CREATE UNIQUE INDEX index_accounts_on_branch_id_and_party_id ON accounts(branch_id, party_id) WHERE active
+      #
+      # Note: only supported by PostgreSQL
+      #
       def add_index(table_name, column_name, options = {})
-        index_name, index_type, index_columns = add_index_options(table_name, column_name, options)
-        execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{index_columns})"
+        index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
+        execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
       end
 
       # Remove the given index from the table.
@@ -404,34 +454,16 @@ module ActiveRecord
 
       def dump_schema_information #:nodoc:
         sm_table = ActiveRecord::Migrator.schema_migrations_table_name
-        migrated = select_values("SELECT version FROM #{sm_table} ORDER BY version")
-        migrated.map { |v| "INSERT INTO #{sm_table} (version) VALUES ('#{v}');" }.join("\n\n")
+
+        ActiveRecord::SchemaMigration.order('version').all.map { |sm|
+          "INSERT INTO #{sm_table} (version) VALUES ('#{sm.version}');"
+        }.join "\n\n"
       end
 
       # Should not be called normally, but this operation is non-destructive.
       # The migrations module handles this automatically.
       def initialize_schema_migrations_table
-        sm_table = ActiveRecord::Migrator.schema_migrations_table_name
-
-        unless table_exists?(sm_table)
-          create_table(sm_table, :id => false) do |schema_migrations_table|
-            schema_migrations_table.column :version, :string, :null => false
-          end
-          add_index sm_table, :version, :unique => true,
-            :name => "#{Base.table_name_prefix}unique_schema_migrations#{Base.table_name_suffix}"
-
-          # Backwards-compatibility: if we find schema_info, assume we've
-          # migrated up to that point:
-          si_table = Base.table_name_prefix + 'schema_info' + Base.table_name_suffix
-
-          if table_exists?(si_table)
-            ActiveRecord::Deprecation.warn "Usage of the schema table `#{si_table}` is deprecated. Please switch to using `schema_migrations` table"
-
-            old_version = select_value("SELECT version FROM #{quote_table_name(si_table)}").to_i
-            assume_migrated_upto_version(old_version)
-            drop_table(si_table)
-          end
-        end
+        ActiveRecord::SchemaMigration.create_table
       end
 
       def assume_migrated_upto_version(version, migrations_paths = ActiveRecord::Migrator.migrations_paths)
@@ -556,6 +588,9 @@ module ActiveRecord
           if Hash === options # legacy support, since this param was a string
             index_type = options[:unique] ? "UNIQUE" : ""
             index_name = options[:name].to_s if options.key?(:name)
+            if supports_partial_index?
+              index_options = options[:where] ? " WHERE #{options[:where]}" : ""
+            end
           else
             index_type = options
           end
@@ -568,7 +603,7 @@ module ActiveRecord
           end
           index_columns = quoted_columns_for_index(column_names, options).join(", ")
 
-          [index_name, index_type, index_columns]
+          [index_name, index_type, index_columns, index_options]
         end
 
         def index_name_for_remove(table_name, options = {})

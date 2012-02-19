@@ -1,31 +1,15 @@
 require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/statement_pool'
-require 'active_support/core_ext/string/encoding'
 
 module ActiveRecord
   module ConnectionAdapters #:nodoc:
     class SQLiteColumn < Column #:nodoc:
       class <<  self
-        def string_to_binary(value)
-          value.gsub(/\0|\%/n) do |b|
-            case b
-              when "\0" then "%00"
-              when "%"  then "%25"
-            end
-          end
-        end
-
         def binary_to_string(value)
           if value.encoding != Encoding::ASCII_8BIT
             value = value.force_encoding(Encoding::ASCII_8BIT)
           end
-
-          value.gsub(/%00|%25/n) do |b|
-            case b
-              when "%00" then "\0"
-              when "%25" then "%"
-            end
-          end
+          value
         end
       end
     end
@@ -339,7 +323,7 @@ module ActiveRecord
       end
 
       # Returns an array of +SQLiteColumn+ objects for the table specified by +table_name+.
-      def columns(table_name, name = nil) #:nodoc:
+      def columns(table_name) #:nodoc:
         table_structure(table_name).map do |field|
           case field["dflt_value"]
           when /^null$/i
@@ -454,7 +438,7 @@ module ActiveRecord
 
       protected
         def select(sql, name = nil, binds = []) #:nodoc:
-          exec_query(sql, name, binds).to_a
+          exec_query(sql, name, binds)
         end
 
         def table_structure(table_name)

@@ -31,6 +31,7 @@ module ActionDispatch
         end
 
         def prepare_params!(params)
+          normalize_controller!(params)
           merge_default_action!(params)
           split_glob_param!(params) if @glob_param
         end
@@ -64,6 +65,10 @@ module ActionDispatch
 
         def dispatch(controller, action, env)
           controller.action(action).call(env)
+        end
+
+        def normalize_controller!(params)
+          params[:controller] = params[:controller].underscore if params.key?(:controller)
         end
 
         def merge_default_action!(params)
@@ -360,7 +365,26 @@ module ActionDispatch
             SEPARATORS,
             anchor)
 
-        Journey::Path::Pattern.new(strexp)
+        pattern = Journey::Path::Pattern.new(strexp)
+
+        builder = Journey::GTG::Builder.new pattern.spec
+
+        # Get all the symbol nodes followed by literals that are not the
+        # dummy node.
+        symbols = pattern.spec.grep(Journey::Nodes::Symbol).find_all { |n|
+          builder.followpos(n).first.literal?
+        }
+
+        # Get all the symbol nodes preceded by literals.
+        symbols.concat pattern.spec.find_all(&:literal?).map { |n|
+          builder.followpos(n).first
+        }.find_all(&:symbol?)
+
+        symbols.each { |x|
+          x.regexp = /(?:#{Regexp.union(x.regexp, '-')})+/
+        }
+
+        pattern
       end
       private :build_path
 
@@ -463,7 +487,7 @@ module ActionDispatch
         # if the current controller is "foo/bar/baz" and :controller => "baz/bat"
         # is specified, the controller becomes "foo/baz/bat"
         def use_relative_controller!
-          if !named_route && different_controller?
+          if !named_route && different_controller? && !controller.start_with?("/")
             old_parts = current_controller.split('/')
             size = controller.count("/") + 1
             parts = old_parts[0...-size] << controller
@@ -548,6 +572,7 @@ module ActionDispatch
 
         path_addition, params = generate(path_options, path_segments || {})
         path << path_addition
+        params.merge!(options[:params] || {})
 
         ActionDispatch::Http::URL.url_for(options.merge!({
           :path => path,
@@ -579,7 +604,8 @@ module ActionDispatch
               params[key] = URI.parser.unescape(value)
             end
           end
-
+          old_params = env[::ActionDispatch::Routing::RouteSet::PARAMETERS_KEY]
+          env[::ActionDispatch::Routing::RouteSet::PARAMETERS_KEY] = (old_params || {}).merge(params)
           dispatcher = route.app
           while dispatcher.is_a?(Mapper::Constraints) && dispatcher.matches?(env) do
             dispatcher = dispatcher.app

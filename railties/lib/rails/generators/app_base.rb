@@ -181,10 +181,6 @@ module Rails
         end
       end
 
-      def ruby_debugger_gemfile_entry
-        "gem 'ruby-debug19', :require => 'ruby-debug'"
-      end
-
       def assets_gemfile_entry
         return if options[:skip_sprockets]
 
@@ -195,7 +191,9 @@ module Rails
             group :assets do
               gem 'sass-rails',   :git => 'https://github.com/rails/sass-rails.git'
               gem 'coffee-rails', :git => 'https://github.com/rails/coffee-rails.git'
-              #{"gem 'therubyrhino'\n" if defined?(JRUBY_VERSION)}
+
+              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
+              #{javascript_runtime_gemfile_entry}
               gem 'uglifier', '>= 1.0.3'
             end
           GEMFILE
@@ -206,7 +204,9 @@ module Rails
             group :assets do
               gem 'sass-rails',   '~> 4.0.0.beta'
               gem 'coffee-rails', '~> 4.0.0.beta'
-              #{"gem 'therubyrhino'\n" if defined?(JRUBY_VERSION)}
+
+              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
+              #{javascript_runtime_gemfile_entry}
               gem 'uglifier', '>= 1.0.3'
             end
           GEMFILE
@@ -217,6 +217,14 @@ module Rails
 
       def javascript_gemfile_entry
         "gem '#{options[:javascript]}-rails'" unless options[:skip_javascript]
+      end
+
+      def javascript_runtime_gemfile_entry
+        if defined?(JRUBY_VERSION)
+          "gem 'therubyrhino'\n"
+        else
+          "# gem 'therubyracer'\n"
+        end
       end
 
       def bundle_command(command)
@@ -236,7 +244,7 @@ module Rails
       end
 
       def run_bundle
-        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle]
+        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
       end
 
       def empty_directory_with_gitkeep(destination, config = {})

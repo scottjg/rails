@@ -1,3 +1,5 @@
+require 'active_support/core_ext/array/prepend_and_append'
+
 module ActiveRecord
   module Validations
     class UniquenessValidator < ActiveModel::EachValidator
@@ -25,6 +27,11 @@ module ActiveRecord
 
         Array(options[:scope]).each do |scope_item|
           scope_value = record.send(scope_item)
+          reflection = record.class.reflect_on_association(scope_item)
+          if reflection
+            scope_value = record.send(reflection.foreign_key)
+            scope_item = reflection.foreign_key
+          end
           relation = relation.and(table[scope_item].eq(scope_value))
         end
 
@@ -44,14 +51,21 @@ module ActiveRecord
         class_hierarchy = [record.class]
 
         while class_hierarchy.first != @klass
-          class_hierarchy.insert(0, class_hierarchy.first.superclass)
+          class_hierarchy.prepend(class_hierarchy.first.superclass)
         end
 
         class_hierarchy.detect { |klass| !klass.abstract_class? }
       end
 
       def build_relation(klass, table, attribute, value) #:nodoc:
-        column = klass.columns_hash[attribute.to_s]
+        reflection = klass.reflect_on_association(attribute)
+        if reflection
+          column = klass.columns_hash[reflection.foreign_key]
+          attribute = reflection.foreign_key
+          value = value.attributes[reflection.primary_key_column.name]
+        else
+          column = klass.columns_hash[attribute.to_s]
+        end
         value = column.limit ? value.to_s[0, column.limit] : value.to_s if !value.nil? && column.text?
 
         if !options[:case_sensitive] && value && column.text?

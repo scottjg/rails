@@ -1,5 +1,99 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Added support for partial indices to PostgreSQL adapter
+
+    The `add_index` method now supports a `where` option that receives a
+    string with the partial index criteria.
+
+      add_index(:accounts, :code, :where => "active")
+
+      Generates
+
+      CREATE INDEX index_accounts_on_code ON accounts(code) WHERE active
+
+    *Marcelo Silveira*
+
+*   Implemented ActiveRecord::Relation#none method
+
+    The `none` method returns a chainable relation with zero records
+    (an instance of the NullRelation class).
+
+    Any subsequent condition chained to the returned relation will continue
+    generating an empty relation and will not fire any query to the database.
+
+    *Juanjo Bazán*
+
+*   Added the `ActiveRecord::NullRelation` class implementing the null
+    object pattern for the Relation class. *Juanjo Bazán*
+
+*   Added deprecation for the `:dependent => :restrict` association option.
+
+    Please note:
+
+      * Up until now `has_many` and `has_one`, `:dependent => :restrict`
+        option raised a `DeleteRestrictionError` at the time of destroying
+        the object. Instead, it will add an error on the model.
+
+      * To fix this warning, make sure your code isn't relying on a
+        `DeleteRestrictionError` and then add
+        `config.active_record.dependent_restrict_raises = false` to your
+        application config.
+
+      * New rails application would be generated with the
+        `config.active_record.dependent_restrict_raises = false` in the
+        application config.
+
+    *Manoj Kumar*
+
+*   Added `create_join_table` migration helper to create HABTM join tables
+
+        create_join_table :products, :categories
+        # =>
+        # create_table :categories_products, :id => false do |td|
+        #   td.integer :product_id, :null => false
+        #   td.integer :category_id, :null => false
+        # end
+
+    *Rafael Mendonça França*
+
+*   The primary key is always initialized in the @attributes hash to nil (unless
+    another value has been specified).
+
+*   In previous releases, the following would generate a single query with
+    an `OUTER JOIN comments`, rather than two separate queries:
+
+        Post.includes(:comments)
+            .where("comments.name = 'foo'")
+
+    This behaviour relies on matching SQL string, which is an inherently
+    flawed idea unless we write an SQL parser, which we do not wish to
+    do.
+
+    Therefore, it is now deprecated.
+
+    To avoid deprecation warnings and for future compatibility, you must
+    explicitly state which tables you reference, when using SQL snippets:
+
+        Post.includes(:comments)
+            .where("comments.name = 'foo'")
+            .references(:comments)
+
+    Note that you do not need to explicitly specify references in the
+    following cases, as they can be automatically inferred:
+
+        Post.where(comments: { name: 'foo' })
+        Post.where('comments.name' => 'foo')
+        Post.order('comments.name')
+
+    You also do not need to worry about this unless you are doing eager
+    loading. Basically, don't worry unless you see a deprecation warning
+    or (in future releases) an SQL error due to a missing JOIN.
+
+    [Jon Leighton]
+
+*   Support for the `schema_info` table has been dropped.  Please
+    switch to `schema_migrations`.
+
 *   Connections *must* be closed at the end of a thread.  If not, your
     connection pool can fill and an exception will be raised.
 
@@ -35,7 +129,46 @@
 
 *   PostgreSQL hstore types are automatically deserialized from the database.
 
-## Rails 3.2.0 (unreleased) ##
+
+## Rails 3.2.1 (January 26, 2012) ##
+
+*   The threshold for auto EXPLAIN is ignored if there's no logger. *fxn*
+
+*   Fix possible race condition when two threads try to define attribute
+    methods for the same class.
+
+
+## Rails 3.2.0 (January 20, 2012) ##
+
+*   Added a `with_lock` method to ActiveRecord objects, which starts
+    a transaction, locks the object (pessimistically) and yields to the block.
+    The method takes one (optional) parameter and passes it to `lock!`.
+
+    Before:
+
+        class Order < ActiveRecord::Base
+          def cancel!
+            transaction do
+              lock!
+              # ... cancelling logic
+            end
+          end
+        end
+
+    After:
+
+        class Order < ActiveRecord::Base
+          def cancel!
+            with_lock do
+              # ... cancelling logic
+            end
+          end
+        end
+
+    *Olek Janiszewski*
+
+*   'on' and 'ON' boolean columns values are type casted to true
+    *Santiago Pastorino*
 
 *   Added ability to run migrations only for given scope, which allows
     to run migrations only from one engine (for example to revert changes
@@ -44,7 +177,7 @@
     Example:
       rake db:migrate SCOPE=blog
 
-   *Piotr Sarnacki*
+    *Piotr Sarnacki*
 
 *   Migrations copied from engines are now scoped with engine's name,
     for example 01_create_posts.blog.rb. *Piotr Sarnacki*
@@ -131,7 +264,7 @@
 
         Client.select(:name).uniq
 
-    This also allows you to revert the unqueness in a relation:
+    This also allows you to revert the uniqueness in a relation:
 
         Client.select(:name).uniq.uniq(false)
 
@@ -184,7 +317,7 @@
 
     *Aaron Christy*
 
-## Rails 3.1.3 (unreleased) ##
+## Rails 3.1.3 (November 20, 2011) ##
 
 *   Perf fix: If we're deleting all records in an association, don't add a IN(..) clause
     to the query. *GH 3672*
@@ -197,7 +330,7 @@
 
     *Christos Zisopoulos and Kenny J*
 
-## Rails 3.1.2 (unreleased) ##
+## Rails 3.1.2 (November 18, 2011) ##
 
 *   Fix bug with PostgreSQLAdapter#indexes. When the search path has multiple schemas, spaces
     were not being stripped from the schema names after the first.

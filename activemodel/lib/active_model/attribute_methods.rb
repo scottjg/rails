@@ -325,14 +325,14 @@ module ActiveModel
             end
 
             @prefix, @suffix = options[:prefix] || '', options[:suffix] || ''
-            @regex = /^(#{Regexp.escape(@prefix)})(.+?)(#{Regexp.escape(@suffix)})$/
+            @regex = /^(?:#{Regexp.escape(@prefix)})(.*)(?:#{Regexp.escape(@suffix)})$/
             @method_missing_target = "#{@prefix}attribute#{@suffix}"
             @method_name = "#{prefix}%s#{suffix}"
           end
 
           def match(method_name)
             if @regex =~ method_name
-              AttributeMethodMatch.new(method_missing_target, $2, method_name)
+              AttributeMethodMatch.new(method_missing_target, $1, method_name)
             else
               nil
             end
@@ -394,7 +394,7 @@ module ActiveModel
 
     protected
       def attribute_method?(attr_name)
-        attributes.include?(attr_name)
+        respond_to_without_attributes?(:attributes) && attributes.include?(attr_name)
       end
 
     private

@@ -5,6 +5,9 @@ require 'active_support/core_ext/object/blank'
 module Rails
   module Generators
     class GeneratedAttribute
+      INDEX_OPTIONS = %w(index uniq)
+      UNIQ_INDEX_OPTIONS = %w(uniq)
+
       attr_accessor :name, :type
       attr_reader   :attr_options
 
@@ -15,7 +18,7 @@ module Rails
           # if user provided "name:index" instead of "name:string:index"
           # type should be set blank so GeneratedAttribute's constructor
           # could set it to :string
-          has_index, type = type, nil if %w(index uniq).include?(type)
+          has_index, type = type, nil if INDEX_OPTIONS.include?(type)
 
           type, attr_options = *parse_type_and_options(type)
           new(name, type, has_index, attr_options)
@@ -29,7 +32,7 @@ module Rails
           case type
           when /(string|text|binary|integer)\{(\d+)\}/
             return $1, :limit => $2.to_i
-          when /decimal\{(\d+),(\d+)\}/
+          when /decimal\{(\d+)[,.-](\d+)\}/
             return :decimal, :precision => $1.to_i, :scale => $2.to_i
           else
             return type, {}
@@ -40,8 +43,8 @@ module Rails
       def initialize(name, type=nil, index_type=false, attr_options={})
         @name           = name
         @type           = (type.presence || :string).to_sym
-        @has_index      = %w(index uniq).include?(index_type)
-        @has_uniq_index = %w(uniq).include?(index_type)
+        @has_index      = INDEX_OPTIONS.include?(index_type)
+        @has_uniq_index = UNIQ_INDEX_OPTIONS.include?(index_type)
         @attr_options   = attr_options
       end
 
@@ -84,7 +87,7 @@ module Rails
       end
 
       def reference?
-        self.type.in?([:references, :belongs_to])
+        self.type.in?(:references, :belongs_to)
       end
 
       def has_index?

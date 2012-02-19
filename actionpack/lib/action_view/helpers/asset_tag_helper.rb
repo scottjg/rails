@@ -1,3 +1,5 @@
+require 'active_support/core_ext/array/extract_options'
+require 'active_support/core_ext/hash/keys'
 require 'action_view/helpers/asset_tag_helpers/javascript_tag_helpers'
 require 'action_view/helpers/asset_tag_helpers/stylesheet_tag_helpers'
 require 'action_view/helpers/asset_tag_helpers/asset_paths'
@@ -196,7 +198,7 @@ module ActionView
       include JavascriptTagHelpers
       include StylesheetTagHelpers
       # Returns a link tag that browsers and news readers can use to auto-detect
-      # an RSS or ATOM feed. The +type+ can either be <tt>:rss</tt> (default) or
+      # an RSS or Atom feed. The +type+ can either be <tt>:rss</tt> (default) or
       # <tt>:atom</tt>. Control the link options in url_for format using the
       # +url_options+. You can modify the LINK tag itself in +tag_options+.
       #
@@ -232,7 +234,7 @@ module ActionView
       #
       # generates
       #
-      #   <link href="/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+      #   <link href="/assets/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
       #
       # You may specify a different file in the first argument:
       #
@@ -250,7 +252,7 @@ module ActionView
       #
       #   <%= favicon_link_tag 'mb-icon.png', :rel => 'apple-touch-icon', :type => 'image/png' %>
       #
-      def favicon_link_tag(source='/favicon.ico', options={})
+      def favicon_link_tag(source='favicon.ico', options={})
         tag('link', {
           :rel  => 'shortcut icon',
           :type => 'image/vnd.microsoft.icon',
@@ -276,6 +278,13 @@ module ActionView
       end
       alias_method :path_to_image, :image_path # aliased to avoid conflicts with an image_path named route
 
+      # Computes the full URL to an image asset in the public images directory.
+      # This will use +image_path+ internally, so most of their behaviors will be the same.
+      def image_url(source)
+        URI.join(current_host, path_to_image(source)).to_s
+      end
+      alias_method :url_to_image, :image_url # aliased to avoid conflicts with an image_url named route
+
       # Computes the path to a video asset in the public videos directory.
       # Full paths from the document root will be passed through.
       # Used internally by +video_tag+ to build the video path.
@@ -290,6 +299,13 @@ module ActionView
         asset_paths.compute_public_path(source, 'videos')
       end
       alias_method :path_to_video, :video_path # aliased to avoid conflicts with a video_path named route
+
+      # Computes the full URL to a video asset in the public videos directory.
+      # This will use +video_path+ internally, so most of their behaviors will be the same.
+      def video_url(source)
+        URI.join(current_host, path_to_video(source)).to_s
+      end
+      alias_method :url_to_video, :video_url # aliased to avoid conflicts with an video_url named route
 
       # Computes the path to an audio asset in the public audios directory.
       # Full paths from the document root will be passed through.
@@ -306,6 +322,13 @@ module ActionView
       end
       alias_method :path_to_audio, :audio_path # aliased to avoid conflicts with an audio_path named route
 
+      # Computes the full URL to a audio asset in the public audios directory.
+      # This will use +audio_path+ internally, so most of their behaviors will be the same.
+      def audio_url(source)
+        URI.join(current_host, path_to_audio(source)).to_s
+      end
+      alias_method :url_to_audio, :audio_url # aliased to avoid conflicts with an audio_url named route
+
       # Computes the path to a font asset in the public fonts directory.
       # Full paths from the document root will be passed through.
       #
@@ -319,6 +342,13 @@ module ActionView
         asset_paths.compute_public_path(source, 'fonts')
       end
       alias_method :path_to_font, :font_path # aliased to avoid conflicts with an font_path named route
+
+      # Computes the full URL to a font asset in the public fonts directory.
+      # This will use +font_path+ internally, so most of their behaviors will be the same.
+      def font_url(source)
+        URI.join(current_host, path_to_font(source)).to_s
+      end
+      alias_method :url_to_font, :font_url # aliased to avoid conflicts with an font_url named route
 
       # Returns an html image tag for the +source+. The +source+ can be a full
       # path or a file that exists in your public images directory.
@@ -353,8 +383,8 @@ module ActionView
       #    <img src="/images/mouse.png" onmouseover="this.src='/images/mouse_over.png'" onmouseout="this.src='/images/mouse.png'" alt="Mouse" />
       #  image_tag("mouse.png", :mouseover => image_path("mouse_over.png")) # =>
       #    <img src="/images/mouse.png" onmouseover="this.src='/images/mouse_over.png'" onmouseout="this.src='/images/mouse.png'" alt="Mouse" />
-      def image_tag(source, options = {})
-        options.symbolize_keys!
+      def image_tag(source, options={})
+        options = options.dup.symbolize_keys!
 
         src = options[:src] = path_to_image(source)
 
@@ -407,26 +437,19 @@ module ActionView
       #    <video src="/trailers/hd.avi" width="16" height="16" />
       #  video_tag("/trailers/hd.avi", :height => '32', :width => '32') # =>
       #    <video height="32" src="/trailers/hd.avi" width="32" />
+      #  video_tag("trailer.ogg", "trailer.flv") # =>
+      #    <video><source src="/videos/trailer.ogg" /><source src="/videos/trailer.flv" /></video>
       #  video_tag(["trailer.ogg", "trailer.flv"]) # =>
-      #    <video><source src="trailer.ogg" /><source src="trailer.ogg" /><source src="trailer.flv" /></video>
+      #    <video><source src="/videos/trailer.ogg" /><source src="/videos/trailer.flv" /></video>
       #  video_tag(["trailer.ogg", "trailer.flv"] :size => "160x120") # =>
-      #    <video height="120" width="160"><source src="trailer.ogg" /><source src="trailer.flv" /></video>
-      def video_tag(sources, options = {})
-        options.symbolize_keys!
+      #    <video height="120" width="160"><source src="/videos/trailer.ogg" /><source src="/videos/trailer.flv" /></video>
+      def video_tag(*sources)
+        multiple_sources_tag('video', sources) do |options|
+          options[:poster] = path_to_image(options[:poster]) if options[:poster]
 
-        options[:poster] = path_to_image(options[:poster]) if options[:poster]
-
-        if size = options.delete(:size)
-          options[:width], options[:height] = size.split("x") if size =~ %r{^\d+x\d+$}
-        end
-
-        if sources.is_a?(Array)
-          content_tag("video", options) do
-            sources.map { |source| tag("source", :src => source) }.join.html_safe
+          if size = options.delete(:size)
+            options[:width], options[:height] = size.split("x") if size =~ %r{^\d+x\d+$}
           end
-        else
-          options[:src] = path_to_video(sources)
-          tag("video", options)
         end
       end
 
@@ -441,16 +464,36 @@ module ActionView
       #    <audio src="/audios/sound.wav" />
       #  audio_tag("sound.wav", :autoplay => true, :controls => true)  # =>
       #    <audio autoplay="autoplay" controls="controls" src="/audios/sound.wav" />
-      def audio_tag(source, options = {})
-        options.symbolize_keys!
-        options[:src] = path_to_audio(source)
-        tag("audio", options)
+      #  audio_tag("sound.wav", "sound.mid")  # =>
+      #    <audio><source src="/audios/sound.wav" /><source src="/audios/sound.mid" /></audio>
+      def audio_tag(*sources)
+        multiple_sources_tag('audio', sources)
       end
 
       private
 
         def asset_paths
           @asset_paths ||= AssetTagHelper::AssetPaths.new(config, controller)
+        end
+
+        def multiple_sources_tag(type, sources)
+          options = sources.extract_options!.dup.symbolize_keys!
+          sources.flatten!
+
+          yield options if block_given?
+
+          if sources.size > 1
+            content_tag(type, options) do
+              safe_join sources.map { |source| tag("source", :src => send("path_to_#{type}", source)) }
+            end
+          else
+            options[:src] = send("path_to_#{type}", sources.first)
+            content_tag(type, nil, options)
+          end
+        end
+
+        def current_host
+          url_for(:only_path => false)
         end
     end
   end

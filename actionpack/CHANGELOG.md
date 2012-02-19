@@ -1,8 +1,106 @@
+## Rails 4.0.0 (unreleased) ##
+
+*   `expires_in` accepts a `must_revalidate` flag. If true, "must-revalidate"
+    is added to the Cache-Control header. *fxn*
+
+*   Add `date_field` and `date_field_tag` helpers which render an `input[type="date"]` tag *Olek Janiszewski*
+
+*   Adds `image_url`, `javascript_url`, `stylesheet_url`, `audio_url`, `video_url`, and `font_url`
+    to assets tag helper. These URL helpers will return the full path to your assets. This is useful
+    when you are going to reference this asset from external host. *Prem Sichanugrist*
+
+*   Default responder will now always use your overridden block in `respond_with` to render your response. *Prem Sichanugrist*
+
+*   Allow `value_method` and `text_method` arguments from `collection_select` and
+    `options_from_collection_for_select` to receive an object that responds to `:call`,
+    such as a `proc`, to evaluate the option in the current element context. This works
+    the same way with `collection_radio_buttons` and `collection_check_boxes`.
+
+    *Carlos Antonio da Silva + Rafael Mendonça França*
+
+*   Add `collection_check_boxes` form helper, similar to `collection_select`:
+    Example:
+
+      collection_check_boxes :post, :author_ids, Author.all, :id, :name
+      # Outputs something like:
+      <input id="post_author_ids_1" name="post[author_ids][]" type="checkbox" value="1" />
+      <label for="post_author_ids_1">D. Heinemeier Hansson</label>
+      <input id="post_author_ids_2" name="post[author_ids][]" type="checkbox" value="2" />
+      <label for="post_author_ids_2">D. Thomas</label>
+      <input name="post[author_ids][]" type="hidden" value="" />
+
+    The label/check_box pairs can be customized with a block.
+
+    *Carlos Antonio da Silva + Rafael Mendonça França*
+
+*   Add `collection_radio_buttons` form helper, similar to `collection_select`:
+    Example:
+
+      collection_radio_buttons :post, :author_id, Author.all, :id, :name
+      # Outputs something like:
+      <input id="post_author_id_1" name="post[author_id]" type="radio" value="1" />
+      <label for="post_author_id_1">D. Heinemeier Hansson</label>
+      <input id="post_author_id_2" name="post[author_id]" type="radio" value="2" />
+      <label for="post_author_id_2">D. Thomas</label>
+
+    The label/radio_button pairs can be customized with a block.
+
+    *Carlos Antonio da Silva + Rafael Mendonça França*
+
+*   check_box with `:form` html5 attribute will now replicate the `:form`
+    attribute to the hidden field as well. *Carlos Antonio da Silva*
+
+*   `label` form helper accepts :for => nil to not generate the attribute. *Carlos Antonio da Silva*
+
+*   Add `:format` option to number_to_percentage *Rodrigo Flores*
+
+*   Add `config.action_view.logger` to configure logger for ActionView. *Rafael Mendonça França*
+
+*   Deprecated ActionController::Integration in favour of ActionDispatch::Integration
+
+*   Deprecated ActionController::IntegrationTest in favour of ActionDispatch::IntegrationTest
+
+*   Deprecated ActionController::PerformanceTest in favour of ActionDispatch::PerformanceTest
+
+*   Deprecated ActionController::AbstractRequest in favour of ActionDispatch::Request
+
+*   Deprecated ActionController::Request in favour of ActionDispatch::Request
+
+*   Deprecated ActionController::AbstractResponse in favour of ActionDispatch::Response
+
+*   Deprecated ActionController::Response in favour of ActionDispatch::Response
+
+*   Deprecated ActionController::Routing in favour of ActionDispatch::Routing
+
 *   check_box helper with :disabled => true will generate a disabled hidden field to conform with the HTML convention where disabled fields are not submitted with the form.
     This is a behavior change, previously the hidden tag had a value of the disabled checkbox.
     *Tadas Tamosauskas*
 
-## Rails 3.2.0 (unreleased) ##
+*   `favicon_link_tag` helper will now use the favicon in app/assets by default. *Lucas Caton*
+
+*    `ActionView::Helpers::TextHelper#highlight` now defaults to the
+     HTML5 `mark` element. *Brian Cardarella*
+
+## Rails 3.2.0 (January 20, 2012) ##
+
+*   Add `config.action_dispatch.default_charset` to configure default charset for ActionDispatch::Response. *Carlos Antonio da Silva*
+
+*   Deprecate setting default charset at controller level, use the new `config.action_dispatch.default_charset` instead. *Carlos Antonio da Silva*
+
+*   Deprecate ActionController::UnknownAction in favour of AbstractController::ActionNotFound. *Carlos Antonio da Silva*
+
+*   Deprecate ActionController::DoubleRenderError in favour of AbstractController::DoubleRenderError. *Carlos Antonio da Silva*
+
+*   Deprecate method_missing handling for not found actions, use action_missing instead. *Carlos Antonio da Silva*
+
+*   Deprecate ActionController#rescue_action, ActionController#initialize_template_class, and ActionController#assign_shortcuts.
+    These methods were not being used internally anymore and are going to be removed in Rails 4. *Carlos Antonio da Silva*
+
+*   Use a BodyProxy instead of including a Module that responds to
+    close. Closes #4441 if Active Record is disabled assets are delivered
+    correctly *Santiago Pastorino*
+
+*   Rails initialization with initialize_on_precompile = false should set assets_dir *Santiago Pastorino*
 
 *   Add font_path helper method *Santiago Pastorino*
 
@@ -22,7 +120,7 @@
           <%= f.button %>
         <% end %>
 
-*   Date helpers accept a new option, `:use_two_digit_numbers = true`, that renders select boxes for months and days with a leading zero without changing the respective values. 
+*   Date helpers accept a new option, `:use_two_digit_numbers = true`, that renders select boxes for months and days with a leading zero without changing the respective values.
     For example, this is useful for displaying ISO8601-style dates such as '2011-08-01'. *Lennart Fridén and Kim Persson*
 
 *   Make ActiveSupport::Benchmarkable a default module for ActionController::Base, so the #benchmark method is once again available in the controller context like it used to be *DHH*
@@ -159,14 +257,14 @@
 *   Assets should use the request protocol by default or default to
     relative if no request is available *Jonathan del Strother*
 
-## Rails 3.1.3 (unreleased) ##
+## Rails 3.1.3 (November 20, 2011) ##
 
 *   Fix using `translate` helper with a html translation which uses the `:count` option for
     pluralization.
 
     *Jon Leighton*
 
-## Rails 3.1.2 (unreleased) ##
+## Rails 3.1.2 (November 18, 2011) ##
 
 *   Fix XSS security vulnerability in the `translate` helper method. When using interpolation
     in combination with HTML-safe translations, the interpolated input would not get HTML
@@ -207,7 +305,7 @@
 
 *   Ensure users upgrading from 3.0.x to 3.1.x will properly upgrade their flash object in session (issues #3298 and #2509)
 
-## Rails 3.1.1 (unreleased) ##
+## Rails 3.1.1 (October 07, 2011) ##
 
 *   javascript_path and stylesheet_path now refer to /assets if asset pipelining
     is on. *Santiago Pastorino*

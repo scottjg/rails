@@ -1,8 +1,7 @@
 require 'abstract_unit'
 require 'controller/fake_controllers'
-require 'active_support/ordered_hash'
 
-class TestTest < ActionController::TestCase
+class TestCaseTest < ActionController::TestCase
   class TestController < ActionController::Base
     def no_op
       render :text => 'dummy'
@@ -124,9 +123,6 @@ XML
     end
 
     private
-      def rescue_action(e)
-        raise e
-      end
 
       def generate_url(opts)
         url_for(opts.merge(:action => "test_uri"))
@@ -158,33 +154,42 @@ XML
   end
 
   def test_raw_post_handling
-    params = ActiveSupport::OrderedHash[:page, {:name => 'page name'}, 'some key', 123]
+    params = Hash[:page, {:name => 'page name'}, 'some key', 123]
     post :render_raw_post, params.dup
 
     assert_equal params.to_query, @response.body
   end
 
   def test_body_stream
-    params = ActiveSupport::OrderedHash[:page, { :name => 'page name' }, 'some key', 123]
+    params = Hash[:page, { :name => 'page name' }, 'some key', 123]
 
     post :render_body, params.dup
 
     assert_equal params.to_query, @response.body
   end
-  
+
   def test_document_body_and_params_with_post
     post :test_params, :id => 1
-    assert_equal("{\"id\"=>\"1\", \"controller\"=>\"test_test/test\", \"action\"=>\"test_params\"}", @response.body)
+    assert_equal("{\"id\"=>\"1\", \"controller\"=>\"test_case_test/test\", \"action\"=>\"test_params\"}", @response.body)
   end
-  
+
   def test_document_body_with_post
     post :render_body, "document body"
     assert_equal "document body", @response.body
   end
-  
+
   def test_document_body_with_put
     put :render_body, "document body"
     assert_equal "document body", @response.body
+  end
+
+  def test_head
+    head :test_params
+    assert_equal 200, @response.status
+  end
+
+  def test_head_params_as_sting
+    assert_raise(NoMethodError) { head :test_params, "document body", :id => 10 }
   end
 
   def test_process_without_flash
@@ -238,18 +243,18 @@ XML
 
   def test_process_with_request_uri_with_no_params
     process :test_uri
-    assert_equal "/test_test/test/test_uri", @response.body
+    assert_equal "/test_case_test/test/test_uri", @response.body
   end
 
   def test_process_with_request_uri_with_params
     process :test_uri, "GET", :id => 7
-    assert_equal "/test_test/test/test_uri/7", @response.body
+    assert_equal "/test_case_test/test/test_uri/7", @response.body
   end
-  
+
   def test_process_with_old_api
     assert_deprecated do
       process :test_uri, :id => 7
-      assert_equal "/test_test/test/test_uri/7", @response.body
+      assert_equal "/test_case_test/test/test_uri/7", @response.body
     end
   end
 
@@ -533,7 +538,7 @@ XML
     get :test_params, :page => {:name => "Page name", :month => '4', :year => '2004', :day => '6'}
     parsed_params = eval(@response.body)
     assert_equal(
-      {'controller' => 'test_test/test', 'action' => 'test_params',
+      {'controller' => 'test_case_test/test', 'action' => 'test_params',
        'page' => {'name' => "Page name", 'month' => '4', 'year' => '2004', 'day' => '6'}},
       parsed_params
     )
@@ -543,7 +548,7 @@ XML
     get :test_params, :page => {:name => "Page name", :month => 4, :year => 2004, :day => 6}
     parsed_params = eval(@response.body)
     assert_equal(
-      {'controller' => 'test_test/test', 'action' => 'test_params',
+      {'controller' => 'test_case_test/test', 'action' => 'test_params',
        'page' => {'name' => "Page name", 'month' => '4', 'year' => '2004', 'day' => '6'}},
       parsed_params
     )
@@ -555,7 +560,7 @@ XML
     end
     parsed_params = eval(@response.body)
     assert_equal(
-      {'controller' => 'test_test/test', 'action' => 'test_params',
+      {'controller' => 'test_case_test/test', 'action' => 'test_params',
        'frozen' => 'icy', 'frozens' => ['icy']},
       parsed_params
     )
@@ -575,7 +580,7 @@ XML
   def test_array_path_parameter_handled_properly
     with_routing do |set|
       set.draw do
-        match 'file/*path', :to => 'test_test/test#test_params'
+        match 'file/*path', :to => 'test_case_test/test#test_params'
         match ':controller/:action'
       end
 
@@ -710,7 +715,7 @@ XML
   end
 
   def test_fixture_path_is_accessed_from_self_instead_of_active_support_test_case
-    TestTest.stubs(:fixture_path).returns(FILES_DIR)
+    TestCaseTest.stubs(:fixture_path).returns(FILES_DIR)
 
     uploaded_file = fixture_file_upload('/mona_lisa.jpg', 'image/png')
     assert_equal File.open("#{FILES_DIR}/mona_lisa.jpg", READ_PLAIN).read, uploaded_file.read

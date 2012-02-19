@@ -151,10 +151,6 @@ class RespondToController < ActionController::Base
     end
   end
 
-  def rescue_action(e)
-    raise
-  end
-
   protected
     def set_layout
       if action_name.in?(["all_types_with_layout", "iphone_with_html_response_type"])
@@ -498,7 +494,7 @@ class RespondToControllerTest < ActionController::TestCase
     assert_equal '<html><div id="iphone">Hello iPhone future from iPhone!</div></html>', @response.body
     assert_equal "text/html", @response.content_type
   end
-  
+
   def test_invalid_format
     get :using_defaults, :format => "invalidformat"
     assert_equal " ", @response.body
@@ -595,6 +591,19 @@ class RenderJsonRespondWithController < RespondWithController
   def index
     respond_with(resource) do |format|
       format.json { render :json => RenderJsonTestException.new('boom') }
+    end
+  end
+
+  def create
+    resource = ValidatedCustomer.new(params[:name], 1)
+    respond_with(resource) do |format|
+      format.json do
+        if resource.errors.empty?
+          render :json => { :valid => true }
+        else
+          render :json => { :valid => false }
+        end
+      end
     end
   end
 end
@@ -966,6 +975,18 @@ class RespondWithControllerTest < ActionController::TestCase
     get :index, :format => :json
     assert_match(/"message":"boom"/, @response.body)
     assert_match(/"error":"RenderJsonTestException"/, @response.body)
+  end
+
+  def test_api_response_with_valid_resource_respect_override_block
+    @controller = RenderJsonRespondWithController.new
+    post :create, :name => "sikachu", :format => :json
+    assert_equal '{"valid":true}', @response.body
+  end
+
+  def test_api_response_with_invalid_resource_respect_override_block
+    @controller = RenderJsonRespondWithController.new
+    post :create, :name => "david", :format => :json
+    assert_equal '{"valid":false}', @response.body
   end
 
   def test_no_double_render_is_raised

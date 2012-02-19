@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 
 module StaticTests
@@ -28,6 +29,38 @@ module StaticTests
     assert_html "/foo/index.html", get("/foo/index.html")
     assert_html "/foo/index.html", get("/foo/")
     assert_html "/foo/index.html", get("/foo")
+  end
+
+  def test_served_static_file_with_non_english_filename
+    assert_html "means hello in Japanese\n", get("/foo/#{Rack::Utils.escape("こんにちは.html")}")
+  end
+
+  def test_serves_static_file_with_encoded_pchar
+    assert_html "/foo/foo!bar.html", get("/foo/foo%21bar.html")
+    assert_html "/foo/foo$bar.html", get("/foo/foo%24bar.html")
+    assert_html "/foo/foo&bar.html", get("/foo/foo%26bar.html")
+    assert_html "/foo/foo'bar.html", get("/foo/foo%27bar.html")
+    assert_html "/foo/foo(bar).html", get("/foo/foo%28bar%29.html")
+    assert_html "/foo/foo*bar.html", get("/foo/foo%2Abar.html")
+    assert_html "/foo/foo+bar.html", get("/foo/foo%2Bbar.html")
+    assert_html "/foo/foo,bar.html", get("/foo/foo%2Cbar.html")
+    assert_html "/foo/foo;bar.html", get("/foo/foo%3Bbar.html")
+    assert_html "/foo/foo:bar.html", get("/foo/foo%3Abar.html")
+    assert_html "/foo/foo@bar.html", get("/foo/foo%40bar.html")
+  end
+
+  def test_serves_static_file_with_unencoded_pchar
+    assert_html "/foo/foo!bar.html", get("/foo/foo!bar.html")
+    assert_html "/foo/foo$bar.html", get("/foo/foo$bar.html")
+    assert_html "/foo/foo&bar.html", get("/foo/foo&bar.html")
+    assert_html "/foo/foo'bar.html", get("/foo/foo'bar.html")
+    assert_html "/foo/foo(bar).html", get("/foo/foo(bar).html")
+    assert_html "/foo/foo*bar.html", get("/foo/foo*bar.html")
+    assert_html "/foo/foo+bar.html", get("/foo/foo+bar.html")
+    assert_html "/foo/foo,bar.html", get("/foo/foo,bar.html")
+    assert_html "/foo/foo;bar.html", get("/foo/foo;bar.html")
+    assert_html "/foo/foo:bar.html", get("/foo/foo:bar.html")
+    assert_html "/foo/foo@bar.html", get("/foo/foo@bar.html")
   end
 
   private
