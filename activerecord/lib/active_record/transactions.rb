@@ -4,6 +4,7 @@ module ActiveRecord
   # See ActiveRecord::Transactions::ClassMethods for documentation.
   module Transactions
     extend ActiveSupport::Concern
+    ACTIONS = [:create, :destroy, :update]
 
     class TransactionError < ActiveRecordError # :nodoc:
     end
@@ -208,22 +209,15 @@ module ActiveRecord
       end
 
       def after_commit(*args, &block)
-        options = args.last
-        if options.is_a?(Hash) && options[:on]
-          options[:if] = Array.wrap(options[:if])
-          options[:if] << "transaction_include_action?(:#{options[:on]})"
-        end
+        Transactions.set_options_for_callbacks!(args)
         set_callback(:commit, :after, *args, &block)
       end
 
       def after_rollback(*args, &block)
-        options = args.last
-        if options.is_a?(Hash) && options[:on]
-          options[:if] = Array.wrap(options[:if])
-          options[:if] << "transaction_include_action?(:#{options[:on]})"
-        end
+        Transactions.set_options_for_callbacks!(args)
         set_callback(:rollback, :after, *args, &block)
       end
+
     end
 
     # See ActiveRecord::Transactions::ClassMethods for detailed documentation.
@@ -355,5 +349,22 @@ module ActiveRecord
         !(transaction_record_state(:new_record) || destroyed?)
       end
     end
+
+    private
+
+    def self.set_options_for_callbacks!(args)
+      options = args.last
+      if options.is_a?(Hash) && options[:on]
+        assert_valid_transaction_action(options[:on])
+        options[:if] = Array(options[:if])
+        options[:if] << "transaction_include_action?(:#{options[:on]})"
+      end
+    end
+
+    def self.assert_valid_transaction_action(action)
+      return if ACTIONS.include?(action.to_sym)
+      raise ArgumentError, ":on conditions for after_commit and after_rollback callbacks have to be one of #{Transactions::ACTIONS.join(",")}"
+    end
+
   end
 end
