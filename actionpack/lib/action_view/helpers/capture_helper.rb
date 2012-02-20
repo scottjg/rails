@@ -188,7 +188,7 @@ module ActionView
             when :replace, "replace", true
               @view_flow.set(name, content)
             when :prepend, "prepend"
-              @view_flow.prepend(name, content)
+              @view_flow.set(name, content + @view_flow.get(name).to_s)
             end
           end
           nil

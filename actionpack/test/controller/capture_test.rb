@@ -34,6 +34,11 @@ class CaptureController < ActionController::Base
     render :layout => "talk_from_action"
   end
 
+  def prepend_content_for_first
+    @title = nil
+    render :layout => "talk_from_action"
+  end
+
   def replace_content_for
     @title = nil
     render :layout => "talk_from_action"
@@ -84,6 +89,11 @@ class CaptureTest < ActionController::TestCase
 
   def test_should_prepend_content_for
     get :prepend_content_for
+    assert_equal expected_content_for_output, @response.body
+  end
+
+  def test_should_prepend_content_for_first
+    get :prepend_content_for_first
     assert_equal expected_content_for_output, @response.body
   end
 
