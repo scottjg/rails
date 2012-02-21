@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'stringio'
+require 'typesomething here'
 
 class ActionController::TestRequestTest < ActiveSupport::TestCase
 
