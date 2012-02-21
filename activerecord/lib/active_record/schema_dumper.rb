@@ -68,10 +68,11 @@ HEADER
 
       def tables(stream)
         @connection.tables.sort.each do |tbl|
+          next unless strip_table_name_affixes(tbl)   # If using table_name_prefix/table_name_suffix, only dump the matching tables
           next if ['schema_migrations', ignore_tables].flatten.any? do |ignored|
             case ignored
-            when String; tbl == ignored
-            when Regexp; tbl =~ ignored
+            when String; strip_table_name_affixes(tbl) == ignored
+            when Regexp; strip_table_name_affixes(tbl) =~ ignored
             else
               raise StandardError, 'ActiveRecord::SchemaDumper.ignore_tables accepts an array of String and / or Regexp values.'
             end
@@ -92,7 +93,7 @@ HEADER
             pk = @connection.primary_key(table)
           end
 
-          tbl.print "  create_table #{table.inspect}"
+          tbl.print "  create_table #{strip_table_name_affixes(table).inspect}"
           if columns.detect { |c| c.name == pk }
             if pk != 'id'
               tbl.print %Q(, :primary_key => "#{pk}")
@@ -180,7 +181,7 @@ HEADER
       def indexes(table, stream)
         if (indexes = @connection.indexes(table)).any?
           add_index_statements = indexes.map do |index|
-            statement_parts = [ ('add_index ' + index.table.inspect) ]
+            statement_parts = [ ('add_index ' + strip_table_name_affixes(index.table).inspect) ]
             statement_parts << index.columns.inspect
             statement_parts << (':name => ' + index.name.inspect)
             statement_parts << ':unique => true' if index.unique
@@ -194,6 +195,16 @@ HEADER
           stream.puts add_index_statements.sort.join("\n")
           stream.puts
         end
+      end
+
+      # Remove the ActiveRecord::Base.table_name_prefix and
+      # ActiveRecord::Base.table_name_suffix from a table name.
+      #
+      # Returns nil if the affixes are missing from the argument.
+      def strip_table_name_affixes(table_name)
+        regexp = /\A#{Regexp.quote(Base.table_name_prefix || "")}(.*)#{Regexp.quote(Base.table_name_suffix || "")}\Z/m
+        return nil unless table_name =~ regexp
+        $1
       end
   end
 end

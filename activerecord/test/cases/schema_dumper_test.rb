@@ -232,4 +232,23 @@ class SchemaDumperTest < ActiveRecord::TestCase
     assert_match %r(:id => false), match[1], "no table id not preserved"
     assert_match %r{t.string[[:space:]]+"id",[[:space:]]+:null => false$}, match[2], "non-primary key id column not preserved"
   end
+
+  def test_schema_dump_with_table_name_affixes
+    # will match "comments", "companies", "computers"
+    ActiveRecord::Base.table_name_prefix = "com"
+    ActiveRecord::Base.table_name_suffix = "s"
+
+    output = standard_dump
+
+    match = output.match(%r{create_table "ment"(.*)do.*\n(.*)\n})
+    assert_not_nil(match, "(com)ment(s) table not found")
+
+    match = output.match(%r{create_table "panie"(.*)do.*\n(.*)\n})
+    assert_not_nil(match, "(com)panie(s) table not found")
+
+    match = output.match(%r{create_table "puter"(.*)do.*\n(.*)\n})
+    assert_not_nil(match, "(com)puter(s) table not found")
+  ensure
+    ActiveRecord::Base.table_name_prefix = ActiveRecord::Base.table_name_suffix = ""
+  end
 end
