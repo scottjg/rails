@@ -1,0 +1,26 @@
+# MS SQL Server
+#
+# Requires activerecord-sqlserver-adapter:
+#  https://github.com/rails-sqlserver/activerecord-sqlserver-adapter
+#
+
+development:
+    adapter: sqlserver
+    host: mydb.net
+    database: myapp_development
+    username: sa
+    password: secret
+
+test:
+    adapter: sqlserver
+    host: mydb.net
+    database: myapp_test
+    username: sa
+    password: secret
+
+production:
+    adapter: sqlserver
+    host: mydb.net
+    database: myapp_production
+    username: sa
+    password: secret
