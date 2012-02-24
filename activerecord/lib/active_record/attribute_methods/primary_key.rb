@@ -1,3 +1,5 @@
+require 'set'
+
 module ActiveRecord
   module AttributeMethods
     module PrimaryKey
@@ -24,6 +26,17 @@ module ActiveRecord
         query_attribute(self.class.primary_key)
       end
 
+      # Returns the primary key value before type cast
+      def id_before_type_cast
+        read_attribute_before_type_cast(self.class.primary_key)
+      end
+
+      protected
+
+      def attribute_method?(attr_name)
+        attr_name == 'id' || super
+      end
+
       module ClassMethods
         def define_method_attribute(attr_name)
           super
@@ -39,12 +52,15 @@ module ActiveRecord
           end
         end
 
+        ID_ATTRIBUTE_METHODS = %w(id id= id? id_before_type_cast).to_set
+
         def dangerous_attribute_method?(method_name)
-          super && !['id', 'id=', 'id?'].include?(method_name)
+          super && !ID_ATTRIBUTE_METHODS.include?(method_name)
         end
 
         # Defines the primary key field -- can be overridden in subclasses. Overwriting will negate any effect of the
-        # primary_key_prefix_type setting, though.
+        # primary_key_prefix_type setting, though. Since primary keys are usually protected from mass assignment,
+        # remember to let your database generate them or include the key in +attr_accessible+.
         def primary_key
           @primary_key = reset_primary_key unless defined? @primary_key
           @primary_key
@@ -80,10 +96,6 @@ module ActiveRecord
           end
         end
 
-        def original_primary_key #:nodoc:
-          deprecated_original_property_getter :primary_key
-        end
-
         # Sets the name of the primary key column.
         #
         #   class Project < ActiveRecord::Base
@@ -102,11 +114,6 @@ module ActiveRecord
           @original_primary_key = @primary_key if defined?(@primary_key)
           @primary_key          = value && value.to_s
           @quoted_primary_key   = nil
-        end
-
-        def set_primary_key(value = nil, &block) #:nodoc:
-          deprecated_property_setter :primary_key, value, block
-          @quoted_primary_key = nil
         end
       end
     end

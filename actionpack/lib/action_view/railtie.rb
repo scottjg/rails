@@ -8,6 +8,10 @@ module ActionView
     config.action_view.stylesheet_expansions = {}
     config.action_view.javascript_expansions = { :defaults => %w(jquery jquery_ujs) }
 
+    initializer "action_view.logger" do
+      ActiveSupport.on_load(:action_view) { self.logger ||= Rails.logger }
+    end
+
     initializer "action_view.cache_asset_ids" do |app|
       unless app.config.cache_classes
         ActiveSupport.on_load(:action_view) do
@@ -30,6 +34,7 @@ module ActionView
 
     initializer "action_view.set_configs" do |app|
       ActiveSupport.on_load(:action_view) do
+        self.default_method_for_update = app.config.default_method_for_update
         app.config.action_view.each do |k,v|
           send "#{k}=", v
         end

@@ -1,4 +1,38 @@
-## Rails 3.2.0 (unreleased) ##
+## Rails 4.0.0 (unreleased) ##
+
+* New configuration option `config.default_method_for_update` tells Rails which
+  HTTP verb to use for update actions. Values can be `:patch` and `:put`.
+  Default is `:put` for backwards compatibility, but you are encouraged to
+  use `:patch` for proper HTTP semantics with partial updates.
+
+*   Allow to set class that will be used to run as a console, other than IRB, with `Rails.application.config.console=`. It's best to add it to `console` block. *Piotr Sarnacki*
+
+    Example:
+
+        # it can be added to config/application.rb
+        console do
+          # this block is called only when running console,
+          # so we can safely require pry here
+          require "pry"
+          config.console = Pry
+        end
+
+*   Add convenience `hide!` method to Rails generators to hide current generator
+    namespace from showing when running `rails generate`. *Carlos Antonio da Silva*
+
+*   Scaffold now uses `content_tag_for` in index.html.erb *José Valim*
+
+*   Rails::Plugin has gone. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies. *Santiago Pastorino*
+
+## Rails 3.2.0 (January 20, 2012) ##
+
+*   Turn gem has been removed from default Gemfile. We still looking for a best presentation for tests output. *Guillermo Iguaran*
+
+*   Rails::Plugin is deprecated and will be removed in Rails 4.0. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies. *Santiago Pastorino*
+
+*   Guides are available as a single .mobi for the Kindle and free Kindle readers apps. *Michael Pearson & Xavier Noria*
+
+*   Allow scaffold/model/migration generators to accept a "index" and "uniq" modifiers, as in: "tracking_id:integer:uniq" in order to generate (unique) indexes. Some types also accept custom options, for instance, you can specify the precision and scale for decimals as "price:decimal{7,2}". *Dmitrii Samoilov*
 
 *   Added `config.exceptions_app` to set the exceptions application invoked by the ShowException middleware when an exception happens. Defaults to `ActionDispatch::PublicExceptions.new(Rails.public_path)`. *José Valim*
 
@@ -19,7 +53,8 @@
 
 *   Update Rails::Rack::Logger middleware to apply any tags set in config.log_tags to the newly ActiveSupport::TaggedLogging Rails.logger. This makes it easy to tag log lines with debug information like subdomain and request id -- both very helpful in debugging multi-user production applications *DHH*
 
-*   Default options to `rails new` can be set in ~/.railsrc *Guillermo Iguaran*
+*   Default options to `rails new` can be set in ~/.railsrc. You can specify extra command-line arguments to be used every time
+    'rails new' runs in the .railsrc configuration file in your home directory. *Guillermo Iguaran*
 
 *   Add destroy alias to Rails engines *Guillermo Iguaran*
 
@@ -32,7 +67,18 @@
 *   Remove old 'config.paths.app.controller' API in favor of 'config.paths["app/controller"]' API *Guillermo Iguaran*
 
 
-*   Rails 3.1.1
+## Rails 3.1.2 (November 18, 2011) ##
+
+*   Engines: don't blow up if db/seeds.rb is missing.
+
+    *Jeremy Kemper*
+
+*   `rails new foo --skip-test-unit` should not add the `:test` task to the rake default task.
+    *GH 2564*
+
+    *José Valim*
+
+## Rails 3.1.1 (October 07, 2011) ##
 
 *   Add jquery-rails to Gemfile of plugins, test/dummy app needs it. Closes #3091. *Santiago Pastorino*
 
@@ -44,17 +90,6 @@
 
     Plugins developers need to special case their initializers that are
     meant to be run in the assets group by adding :group => :assets.
-
-## Rails 3.1.2 (unreleased) ##
-
-*   Engines: don't blow up if db/seeds.rb is missing.
-
-    *Jeremy Kemper*
-
-*   `rails new foo --skip-test-unit` should not add the `:test` task to the rake default task.
-    *GH 2564*
-
-    *José Valim*
 
 ## Rails 3.1.0 (August 30, 2011) ##
 

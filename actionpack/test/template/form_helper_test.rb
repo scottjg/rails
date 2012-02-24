@@ -65,7 +65,7 @@ class FormHelperTest < ActionView::TestCase
         def full_messages() [ "Author name can't be empty" ] end
       }.new
     end
-    def @post.id; 123; end
+    def @post.to_key; [123]; end
     def @post.id_before_type_cast; 123; end
     def @post.to_param; '123'; end
 
@@ -113,6 +113,14 @@ class FormHelperTest < ActionView::TestCase
       object.merge!(:controller => "main", :action => "index")
     end
     super
+  end
+
+  class FooTag < ActionView::Helpers::Tags::Base
+    def initialize; end
+  end
+
+  def test_tags_base_child_without_render_method
+    assert_raise(NotImplementedError) { FooTag.new.render }
   end
 
   def test_label
@@ -207,6 +215,10 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal('<label for="my_for">Title</label>', label(:post, :title, nil, "for" => "my_for"))
   end
 
+  def test_label_does_not_generate_for_attribute_when_given_nil
+    assert_dom_equal('<label>Title</label>', label(:post, :title, :for => nil))
+  end
+
   def test_label_with_id_attribute_as_symbol
     assert_dom_equal('<label for="post_title" id="my_id">Title</label>', label(:post, :title, nil, :id => "my_id"))
   end
@@ -230,6 +242,10 @@ class FormHelperTest < ActionView::TestCase
 
   def test_label_with_block
     assert_dom_equal('<label for="post_title">The title, please:</label>', label(:post, :title) { "The title, please:" })
+  end
+
+  def test_label_with_block_and_options
+    assert_dom_equal('<label for="my_for">The title, please:</label>', label(:post, :title, "for" => "my_for") { "The title, please:" })
   end
 
   def test_label_with_block_in_erb
@@ -330,6 +346,7 @@ class FormHelperTest < ActionView::TestCase
   end
 
   def test_check_box
+    assert check_box("post", "secret").html_safe?
     assert_dom_equal(
       '<input name="post[secret]" type="hidden" value="0" /><input checked="checked" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
       check_box("post", "secret")
@@ -373,6 +390,18 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
+  def test_check_box_with_nil_unchecked_value
+    @post.secret = "on"
+    assert_dom_equal(
+      '<input checked="checked" id="post_secret" name="post[secret]" type="checkbox" value="on" />',
+      check_box("post", "secret", {}, "on", nil)
+    )
+  end
+
+  def test_check_box_with_nil_unchecked_value_is_html_safe
+    assert check_box("post", "secret", {}, "on", nil).html_safe?
+  end
+
   def test_check_box_with_multiple_behavior
     @post.comment_ids = [2,3]
     assert_dom_equal(
@@ -385,11 +414,17 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
-
-  def test_checkbox_disabled_still_submits_checked_value
+  def test_checkbox_disabled_disables_hidden_field
     assert_dom_equal(
-      '<input name="post[secret]" type="hidden" value="1" /><input checked="checked" disabled="disabled" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
-      check_box("post", "secret", { :disabled => :true })
+      '<input name="post[secret]" type="hidden" value="0" disabled="disabled"/><input checked="checked" disabled="disabled" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
+      check_box("post", "secret", { :disabled => true })
+    )
+  end
+
+  def test_checkbox_form_html5_attribute
+    assert_dom_equal(
+      '<input form="new_form" name="post[secret]" type="hidden" value="0" /><input checked="checked" form="new_form" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
+      check_box("post", "secret", :form => "new_form")
     )
   end
 
@@ -477,6 +512,32 @@ class FormHelperTest < ActionView::TestCase
   def test_telephone_field
     expected = %{<input id="user_cell" size="30" name="user[cell]" type="tel" />}
     assert_dom_equal(expected, telephone_field("user", "cell"))
+  end
+
+  def test_date_field
+    expected = %{<input id="post_written_on" name="post[written_on]" type="date" value="2004-06-15" />}
+    assert_dom_equal(expected, date_field("post", "written_on"))
+  end
+
+  def test_date_field_with_datetime_value
+    expected = %{<input id="post_written_on" name="post[written_on]" type="date" value="2004-06-15" />}
+    @post.written_on = DateTime.new(2004, 6, 15, 1, 2, 3)
+    assert_dom_equal(expected, date_field("post", "written_on"))
+  end
+
+  def test_date_field_with_timewithzone_value
+    previous_time_zone, Time.zone = Time.zone, 'UTC'
+    expected = %{<input id="post_written_on" name="post[written_on]" type="date" value="2004-06-15" />}
+    @post.written_on = Time.zone.parse('2004-06-15 15:30:45')
+    assert_dom_equal(expected, date_field("post", "written_on"))
+  ensure
+    Time.zone = previous_time_zone
+  end
+
+  def test_date_field_with_nil_value
+    expected = %{<input id="post_written_on" name="post[written_on]" type="date" />}
+    @post.written_on = nil
+    assert_dom_equal(expected, date_field("post", "written_on"))
   end
 
   def test_url_field
@@ -628,7 +689,7 @@ class FormHelperTest < ActionView::TestCase
   end
 
   def test_auto_index
-    pid = @post.id
+    pid = 123
     assert_dom_equal(
       "<label for=\"post_#{pid}_title\">Title</label>",
       label("post[]", "title")
@@ -654,7 +715,7 @@ class FormHelperTest < ActionView::TestCase
   end
 
   def test_auto_index_with_nil_id
-    pid = @post.id
+    pid = 123
     assert_dom_equal(
       "<input name=\"post[#{pid}][title]\" size=\"30\" type=\"text\" value=\"Hello World\" />",
       text_field("post[]","title", :id => nil)
@@ -867,6 +928,7 @@ class FormHelperTest < ActionView::TestCase
 
   def test_form_for_with_remote_without_html
     @post.persisted = false
+    @post.stubs(:to_key).returns(nil)
     form_for(@post, :remote => true) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
@@ -1016,6 +1078,7 @@ class FormHelperTest < ActionView::TestCase
     old_locale, I18n.locale = I18n.locale, :submit
 
     @post.persisted = false
+    @post.stubs(:to_key).returns(nil)
     form_for(@post) do |f|
       concat f.submit
     end
@@ -2087,7 +2150,7 @@ class FormHelperTest < ActionView::TestCase
   def test_form_for_with_new_object
     post = Post.new
     post.persisted = false
-    def post.id() nil end
+    def post.to_key; nil; end
 
     form_for(post) do |f| end
 
@@ -2132,14 +2195,23 @@ class FormHelperTest < ActionView::TestCase
     assert_equal expected, output_buffer
   end
 
+  def test_form_for_with_default_method_as_patch
+    ActionView::Base.default_method_for_update = :patch
+    form_for(@post) {}
+    expected = whole_form("/posts/123", "edit_post_123", "edit_post", "patch")
+    assert_dom_equal expected, output_buffer
+  ensure
+    ActionView::Base.default_method_for_update = :put
+  end
+
   def test_fields_for_returns_block_result
     output = fields_for(Post.new) { |f| "fields" }
     assert_equal "fields", output
   end
 
   protected
-    def protect_against_forgery?
-      false
-    end
 
+  def protect_against_forgery?
+    false
+  end
 end

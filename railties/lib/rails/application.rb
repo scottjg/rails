@@ -1,6 +1,5 @@
 require 'active_support/core_ext/hash/reverse_merge'
 require 'fileutils'
-require 'rails/plugin'
 require 'rails/engine'
 
 module Rails
@@ -9,7 +8,7 @@ module Rails
   #
   # == Initialization
   #
-  # Rails::Application is responsible for executing all railties, engines and plugin
+  # Rails::Application is responsible for executing all railties and engines
   # initializers. It also executes some bootstrap initializers (check
   # Rails::Application::Bootstrap) and finishing initializers, after all the others
   # are executed (check Rails::Application::Finisher).
@@ -19,7 +18,7 @@ module Rails
   # Besides providing the same configuration as Rails::Engine and Rails::Railtie,
   # the application object has several specific configurations, for example
   # "allow_concurrency", "cache_classes", "consider_all_requests_local", "filter_parameters",
-  # "logger", "reload_plugins" and so forth.
+  # "logger" and so forth.
   #
   # Check Rails::Application::Configuration to see them all.
   #
@@ -115,11 +114,8 @@ module Rails
     # Returns an array of file paths appended with a hash of directories-extensions
     # suitable for ActiveSupport::FileUpdateChecker API.
     def watchable_args
-      files = []
-      files.concat config.watchable_files
+      files, dirs = config.watchable_files.dup, config.watchable_dirs.dup
 
-      dirs = {}
-      dirs.merge! config.watchable_dirs
       ActiveSupport::Dependencies.autoload_paths.each do |path|
         dirs[path.to_s] = [:rb]
       end
@@ -154,15 +150,8 @@ module Rails
       self
     end
 
-    # Rails.application.env_config stores some of the Rails initial environment parameters.
-    # Currently stores:
-    #
-    #   * action_dispatch.parameter_filter" => config.filter_parameters,
-    #   * action_dispatch.secret_token"     => config.secret_token,
-    #   * action_dispatch.show_exceptions"  => config.action_dispatch.show_exceptions
-    #
-    # These parameters will be used by middlewares and engines to configure themselves.
-    #
+    # Stores some of the Rails initial environment parameters which
+    # will be used by middlewares and engines to configure themselves.
     def env_config
       @env_config ||= super.merge({
         "action_dispatch.parameter_filter" => config.filter_parameters,
@@ -215,6 +204,11 @@ module Rails
       config.helpers_paths
     end
 
+    def call(env)
+      env["ORIGINAL_FULLPATH"] = build_original_fullpath(env)
+      super(env)
+    end
+
   protected
 
     alias :build_middleware_stack :app
@@ -261,6 +255,9 @@ module Rails
         middleware.use ::ActionDispatch::Cookies
 
         if config.session_store
+          if config.force_ssl && !config.session_options.key?(:secure)
+            config.session_options[:secure] = true
+          end
           middleware.use config.session_store, config.session_options
           middleware.use ::ActionDispatch::Flash
         end
@@ -290,6 +287,18 @@ module Rails
       require "pp"
       require "rails/console/app"
       require "rails/console/helpers"
+    end
+
+    def build_original_fullpath(env)
+      path_info    = env["PATH_INFO"]
+      query_string = env["QUERY_STRING"]
+      script_name  = env["SCRIPT_NAME"]
+
+      if query_string.present?
+        "#{script_name}#{path_info}?#{query_string}"
+      else
+        "#{script_name}#{path_info}"
+      end
     end
   end
 end
