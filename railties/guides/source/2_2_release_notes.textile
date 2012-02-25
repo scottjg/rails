@@ -411,7 +411,7 @@ Previously the above code made available a local variable called +customer+ insi
 
 * +country_select+ has been removed. See the "deprecation page":http://www.rubyonrails.org/deprecation/list-of-countries for more information and a plugin replacement.
 * +ActiveRecord::Base.allow_concurrency+ no longer has any effect.
-* +ActiveRecord::Errors.default_error_messages+ has been deprecated in favor of +I18n.translate('activerecord.errors.messages')+
+* +ActiveRecord::Errors.default_error_messages+ has been deprecated in favor of +I18n.translate('active_record.errors.messages')+
 * The +%s+ and +%d+ interpolation syntax for internationalization is deprecated.
 * +String#chars+ has been deprecated in favor of +String#mb_chars+.
 * Durations of fractional months or fractional years are deprecated. Use Ruby's core +Date+ and +Time+ class arithmetic instead.

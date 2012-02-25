@@ -1,4 +1,4 @@
-FRAMEWORKS = %w( activesupport activemodel activerecord activeresource actionpack actionmailer railties )
+FRAMEWORKS = %w( active_support active_model active_record active_resource action_pack action_mailer railties )
 
 root    = File.expand_path('../../', __FILE__)
 version = File.read("#{root}/RAILS_VERSION").strip

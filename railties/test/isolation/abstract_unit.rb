@@ -17,9 +17,9 @@ RAILS_FRAMEWORK_ROOT = File.expand_path("#{File.dirname(__FILE__)}/../../..")
 
 # These files do not require any others and are needed
 # to run the tests
-require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/testing/isolation"
-require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/testing/declarative"
-require "#{RAILS_FRAMEWORK_ROOT}/activesupport/lib/active_support/core_ext/kernel/reporting"
+require "#{RAILS_FRAMEWORK_ROOT}/active_support/lib/active_support/testing/isolation"
+require "#{RAILS_FRAMEWORK_ROOT}/active_support/lib/active_support/testing/declarative"
+require "#{RAILS_FRAMEWORK_ROOT}/active_support/lib/active_support/core_ext/kernel/reporting"
 
 module TestHelpers
   module Paths
@@ -243,11 +243,11 @@ module TestHelpers
     end
 
     def use_frameworks(arr)
-      to_remove =  [:actionmailer,
-                    :activemodel,
-                    :activerecord,
-                    :activeresource] - arr
-      remove_from_config "config.active_record.dependent_restrict_raises = false" if to_remove.include? :activerecord
+      to_remove =  [:action_mailer,
+                    :active_model,
+                    :active_record,
+                    :active_resource] - arr
+      remove_from_config "config.active_record.dependent_restrict_raises = false" if to_remove.include? :active_record
       $:.reject! {|path| path =~ %r'/(#{to_remove.join('|')})/' }
     end
 

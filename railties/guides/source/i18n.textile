@@ -87,7 +87,7 @@ en:
   hello: "Hello world"
 </ruby>
 
-This means, that in the +:en+ locale, the key _hello_ will map to the _Hello world_ string. Every string inside Rails is internationalized in this way, see for instance Active Record validation messages in the "+activerecord/lib/active_record/locale/en.yml+":https://github.com/rails/rails/blob/master/activerecord/lib/active_record/locale/en.yml file or time and date formats in the "+activesupport/lib/active_support/locale/en.yml+":https://github.com/rails/rails/blob/master/activesupport/lib/active_support/locale/en.yml file. You can use YAML or standard Ruby Hashes to store translations in the default (Simple) backend.
+This means, that in the +:en+ locale, the key _hello_ will map to the _Hello world_ string. Every string inside Rails is internationalized in this way, see for instance Active Record validation messages in the "+active_record/lib/active_record/locale/en.yml+":https://github.com/rails/rails/blob/master/active_record/lib/active_record/locale/en.yml file or time and date formats in the "+active_support/lib/active_support/locale/en.yml+":https://github.com/rails/rails/blob/master/active_support/lib/active_support/locale/en.yml file. You can use YAML or standard Ruby Hashes to store translations in the default (Simple) backend.
 
 The I18n library will use *English* as a *default locale*, i.e. if you don't set a different locale, +:en+ will be used for looking up translations.
 
@@ -478,7 +478,7 @@ I18n.t 'message'
 The +translate+ method also takes a +:scope+ option which can contain one or more additional keys that will be used to specify a “namespace” or scope for a translation key:
 
 <ruby>
-I18n.t :record_invalid, :scope => [:activerecord, :errors, :messages]
+I18n.t :record_invalid, :scope => [:active_record, :errors, :messages]
 </ruby>
 
 This looks up the +:record_invalid+ message in the Active Record error messages.
@@ -486,16 +486,16 @@ This looks up the +:record_invalid+ message in the Active Record error messages.
 Additionally, both the key and scopes can be specified as dot-separated keys as in:
 
 <ruby>
-I18n.translate "activerecord.errors.messages.record_invalid"
+I18n.translate "active_record.errors.messages.record_invalid"
 </ruby>
 
 Thus the following calls are equivalent:
 
 <ruby>
-I18n.t 'activerecord.errors.messages.record_invalid'
+I18n.t 'active_record.errors.messages.record_invalid'
 I18n.t 'errors.messages.record_invalid', :scope => :active_record
-I18n.t :record_invalid, :scope => 'activerecord.errors.messages'
-I18n.t :record_invalid, :scope => [:activerecord, :errors, :messages]
+I18n.t :record_invalid, :scope => 'active_record.errors.messages'
+I18n.t :record_invalid, :scope => [:active_record, :errors, :messages]
 </ruby>
 
 h5. Defaults
@@ -521,14 +521,14 @@ h5. Bulk and Namespace Lookup
 To look up multiple translations at once, an array of keys can be passed:
 
 <ruby>
-I18n.t [:odd, :even], :scope => 'activerecord.errors.messages'
+I18n.t [:odd, :even], :scope => 'active_record.errors.messages'
 # => ["must be odd", "must be even"]
 </ruby>
 
 Also, a key can translate to a (potentially nested) hash of grouped translations. E.g., one can receive _all_ Active Record error messages as a Hash with:
 
 <ruby>
-I18n.t 'activerecord.errors.messages'
+I18n.t 'active_record.errors.messages'
 # => { :inclusion => "is not included in the list", :exclusion => ... }
 </ruby>
 
@@ -690,7 +690,7 @@ For example when you add the following translations:
 
 <ruby>
 en:
-  activerecord:
+  active_record:
     models:
       user: Dude
     attributes:
@@ -718,9 +718,9 @@ end
 The key for the error message in this case is +:blank+. Active Record will look up this key in the namespaces:
 
 <ruby>
-activerecord.errors.models.[model_name].attributes.[attribute_name]
-activerecord.errors.models.[model_name]
-activerecord.errors.messages
+active_record.errors.models.[model_name].attributes.[attribute_name]
+active_record.errors.models.[model_name]
+active_record.errors.messages
 errors.attributes.[attribute_name]
 errors.messages
 </ruby>
@@ -728,9 +728,9 @@ errors.messages
 Thus, in our example it will try the following keys in this order and return the first result:
 
 <ruby>
-activerecord.errors.models.user.attributes.name.blank
-activerecord.errors.models.user.blank
-activerecord.errors.messages.blank
+active_record.errors.models.user.attributes.name.blank
+active_record.errors.models.user.blank
+active_record.errors.messages.blank
 errors.attributes.name.blank
 errors.messages.blank
 </ruby>
@@ -748,11 +748,11 @@ end
 Then Active Record will look for messages in this order:
 
 <ruby>
-activerecord.errors.models.admin.attributes.name.blank
-activerecord.errors.models.admin.blank
-activerecord.errors.models.user.attributes.name.blank
-activerecord.errors.models.user.blank
-activerecord.errors.messages.blank
+active_record.errors.models.admin.attributes.name.blank
+active_record.errors.models.admin.blank
+active_record.errors.models.user.attributes.name.blank
+active_record.errors.models.user.blank
+active_record.errors.messages.blank
 errors.attributes.name.blank
 errors.messages.blank
 </ruby>
@@ -798,7 +798,7 @@ Rails ships with the following translations:
 
 <yaml>
 en:
-  activerecord:
+  active_record:
     errors:
       template:
         header:
@@ -813,23 +813,23 @@ Rails uses fixed strings and other localizations, such as format strings and oth
 
 h5. Action View Helper Methods
 
-* +distance_of_time_in_words+ translates and pluralizes its result and interpolates the number of seconds, minutes, hours, and so on. See "datetime.distance_in_words":https://github.com/rails/rails/blob/master/actionpack/lib/action_view/locale/en.yml#L51 translations.
+* +distance_of_time_in_words+ translates and pluralizes its result and interpolates the number of seconds, minutes, hours, and so on. See "datetime.distance_in_words":https://github.com/rails/rails/blob/master/action_pack/lib/action_view/locale/en.yml#L51 translations.
 
-* +datetime_select+ and +select_month+ use translated month names for populating the resulting select tag. See "date.month_names":https://github.com/rails/rails/blob/master/activesupport/lib/active_support/locale/en.yml#L15 for translations. +datetime_select+ also looks up the order option from "date.order":https://github.com/rails/rails/blob/master/activesupport/lib/active_support/locale/en.yml#L18 (unless you pass the option explicitly). All date selection helpers translate the prompt using the translations in the "datetime.prompts":https://github.com/rails/rails/blob/master/actionpack/lib/action_view/locale/en.yml#L83 scope if applicable.
+* +datetime_select+ and +select_month+ use translated month names for populating the resulting select tag. See "date.month_names":https://github.com/rails/rails/blob/master/active_support/lib/active_support/locale/en.yml#L15 for translations. +datetime_select+ also looks up the order option from "date.order":https://github.com/rails/rails/blob/master/active_support/lib/active_support/locale/en.yml#L18 (unless you pass the option explicitly). All date selection helpers translate the prompt using the translations in the "datetime.prompts":https://github.com/rails/rails/blob/master/action_pack/lib/action_view/locale/en.yml#L83 scope if applicable.
 
-* The +number_to_currency+, +number_with_precision+, +number_to_percentage+, +number_with_delimiter+, and +number_to_human_size+ helpers use the number format settings located in the "number":https://github.com/rails/rails/blob/master/actionpack/lib/action_view/locale/en.yml#L2 scope.
+* The +number_to_currency+, +number_with_precision+, +number_to_percentage+, +number_with_delimiter+, and +number_to_human_size+ helpers use the number format settings located in the "number":https://github.com/rails/rails/blob/master/action_pack/lib/action_view/locale/en.yml#L2 scope.
 
 h5. Active Model Methods
 
-* +model_name.human+ and +human_attribute_name+ use translations for model names and attribute names if available in the "activerecord.models":https://github.com/rails/rails/blob/master/activerecord/lib/active_record/locale/en.yml#L29 scope. They also support translations for inherited class names (e.g. for use with STI) as explained above in "Error message scopes".
+* +model_name.human+ and +human_attribute_name+ use translations for model names and attribute names if available in the "active_record.models":https://github.com/rails/rails/blob/master/active_record/lib/active_record/locale/en.yml#L29 scope. They also support translations for inherited class names (e.g. for use with STI) as explained above in "Error message scopes".
 
 * +ActiveModel::Errors#generate_message+ (which is used by Active Model validations but may also be used manually) uses +model_name.human+ and +human_attribute_name+ (see above). It also translates the error message and supports translations for inherited class names as explained above in "Error message scopes".
 
-* +ActiveModel::Errors#full_messages+ prepends the attribute name to the error message using a separator that will be looked up from "errors.format":https://github.com/rails/rails/blob/master/activemodel/lib/active_model/locale/en.yml#L4 (and which defaults to +"%{attribute} %{message}"+).
+* +ActiveModel::Errors#full_messages+ prepends the attribute name to the error message using a separator that will be looked up from "errors.format":https://github.com/rails/rails/blob/master/active_model/lib/active_model/locale/en.yml#L4 (and which defaults to +"%{attribute} %{message}"+).
 
 h5. Active Support Methods
 
-* +Array#to_sentence+ uses format settings as given in the "support.array":https://github.com/rails/rails/blob/master/activesupport/lib/active_support/locale/en.yml#L30 scope.
+* +Array#to_sentence+ uses format settings as given in the "support.array":https://github.com/rails/rails/blob/master/active_support/lib/active_support/locale/en.yml#L30 scope.
 
 h3. Customize your I18n Setup
 

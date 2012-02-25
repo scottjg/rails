@@ -215,7 +215,7 @@
 
 ## Rails 3.0.0 (August 29, 2010) ##
 
-*   Application generation: --skip-testunit and --skip-activerecord become --skip-test-unit and --skip-active-record respectively. *fxn*
+*   Application generation: --skip-testunit and --skip-active_record become --skip-test-unit and --skip-active-record respectively. *fxn*
 
 *   Added console to Rails::Railtie as a hook called just after console starts. *José Valim*
 

@@ -23,7 +23,7 @@ namespace :test do
   end
 end
 
-spec = eval(File.read('actionmailer.gemspec'))
+spec = eval(File.read('action_mailer.gemspec'))
 
 Gem::PackageTask.new(spec) do |p|
   p.gem_spec = spec

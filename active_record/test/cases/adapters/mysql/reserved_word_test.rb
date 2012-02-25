@@ -78,8 +78,8 @@ class MysqlReservedWordTest < ActiveRecord::TestCase
   self.use_instantiated_fixtures = true
   self.use_transactional_fixtures = false
 
-  #activerecord model class with reserved-word table name
-  def test_activerecord_model
+  #active_record model class with reserved-word table name
+  def test_active_record_model
     create_test_fixtures :select, :distinct, :group, :values, :distincts_selects
     x = nil
     assert_nothing_raised { x = Group.new }
@@ -118,8 +118,8 @@ class MysqlReservedWordTest < ActiveRecord::TestCase
     assert(s.collect{|x|x.id}.sort == [1, 2])
   end
 
-  # activerecord model introspection with reserved-word table and column names
-  def test_activerecord_introspection
+  # active_record model introspection with reserved-word table and column names
+  def test_active_record_introspection
     assert_nothing_raised { Group.table_exists? }
     assert_nothing_raised { Group.columns }
   end

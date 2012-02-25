@@ -36,10 +36,10 @@ end
 desc 'ActiveRecord Integration Tests'
 Rake::TestTask.new(:test_active_record_integration) do |t|
   t.libs << 'test'
-  t.test_files = Dir.glob("test/activerecord/*_test.rb")
+  t.test_files = Dir.glob("test/active_record/*_test.rb")
 end
 
-spec = eval(File.read('actionpack.gemspec'))
+spec = eval(File.read('action_pack.gemspec'))
 
 Gem::PackageTask.new(spec) do |p|
   p.gem_spec = spec

@@ -634,7 +634,7 @@ module ActionView
       # Localization can also be based purely on the translation of the attribute-name
       # (if you are using ActiveRecord):
       #
-      #   activerecord:
+      #   active_record:
       #     attributes:
       #       post:
       #         cost: "Total cost"

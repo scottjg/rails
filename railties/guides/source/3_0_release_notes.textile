@@ -122,7 +122,7 @@ h4. Active Model Abstraction
 
 Part of decoupling the core components was extracting all ties to Active Record from Action Pack. This has now been completed. All new ORM plugins now just need to implement Active Model interfaces to work seamlessly with Action Pack.
 
-More information: - "Make Any Ruby Object Feel Like ActiveRecord":http://yehudakatz.com/2010/01/10/activemodel-make-any-ruby-object-feel-like-activerecord/
+More information: - "Make Any Ruby Object Feel Like ActiveRecord":http://yehudakatz.com/2010/01/10/active_model-make-any-ruby-object-feel-like-active_record/
 
 
 h4. Controller Abstraction
@@ -143,7 +143,7 @@ h4. Mail Extraction
 
 Action Mailer ever since its beginnings has had monkey patches, pre parsers and even delivery and receiver agents, all in addition to having TMail vendored in the source tree. Version 3 changes that with all email message related functionality abstracted out to the "Mail":http://github.com/mikel/mail gem. This again reduces code duplication and helps create definable boundaries between Action Mailer and the email parser.
 
-More information: - "New Action Mailer API in Rails 3":http://lindsaar.net/2010/1/26/new-actionmailer-api-in-rails-3
+More information: - "New Action Mailer API in Rails 3":http://lindsaar.net/2010/1/26/new-action_mailer-api-in-rails-3
 
 
 h3. Documentation
@@ -348,7 +348,7 @@ h4. ORM Abstraction and Action Pack Interface
 
 Part of decoupling the core components was extracting all ties to Active Record from Action Pack. This has now been completed. All new ORM plugins now just need to implement Active Model interfaces to work seamlessly with Action Pack.
 
-More Information: - "Make Any Ruby Object Feel Like ActiveRecord":http://yehudakatz.com/2010/01/10/activemodel-make-any-ruby-object-feel-like-activerecord/
+More Information: - "Make Any Ruby Object Feel Like ActiveRecord":http://yehudakatz.com/2010/01/10/active_model-make-any-ruby-object-feel-like-active_record/
 
 
 h4. Validations
@@ -461,7 +461,7 @@ As well as the following deprecations:
 * +named_scope+ in an Active Record class is deprecated and has been renamed to just +scope+.
 * In +scope+ methods, you should move to using the relation methods, instead of a <tt>:conditions => {}</tt> finder method, for example <tt>scope :since, lambda {|time| where("created_at > ?", time) }</tt>.
 * <tt>save(false)</tt> is deprecated, in favor of <tt>save(:validate => false)</tt>.
-* I18n error messages for ActiveRecord should be changed from :en.activerecord.errors.template to <tt>:en.errors.template</tt>.
+* I18n error messages for ActiveRecord should be changed from :en.active_record.errors.template to <tt>:en.errors.template</tt>.
 * <tt>model.errors.on</tt> is deprecated in favor of <tt>model.errors[]</tt>
 * validates_presence_of => validates... :presence => true
 * <tt>ActiveRecord::Base.colorize_logging</tt> and <tt>config.active_record.colorize_logging</tt> are deprecated in favor of <tt>Rails::LogSubscriber.colorize_logging</tt> or <tt>config.colorize_logging</tt>
@@ -583,7 +583,7 @@ Deprecations:
 * Mailers being in <tt>app/models</tt> is deprecated, use <tt>app/mailers</tt> instead.
 
 More Information:
-* "New Action Mailer API in Rails 3":http://lindsaar.net/2010/1/26/new-actionmailer-api-in-rails-3
+* "New Action Mailer API in Rails 3":http://lindsaar.net/2010/1/26/new-action_mailer-api-in-rails-3
 * "New Mail Gem for Ruby":http://lindsaar.net/2010/1/23/mail-gem-version-2-released
 
 

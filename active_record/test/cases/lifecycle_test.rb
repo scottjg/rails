@@ -217,7 +217,7 @@ class LifecycleTest < ActiveRecord::TestCase
     assert !developer.save, "allowed to save a developer with too low salary"
   end
 
-  test "able to call methods defined with included module" do # https://rails.lighthouseapp.com/projects/8994/tickets/6065-activerecordobserver-is-not-aware-of-method-added-by-including-modules
+  test "able to call methods defined with included module" do # https://rails.lighthouseapp.com/projects/8994/tickets/6065-active_recordobserver-is-not-aware-of-method-added-by-including-modules
     SalaryChecker.instance # activate
     developer = SpecialDeveloper.create! :name => 'Roger', :salary => 100000
     assert_equal developer, SalaryChecker.instance.last_saved

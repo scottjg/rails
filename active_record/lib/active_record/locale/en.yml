@@ -5,7 +5,7 @@ en:
     #updated_at: "Updated at"
 
   # Active Record models configuration
-  activerecord:
+  active_record:
     errors:
       messages:
         taken: "has already been taken"

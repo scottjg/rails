@@ -180,7 +180,7 @@ module ActiveModel
       #
       # To include associations use <tt>:include</tt>.
       #
-      # For further documentation see activerecord/lib/active_record/serializers/xml_serializer.xml.
+      # For further documentation see active_record/lib/active_record/serializers/xml_serializer.xml.
       def to_xml(options = {}, &block)
         Serializer.new(self, options).serialize(&block)
       end

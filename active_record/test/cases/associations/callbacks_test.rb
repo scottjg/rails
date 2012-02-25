@@ -119,28 +119,28 @@ class AssociationCallbacksTest < ActiveRecord::TestCase
   def test_has_and_belongs_to_many_remove_callback
     david = developers(:david)
     jamis = developers(:jamis)
-    activerecord = projects(:active_record)
-    assert activerecord.developers_log.empty?
-    activerecord.developers_with_callbacks.delete(david)
-    assert_equal ["before_removing#{david.id}", "after_removing#{david.id}"], activerecord.developers_log
+    active_record = projects(:active_record)
+    assert active_record.developers_log.empty?
+    active_record.developers_with_callbacks.delete(david)
+    assert_equal ["before_removing#{david.id}", "after_removing#{david.id}"], active_record.developers_log
 
-    activerecord.developers_with_callbacks.delete(jamis)
+    active_record.developers_with_callbacks.delete(jamis)
     assert_equal ["before_removing#{david.id}", "after_removing#{david.id}", "before_removing#{jamis.id}",
-                  "after_removing#{jamis.id}"], activerecord.developers_log
+                  "after_removing#{jamis.id}"], active_record.developers_log
   end
 
   def test_has_and_belongs_to_many_remove_callback_on_clear
-    activerecord = projects(:active_record)
-    assert activerecord.developers_log.empty?
-    if activerecord.developers_with_callbacks.size == 0
-      activerecord.developers << developers(:david)
-      activerecord.developers << developers(:jamis)
-      activerecord.reload
-      assert activerecord.developers_with_callbacks.size == 2
+    active_record = projects(:active_record)
+    assert active_record.developers_log.empty?
+    if active_record.developers_with_callbacks.size == 0
+      active_record.developers << developers(:david)
+      active_record.developers << developers(:jamis)
+      active_record.reload
+      assert active_record.developers_with_callbacks.size == 2
     end
-    log_array = activerecord.developers_with_callbacks.collect {|d| ["before_removing#{d.id}","after_removing#{d.id}"]}.flatten.sort
-    assert activerecord.developers_with_callbacks.clear
-    assert_equal log_array, activerecord.developers_log.sort
+    log_array = active_record.developers_with_callbacks.collect {|d| ["before_removing#{d.id}","after_removing#{d.id}"]}.flatten.sort
+    assert active_record.developers_with_callbacks.clear
+    assert_equal log_array, active_record.developers_log.sort
   end
 
   def test_has_many_and_belongs_to_many_callbacks_for_save_on_parent

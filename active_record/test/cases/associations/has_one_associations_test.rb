@@ -194,7 +194,7 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
   def test_dependence_with_restrict_with_dependent_restrict_raises_config_set_to_false_and_attribute_name
     old_backend = I18n.backend
     I18n.backend = I18n::Backend::Simple.new
-    I18n.backend.store_translations 'en', :activerecord => {:attributes => {:restricted_firm => {:account => "account model"}}}
+    I18n.backend.store_translations 'en', :active_record => {:attributes => {:restricted_firm => {:account => "account model"}}}
 
     option_before = ActiveRecord::Base.dependent_restrict_raises
     ActiveRecord::Base.dependent_restrict_raises = false

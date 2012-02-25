@@ -70,8 +70,8 @@ class I18nValidationTest < ActiveRecord::TestCase
   # validates_associated w/o mocha
 
   def test_validates_associated_finds_custom_model_key_translation
-    I18n.backend.store_translations 'en', :activerecord => {:errors => {:models => {:topic => {:attributes => {:replies => {:invalid => 'custom message'}}}}}}
-    I18n.backend.store_translations 'en', :activerecord => {:errors => {:messages => {:invalid => 'global message'}}}
+    I18n.backend.store_translations 'en', :active_record => {:errors => {:models => {:topic => {:attributes => {:replies => {:invalid => 'custom message'}}}}}}
+    I18n.backend.store_translations 'en', :active_record => {:errors => {:messages => {:invalid => 'global message'}}}
 
     Topic.validates_associated :replies
     replied_topic.valid?
@@ -79,7 +79,7 @@ class I18nValidationTest < ActiveRecord::TestCase
   end
 
   def test_validates_associated_finds_global_default_translation
-    I18n.backend.store_translations 'en', :activerecord => {:errors => {:messages => {:invalid => 'global message'}}}
+    I18n.backend.store_translations 'en', :active_record => {:errors => {:messages => {:invalid => 'global message'}}}
 
     Topic.validates_associated :replies
     replied_topic.valid?

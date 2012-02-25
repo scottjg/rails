@@ -24,7 +24,7 @@ module ActiveSupport
       end
 
       def current_tags
-        Thread.current[:activesupport_tagged_logging_tags] ||= []
+        Thread.current[:active_support_tagged_logging_tags] ||= []
       end
 
       private

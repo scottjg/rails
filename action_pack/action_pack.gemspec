@@ -2,7 +2,7 @@ version = File.read(File.expand_path("../../RAILS_VERSION", __FILE__)).strip
 
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
-  s.name        = 'actionpack'
+  s.name        = 'action_pack'
   s.version     = version
   s.summary     = 'Web-flow and rendering framework putting the VC in MVC (part of Rails).'
   s.description = 'Web apps on Rails. Simple, battle-tested conventions for building and testing MVC web applications. Works with any Rack-compatible server.'
@@ -16,8 +16,8 @@ Gem::Specification.new do |s|
   s.require_path = 'lib'
   s.requirements << 'none'
 
-  s.add_dependency('activesupport', version)
-  s.add_dependency('activemodel',   version)
+  s.add_dependency('active_support', version)
+  s.add_dependency('active_model',   version)
   s.add_dependency('rack-cache',    '~> 1.1')
   s.add_dependency('builder',       '~> 3.0.0')
   s.add_dependency('rack',          '~> 1.4.1')

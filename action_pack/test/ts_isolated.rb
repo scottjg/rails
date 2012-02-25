@@ -1,5 +1,5 @@
 $:.unshift(File.dirname(__FILE__))
-$:.unshift(File.dirname(__FILE__) + '/../../activesupport/lib')
+$:.unshift(File.dirname(__FILE__) + '/../../active_support/lib')
 
 require 'minitest/autorun'
 require 'rbconfig'

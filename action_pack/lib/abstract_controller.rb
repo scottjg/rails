@@ -1,5 +1,5 @@
-activesupport_path = File.expand_path('../../../activesupport/lib', __FILE__)
-$:.unshift(activesupport_path) if File.directory?(activesupport_path) && !$:.include?(activesupport_path)
+active_support_path = File.expand_path('../../../active_support/lib', __FILE__)
+$:.unshift(active_support_path) if File.directory?(active_support_path) && !$:.include?(active_support_path)
 
 require 'action_pack'
 require 'active_support/concern'

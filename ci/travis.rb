@@ -3,10 +3,10 @@ require 'fileutils'
 include FileUtils
 
 commands = [
-  'mysql -e "create database activerecord_unittest;"',
-  'mysql -e "create database activerecord_unittest2;"',
-  'psql  -c "create database activerecord_unittest;" -U postgres',
-  'psql  -c "create database activerecord_unittest2;" -U postgres'
+  'mysql -e "create database active_record_unittest;"',
+  'mysql -e "create database active_record_unittest2;"',
+  'psql  -c "create database active_record_unittest;" -U postgres',
+  'psql  -c "create database active_record_unittest2;" -U postgres'
 ]
 
 commands.each do |command|
@@ -16,12 +16,12 @@ end
 class Build
   MAP = {
     'railties' => 'railties',
-    'ap'   => 'actionpack',
-    'am'   => 'actionmailer',
-    'amo'  => 'activemodel',
-    'ares' => 'activeresource',
-    'as'   => 'activesupport',
-    'ar'   => 'activerecord'
+    'ap'   => 'action_pack',
+    'am'   => 'action_mailer',
+    'amo'  => 'active_model',
+    'ares' => 'active_resource',
+    'as'   => 'active_support',
+    'ar'   => 'active_record'
   }
 
   attr_reader :component, :options
@@ -46,13 +46,13 @@ class Build
 
   def heading
     heading = [gem]
-    heading << "with #{adapter} IM #{identity_map? ? 'enabled' : 'disabled'}" if activerecord?
+    heading << "with #{adapter} IM #{identity_map? ? 'enabled' : 'disabled'}" if active_record?
     heading << "in isolation" if isolated?
     heading.join(' ')
   end
 
   def tasks
-    if activerecord?
+    if active_record?
       ['mysql:rebuild_databases', "#{adapter}:#{'isolated_' if isolated?}test"]
     else
       ["test#{':isolated' if isolated?}"]
@@ -61,14 +61,14 @@ class Build
 
   def key
     key = [gem]
-    key << adapter if activerecord?
+    key << adapter if active_record?
     key << 'IM' if identity_map?
     key << 'isolated' if isolated?
     key.join(':')
   end
 
-  def activerecord?
-    gem == 'activerecord'
+  def active_record?
+    gem == 'active_record'
   end
 
   def identity_map?
@@ -107,7 +107,7 @@ ENV['GEM'].split(',').each do |gem|
     build = Build.new(gem, :isolated => isolated)
     results[build.key] = build.run!
 
-    if build.activerecord?
+    if build.active_record?
       build.options[:identity_map] = true
       results[build.key] = build.run!
     end

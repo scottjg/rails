@@ -12,8 +12,8 @@
 #     end
 #   end
 #
-# When the entirety of +activerecord/lib/active_record/base.rb+ has been evaluated then +run_load_hooks+ is invoked.
-# The very last line of +activerecord/lib/active_record/base.rb+ is:
+# When the entirety of +active_record/lib/active_record/base.rb+ has been evaluated then +run_load_hooks+ is invoked.
+# The very last line of +active_record/lib/active_record/base.rb+ is:
 #
 #   ActiveSupport.run_load_hooks(:active_record, ActiveRecord::Base)
 #

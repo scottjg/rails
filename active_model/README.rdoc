@@ -189,11 +189,11 @@ behavior out of the box:
 
 The latest version of Active Model can be installed with RubyGems:
 
-  % [sudo] gem install activemodel
+  % [sudo] gem install active_model
 
 Source code can be downloaded as part of the Rails project on GitHub
 
-* https://github.com/rails/rails/tree/master/activemodel
+* https://github.com/rails/rails/tree/master/active_model
 
 
 == License

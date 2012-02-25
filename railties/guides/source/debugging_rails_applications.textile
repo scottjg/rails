@@ -356,11 +356,11 @@ At any time you can call the +backtrace+ command (or its alias +where+) to print
     #0 PostsController.index
        at line /PathTo/project/app/controllers/posts_controller.rb:6
     #1 Kernel.send
-       at line /PathTo/project/vendor/rails/actionpack/lib/action_controller/base.rb:1175
+       at line /PathTo/project/vendor/rails/action_pack/lib/action_controller/base.rb:1175
     #2 ActionController::Base.perform_action_without_filters
-       at line /PathTo/project/vendor/rails/actionpack/lib/action_controller/base.rb:1175
+       at line /PathTo/project/vendor/rails/action_pack/lib/action_controller/base.rb:1175
     #3 ActionController::Filters::InstanceMethods.call_filters(chain#ActionController::Fil...,...)
-       at line /PathTo/project/vendor/rails/actionpack/lib/action_controller/filters.rb:617
+       at line /PathTo/project/vendor/rails/action_pack/lib/action_controller/filters.rb:617
 ...
 </shell>
 
@@ -369,7 +369,7 @@ You move anywhere you want in this trace (thus changing the context) by using th
 <shell>
 (rdb:5) frame 2
 #2 ActionController::Base.perform_action_without_filters
-       at line /PathTo/project/vendor/rails/actionpack/lib/action_controller/base.rb:1175
+       at line /PathTo/project/vendor/rails/action_pack/lib/action_controller/base.rb:1175
 </shell>
 
 The available variables are the same as if you were running the code line by line. After all, that's what debugging is.
@@ -551,7 +551,7 @@ You can add breakpoints dynamically with the command +break+ (or just +b+). Ther
 
 <shell>
 (rdb:5) break 10
-Breakpoint 1 file /PathTo/project/vendor/rails/actionpack/lib/action_controller/filters.rb, line 10
+Breakpoint 1 file /PathTo/project/vendor/rails/action_pack/lib/action_controller/filters.rb, line 10
 </shell>
 
 Use +info breakpoints _n_+ or +info break _n_+ to list breakpoints. If you supply a number, it lists that breakpoint. Otherwise it lists all breakpoints.

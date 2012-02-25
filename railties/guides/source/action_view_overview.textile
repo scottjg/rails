@@ -50,7 +50,7 @@ Action View works well with Action Record, but it can also be used with other Ru
 Let's start by ensuring that you have the Action Pack and Rack gems installed:
 
 <shell>
-$ gem install actionpack
+$ gem install action_pack
 $ gem install rack
 </shell>
 
@@ -85,7 +85,7 @@ Action View can also be used with "Sinatra":http://www.sinatrarb.com/ in the sam
 Let's start by ensuring that you have the Action Pack and Sinatra gems installed:
 
 <shell>
-$ gem install actionpack
+$ gem install action_pack
 $ gem install sinatra
 </shell>
 

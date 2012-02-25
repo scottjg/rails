@@ -16,7 +16,7 @@ module ActiveRecord
 
     # Set the i18n scope to overwrite ActiveModel.
     def i18n_scope #:nodoc:
-      :activerecord
+      :active_record
     end
   end
 end

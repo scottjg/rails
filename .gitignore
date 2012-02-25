@@ -12,9 +12,9 @@ debug.log
 /doc/rdoc
 /*/doc
 /*/test/tmp
-/activerecord/sqlnet.log
-/activemodel/test/fixtures/fixture_database.sqlite3
-/activesupport/test/fixtures/isolation_test
+/active_record/sqlnet.log
+/active_model/test/fixtures/fixture_database.sqlite3
+/active_support/test/fixtures/isolation_test
 /railties/test/500.html
 /railties/test/fixtures/tmp
 /railties/test/initializer/root/log

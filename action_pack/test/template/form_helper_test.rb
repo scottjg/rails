@@ -16,7 +16,7 @@ class FormHelperTest < ActionView::TestCase
 
     # Create "label" locale for testing I18n label helpers
     I18n.backend.store_translations 'label', {
-      :activemodel => {
+      :active_model => {
         :attributes => {
           :post => {
             :cost => "Total cost"

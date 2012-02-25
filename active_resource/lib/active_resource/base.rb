@@ -21,7 +21,7 @@ require 'active_resource/log_subscriber'
 module ActiveResource
   # ActiveResource::Base is the main class for mapping RESTful resources as models in a Rails application.
   #
-  # For an outline of what Active Resource is capable of, see its {README}[link:files/activeresource/README_rdoc.html].
+  # For an outline of what Active Resource is capable of, see its {README}[link:files/active_resource/README_rdoc.html].
   #
   # == Automated mapping
   #

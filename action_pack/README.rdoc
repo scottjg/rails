@@ -318,11 +318,11 @@ an URL such as /weblog/5 (where 5 is the id of the post).
 
 The latest version of Action Pack can be installed with RubyGems:
 
-  % [sudo] gem install actionpack
+  % [sudo] gem install action_pack
 
 Source code can be downloaded as part of the Rails project on GitHub
 
-* https://github.com/rails/rails/tree/master/actionpack
+* https://github.com/rails/rails/tree/master/action_pack
 
 
 == License

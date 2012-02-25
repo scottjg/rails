@@ -2,7 +2,7 @@ version = File.read(File.expand_path("../../RAILS_VERSION", __FILE__)).strip
 
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
-  s.name        = 'activerecord'
+  s.name        = 'active_record'
   s.version     = version
   s.summary     = 'Object-relational mapper framework (part of Rails).'
   s.description = 'Databases on Rails. Build a persistent domain model by mapping database tables to Ruby classes. Strong conventions for associations, validations, aggregations, migrations, and testing come baked-in.'
@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = %w( README.rdoc )
   s.rdoc_options.concat ['--main',  'README.rdoc']
 
-  s.add_dependency('activesupport', version)
-  s.add_dependency('activemodel',   version)
+  s.add_dependency('active_support', version)
+  s.add_dependency('active_model',   version)
   s.add_dependency('arel',          '~> 3.0.2')
 end

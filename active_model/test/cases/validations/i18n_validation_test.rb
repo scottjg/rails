@@ -219,7 +219,7 @@ class I18nValidationTest < ActiveModel::TestCase
   def self.set_expectations_for_validation(validation, error_type, &block_that_sets_validation)
     # test "validates_confirmation_of finds custom model key translation when blank"
     test "#{validation} finds custom model key translation when #{error_type}" do
-      I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {error_type => 'custom message'}}}}}}
+      I18n.backend.store_translations 'en', :active_model => {:errors => {:models => {:person => {:attributes => {:title => {error_type => 'custom message'}}}}}}
       I18n.backend.store_translations 'en', :errors => {:messages => {error_type => 'global message'}}
 
       yield(@person, {})
@@ -229,7 +229,7 @@ class I18nValidationTest < ActiveModel::TestCase
 
     # test "validates_confirmation_of finds custom model key translation with interpolation when blank"
     test "#{validation} finds custom model key translation with interpolation when #{error_type}" do
-      I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {error_type => 'custom message with %{extra}'}}}}}}
+      I18n.backend.store_translations 'en', :active_model => {:errors => {:models => {:person => {:attributes => {:title => {error_type => 'custom message with %{extra}'}}}}}}
       I18n.backend.store_translations 'en', :errors => {:messages => {error_type => 'global message'}}
 
       yield(@person, {:extra => "extra information"})
@@ -341,7 +341,7 @@ class I18nValidationTest < ActiveModel::TestCase
   end
 
   def test_validates_with_message_symbol_must_translate_per_attribute
-    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:attributes => {:title => {:custom_error => "I am a custom error"}}}}}}
+    I18n.backend.store_translations 'en', :active_model => {:errors => {:models => {:person => {:attributes => {:title => {:custom_error => "I am a custom error"}}}}}}
     Person.validates_presence_of :title, :message => :custom_error
     @person.title = nil
     @person.valid?
@@ -349,7 +349,7 @@ class I18nValidationTest < ActiveModel::TestCase
   end
 
   def test_validates_with_message_symbol_must_translate_per_model
-    I18n.backend.store_translations 'en', :activemodel => {:errors => {:models => {:person => {:custom_error => "I am a custom error"}}}}
+    I18n.backend.store_translations 'en', :active_model => {:errors => {:models => {:person => {:custom_error => "I am a custom error"}}}}
     Person.validates_presence_of :title, :message => :custom_error
     @person.title = nil
     @person.valid?

@@ -13,7 +13,7 @@ task :build => "all:build"
 desc "Release all gems to gemcutter and create a tag"
 task :release => "all:release"
 
-PROJECTS = %w(activesupport activemodel actionpack actionmailer activeresource activerecord railties)
+PROJECTS = %w(active_support active_model action_pack action_mailer active_resource active_record railties)
 
 desc 'Run all tests by default'
 task :default => %w(test test:isolated)
@@ -31,10 +31,10 @@ end
 
 desc "Smoke-test all projects"
 task :smoke do
-  (PROJECTS - %w(activerecord)).each do |project|
+  (PROJECTS - %w(active_record)).each do |project|
     system %(cd #{project} && #{$0} test:isolated)
   end
-  system %(cd activerecord && #{$0} sqlite3:isolated_test)
+  system %(cd active_record && #{$0} sqlite3:isolated_test)
 end
 
 desc "Install gems for all projects."
@@ -104,44 +104,44 @@ RDoc::Task.new do |rdoc|
   rdoc.rdoc_files.include('railties/lib/**/*.rb')
   rdoc.rdoc_files.exclude('railties/lib/rails/generators/**/templates/**/*.rb')
 
-  rdoc.rdoc_files.include('activerecord/README.rdoc')
-  rdoc.rdoc_files.include('activerecord/CHANGELOG.md')
-  rdoc.rdoc_files.include('activerecord/lib/active_record/**/*.rb')
-  rdoc.rdoc_files.exclude('activerecord/lib/active_record/vendor/*')
+  rdoc.rdoc_files.include('active_record/README.rdoc')
+  rdoc.rdoc_files.include('active_record/CHANGELOG.md')
+  rdoc.rdoc_files.include('active_record/lib/active_record/**/*.rb')
+  rdoc.rdoc_files.exclude('active_record/lib/active_record/vendor/*')
 
-  rdoc.rdoc_files.include('activeresource/README.rdoc')
-  rdoc.rdoc_files.include('activeresource/CHANGELOG.md')
-  rdoc.rdoc_files.include('activeresource/lib/active_resource.rb')
-  rdoc.rdoc_files.include('activeresource/lib/active_resource/*')
+  rdoc.rdoc_files.include('active_resource/README.rdoc')
+  rdoc.rdoc_files.include('active_resource/CHANGELOG.md')
+  rdoc.rdoc_files.include('active_resource/lib/active_resource.rb')
+  rdoc.rdoc_files.include('active_resource/lib/active_resource/*')
 
-  rdoc.rdoc_files.include('actionpack/README.rdoc')
-  rdoc.rdoc_files.include('actionpack/CHANGELOG.md')
-  rdoc.rdoc_files.include('actionpack/lib/abstract_controller/**/*.rb')
-  rdoc.rdoc_files.include('actionpack/lib/action_controller/**/*.rb')
-  rdoc.rdoc_files.include('actionpack/lib/action_dispatch/**/*.rb')
-  rdoc.rdoc_files.include('actionpack/lib/action_view/**/*.rb')
-  rdoc.rdoc_files.exclude('actionpack/lib/action_controller/vendor/*')
+  rdoc.rdoc_files.include('action_pack/README.rdoc')
+  rdoc.rdoc_files.include('action_pack/CHANGELOG.md')
+  rdoc.rdoc_files.include('action_pack/lib/abstract_controller/**/*.rb')
+  rdoc.rdoc_files.include('action_pack/lib/action_controller/**/*.rb')
+  rdoc.rdoc_files.include('action_pack/lib/action_dispatch/**/*.rb')
+  rdoc.rdoc_files.include('action_pack/lib/action_view/**/*.rb')
+  rdoc.rdoc_files.exclude('action_pack/lib/action_controller/vendor/*')
 
-  rdoc.rdoc_files.include('actionmailer/README.rdoc')
-  rdoc.rdoc_files.include('actionmailer/CHANGELOG.md')
-  rdoc.rdoc_files.include('actionmailer/lib/action_mailer/base.rb')
-  rdoc.rdoc_files.include('actionmailer/lib/action_mailer/mail_helper.rb')
-  rdoc.rdoc_files.exclude('actionmailer/lib/action_mailer/vendor/*')
+  rdoc.rdoc_files.include('action_mailer/README.rdoc')
+  rdoc.rdoc_files.include('action_mailer/CHANGELOG.md')
+  rdoc.rdoc_files.include('action_mailer/lib/action_mailer/base.rb')
+  rdoc.rdoc_files.include('action_mailer/lib/action_mailer/mail_helper.rb')
+  rdoc.rdoc_files.exclude('action_mailer/lib/action_mailer/vendor/*')
 
-  rdoc.rdoc_files.include('activesupport/README.rdoc')
-  rdoc.rdoc_files.include('activesupport/CHANGELOG.md')
-  rdoc.rdoc_files.include('activesupport/lib/active_support/**/*.rb')
-  rdoc.rdoc_files.exclude('activesupport/lib/active_support/vendor/*')
+  rdoc.rdoc_files.include('active_support/README.rdoc')
+  rdoc.rdoc_files.include('active_support/CHANGELOG.md')
+  rdoc.rdoc_files.include('active_support/lib/active_support/**/*.rb')
+  rdoc.rdoc_files.exclude('active_support/lib/active_support/vendor/*')
 
-  rdoc.rdoc_files.include('activemodel/README.rdoc')
-  rdoc.rdoc_files.include('activemodel/CHANGELOG.md')
-  rdoc.rdoc_files.include('activemodel/lib/active_model/**/*.rb')
+  rdoc.rdoc_files.include('active_model/README.rdoc')
+  rdoc.rdoc_files.include('active_model/CHANGELOG.md')
+  rdoc.rdoc_files.include('active_model/lib/active_model/**/*.rb')
 end
 
 # Enhance rdoc task to copy referenced images also
 task :rdoc do
   FileUtils.mkdir_p "doc/rdoc/files/examples/"
-  FileUtils.copy "activerecord/examples/associations.png", "doc/rdoc/files/examples/associations.png"
+  FileUtils.copy "active_record/examples/associations.png", "doc/rdoc/files/examples/associations.png"
 end
 
 desc 'Bump all versions to match version.rb'
@@ -153,12 +153,12 @@ task :update_versions do
   end
 
   constants = {
-    "activesupport"   => "ActiveSupport",
-    "activemodel"     => "ActiveModel",
-    "actionpack"      => "ActionPack",
-    "actionmailer"    => "ActionMailer",
-    "activeresource"  => "ActiveResource",
-    "activerecord"    => "ActiveRecord",
+    "active_support"   => "ActiveSupport",
+    "active_model"     => "ActiveModel",
+    "action_pack"      => "ActionPack",
+    "action_mailer"    => "ActionMailer",
+    "active_resource"  => "ActiveResource",
+    "active_record"    => "ActiveRecord",
     "railties"        => "Rails"
   }
 

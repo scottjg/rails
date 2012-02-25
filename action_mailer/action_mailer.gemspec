@@ -2,7 +2,7 @@ version = File.read(File.expand_path("../../RAILS_VERSION", __FILE__)).strip
 
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
-  s.name        = 'actionmailer'
+  s.name        = 'action_mailer'
   s.version     = version
   s.summary     = 'Email composition, delivery, and receiving framework (part of Rails).'
   s.description = 'Email on Rails. Compose, deliver, receive, and test emails using the familiar controller/view pattern. First-class support for multipart email and attachments.'
@@ -16,6 +16,6 @@ Gem::Specification.new do |s|
   s.require_path = 'lib'
   s.requirements << 'none'
 
-  s.add_dependency('actionpack',  version)
+  s.add_dependency('action_pack',  version)
   s.add_dependency('mail',        '~> 2.4.1')
 end

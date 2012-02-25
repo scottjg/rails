@@ -96,7 +96,7 @@ module ActionView
       #   highlight('You searched for: rails', 'rails')
       #   # => You searched for: <mark>rails</mark>
       #
-      #   highlight('You searched for: ruby, rails, dhh', 'actionpack')
+      #   highlight('You searched for: ruby, rails, dhh', 'action_pack')
       #   # => You searched for: ruby, rails, dhh
       #
       #   highlight('You searched for: rails', ['for', 'rails'], :highlighter => '<em>\1</em>')

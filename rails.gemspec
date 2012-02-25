@@ -17,11 +17,11 @@ Gem::Specification.new do |s|
   s.bindir             = 'bin'
   s.executables        = []
 
-  s.add_dependency('activesupport',  version)
-  s.add_dependency('actionpack',     version)
-  s.add_dependency('activerecord',   version)
-  s.add_dependency('activeresource', version)
-  s.add_dependency('actionmailer',   version)
+  s.add_dependency('active_support',  version)
+  s.add_dependency('action_pack',     version)
+  s.add_dependency('active_record',   version)
+  s.add_dependency('active_resource', version)
+  s.add_dependency('action_mailer',   version)
   s.add_dependency('railties',       version)
   s.add_dependency('bundler',        '~> 1.0')
 end

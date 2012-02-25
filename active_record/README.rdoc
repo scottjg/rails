@@ -132,7 +132,7 @@ A short rundown of some of the major features:
       :host     => "localhost",
       :username => "me",
       :password => "secret",
-      :database => "activerecord"
+      :database => "active_record"
     )
 
   {Learn more}[link:classes/ActiveRecord/Base.html] and read about the built-in support for
@@ -199,11 +199,11 @@ Admit the Database:
 
 The latest version of Active Record can be installed with RubyGems:
 
-  % [sudo] gem install activerecord
+  % [sudo] gem install active_record
 
 Source code can be downloaded as part of the Rails project on GitHub
 
-* https://github.com/rails/rails/tree/master/activerecord
+* https://github.com/rails/rails/tree/master/active_record
 
 
 == License

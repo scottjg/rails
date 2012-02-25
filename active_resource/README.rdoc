@@ -24,11 +24,11 @@ received and serialized into a usable Ruby object.
 
 The latest version of Active Support can be installed with RubyGems:
 
-  % [sudo] gem install activeresource
+  % [sudo] gem install active_resource
 
 Source code can be downloaded as part of the Rails project on GitHub
 
-* https://github.com/rails/rails/tree/master/activeresource
+* https://github.com/rails/rails/tree/master/active_resource
 
 === Configuration and Usage
 

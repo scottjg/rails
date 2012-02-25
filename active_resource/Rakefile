@@ -18,14 +18,14 @@ Rake::TestTask.new { |t|
 namespace :test do
   task :isolated do
     ruby = File.join(*RbConfig::CONFIG.values_at('bindir', 'RUBY_INSTALL_NAME'))
-    activesupport_path = "#{File.dirname(__FILE__)}/../activesupport/lib"
+    active_support_path = "#{File.dirname(__FILE__)}/../active_support/lib"
     Dir.glob("test/**/*_test.rb").all? do |file|
-      sh(ruby, '-w', "-Ilib:test:#{activesupport_path}", file)
+      sh(ruby, '-w', "-Ilib:test:#{active_support_path}", file)
     end or raise "Failures"
   end
 end
 
-spec = eval(File.read('activeresource.gemspec'))
+spec = eval(File.read('active_resource.gemspec'))
 
 Gem::PackageTask.new(spec) do |p|
   p.gem_spec = spec

@@ -1084,7 +1084,7 @@
 
 *   Fixed that ActiveRecord::Base#new_record? should return false (not nil) for existing records #1219 *Yaroslav Markin*
 
-*   I18n the word separator for error messages. Introduces the activerecord.errors.format.separator translation key.  #1294 *Akira Matsuda*
+*   I18n the word separator for error messages. Introduces the active_record.errors.format.separator translation key.  #1294 *Akira Matsuda*
 
 *   Add :having as a key to find and the relevant associations.  *Emilio Tagua*
 
@@ -1614,7 +1614,7 @@
 
 *   Change the implementation of ActiveRecord's attribute reader and writer methods *Michael Koziarski*
     - Generate Reader and Writer methods which cache attribute values in hashes.  This is to avoid repeatedly parsing the same date or integer columns.    - Change exception raised when users use find with :select then try to access a skipped column.  Plugins could override missing_attribute() to lazily load the columns.    - Move method definition to the class, instead of the instance    - Always generate the readers, writers and predicate methods.
-*   Perform a deep #dup on query cache results so that modifying activerecord attributes does not modify the cached attributes.  *Rick Olson*
+*   Perform a deep #dup on query cache results so that modifying active_record attributes does not modify the cached attributes.  *Rick Olson*
 
     \# Ensure that has_many :through associations use a count query instead of loading the target when #size is called.  Closes #8800 [Pratik Naik]
 *   Added :unless clause to validations #8003 [monki]. Example:

@@ -42,7 +42,7 @@
 
 *   subject is automatically looked up on I18n using mailer_name and action_name as scope as in t(".subject") *JK*
 
-*   Changed encoding behaviour of mail, so updated tests in actionmailer and bumped mail version to 2.2.1 *ML*
+*   Changed encoding behaviour of mail, so updated tests in action_mailer and bumped mail version to 2.2.1 *ML*
 
 *   Added ability to pass Proc objects to the defaults hash *ML*
 

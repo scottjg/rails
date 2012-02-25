@@ -2,16 +2,16 @@ default_connection: <%= defined?(JRUBY_VERSION) ? 'jdbcsqlite3' : 'sqlite3' %>
 
 connections:
   jdbcderby:
-    arunit:  activerecord_unittest
-    arunit2: activerecord_unittest2
+    arunit:  active_record_unittest
+    arunit2: active_record_unittest2
 
   jdbch2:
-    arunit:  activerecord_unittest
-    arunit2: activerecord_unittest2
+    arunit:  active_record_unittest
+    arunit2: active_record_unittest2
 
   jdbchsqldb:
-    arunit:  activerecord_unittest
-    arunit2: activerecord_unittest2
+    arunit:  active_record_unittest
+    arunit2: active_record_unittest2
 
   jdbcmysql:
     arunit:

@@ -25,7 +25,7 @@ module ActiveModel
 
     # Returns the +i18n_scope+ for the class. Overwrite if you want custom lookup.
     def i18n_scope
-      :activemodel
+      :active_model
     end
 
     # When localizing a string, it goes through the lookup returned by this

@@ -65,39 +65,39 @@ namespace :doc do
     rdoc.options << '--line-numbers'
     rdoc.rdoc_files.include('README.rdoc')
 
-    gem_path('actionmailer') do |actionmailer|
+    gem_path('action_mailer') do |action_mailer|
       %w(README.rdoc CHANGELOG.md MIT-LICENSE lib/action_mailer/base.rb).each do |file|
-        rdoc.rdoc_files.include("#{actionmailer}/#{file}")
+        rdoc.rdoc_files.include("#{action_mailer}/#{file}")
       end
     end
 
-    gem_path('actionpack') do |actionpack|
+    gem_path('action_pack') do |action_pack|
       %w(README.rdoc CHANGELOG.md MIT-LICENSE lib/action_controller/**/*.rb lib/action_view/**/*.rb).each do |file|
-        rdoc.rdoc_files.include("#{actionpack}/#{file}")
+        rdoc.rdoc_files.include("#{action_pack}/#{file}")
       end
     end
 
-    gem_path('activemodel') do |activemodel|
+    gem_path('active_model') do |active_model|
       %w(README.rdoc CHANGELOG.md MIT-LICENSE lib/active_model/**/*.rb).each do |file|
-        rdoc.rdoc_files.include("#{activemodel}/#{file}")
+        rdoc.rdoc_files.include("#{active_model}/#{file}")
       end
     end
 
-    gem_path('activerecord') do |activerecord|
+    gem_path('active_record') do |active_record|
       %w(README.rdoc CHANGELOG.md lib/active_record/**/*.rb).each do |file|
-        rdoc.rdoc_files.include("#{activerecord}/#{file}")
+        rdoc.rdoc_files.include("#{active_record}/#{file}")
       end
     end
 
-    gem_path('activeresource') do |activeresource|
+    gem_path('active_resource') do |active_resource|
       %w(README.rdoc CHANGELOG.md lib/active_resource.rb lib/active_resource/*).each do |file|
-        rdoc.rdoc_files.include("#{activeresource}/#{file}")
+        rdoc.rdoc_files.include("#{active_resource}/#{file}")
       end
     end
 
-    gem_path('activesupport') do |activesupport|
+    gem_path('active_support') do |active_support|
       %w(README.rdoc CHANGELOG.md lib/active_support/**/*.rb).each do |file|
-        rdoc.rdoc_files.include("#{activesupport}/#{file}")
+        rdoc.rdoc_files.include("#{active_support}/#{file}")
       end
     end
 

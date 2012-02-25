@@ -8,7 +8,7 @@ class ActiveModelI18nTests < ActiveModel::TestCase
   end
 
   def test_translated_model_attributes
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person => {:name => 'person name attribute'} } }
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:person => {:name => 'person name attribute'} } }
     assert_equal 'person name attribute', Person.human_attribute_name('name')
   end
 
@@ -35,49 +35,49 @@ class ActiveModelI18nTests < ActiveModel::TestCase
   end
 
   def test_translated_model_attributes_with_symbols
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person => {:name => 'person name attribute'} } }
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:person => {:name => 'person name attribute'} } }
     assert_equal 'person name attribute', Person.human_attribute_name(:name)
   end
 
   def test_translated_model_attributes_with_ancestor
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:child => {:name => 'child name attribute'} } }
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:child => {:name => 'child name attribute'} } }
     assert_equal 'child name attribute', Child.human_attribute_name('name')
   end
 
   def test_translated_model_attributes_with_ancestors_fallback
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person => {:name => 'person name attribute'} } }
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:person => {:name => 'person name attribute'} } }
     assert_equal 'person name attribute', Child.human_attribute_name('name')
   end
 
   def test_translated_model_attributes_with_attribute_matching_namespaced_model_name
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person => {:gender => 'person gender'}, :"person/gender" => {:attribute => 'person gender attribute'}}}
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:person => {:gender => 'person gender'}, :"person/gender" => {:attribute => 'person gender attribute'}}}
 
     assert_equal 'person gender', Person.human_attribute_name('gender')
     assert_equal 'person gender attribute', Person::Gender.human_attribute_name('attribute')
   end
 
   def test_translated_nested_model_attributes
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:"person/addresses" => {:street => 'Person Address Street'}}}
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:"person/addresses" => {:street => 'Person Address Street'}}}
     assert_equal 'Person Address Street', Person.human_attribute_name('addresses.street')
   end
 
   def test_translated_nested_model_attributes_with_namespace_fallback
-    I18n.backend.store_translations 'en', :activemodel => {:attributes => {:addresses => {:street => 'Cool Address Street'}}}
+    I18n.backend.store_translations 'en', :active_model => {:attributes => {:addresses => {:street => 'Cool Address Street'}}}
     assert_equal 'Cool Address Street', Person.human_attribute_name('addresses.street')
   end
 
   def test_translated_model_names
-    I18n.backend.store_translations 'en', :activemodel => {:models => {:person => 'person model'} }
+    I18n.backend.store_translations 'en', :active_model => {:models => {:person => 'person model'} }
     assert_equal 'person model', Person.model_name.human
   end
 
   def test_translated_model_names_with_sti
-    I18n.backend.store_translations 'en', :activemodel => {:models => {:child => 'child model'} }
+    I18n.backend.store_translations 'en', :active_model => {:models => {:child => 'child model'} }
     assert_equal 'child model', Child.model_name.human
   end
 
   def test_translated_model_names_with_ancestors_fallback
-    I18n.backend.store_translations 'en', :activemodel => {:models => {:person => 'person model'} }
+    I18n.backend.store_translations 'en', :active_model => {:models => {:person => 'person model'} }
     assert_equal 'person model', Child.model_name.human
   end
 

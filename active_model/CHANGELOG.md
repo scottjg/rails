@@ -20,7 +20,7 @@
 ## Rails 3.1.0 (August 30, 2011) ##
 
 *   Alternate I18n namespace lookup is no longer supported.
-    Instead of "activerecord.models.admins.post", do "activerecord.models.admins/post" instead *José Valim*
+    Instead of "active_record.models.admins.post", do "active_record.models.admins/post" instead *José Valim*
 
 *   attr_accessible and friends now accepts :as as option to specify a role *Josh Kalderimis*
 

@@ -499,7 +499,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert topic.is_test?
   end
 
-  def test_raises_dangerous_attribute_error_when_defining_activerecord_method_in_model
+  def test_raises_dangerous_attribute_error_when_defining_active_record_method_in_model
     %w(save create_or_update).each do |method|
       klass = Class.new ActiveRecord::Base
       klass.class_eval "def #{method}() 'defined #{method}' end"
