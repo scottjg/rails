@@ -23,7 +23,7 @@ module Sprockets
 
       app.assets = Sprockets::Environment.new(app.root.to_s) do |env|
         env.logger  = ::Rails.logger
-        env.version = ::Rails.env + "-#{config.assets.version}"
+        env.version = config.assets.version
 
         if config.assets.cache_store != false
           env.cache = ActiveSupport::Cache.lookup_store(config.assets.cache_store) || ::Rails.cache
