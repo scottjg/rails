@@ -214,7 +214,7 @@ Every Rails application comes with a standard set of middleware which it uses in
 * +ActionDispatch::Session::CookieStore+ is responsible for storing the session in cookies. An alternate middleware can be used for this by changing the +config.action_controller.session_store+ to an alternate value. Additionally, options passed to this can be configured by using +config.action_controller.session_options+.
 * +ActionDispatch::Flash+ sets up the +flash+ keys. Only available if +config.action_controller.session_store+ is set to a value.
 * +ActionDispatch::ParamsParser+ parses out parameters from the request into +params+.
-* +Rack::MethodOverride+ allows the method to be overridden if +params[:_method]+ is set. This is the middleware which supports the PUT and DELETE HTTP method types.
+* +Rack::MethodOverride+ allows the method to be overridden if +params[:_method]+ is set. This is the middleware which supports the PATCH, PUT, and DELETE HTTP method types.
 * +ActionDispatch::Head+ converts HEAD requests to GET requests and serves them as so.
 * +ActionDispatch::BestStandardsSupport+ enables "best standards support" so that IE8 renders some elements correctly.
 
@@ -346,7 +346,8 @@ h4. Configuring Action Dispatch
 
 h4. Configuring Action View
 
-There are only a few configuration options for Action View, starting with four on +ActionView::Base+:
+There are only a few configuration options for Action View, starting with six on +ActionView::Base+:
+
 
 * +config.action_view.field_error_proc+ provides an HTML generator for displaying errors that come from Active Record. The default is
 
@@ -648,3 +649,21 @@ The error occurred while evaluating nil.each
 *+set_routes_reloader+* Configures Action Dispatch to reload the routes file using +ActionDispatch::Callbacks.to_prepare+.
 
 *+disable_dependency_loading+* Disables the automatic dependency loading if the +config.cache_classes+ is set to true and +config.dependency_loading+ is set to false.
+
+h3. Database pooling
+
+Active Record database connections are managed by +ActiveRecord::ConnectionAdapters::ConnectionPool+ which ensures that a connection pool synchronizes the amount of thread access to a limited number of database connections. This limit defaults to 5 and can be configured in +database.yml+.
+
+<ruby>
+development:
+  adapter: sqlite3
+  database: db/development.sqlite3
+  pool: 5
+  timeout: 5000
+</ruby>
+
+Since the connection pooling is handled inside of ActiveRecord by default, all application servers (Thin, mongrel, Unicorn etc.) should behave the same. Initially, the database connection pool is empty and it will create additional connections as the demand for them increases, until it reaches the connection pool limit.
+
+Any one request will check out a connection the first time it requires access to the database, after which it will check the connection back in, at the end of the request, meaning that the additional connection slot will be available again for the next request in the queue.
+
+NOTE. If you have enabled +Rails.threadsafe!+ mode then there could be a chance that several threads may be accessing multiple connections simultaneously. So depending on your current request load, you could very well have multiple threads contending for a limited amount of connections.

@@ -330,9 +330,12 @@ module ActionView
         container.map do |element|
           html_attributes = option_html_attributes(element)
           text, value = option_text_and_value(element).map { |item| item.to_s }
-          selected_attribute = ' selected="selected"' if option_value_selected?(value, selected)
-          disabled_attribute = ' disabled="disabled"' if disabled && option_value_selected?(value, disabled)
-          %(<option value="#{ERB::Util.html_escape(value)}"#{selected_attribute}#{disabled_attribute}#{html_attributes}>#{ERB::Util.html_escape(text)}</option>)
+
+          html_attributes[:selected] = 'selected' if option_value_selected?(value, selected)
+          html_attributes[:disabled] = 'disabled' if disabled && option_value_selected?(value, disabled)
+          html_attributes[:value] = value
+
+          content_tag(:option, text, html_attributes)
         end.join("\n").html_safe
       end
 
@@ -472,16 +475,16 @@ module ActionView
       # <b>Note:</b> Only the <tt><optgroup></tt> and <tt><option></tt> tags are returned, so you still have to
       # wrap the output in an appropriate <tt><select></tt> tag.
       def grouped_options_for_select(grouped_options, selected_key = nil, prompt = nil)
-        body = ''
-        body << content_tag(:option, prompt, { :value => "" }, true) if prompt
+        body = "".html_safe
+        body.safe_concat content_tag(:option, prompt, :value => "") if prompt
 
         grouped_options = grouped_options.sort if grouped_options.is_a?(Hash)
 
-        grouped_options.each do |group|
-          body << content_tag(:optgroup, options_for_select(group[1], selected_key), :label => group[0])
+        grouped_options.each do |label, container|
+          body.safe_concat content_tag(:optgroup, options_for_select(container, selected_key), :label => label)
         end
 
-        body.html_safe
+        body
       end
 
       # Returns a string of option tags for pretty much any time zone in the
@@ -503,23 +506,24 @@ module ActionView
       # NOTE: Only the option tags are returned, you have to wrap this call in
       # a regular HTML select tag.
       def time_zone_options_for_select(selected = nil, priority_zones = nil, model = ::ActiveSupport::TimeZone)
-        zone_options = ""
+        zone_options = "".html_safe
 
         zones = model.all
         convert_zones = lambda { |list| list.map { |z| [ z.to_s, z.name ] } }
 
         if priority_zones
           if priority_zones.is_a?(Regexp)
-            priority_zones = model.all.find_all {|z| z =~ priority_zones}
+            priority_zones = zones.select { |z| z =~ priority_zones }
           end
-          zone_options += options_for_select(convert_zones[priority_zones], selected)
-          zone_options += "<option value=\"\" disabled=\"disabled\">-------------</option>\n"
 
-          zones = zones.reject { |z| priority_zones.include?( z ) }
+          zone_options.safe_concat options_for_select(convert_zones[priority_zones], selected)
+          zone_options.safe_concat content_tag(:option, '-------------', :value => '', :disabled => 'disabled')
+          zone_options.safe_concat "\n"
+
+          zones.reject! { |z| priority_zones.include?(z) }
         end
 
-        zone_options += options_for_select(convert_zones[zones], selected)
-        zone_options.html_safe
+        zone_options.safe_concat options_for_select(convert_zones[zones], selected)
       end
 
       # Returns radio button tags for the collection of existing return values
@@ -649,20 +653,15 @@ module ActionView
 
       private
         def option_html_attributes(element)
-          return "" unless Array === element
+          return {} unless Array === element
 
-          element.select { |e| Hash === e }.reduce({}, :merge).map do |k, v|
-            " #{k}=\"#{ERB::Util.html_escape(v.to_s)}\""
-          end.join
+          Hash[element.select { |e| Hash === e }.reduce({}, :merge).map { |k, v| [k, ERB::Util.html_escape(v.to_s)] }]
         end
 
         def option_text_and_value(option)
           # Options are [text, value] pairs or strings used for both.
-          case
-          when Array === option
-            option = option.reject { |e| Hash === e }
-            [option.first, option.last]
-          when !option.is_a?(String) && option.respond_to?(:first) && option.respond_to?(:last)
+          if !option.is_a?(String) && option.respond_to?(:first) && option.respond_to?(:last)
+            option = option.reject { |e| Hash === e } if Array === option
             [option.first, option.last]
           else
             [option, option]
@@ -670,11 +669,7 @@ module ActionView
         end
 
         def option_value_selected?(value, selected)
-          if selected.respond_to?(:include?) && !selected.is_a?(String)
-            selected.include? value
-          else
-            value == selected
-          end
+          Array(selected).include? value
         end
 
         def extract_selected_and_disabled(selected)
