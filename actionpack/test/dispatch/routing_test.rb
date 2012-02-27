@@ -2434,3 +2434,38 @@ class TestTildeAndMinusPaths < ActionDispatch::IntegrationTest
   end
 
 end
+
+class TestLambdaConstraintsPaths < ActionDispatch::IntegrationTest
+  Routes = ActionDispatch::Routing::RouteSet.new.tap do |app|
+    app.draw do
+      scope :constraints => { :subdomain => "subdomain" } do
+        match "/" => lambda { |env| [200, { 'Content-Type' => 'text/plain' }, ["subdomain"]] }
+      end
+
+      scope :constraints => lambda {|req| req.subdomain.present? && !%w(subdomain www).include?(req.subdomain) } do
+        match "/" => lambda { |env| [200, { 'Content-Type' => 'text/plain' }, ["bar"]] }
+      end
+
+      root :to => lambda { |env| [200, { 'Content-Type' => 'text/plain' }, ["default"]] }
+    end
+  end
+
+  include Routes.url_helpers
+  def app; Routes end
+
+  test 'lambda constraints paths' do
+    get "http://subdomain.foo.com"
+    assert_equal "subdomain", @response.body
+
+    get "http://bar.foo.com"
+    assert_equal "bar", @response.body
+
+    get "http://www.foo.com"
+    assert_equal "default", @response.body
+
+    get "http://foo.com"
+    assert_equal "default", @response.body
+  end
+
+end
+
