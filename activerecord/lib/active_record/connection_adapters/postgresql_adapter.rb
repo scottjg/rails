@@ -344,7 +344,7 @@ module ActiveRecord
       # Quotes PostgreSQL-specific data types for SQL input.
       def quote(value, column = nil) #:nodoc:
         if value.kind_of?(String) && column && column.type == :binary
-          "E'#{escape_bytea(value)}'"
+          "'#{escape_bytea(value)}'"
         elsif value.kind_of?(String) && column && column.sql_type == 'xml'
           "xml '#{quote_string(value)}'"
         elsif value.kind_of?(Numeric) && column && column.sql_type == 'money'
