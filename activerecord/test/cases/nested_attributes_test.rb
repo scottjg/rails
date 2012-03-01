@@ -450,6 +450,22 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
     end
   end
 
+  def test_should_unset_association_when_an_existing_record_is_destroyed
+    @ship.reload
+    original_pirate_id = @ship.pirate.id
+    @ship.update_attributes(:pirate_attributes => {:id => @ship.pirate.id, :_destroy => true})
+    @ship.save!
+
+    assert_empty Pirate.where(["id = ?", original_pirate_id])
+    assert_nil @ship.pirate_id
+    assert_nil @ship.pirate
+
+    @ship.reload
+    assert_empty Pirate.where(["id = ?", original_pirate_id])
+    assert_nil @ship.pirate_id
+    assert_nil @ship.pirate
+  end
+
   def test_should_not_destroy_an_existing_record_if_destroy_is_not_truthy
     [nil, '0', 0, 'false', false].each do |not_truth|
       @ship.update_attributes(:pirate_attributes => { :id => @ship.pirate.id, :_destroy => not_truth })
@@ -601,6 +617,13 @@ module NestedAttributesOnACollectionAssociationTests
     @pirate.reload
     @pirate.send(association_setter, [{ :id => @child_1.id, :_destroy => '1' }])
     assert @pirate.send(@association_name).send(:load_target).find { |r| r.id == @child_1.id }.marked_for_destruction?
+  end
+
+  def test_should_not_contain_items_marked_for_deletion_after_update_attributes
+    @pirate.reload
+    original_count = @pirate.send(@association_name).size
+    @pirate.send(association_setter, [{ :id => @child_1.id, :_destroy => '1' }])
+    assert_not_equal original_count, @pirate.send(@association_name).size
   end
 
   def test_should_take_a_hash_with_composite_id_keys_and_assign_the_attributes_to_the_associated_models
