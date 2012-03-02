@@ -89,7 +89,9 @@ module ActiveRecord
         if block_given?
           load_target.find(*args) { |*block_args| yield(*block_args) }
         else
-          if options[:finder_sql]
+          if !find_target?
+            load_target.find(*args)
+          elsif options[:finder_sql]
             find_by_scan(*args)
           else
             scoped.find(*args)
@@ -192,7 +194,9 @@ module ActiveRecord
       def count(column_name = nil, count_options = {})
         column_name, count_options = nil, column_name if column_name.is_a?(Hash)
 
-        if options[:counter_sql] || options[:finder_sql]
+        if !find_target?
+          target.count
+        elsif options[:counter_sql] || options[:finder_sql]
           unless count_options.blank?
             raise ArgumentError, "If finder_sql/counter_sql is used then options cannot be passed"
           end
@@ -374,7 +378,9 @@ module ActiveRecord
 
         def find_target
           records =
-            if options[:finder_sql]
+            if !find_target?
+              target
+            elsif options[:finder_sql]
               reflection.klass.find_by_sql(custom_finder_sql)
             else
               scoped.all
