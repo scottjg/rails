@@ -253,10 +253,6 @@ module ActiveRecord
         # By default, MySQL 'where id is null' selects the last inserted id.
         # Turn this off. http://dev.rubyonrails.org/ticket/6778
         variable_assignments = ['SQL_AUTO_IS_NULL=0']
-        encoding = @config[:encoding]
-
-        # make sure we set the encoding
-        variable_assignments << "NAMES '#{encoding}'" if encoding
 
         # increase timeout so mysql server doesn't disconnect us
         wait_timeout = @config[:wait_timeout]
