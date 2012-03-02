@@ -192,6 +192,11 @@ module ActionDispatch
                   if args.size == #{route.required_parts.size} && !args.last.is_a?(Hash) && _optimized_routes?
                     options = #{options.inspect}.merge!(url_options)
                     options[:path] = "#{optimized_helper(route)}"
+                    options[:params] ||= begin
+                      params = url_options.dup
+                      params.except!(*options[:_path_segments].keys) if options.key?(:_path_segments)
+                      params.except!(:_path_segments, :host, :port, :protocol, :script_name)
+                    end
                     ActionDispatch::Http::URL.url_for(options)
                   else
                     url_for(#{hash_access_method}(*args))
@@ -213,11 +218,8 @@ module ActionDispatch
           # If we are generating a path helper and we don't have a *path segment.
           # We can optimize the routes generation to a string interpolation if
           # it meets the appropriated runtime conditions.
-          #
-          # TODO We are enabling this only for path helpers, remove the
-          # kind == :path and fix the failures to enable it for url as well.
           def optimize_helper?(kind, route) #:nodoc:
-            kind == :path && route.ast.grep(Journey::Nodes::Star).empty?
+            route.ast.grep(Journey::Nodes::Star).empty?
           end
 
           # Generates the interpolation to be used in the optimized helper.
@@ -358,8 +360,10 @@ module ActionDispatch
             # Define url_for in the singleton level so one can do:
             # Rails.application.routes.url_helpers.url_for(args)
             @_routes = routes
+            extend UrlFor
             class << self
-              delegate :url_for, :to => '@_routes'
+              def default_url_options; {} end
+              def _routes; @_routes end
             end
 
             # Make named_routes available in the module singleton

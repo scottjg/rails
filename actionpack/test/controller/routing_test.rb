@@ -59,11 +59,8 @@ end
 class MockController
   def self.build(helpers)
     Class.new do
-      def url_for(options)
-        options[:protocol] ||= "http"
-        options[:host] ||= "test.host"
-
-        super(options)
+      def default_url_options
+        {:protocol => 'http', :host => 'test.host'}
       end
 
       include helpers
