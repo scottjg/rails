@@ -1683,4 +1683,28 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
       assert_equal 0,  post.comments.count
     end
   end
+
+  def test_has_many_with_dependent_destroy_fails_when_dependent_model_destroy_method_returns_false
+    topic = Topic.create!
+    reply = topic.non_destroyable_replies.create!
+
+    assert !topic.destroy, 'should not destroy object with dependent destroy failing'
+    assert_equal topic.reload.non_destroyable_replies, [reply]
+  end
+
+  def test_has_many_with_dependent_destroy_fails_when_dependent_model_destroy_before_callback_stops_chain
+    topic = Topic.create!
+    reply = topic.non_destroyable_before_callback_replies.create!
+
+    assert !topic.destroy, 'should not destroy object with dependent destroy failing'
+    assert_equal topic.reload.non_destroyable_before_callback_replies, [reply]
+  end
+
+  def test_has_many_with_dependent_destroy_fails_when_dependent_model_destroy_after_callback_stops_chain
+    topic = Topic.create!
+    reply = topic.non_destroyable_after_callback_replies.create!
+
+    assert !topic.destroy, 'should not destroy object with dependent destroy failing'
+    assert_equal topic.reload.non_destroyable_after_callback_replies, [reply]
+  end
 end

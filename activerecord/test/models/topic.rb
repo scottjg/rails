@@ -38,6 +38,9 @@ class Topic < ActiveRecord::Base
 
   has_many :unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
   has_many :silly_unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :non_destroyable_replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :non_destroyable_before_callback_replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :non_destroyable_after_callback_replies, :dependent => :destroy, :foreign_key => "parent_id"
 
   serialize :content
 

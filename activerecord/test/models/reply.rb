@@ -60,3 +60,25 @@ module Web
     belongs_to :topic, :foreign_key => "parent_id", :counter_cache => true, :class_name => 'Web::Topic'
   end
 end
+
+class NonDestroyableReply < Reply
+  def destroy
+    false
+  end
+end
+
+class NonDestroyableBeforeCallbackReply < Reply
+  before_destroy :stop!
+
+  def stop!
+    false
+  end
+end
+
+class NonDestroyableAfterCallbackReply < Reply
+  after_destroy :stop!
+
+  def stop!
+    raise ActiveRecord::Rollback
+  end
+end
