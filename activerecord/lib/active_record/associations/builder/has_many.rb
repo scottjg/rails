@@ -35,7 +35,9 @@ module ActiveRecord::Associations::Builder
             o.mark_for_destruction
           end
 
-          send(name).delete_all
+          send(name).delete_all.tap do |records|
+            raise ActiveRecord::Rollback unless records && records.all? { |r| r.destroyed? }
+          end
         end
       end
 
