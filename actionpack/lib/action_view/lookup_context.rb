@@ -10,7 +10,8 @@ module ActionView
   # generate a key, given to view paths, used in the resolver cache lookup. Since
   # this key is generated just once during the request, it speeds up all cache accesses.
   class LookupContext #:nodoc:
-    attr_accessor :prefixes, :rendered_format
+    attr_accessor :prefixes
+    attr_writer :rendered_format
 
     mattr_accessor :fallbacks
     @@fallbacks = FallbackFileSystemResolver.instances
@@ -187,6 +188,10 @@ module ActionView
 
       self.view_paths = view_paths
       initialize_details(details)
+    end
+
+    def rendered_format
+      @rendered_format || formats.first
     end
 
     # Override formats= to expand ["*/*"] values and automatically
