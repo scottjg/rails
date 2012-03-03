@@ -72,7 +72,6 @@
 
     *Julius de Bruijn*
 
->>>>>>> ded26b7... ActiveRecord::Relation#pluck method
 ## Rails 3.1.3 (unreleased) ##
 
 *   Perf fix: If we're deleting all records in an association, don't add a IN(..) clause
