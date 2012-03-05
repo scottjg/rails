@@ -51,7 +51,7 @@ module ActiveRecord
     # * <tt>:username</tt> - Defaults to "root"
     # * <tt>:password</tt> - Defaults to nothing.
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
-    # * <tt>:encoding</tt> - (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection.
+    # * <tt>:encoding</tt> - (Optional) Sets the client encoding.
     # * <tt>:reconnect</tt> - Defaults to false (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html).
     # * <tt>:sslca</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslkey</tt> - Necessary to use MySQL with an SSL connection.
@@ -398,9 +398,6 @@ module ActiveRecord
       end
 
       def configure_connection
-        encoding = @config[:encoding]
-        execute("SET NAMES '#{encoding}'", :skip_logging) if encoding
-
         # By default, MySQL 'where id is null' selects the last inserted id.
         # Turn this off. http://dev.rubyonrails.org/ticket/6778
         execute("SET SQL_AUTO_IS_NULL=0", :skip_logging)

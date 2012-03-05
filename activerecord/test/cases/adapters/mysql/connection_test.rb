@@ -13,6 +13,18 @@ class MysqlConnectionTest < ActiveRecord::TestCase
     end
   end
 
+  def test_charset_after_connection_with_reconnect_true
+    run_without_connection do |orig_connection|
+      ActiveRecord::Model.establish_connection(orig_connection.merge({:reconnect => true, :encoding => 'utf8'}))
+      assert ActiveRecord::Model.connection.raw_connection.reconnect
+      @connection = ActiveRecord::Model.connection
+      assert_equal Encoding::UTF_8, @connection.client_encoding
+      @connection.update('set @@wait_timeout=1')
+      sleep 2
+      assert_equal Encoding::UTF_8, @connection.client_encoding
+    end
+  end
+
   def test_connect_with_url
     run_without_connection do |orig|
       ar_config = ARTest.connection_config['arunit']
