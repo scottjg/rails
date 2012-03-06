@@ -86,7 +86,7 @@ module ActiveRecord
         # Deletes the records according to the <tt>:dependent</tt> option.
         def delete_records(records, method)
           if method == :destroy
-            raise ActiveRecord::Rollback unless records.all? { |r| r.destroy }
+            return false unless records.all? { |r| r.destroy }
             update_counter(-records.length) unless inverse_updates_counter_cache?
           else
             keys  = records.map { |r| r[reflection.association_primary_key] }
@@ -98,6 +98,7 @@ module ActiveRecord
               update_counter(-scope.update_all(reflection.foreign_key => nil))
             end
           end
+          true
         end
 
         def foreign_key_present?
