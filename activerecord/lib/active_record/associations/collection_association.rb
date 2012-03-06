@@ -467,9 +467,11 @@ module ActiveRecord
         def remove_records(existing_records, records, method)
           records.each { |record| callback(:before_remove, record) }
 
-          delete_records(existing_records, method) if existing_records.any?
-          records.each { |record| target.delete(record) }
+          if existing_records.any?
+            delete_records(existing_records, method) or return false
+          end
 
+          records.each { |record| target.delete(record) }
           records.each { |record| callback(:after_remove, record) }
         end
 

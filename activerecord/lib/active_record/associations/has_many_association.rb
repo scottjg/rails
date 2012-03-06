@@ -25,7 +25,9 @@ module ActiveRecord
             load_target.each(&:mark_for_destruction)
           end
 
-          delete_all
+          deleted_records = delete_all
+          raise ActiveRecord::Rollback unless deleted_records && deleted_records.all?(&:destroyed?)
+          deleted_records
         end
       end
 
@@ -108,7 +110,7 @@ module ActiveRecord
         # Deletes the records according to the <tt>:dependent</tt> option.
         def delete_records(records, method)
           if method == :destroy
-            records.each { |r| r.destroy }
+            return false unless records.all? { |r| r.destroy }
             update_counter(-records.length) unless inverse_updates_counter_cache?
           else
             if records == :all
