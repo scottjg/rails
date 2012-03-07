@@ -20,6 +20,9 @@ class SchemaTest < ActiveRecord::TestCase
     'email character varying(50)',
     'moment timestamp without time zone default now()'
   ]
+  PK_TABLE_NAME = 'table_with_pk'
+  UNMATCHED_SEQUENCE_NAME = 'unmatched_primary_key_default_value_seq'
+  UNMATCHED_PK_TABLE_NAME = 'table_with_unmatched_sequence_for_pk'
 
   class Thing1 < ActiveRecord::Base
     set_table_name "test_schema.things"
@@ -53,6 +56,8 @@ class SchemaTest < ActiveRecord::TestCase
     @connection.execute "CREATE INDEX #{INDEX_B_NAME} ON #{SCHEMA2_NAME}.#{TABLE_NAME}  USING btree (#{INDEX_B_COLUMN_S2});"
     @connection.execute "CREATE INDEX #{INDEX_C_NAME} ON #{SCHEMA_NAME}.#{TABLE_NAME}  USING gin (#{INDEX_C_COLUMN});"
     @connection.execute "CREATE INDEX #{INDEX_C_NAME} ON #{SCHEMA2_NAME}.#{TABLE_NAME}  USING gin (#{INDEX_C_COLUMN});"
+    @connection.execute "CREATE SEQUENCE #{SCHEMA_NAME}.#{UNMATCHED_SEQUENCE_NAME}"
+    @connection.execute "CREATE TABLE #{SCHEMA_NAME}.#{UNMATCHED_PK_TABLE_NAME} (id integer NOT NULL DEFAULT nextval('#{SCHEMA_NAME}.#{UNMATCHED_SEQUENCE_NAME}'::regclass), CONSTRAINT unmatched_pkey PRIMARY KEY (id))"
   end
 
   def teardown
@@ -61,11 +66,15 @@ class SchemaTest < ActiveRecord::TestCase
   end
 
   def test_schema_change_with_prepared_stmt
+    altered = false
     @connection.exec_query "select * from developers where id = $1", 'sql', [[nil, 1]]
     @connection.exec_query "alter table developers add column zomg int", 'sql', []
+    altered = true
     @connection.exec_query "select * from developers where id = $1", 'sql', [[nil, 1]]
   ensure
-    @connection.exec_query "alter table developers drop column if exists zomg", 'sql', []
+    # We are not using DROP COLUMN IF EXISTS because that syntax is only
+    # supported by pg 9.X
+    @connection.exec_query("alter table developers drop column zomg", 'sql', []) if altered
   end
 
   def test_table_exists?
@@ -180,6 +189,17 @@ class SchemaTest < ActiveRecord::TestCase
     ActiveRecord::Base.connection.schema_search_path = SCHEMA_NAME
     assert_nothing_raised { ActiveRecord::Base.connection.remove_index! "things", "things_Index"}
     ActiveRecord::Base.connection.schema_search_path = "public"
+  end
+
+  def test_pk_and_sequence_for_with_schema_specified
+    [
+      %("#{SCHEMA_NAME}"."#{UNMATCHED_PK_TABLE_NAME}")
+    ].each do |given|
+      pk, seq = @connection.pk_and_sequence_for(given)
+      assert_equal 'id', pk, "primary key should be found when table referenced as #{given}"
+      assert_equal "#{PK_TABLE_NAME}_id_seq", seq, "sequence name should be found when table referenced as #{given}" if given == %("#{SCHEMA_NAME}"."#{PK_TABLE_NAME}")
+      assert_equal "#{UNMATCHED_SEQUENCE_NAME}", seq, "sequence name should be found when table referenced as #{given}" if given ==  %("#{SCHEMA_NAME}"."#{UNMATCHED_PK_TABLE_NAME}")
+    end
   end
 
   def test_prepared_statements_with_multiple_schemas
