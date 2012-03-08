@@ -160,7 +160,7 @@ module ActiveRecord
         yield td if block_given?
 
         if options[:force] && table_exists?(table_name)
-          drop_table(table_name)
+          drop_table(table_name, options)
         end
 
         create_sql = "CREATE#{' TEMPORARY' if options[:temporary]} TABLE "
@@ -252,7 +252,7 @@ module ActiveRecord
       end
 
       # Drops a table from the database.
-      def drop_table(table_name)
+      def drop_table(table_name, options = {})
         execute "DROP TABLE #{quote_table_name(table_name)}"
       end
 
@@ -508,8 +508,8 @@ module ActiveRecord
       # ===== Examples
       #  add_timestamps(:suppliers)
       def add_timestamps(table_name)
-        add_column table_name, :created_at, :datetime, :null => false
-        add_column table_name, :updated_at, :datetime, :null => false
+        add_column table_name, :created_at, :datetime
+        add_column table_name, :updated_at, :datetime
       end
 
       # Removes the timestamp columns (created_at and updated_at) from the table definition.

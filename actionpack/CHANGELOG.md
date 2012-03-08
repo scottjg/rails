@@ -1,10 +1,23 @@
+## Rails 3.2.3 (unreleased) ##
+
+*   Turn off verbose mode of rack-cache, we still have X-Rack-Cache to
+    check that info. Closes #5245. *Santiago Pastorino*
+
+*   Fix #5238, rendered_format is not set when template is not rendered. *Piotr Sarnacki*
+
+
 ## Rails 3.2.2 (unreleased) ##
+
+*   Format lookup for partials is derived from the format in which the template is being rendered. Closes #5025 part 2 *Santiago Pastorino*
+
+*   Use the right format when a partial is missing. Closes #5025. *Santiago Pastorino*
 
 *   Default responder will now always use your overridden block in `respond_with` to render your response. *Prem Sichanugrist*
 
 *   check_box helper with :disabled => true will generate a disabled hidden field to conform with the HTML convention where disabled fields are not submitted with the form.
     This is a behavior change, previously the hidden tag had a value of the disabled checkbox.
     *Tadas Tamosauskas*
+
 
 ## Rails 3.2.1 (January 26, 2012) ##
 
