@@ -12,7 +12,7 @@ module ActionController #:nodoc:
     #
     # Specifying which actions to cache is done through the <tt>caches_page</tt> class method:
     #
-    #   class WeblogController < ActionController::Base
+    #   class WeblogController < ApplicationController
     #     caches_page :show, :new
     #   end
     #
@@ -24,7 +24,7 @@ module ActionController #:nodoc:
     # Expiration of the cache is handled by deleting the cached file, which results in a lazy regeneration approach where the cache
     # is not restored before another hit is made against it. The API for doing so mimics the options from +url_for+ and friends:
     #
-    #   class WeblogController < ActionController::Base
+    #   class WeblogController < ApplicationController
     #     def update
     #       List.update(params[:list][:id], params[:list])
     #       expire_page :action => "show", :id => params[:list][:id]

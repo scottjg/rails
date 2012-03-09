@@ -65,7 +65,7 @@ module AbstractController
   #
   # == Inheritance Examples
   #
-  #   class BankController < ActionController::Base
+  #   class BankController < ApplicationController
   #     # bank.html.erb exists
   #
   #   class ExchangeController < BankController
@@ -109,7 +109,7 @@ module AbstractController
   #
   # The method reference is the preferred approach to variable layouts and is used like this:
   #
-  #   class WeblogController < ActionController::Base
+  #   class WeblogController < ApplicationController
   #     layout :writers_and_readers
   #
   #     def index
@@ -126,13 +126,13 @@ module AbstractController
   #
   # If you want to use an inline method, such as a proc, do something like this:
   #
-  #   class WeblogController < ActionController::Base
+  #   class WeblogController < ApplicationController
   #     layout proc{ |controller| controller.logged_in? ? "writer_layout" : "reader_layout" }
   #   end
   #
   # Of course, the most common way of specifying a layout is still just as a plain template name:
   #
-  #   class WeblogController < ActionController::Base
+  #   class WeblogController < ApplicationController
   #     layout "weblog_standard"
   #   end
   #
@@ -161,7 +161,7 @@ module AbstractController
   # a given action or set of actions without a layout, or restricting a layout to only a single action or a set of actions. The
   # <tt>:only</tt> and <tt>:except</tt> options can be passed to the layout call. For example:
   #
-  #   class WeblogController < ActionController::Base
+  #   class WeblogController < ApplicationController
   #     layout "weblog_standard", :except => :rss
   #
   #     # ...
@@ -180,7 +180,7 @@ module AbstractController
   # Sometimes you'll have exceptions where one action wants to use a different layout than the rest of the controller.
   # You can do this by passing a <tt>:layout</tt> option to the <tt>render</tt> call. For example:
   #
-  #   class WeblogController < ActionController::Base
+  #   class WeblogController < ApplicationController
   #     layout "weblog_standard"
   #
   #     def help

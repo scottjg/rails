@@ -33,7 +33,7 @@ A short rundown of some of the major features:
 * Actions grouped in controller as methods instead of separate command objects
   and can therefore share helper methods
 
-    class CustomersController < ActionController::Base
+    class CustomersController < ApplicationController
       def show
         @customer = find_customer
       end
@@ -98,7 +98,7 @@ A short rundown of some of the major features:
 
 * Filters for pre- and post-processing of the response
 
-    class WeblogController < ActionController::Base
+    class WeblogController < ApplicationController
       # filters as methods
       before_filter :authenticate, :cache, :audit
 
@@ -137,7 +137,7 @@ A short rundown of some of the major features:
 
 * Layout sharing for template reuse
 
-    class WeblogController < ActionController::Base
+    class WeblogController < ApplicationController
       layout "weblog_layout"
 
       def hello_world
@@ -212,7 +212,7 @@ A short rundown of some of the major features:
 
 * Caching at three levels of granularity (page, action, fragment)
 
-    class WeblogController < ActionController::Base
+    class WeblogController < ApplicationController
       caches_page :show
       caches_action :account
 
@@ -257,7 +257,7 @@ methods:
   require 'action_controller'
   require 'post'
 
-  class WeblogController < ActionController::Base
+  class WeblogController < ApplicationController
     layout "weblog/layout"
 
     def index

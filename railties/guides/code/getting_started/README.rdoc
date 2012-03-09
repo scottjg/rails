@@ -57,7 +57,7 @@ shown in the browser on requests from 127.0.0.1.
 You can also log your own messages directly into the log file from your code
 using the Ruby logger class from inside your controllers. Example:
 
-  class WeblogController < ActionController::Base
+  class WeblogController < ApplicationController
     def destroy
       @weblog = Weblog.find(params[:id])
       @weblog.destroy
@@ -89,7 +89,7 @@ execution at any point in the code, investigate and change the model, and then,
 resume execution! You need to install ruby-debug19 to run the server in debugging
 mode. With gems, use <tt>sudo gem install ruby-debug19</tt>. Example:
 
-  class WeblogController < ActionController::Base
+  class WeblogController < ApplicationController
     def index
       @posts = Post.all
       debugger
