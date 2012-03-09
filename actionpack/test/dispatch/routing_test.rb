@@ -227,6 +227,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         end
       end
 
+      scope :as => :galleries do
+        resources :albums, :shallow => true do
+          resources :photos
+        end
+      end
+
       resources :sheep do
         get "_it", :on => :member
       end
@@ -1091,6 +1097,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     put '/pt/administrador/ativar'
     assert_equal 'admins#activate', @response.body
     assert_equal '/pt/administrador/ativar', activate_pt_admin_path
+  end
+
+  def test_scoped_shalow_path_names
+    assert_equal '/albums/1/photos', gallery_photos_path(1)
+    assert_equal '/albums/1/photos/new', new_gallery_photo_path(1)
+    assert_equal '/albums', galleries_path
+    assert_equal '/albums/1/new', new_gallery_path(1)
+    assert_equal '/albums/1/edit', edit_gallery_path(1)
+    assert_equal '/albums/1', gallery_path(1)
   end
 
   def test_path_option_override
