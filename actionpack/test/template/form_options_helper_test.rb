@@ -286,7 +286,7 @@ class FormOptionsHelperTest < ActionView::TestCase
 
   def test_grouped_options_for_select_with_array
     assert_dom_equal(
-      "<optgroup label=\"North America\"><option value=\"US\">United States</option>\n<option value=\"Canada\">Canada</option></optgroup><optgroup label=\"Europe\"><option value=\"GB\">Great Britain</option>\n<option value=\"Germany\">Germany</option></optgroup>",
+      "<optgroup label=\"----------\"><option value=\"US\">United States</option>\n<option value=\"Canada\">Canada</option></optgroup><optgroup label=\"----------\"><option value=\"GB\">Great Britain</option>\n<option value=\"Germany\">Germany</option></optgroup>",
       grouped_options_for_select([
          ["North America",
              [['United States','US'],"Canada"]],
