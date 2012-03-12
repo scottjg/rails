@@ -8,6 +8,7 @@ module Sprockets
       @env = env
       @target = target
       @paths = paths
+      @compress = options.key?(:compress) ? options.delete(:compress) : true
       @digest = options.key?(:digest) ? options.delete(:digest) : true
       @manifest = options.key?(:manifest) ? options.delete(:manifest) : true
       @manifest_path = options.delete(:manifest_path) || target
@@ -36,7 +37,7 @@ module Sprockets
         filename = File.join(target, path)
         FileUtils.mkdir_p File.dirname(filename)
         asset.write_to(filename)
-        asset.write_to("#{filename}.gz") if filename.to_s =~ /\.(css|js)$/
+        asset.write_to("#{filename}.gz") if @compress &&  filename.to_s =~ /\.(css|js)$/
       end
     end
 

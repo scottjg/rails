@@ -48,7 +48,8 @@ namespace :assets do
                                                config.assets.precompile,
                                                :manifest_path => config.assets.manifest,
                                                :digest => config.assets.digest,
-                                               :manifest => digest.nil?)
+                                               :manifest => digest.nil?,
+                                               :compress => config.assets.compress)
       compiler.compile
     end
 
