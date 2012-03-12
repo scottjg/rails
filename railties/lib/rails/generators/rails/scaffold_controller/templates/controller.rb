@@ -1,14 +1,12 @@
 <% module_namespacing do -%>
 class <%= controller_class_name %>Controller < ApplicationController
+  respond_to :html, :json
   # GET <%= route_url %>
   # GET <%= route_url %>.json
   def index
     @<%= plural_table_name %> = <%= orm_class.all(class_name) %>
 
-    respond_to do |format|
-      format.html # index.html.erb
-      format.json { render <%= key_value :json, "@#{plural_table_name}" %> }
-    end
+    respond_with(<%= "@#{plural_table_name}" %>)
   end
 
   # GET <%= route_url %>/1
@@ -16,10 +14,7 @@ class <%= controller_class_name %>Controller < ApplicationController
   def show
     @<%= singular_table_name %> = <%= orm_class.find(class_name, "params[:id]") %>
 
-    respond_to do |format|
-      format.html # show.html.erb
-      format.json { render <%= key_value :json, "@#{singular_table_name}" %> }
-    end
+    respond_with(<%= "@#{singular_table_name}" %>)
   end
 
   # GET <%= route_url %>/new
@@ -27,10 +22,7 @@ class <%= controller_class_name %>Controller < ApplicationController
   def new
     @<%= singular_table_name %> = <%= orm_class.build(class_name) %>
 
-    respond_to do |format|
-      format.html # new.html.erb
-      format.json { render <%= key_value :json, "@#{singular_table_name}" %> }
-    end
+    respond_with(<%= "@#{singular_table_name}" %>)
   end
 
   # GET <%= route_url %>/1/edit
