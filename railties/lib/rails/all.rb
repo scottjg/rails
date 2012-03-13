@@ -6,7 +6,7 @@ require "rails"
   action_mailer
   active_resource
   rails/test_unit
-  sprockets
+  sprockets/rails
 ).each do |framework|
   begin
     require "#{framework}/railtie"
