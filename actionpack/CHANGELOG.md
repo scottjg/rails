@@ -1,5 +1,7 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Extracted Sprockets integration to [sprockets-rails](https://github.com/rails/sprockets-rails). *Guillermo Iguaran*
+
 *   Removed default `size` option from the `text_field`, `search_field`, `telephone_field`, `url_field`, `email_field` helpers. *Philip Arndt*
 
 *   Removed default `cols` and `rows` options from the `text_area` helper. *Philip Arndt*
