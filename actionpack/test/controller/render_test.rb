@@ -550,9 +550,9 @@ class TestController < ActionController::Base
   end
 
   def render_to_string_with_different_formats
-    @html = render_to_string :template => "test/with_partial", :formats => [:html]
-    @text = render_to_string :template => "test/with_partial", :formats => [:text]
-    render :template => "test/with_partial", :formats => [:text]
+    @html = render_to_string :template => "test/with_partial", :formats => [:text]
+    @text = render_to_string :template => "test/with_partial", :formats => [:html]
+    render :template => "test/with_partial_only_html"
   end
 
   def partial_with_counter
@@ -1271,9 +1271,9 @@ class RenderTest < ActionController::TestCase
 
   def test_render_to_string_with_different_formats
     get :render_to_string_with_different_formats
-    assert_equal "<strong>only partial</strong>\n", assigns(:html)
     assert_equal "**only partial**\n", assigns(:text)
-    assert_equal "**only partial**\n", @response.body
+    assert_equal "<strong>only partial</strong>\n", assigns(:html)
+    assert_equal "<strong>only html partial</strong>\n", @response.body
     assert_equal "text/html", @response.content_type
   end
 
