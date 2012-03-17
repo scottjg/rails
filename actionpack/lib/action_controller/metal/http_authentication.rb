@@ -1,5 +1,6 @@
 require 'base64'
 require 'active_support/core_ext/object/blank'
+require 'rack/utils'
 
 module ActionController
   module HttpAuthentication
@@ -209,10 +210,10 @@ module ActionController
       # of a plain-text password.
       def expected_response(http_method, uri, credentials, password, password_is_ha1=true)
         ha1 = password_is_ha1 ? password : ha1(credentials, password)
-        ha2 = ::Digest::MD5.hexdigest([http_method.to_s.upcase, uri].join(':'))
+        ha2 = ::Digest::MD5.hexdigest([http_method.to_s.upcase, normalize_credentials_uri(uri)].join(':'))
         ::Digest::MD5.hexdigest([ha1, credentials[:nonce], credentials[:nc], credentials[:cnonce], credentials[:qop], ha2].join(':'))
       end
-
+      
       def ha1(credentials, password)
         ::Digest::MD5.hexdigest([credentials[:username], credentials[:realm], password].join(':'))
       end
@@ -305,6 +306,12 @@ module ActionController
       # Opaque based on random generation - but changing each request?
       def opaque(secret_key)
         ::Digest::MD5.hexdigest(secret_key)
+      end
+
+      private
+
+      def normalize_credentials_uri(uri)
+        Rack::Utils.unescape(uri)
       end
 
     end

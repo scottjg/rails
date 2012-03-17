@@ -232,6 +232,18 @@ class HttpDigestAuthenticationTest < ActionController::TestCase
     assert_equal 'Definitely Maybe', @response.body
   end
 
+  test "authentication request with a param with commas" do
+    @request.env['PATH_INFO'] = "/http_digest_authentication_test/dummy_digest/display?expand=profile,address,bio"
+    @request.env['HTTP_AUTHORIZATION'] = encode_credentials(:username => 'pretty', :password => 'please')
+
+    @request.env.delete('PATH_INFO')
+    @request.env.delete('ORIGINAL_FULLPATH')
+    get :display, :expand => 'profile,address,bio'
+
+    assert_response :success
+    assert_equal 'Definitely Maybe', @response.body
+  end
+
   test "authentication request with absolute uri in credentials (as in IE) ending with /" do
     @request.env['PATH_INFO'] = "/http_digest_authentication_test/dummy_digest/"
     @request.env['HTTP_AUTHORIZATION'] = encode_credentials(:uri => "http://test.host/http_digest_authentication_test/dummy_digest/",
