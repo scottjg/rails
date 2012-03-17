@@ -195,12 +195,9 @@ module ActionController
           method = request.env['rack.methodoverride.original_method'] || request.env['REQUEST_METHOD']
           uri    = credentials[:uri][0,1] == '/' ? request.original_fullpath : request.original_url
 
-          [true, false].any? do |trailing_question_mark|
-            [true, false].any? do |password_is_ha1|
-              _uri = trailing_question_mark ? uri + "?" : uri
-              expected = expected_response(method, _uri, credentials, password, password_is_ha1)
-              expected == credentials[:response]
-            end
+          [true, false].any? do |password_is_ha1|
+            expected = expected_response(method, uri, credentials, password, password_is_ha1)
+            expected == credentials[:response]
           end
         end
       end
@@ -236,8 +233,8 @@ module ActionController
 
       def authentication_header(controller, realm)
         secret_key = secret_token(controller.request)
-        nonce = self.nonce(secret_key)
-        opaque = opaque(secret_key)
+        nonce      = nonce(secret_key)
+        opaque     = opaque(secret_key)
         controller.headers["WWW-Authenticate"] = %(Digest realm="#{realm}", qop="auth", algorithm=MD5, nonce="#{nonce}", opaque="#{opaque}")
       end
 
@@ -311,7 +308,7 @@ module ActionController
       private
 
       def normalize_credentials_uri(uri)
-        Rack::Utils.unescape(uri)
+        Rack::Utils.unescape(uri =~ /\?$/ ? uri.chop : uri)
       end
 
     end
