@@ -418,7 +418,7 @@ module ActiveRecord
     def truncate
       database_name = self.connection.current_database
       table_name    = self.table_name
-      connection.execute("TRUNCATE `#{database_name}.#{table_name}`")
+      connection.execute("TRUNCATE TABLE `#{database_name}.#{table_name}`")
     end
 
     # Deletes the row with a primary key matching the +id+ argument, using a
