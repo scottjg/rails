@@ -408,6 +408,19 @@ module ActiveRecord
       end
     end
 
+    # Truncates table.
+    #
+    # ==== Example
+    #
+    #   Post.truncate
+    #
+    # It will empties a table completely
+    def truncate
+      database_name = self.connection.current_database
+      table_name    = self.table_name
+      connection.execute("TRUNCATE `#{database_name}.#{table_name}`")
+    end
+
     # Deletes the row with a primary key matching the +id+ argument, using a
     # SQL +DELETE+ statement, and returns the number of rows deleted. Active
     # Record objects are not instantiated, so the object's callbacks are not
