@@ -1,3 +1,13 @@
+## Rails 3.2.3 (unreleased) ##
+
+*   No changes.
+
+
+## Rails 3.2.2 (March 1, 2012) ##
+
+*   No changes.
+
+
 ## Rails 3.2.1 (January 26, 2012) ##
 
 *   No changes.
@@ -15,6 +25,7 @@
 *   Deprecate "Model.model_name.partial_path" in favor of "model.to_partial_path" *Grant Hutchins, Peter Jaros*
 
 *   Provide mass_assignment_sanitizer as an easy API to replace the sanitizer behavior. Also support both :logger (default) and :strict sanitizer behavior *Bogdan Gusiev*
+
 
 ## Rails 3.1.0 (August 30, 2011) ##
 
@@ -44,7 +55,7 @@
 *   No changes.
 
 
-*   Rails 3.0.6 (April 5, 2011)
+## Rails 3.0.6 (April 5, 2011) ##
 
 *   Fix when database column name has some symbolic characters (e.g. Oracle CASE# VARCHAR2(20)) #5818 #6850 *Robert Pankowecki, Santiago Pastorino*
 

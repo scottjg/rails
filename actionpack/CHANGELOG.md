@@ -1,12 +1,26 @@
 ## Rails 3.2.3 (unreleased) ##
 
+*   Do not include the authenticity token in forms where remote: true as ajax forms use the meta-tag value *DHH*
+
 *   Turn off verbose mode of rack-cache, we still have X-Rack-Cache to
     check that info. Closes #5245. *Santiago Pastorino*
 
 *   Fix #5238, rendered_format is not set when template is not rendered. *Piotr Sarnacki*
 
+*   Upgrade rack-cache to 1.2. *José Valim*
 
-## Rails 3.2.2 (unreleased) ##
+*   ActionController::SessionManagement is deprecated. *Santiago Pastorino*
+
+*   Since the router holds references to many parts of the system like engines, controllers and the application itself, inspecting the route set can actually be really slow, therefore we default alias inspect to to_s. *José Valim*
+
+*   Add a new line after the textarea opening tag. Closes #393 *Rafael Mendonça França*
+
+*   Always pass a respond block from to responder. We should let the responder to decide what to do with the given overridden response block, and not short circuit it. *sikachu*
+
+*   Fixes layout rendering regression from 3.2.2. *José Valim*
+
+
+## Rails 3.2.2 (March 1, 2012) ##
 
 *   Format lookup for partials is derived from the format in which the template is being rendered. Closes #5025 part 2 *Santiago Pastorino*
 
