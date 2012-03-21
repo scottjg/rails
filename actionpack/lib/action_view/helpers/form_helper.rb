@@ -1242,6 +1242,8 @@ module ActionView
 
           if association.respond_to?(:to_ary)
             explicit_child_index = options[:child_index]
+            options = options.reverse_merge(:index => '') if explicit_child_index == '' 
+
             output = ActiveSupport::SafeBuffer.new
             association.each do |child|
               output << fields_for_nested_model("#{name}[#{explicit_child_index || nested_child_index(name)}]", child, options, block)

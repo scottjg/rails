@@ -1779,6 +1779,23 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_nested_fields_for_with_blank_child_index_option_override_on_a_nested_attributes_collection_association
+    @post.comments = []
+
+    form_for(@post) do |f|
+      concat f.fields_for(:comments, Comment.new(321), :child_index => '') { |cf|
+        concat cf.text_field(:name)
+      }
+    end
+
+    expected = whole_form('/posts/123', 'edit_post_123', 'edit_post', :method => 'patch') do
+      '<input id="post_comments_attributes__name" name="post[comments_attributes][][name]" type="text" value="comment #321" />' +
+      '<input id="post_comments_attributes__id" name="post[comments_attributes][][id]" type="hidden" value="321" />'
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_nested_fields_uses_unique_indices_for_different_collection_associations
     @post.comments = [Comment.new(321)]
     @post.tags = [Tag.new(123), Tag.new(456)]
