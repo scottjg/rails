@@ -157,7 +157,7 @@ module Rails
           path = File.expand_path(p, @root.path)
 
           if @glob
-            result.concat Dir[File.join(path, @glob)].sort
+            result.concat Dir[File.join(glob_escape(path), @glob)].sort
           else
             result << path
           end
@@ -177,6 +177,14 @@ module Rails
       end
 
       alias to_a expanded
+
+    private
+
+      GLOB_ESCAPE = Regexp.new("[#{Regexp.escape('[]?{}*')}]")
+
+      def glob_escape(path)
+        path.gsub(GLOB_ESCAPE) { |c| "\\#{c}" }
+      end
     end
   end
 end
