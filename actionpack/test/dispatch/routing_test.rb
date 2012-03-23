@@ -14,6 +14,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  class AlwaysRestrictedRestrictor
+    def self.matches?(request)
+      request.params["foo"] = 'bar'
+      false
+    end
+  end
+
   class YoutubeFavoritesRedirector
     def self.call(params, request)
       "http://www.youtube.com/watch?v=#{params[:youtube_id]}"
@@ -25,6 +32,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     Routes.draw do
       default_url_options :host => "rubyonrails.org"
       resources_path_names :correlation_indexes => "info_about_correlation_indexes"
+
+      constraints(AlwaysRestrictedRestrictor) do
+        root to: 'anywhere#new'
+        match '*anything' => 'sessions#new'
+      end
 
       controller :sessions do
         get  'login' => :new
@@ -575,6 +587,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
   end
 
   include Routes.url_helpers
+
+  def test_wildcard_route_inside_constraint
+    get '/projects/1'
+    #raise @request.params.inspect
+    assert_equal '1', @request.params[:id]
+    assert_equal 'project#show', @response.body
+  end
 
   def test_logout
     with_test_routes do
