@@ -167,7 +167,7 @@ class TimeZoneTest < Test::Unit::TestCase
     (-11..13).each do |timezone_offset|
       zone = ActiveSupport::TimeZone[timezone_offset]
       twz = zone.parse('1999-12-31 19:00:00')
-      assert_equal twz.to_a, zone.parse(twz.to_s).to_a
+      assert_equal twz, zone.parse(twz.to_s)
     end
   end
 
