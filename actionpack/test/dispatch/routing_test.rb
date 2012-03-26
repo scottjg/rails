@@ -1,4 +1,5 @@
 # encoding: UTF-8
+require 'ruby-debug'
 require 'erb'
 require 'abstract_unit'
 require 'controller/fake_controllers'
@@ -227,8 +228,9 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         end
       end
 
+      debugger
       scope :as => :galleries do
-        resources :albums, :shallow => true do
+        resources :albums do
           resources :photos
         end
       end
@@ -1100,12 +1102,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
   end
 
   def test_scoped_shalow_path_names
-    assert_equal '/albums/1/photos', gallery_photos_path(1)
-    assert_equal '/albums/1/photos/new', new_gallery_photo_path(1)
-    assert_equal '/albums', galleries_path
-    assert_equal '/albums/1/new', new_gallery_path(1)
-    assert_equal '/albums/1/edit', edit_gallery_path(1)
-    assert_equal '/albums/1', gallery_path(1)
+    debugger
+    assert_equal '/albums/1/photos', galleries_album_photos_path(1)
+    assert_equal '/albums/1/photos/new', new_galleries_album_photo_path(1)
+    assert_equal '/albums', galleries_albums_path
+    assert_equal '/albums/1/new', new_galleries_album_path(1)
+    assert_equal '/albums/1/edit', edit_galleries_album_path(1)
+    assert_equal '/albums/1', galleries_album_path(1)
+    assert_equal '/photos/1', galleries_photo_path(1)
+    assert_equal '/photos/1/edit', edit_galleries_photo_path(1)
   end
 
   def test_path_option_override

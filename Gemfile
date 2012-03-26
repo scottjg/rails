@@ -12,6 +12,10 @@ gem 'rack-test', :git => "https://github.com/brynary/rack-test.git"
 gem 'bcrypt-ruby', '~> 3.0.0'
 gem 'jquery-rails'
 
+group :test do
+  gem 'ruby-debug19'
+end
+
 if ENV['JOURNEY']
   gem 'journey', :path => ENV['JOURNEY']
 else
