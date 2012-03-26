@@ -4,7 +4,7 @@ require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/deprecation'
 
 module ActiveModel
-  class Name < String
+  class Name
     attr_reader :singular, :plural, :element, :collection, :partial_path,
       :singular_route_key, :route_key, :param_key, :i18n_key
 
