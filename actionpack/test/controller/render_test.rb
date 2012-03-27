@@ -543,6 +543,10 @@ class TestController < ActionController::Base
     render :partial => 'partial'
   end
 
+  def partial_only_html
+    render :partial => 'partial_only_html'
+  end
+
   def partial_html_erb
     render :partial => 'partial_html_erb'
   end
@@ -1269,6 +1273,14 @@ class RenderTest < ActionController::TestCase
     get :partial
     assert_equal "partial html", @response.body
     assert_equal "text/html", @response.content_type
+  end
+
+  def test_return_406_response_if_we_cant_render_asked_type
+    @request.accept = "text/javascript"
+
+    get :partial_html_erb
+
+    assert_equal 406, @response.status
   end
 
   def test_render_html_formatted_partial_even_with_other_mime_time_in_accept
