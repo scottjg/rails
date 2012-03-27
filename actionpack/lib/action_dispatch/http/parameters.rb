@@ -37,6 +37,31 @@ module ActionDispatch
 
     private
 
+      # UTF-8 encode keys in a nested Hash params
+      def encode_nested_param_keys(params)
+        if !params.is_a?(Hash)
+          return params
+        end
+
+        params.keys.each do |key|
+          new_key = key.to_s.dup.force_encoding('UTF-8').encode!
+          need_replace_key = (params[new_key] != params[key])
+          if need_replace_key
+            params[new_key] = params[key]
+            params.delete(key)
+            key = new_key
+          end
+
+          value = params[key]
+          case value
+          when Hash
+            encode_nested_param_keys(value)
+          end
+        end
+
+        params
+      end
+
       # TODO: Validate that the characters are UTF-8. If they aren't,
       # you'll get a weird error down the road, but our form handling
       # should really prevent that from happening
