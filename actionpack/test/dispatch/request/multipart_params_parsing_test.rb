@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 
 class MultipartParamsParsingTest < ActionDispatch::IntegrationTest
@@ -28,6 +29,17 @@ class MultipartParamsParsingTest < ActionDispatch::IntegrationTest
 
   test "parses bracketed parameters" do
     assert_equal({ 'foo' => { 'baz' => 'bar'}}, parse_multipart('bracketed_param'))
+  end
+
+  test "parse single utf8 parameter" do
+    assert_equal({ 'Iñtërnâtiônàlizætiøn_name' => 'Iñtërnâtiônàlizætiøn_value'}, 
+                 parse_multipart('single_utf8_param'))
+  end
+
+  test "parse bracketed utf8 parameter" do
+    assert_equal({ 'Iñtërnâtiônàlizætiøn_name' => { 
+      'Iñtërnâtiônàlizætiøn_nested_name' => 'Iñtërnâtiônàlizætiøn_value'} }, 
+      parse_multipart('bracketed_utf8_param'))
   end
 
   test "parses text file" do
