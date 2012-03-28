@@ -7,6 +7,16 @@ module ActionView
     config.action_view = ActiveSupport::OrderedOptions.new
     config.action_view.stylesheet_expansions = {}
     config.action_view.javascript_expansions = { :defaults => %w(jquery jquery_ujs) }
+    config.action_view.embed_authenticity_token_in_remote_forms = true
+
+    initializer "action_view.prepend_authenticity_token_in_forms" do |app|
+      unless app.config.cache_classes
+        ActiveSupport.on_load(:action_view) do
+          ActionView::Helpers::FormTagHelper.embed_authenticity_token_in_remote_forms =
+            app.config.action_view.embed_authenticity_token_in_remote_forms
+        end
+      end
+    end
 
     initializer "action_view.cache_asset_ids" do |app|
       unless app.config.cache_classes
@@ -31,7 +41,7 @@ module ActionView
     initializer "action_view.set_configs" do |app|
       ActiveSupport.on_load(:action_view) do
         app.config.action_view.each do |k,v|
-          send "#{k}=", v
+          send "#{k}=", v if respond_to?("#{k}=")
         end
       end
     end
