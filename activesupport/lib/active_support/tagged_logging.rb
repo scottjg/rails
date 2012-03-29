@@ -2,6 +2,13 @@ require 'active_support/core_ext/object/blank'
 require 'logger'
 
 module ActiveSupport
+  # Simple formatter which only displays the message.
+  class SimpleFormatter < ::Logger::Formatter
+    def call(severity, timestamp, progname, msg)
+      "#{String === msg ? msg : msg.inspect}\n"
+    end
+  end
+
   # Wraps any standard Logger class to provide tagging capabilities. Examples:
   #
   #   Logger = ActiveSupport::TaggedLogging.new(Logger.new(STDOUT))
