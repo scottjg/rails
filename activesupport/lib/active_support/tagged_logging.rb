@@ -19,7 +19,7 @@ module ActiveSupport
   # This is used by the default Rails.logger as configured by Railties to make it easy to stamp log lines
   # with subdomains, request ids, and anything else to aid debugging of multi-user production applications.
   module TaggedLogging
-    class Formatter < ::Logger::Formatter # :nodoc:
+    class Formatter < SimpleFormatter # :nodoc:
       # This method is invoked when a log event occurs
       def call(severity, timestamp, progname, msg)
         super(severity, timestamp, progname, "#{tags_text}#{msg}")
