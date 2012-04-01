@@ -677,6 +677,13 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     get '/account/modulo/name'
     verify_redirect 'http://www.example.com/names'
   end
+  
+  def test_redirect_modulo_with_invalid_redirect_uri_generated
+    get '/account/modulo/name>'
+    assert_equal 'Not Found', @response.body
+    assert_raises(ActionController::RoutingError){ "" }
+    assert_equal 404, status
+  end
 
   def test_redirect_proc
     get '/account/proc/person'

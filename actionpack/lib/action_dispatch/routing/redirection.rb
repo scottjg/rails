@@ -93,12 +93,19 @@ module ActionDispatch
         path = args.shift
 
         block = lambda { |params, request|
-          (params.empty? || !path.match(/%\{\w*\}/)) ? path : (path % params)
+          (params.empty? || !path.match(/%\{\w*\}/)) ? path : verify_generated_url(path % params)
         } if String === path
 
         block = path if path.respond_to? :call
         raise ArgumentError, "redirection argument not supported" unless block
         Redirect.new status, block
+      end
+      
+      private
+      def verify_generated_url(url)
+        url if URI.parse(url)
+      rescue URI::InvalidURIError => e
+        raise ActionController::RoutingError, e.message
       end
     end
   end

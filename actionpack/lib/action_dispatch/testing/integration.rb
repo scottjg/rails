@@ -301,9 +301,12 @@ module ActionDispatch
           uri.scheme ||= env['rack.url_scheme']
           uri.host   ||= env['SERVER_NAME']
           uri.port   ||= env['SERVER_PORT'].try(:to_i)
-          uri += path
-
-          session.request(uri.to_s, env)
+          begin
+            uri += path
+            session.request(uri.to_s, env)
+          rescue URI::InvalidURIError => e
+            session.request(uri.to_s + path, env)
+          end
 
           @request_count += 1
           @request  = ActionDispatch::Request.new(session.last_request.env)
