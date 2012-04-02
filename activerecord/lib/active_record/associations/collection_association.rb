@@ -71,8 +71,7 @@ module ActiveRecord
       end
 
       def reset
-        @loaded = false
-        @target = []
+        super []
       end
 
       def select(select = nil)

@@ -26,7 +26,6 @@ module ActiveRecord
         reflection.check_validity!
 
         @owner, @reflection = owner, reflection
-        @stale_state = nil
 
         reset
         reset_scope
@@ -41,9 +40,10 @@ module ActiveRecord
       end
 
       # Resets the \loaded flag to +false+ and sets the \target to +nil+.
-      def reset
-        @loaded = false
-        @target = nil
+      def reset(target = nil)
+        @loaded      = false
+        @target      = target
+        @stale_state = nil
       end
 
       # Reloads the \target and returns +self+ on success.
