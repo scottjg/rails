@@ -215,10 +215,6 @@ module ActiveRecord
         def stale_state
         end
 
-        def association_class
-          @reflection.klass
-        end
-
         def build_record(attributes, options)
           reflection.build_association(attributes, options) do |record|
             attributes = create_scope.except(*(record.changed - [reflection.foreign_key]))
