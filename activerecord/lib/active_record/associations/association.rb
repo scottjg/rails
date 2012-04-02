@@ -213,6 +213,11 @@ module ActiveRecord
         def stale_state
         end
 
+        # Implemented by subclasses
+        def create_scope
+          raise NotImplementedError, "Subclasses must implement a create_scope method"
+        end
+
         def build_record(attributes, options)
           reflection.build_association(attributes, options) do |record|
             attributes = create_scope.except(*(record.changed - [reflection.foreign_key]))
