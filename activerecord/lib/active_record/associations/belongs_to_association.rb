@@ -2,6 +2,12 @@ module ActiveRecord
   # = Active Record Belongs To Associations
   module Associations
     class BelongsToAssociation < SingularAssociation #:nodoc:
+
+      def reset
+        super
+        @updated = false
+      end
+
       def replace(record)
         raise_on_type_mismatch(record) if record
 

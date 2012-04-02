@@ -26,7 +26,6 @@ module ActiveRecord
         reflection.check_validity!
 
         @owner, @reflection = owner, reflection
-        @updated = false
         @stale_state = nil
 
         reset
