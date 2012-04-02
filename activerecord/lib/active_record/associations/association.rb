@@ -153,6 +153,11 @@ module ActiveRecord
           !loaded? && (!owner.new_record? || foreign_key_present?) && klass
         end
 
+        # Implemented by subclasses
+        def find_target
+          raise NotImplementedError, "Subclasses must implement a find_target method"
+        end
+
         def creation_attributes
           attributes = {}
 
