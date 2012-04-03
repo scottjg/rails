@@ -1,5 +1,6 @@
 require 'active_support/duration'
 require 'active_support/core_ext/time/zones'
+require 'active_support/core_ext/time/conversions'
 
 class Time
   COMMON_YEAR_DAYS_IN_MONTH = [nil, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -8,7 +9,7 @@ class Time
   class << self
     # Overriding case equality method so that it returns true for ActiveSupport::TimeWithZone instances
     def ===(other)
-      other.is_a?(::Time)
+      super || (self == Time && other.is_a?(ActiveSupport::TimeWithZone))
     end
 
     # Return the number of days in the given month.
@@ -66,7 +67,7 @@ class Time
   end
 
   # Returns a new Time where one or more of the elements have been changed according to the +options+ parameter. The time options
-  # (hour, minute, sec, usec) reset cascadingly, so if only the hour is passed, then minute, sec, and usec is set to 0. If the hour and
+  # (hour, min, sec, usec) reset cascadingly, so if only the hour is passed, then minute, sec, and usec is set to 0. If the hour and
   # minute is passed, then sec and usec is set to 0.
   def change(options)
     ::Time.send(
@@ -77,7 +78,7 @@ class Time
       options[:hour]  || hour,
       options[:min]   || (options[:hour] ? 0 : min),
       options[:sec]   || ((options[:hour] || options[:min]) ? 0 : sec),
-      options[:usec]  || ((options[:hour] || options[:min] || options[:sec]) ? 0 : usec)
+      options[:usec]  || ((options[:hour] || options[:min] || options[:sec]) ? 0 : Rational(nsec, 1000))
     )
   end
 
@@ -144,6 +145,7 @@ class Time
   def prev_year
     years_ago(1)
   end
+  alias_method :last_year, :prev_year
 
   # Short-hand for years_since(1)
   def next_year
@@ -154,33 +156,54 @@ class Time
   def prev_month
     months_ago(1)
   end
+  alias_method :last_month, :prev_month
 
   # Short-hand for months_since(1)
   def next_month
     months_since(1)
   end
 
-  # Returns a new Time representing the "start" of this week (Monday, 0:00)
-  def beginning_of_week
-    days_to_monday = wday!=0 ? wday-1 : 6
-    (self - days_to_monday.days).midnight
+  # Returns number of days to start of this week, week starts on start_day (default is :monday).
+  def days_to_week_start(start_day = :monday)
+    start_day_number = DAYS_INTO_WEEK[start_day]
+    current_day_number = wday != 0 ? wday - 1 : 6
+    days_span = current_day_number - start_day_number
+    days_span >= 0 ? days_span : 7 + days_span
   end
-  alias :monday :beginning_of_week
+
+  # Returns a new Time representing the "start" of this week, week starts on start_day (default is :monday, i.e. Monday, 0:00).
+  def beginning_of_week(start_day = :monday)
+    days_to_start = days_to_week_start(start_day)
+    (self - days_to_start.days).midnight
+  end
   alias :at_beginning_of_week :beginning_of_week
 
-  # Returns a new Time representing the end of this week, (end of Sunday)
-  def end_of_week
-    days_to_sunday = wday!=0 ? 7-wday : 0
-    (self + days_to_sunday.days).end_of_day
+  # Returns a new +Date+/+DateTime+ representing the start of this week. Week is
+  # assumed to start on a Monday. +DateTime+ objects have their time set to 0:00.
+  def monday
+    beginning_of_week
+  end
+
+  # Returns a new Time representing the end of this week, week starts on start_day (default is :monday, i.e. end of Sunday).
+  def end_of_week(start_day = :monday)
+    days_to_end =  6 - days_to_week_start(start_day)
+    (self + days_to_end.days).end_of_day
   end
   alias :at_end_of_week :end_of_week
 
-  # Returns a new Time representing the start of the given day in the previous week (default is Monday).
+  # Returns a new +Date+/+DateTime+ representing the end of this week. Week is
+  # assumed to start on a Monday. +DateTime+ objects have their time set to 23:59:59.
+  def sunday
+    end_of_week
+  end
+
+  # Returns a new Time representing the start of the given day in the previous week (default is :monday).
   def prev_week(day = :monday)
     ago(1.week).beginning_of_week.since(DAYS_INTO_WEEK[day].day).change(:hour => 0)
   end
+  alias_method :last_week, :prev_week
 
-  # Returns a new Time representing the start of the given day in next week (default is Monday).
+  # Returns a new Time representing the start of the given day in next week (default is :monday).
   def next_week(day = :monday)
     since(1.week).beginning_of_week.since(DAYS_INTO_WEEK[day].day).change(:hour => 0)
   end
@@ -253,9 +276,9 @@ class Time
     beginning_of_day..end_of_day
   end
 
-  # Returns a Range representing the whole week of the current time.
-  def all_week
-    beginning_of_week..end_of_week
+  # Returns a Range representing the whole week of the current time. Week starts on start_day (default is :monday, i.e. end of Sunday).
+  def all_week(start_day = :monday)
+    beginning_of_week(start_day)..end_of_week(start_day)
   end
 
   # Returns a Range representing the whole month of the current time.
@@ -311,4 +334,14 @@ class Time
   end
   alias_method :compare_without_coercion, :<=>
   alias_method :<=>, :compare_with_coercion
+
+  # Layers additional behavior on Time#eql? so that ActiveSupport::TimeWithZone instances
+  # can be eql? to an equivalent Time
+  def eql_with_coercion(other)
+    # if other is an ActiveSupport::TimeWithZone, coerce a Time instance from it so we can do eql? comparison
+    other = other.comparable_time if other.respond_to?(:comparable_time)
+    eql_without_coercion(other)
+  end
+  alias_method :eql_without_coercion, :eql?
+  alias_method :eql?, :eql_with_coercion
 end

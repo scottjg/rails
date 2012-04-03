@@ -8,20 +8,22 @@ module ActiveSupport
     # A cache store implementation which stores everything on the filesystem.
     #
     # FileStore implements the Strategy::LocalCache strategy which implements
-    # an in memory cache inside of a block.
+    # an in-memory cache inside of a block.
     class FileStore < Store
       attr_reader :cache_path
 
       DIR_FORMATTER = "%03X"
+      FILENAME_MAX_SIZE = 228 # max filename size on file system is 255, minus room for timestamp and random characters appended by Tempfile (used by atomic write)
+      EXCLUDED_DIRS = ['.', '..'].freeze
 
       def initialize(cache_path, options = nil)
         super(options)
-        @cache_path = cache_path
+        @cache_path = cache_path.to_s
         extend Strategy::LocalCache
       end
 
       def clear(options = nil)
-        root_dirs = Dir.entries(cache_path).reject{|f| f.in?(['.', '..'])}
+        root_dirs = Dir.entries(cache_path).reject{|f| f.in?(EXCLUDED_DIRS)}
         FileUtils.rm_r(root_dirs.collect{|f| File.join(cache_path, f)})
       end
 
@@ -129,28 +131,26 @@ module ActiveSupport
           hash, dir_1 = hash.divmod(0x1000)
           dir_2 = hash.modulo(0x1000)
           fname_paths = []
-          # Make sure file name is < 255 characters so it doesn't exceed file system limits.
-          if fname.size <= 255
-            fname_paths << fname
-          else
-            while fname.size <= 255
-              fname_path << fname[0, 255]
-              fname = fname[255, -1]
-            end
-          end
+
+          # Make sure file name doesn't exceed file system limits.
+          begin
+            fname_paths << fname[0, FILENAME_MAX_SIZE]
+            fname = fname[FILENAME_MAX_SIZE..-1]
+          end until fname.blank?
+
           File.join(cache_path, DIR_FORMATTER % dir_1, DIR_FORMATTER % dir_2, *fname_paths)
         end
 
         # Translate a file path into a key.
         def file_path_key(path)
-          fname = path[cache_path.size, path.size].split(File::SEPARATOR, 4).last
+          fname = path[cache_path.to_s.size..-1].split(File::SEPARATOR, 4).last
           Rack::Utils.unescape(fname)
         end
 
         # Delete empty directories in the cache.
         def delete_empty_directories(dir)
           return if dir == cache_path
-          if Dir.entries(dir).reject{|f| f.in?(['.', '..'])}.empty?
+          if Dir.entries(dir).reject{|f| f.in?(EXCLUDED_DIRS)}.empty?
             File.delete(dir) rescue nil
             delete_empty_directories(File.dirname(dir))
           end
@@ -162,8 +162,9 @@ module ActiveSupport
         end
 
         def search_dir(dir, &callback)
+          return if !File.exist?(dir)
           Dir.foreach(dir) do |d|
-            next if d == "." || d == ".."
+            next if d.in?(EXCLUDED_DIRS)
             name = File.join(dir, d)
             if File.directory?(name)
               search_dir(name, &callback)

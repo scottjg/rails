@@ -1,5 +1,4 @@
 require 'active_support/inflector/methods'
-require 'active_support/core_ext/time/publicize_conversion_methods'
 require 'active_support/values/time_zone'
 
 class Time
@@ -54,10 +53,4 @@ class Time
   def formatted_offset(colon = true, alternate_utc_string = nil)
     utc? && alternate_utc_string || ActiveSupport::TimeZone.seconds_to_utc_offset(utc_offset, colon)
   end
-
-  # A method to keep Time, Date and DateTime instances interchangeable on conversions.
-  # In this case, it simply returns +self+.
-  def to_time
-    self
-  end unless method_defined?(:to_time)
 end

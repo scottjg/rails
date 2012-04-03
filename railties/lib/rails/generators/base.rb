@@ -31,10 +31,9 @@ module Rails
       # root otherwise uses a default description.
       def self.desc(description=nil)
         return super if description
-        usage = source_root && File.expand_path("../USAGE", source_root)
 
-        @desc ||= if usage && File.exist?(usage)
-          File.read(usage)
+        @desc ||= if usage_path
+          ERB.new(File.read(usage_path)).result(binding)
         else
           "Description:\n    Create #{base_name.humanize.downcase} files for #{generator_name} generator."
         end
@@ -46,6 +45,12 @@ module Rails
       def self.namespace(name=nil)
         return super if name
         @namespace ||= super.sub(/_generator$/, '').sub(/:generators:/, ':')
+      end
+
+      # Convenience method to hide this generator from the available ones when
+      # running rails generator command.
+      def self.hide!
+        Rails::Generators.hide_namespace self.namespace
       end
 
       # Invoke a generator based on the value supplied by the user to the
@@ -128,13 +133,13 @@ module Rails
       #
       # ==== Boolean hooks
       #
-      # In some cases, you want to provide a boolean hook. For example, webrat
+      # In some cases, you may want to provide a boolean hook. For example, webrat
       # developers might want to have webrat available on controller generator.
       # This can be achieved as:
       #
       #   Rails::Generators::ControllerGenerator.hook_for :webrat, :type => :boolean
       #
-      # Then, if you want, webrat to be invoked, just supply:
+      # Then, if you want webrat to be invoked, just supply:
       #
       #   rails generate controller Account --webrat
       #
@@ -146,7 +151,7 @@ module Rails
       #
       # You can also supply a block to hook_for to customize how the hook is
       # going to be invoked. The block receives two arguments, an instance
-      # of the current class and the klass to be invoked.
+      # of the current class and the class to be invoked.
       #
       # For example, in the resource generator, the controller should be invoked
       # with a pluralized class name. But by default it is invoked with the same
@@ -207,7 +212,8 @@ module Rails
       # root, you should use source_root.
       def self.default_source_root
         return unless base_name && generator_name
-        path = File.expand_path(File.join(base_name, generator_name, 'templates'), base_root)
+        return unless default_generator_root
+        path = File.join(default_generator_root, 'templates')
         path if File.exists?(path)
       end
 
@@ -254,17 +260,13 @@ module Rails
             nesting = class_name.split('::')
             last_name = nesting.pop
 
-            # Hack to limit const_defined? to non-inherited on 1.9
-            extra = []
-            extra << false unless Object.method(:const_defined?).arity == 1
-
             # Extract the last Module in the nesting
             last = nesting.inject(Object) do |last_module, nest|
-              break unless last_module.const_defined?(nest, *extra)
+              break unless last_module.const_defined?(nest, false)
               last_module.const_get(nest)
             end
 
-            if last && last.const_defined?(last_name.camelize, *extra)
+            if last && last.const_defined?(last_name.camelize, false)
               raise Error, "The name '#{class_name}' is either already used in your application " <<
                            "or reserved by Ruby on Rails. Please choose an alternative and run "  <<
                            "this generator again."
@@ -369,6 +371,19 @@ module Rails
               end
             end
           }
+        end
+
+        def self.usage_path
+          paths = [
+            source_root && File.expand_path("../USAGE", source_root),
+            default_generator_root && File.join(default_generator_root, "USAGE")
+          ]
+          paths.compact.detect { |path| File.exists? path }
+        end
+
+        def self.default_generator_root
+          path = File.expand_path(File.join(base_name, generator_name), base_root)
+          path if File.exists?(path)
         end
 
     end

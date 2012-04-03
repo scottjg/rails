@@ -109,12 +109,31 @@ module ActiveRecord
       end
     end
 
+    # Finds the first record matching the specified conditions. There
+    # is no implied ording so if order matters, you should specify it
+    # yourself.
+    #
+    # If no record is found, returns <tt>nil</tt>.
+    #
+    #   Post.find_by name: 'Spartacus', rating: 4
+    #   Post.find_by "published_at < ?", 2.weeks.ago
+    #
+    def find_by(*args)
+      where(*args).first
+    end
+
+    # Like <tt>find_by</tt>, except that if no record is found, raises
+    # an <tt>ActiveRecord::RecordNotFound</tt> error.
+    def find_by!(*args)
+      where(*args).first!
+    end
+
     # A convenience wrapper for <tt>find(:first, *args)</tt>. You can pass in all the
     # same arguments to this method as you can to <tt>find(:first)</tt>.
     def first(*args)
       if args.any?
         if args.first.kind_of?(Integer) || (loaded? && !args.first.kind_of?(Hash))
-          to_a.first(*args)
+          limit(*args).to_a
         else
           apply_finder_options(args.first).first
         end
@@ -134,7 +153,11 @@ module ActiveRecord
     def last(*args)
       if args.any?
         if args.first.kind_of?(Integer) || (loaded? && !args.first.kind_of?(Hash))
-          to_a.last(*args)
+          if order_values.empty?
+            order("#{primary_key} DESC").limit(*args).reverse
+          else
+            to_a.last(*args)
+          end
         else
           apply_finder_options(args.first).last
         end
@@ -180,12 +203,14 @@ module ActiveRecord
     #   Person.exists?(:name => "David")
     #   Person.exists?(['name LIKE ?', "%#{query}%"])
     #   Person.exists?
-    def exists?(id = nil)
-      id = id.id if ActiveRecord::Base === id
+    def exists?(id = false)
+      return false if id.nil?
+
+      id = id.id if ActiveRecord::Model === id
 
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)
-      relation = relation.except(:select).select("1").limit(1)
+      relation = relation.except(:select, :order).select("1").limit(1)
 
       case id
       when Array, Hash
@@ -193,8 +218,8 @@ module ActiveRecord
       else
         relation = relation.where(table[primary_key].eq(id)) if id
       end
-      
-      connection.select_value(relation.to_sql, "#{name} Exists") ? true : false
+
+      connection.select_value(relation, "#{name} Exists", relation.bind_values)
     end
 
     protected
@@ -202,7 +227,7 @@ module ActiveRecord
     def find_with_associations
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)
-      rows = connection.select_all(relation.to_sql, 'SQL', relation.bind_values)
+      rows = connection.select_all(relation, 'SQL', relation.bind_values.dup)
       join_dependency.instantiate(rows)
     rescue ThrowResult
       []
@@ -284,7 +309,7 @@ module ActiveRecord
           r.assign_attributes(unprotected_attributes_for_create, :without_protection => true)
         end
         yield(record) if block_given?
-        record.save if match.instantiator == :create
+        record.send(match.save_method) if match.save_record?
       end
 
       record
@@ -312,20 +337,10 @@ module ActiveRecord
     def find_one(id)
       id = id.id if ActiveRecord::Base === id
 
-      if IdentityMap.enabled? && where_values.blank? &&
-        limit_value.blank? && order_values.blank? &&
-        includes_values.blank? && preload_values.blank? &&
-        readonly_value.nil? && joins_values.blank? &&
-        !@klass.locking_enabled? &&
-        record = IdentityMap.get(@klass, id)
-        return record
-      end
-
       column = columns_hash[primary_key]
-
       substitute = connection.substitute_at(column, @bind_values.length)
       relation = where(table[primary_key].eq(substitute))
-      relation.bind_values = [[column, id]]
+      relation.bind_values += [[column, id]]
       record = relation.first
 
       unless record

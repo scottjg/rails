@@ -14,7 +14,7 @@ class MethodScopingTest < ActiveRecord::TestCase
 
   def test_set_conditions
     Developer.send(:with_scope, :find => { :conditions => 'just a test...' }) do
-      assert_match '(just a test...)', Developer.scoped.arel.to_sql
+      assert_match '(just a test...)', Developer.scoped.to_sql
     end
   end
 
@@ -104,7 +104,7 @@ class MethodScopingTest < ActiveRecord::TestCase
   def test_scoped_find_include
     # with the include, will retrieve only developers for the given project
     scoped_developers = Developer.send(:with_scope, :find => { :include => :projects }) do
-      Developer.find(:all, :conditions => 'projects.id = 2')
+      Developer.find(:all, :conditions => { 'projects.id' => 2 })
     end
     assert scoped_developers.include?(developers(:david))
     assert !scoped_developers.include?(developers(:jamis))
@@ -204,7 +204,7 @@ class MethodScopingTest < ActiveRecord::TestCase
   def test_scoped_count_include
     # with the include, will retrieve only developers for the given project
     Developer.send(:with_scope, :find => { :include => :projects }) do
-      assert_equal 1, Developer.count(:conditions => 'projects.id = 2')
+      assert_equal 1, Developer.count(:conditions => { 'projects.id' => 2 })
     end
   end
 
@@ -274,7 +274,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     Developer.send(:with_scope, :find => { :conditions => 'salary = 80000' }) do
       Developer.send(:with_scope, :find => { :limit => 10 }) do
         devs = Developer.scoped
-        assert_match '(salary = 80000)', devs.arel.to_sql
+        assert_match '(salary = 80000)', devs.to_sql
         assert_equal 10, devs.taken
       end
     end
@@ -308,7 +308,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     Developer.send(:with_scope, :find => { :conditions => "name = 'David'" }) do
       Developer.send(:with_scope, :find => { :conditions => 'salary = 80000' }) do
         devs = Developer.scoped
-        assert_match "(name = 'David') AND (salary = 80000)", devs.arel.to_sql
+        assert_match "(name = 'David') AND (salary = 80000)", devs.to_sql
         assert_equal(1, Developer.count)
       end
       Developer.send(:with_scope, :find => { :conditions => "name = 'Maiha'" }) do
@@ -321,7 +321,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     Developer.send(:with_scope, :find => { :conditions => 'salary = 80000', :limit => 10 }) do
       Developer.send(:with_scope, :find => { :conditions => "name = 'David'" }) do
         devs = Developer.scoped
-        assert_match "(salary = 80000) AND (name = 'David')", devs.arel.to_sql
+        assert_match "(salary = 80000) AND (name = 'David')", devs.to_sql
         assert_equal 10, devs.taken
       end
     end
@@ -339,7 +339,7 @@ class NestedScopingTest < ActiveRecord::TestCase
 
   def test_nested_scoped_find_include
     Developer.send(:with_scope, :find => { :include => :projects }) do
-      Developer.send(:with_scope, :find => { :conditions => "projects.id = 2" }) do
+      Developer.send(:with_scope, :find => { :conditions => { 'projects.id' => 2 } }) do
         assert_nothing_raised { Developer.find(1) }
         assert_equal('David', Developer.find(:first).name)
       end
@@ -348,7 +348,7 @@ class NestedScopingTest < ActiveRecord::TestCase
 
   def test_nested_scoped_find_merged_include
     # :include's remain unique and don't "double up" when merging
-    Developer.send(:with_scope, :find => { :include => :projects, :conditions => "projects.id = 2" }) do
+    Developer.send(:with_scope, :find => { :include => :projects, :conditions => { 'projects.id' => 2 } }) do
       Developer.send(:with_scope, :find => { :include => :projects }) do
         assert_equal 1, Developer.scoped.includes_values.uniq.length
         assert_equal 'David', Developer.find(:first).name
@@ -356,7 +356,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     end
 
     # the nested scope doesn't remove the first :include
-    Developer.send(:with_scope, :find => { :include => :projects, :conditions => "projects.id = 2" }) do
+    Developer.send(:with_scope, :find => { :include => :projects, :conditions => { 'projects.id' => 2 } }) do
       Developer.send(:with_scope, :find => { :include => [] }) do
         assert_equal 1, Developer.scoped.includes_values.uniq.length
         assert_equal('David', Developer.find(:first).name)
@@ -364,7 +364,7 @@ class NestedScopingTest < ActiveRecord::TestCase
     end
 
     # mixing array and symbol include's will merge correctly
-    Developer.send(:with_scope, :find => { :include => [:projects], :conditions => "projects.id = 2" }) do
+    Developer.send(:with_scope, :find => { :include => [:projects], :conditions => { 'projects.id' => 2 } }) do
       Developer.send(:with_scope, :find => { :include => :projects }) do
         assert_equal 1, Developer.scoped.includes_values.uniq.length
         assert_equal('David', Developer.find(:first).name)

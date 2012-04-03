@@ -38,7 +38,7 @@ module Rails
     end
 
     def readme
-      copy_file "README"
+      copy_file "README", "README.rdoc"
     end
 
     def gemfile
@@ -122,16 +122,16 @@ module Rails
     end
 
     def vendor
+      vendor_javascripts
       vendor_stylesheets
-      vendor_plugins
+    end
+
+    def vendor_javascripts
+      empty_directory_with_gitkeep "vendor/assets/javascripts"
     end
 
     def vendor_stylesheets
       empty_directory_with_gitkeep "vendor/assets/stylesheets"
-    end
-
-    def vendor_plugins
-      empty_directory_with_gitkeep "vendor/plugins"
     end
   end
 
@@ -139,7 +139,6 @@ module Rails
     # We need to store the RAILS_DEV_PATH in a constant, otherwise the path
     # can change in Ruby 1.8.7 when we FileUtils.cd.
     RAILS_DEV_PATH = File.expand_path("../../../../../..", File.dirname(__FILE__))
-
     RESERVED_NAMES = %w[application destroy benchmarker profiler plugin runner test]
 
     class AppGenerator < AppBase

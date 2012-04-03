@@ -347,6 +347,17 @@ class TestDefaultAutosaveAssociationOnABelongsToAssociation < ActiveRecord::Test
     client.save!
     assert_no_queries { assert_equal apple, client.firm }
   end
+
+  def test_validation_does_not_validate_stale_association_target
+    valid_developer   = Developer.create!(:name => "Dude", :salary => 50_000)
+    invalid_developer = Developer.new()
+
+    auditlog = AuditLog.new(:message => "foo")
+    auditlog.developer    = invalid_developer
+    auditlog.developer_id = valid_developer.id
+
+    assert auditlog.valid?
+  end
 end
 
 class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCase
@@ -575,6 +586,7 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
     @ship = @pirate.create_ship(:name => 'Nights Dirty Lightning')
   end
@@ -755,6 +767,16 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
     assert_equal before, @pirate.reload.birds
   end
 
+  def test_when_new_record_a_child_marked_for_destruction_should_not_affect_other_records_from_saving
+    @pirate = @ship.build_pirate(:catchphrase => "Arr' now I shall keep me eye on you matey!") # new record
+
+    3.times { |i| @pirate.birds.build(:name => "birds_#{i}") }
+    @pirate.birds[1].mark_for_destruction
+    @pirate.save!
+
+    assert_equal 2, @pirate.birds.reload.length
+  end
+
   # Add and remove callbacks tests for association collections.
   %w{ method proc }.each do |callback_type|
     define_method("test_should_run_add_callback_#{callback_type}s_for_has_many") do
@@ -897,6 +919,7 @@ class TestAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCase
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
     @ship = @pirate.create_ship(:name => 'Nights Dirty Lightning')
   end
@@ -965,10 +988,7 @@ class TestAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCase
     values = [@pirate.reload.catchphrase, @pirate.ship.name, *@pirate.ship.parts.map(&:name)]
     # Oracle saves empty string as NULL
     if current_adapter?(:OracleAdapter)
-      expected = ActiveRecord::IdentityMap.enabled? ?
-        [nil, nil, '', ''] :
-        [nil, nil, nil, nil]
-      assert_equal expected, values
+      assert_equal [nil, nil, nil, nil], values
     else
       assert_equal ['', '', '', ''], values
     end
@@ -1020,6 +1040,7 @@ class TestAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @ship = Ship.create(:name => 'Nights Dirty Lightning')
     @pirate = @ship.create_pirate(:catchphrase => "Don' botharrr talkin' like one, savvy?")
   end
@@ -1063,8 +1084,7 @@ class TestAutosaveAssociationOnABelongsToAssociation < ActiveRecord::TestCase
     @ship.save(:validate => false)
     # Oracle saves empty string as NULL
     if current_adapter?(:OracleAdapter)
-      expected = ActiveRecord::IdentityMap.enabled? ?  [nil, ''] : [nil, nil]
-      assert_equal expected, [@ship.reload.name, @ship.pirate.catchphrase]
+      assert_equal [nil, nil], [@ship.reload.name, @ship.pirate.catchphrase]
     else
       assert_equal ['', ''], [@ship.reload.name, @ship.pirate.catchphrase]
     end
@@ -1268,6 +1288,7 @@ class TestAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCase
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @association_name = :birds
 
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
@@ -1282,6 +1303,7 @@ class TestAutosaveAssociationOnAHasAndBelongsToManyAssociation < ActiveRecord::T
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @association_name = :parrots
     @habtm = true
 
@@ -1297,6 +1319,7 @@ class TestAutosaveAssociationValidationsOnAHasManyAssociation < ActiveRecord::Te
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
     @pirate.birds.create(:name => 'cookoo')
   end
@@ -1313,6 +1336,7 @@ class TestAutosaveAssociationValidationsOnAHasOneAssociation < ActiveRecord::Tes
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
     @pirate.create_ship(:name => 'titanic')
     super
@@ -1335,6 +1359,7 @@ class TestAutosaveAssociationValidationsOnABelongsToAssociation < ActiveRecord::
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
   end
 
@@ -1355,6 +1380,7 @@ class TestAutosaveAssociationValidationsOnAHABTMAssociation < ActiveRecord::Test
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.create(:catchphrase => "Don' botharrr talkin' like one, savvy?")
   end
 
@@ -1377,6 +1403,7 @@ class TestAutosaveAssociationValidationMethodsGeneration < ActiveRecord::TestCas
   self.use_transactional_fixtures = false unless supports_savepoints?
 
   def setup
+    super
     @pirate = Pirate.new
   end
 

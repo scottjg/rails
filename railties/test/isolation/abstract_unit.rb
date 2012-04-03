@@ -8,8 +8,9 @@
 # Rails booted up.
 require 'fileutils'
 
-require 'test/unit'
 require 'rubygems'
+require 'minitest/autorun'
+require 'active_support/test_case'
 
 # TODO: Remove setting this magic constant
 RAILS_FRAMEWORK_ROOT = File.expand_path("#{File.dirname(__FILE__)}/../../..")
@@ -115,7 +116,12 @@ module TestHelpers
         end
       end
 
-      add_to_config 'config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"; config.session_store :cookie_store, :key => "_myapp_session"; config.active_support.deprecation = :log'
+      add_to_config <<-RUBY
+        config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"
+        config.session_store :cookie_store, :key => "_myapp_session"
+        config.active_support.deprecation = :log
+        config.action_controller.allow_forgery_protection = false
+      RUBY
     end
 
     def teardown_app
@@ -178,20 +184,6 @@ module TestHelpers
       end
     end
 
-    def plugin(name, string = "")
-      dir = "#{app_path}/vendor/plugins/#{name}"
-      FileUtils.mkdir_p(dir)
-
-      File.open("#{dir}/init.rb", 'w') do |f|
-        f.puts "::#{name.upcase} = 'loaded'"
-        f.puts string
-      end
-
-      Bukkit.new(dir).tap do |bukkit|
-        yield bukkit if block_given?
-      end
-    end
-
     def engine(name)
       dir = "#{app_path}/random/#{name}"
       FileUtils.mkdir_p(dir)
@@ -224,6 +216,15 @@ module TestHelpers
       end
     end
 
+    def add_to_env_config(env, str)
+      environment = File.read("#{app_path}/config/environments/#{env}.rb")
+      if environment =~ /(\n\s*end\s*)\Z/
+        File.open("#{app_path}/config/environments/#{env}.rb", 'w') do |f|
+          f.puts $` + "\n#{str}\n" + $1
+        end
+      end
+    end
+
     def remove_from_config(str)
       file = "#{app_path}/config/application.rb"
       contents = File.read(file)
@@ -249,9 +250,11 @@ module TestHelpers
     def use_frameworks(arr)
       to_remove =  [:actionmailer,
                     :activemodel,
-                    :activerecord,
-                    :activeresource] - arr
-      remove_from_config "config.active_record.identity_map = true" if to_remove.include? :activerecord
+                    :activerecord] - arr
+      if to_remove.include? :activerecord
+        remove_from_config "config.active_record.whitelist_attributes = true"
+        remove_from_config "config.active_record.dependent_restrict_raises = false"
+      end
       $:.reject! {|path| path =~ %r'/(#{to_remove.join('|')})/' }
     end
 
@@ -261,7 +264,7 @@ module TestHelpers
   end
 end
 
-class Test::Unit::TestCase
+class ActiveSupport::TestCase
   include TestHelpers::Paths
   include TestHelpers::Rack
   include TestHelpers::Generation
@@ -282,7 +285,7 @@ Module.new do
     require_environment = "-r #{environment}"
   end
 
-  `#{Gem.ruby} #{require_environment} #{RAILS_FRAMEWORK_ROOT}/bin/rails new #{tmp_path('app_template')}`
+  `#{Gem.ruby} #{require_environment} #{RAILS_FRAMEWORK_ROOT}/railties/bin/rails new #{tmp_path('app_template')}`
   File.open("#{tmp_path}/app_template/config/boot.rb", 'w') do |f|
     if require_environment
       f.puts "Dir.chdir('#{File.dirname(environment)}') do"

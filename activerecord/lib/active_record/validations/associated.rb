@@ -2,8 +2,9 @@ module ActiveRecord
   module Validations
     class AssociatedValidator < ActiveModel::EachValidator
       def validate_each(record, attribute, value)
-        return if (value.is_a?(Array) ? value : [value]).collect{ |r| r.nil? || r.valid? }.all?
-        record.errors.add(attribute, :invalid, options.merge(:value => value))
+        if Array.wrap(value).reject {|r| r.marked_for_destruction? || r.valid?(record.validation_context) }.any?
+          record.errors.add(attribute, :invalid, options.merge(:value => value))
+        end
       end
     end
 
@@ -17,15 +18,7 @@ module ActiveRecord
       #     validates_associated :pages, :library
       #   end
       #
-      # Warning: If, after the above definition, you then wrote:
-      #
-      #   class Page < ActiveRecord::Base
-      #     belongs_to :book
-      #
-      #     validates_associated :book
-      #   end
-      #
-      # this would specify a circular dependency and cause infinite recursion.
+      # WARNING: This validation must not be used on both ends of an association. Doing so will lead to a circular dependency and cause infinite recursion.
       #
       # NOTE: This validation will not fail if the association hasn't been assigned. If you want to
       # ensure that the association is both present and guaranteed to be valid, you also need to

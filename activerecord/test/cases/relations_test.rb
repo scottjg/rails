@@ -4,11 +4,11 @@ require 'models/tagging'
 require 'models/post'
 require 'models/topic'
 require 'models/comment'
-require 'models/reply'
 require 'models/author'
 require 'models/comment'
 require 'models/entrant'
 require 'models/developer'
+require 'models/reply'
 require 'models/company'
 require 'models/bird'
 require 'models/car'
@@ -184,12 +184,12 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_finding_with_complex_order_and_limit
-    tags = Tag.includes(:taggings).order("REPLACE('abc', taggings.taggable_type, taggings.taggable_type)").limit(1).to_a
+    tags = Tag.includes(:taggings).references(:taggings).order("REPLACE('abc', taggings.taggable_type, taggings.taggable_type)").limit(1).to_a
     assert_equal 1, tags.length
   end
 
   def test_finding_with_complex_order
-    tags = Tag.includes(:taggings).order("REPLACE('abc', taggings.taggable_type, taggings.taggable_type)").to_a
+    tags = Tag.includes(:taggings).references(:taggings).order("REPLACE('abc', taggings.taggable_type, taggings.taggable_type)").to_a
     assert_equal 3, tags.length
   end
 
@@ -213,6 +213,19 @@ class RelationTest < ActiveRecord::TestCase
   def test_select_with_block
     even_ids = Developer.scoped.select {|d| d.id % 2 == 0 }.map(&:id)
     assert_equal [2, 4, 6, 8, 10], even_ids.sort
+  end
+
+  def test_none
+    assert_no_queries do
+      assert_equal [], Developer.none
+      assert_equal [], Developer.scoped.none
+    end
+  end
+
+  def test_none_chainable
+    assert_no_queries do
+      assert_equal [], Developer.none.where(:name => 'David')
+    end
   end
 
   def test_joins_with_nil_argument
@@ -310,7 +323,7 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.comments.first
     end
 
-    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 2) do
+    assert_queries(2) do
       posts = Post.preload(:comments).order('posts.id')
       assert posts.first.comments.first
     end
@@ -320,12 +333,12 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.author
     end
 
-    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 2) do
+    assert_queries(2) do
       posts = Post.preload(:author).order('posts.id')
       assert posts.first.author
     end
 
-    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 3) do
+    assert_queries(3) do
       posts = Post.preload(:author, :comments).order('posts.id')
       assert posts.first.author
       assert posts.first.comments.first
@@ -338,7 +351,7 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.comments.first
     end
 
-    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 2) do
+    assert_queries(2) do
       posts = Post.scoped.includes(:comments).order('posts.id')
       assert posts.first.comments.first
     end
@@ -348,7 +361,7 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.author
     end
 
-    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 3) do
+    assert_queries(3) do
       posts = Post.includes(:author, :comments).order('posts.id')
       assert posts.first.author
       assert posts.first.comments.first
@@ -449,6 +462,18 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal authors(:david), authors.find_or_create_by_name(:name => 'David')
   end
 
+  def test_dynamic_find_or_create_by_attributes_bang
+    authors = Author.scoped
+
+    assert_raises(ActiveRecord::RecordInvalid) { authors.find_or_create_by_name!('') }
+
+    lifo = authors.find_or_create_by_name!('Lifo')
+    assert_equal "Lifo", lifo.name
+    assert lifo.persisted?
+
+    assert_equal authors(:david), authors.find_or_create_by_name!(:name => 'David')
+  end
+
   def test_find_id
     authors = Author.scoped
 
@@ -538,6 +563,29 @@ class RelationTest < ActiveRecord::TestCase
       relation = Author.where(:id => Author.where(:id => david.id))
       assert_equal [david], relation.all
     }
+  end
+
+  def test_find_all_using_where_with_relation_and_alternate_primary_key
+    cool_first = minivans(:cool_first)
+    # switching the lines below would succeed in current rails
+    # assert_queries(2) {
+    assert_queries(1) {
+      relation = Minivan.where(:minivan_id => Minivan.where(:name => cool_first.name))
+      assert_equal [cool_first], relation.all
+    }
+  end
+
+  def test_find_all_using_where_with_relation_does_not_alter_select_values
+    david = authors(:david)
+
+    subquery = Author.where(:id => david.id)
+
+    assert_queries(1) {
+      relation = Author.where(:id => subquery)
+      assert_equal [david], relation.all
+    }
+
+    assert_equal 0, subquery.select_values.size
   end
 
   def test_find_all_using_where_with_relation_with_joins
@@ -637,10 +685,8 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_relation_merging_with_preload
-    ActiveRecord::IdentityMap.without do
-      [Post.scoped.merge(Post.preload(:author)), Post.preload(:author).merge(Post.scoped)].each do |posts|
-        assert_queries(2) { assert posts.first.author }
-      end
+    [Post.scoped.merge(Post.preload(:author)), Post.preload(:author).merge(Post.scoped)].each do |posts|
+      assert_queries(2) { assert posts.first.author }
     end
   end
 
@@ -840,6 +886,128 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal 'hen', hen.name
   end
 
+  def test_first_or_create
+    parrot = Bird.where(:color => 'green').first_or_create(:name => 'parrot')
+    assert_kind_of Bird, parrot
+    assert parrot.persisted?
+    assert_equal 'parrot', parrot.name
+    assert_equal 'green', parrot.color
+
+    same_parrot = Bird.where(:color => 'green').first_or_create(:name => 'parakeet')
+    assert_kind_of Bird, same_parrot
+    assert same_parrot.persisted?
+    assert_equal parrot, same_parrot
+  end
+
+  def test_first_or_create_with_no_parameters
+    parrot = Bird.where(:color => 'green').first_or_create
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert_equal 'green', parrot.color
+  end
+
+  def test_first_or_create_with_block
+    parrot = Bird.where(:color => 'green').first_or_create { |bird| bird.name = 'parrot' }
+    assert_kind_of Bird, parrot
+    assert parrot.persisted?
+    assert_equal 'green', parrot.color
+    assert_equal 'parrot', parrot.name
+
+    same_parrot = Bird.where(:color => 'green').first_or_create { |bird| bird.name = 'parakeet' }
+    assert_equal parrot, same_parrot
+  end
+
+  def test_first_or_create_with_array
+    several_green_birds = Bird.where(:color => 'green').first_or_create([{:name => 'parrot'}, {:name => 'parakeet'}])
+    assert_kind_of Array, several_green_birds
+    several_green_birds.each { |bird| assert bird.persisted? }
+
+    same_parrot = Bird.where(:color => 'green').first_or_create([{:name => 'hummingbird'}, {:name => 'macaw'}])
+    assert_kind_of Bird, same_parrot
+    assert_equal several_green_birds.first, same_parrot
+  end
+
+  def test_first_or_create_bang_with_valid_options
+    parrot = Bird.where(:color => 'green').first_or_create!(:name => 'parrot')
+    assert_kind_of Bird, parrot
+    assert parrot.persisted?
+    assert_equal 'parrot', parrot.name
+    assert_equal 'green', parrot.color
+
+    same_parrot = Bird.where(:color => 'green').first_or_create!(:name => 'parakeet')
+    assert_kind_of Bird, same_parrot
+    assert same_parrot.persisted?
+    assert_equal parrot, same_parrot
+  end
+
+  def test_first_or_create_bang_with_invalid_options
+    assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create!(:pirate_id => 1) }
+  end
+
+  def test_first_or_create_bang_with_no_parameters
+    assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create! }
+  end
+
+  def test_first_or_create_bang_with_valid_block
+    parrot = Bird.where(:color => 'green').first_or_create! { |bird| bird.name = 'parrot' }
+    assert_kind_of Bird, parrot
+    assert parrot.persisted?
+    assert_equal 'green', parrot.color
+    assert_equal 'parrot', parrot.name
+
+    same_parrot = Bird.where(:color => 'green').first_or_create! { |bird| bird.name = 'parakeet' }
+    assert_equal parrot, same_parrot
+  end
+
+  def test_first_or_create_bang_with_invalid_block
+    assert_raise(ActiveRecord::RecordInvalid) do
+      Bird.where(:color => 'green').first_or_create! { |bird| bird.pirate_id = 1 }
+    end
+  end
+
+  def test_first_or_create_with_valid_array
+    several_green_birds = Bird.where(:color => 'green').first_or_create!([{:name => 'parrot'}, {:name => 'parakeet'}])
+    assert_kind_of Array, several_green_birds
+    several_green_birds.each { |bird| assert bird.persisted? }
+
+    same_parrot = Bird.where(:color => 'green').first_or_create!([{:name => 'hummingbird'}, {:name => 'macaw'}])
+    assert_kind_of Bird, same_parrot
+    assert_equal several_green_birds.first, same_parrot
+  end
+
+  def test_first_or_create_with_invalid_array
+    assert_raises(ActiveRecord::RecordInvalid) { Bird.where(:color => 'green').first_or_create!([ {:name => 'parrot'}, {:pirate_id => 1} ]) }
+  end
+
+  def test_first_or_initialize
+    parrot = Bird.where(:color => 'green').first_or_initialize(:name => 'parrot')
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert parrot.valid?
+    assert parrot.new_record?
+    assert_equal 'parrot', parrot.name
+    assert_equal 'green', parrot.color
+  end
+
+  def test_first_or_initialize_with_no_parameters
+    parrot = Bird.where(:color => 'green').first_or_initialize
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert !parrot.valid?
+    assert parrot.new_record?
+    assert_equal 'green', parrot.color
+  end
+
+  def test_first_or_initialize_with_block
+    parrot = Bird.where(:color => 'green').first_or_initialize { |bird| bird.name = 'parrot' }
+    assert_kind_of Bird, parrot
+    assert !parrot.persisted?
+    assert parrot.valid?
+    assert parrot.new_record?
+    assert_equal 'green', parrot.color
+    assert_equal 'parrot', parrot.name
+  end
+
   def test_explicit_create_scope
     hens = Bird.where(:name => 'hen')
     assert_equal 'hen', hens.new.name
@@ -959,6 +1127,167 @@ class RelationTest < ActiveRecord::TestCase
       )
     )
 
-    assert scope.eager_loading?
+    assert_deprecated do
+      assert scope.eager_loading?
+    end
+  end
+
+  def test_ordering_with_extra_spaces
+    assert_equal authors(:david), Author.order('id DESC , name DESC').last
+  end
+
+  def test_update_all_with_joins
+    comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id)
+    count    = comments.count
+
+    assert_equal count, comments.update_all(:post_id => posts(:thinking).id)
+    assert_equal posts(:thinking), comments(:greetings).post
+  end
+
+  def test_update_all_with_joins_and_limit
+    comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).limit(1)
+    assert_equal 1, comments.update_all(:post_id => posts(:thinking).id)
+  end
+
+  def test_update_all_with_joins_and_limit_and_order
+    comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).order('comments.id').limit(1)
+    assert_equal 1, comments.update_all(:post_id => posts(:thinking).id)
+    assert_equal posts(:thinking), comments(:greetings).post
+    assert_equal posts(:welcome),  comments(:more_greetings).post
+  end
+
+  def test_update_all_with_joins_and_offset
+    all_comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id)
+    count        = all_comments.count
+    comments     = all_comments.offset(1)
+
+    assert_equal count - 1, comments.update_all(:post_id => posts(:thinking).id)
+  end
+
+  def test_update_all_with_joins_and_offset_and_order
+    all_comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).order('posts.id', 'comments.id')
+    count        = all_comments.count
+    comments     = all_comments.offset(1)
+
+    assert_equal count - 1, comments.update_all(:post_id => posts(:thinking).id)
+    assert_equal posts(:thinking), comments(:more_greetings).post
+    assert_equal posts(:welcome),  comments(:greetings).post
+  end
+
+  def test_uniq
+    tag1 = Tag.create(:name => 'Foo')
+    tag2 = Tag.create(:name => 'Foo')
+
+    query = Tag.select(:name).where(:id => [tag1.id, tag2.id])
+
+    assert_equal ['Foo', 'Foo'], query.map(&:name)
+    assert_sql(/DISTINCT/) do
+      assert_equal ['Foo'], query.uniq.map(&:name)
+    end
+    assert_sql(/DISTINCT/) do
+      assert_equal ['Foo'], query.uniq(true).map(&:name)
+    end
+    assert_equal ['Foo', 'Foo'], query.uniq(true).uniq(false).map(&:name)
+  end
+
+  def test_references_triggers_eager_loading
+    scope = Post.includes(:comments)
+    assert !scope.eager_loading?
+    assert scope.references(:comments).eager_loading?
+  end
+
+  def test_references_doesnt_trigger_eager_loading_if_reference_not_included
+    scope = Post.references(:comments)
+    assert !scope.eager_loading?
+  end
+
+  def test_automatically_added_where_references
+    scope = Post.where(:comments => { :body => "Bla" })
+    assert_equal ['comments'], scope.references_values
+
+    scope = Post.where('comments.body' => 'Bla')
+    assert_equal ['comments'], scope.references_values
+  end
+
+  def test_automatically_added_having_references
+    scope = Post.having(:comments => { :body => "Bla" })
+    assert_equal ['comments'], scope.references_values
+
+    scope = Post.having('comments.body' => 'Bla')
+    assert_equal ['comments'], scope.references_values
+  end
+
+  def test_automatically_added_order_references
+    scope = Post.order('comments.body')
+    assert_equal ['comments'], scope.references_values
+
+    scope = Post.order('comments.body', 'yaks.body')
+    assert_equal ['comments', 'yaks'], scope.references_values
+
+    # Don't infer yaks, let's not go down that road again...
+    scope = Post.order('comments.body, yaks.body')
+    assert_equal ['comments'], scope.references_values
+
+    scope = Post.order('comments.body asc')
+    assert_equal ['comments'], scope.references_values
+
+    scope = Post.order('foo(comments.body)')
+    assert_equal [], scope.references_values
+  end
+
+  def test_presence
+    topics = Topic.scoped
+
+    # the first query is triggered because there are no topics yet.
+    assert_queries(1) { assert topics.present? }
+
+    # checking if there are topics is used before you actually display them,
+    # thus it shouldn't invoke an extra count query.
+    assert_no_queries { assert topics.present? }
+    assert_no_queries { assert !topics.blank? }
+
+    # shows count of topics and loops after loading the query should not trigger extra queries either.
+    assert_no_queries { topics.size }
+    assert_no_queries { topics.length }
+    assert_no_queries { topics.each }
+
+    # count always trigger the COUNT query.
+    assert_queries(1) { topics.count }
+
+    assert topics.loaded?
+  end
+
+  test "find_by with hash conditions returns the first matching record" do
+    assert_equal posts(:eager_other), Post.order(:id).find_by(author_id: 2)
+  end
+
+  test "find_by with non-hash conditions returns the first matching record" do
+    assert_equal posts(:eager_other), Post.order(:id).find_by("author_id = 2")
+  end
+
+  test "find_by with multi-arg conditions returns the first matching record" do
+    assert_equal posts(:eager_other), Post.order(:id).find_by('author_id = ?', 2)
+  end
+
+  test "find_by returns nil if the record is missing" do
+    assert_equal nil, Post.scoped.find_by("1 = 0")
+  end
+
+  test "find_by! with hash conditions returns the first matching record" do
+    assert_equal posts(:eager_other), Post.order(:id).find_by!(author_id: 2)
+  end
+
+  test "find_by! with non-hash conditions returns the first matching record" do
+    assert_equal posts(:eager_other), Post.order(:id).find_by!("author_id = 2")
+  end
+
+  test "find_by! with multi-arg conditions returns the first matching record" do
+    assert_equal posts(:eager_other), Post.order(:id).find_by!('author_id = ?', 2)
+  end
+
+  test "find_by! raises RecordNotFound if the record is missing" do
+    assert_raises(ActiveRecord::RecordNotFound) do
+      Post.scoped.find_by!("1 = 0")
+    end
   end
 end

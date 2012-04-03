@@ -29,6 +29,26 @@ class PersistencesTest < ActiveRecord::TestCase
       end
     end
 
+    def test_update_all_doesnt_ignore_order
+      assert_equal authors(:david).id + 1, authors(:mary).id # make sure there is going to be a duplicate PK error
+      test_update_with_order_succeeds = lambda do |order|
+        begin
+          Author.order(order).update_all('id = id + 1')
+        rescue ActiveRecord::ActiveRecordError
+          false
+        end
+      end
+
+      if test_update_with_order_succeeds.call('id DESC')
+        assert !test_update_with_order_succeeds.call('id ASC') # test that this wasn't a fluke and using an incorrect order results in an exception
+      else
+        # test that we're failing because the current Arel's engine doesn't support UPDATE ORDER BY queries is using subselects instead
+        assert_sql(/\AUPDATE .+ \(SELECT .* ORDER BY id DESC\)\Z/i) do
+          test_update_with_order_succeeds.call('id DESC')
+        end
+      end
+    end
+
     def test_update_all_with_order_and_limit_updates_subset_only
       author = authors(:david)
       assert_nothing_raised do
@@ -182,9 +202,12 @@ class PersistencesTest < ActiveRecord::TestCase
   end
 
   def test_create_columns_not_equal_attributes
-    topic = Topic.new
-    topic.title = 'Another New Topic'
-    topic.send :write_attribute, 'does_not_exist', 'test'
+    topic = Topic.allocate.init_with(
+      'attributes' => {
+        'title'          => 'Another New Topic',
+        'does_not_exist' => 'test'
+      }
+    )
     assert_nothing_raised { topic.save }
   end
 
@@ -229,9 +252,11 @@ class PersistencesTest < ActiveRecord::TestCase
     topic.title = "Still another topic"
     topic.save
 
-    topicReloaded = Topic.find(topic.id)
-    topicReloaded.title = "A New Topic"
-    topicReloaded.send :write_attribute, 'does_not_exist', 'test'
+    topicReloaded = Topic.allocate
+    topicReloaded.init_with(
+      'attributes' => topic.attributes.merge('does_not_exist' => 'test')
+    )
+    topicReloaded.title = 'A New Topic'
     assert_nothing_raised { topicReloaded.save }
   end
 

@@ -1,11 +1,9 @@
 require 'active_support/core_ext/object/to_json'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/json/variable'
-require 'active_support/ordered_hash'
 
 require 'bigdecimal'
 require 'active_support/core_ext/big_decimal/conversions' # for #to_s
-require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/object/instance_variables'
@@ -38,7 +36,7 @@ module ActiveSupport
         attr_reader :options
 
         def initialize(options = nil)
-          @options = options
+          @options = options || {}
           @seen = Set.new
         end
 
@@ -50,16 +48,16 @@ module ActiveSupport
         end
 
         # like encode, but only calls as_json, without encoding to string
-        def as_json(value)
+        def as_json(value, use_options = true)
           check_for_circular_references(value) do
-            value.as_json(options_for(value))
+            use_options ? value.as_json(options_for(value)) : value.as_json
           end
         end
 
         def options_for(value)
           if value.is_a?(Array) || value.is_a?(Hash)
             # hashes and arrays need to get encoder in the options, so that they can detect circular references
-            (options || {}).merge(:encoder => self)
+            options.merge(:encoder => self)
           else
             options
           end
@@ -119,9 +117,7 @@ module ActiveSupport
         end
 
         def escape(string)
-          if string.respond_to?(:force_encoding)
-            string = string.encode(::Encoding::UTF_8, :undef => :replace).force_encoding(::Encoding::BINARY)
-          end
+          string = string.encode(::Encoding::UTF_8, :undef => :replace).force_encoding(::Encoding::BINARY)
           json = string.
             gsub(escape_regex) { |s| ESCAPED_CHARS[s] }.
             gsub(/([\xC0-\xDF][\x80-\xBF]|
@@ -130,7 +126,7 @@ module ActiveSupport
             s.unpack("U*").pack("n*").unpack("H*")[0].gsub(/.{4}/n, '\\\\u\&')
           }
           json = %("#{json}")
-          json.force_encoding(::Encoding::UTF_8) if json.respond_to?(:force_encoding)
+          json.force_encoding(::Encoding::UTF_8)
           json
         end
       end
@@ -151,8 +147,8 @@ class Object
   end
 end
 
-class Struct
-  def as_json(options = nil) #:nodoc:
+class Struct #:nodoc:
+  def as_json(options = nil)
     Hash[members.zip(values)]
   end
 end
@@ -208,11 +204,15 @@ module Enumerable
   end
 end
 
+class Range
+  def as_json(options = nil) to_s end #:nodoc:
+end
+
 class Array
   def as_json(options = nil) #:nodoc:
     # use encoder as a proxy to call as_json on all elements, to protect from circular references
     encoder = options && options[:encoder] || ActiveSupport::JSON::Encoding::Encoder.new(options)
-    map { |v| encoder.as_json(v) }
+    map { |v| encoder.as_json(v, options) }
   end
 
   def encode_json(encoder) #:nodoc:
@@ -226,9 +226,9 @@ class Hash
     # create a subset of the hash by applying :only or :except
     subset = if options
       if attrs = options[:only]
-        slice(*Array.wrap(attrs))
+        slice(*Array(attrs))
       elsif attrs = options[:except]
-        except(*Array.wrap(attrs))
+        except(*Array(attrs))
       else
         self
       end
@@ -238,8 +238,7 @@ class Hash
 
     # use encoder as a proxy to call as_json on all values in the subset, to protect from circular references
     encoder = options && options[:encoder] || ActiveSupport::JSON::Encoding::Encoder.new(options)
-    result = self.is_a?(ActiveSupport::OrderedHash) ? ActiveSupport::OrderedHash : Hash
-    result[subset.map { |k, v| [k.to_s, encoder.as_json(v)] }]
+    Hash[subset.map { |k, v| [k.to_s, encoder.as_json(v, options)] }]
   end
 
   def encode_json(encoder)

@@ -15,6 +15,7 @@ class RequestTest < ActiveSupport::TestCase
 
     assert_equal 'http://www.example.com',  url_for
     assert_equal 'http://api.example.com',  url_for(:subdomain => 'api')
+    assert_equal 'http://example.com',      url_for(:subdomain => false)
     assert_equal 'http://www.ror.com',      url_for(:domain => 'ror.com')
     assert_equal 'http://api.ror.co.uk',    url_for(:host => 'www.ror.co.uk', :subdomain => 'api', :tld_length => 2)
     assert_equal 'http://www.example.com:8080',   url_for(:port => 8080)
@@ -35,13 +36,13 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request 'REMOTE_ADDR' => '1.2.3.4',
       'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
-    assert_equal '1.2.3.4', request.remote_ip
+    assert_equal '3.4.5.6', request.remote_ip
 
     request = stub_request 'REMOTE_ADDR' => '127.0.0.1',
       'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
     assert_equal '3.4.5.6', request.remote_ip
 
-    request = stub_request 'HTTP_X_FORWARDED_FOR' => 'unknown,3.4.5.6'
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => '3.4.5.6,unknown'
     assert_equal '3.4.5.6', request.remote_ip
 
     request = stub_request 'HTTP_X_FORWARDED_FOR' => '172.16.0.1,3.4.5.6'
@@ -62,7 +63,7 @@ class RequestTest < ActiveSupport::TestCase
     request = stub_request 'HTTP_X_FORWARDED_FOR' => 'unknown,192.168.0.1'
     assert_equal 'unknown', request.remote_ip
 
-    request = stub_request 'HTTP_X_FORWARDED_FOR' => '9.9.9.9, 3.4.5.6, 10.0.0.1, 172.31.4.4'
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => '3.4.5.6, 9.9.9.9, 10.0.0.1, 172.31.4.4'
     assert_equal '3.4.5.6', request.remote_ip
 
     request = stub_request 'HTTP_X_FORWARDED_FOR' => '1.1.1.1',
@@ -84,12 +85,17 @@ class RequestTest < ActiveSupport::TestCase
                            :ip_spoofing_check => false
     assert_equal '2.2.2.2', request.remote_ip
 
-    request = stub_request 'HTTP_X_FORWARDED_FOR' => '8.8.8.8, 9.9.9.9'
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => '9.9.9.9, 8.8.8.8'
     assert_equal '9.9.9.9', request.remote_ip
   end
 
-  test "remote ip with user specified trusted proxies" do
-    @trusted_proxies = /^67\.205\.106\.73$/i
+  test "remote ip when the remote ip middleware returns nil" do
+    request = stub_request 'REMOTE_ADDR' => '127.0.0.1'
+    assert_equal '127.0.0.1', request.remote_ip
+  end
+
+  test "remote ip with user specified trusted proxies String" do
+    @trusted_proxies = "67.205.106.73"
 
     request = stub_request 'REMOTE_ADDR' => '67.205.106.73',
                            'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
@@ -105,13 +111,24 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request 'REMOTE_ADDR' => '67.205.106.74,172.16.0.1',
                            'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
-    assert_equal '67.205.106.74', request.remote_ip
+    assert_equal '3.4.5.6', request.remote_ip
 
     request = stub_request 'HTTP_X_FORWARDED_FOR' => 'unknown,67.205.106.73'
     assert_equal 'unknown', request.remote_ip
 
-    request = stub_request 'HTTP_X_FORWARDED_FOR' => '9.9.9.9, 3.4.5.6, 10.0.0.1, 67.205.106.73'
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => '3.4.5.6, 9.9.9.9, 10.0.0.1, 67.205.106.73'
     assert_equal '3.4.5.6', request.remote_ip
+  end
+
+  test "remote ip with user specified trusted proxies Regexp" do
+    @trusted_proxies = /^67\.205\.106\.73$/i
+
+    request = stub_request 'REMOTE_ADDR' => '67.205.106.73',
+                           'HTTP_X_FORWARDED_FOR' => '3.4.5.6'
+    assert_equal '3.4.5.6', request.remote_ip
+
+    request = stub_request 'HTTP_X_FORWARDED_FOR' => '67.205.106.73, 10.0.0.1, 9.9.9.9, 3.4.5.6'
+    assert_equal '10.0.0.1', request.remote_ip
   end
 
   test "domains" do
@@ -308,14 +325,14 @@ class RequestTest < ActiveSupport::TestCase
   end
 
   test "String request methods" do
-    [:get, :post, :put, :delete].each do |method|
+    [:get, :post, :patch, :put, :delete].each do |method|
       request = stub_request 'REQUEST_METHOD' => method.to_s.upcase
       assert_equal method.to_s.upcase, request.method
     end
   end
 
   test "Symbol forms of request methods via method_symbol" do
-    [:get, :post, :put, :delete].each do |method|
+    [:get, :post, :patch, :put, :delete].each do |method|
       request = stub_request 'REQUEST_METHOD' => method.to_s.upcase
       assert_equal method, request.method_symbol
     end
@@ -329,7 +346,7 @@ class RequestTest < ActiveSupport::TestCase
   end
 
   test "allow method hacking on post" do
-    %w(GET OPTIONS PUT POST DELETE).each do |method|
+    %w(GET OPTIONS PATCH PUT POST DELETE).each do |method|
       request = stub_request "REQUEST_METHOD" => method.to_s.upcase
       assert_equal(method == "HEAD" ? "GET" : method, request.method)
     end
@@ -343,7 +360,7 @@ class RequestTest < ActiveSupport::TestCase
   end
 
   test "restrict method hacking" do
-    [:get, :put, :delete].each do |method|
+    [:get, :patch, :put, :delete].each do |method|
       request = stub_request 'REQUEST_METHOD' => method.to_s.upcase,
         'action_dispatch.request.request_parameters' => { :_method => 'put' }
       assert_equal method.to_s.upcase, request.method
@@ -356,6 +373,13 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal "GET",  request.request_method
     assert request.get?
     assert request.head?
+  end
+
+  test "post masquerading as patch" do
+    request = stub_request 'REQUEST_METHOD' => 'PATCH', "rack.methodoverride.original_method" => "POST"
+    assert_equal "POST", request.method
+    assert_equal "PATCH",  request.request_method
+    assert request.patch?
   end
 
   test "post masquerading as put" do
@@ -610,6 +634,30 @@ class RequestTest < ActiveSupport::TestCase
 
     path = request.filtered_path
     assert_equal "/authenticate?secret", path
+  end
+
+  test "original_fullpath returns ORIGINAL_FULLPATH" do
+    request = stub_request('ORIGINAL_FULLPATH' => "/foo?bar")
+
+    path = request.original_fullpath
+    assert_equal "/foo?bar", path
+  end
+
+  test "original_url returns url built using ORIGINAL_FULLPATH" do
+    request = stub_request('ORIGINAL_FULLPATH' => "/foo?bar",
+                           'HTTP_HOST'         => "example.org",
+                           'rack.url_scheme'   => "http")
+
+    url = request.original_url
+    assert_equal "http://example.org/foo?bar", url
+  end
+
+  test "original_fullpath returns fullpath if ORIGINAL_FULLPATH is not present" do
+    request = stub_request('PATH_INFO'    => "/foo",
+                           'QUERY_STRING' => "bar")
+
+    path = request.original_fullpath
+    assert_equal "/foo?bar", path
   end
 
 protected

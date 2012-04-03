@@ -5,7 +5,7 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
   SessionKey = '_myapp_session'
   SessionSecret = 'b3c631c314c0bbca50c1b2843150fe33'
 
-  Verifier = ActiveSupport::MessageVerifier.new(SessionSecret, 'SHA1')
+  Verifier = ActiveSupport::MessageVerifier.new(SessionSecret, :digest => 'SHA1')
   SignedBar = Verifier.generate(:foo => "bar", :session_id => SecureRandom.hex(16))
 
   class TestController < ActionController::Base
@@ -54,8 +54,6 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
       request.session_options[:renew] = true
       head :ok
     end
-
-    def rescue_action(e) raise end
   end
 
   def test_setting_session_value

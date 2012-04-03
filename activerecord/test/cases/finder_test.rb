@@ -48,6 +48,20 @@ class FinderTest < ActiveRecord::TestCase
     assert Topic.exists?
   end
 
+  # exists? should handle nil for id's that come from URLs and always return false
+  # (example: Topic.exists?(params[:id])) where params[:id] is nil
+  def test_exists_with_nil_arg
+    assert !Topic.exists?(nil)
+    assert Topic.exists?
+    assert !Topic.first.replies.exists?(nil)
+    assert Topic.first.replies.exists?
+  end
+
+  # ensures +exists?+ runs valid SQL by excluding order value
+  def test_exists_with_order
+    assert Topic.order(:id).uniq.exists?
+  end
+
   def test_does_not_exist_with_empty_table_and_no_args_given
     Topic.delete_all
     assert !Topic.exists?
@@ -243,6 +257,32 @@ class FinderTest < ActiveRecord::TestCase
     end
   end
 
+  def test_first_and_last_with_integer_should_use_sql_limit
+    assert_sql(/LIMIT 2|ROWNUM <= 2/) { Topic.first(2).entries }
+    assert_sql(/LIMIT 5|ROWNUM <= 5/) { Topic.last(5).entries }
+  end
+
+  def test_last_with_integer_and_order_should_keep_the_order
+    assert_equal Topic.order("title").to_a.last(2), Topic.order("title").last(2)
+  end
+
+  def test_last_with_integer_and_order_should_not_use_sql_limit
+    query = assert_sql { Topic.order("title").last(5).entries }
+    assert_equal 1, query.length
+    assert_no_match(/LIMIT/, query.first)
+  end
+
+  def test_last_with_integer_and_reorder_should_not_use_sql_limit
+    query = assert_sql { Topic.reorder("title").last(5).entries }
+    assert_equal 1, query.length
+    assert_no_match(/LIMIT/, query.first)
+  end
+
+  def test_first_and_last_with_integer_should_return_an_array
+    assert_kind_of Array, Topic.first(5)
+    assert_kind_of Array, Topic.last(5)
+  end
+
   def test_unexisting_record_exception_handling
     assert_raise(ActiveRecord::RecordNotFound) {
       Topic.find(1).parent
@@ -332,6 +372,10 @@ class FinderTest < ActiveRecord::TestCase
   def test_find_on_hash_conditions_with_multiple_ranges
     assert_equal [1,2,3], Comment.find(:all, :conditions => { :id => 1..3, :post_id => 1..2 }).map(&:id).sort
     assert_equal [1], Comment.find(:all, :conditions => { :id => 1..1, :post_id => 1..10 }).map(&:id).sort
+  end
+
+  def test_find_on_hash_conditions_with_array_of_integers_and_ranges
+    assert_equal [1,2,3,5,6,7,8,9], Comment.find(:all, :conditions => {:id => [1..2, 3, 5, 6..8, 9]}).map(&:id).sort
   end
 
   def test_find_on_multiple_hash_conditions
@@ -818,6 +862,28 @@ class FinderTest < ActiveRecord::TestCase
     assert another.persisted?
   end
 
+  def test_find_or_create_from_one_attribute_bang
+    number_of_companies = Company.count
+    assert_raises(ActiveRecord::RecordInvalid) { Company.find_or_create_by_name!("") }
+    assert_equal number_of_companies, Company.count
+    sig38 = Company.find_or_create_by_name!("38signals")
+    assert_equal number_of_companies + 1, Company.count
+    assert_equal sig38, Company.find_or_create_by_name!("38signals")
+    assert sig38.persisted?
+  end
+
+  def test_find_or_create_from_two_attributes_bang
+    number_of_companies = Company.count
+    assert_raises(ActiveRecord::RecordInvalid) { Company.find_or_create_by_name_and_firm_id!("", 17) }
+    assert_equal number_of_companies, Company.count
+    sig38 = Company.find_or_create_by_name_and_firm_id!("38signals", 17)
+    assert_equal number_of_companies + 1, Company.count
+    assert_equal sig38, Company.find_or_create_by_name_and_firm_id!("38signals", 17)
+    assert sig38.persisted?
+    assert_equal "38signals", sig38.name
+    assert_equal 17, sig38.firm_id
+  end
+
   def test_find_or_create_from_two_attributes_with_one_being_an_aggregate
     number_of_customers = Customer.count
     created_customer = Customer.find_or_create_by_balance_and_name(Money.new(123), "Elizabeth")
@@ -831,6 +897,17 @@ class FinderTest < ActiveRecord::TestCase
     sig38 = Company.find_or_create_by_name({:name => "38signals", :firm_id => 17, :client_of => 23})
     assert_equal number_of_companies + 1, Company.count
     assert_equal sig38, Company.find_or_create_by_name({:name => "38signals", :firm_id => 17, :client_of => 23})
+    assert sig38.persisted?
+    assert_equal "38signals", sig38.name
+    assert_equal 17, sig38.firm_id
+    assert_equal 23, sig38.client_of
+  end
+
+  def test_find_or_create_from_two_attributes_and_hash
+    number_of_companies = Company.count
+    sig38 = Company.find_or_create_by_name_and_firm_id({:name => "38signals", :firm_id => 17, :client_of => 23})
+    assert_equal number_of_companies + 1, Company.count
+    assert_equal sig38, Company.find_or_create_by_name_and_firm_id({:name => "38signals", :firm_id => 17, :client_of => 23})
     assert sig38.persisted?
     assert_equal "38signals", sig38.name
     assert_equal 17, sig38.firm_id
@@ -1075,10 +1152,10 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_find_with_order_on_included_associations_with_construct_finder_sql_for_association_limiting_and_is_distinct
-    assert_equal 2, Post.find(:all, :include => { :authors => :author_address }, :order => ' author_addresses.id DESC ', :limit => 2).size
+    assert_equal 2, Post.find(:all, :include => { :authors => :author_address }, :order => 'author_addresses.id DESC ', :limit => 2).size
 
     assert_equal 3, Post.find(:all, :include => { :author => :author_address, :authors => :author_address},
-                              :order => ' author_addresses_authors.id DESC ', :limit => 3).size
+                              :order => 'author_addresses_authors.id DESC ', :limit => 3).size
   end
 
   def test_find_with_nil_inside_set_passed_for_one_attribute
@@ -1105,7 +1182,10 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_with_limiting_with_custom_select
-    posts = Post.find(:all, :include => :author, :select => ' posts.*, authors.id as "author_id"', :limit => 3, :order => 'posts.id')
+    posts = Post.find(
+      :all, :include => :author, :select => ' posts.*, authors.id as "author_id"',
+      :references => :authors, :limit => 3, :order => 'posts.id'
+    )
     assert_equal 3, posts.size
     assert_equal [0, 1, 1], posts.map(&:author_id).sort
   end
@@ -1119,12 +1199,16 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_find_one_message_with_custom_primary_key
-    Toy.set_primary_key :name
+    Toy.primary_key = :name
     begin
       Toy.find 'Hello World!'
     rescue ActiveRecord::RecordNotFound => e
       assert_equal 'Couldn\'t find Toy with name=Hello World!', e.message
     end
+  end
+
+  def test_finder_with_offset_string
+    assert_nothing_raised(ActiveRecord::StatementInvalid) { Topic.find(:all, :offset => "3") }
   end
 
   protected

@@ -1,6 +1,5 @@
 require 'singleton'
 require 'active_model/observer_array'
-require 'active_support/core_ext/array/wrap'
 require 'active_support/core_ext/module/aliasing'
 require 'active_support/core_ext/module/remove_method'
 require 'active_support/core_ext/string/inflections'
@@ -64,7 +63,7 @@ module ActiveModel
       # raises an +ArgumentError+ exception.
       def add_observer(observer)
         unless observer.respond_to? :update
-          raise ArgumentError, "observer needs to respond to `update'"
+          raise ArgumentError, "observer needs to respond to 'update'"
         end
         observer_instances << observer
       end
@@ -187,8 +186,7 @@ module ActiveModel
       def observe(*models)
         models.flatten!
         models.collect! { |model| model.respond_to?(:to_sym) ? model.to_s.camelize.constantize : model }
-        remove_possible_method(:observed_classes)
-        define_method(:observed_classes) { models }
+        redefine_method(:observed_classes) { models }
       end
 
       # Returns an array of Classes to observe.
@@ -201,7 +199,7 @@ module ActiveModel
       #     end
       #   end
       def observed_classes
-        Array.wrap(observed_class)
+        Array(observed_class)
       end
 
       # The class observed by default is inferred from the observer's class name:
@@ -226,10 +224,10 @@ module ActiveModel
 
     # Send observed_method(object) if the method exists and
     # the observer is enabled for the given object's class.
-    def update(observed_method, object) #:nodoc:
+    def update(observed_method, object, &block) #:nodoc:
       return unless respond_to?(observed_method)
       return if disabled_for?(object)
-      send(observed_method, object)
+      send(observed_method, object, &block)
     end
 
     # Special method sent by the observed class when it is inherited.

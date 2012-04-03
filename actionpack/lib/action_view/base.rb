@@ -1,15 +1,14 @@
 require 'active_support/core_ext/module/attr_internal'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/class/attribute'
-require 'active_support/core_ext/array/wrap'
 require 'active_support/ordered_options'
 require 'action_view/log_subscriber'
 
 module ActionView #:nodoc:
   # = Action View Base
   #
-  # Action View templates can be written in several ways. If the template file has a <tt>.erb</tt> (or <tt>.rhtml</tt>) extension then it uses a mixture of ERb
-  # (included in Ruby) and HTML. If the template file has a <tt>.builder</tt> (or <tt>.rxml</tt>) extension then Jim Weirich's Builder::XmlMarkup library is used.
+  # Action View templates can be written in several ways. If the template file has a <tt>.erb</tt> extension then it uses a mixture of ERb
+  # (included in Ruby) and HTML. If the template file has a <tt>.builder</tt> extension then Jim Weirich's Builder::XmlMarkup library is used.
   #
   # == ERB
   #
@@ -93,10 +92,10 @@ module ActionView #:nodoc:
   #
   # Any method with a block will be treated as an XML markup tag with nested markup in the block. For example, the following:
   #
-  #   xml.div {
+  #   xml.div do
   #     xml.h1(@person.name)
   #     xml.p(@person.bio)
-  #   }
+  #   end
   #
   # would produce something like:
   #
@@ -115,7 +114,7 @@ module ActionView #:nodoc:
   #       xml.language "en-us"
   #       xml.ttl "40"
   #
-  #       for item in @recent_items
+  #       @recent_items.each do |item|
   #         xml.item do
   #           xml.title(item_title(item))
   #           xml.description(item_description(item)) if item_description(item)
@@ -142,12 +141,18 @@ module ActionView #:nodoc:
     cattr_accessor :streaming_completion_on_exception
     @@streaming_completion_on_exception = %("><script type="text/javascript">window.location = "/500.html"</script></html>)
 
+    # Specify whether rendering within namespaced controllers should prefix
+    # the partial paths for ActiveModel objects with the namespace.
+    # (e.g., an Admin::PostsController would render @post using /admin/posts/_post.erb)
+    cattr_accessor :prefix_partial_path_with_controller_namespace
+    @@prefix_partial_path_with_controller_namespace = true
+
     class_attribute :helpers
     class_attribute :_routes
+    class_attribute :logger
 
     class << self
       delegate :erb_trim_mode=, :to => 'ActionView::Template::Handlers::ERB'
-      delegate :logger, :to => 'ActionController::Base', :allow_nil => true
 
       def cache_template_loading
         ActionView::Resolver.caching?
@@ -155,11 +160,6 @@ module ActionView #:nodoc:
 
       def cache_template_loading=(value)
         ActionView::Resolver.caching = value
-      end
-
-      def process_view_paths(value)
-        value.is_a?(PathSet) ?
-          value.dup : ActionView::PathSet.new(Array.wrap(value))
       end
 
       def xss_safe? #:nodoc:
@@ -200,7 +200,7 @@ module ActionView #:nodoc:
       # TODO Provide a new API for AV::Base and deprecate this one.
       if context.is_a?(ActionView::Renderer)
         @view_renderer = context
-      elsif
+      else
         lookup_context = context.is_a?(ActionView::LookupContext) ?
           context : ActionView::LookupContext.new(context)
         lookup_context.formats  = formats if formats

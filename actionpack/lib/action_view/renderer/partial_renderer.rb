@@ -27,12 +27,12 @@ module ActionView
   #
   # == The :as and :object options
   #
-  # By default <tt>ActionView::Partials::PartialRenderer</tt> doesn't have any local variables.
+  # By default <tt>ActionView::PartialRenderer</tt> doesn't have any local variables.
   # The <tt>:object</tt> option can be used to pass an object to the partial. For instance:
   #
   #   <%= render :partial => "account", :object => @buyer %>
   #
-  # would provide the +@buyer+ object to the partial, available under the local variable +account+ and is
+  # would provide the <tt>@buyer</tt> object to the partial, available under the local variable +account+ and is
   # equivalent to:
   #
   #   <%= render :partial => "account", :locals => { :account => @buyer } %>
@@ -82,16 +82,17 @@ module ActionView
   #
   # This will render the partial "advertisement/_ad.html.erb" regardless of which controller this is being called from.
   #
-  # == Rendering objects with the RecordIdentifier
+  # == Rendering objects that respond to `to_partial_path`
   #
-  # Instead of explicitly naming the location of a partial, you can also let the RecordIdentifier do the work if
-  # you're following its conventions for RecordIdentifier#partial_path. Examples:
+  # Instead of explicitly naming the location of a partial, you can also let PartialRenderer do the work
+  # and pick the proper path by checking `to_partial_path` method.
   #
-  #  # @account is an Account instance, so it uses the RecordIdentifier to replace
+  #  # @account.to_partial_path returns 'accounts/account', so it can be used to replace:
   #  # <%= render :partial => "accounts/account", :locals => { :account => @account} %>
   #  <%= render :partial => @account %>
   #
-  #  # @posts is an array of Post instances, so it uses the RecordIdentifier to replace
+  #  # @posts is an array of Post instances, so every post record returns 'posts/post' on `to_partial_path`,
+  #  # that's why we can replace:
   #  # <%= render :partial => "posts/post", :collection => @posts %>
   #  <%= render :partial => @posts %>
   #
@@ -106,13 +107,14 @@ module ActionView
   #  # Instead of <%= render :partial => "account", :locals => { :account => @buyer } %>
   #  <%= render "account", :account => @buyer %>
   #
-  #  # @account is an Account instance, so it uses the RecordIdentifier to replace
-  #  # <%= render :partial => "accounts/account", :locals => { :account => @account } %>
-  #  <%= render(@account) %>
+  #  # @account.to_partial_path returns 'accounts/account', so it can be used to replace:
+  #  # <%= render :partial => "accounts/account", :locals => { :account => @account} %>
+  #  <%= render @account %>
   #
-  #  # @posts is an array of Post instances, so it uses the RecordIdentifier to replace
+  #  # @posts is an array of Post instances, so every post record returns 'posts/post' on `to_partial_path`,
+  #  # that's why we can replace:
   #  # <%= render :partial => "posts/post", :collection => @posts %>
-  #  <%= render(@posts) %>
+  #  <%= render @posts %>
   #
   # == Rendering partials with layouts
   #
@@ -155,6 +157,43 @@ module ActionView
   #     Deadline: <%= user.deadline %>
   #     Name: <%= user.name %>
   #   </div>
+  #
+  # If a collection is given, the layout will be rendered once for each item in the collection. Just think
+  # these two snippets have the same output:
+  #
+  #   <%# app/views/users/_user.html.erb %>
+  #   Name: <%= user.name %>
+  #
+  #   <%# app/views/users/index.html.erb %>
+  #   <%# This does not use layouts %>
+  #   <ul>
+  #     <% users.each do |user| -%>
+  #       <li>
+  #         <%= render :partial => "user", :locals => { :user => user } %>
+  #       </li>
+  #     <% end -%>
+  #   </ul>
+  #
+  #   <%# app/views/users/_li_layout.html.erb %>
+  #   <li>
+  #     <%= yield %>
+  #   </li>
+  #
+  #   <%# app/views/users/index.html.erb %>
+  #   <ul>
+  #     <%= render :partial => "user", :layout => "li_layout", :collection => users %>
+  #   </ul>
+  #
+  #   Given two users whose names are Alice and Bob, these snippets return:
+  #
+  #   <ul>
+  #     <li>
+  #       Name: Alice
+  #     </li>
+  #     <li>
+  #       Name: Bob
+  #     </li>
+  #   </ul>
   #
   # You can also apply a layout to a block within any template:
   #
@@ -205,28 +244,33 @@ module ActionView
   #       Deadline: <%= user.deadline %>
   #     <%- end -%>
   #   <% end %>
-  class PartialRenderer < AbstractRenderer #:nodoc:
-    PARTIAL_NAMES = Hash.new {|h,k| h[k] = {} }
+  class PartialRenderer < AbstractRenderer
+    PREFIXED_PARTIAL_NAMES = Hash.new { |h,k| h[k] = {} }
 
     def initialize(*)
       super
-      @partial_names = PARTIAL_NAMES[@lookup_context.prefixes.first]
+      @context_prefix = @lookup_context.prefixes.first
     end
 
     def render(context, options, block)
       setup(context, options, block)
+      identifier = (@template = find_partial) ? @template.identifier : @path
 
-      wrap_formats(@path) do
-        identifier = ((@template = find_partial) ? @template.identifier : @path)
-
-        if @collection
-          instrument(:collection, :identifier => identifier || "collection", :count => @collection.size) do
-            render_collection
-          end
+      @lookup_context.rendered_format ||= begin
+        if @template && @template.formats.present?
+          @template.formats.first
         else
-          instrument(:partial, :identifier => identifier) do
-            render_partial
-          end
+          formats.first
+        end
+      end
+
+      if @collection
+        instrument(:collection, :identifier => identifier || "collection", :count => @collection.size) do
+          render_collection
+        end
+      else
+        instrument(:partial, :identifier => identifier) do
+          render_partial
         end
       end
     end
@@ -238,7 +282,14 @@ module ActionView
         spacer = find_template(@options[:spacer_template]).render(@view, @locals)
       end
 
+      if layout = @options[:layout]
+        layout = find_template(layout)
+      end
+
       result = @template ? collection_with_template : collection_without_template
+      
+      result.map!{|content| layout.render(@view, @locals) { content } } if layout
+      
       result.join(spacer).html_safe
     end
 
@@ -270,6 +321,7 @@ module ActionView
       @options = options
       @locals  = options[:locals] || {}
       @block   = block
+      @details = extract_details(options)
 
       if String === partial
         @object     = options[:object]
@@ -291,6 +343,7 @@ module ActionView
       else
         paths.map! { |path| retrieve_variable(path).unshift(path) }
       end
+
       if String === partial && @variable.to_s !~ /^[a-z_][a-zA-Z_0-9]*$/
         raise ArgumentError.new("The partial name (#{partial}) is not a valid Ruby identifier; " +
                                 "make sure your partial name starts with a letter or underscore, " +
@@ -324,7 +377,7 @@ module ActionView
 
     def find_template(path=@path, locals=@locals.keys)
       prefixes = path.include?(?/) ? [] : @lookup_context.prefixes
-      @lookup_context.find_template(path, prefixes, true, locals)
+      @lookup_context.find_template(path, prefixes, true, locals, @details)
     end
 
     def collection_with_template
@@ -338,9 +391,10 @@ module ActionView
         locals[as] = object
         segments << template.render(@view, locals)
       end
-
+      
       segments
     end
+    
 
     def collection_without_template
       segments, locals, collection_data = [], @locals, @collection_data
@@ -360,13 +414,39 @@ module ActionView
     end
 
     def partial_path(object = @object)
-      @partial_names[object.class.name] ||= begin
-        object = object.to_model if object.respond_to?(:to_model)
+      object = object.to_model if object.respond_to?(:to_model)
 
-        object.class.model_name.partial_path.dup.tap do |partial|
-          path = @lookup_context.prefixes.first
-          partial.insert(0, "#{File.dirname(path)}/") if partial.include?(?/) && path.include?(?/)
+      path = if object.respond_to?(:to_partial_path)
+        object.to_partial_path
+      else
+        raise ArgumentError.new("'#{object.inspect}' is not an ActiveModel-compatible object. It must implement :to_partial_path.")
+      end
+
+      if @view.prefix_partial_path_with_controller_namespace
+        prefixed_partial_names[path] ||= merge_prefix_into_object_path(@context_prefix, path.dup)
+      else
+        path
+      end
+    end
+
+    def prefixed_partial_names
+      @prefixed_partial_names ||= PREFIXED_PARTIAL_NAMES[@context_prefix]
+    end
+
+    def merge_prefix_into_object_path(prefix, object_path)
+      if prefix.include?(?/) && object_path.include?(?/)
+        prefixes = []
+        prefix_array = File.dirname(prefix).split('/')
+        object_path_array = object_path.split('/')[0..-3] # skip model dir & partial
+
+        prefix_array.each_with_index do |dir, index|
+          break if dir == object_path_array[index]
+          prefixes << dir
         end
+
+        (prefixes << object_path).join("/")
+      else
+        object_path
       end
     end
 

@@ -14,6 +14,7 @@ module InflectorTestCases
     "fish"        => "fish",
     "jeans"       => "jeans",
     "funky jeans" => "funky jeans",
+    "my money"    => "my money",
 
     "category"    => "categories",
     "query"       => "queries",
@@ -92,6 +93,7 @@ module InflectorTestCases
     "matrix_fu"   => "matrix_fus",
 
     "axis"        => "axes",
+    "taxi"        => "taxis", # prevents regression
     "testis"      => "testes",
     "crisis"      => "crises",
 
@@ -103,7 +105,11 @@ module InflectorTestCases
     "edge"        => "edges",
 
     "cow"         => "kine",
-    "database"    => "databases"
+    "database"    => "databases",
+
+    # regression tests against improper inflection regexes
+    "|ice"        => "|ices",
+    "|ouse"       => "|ouses"
   }
 
   CamelToUnderscore = {
@@ -214,7 +220,9 @@ module InflectorTestCases
     'Actionwebservice'    => 'Actionwebservice',
     "david's code"        => "David's Code",
     "David's code"        => "David's Code",
-    "david's Code"        => "David's Code"
+    "david's Code"        => "David's Code",
+    "Fred’s"              => "Fred’s",
+    "Fred`s"              => "Fred`s"
   }
 
   OrdinalNumbers = {

@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 require 'active_support/inflector/inflections'
 
 module ActiveSupport
@@ -21,14 +23,7 @@ module ActiveSupport
     #   "words".pluralize            # => "words"
     #   "CamelOctopus".pluralize     # => "CamelOctopi"
     def pluralize(word)
-      result = word.to_s.dup
-
-      if word.empty? || inflections.uncountables.include?(result.downcase)
-        result
-      else
-        inflections.plurals.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
-        result
-      end
+      apply_inflections(word, inflections.plurals)
     end
 
     # The reverse of +pluralize+, returns the singular form of a word in a string.
@@ -40,14 +35,7 @@ module ActiveSupport
     #   "word".singularize             # => "word"
     #   "CamelOctopi".singularize      # => "CamelOctopus"
     def singularize(word)
-      result = word.to_s.dup
-
-      if inflections.uncountables.any? { |inflection| result =~ /\b(#{inflection})\Z/i }
-        result
-      else
-        inflections.singulars.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
-        result
-      end
+      apply_inflections(word, inflections.singulars)
     end
 
     # By default, +camelize+ converts strings to UpperCamelCase. If the argument to +camelize+
@@ -56,10 +44,10 @@ module ActiveSupport
     # +camelize+ will also convert '/' to '::' which is useful for converting paths to namespaces.
     #
     # Examples:
-    #   "active_record".camelize                # => "ActiveRecord"
-    #   "active_record".camelize(:lower)        # => "activeRecord"
-    #   "active_record/errors".camelize         # => "ActiveRecord::Errors"
-    #   "active_record/errors".camelize(:lower) # => "activeRecord::Errors"
+    #   "active_model".camelize                # => "ActiveModel"
+    #   "active_model".camelize(:lower)        # => "activeModel"
+    #   "active_model/errors".camelize         # => "ActiveModel::Errors"
+    #   "active_model/errors".camelize(:lower) # => "activeModel::Errors"
     #
     # As a rule of thumb you can think of +camelize+ as the inverse of +underscore+,
     # though there are cases where that does not hold:
@@ -80,8 +68,8 @@ module ActiveSupport
     # Changes '::' to '/' to convert namespaces to paths.
     #
     # Examples:
-    #   "ActiveRecord".underscore         # => "active_record"
-    #   "ActiveRecord::Errors".underscore # => active_record/errors
+    #   "ActiveModel".underscore         # => "active_model"
+    #   "ActiveModel::Errors".underscore # => "active_model/errors"
     #
     # As a rule of thumb you can think of +underscore+ as the inverse of +camelize+,
     # though there are cases where that does not hold:
@@ -106,9 +94,12 @@ module ActiveSupport
     #   "author_id"       # => "Author"
     def humanize(lower_case_and_underscored_word)
       result = lower_case_and_underscored_word.to_s.dup
-      inflections.humans.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
+      inflections.humans.each { |(rule, replacement)| break if result.sub!(rule, replacement) }
       result.gsub!(/_id$/, "")
-      result.gsub(/(_)?([a-z\d]*)/i) { "#{$1 && ' '}#{inflections.acronyms[$2] || $2.downcase}" }.gsub(/^\w/) { $&.upcase }
+      result.tr!('_', ' ')
+      result.gsub(/([a-z\d]*)/i) { |match|
+        "#{inflections.acronyms[match] || match.downcase}"
+      }.gsub(/^\w/) { $&.upcase }
     end
 
     # Capitalizes all the words and replaces some characters in the string to create
@@ -123,7 +114,7 @@ module ActiveSupport
     #   "TheManWithoutAPast".titleize       # => "The Man Without A Past"
     #   "raiders_of_the_lost_ark".titleize  # => "Raiders Of The Lost Ark"
     def titleize(word)
-      humanize(underscore(word)).gsub(/\b('?[a-z])/) { $1.capitalize }
+      humanize(underscore(word)).gsub(/\b(['’`]?[a-z])/) { $1.capitalize }
     end
 
     # Create the name of a table like Rails does for models to table names. This method
@@ -155,18 +146,37 @@ module ActiveSupport
     # Replaces underscores with dashes in the string.
     #
     # Example:
-    #   "puni_puni" # => "puni-puni"
+    #   "puni_puni".dasherize # => "puni-puni"
     def dasherize(underscored_word)
-      underscored_word.gsub(/_/, '-')
+      underscored_word.tr('_', '-')
     end
 
-    # Removes the module part from the expression in the string.
+    # Removes the module part from the expression in the string:
     #
-    # Examples:
     #   "ActiveRecord::CoreExtensions::String::Inflections".demodulize # => "Inflections"
     #   "Inflections".demodulize                                       # => "Inflections"
-    def demodulize(class_name_in_module)
-      class_name_in_module.to_s.gsub(/^.*::/, '')
+    #
+    # See also +deconstantize+.
+    def demodulize(path)
+      path = path.to_s
+      if i = path.rindex('::')
+        path[(i+2)..-1]
+      else
+        path
+      end
+    end
+
+    # Removes the rightmost segment from the constant expression in the string:
+    #
+    #   "Net::HTTP".deconstantize   # => "Net"
+    #   "::Net::HTTP".deconstantize # => "::Net"
+    #   "String".deconstantize      # => ""
+    #   "::String".deconstantize    # => ""
+    #   "".deconstantize            # => ""
+    #
+    # See also +demodulize+.
+    def deconstantize(path)
+      path.to_s[0...(path.rindex('::') || 0)] # implementation based on the one in facets' Module#spacename
     end
 
     # Creates a foreign key name from a class name.
@@ -181,46 +191,85 @@ module ActiveSupport
       underscore(demodulize(class_name)) + (separate_class_name_and_id_with_underscore ? "_id" : "id")
     end
 
-    # Ruby 1.9 introduces an inherit argument for Module#const_get and
-    # #const_defined? and changes their default behavior.
-    if Module.method(:const_get).arity == 1
-      # Tries to find a constant with the name specified in the argument string:
-      #
-      #   "Module".constantize     # => Module
-      #   "Test::Unit".constantize # => Test::Unit
-      #
-      # The name is assumed to be the one of a top-level constant, no matter whether
-      # it starts with "::" or not. No lexical context is taken into account:
-      #
-      #   C = 'outside'
-      #   module M
-      #     C = 'inside'
-      #     C               # => 'inside'
-      #     "C".constantize # => 'outside', same as ::C
-      #   end
-      #
-      # NameError is raised when the name is not in CamelCase or the constant is
-      # unknown.
-      def constantize(camel_cased_word)
-        names = camel_cased_word.split('::')
-        names.shift if names.empty? || names.first.empty?
+    # Tries to find a constant with the name specified in the argument string:
+    #
+    #   "Module".constantize     # => Module
+    #   "Test::Unit".constantize # => Test::Unit
+    #
+    # The name is assumed to be the one of a top-level constant, no matter whether
+    # it starts with "::" or not. No lexical context is taken into account:
+    #
+    #   C = 'outside'
+    #   module M
+    #     C = 'inside'
+    #     C               # => 'inside'
+    #     "C".constantize # => 'outside', same as ::C
+    #   end
+    #
+    # NameError is raised when the name is not in CamelCase or the constant is
+    # unknown.
+    def constantize(camel_cased_word) #:nodoc:
+      names = camel_cased_word.split('::')
+      names.shift if names.empty? || names.first.empty?
 
-        constant = Object
-        names.each do |name|
-          constant = constant.const_defined?(name) ? constant.const_get(name) : constant.const_missing(name)
-        end
-        constant
+      names.inject(Object) do |constant, name|
+        constant.const_get(name, false)
       end
-    else
-      def constantize(camel_cased_word) #:nodoc:
-        names = camel_cased_word.split('::')
-        names.shift if names.empty? || names.first.empty?
+    end
 
-        constant = Object
-        names.each do |name|
-          constant = constant.const_defined?(name, false) ? constant.const_get(name) : constant.const_missing(name)
+    # Tries to find a constant with the name specified in the argument string:
+    #
+    #   "Module".safe_constantize     # => Module
+    #   "Test::Unit".safe_constantize # => Test::Unit
+    #
+    # The name is assumed to be the one of a top-level constant, no matter whether
+    # it starts with "::" or not. No lexical context is taken into account:
+    #
+    #   C = 'outside'
+    #   module M
+    #     C = 'inside'
+    #     C                    # => 'inside'
+    #     "C".safe_constantize # => 'outside', same as ::C
+    #   end
+    #
+    # nil is returned when the name is not in CamelCase or the constant (or part of it) is
+    # unknown.
+    #
+    #   "blargle".safe_constantize  # => nil
+    #   "UnknownModule".safe_constantize  # => nil
+    #   "UnknownModule::Foo::Bar".safe_constantize  # => nil
+    #
+    def safe_constantize(camel_cased_word)
+      begin
+        constantize(camel_cased_word)
+      rescue NameError => e
+        raise unless e.message =~ /(uninitialized constant|wrong constant name) #{const_regexp(camel_cased_word)}$/ ||
+          e.name.to_s == camel_cased_word.to_s
+      rescue ArgumentError => e
+        raise unless e.message =~ /not missing constant #{const_regexp(camel_cased_word)}\!$/
+      end
+    end
+
+    # Returns the suffix that should be added to a number to denote the position
+    # in an ordered sequence such as 1st, 2nd, 3rd, 4th.
+    #
+    # Examples:
+    #   ordinal(1)     # => "st"
+    #   ordinal(2)     # => "nd"
+    #   ordinal(1002)  # => "nd"
+    #   ordinal(1003)  # => "rd"
+    #   ordinal(-11)   # => "th"
+    #   ordinal(-1021) # => "st"
+    def ordinal(number)
+      if (11..13).include?(number.to_i.abs % 100)
+        "th"
+      else
+        case number.to_i.abs % 10
+          when 1; "st"
+          when 2; "nd"
+          when 3; "rd"
+          else    "th"
         end
-        constant
       end
     end
 
@@ -235,15 +284,35 @@ module ActiveSupport
     #   ordinalize(-11)   # => "-11th"
     #   ordinalize(-1021) # => "-1021st"
     def ordinalize(number)
-      if (11..13).include?(number.to_i.abs % 100)
-        "#{number}th"
+      "#{number}#{ordinal(number)}"
+    end
+
+    private
+
+    # Mount a regular expression that will match part by part of the constant.
+    # For instance, Foo::Bar::Baz will generate Foo(::Bar(::Baz)?)?
+    def const_regexp(camel_cased_word) #:nodoc:
+      parts = camel_cased_word.split("::")
+      last  = parts.pop
+
+      parts.reverse.inject(last) do |acc, part|
+        part.empty? ? acc : "#{part}(::#{acc})?"
+      end
+    end
+
+    # Applies inflection rules for +singularize+ and +pluralize+.
+    #
+    # Examples:
+    #  apply_inflections("post", inflections.plurals) # => "posts"
+    #  apply_inflections("posts", inflections.singulars) # => "post"
+    def apply_inflections(word, rules)
+      result = word.to_s.dup
+
+      if word.empty? || inflections.uncountables.include?(result.downcase[/\b\w+\Z/])
+        result
       else
-        case number.to_i.abs % 10
-          when 1; "#{number}st"
-          when 2; "#{number}nd"
-          when 3; "#{number}rd"
-          else    "#{number}th"
-        end
+        rules.each { |(rule, replacement)| break if result.sub!(rule, replacement) }
+        result
       end
     end
   end

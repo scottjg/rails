@@ -28,6 +28,7 @@ module ActiveRecord
         @target = nil
         @owner, @reflection = owner, reflection
         @updated = false
+        @stale_state = nil
 
         reset
         reset_scope
@@ -44,7 +45,6 @@ module ActiveRecord
       # Resets the \loaded flag to +false+ and sets the \target to +nil+.
       def reset
         @loaded = false
-        IdentityMap.remove(target) if IdentityMap.enabled? && target
         @target = nil
       end
 
@@ -134,35 +134,25 @@ module ActiveRecord
       # ActiveRecord::RecordNotFound is rescued within the method, and it is
       # not reraised. The proxy is \reset and +nil+ is the return value.
       def load_target
-        if find_target?
-          begin
-            if IdentityMap.enabled? && association_class && association_class.respond_to?(:base_class)
-              @target = IdentityMap.get(association_class, owner[reflection.foreign_key])
-            end
-          rescue NameError
-            nil
-          ensure
-            @target ||= find_target
-          end
-        end
+        @target ||= find_target if find_target?
         loaded! unless loaded?
         target
       rescue ActiveRecord::RecordNotFound
         reset
       end
 
+      def interpolate(sql, record = nil)
+        if sql.respond_to?(:to_proc)
+          owner.send(:instance_exec, record, &sql)
+        else
+          sql
+        end
+      end
+
       private
 
         def find_target?
           !loaded? && (!owner.new_record? || foreign_key_present?) && klass
-        end
-
-        def interpolate(sql, record = nil)
-          if sql.respond_to?(:to_proc)
-            owner.send(:instance_exec, record, &sql)
-          else
-            sql
-          end
         end
 
         def creation_attributes
@@ -231,10 +221,8 @@ module ActiveRecord
 
         def build_record(attributes, options)
           reflection.build_association(attributes, options) do |record|
-            record.assign_attributes(
-              create_scope.except(*record.changed),
-              :without_protection => true
-            )
+            attributes = create_scope.except(*(record.changed - [reflection.foreign_key]))
+            record.assign_attributes(attributes, :without_protection => true)
           end
         end
     end

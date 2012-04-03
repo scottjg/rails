@@ -1,5 +1,4 @@
 require "active_support/notifications"
-require "active_support/core_ext/array/wrap"
 
 module ActiveSupport
   module Deprecation
@@ -7,19 +6,19 @@ module ActiveSupport
       # Whether to print a backtrace along with the warning.
       attr_accessor :debug
 
-      # Returns the set behaviour or if one isn't set, defaults to +:stderr+
+      # Returns the set behavior or if one isn't set, defaults to +:stderr+
       def behavior
         @behavior ||= [DEFAULT_BEHAVIORS[:stderr]]
       end
 
-      # Sets the behaviour to the specified value. Can be a single value or an array.
+      # Sets the behavior to the specified value. Can be a single value or an array.
       #
       # Examples
       #
       #   ActiveSupport::Deprecation.behavior = :stderr
       #   ActiveSupport::Deprecation.behavior = [:stderr, :log]
       def behavior=(behavior)
-        @behavior = Array.wrap(behavior).map { |b| DEFAULT_BEHAVIORS[b] || b }
+        @behavior = Array(behavior).map { |b| DEFAULT_BEHAVIORS[b] || b }
       end
     end
 
@@ -34,8 +33,8 @@ module ActiveSupport
            if defined?(Rails) && Rails.logger
              Rails.logger
            else
-             require 'logger'
-             Logger.new($stderr)
+             require 'active_support/logger'
+             ActiveSupport::Logger.new($stderr)
            end
          logger.warn message
          logger.debug callstack.join("\n  ") if debug

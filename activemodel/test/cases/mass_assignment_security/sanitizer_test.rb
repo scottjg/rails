@@ -1,5 +1,5 @@
 require "cases/helper"
-require 'logger'
+require 'active_support/logger'
 require 'active_support/core_ext/object/inclusion'
 
 class SanitizerTest < ActiveModel::TestCase
@@ -7,7 +7,7 @@ class SanitizerTest < ActiveModel::TestCase
 
   class Authorizer < ActiveModel::MassAssignmentSecurity::PermissionSet
     def deny?(key)
-      key.in?(['admin'])
+      ['admin', 'id'].include?(key)
     end
   end
 
@@ -28,7 +28,7 @@ class SanitizerTest < ActiveModel::TestCase
   test "debug mass assignment removal with LoggerSanitizer" do
     original_attributes = { 'first_name' => 'allowed', 'admin' => 'denied' }
     log = StringIO.new
-    self.logger = Logger.new(log)
+    self.logger = ActiveSupport::Logger.new(log)
     @logger_sanitizer.sanitize(original_attributes, @authorizer)
     assert_match(/admin/, log.string, "Should log removed attributes: #{log.string}")
   end
@@ -36,6 +36,14 @@ class SanitizerTest < ActiveModel::TestCase
   test "debug mass assignment removal with StrictSanitizer" do
     original_attributes = { 'first_name' => 'allowed', 'admin' => 'denied' }
     assert_raise ActiveModel::MassAssignmentSecurity::Error do
+      @strict_sanitizer.sanitize(original_attributes, @authorizer)
+    end
+  end
+
+  test "mass assignment insensitive attributes" do
+    original_attributes = {'id' => 1, 'first_name' => 'allowed'}
+
+    assert_nothing_raised do
       @strict_sanitizer.sanitize(original_attributes, @authorizer)
     end
   end

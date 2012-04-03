@@ -25,7 +25,7 @@ module ActionView
       #   * a titleized version of the last key segment as a text.
       #
       # E.g. the value returned for a missing translation key :"blog.post.title" will be
-      # <span class="translation_missing" title="translation missing: blog.post.title">Title</span>.
+      # <span class="translation_missing" title="translation missing: en.blog.post.title">Title</span>.
       # This way your views will display rather reasonable strings but it will still
       # be easy to spot missing translations.
       #
@@ -45,11 +45,18 @@ module ActionView
       # you know what kind of output to expect when you call translate in a template.
       def translate(key, options = {})
         options.merge!(:rescue_format => :html) unless options.key?(:rescue_format)
-        translation = I18n.translate(scope_key_by_partial(key), options)
-        if html_safe_translation_key?(key) && translation.respond_to?(:html_safe)
-          translation.html_safe
+        if html_safe_translation_key?(key)
+          html_safe_options = options.dup
+          options.except(*I18n::RESERVED_KEYS).each do |name, value|
+            unless name == :count && value.is_a?(Numeric)
+              html_safe_options[name] = ERB::Util.html_escape(value.to_s)
+            end
+          end
+          translation = I18n.translate(scope_key_by_partial(key), html_safe_options)
+
+          translation.respond_to?(:html_safe) ? translation.html_safe : translation
         else
-          translation
+          I18n.translate(scope_key_by_partial(key), options)
         end
       end
       alias :t :translate

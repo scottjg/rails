@@ -1,5 +1,5 @@
 class Bulb < ActiveRecord::Base
-  default_scope where(:name => 'defaulty')
+  default_scope { where(:name => 'defaulty') }
   belongs_to :car
 
   attr_protected :car_id, :frickinawesome
@@ -33,4 +33,9 @@ class Bulb < ActiveRecord::Base
 end
 
 class CustomBulb < Bulb
+  after_initialize :set_awesomeness
+
+  def set_awesomeness
+    self.frickinawesome = true if name == 'Dude'
+  end
 end

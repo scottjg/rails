@@ -8,7 +8,7 @@ module ActionDispatch
 
       # Asserts that the response is one of the following types:
       #
-      # * <tt>:success</tt>   - Status code was 200
+      # * <tt>:success</tt>   - Status code was in the 200-299 range
       # * <tt>:redirect</tt>  - Status code was in the 300-399 range
       # * <tt>:missing</tt>   - Status code was 404
       # * <tt>:error</tt>     - Status code was in the 500-599 range
@@ -26,16 +26,17 @@ module ActionDispatch
       #   assert_response 401
       #
       def assert_response(type, message = nil)
-        validate_request!
+        message ||= "Expected response to be a <#{type}>, but was <#{@response.response_code}>"
 
-        if type.in?([:success, :missing, :redirect, :error]) && @response.send("#{type}?")
-          assert_block("") { true } # to count the assertion
-        elsif type.is_a?(Fixnum) && @response.response_code == type
-          assert_block("") { true } # to count the assertion
-        elsif type.is_a?(Symbol) && @response.response_code == Rack::Utils::SYMBOL_TO_STATUS_CODE[type]
-          assert_block("") { true } # to count the assertion
+        if Symbol === type
+          if [:success, :missing, :redirect, :error].include?(type)
+            assert @response.send("#{type}?"), message
+          else
+            code = Rack::Utils::SYMBOL_TO_STATUS_CODE[type]
+            assert_equal @response.response_code, code, message
+          end
         else
-          flunk(build_message(message, "Expected response to be a <?>, but was <?>", type, @response.response_code))
+          assert_equal type, @response.response_code, message
         end
       end
 
@@ -55,17 +56,14 @@ module ActionDispatch
       #   assert_redirected_to @customer
       #
       def assert_redirected_to(options = {}, message=nil)
-        validate_request!
-
         assert_response(:redirect, message)
         return true if options == @response.location
 
-        redirected_to_after_normalization = normalize_argument_to_redirection(@response.location)
-        options_after_normalization       = normalize_argument_to_redirection(options)
+        redirect_is       = normalize_argument_to_redirection(@response.location)
+        redirect_expected = normalize_argument_to_redirection(options)
 
-        if redirected_to_after_normalization != options_after_normalization
-          flunk "Expected response to be a redirect to <#{options_after_normalization}> but was a redirect to <#{redirected_to_after_normalization}>"
-        end
+        message ||= "Expected response to be a redirect to <#{redirect_expected}> but was a redirect to <#{redirect_is}>"
+        assert_equal redirect_expected, redirect_is, message
       end
 
       private
@@ -85,13 +83,7 @@ module ActionDispatch
             refer
           else
             @controller.url_for(fragment)
-          end.gsub(/[\r\n]/, '')
-        end
-
-        def validate_request!
-          unless @request.is_a?(ActionDispatch::Request)
-            raise ArgumentError, "@request must be an ActionDispatch::Request"
-          end
+          end.gsub(/[\0\r\n]/, '')
         end
     end
   end

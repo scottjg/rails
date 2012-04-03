@@ -124,14 +124,7 @@ module ActionDispatch
           args.last.kind_of?(Hash) ? args.last.merge!(url_options) : args << url_options
         end
 
-        if proxy
-          proxy.send(named_route, *args)
-        else
-          # we need to use url_for, because polymorphic_url can be used in context of other than
-          # current routes (e.g. engine's routes). As named routes from engine are not included
-          # calling engine's named route directly would fail.
-          url_for _routes.url_helpers.__send__("hash_for_#{named_route}", *args)
-        end
+        (proxy || self).send(named_route, *args)
       end
 
       # Returns the path component of a URL for the given record. It uses
@@ -172,7 +165,7 @@ module ActionDispatch
               if parent.is_a?(Symbol) || parent.is_a?(String)
                 parent
               else
-                ActiveModel::Naming.route_key(parent).singularize
+                ActiveModel::Naming.singular_route_key(parent)
               end
             end
           else
@@ -183,9 +176,11 @@ module ActionDispatch
           if record.is_a?(Symbol) || record.is_a?(String)
             route << record
           elsif record
-            route << ActiveModel::Naming.route_key(record)
-            route = [route.join("_").singularize] if inflection == :singular
-            route << "index" if ActiveModel::Naming.uncountable?(record) && inflection == :plural
+            if inflection == :singular
+              route << ActiveModel::Naming.singular_route_key(record)
+            else
+              route << ActiveModel::Naming.route_key(record)
+            end
           else
             raise ArgumentError, "Nil location provided. Can't build URI."
           end

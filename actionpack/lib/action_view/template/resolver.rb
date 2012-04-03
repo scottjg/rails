@@ -68,7 +68,7 @@ module ActionView
     # before returning it.
     def cached(key, path_info, details, locals) #:nodoc:
       name, prefix, partial = path_info
-      locals = sort_locals(locals)
+      locals = locals.map { |x| x.to_s }.sort!
 
       if key && caching?
         @cached[key][name][prefix][partial][locals] ||= decorate(yield, path_info, details, locals)
@@ -97,18 +97,6 @@ module ActionView
         t.virtual_path ||= (cached ||= build_path(*path_info))
       end
     end
-
-    if :symbol.respond_to?("<=>")
-      def sort_locals(locals) #:nodoc:
-        locals.sort.freeze
-      end
-    else
-      def sort_locals(locals) #:nodoc:
-        locals = locals.map{ |l| l.to_s }
-        locals.sort!
-        locals.freeze
-      end
-    end
   end
 
   # An abstract class that implements a Resolver with path semantics.
@@ -130,27 +118,35 @@ module ActionView
 
     def query(path, details, formats)
       query = build_query(path, details)
-      templates = []
-      sanitizer = Hash.new { |h,k| h[k] = Dir["#{File.dirname(k)}/*"] }
 
-      Dir[query].each do |p|
-        next if File.directory?(p) || !sanitizer[p].include?(p)
+      # deals with case-insensitive file systems.
+      sanitizer = Hash.new { |h,dir| h[dir] = Dir["#{dir}/*"] }
 
-        handler, format = extract_handler_and_format(p, formats)
-        contents = File.open(p, "rb") { |io| io.read }
+      template_paths = Dir[query].reject { |filename|
+        File.directory?(filename) ||
+          !sanitizer[File.dirname(filename)].include?(filename)
+      }
 
-        templates << Template.new(contents, File.expand_path(p), handler,
-          :virtual_path => path.virtual, :format => format, :updated_at => mtime(p))
-      end
+      template_paths.map { |template|
+        handler, format = extract_handler_and_format(template, formats)
+        contents = File.binread template
 
-      templates
+        Template.new(contents, File.expand_path(template), handler,
+          :virtual_path => path.virtual,
+          :format       => format,
+          :updated_at   => mtime(template))
+      }
     end
 
     # Helper for building query glob string based on resolver's pattern.
     def build_query(path, details)
       query = @pattern.dup
-      query.gsub!(/\:prefix(\/)?/, path.prefix.empty? ? "" : "#{path.prefix}\\1") # prefix can be empty...
-      query.gsub!(/\:action/, path.partial? ? "_#{path.name}" : path.name)
+
+      prefix = path.prefix.empty? ? "" : "#{escape_entry(path.prefix)}\\1"
+      query.gsub!(/\:prefix(\/)?/, prefix)
+
+      partial = escape_entry(path.partial? ? "_#{path.name}" : path.name)
+      query.gsub!(/\:action/, partial)
 
       details.each do |ext, variants|
         query.gsub!(/\:#{ext}/, "{#{variants.compact.uniq.join(',')}}")
@@ -159,9 +155,13 @@ module ActionView
       File.expand_path(query, @path)
     end
 
+    def escape_entry(entry)
+      entry.gsub(/[*?{}\[\]]/, '\\\\\\&')
+    end
+
     # Returns the file mtime from the filesystem.
     def mtime(p)
-      File.stat(p).mtime
+      File.mtime(p)
     end
 
     # Extract handler and formats from path. If a format cannot be a found neither
@@ -176,7 +176,7 @@ module ActionView
     end
   end
 
-  # A resolver that loads files from the filesystem. It allows to set your own
+  # A resolver that loads files from the filesystem. It allows setting your own
   # resolving pattern. Such pattern can be a glob string supported by some variables.
   #
   # ==== Examples
@@ -192,7 +192,7 @@ module ActionView
   #
   #   FileSystemResolver.new("/path/to/views", ":prefix/{:formats/,}:action{.:locale,}{.:formats,}{.:handlers,}")
   #
-  # If you don't specify pattern then the default will be used.
+  # If you don't specify a pattern then the default will be used.
   #
   # In order to use any of the customized resolvers above in a Rails application, you just need
   # to configure ActionController::Base.view_paths in an initializer, for example:
@@ -204,10 +204,10 @@ module ActionView
   #
   # ==== Pattern format and variables
   #
-  # Pattern have to be a valid glob string, and it allows you to use the
+  # Pattern has to be a valid glob string, and it allows you to use the
   # following variables:
   #
-  # * <tt>:prefix</tt> - usualy the controller path
+  # * <tt>:prefix</tt> - usually the controller path
   # * <tt>:action</tt> - name of the action
   # * <tt>:locale</tt> - possible locale versions
   # * <tt>:formats</tt> - possible request formats (for example html, json, xml...)
@@ -235,15 +235,11 @@ module ActionView
   class OptimizedFileSystemResolver < FileSystemResolver #:nodoc:
     def build_query(path, details)
       exts = EXTENSIONS.map { |ext| details[ext] }
-      query = File.join(@path, path)
+      query = escape_entry(File.join(@path, path))
 
-      exts.each do |ext|
-        query << "{"
-        ext.compact.each { |e| query << ".#{e}," }
-        query << "}"
-      end
-
-      query
+      query + exts.map { |ext|
+        "{#{ext.compact.uniq.map { |e| ".#{e}," }.join}}"
+      }.join
     end
   end
 

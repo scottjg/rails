@@ -5,40 +5,6 @@ module Rails
   module Generators
     module Actions
 
-      # Install a plugin. You must provide either a Subversion url or Git url.
-      #
-      # For a Git-hosted plugin, you can specify a branch and
-      # whether it should be added as a submodule instead of cloned.
-      #
-      # For a Subversion-hosted plugin you can specify a revision.
-      #
-      # ==== Examples
-      #
-      #   plugin 'restful-authentication', :git => 'git://github.com/technoweenie/restful-authentication.git'
-      #   plugin 'restful-authentication', :git => 'git://github.com/technoweenie/restful-authentication.git', :branch => 'stable'
-      #   plugin 'restful-authentication', :git => 'git://github.com/technoweenie/restful-authentication.git', :submodule => true
-      #   plugin 'restful-authentication', :svn => 'svn://svnhub.com/technoweenie/restful-authentication/trunk'
-      #   plugin 'restful-authentication', :svn => 'svn://svnhub.com/technoweenie/restful-authentication/trunk', :revision => 1234
-      #
-      def plugin(name, options)
-        log :plugin, name
-
-        if options[:git] && options[:submodule]
-          options[:git] = "-b #{options[:branch]} #{options[:git]}" if options[:branch]
-          in_root do
-            run "git submodule add #{options[:git]} vendor/plugins/#{name}", :verbose => false
-          end
-        elsif options[:git] || options[:svn]
-          options[:git] = "-b #{options[:branch]} #{options[:git]}"   if options[:branch]
-          options[:svn] = "-r #{options[:revision]} #{options[:svn]}" if options[:revision]
-          in_root do
-            run_ruby_script "script/rails plugin install #{options[:svn] || options[:git]}", :verbose => false
-          end
-        else
-          log "! no git or svn provided for #{name}. Skipping..."
-        end
-      end
-
       # Adds an entry into Gemfile for the supplied gem. If env
       # is specified, add the gem to the given environment.
       #
@@ -68,7 +34,33 @@ module Rails
         end
 
         in_root do
-          append_file "Gemfile", "gem #{parts.join(", ")}\n", :verbose => false
+          str = "gem #{parts.join(", ")}"
+          str = "  " + str if @in_group
+          str = "\n" + str
+          append_file "Gemfile", str, :verbose => false
+        end
+      end
+
+      # Wraps gem entries inside a group.
+      #
+      # ==== Example
+      #
+      #   gem_group :development, :test do
+      #     gem "rspec-rails"
+      #   end
+      #
+      def gem_group(*names, &block)
+        name = names.map(&:inspect).join(", ")
+        log :gemfile, "group #{name}"
+
+        in_root do
+          append_file "Gemfile", "\ngroup #{name} do", :force => true
+
+          @in_group = true
+          instance_eval(&block)
+          @in_group = false
+
+          append_file "Gemfile", "\nend\n", :force => true
         end
       end
 
@@ -97,9 +89,9 @@ module Rails
 
         in_root do
           if options[:env].nil?
-            inject_into_file 'config/application.rb', "\n  #{data}", :after => sentinel, :verbose => false
+            inject_into_file 'config/application.rb', "\n    #{data}", :after => sentinel, :verbose => false
           else
-            Array.wrap(options[:env]).each do |env|
+            Array(options[:env]).each do |env|
               inject_into_file "config/environments/#{env}.rb", "\n  #{data}", :after => env_file_sentinel, :verbose => false
             end
           end
@@ -119,8 +111,8 @@ module Rails
         if commands.is_a?(Symbol)
           run "git #{commands}"
         else
-          commands.each do |command, options|
-            run "git #{command} #{options}"
+          commands.each do |cmd, options|
+            run "git #{cmd} #{options}"
           end
         end
       end
@@ -227,7 +219,7 @@ module Rails
       #
       def rake(command, options={})
         log :rake, command
-        env  = options[:env] || 'development'
+        env  = options[:env] || ENV["RAILS_ENV"] || 'development'
         sudo = options[:sudo] && RbConfig::CONFIG['host_os'] !~ /mswin|mingw/ ? 'sudo ' : ''
         in_root { run("#{sudo}#{extify(:rake)} #{command} RAILS_ENV=#{env}", :verbose => false) }
       end
@@ -251,10 +243,10 @@ module Rails
       #
       def route(routing_code)
         log :route, routing_code
-        sentinel = /\.routes\.draw do(?:\s*\|map\|)?\s*$/
+        sentinel = /\.routes\.draw do\s*$/
 
         in_root do
-          inject_into_file 'config/routes.rb', "\n  #{routing_code}\n", { :after => sentinel, :verbose => false }
+          inject_into_file 'config/routes.rb', "\n  #{routing_code}", { :after => sentinel, :verbose => false }
         end
       end
 

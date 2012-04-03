@@ -83,13 +83,16 @@ module ActionView
         #   javascript_path "http://www.example.com/js/xmlhr"    # => http://www.example.com/js/xmlhr
         #   javascript_path "http://www.example.com/js/xmlhr.js" # => http://www.example.com/js/xmlhr.js
         def javascript_path(source)
-          if config.use_sprockets
-            asset_path(source, 'js')
-          else
-            asset_paths.compute_public_path(source, 'javascripts', 'js')
-          end
+          asset_paths.compute_public_path(source, 'javascripts', :ext => 'js')
         end
         alias_method :path_to_javascript, :javascript_path # aliased to avoid conflicts with a javascript_path named route
+
+        # Computes the full URL to a javascript asset in the public javascripts directory.
+        # This will use +javascript_path+ internally, so most of their behaviors will be the same.
+        def javascript_url(source)
+          URI.join(current_host, path_to_javascript(source)).to_s
+        end
+        alias_method :url_to_javascript, :javascript_url # aliased to avoid conflicts with a javascript_url named route
 
         # Returns an HTML script tag for each of the +sources+ provided.
         #
@@ -123,10 +126,10 @@ module ActionView
         #   #    <script type="text/javascript" src="/elsewhere/cools.js?1423139606"></script>
         #
         #   javascript_include_tag "http://www.example.com/xmlhr"
-        #   # => <script type="text/javascript" src="http://www.example.com/xmlhr.js?1284139606"></script>
+        #   # => <script type="text/javascript" src="http://www.example.com/xmlhr"></script>
         #
         #   javascript_include_tag "http://www.example.com/xmlhr.js"
-        #   # => <script type="text/javascript" src="http://www.example.com/xmlhr.js?1284139606"></script>
+        #   # => <script type="text/javascript" src="http://www.example.com/xmlhr.js"></script>
         #
         #   javascript_include_tag :defaults
         #   # => <script type="text/javascript" src="/javascripts/jquery.js?1284139606"></script>
