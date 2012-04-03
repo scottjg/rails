@@ -43,7 +43,7 @@ module ActiveRecord
       # ActiveRecord::RecordNotFound is rescued within the method, and it is
       # not reraised. The proxy is \reset and +nil+ is the return value.
       def load_target
-        @target ||= find_target if find_target?
+        @target = find_target if (stale_target? && @stale_state.present?) || find_target?
         loaded! unless loaded?
         target
       rescue ActiveRecord::RecordNotFound
