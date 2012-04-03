@@ -657,7 +657,7 @@ module ActionView
           end
 
           tags = utf8_enforcer_tag << method_tag
-          content_tag(:div, tags, :style => 'margin:0;padding:0;display:inline')
+          content_tag(:div, tags)
         end
 
         def form_tag_html(html_options)
