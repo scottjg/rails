@@ -1,5 +1,9 @@
 require 'fileutils'
-require 'rails/version'
+begin
+  require 'rails/version'
+rescue LoadError
+  # Ignore
+end
 require 'active_support/concern'
 require 'active_support/core_ext/class/delegating_attributes'
 require 'active_support/core_ext/string/inflections'
@@ -200,7 +204,7 @@ module ActiveSupport
           unless defined? @env
             app = "#{$1}.#{$2}" if File.directory?('.git') && `git branch -v` =~ /^\* (\S+)\s+(\S+)/
 
-            rails = Rails::VERSION::STRING
+            rails = defined?(Rails) ? Rails::VERSION::STRING : nil
             if File.directory?('vendor/rails/.git')
               Dir.chdir('vendor/rails') do
                 rails += ".#{$1}.#{$2}" if `git branch -v` =~ /^\* (\S+)\s+(\S+)/
@@ -210,7 +214,11 @@ module ActiveSupport
             ruby = defined?(RUBY_ENGINE) ? RUBY_ENGINE : 'ruby'
             ruby += "-#{RUBY_VERSION}.#{RUBY_PATCHLEVEL}"
 
-            @env = [app, rails, ruby, RUBY_PLATFORM] * ','
+            v= [app]
+            v<< rails if rails
+            v<< ruby
+            v<< RUBY_PLATFORM
+            @env = v * ','
           end
 
           @env
@@ -218,6 +226,7 @@ module ActiveSupport
 
         protected
           HEADER = 'measurement,created_at,app,rails,ruby,platform'
+          HEADER.sub!(',rails,',',') unless defined?(Rails)
 
           def with_output_file
             fname = output_filename
