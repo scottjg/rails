@@ -212,7 +212,7 @@ module ActiveRecord
         options = args.last
         if options.is_a?(Hash) && options[:on]
           options[:if] = Array.wrap(options[:if])
-          options[:if] << "transaction_include_action?(:#{options[:on]})"
+          options[:if] << "transaction_include_action?(:#{options[:on]}, 0)"
         end
         set_callback(:commit, :after, *args, &block)
       end
@@ -260,7 +260,9 @@ module ActiveRecord
 
     # Call the after_commit callbacks
     def committed! #:nodoc:
-      run_callbacks :commit
+      with_new_transaction_record_state do
+        _run_commit_callbacks
+      end
     ensure
       clear_transaction_record_state
     end
@@ -299,6 +301,21 @@ module ActiveRecord
     end
 
     protected
+
+    def transaction_record_state_history
+      @_transaction_record_state_history ||= [ ]
+    end
+
+    def with_new_transaction_record_state
+      transaction_record_state_history.unshift(@_start_transaction_state)
+      remove_instance_variable(:@_start_transaction_state)
+
+      begin
+        yield
+      ensure
+        @_start_transaction_state = transaction_record_state_history.shift
+      end
+    end
 
     # Save the new record state and id of a record so it can be restored later if a transaction fails.
     def remember_transaction_record_state #:nodoc:
@@ -341,19 +358,23 @@ module ActiveRecord
     end
 
     # Determine if a record was created or destroyed in a transaction. State should be one of :new_record or :destroyed.
-    def transaction_record_state(state) #:nodoc:
-      @_start_transaction_state[state] if defined?(@_start_transaction_state)
+    def transaction_record_state(state, depth = nil) #:nodoc
+      if depth && transaction_record_state_history[depth]
+        transaction_record_state_history[depth][state]
+      else
+        @_start_transaction_state[state] if defined?(@_start_transaction_state)
+      end
     end
 
     # Determine if a transaction included an action for :create, :update, or :destroy. Used in filtering callbacks.
-    def transaction_include_action?(action) #:nodoc:
+    def transaction_include_action?(action, depth = nil) #:nodoc
       case action
       when :create
-        transaction_record_state(:new_record)
+        transaction_record_state(:new_record, depth)
       when :destroy
         destroyed?
       when :update
-        !(transaction_record_state(:new_record) || destroyed?)
+        !(transaction_record_state(:new_record, depth) || destroyed?)
       end
     end
   end

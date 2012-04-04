@@ -93,6 +93,24 @@ class TransactionCallbacksTest < ActiveRecord::TestCase
     assert_equal [:commit_on_create], @new_record.history
   end
 
+  def test_only_call_after_commit_on_create_once_when_after_commit_resaves_record
+    @new_record = TopicWithCallbacks.new(:title => "New topic", :written_on => Date.today)
+
+    @new_record.after_commit_block(:create) do |r| 
+      r.history << :commit_on_create
+      r.update_attributes(:title => "Updated Topic")
+    end
+
+    @new_record.after_commit_block(:update){|r| r.history << :commit_on_update}
+    @new_record.after_commit_block(:destroy){|r| r.history << :commit_on_destroy}
+    @new_record.after_rollback_block(:create){|r| r.history << :rollback_on_create}
+    @new_record.after_rollback_block(:update){|r| r.history << :rollback_on_update}
+    @new_record.after_rollback_block(:destroy){|r| r.history << :rollback_on_destroy}
+
+    @new_record.save!
+    assert_equal [:commit_on_create, :commit_on_update], @new_record.history
+  end
+
   def test_call_after_rollback_after_transaction_rollsback
     @first.after_commit_block{|r| r.history << :after_commit}
     @first.after_rollback_block{|r| r.history << :after_rollback}
