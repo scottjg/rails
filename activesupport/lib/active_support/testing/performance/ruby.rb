@@ -8,14 +8,16 @@ end
 module ActiveSupport
   module Testing
     module Performance
+
       DEFAULTS.merge!(
-        if ARGV.include?('--benchmark')
+        case run_mode
+        when :benchmark
           { :metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time] }
-        else
+        when :profile
           { :min_percent => 0.01,
             :metrics => [:process_time, :memory, :objects],
             :formats => [:flat, :graph_html, :call_tree, :call_stack] }
-        end).freeze
+        end || {}).freeze
 
       protected
         def run_gc

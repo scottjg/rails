@@ -5,13 +5,15 @@ java_import java.lang.management.ManagementFactory
 module ActiveSupport
   module Testing
     module Performance
+
       DEFAULTS.merge!(
-        if ARGV.include?('--benchmark')
+        case run_mode
+        when :benchmark
           {:metrics => [:wall_time, :user_time, :memory, :gc_runs, :gc_time]}
-        else
+        when :profile
           { :metrics => [:wall_time],
             :formats => [:flat, :graph] }
-        end).freeze
+        end || {}).freeze
 
       protected
         def run_gc

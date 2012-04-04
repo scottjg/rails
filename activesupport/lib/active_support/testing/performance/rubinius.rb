@@ -3,13 +3,15 @@ require 'rubinius/agent'
 module ActiveSupport
   module Testing
     module Performance
+
       DEFAULTS.merge!(
-        if ARGV.include?('--benchmark')
+        case run_mode
+        when :benchmark
           {:metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time]}
-        else
+        when :profile
           { :metrics => [:wall_time],
             :formats => [:flat, :graph] }
-        end).freeze
+        end || {}).freeze
 
       protected
         def run_gc
