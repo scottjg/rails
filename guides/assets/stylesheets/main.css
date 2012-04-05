@@ -32,6 +32,13 @@ pre,code,tt {
     font-family: "Anonymous Pro", "Inconsolata", "Menlo", "Consolas", "Bitstream Vera Sans Mono", "Courier New", monospace;
     line-height: 1.5;
 }
+pre,tt,code {
+ white-space: pre-wrap;       /* css-3 */
+ white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
+ white-space: -pre-wrap;      /* Opera 4-6 */
+ white-space: -o-pre-wrap;    /* Opera 7 */
+ word-wrap: break-word;       /* Internet Explorer 5.5+ */
+}
 
 abbr, acronym { border-bottom: 1px dotted #666; }
 address { margin: 0 0 1.5em; font-style: italic; }
@@ -91,6 +98,7 @@ body {
   text-align: left;
   margin: 0 auto;
   max-width: 960px;
+  padding: 0 1em;
   }
 
 #topNav {
@@ -132,7 +140,19 @@ body {
   width: 17em;
   font-size: 0.9285em;
   line-height: 1.3846em;
+  margin-right: 1em;
   }
+
+
+@media screen and (max-width: 480px) {
+  #subCol {
+    position: static;
+    width: inherit;
+    margin-left: -1em;
+    margin-right: 0;
+    padding-right: 1.25em;
+  }
+}
 
 #extraCol {display: none;}
 
@@ -232,6 +252,9 @@ a, a:link, a:visited {
     text-align: center;
     padding-right: 1em;
   }
+  .guidesIndex select {
+    font-size: .95em;
+  }
 }
 
 #guides {
@@ -287,12 +310,24 @@ h2 {
   font-weight: bold;
   }
 
+@media screen and (max-width: 480px) {
+  h2 {
+    font-size: 1.45em;
+  }
+}
+
 h3 {
   font-size: 1.7142em;
   line-height: 1.286em;
   margin: 0.875em 0 0.2916em;
   font-weight: bold;
   }
+
+@media screen and (max-width: 480px) {
+  h3 {
+    font-size: 1.45em;
+  }
+}
 
 h4 {
   font-size: 1.2857em;
@@ -356,6 +391,12 @@ h6 {
   margin-bottom: 0.75em;
 }
 
+@media screen and (max-width: 480px) {
+  #feature p {
+    font-size: 1em;
+  }
+}
+
 #feature ul {margin-left: 0;}
 #feature ul li {
   list-style: none;
@@ -375,7 +416,7 @@ h6 {
 }
 
 #mainCol dt, #subCol dt {
-  font-size: 1.2857em;
+  font-size: 1em;
   padding: 0.125em 0 0.25em 0;
   margin-bottom: 0;
   /*background: url(../images/book_icon.gif) no-repeat left top;
@@ -390,12 +431,28 @@ h6 {
   margin-top: 0.25em;
 }
 
+@media screen and (max-width: 480px) {
+  #mainCol dd.work-in-progress, #subCol dd.work-in-progress {
+    background: #fff9d8 url(../images/tab_yellow_small.png) no-repeat left top;
+    padding-left: 36px;
+    background-position: 8px 15px;
+  }
+}
+
 #mainCol dd.kindle, #subCol dd.kindle {
   background: #d5e9f6 url(../images/tab_info.gif) no-repeat left top;
   border: none;
   padding: 1.25em 1em 1.25em 48px;
   margin-left: 0;
   margin-top: 0.25em;
+}
+
+@media screen and (max-width: 480px) {
+  #mainCol dd.kindle, #subCol dd.kindle {
+    background: #d5e9f6 url(../images/tab_info_small.png) no-repeat left top;
+    padding-left: 36px;
+    background-position: 8px 15px;
+  }
 }
 
 #mainCol div.warning, #subCol dd.warning {
