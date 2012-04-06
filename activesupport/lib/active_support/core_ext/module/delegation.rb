@@ -108,15 +108,30 @@ class Module
     end
 
     to = to.to_s
-    prefix, allow_nil = options.values_at(:prefix, :allow_nil)
+    suffix, prefix, allow_nil = options.values_at(:suffix, :prefix, :allow_nil)
 
     if prefix == true && to =~ /^[^a-z_]/
       raise ArgumentError, "Can only automatically set the delegation prefix when delegating to a method."
     end
 
+    if suffix == true && to =~ /^[^a-z_]/
+      raise ArgumentError, "Can only automatically set the delegation suffix when delegating to a method."
+    end
+
+    if suffix == true && prefix == true
+      raise ArgumentError, "Can't set the prefix and the suffix both to target name"
+    end
+
     method_prefix =
       if prefix
         "#{prefix == true ? to : prefix}_"
+      else
+        ''
+      end
+
+    method_suffix =
+      if suffix
+        "_#{suffix == true ? to : suffix}"
       else
         ''
       end
@@ -127,27 +142,27 @@ class Module
     if allow_nil
       methods.each do |method|
         module_eval(<<-EOS, file, line - 2)
-          def #{method_prefix}#{method}(*args, &block)        # def customer_name(*args, &block)
-            if #{to} || #{to}.respond_to?(:#{method})         #   if client || client.respond_to?(:name)
-              #{to}.__send__(:#{method}, *args, &block)       #     client.__send__(:name, *args, &block)
-            end                                               #   end
-          end                                                 # end
+          def #{method_prefix}#{method}#{method_suffix}(*args, &block)  # def customer_name(*args, &block)
+            if #{to} || #{to}.respond_to?(:#{method})                   #   if client || client.respond_to?(:name)
+              #{to}.__send__(:#{method}, *args, &block)                 #     client.__send__(:name, *args, &block)
+            end                                                         #   end
+          end                                                           # end
         EOS
       end
     else
       methods.each do |method|
-        exception = %(raise "#{self}##{method_prefix}#{method} delegated to #{to}.#{method}, but #{to} is nil: \#{self.inspect}")
+        exception = %(raise "#{self}##{method_prefix}#{method}#{method_suffix} delegated to #{to}.#{method}, but #{to} is nil: \#{self.inspect}")
 
         module_eval(<<-EOS, file, line - 1)
-          def #{method_prefix}#{method}(*args, &block)        # def customer_name(*args, &block)
-            #{to}.__send__(:#{method}, *args, &block)         #   client.__send__(:name, *args, &block)
-          rescue NoMethodError                                # rescue NoMethodError
-            if #{to}.nil?                                     #   if client.nil?
-              #{exception}                                    #     # add helpful message to the exception
-            else                                              #   else
-              raise                                           #     raise
-            end                                               #   end
-          end                                                 # end
+          def #{method_prefix}#{method}#{method_suffix}(*args, &block)    # def customer_name(*args, &block)
+            #{to}.__send__(:#{method}, *args, &block)                     #   client.__send__(:name, *args, &block)
+          rescue NoMethodError                                            # rescue NoMethodError
+            if #{to}.nil?                                                 #   if client.nil?
+              #{exception}                                                #     # add helpful message to the exception
+            else                                                          #   else
+              raise                                                       #     raise
+            end                                                           #   end
+          end                                                             # end
         EOS
       end
     end

@@ -45,6 +45,10 @@ end
 Invoice   = Struct.new(:client) do
   delegate :street, :city, :name, :to => :client, :prefix => true
   delegate :street, :city, :name, :to => :client, :prefix => :customer
+  delegate :street, :city, :name, :to => :client, :suffix => true
+  delegate :street, :city, :name, :to => :client, :suffix => :for_customer
+  delegate :street, :city, :name, :to => :client, :prefix => true, :suffix => :for_this_quarter
+  delegate :street, :city, :name, :to => :client, :prefix => :temporary, :suffix => true
 end
 
 Project   = Struct.new(:description, :person) do
@@ -53,11 +57,19 @@ Project   = Struct.new(:description, :person) do
 end
 
 Developer = Struct.new(:client) do
-  delegate :name, :to => :client, :prefix => nil
+  delegate :name, :to => :client, :prefix => nil, :suffix => nil
+  delegate :name, :to => :client, :prefix => true, :suffix => nil
+  delegate :name, :to => :client, :prefix => :customer, :suffix => nil
+  delegate :name, :to => :client, :prefix => nil, :suffix => true
+  delegate :name, :to => :client, :prefix => nil, :suffix => :customer
 end
 
 Tester = Struct.new(:client) do
-  delegate :name, :to => :client, :prefix => false
+  delegate :name, :to => :client, :prefix => false, :suffix => false
+  delegate :name, :to => :client, :prefix => true, :suffix => false
+  delegate :name, :to => :client, :prefix => :customer, :suffix => false
+  delegate :name, :to => :client, :prefix => false, :suffix => true
+  delegate :name, :to => :client, :prefix => false, :suffix => :customer
 end
 
 class Name
@@ -131,6 +143,106 @@ class ModuleTest < ActiveSupport::TestCase
     end
   end
 
+  def test_delegation_suffix
+    invoice = Invoice.new(@david)
+    assert_equal invoice.name_client, "David"
+    assert_equal invoice.street_client, "Paulina"
+    assert_equal invoice.city_client, "Chicago"
+  end
+
+  def test_delegation_custom_suffix
+    invoice = Invoice.new(@david)
+    assert_equal invoice.name_for_customer, "David"
+    assert_equal invoice.street_for_customer, "Paulina"
+    assert_equal invoice.city_for_customer, "Chicago"
+  end
+
+  def test_delegation_suffix_with_nil_or_false
+    assert_equal Developer.new(@david).name, "David"
+    assert_equal Tester.new(@david).name, "David"
+  end
+
+  def test_delegation_prefix_with_instance_variable
+    assert_raise ArgumentError do
+      Class.new do
+        def initialize(client)
+          @client = client
+        end
+        delegate :name, :address, :to => :@client, :suffix => true
+      end
+    end
+  end
+
+  def test_delegation_with_prefix_and_suffix
+    assert_raise ArgumentError do
+      Class.new do
+        def initialize(client)
+          @client = client
+        end
+
+        def client
+          @client
+        end
+
+        delegate :name, :address, :to => :client, :suffix => true, :prefix => true
+      end
+    end
+  end
+
+  def test_delegation_with_prefix_and_custom_suffix
+    invoice = Invoice.new(@david)
+    assert_equal invoice.client_name_for_this_quarter, "David"
+    assert_equal invoice.client_street_for_this_quarter, "Paulina"
+    assert_equal invoice.client_city_for_this_quarter, "Chicago"
+  end
+
+  def test_delegation_with_custom_prefix_and_suffix
+    invoice = Invoice.new(@david)
+    assert_equal invoice.temporary_name_client, "David"
+    assert_equal invoice.temporary_street_client, "Paulina"
+    assert_equal invoice.temporary_city_client, "Chicago"
+  end
+
+  def test_delegation_with_prefix_and_nil_suffix
+    developer = Developer.new(@david)
+    assert_equal developer.client_name, "David"
+  end
+
+  def test_delegation_with_custom_prefix_and_nil_suffix
+    developer = Developer.new(@david)
+    assert_equal developer.customer_name, "David"
+  end
+
+  def test_delegation_with_nil_prefix_and_suffix
+    developer = Developer.new(@david)
+    assert_equal developer.name_client, "David"
+  end
+
+  def test_delegation_with_nil_prefix_and_custom_suffix
+    developer = Developer.new(@david)
+    assert_equal developer.name_customer, "David"
+  end
+
+  def test_delegation_with_prefix_and_false_suffix
+    tester = Tester.new(@david)
+    assert_equal tester.client_name, "David"
+  end
+
+  def test_delegation_with_custom_prefix_and_false_suffix
+    tester = Tester.new(@david)
+    assert_equal tester.customer_name, "David"
+  end
+
+  def test_delegation_with_false_prefix_and_suffix
+    tester = Tester.new(@david)
+    assert_equal tester.name_client, "David"
+  end
+
+  def test_delegation_with_false_prefix_and_custom_suffix
+    tester = Tester.new(@david)
+    assert_equal tester.name_customer, "David"
+  end
+
   def test_delegation_with_allow_nil
     rails = Project.new("Rails", Someone.new("David"))
     assert_equal rails.name, "David"
@@ -144,6 +256,14 @@ class ModuleTest < ActiveSupport::TestCase
   def test_delegation_with_allow_nil_and_nil_value_and_prefix
     Project.class_eval do
       delegate :name, :to => :person, :allow_nil => true, :prefix => true
+    end
+    rails = Project.new("Rails")
+    assert_nil rails.person_name
+  end
+
+  def test_delegation_with_allow_nil_and_nil_value_and_suffix
+    Project.class_eval do
+      delegate :name, :to => :person, :allow_nil => true, :suffix => true
     end
     rails = Project.new("Rails")
     assert_nil rails.person_name
