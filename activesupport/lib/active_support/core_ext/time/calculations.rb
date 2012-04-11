@@ -153,14 +153,14 @@ class Time
   end
 
   # Short-hand for months_ago(1)
-  def prev_month
-    months_ago(1)
+  def prev_month(n=1)
+    months_ago(n)
   end
   alias_method :last_month, :prev_month
 
   # Short-hand for months_since(1)
-  def next_month
-    months_since(1)
+  def next_month(n=1)
+    months_since(n)
   end
 
   # Returns number of days to start of this week, week starts on start_day (default is :monday).
