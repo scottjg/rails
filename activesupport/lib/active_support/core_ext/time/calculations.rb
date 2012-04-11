@@ -142,14 +142,14 @@ class Time
   end
 
   # Short-hand for years_ago(1)
-  def prev_year
-    years_ago(1)
+  def prev_year(n=1)
+    years_ago(n)
   end
   alias_method :last_year, :prev_year
 
   # Short-hand for years_since(1)
-  def next_year
-    years_since(1)
+  def next_year(n=1)
+    years_since(n)
   end
 
   # Short-hand for months_ago(1)
