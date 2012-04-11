@@ -124,6 +124,14 @@ class Time
     advance(:days => days)
   end
 
+  def next_day(n=1)
+    days_since(n)
+  end
+
+  def prev_day(n=1)
+    days_ago(n)
+  end
+
   # Returns a new Time representing the time a number of specified weeks ago.
   def weeks_ago(weeks)
     advance(:weeks => -weeks)
