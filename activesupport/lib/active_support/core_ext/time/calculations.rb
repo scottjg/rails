@@ -116,6 +116,14 @@ class Time
   end
   alias :in :since
 
+  def days_ago(days)
+    advance(:days => -days)
+  end
+
+  def days_since(days)
+    advance(:days => days)
+  end
+
   # Returns a new Time representing the time a number of specified weeks ago.
   def weeks_ago(weeks)
     advance(:weeks => -weeks)
