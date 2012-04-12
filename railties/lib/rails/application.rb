@@ -129,6 +129,12 @@ module Rails
     def initialize!(group=:default) #:nodoc:
       raise "Application has been already initialized." if @initialized
       run_initializers(group, self)
+
+      if config.allow_concurrency
+        # Force lazy initialization to avoid concurrent racing conditions
+        env_config
+      end
+
       @initialized = true
       self
     end
