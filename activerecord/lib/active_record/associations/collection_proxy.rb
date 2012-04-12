@@ -126,6 +126,12 @@ module ActiveRecord
         proxy_association.reload
         self
       end
+
+      Array.instance_methods.each do |m|
+        unless method_defined?(m)
+          define_method(m) { |*args, &block| target.send(m, *args, &block) if load_target }
+        end
+      end
     end
   end
 end
