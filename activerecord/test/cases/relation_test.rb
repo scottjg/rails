@@ -44,7 +44,7 @@ module ActiveRecord
     end
 
     def test_multi_value_methods
-      assert_equal [:select, :group, :order, :joins, :where, :having, :bind].map(&:to_s).sort,
+      assert_equal [:select, :group, :order, :joins, :where, :having, :bind, :union].map(&:to_s).sort,
         Relation::MULTI_VALUE_METHODS.map(&:to_s).sort
     end
 

@@ -9,7 +9,7 @@ module ActiveRecord
                   :select_values, :group_values, :order_values, :joins_values,
                   :where_values, :having_values, :bind_values,
                   :limit_value, :offset_value, :lock_value, :readonly_value, :create_with_value,
-                  :from_value, :reordering_value, :reverse_order_value,
+                  :from_value, :reordering_value, :reverse_order_value, :union_values,
                   :uniq_value
 
     def includes(*args)
@@ -119,6 +119,13 @@ module ActiveRecord
 
       args.flatten!
       relation.joins_values += args
+
+      relation
+    end
+
+    def union(value)
+      relation = clone
+      relation.union_values += [value.arel]
 
       relation
     end
@@ -273,6 +280,8 @@ module ActiveRecord
       arel.skip(@offset_value.to_i) if @offset_value
 
       arel.group(*@group_values.uniq.reject{|g| g.blank?}) unless @group_values.empty?
+
+      @union_values.each { |u| arel.union(u) }
 
       order = @order_values
       order = reverse_sql_order(order) if @reverse_order_value

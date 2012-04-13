@@ -2119,4 +2119,13 @@ class BasicsTest < ActiveRecord::TestCase
   def test_table_name_with_2_abstract_subclasses
     assert_equal "photos", Photo.table_name
   end
+
+  def test_union
+    old_topics = Topic.where("written_on < '2004-01-01'")
+    new_topics = Topic.where("written_on > '2006-01-01'")
+
+    assert_nothing_raised do
+      assert_equal 2, old_topics.union(new_topics).length
+    end
+  end
 end
