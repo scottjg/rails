@@ -142,4 +142,35 @@ class ScaffoldControllerGeneratorTest < Rails::Generators::TestCase
       assert_match(/\{ render action: "new" \}/, content)
     end
   end
+
+  def test_custom_model_name_without_namespace_is_used
+    run_generator ["Admin::User", "--model=User"]
+
+    assert_file "app/controllers/admin/users_controller.rb" do |content|
+      assert_instance_method :index, content do |m|
+        assert_match(/@users = User\.all/, m)
+      end
+    end
+  end
+
+  def test_custom_model_name_with_namespace_is_used
+    run_generator ["Admin::User", "--model=Public::User"]
+
+    assert_file "app/controllers/admin/users_controller.rb" do |content|
+      assert_instance_method :index, content do |m|
+        assert_match(/@public_users = Public::User\.all/, m)
+      end
+    end
+  end
+
+  def test_custom_model_name_with_slash_namespace_is_used
+    run_generator ["Admin::User", "--model=public/user"]
+
+    assert_file "app/controllers/admin/users_controller.rb" do |content|
+      assert_instance_method :index, content do |m|
+        assert_match(/@public_users = Public::User\.all/, m)
+      end
+    end
+  end
+
 end
