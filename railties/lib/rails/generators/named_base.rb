@@ -28,7 +28,8 @@ module Rails
 
       protected
         attr_reader :file_name
-        alias :singular_name :file_name
+        attr_reader :model_name
+        alias :singular_name :model_name
 
         # Wrap block with namespace of current application
         # if namespace exists and is not skipped
@@ -87,7 +88,7 @@ module Rails
         end
 
         def class_name
-          (class_path + [file_name]).map!{ |m| m.camelize }.join('::')
+          model_name ? model_name.camelize : (class_path + [file_name]).map!{ |m| m.camelize }.join('::')
         end
 
         def human_name
@@ -105,7 +106,7 @@ module Rails
         def table_name
           @table_name ||= begin
             base = pluralize_table_names? ? plural_name : singular_name
-            (class_path + [base]).join('_')
+            model_name ? base.gsub('/', '_') : (class_path + [base]).join('_')
           end
         end
 
@@ -146,6 +147,7 @@ module Rails
           @class_path = name.include?('/') ? name.split('/') : name.split('::')
           @class_path.map! { |m| m.underscore }
           @file_name = @class_path.pop
+          @model_name = options.model.try(:underscore) || @file_name
         end
 
         # Convert attributes array into GeneratedAttribute objects.
