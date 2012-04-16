@@ -4,14 +4,13 @@ module ActiveSupport
   module Testing
     module Performance
 
-      DEFAULTS.merge!(
-        case run_mode
-        when :benchmark
-          {:metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time]}
-        when :profile
-          { :metrics => [:wall_time],
-            :formats => [:flat, :graph] }
-        end || {}).freeze
+      DEFAULTS[:benchmark].merge!({
+        :metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time],
+      })
+      DEFAULTS[:profile].merge!({
+        :metrics => [:wall_time],
+        :formats => [:flat, :graph],
+      })
 
       protected
         def run_gc

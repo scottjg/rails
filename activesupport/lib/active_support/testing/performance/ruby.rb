@@ -12,15 +12,14 @@ module ActiveSupport
   module Testing
     module Performance
 
-      DEFAULTS.merge!(
-        case run_mode
-        when :benchmark
-          { :metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time] }
-        when :profile
-          { :min_percent => 0.01,
-            :metrics => [:process_time, :memory, :objects],
-            :formats => [:flat, :graph_html, :call_tree, :call_stack] }
-        end || {}).freeze
+      DEFAULTS[:benchmark].merge!({
+        :metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time],
+      })
+      DEFAULTS[:profile].merge!({
+        :min_percent => 0.01,
+        :metrics => [:process_time, :memory, :objects],
+        :formats => [:flat, :graph_html, :call_tree, :call_stack],
+      })
 
       protected
         def run_gc

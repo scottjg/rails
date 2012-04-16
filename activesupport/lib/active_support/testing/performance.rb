@@ -33,20 +33,21 @@ module ActiveSupport
       end
 
       # each implementation should define metrics and freeze the defaults
-      DEFAULTS = case run_mode
-        when :benchmark
-          { :runs => 4,
-            :output => 'tmp/performance',
-            :benchmark => true }
-        when :profile
-          { :runs => 1,
-            :output => 'tmp/performance',
-            :benchmark => false }
-        else {}
-        end
+      DEFAULTS= {
+        benchmark: {
+          :runs => 4,
+          :output => 'tmp/performance',
+          :benchmark => true,
+        },
+        profile: {
+          :runs => 1,
+          :output => 'tmp/performance',
+          :benchmark => false,
+        },
+      }
 
       def full_profile_options
-        DEFAULTS.merge(profile_options)
+        DEFAULTS[ActiveSupport::Testing::Performance.run_mode].merge(profile_options)
       end
 
       def full_test_name
