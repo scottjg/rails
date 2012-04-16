@@ -27,8 +27,10 @@ module ActiveSupport
       def self.run_mode
         if ENV['benchmark'] or ARGV.include?('--benchmark') # HAX for rake test
           :benchmark
-        else
+        elsif ENV['profile'] or ARGV.include?('--profile') # HAX for rake test
           :profile
+        else
+          raise "Should I run in benchmarking mode or profiling mode?"
         end
       end
 
