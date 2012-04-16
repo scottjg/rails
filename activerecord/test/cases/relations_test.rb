@@ -718,6 +718,19 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal 0, posts.count('comments_count')
   end
 
+  def test_count_with_union
+    posts = Post.scoped.where(:id => 1).union(:all, Post.scoped.where(:id => 2))
+
+    assert_equal 2, posts.count
+  end
+
+  def test_count_doesnt_modify_relation
+    posts = Post.scoped.where(:id => 1).union(:all, Post.scoped.where(:id => 2))
+
+    assert_equal 2, posts.count
+    assert_equal 2, posts.length
+  end
+
   def test_multiple_selects
     post = Post.scoped.select('comments_count').select('title').order("id ASC").first
     assert_equal "Welcome to the weblog", post.title

@@ -222,10 +222,11 @@ module ActiveRecord
     end
 
     def execute_simple_calculation(operation, column_name, distinct) #:nodoc:
+      puts 'Execute simple calculation'
       # Postgresql doesn't like ORDER BY when there are no GROUP BY
       relation = reorder(nil)
 
-      if operation == "count" && (relation.limit_value || relation.offset_value)
+      if operation == "count" && (relation.limit_value || relation.offset_value || relation.union_values)
         # Shortcut when limit is zero.
         return 0 if relation.limit_value == 0
 
@@ -339,6 +340,7 @@ module ActiveRecord
     end
 
     def build_count_subquery(relation, column_name, distinct)
+      puts 'Build count subquery'
       column_alias = Arel.sql('count_column')
       subquery_alias = Arel.sql('subquery_for_count')
 

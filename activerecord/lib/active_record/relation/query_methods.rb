@@ -123,9 +123,20 @@ module ActiveRecord
       relation
     end
 
-    def union(value)
+    def union(operation, value=nil)
+      puts 'Unioning'
+      puts "+ #{self.to_sql}"
+      puts "+ #{value.to_sql}"
+
+      unless value
+        value = operation
+        operation = nil
+      end
+
       relation = clone
-      relation.union_values += [value.arel]
+      relation.union_values += [{:arel => value.arel, :operation => operation}]
+
+      puts "= #{relation.to_sql}"
 
       relation
     end
@@ -268,6 +279,7 @@ module ActiveRecord
     end
 
     def build_arel
+      puts 'Building arel'
       arel = table.from table
 
       build_joins(arel, @joins_values) unless @joins_values.empty?
@@ -281,7 +293,13 @@ module ActiveRecord
 
       arel.group(*@group_values.uniq.reject{|g| g.blank?}) unless @group_values.empty?
 
-      @union_values.each { |u| arel.union(u) }
+      # If we have unions, we don't want to project deep unless it's a
+      # count column
+
+      puts "[ba] union values: #{@union_values.length}"
+      @union_values.each do |u|
+        u[:operation] ? arel.union(u[:operation], u[:arel]) : arel.union(u[:arel])
+      end
 
       order = @order_values
       order = reverse_sql_order(order) if @reverse_order_value
@@ -292,6 +310,8 @@ module ActiveRecord
       arel.distinct(@uniq_value)
       arel.from(@from_value) if @from_value
       arel.lock(@lock_value) if @lock_value
+
+      puts "[ba] result: #{arel.to_sql}"
 
       arel
     end
