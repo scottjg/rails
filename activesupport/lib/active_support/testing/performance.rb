@@ -15,7 +15,9 @@ module ActiveSupport
 
       included do
         superclass_delegating_accessor :profile_options
+        superclass_delegating_accessor :benchmark_options
         self.profile_options = {}
+        self.benchmark_options = {}
 
         if defined?(MiniTest::Assertions) && TestCase < MiniTest::Assertions
           include ForMiniTest
@@ -49,7 +51,10 @@ module ActiveSupport
       }
 
       def full_profile_options
-        DEFAULTS[ActiveSupport::Testing::Performance.run_mode].merge(profile_options)
+        run_mode= ActiveSupport::Testing::Performance.run_mode
+        defaults= DEFAULTS[run_mode]
+        override= public_send("#{run_mode}_options")
+        defaults.merge(override)
       end
 
       def full_test_name
