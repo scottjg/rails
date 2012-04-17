@@ -65,8 +65,10 @@ module ActiveSupport
         def run(runner)
           @runner = runner
 
-          run_warmup
-          if full_profile_options && metrics = full_profile_options[:metrics]
+          result= run_warmup
+          warmup_successful= result=='.'
+
+          if warmup_successful && full_profile_options && metrics = full_profile_options[:metrics]
             metrics.each do |metric_name|
               if klass = Metrics[metric_name.to_sym]
                 run_profile(klass.new)
@@ -104,8 +106,9 @@ module ActiveSupport
           yield(self.class::STARTED, name)
           @_result = result
 
-          run_warmup
-          if full_profile_options && metrics = full_profile_options[:metrics]
+          warmup_successful= run_warmup
+
+          if warmup_successful && full_profile_options && metrics = full_profile_options[:metrics]
             metrics.each do |metric_name|
               if klass = Metrics[metric_name.to_sym]
                 run_profile(klass.new)
@@ -120,23 +123,30 @@ module ActiveSupport
         end
 
         def run_test(metric, mode)
-          run_callbacks :setup
-          setup
-          metric.send(mode) { __send__ @method_name }
-        rescue ::Test::Unit::AssertionFailedError => e
-        add_failure(e.message, e.backtrace)
-        rescue StandardError, ScriptError => e
-          add_error(e)
-        ensure
+          result= true
           begin
-            teardown
-            run_callbacks :teardown, :enumerator => :reverse_each
+            run_callbacks :setup
+            setup
+            metric.send(mode) { __send__ @method_name }
           rescue ::Test::Unit::AssertionFailedError => e
             add_failure(e.message, e.backtrace)
+            result= false
           rescue StandardError, ScriptError => e
             add_error(e)
+            result= false
+          ensure
+            begin
+              teardown
+              run_callbacks :teardown, :enumerator => :reverse_each
+            rescue ::Test::Unit::AssertionFailedError => e
+              add_failure(e.message, e.backtrace)
+              result= false
+            rescue StandardError, ScriptError => e
+              add_error(e)
+              result= false
+            end
           end
-        end
+          result
       end
 
       protected
