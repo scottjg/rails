@@ -158,10 +158,11 @@ module ActiveSupport
           run_gc
 
           time = Metrics::Time.new
-          run_test(time, :benchmark)
+          result= run_test(time, :benchmark)
           puts "%s (%s warmup)" % [full_test_name, time.format(time.total)]
 
           run_gc
+          result
         end
 
         def run_profile(metric)
