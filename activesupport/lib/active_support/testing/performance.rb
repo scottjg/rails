@@ -147,6 +147,7 @@ module ActiveSupport
             end
           end
           result
+        end
       end
 
       protected
