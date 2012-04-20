@@ -39,7 +39,7 @@ module ActiveRecord
       when new_record?
         "#{self.class.model_name.cache_key}/new"
       when timestamp = self[:updated_at]
-        timestamp = timestamp.utc.to_f.gsub(/\./,'-')
+        timestamp = timestamp.utc.to_f.to_s.gsub(/\./,'-')
         "#{self.class.model_name.cache_key}/#{id}-#{timestamp}"
       else
         "#{self.class.model_name.cache_key}/#{id}"
