@@ -183,7 +183,35 @@ module Notifications
       assert_equal :awesome, @events.last.name
       assert_equal Hash[:payload => "notifications"], @events.last.payload
     end
-
+    
+    def test_distinguish_between_siblings_and_children_with_low_clock_resolution
+      # In some virtualized non-realtime systems, clock resolution can
+      # degrade. We simulate this by returning the same time for the
+      # duration of the test.
+      Time.stubs(:now).returns(1334854532)
+      
+      instrument(:dad) do
+        instrument(:child) do
+          instrument(:grand_child) do
+          end
+        end
+        instrument(:sibling) do
+        end
+      end
+      
+      assert_equal 4, @events.size
+      assert_equal([:grand_child, :child, :sibling, :dad],
+                   @events.map(&:name))
+      assert(@events[1].parent_of?(@events[0]),
+             "#{@events[1].name} should be parent of #{@events[0].name}")
+      assert(@events[3].parent_of?(@events[1]),
+             "#{@events[3].name} should be parent of #{@events[1].name}")
+      assert(!@events[1].parent_of?(@events[2]),
+             "#{@events[1].name} should not be parent of #{@events[2].name}")
+      assert(!@events.first.parent_of?(@events.last),
+             "#{@events[0].name} should not be parent of #{@events[3].name}")
+    end
+    
     def test_instrument_publishes_when_exception_is_raised
       begin
         instrument(:awesome, :payload => "notifications") do
