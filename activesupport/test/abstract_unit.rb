@@ -34,11 +34,11 @@ require 'active_support'
 require 'active_support/ruby/shim' if RUBY_VERSION < '1.8.7'
 
 def uses_memcached(test_name)
-  require 'memcache'
+  require 'dalli'
   begin
-    MemCache.new('localhost:11211').stats
+    Dalli::Client.new('localhost:11211').stats
     yield
-  rescue MemCache::MemCacheError
+  rescue Dalli::DalliError
     $stderr.puts "Skipping #{test_name} tests. Start memcached and try again."
   end
 end

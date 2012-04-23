@@ -36,6 +36,7 @@ end
 
 # AS
 gem 'memcache-client', '>= 1.8.5'
+gem 'dalli', '>= 2.0.3'
 
 platforms :mri_18 do
   gem 'system_timer'
