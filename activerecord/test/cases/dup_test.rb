@@ -98,6 +98,15 @@ module ActiveRecord
       assert_not_nil new_topic.updated_at
       assert_not_nil new_topic.created_at
     end
+    
+    def test_dup_validity_is_independent
+      Topic.validates_presence_of(:title)
+      t1 = Topic.new("title" => "Literature")
+      t1.save!
+      t2 = t1.dup
+      t2.title = nil
+      assert t2.invalid?, 'topic should be invalid'
+    end
 
     def test_dup_after_initialize_callbacks
       topic = Topic.new
