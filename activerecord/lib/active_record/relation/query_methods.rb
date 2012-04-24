@@ -165,13 +165,13 @@ module ActiveRecord
     # generates a query with 'ORDER BY id ASC, name ASC'.
     #
     def reorder(*args)
-      args.blank? ? self : clone.reorder!(*args)
+      clone.reorder!(*args)
     end
 
     def reorder!(*args)
       self.reordering_value = true
-      self.order_values = args.flatten
-      self
+      self.order_values = []
+      self.order!(args)
     end
 
     def joins(*args)
