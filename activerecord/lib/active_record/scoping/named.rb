@@ -34,7 +34,7 @@ module ActiveRecord
             if current_scope
               current_scope.clone
             else
-              scope = relation.clone
+              scope = relation
               scope.default_scoped = true
               scope
             end
@@ -48,7 +48,7 @@ module ActiveRecord
           if current_scope
             current_scope.scope_for_create
           else
-            scope = relation.clone
+            scope = relation
             scope.default_scoped = true
             scope.scope_for_create
           end
@@ -191,7 +191,7 @@ module ActiveRecord
       protected
 
         def valid_scope_name?(name)
-          if respond_to?(name, true)
+          if logger && respond_to?(name, true)
             logger.warn "Creating scope :#{name}. " \
                         "Overwriting existing method #{self.name}.#{name}."
           end
