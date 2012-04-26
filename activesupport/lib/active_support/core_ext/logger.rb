@@ -57,7 +57,9 @@ class Logger
   # Logging date-time format (string passed to +strftime+). Ignored if the formatter
   # does not respond to datetime_format=.
   def datetime_format=(datetime_format)
-    formatter.datetime_format = datetime_format if formatter.respond_to?(:datetime_format=)
+    if formatter.respond_to?(:datetime_format=)
+      formatter.datetime_format = datetime_format
+    end
   end
 
   alias :old_datetime_format :datetime_format

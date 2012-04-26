@@ -52,12 +52,18 @@ class Time
     # Returns a TimeZone instance or nil, or raises an ArgumentError for invalid timezones.
     def find_zone!(time_zone)
       return time_zone if time_zone.nil? || time_zone.is_a?(ActiveSupport::TimeZone)
+
       # lookup timezone based on identifier (unless we've been passed a TZInfo::Timezone)
       unless time_zone.respond_to?(:period_for_local)
         time_zone = ActiveSupport::TimeZone[time_zone] || TZInfo::Timezone.get(time_zone)
       end
+
       # Return if a TimeZone instance, or wrap in a TimeZone instance if a TZInfo::Timezone
-      time_zone.is_a?(ActiveSupport::TimeZone) ? time_zone : ActiveSupport::TimeZone.create(time_zone.name, nil, time_zone)
+      if time_zone.is_a?(ActiveSupport::TimeZone)
+        time_zone
+      else
+        ActiveSupport::TimeZone.create(time_zone.name, nil, time_zone)
+      end
     rescue TZInfo::InvalidTimezoneIdentifier
       raise ArgumentError, "Invalid Timezone: #{time_zone}"
     end
@@ -82,6 +88,7 @@ class Time
   def in_time_zone(zone = ::Time.zone)
     return self unless zone
 
-    ActiveSupport::TimeWithZone.new(utc? ? self : getutc, ::Time.find_zone!(zone))
+    utc_time = utc? ? self : getutc
+    ActiveSupport::TimeWithZone.new(utc_time, ::Time.find_zone!(zone))
   end
 end

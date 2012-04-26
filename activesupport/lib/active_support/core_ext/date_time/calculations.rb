@@ -4,8 +4,10 @@ class DateTime
   class << self
     # *DEPRECATED*: Use +DateTime.civil_from_format+ directly.
     def local_offset
-      ActiveSupport::Deprecation.warn 'DateTime.local_offset is deprecated. ' \
-        'Use DateTime.civil_from_format directly.', caller
+      warn_text = 'DateTime.local_offset is deprecated. ' \
+                  'Use DateTime.civil_from_format directly.'
+      ActiveSupport::Deprecation.warn warn_text, caller
+
       ::Time.local(2012).utc_offset.to_r / 86400
     end
 
@@ -35,13 +37,13 @@ class DateTime
   # minute is passed, then sec is set to 0.
   def change(options)
     ::DateTime.civil(
-      options[:year]  || year,
-      options[:month] || month,
-      options[:day]   || day,
-      options[:hour]  || hour,
-      options[:min]   || (options[:hour] ? 0 : min),
-      options[:sec]   || ((options[:hour] || options[:min]) ? 0 : sec),
-      options[:offset]  || offset,
+      options[:year]   || year,
+      options[:month]  || month,
+      options[:day]    || day,
+      options[:hour]   || hour,
+      options[:min]    || (options[:hour] ? 0 : min),
+      options[:sec]    || ((options[:hour] || options[:min]) ? 0 : sec),
+      options[:offset] || offset,
       options[:start]  || start
     )
   end
@@ -52,9 +54,18 @@ class DateTime
   # <tt>:minutes</tt>, <tt>:seconds</tt>.
   def advance(options)
     d = to_date.advance(options)
-    datetime_advanced_by_date = change(:year => d.year, :month => d.month, :day => d.day)
-    seconds_to_advance = (options[:seconds] || 0) + (options[:minutes] || 0) * 60 + (options[:hours] || 0) * 3600
-    seconds_to_advance == 0 ? datetime_advanced_by_date : datetime_advanced_by_date.since(seconds_to_advance)
+    datetime_advanced_by_date = change(:year  => d.year,
+                                       :month => d.month,
+                                       :day   => d.day)
+    seconds_to_advance = (options[:seconds] || 0) +
+                         (options[:minutes] || 0) * 60 +
+                         (options[:hours]   || 0) * 3600
+
+    if advanced_seconds.zero?
+      datetime_advanced_by_date
+    else
+      datetime_advanced_by_date.since(seconds_to_advance)
+    end
   end
 
   # Returns a new DateTime representing the time a number of seconds ago
@@ -108,4 +119,5 @@ class DateTime
   def <=>(other)
     super other.to_datetime
   end
+
 end
