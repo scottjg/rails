@@ -18,8 +18,7 @@ class Object
       if another_object.respond_to? :include?
         another_object.include? self
       else
-        raise ArgumentError.new \
-          "The single parameter passed to #in? must respond to #include?"
+        raise ArgumentError.new "The single parameter passed to #in? must respond to #include?"
       end
     end
   end

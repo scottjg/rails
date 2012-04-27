@@ -15,10 +15,9 @@ class Module
     attr_internal_reader(*attrs)
     attr_internal_writer(*attrs)
   end
-
   alias_method :attr_internal, :attr_internal_accessor
 
-  class << self; attr_accessor :attr_internal_naming_format end
+  class << self; attr_accessor :attr_internal_naming_format; end
   self.attr_internal_naming_format = '@_%s'
 
   private

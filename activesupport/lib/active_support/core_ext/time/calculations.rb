@@ -3,13 +3,15 @@ require 'active_support/core_ext/time/conversions'
 
 class Time
   COMMON_YEAR_DAYS_IN_MONTH = [nil, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-  DAYS_INTO_WEEK = { :monday    => 0,
-                     :tuesday   => 1,
-                     :wednesday => 2,
-                     :thursday  => 3,
-                     :friday    => 4,
-                     :saturday  => 5,
-                     :sunday    => 6 }
+  DAYS_INTO_WEEK = {
+    :monday    => 0,
+    :tuesday   => 1,
+    :wednesday => 2,
+    :thursday  => 3,
+    :friday    => 4,
+    :saturday  => 5,
+    :sunday    => 6
+  }
 
   class << self
     # Overriding case equality method so that it returns true for ActiveSupport::TimeWithZone instances
@@ -20,8 +22,11 @@ class Time
     # Return the number of days in the given month.
     # If no year is specified, it will use the current year.
     def days_in_month(month, year = now.year)
-      return 29 if month == 2 && ::Date.gregorian_leap?(year)
-      COMMON_YEAR_DAYS_IN_MONTH[month]
+      if month == 2 && ::Date.gregorian_leap?(year)
+        29
+      else
+        COMMON_YEAR_DAYS_IN_MONTH[month]
+      end
     end
 
     # Returns a new Time if requested year can be accommodated by Ruby's Time class
@@ -82,13 +87,13 @@ class Time
   def change(options)
     ::Time.send(
       utc? ? :utc_time : :local_time,
-      options[:year]  || year,
-      options[:month] || month,
-      options[:day]   || day,
-      options[:hour]  || hour,
-      options[:min]   || (options[:hour] ? 0 : min),
-      options[:sec]   || ((options[:hour] || options[:min]) ? 0 : sec),
-      options[:usec]  || ((options[:hour] || options[:min] || options[:sec]) ? 0 : Rational(nsec, 1000))
+      options.fetch(:year, year),
+      options.fetch(:month, month),
+      options.fetch(:day, day),
+      options.fetch(:hour, hour),
+      options.fetch(:min, (options[:hour] ? 0 : min)),
+      options.fetch(:sec, ((options[:hour] || options[:min]) ? 0 : sec)),
+      options.fetch(:usec, ((options[:hour] || options[:min] || options[:sec]) ? 0 : Rational(nsec, 1000)))
     )
   end
 
@@ -99,23 +104,22 @@ class Time
   def advance(options)
     unless options[:weeks].nil?
       options[:weeks], partial_weeks = options[:weeks].divmod(1)
-      options[:days] = (options[:days] || 0) + 7 * partial_weeks
+      options[:days] = options.fetch(:days, 0) + 7 * partial_weeks
     end
 
     unless options[:days].nil?
       options[:days], partial_days = options[:days].divmod(1)
-      options[:hours] = (options[:hours] || 0) + 24 * partial_days
+      options[:hours] = options.fetch(:hours, 0) + 24 * partial_days
     end
 
     d = to_date.advance(options)
-    time_advanced_by_date = change(:year  => d.year,
-                                   :month => d.month,
-                                   :day   => d.day)
-    seconds_to_advance = (options[:seconds] || 0) +
-                         (options[:minutes] || 0) * 60 +
-                         (options[:hours]   || 0) * 3600
+    time_advanced_by_date = change(:year => d.year, :month => d.month, :day => d.day)
+    seconds_to_advance = \
+      options.fetch(:seconds, 0) +
+      options.fetch(:minutes, 0) * 60 +
+      options.fetch(:hours, 0) * 3600
 
-    if advanced_seconds.zero?
+    if seconds_to_advance.zero?
       time_advanced_by_date
     else
       time_advanced_by_date.since(seconds_to_advance)
@@ -220,18 +224,18 @@ class Time
   # Returns a new Time representing the start of the given day in the previous week (default is :monday).
   def prev_week(day = :monday)
     ago(1.week).
-    beginning_of_week.
-    since(DAYS_INTO_WEEK[day].day).
-    change(:hour => 0)
+      beginning_of_week.
+      since(DAYS_INTO_WEEK[day].day).
+      change(:hour => 0)
   end
   alias_method :last_week, :prev_week
 
   # Returns a new Time representing the start of the given day in next week (default is :monday).
   def next_week(day = :monday)
     since(1.week).
-    beginning_of_week.
-    since(DAYS_INTO_WEEK[day].day).
-    change(:hour => 0)
+      beginning_of_week.
+      since(DAYS_INTO_WEEK[day].day).
+      change(:hour => 0)
   end
 
   # Returns a new Time representing the start of the day (0:00)
@@ -245,7 +249,12 @@ class Time
 
   # Returns a new Time representing the end of the day, 23:59:59.999999 (.999999999 in ruby1.9)
   def end_of_day
-    change(:hour => 23, :min => 59, :sec => 59, :usec => 999999.999)
+    change(
+      :hour => 23,
+      :min => 59,
+      :sec => 59,
+      :usec => 999999.999
+    )
   end
 
   # Returns a new Time representing the start of the month (1st of the month, 0:00)
@@ -259,11 +268,13 @@ class Time
   def end_of_month
     #self - ((self.mday-1).days + self.seconds_since_midnight)
     last_day = ::Time.days_in_month(month, year)
-    change(:day  => last_day,
-           :hour => 23,
-           :min  => 59,
-           :sec  => 59,
-           :usec => 999999.999)
+    change(
+      :day  => last_day,
+      :hour => 23,
+      :min  => 59,
+      :sec  => 59,
+      :usec => 999999.999
+    )
   end
   alias :at_end_of_month :end_of_month
 
@@ -289,12 +300,14 @@ class Time
 
   # Returns a new Time representing the end of the year (end of the 31st of december)
   def end_of_year
-    change(:month => 12,
-           :day   => 31,
-           :hour  => 23,
-           :min   => 59,
-           :sec   => 59,
-           :usec  => 999999.999)
+    change(
+      :month => 12,
+      :day   => 31,
+      :hour  => 23,
+      :min   => 59,
+      :sec   => 59,
+      :usec  => 999999.999
+    )
   end
   alias :at_end_of_year :end_of_year
 

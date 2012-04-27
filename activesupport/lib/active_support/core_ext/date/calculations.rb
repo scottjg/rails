@@ -105,9 +105,9 @@ class Date
   #   Date.new(2007, 5, 12).change(:year => 2005, :month => 1) # => Date.new(2005, 1, 12)
   def change(options)
     ::Date.new(
-      options[:year]  || year,
-      options[:month] || month,
-      options[:day]   || day
+      options.fetch(:year, year),
+      options.fetch(:month, month),
+      options.fetch(:day, day)
     )
   end
 
@@ -204,7 +204,7 @@ class Date
 
   # Returns a new Date/DateTime representing the end of the month (last day of the month; DateTime objects will have time set to 0:00)
   def end_of_month
-    last_day = ::Time.days_in_month( month, year )
+    last_day = ::Time.days_in_month(month, year)
     if acts_like?(:time)
       change(:day => last_day, :hour => 23, :min => 59, :sec => 59)
     else

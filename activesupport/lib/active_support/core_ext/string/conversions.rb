@@ -6,9 +6,9 @@ class String
   def to_time(form = :utc)
     return nil if blank?
 
-    keys = [:year, :mon, :mday, :hour, :min, :sec, :sec_fraction, :offset]
-    date_values = ::Date._parse(self, false).values_at(*keys)
-    date_values.map! { |arg| arg || 0 }
+    date_values = ::Date._parse(self, false).
+      values_at(:year, :mon, :mday, :hour, :min, :sec, :sec_fraction, :offset).
+      map! { |arg| arg || 0 }
     date_values[6] *= 1000000
     offset = date_values.pop
 
@@ -18,8 +18,7 @@ class String
   def to_date
     return nil if blank?
 
-    keys = [:year, :mon, :mday]
-    date_values = ::Date._parse(self, false).values_at(*keys)
+    date_values = ::Date._parse(self, false).values_at(:year, :mon, :mday)
 
     ::Date.new(*date_values)
   end
@@ -27,9 +26,9 @@ class String
   def to_datetime
     return nil if blank?
 
-    keys = [:year, :mon, :mday, :hour, :min, :sec, :zone, :sec_fraction]
-    date_values = ::Date._parse(self, false).values_at(*keys)
-    date_values.map! { |arg| arg || 0 }
+    date_values = ::Date._parse(self, false).
+      values_at(:year, :mon, :mday, :hour, :min, :sec, :zone, :sec_fraction).
+      map! { |arg| arg || 0 }
     date_values[5] += date_values.pop
 
     ::DateTime.civil(*date_values)

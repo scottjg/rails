@@ -71,14 +71,16 @@ class String
   #
   # +camelize+ will also convert '/' to '::' which is useful for converting paths to namespaces.
   #
-  #   "active_record".camelize                # => "ActiveRecord"
-  #   "active_record".camelize(:lower)        # => "activeRecord"
-  #   "active_record/errors".camelize         # => "ActiveRecord::Errors"
-  #   "active_record/errors".camelize(:lower) # => "activeRecord::Errors"
+  #   'active_record'.camelize                # => "ActiveRecord"
+  #   'active_record'.camelize(:lower)        # => "activeRecord"
+  #   'active_record/errors'.camelize         # => "ActiveRecord::Errors"
+  #   'active_record/errors'.camelize(:lower) # => "activeRecord::Errors"
   def camelize(first_letter = :upper)
     case first_letter
-      when :upper then ActiveSupport::Inflector.camelize(self, true)
-      when :lower then ActiveSupport::Inflector.camelize(self, false)
+    when :upper
+      ActiveSupport::Inflector.camelize(self, true)
+    when :lower
+      ActiveSupport::Inflector.camelize(self, false)
     end
   end
   alias_method :camelcase, :camelize

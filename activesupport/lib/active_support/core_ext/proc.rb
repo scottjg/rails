@@ -3,8 +3,7 @@ require "active_support/deprecation"
 
 class Proc #:nodoc:
   def bind(object)
-    warn_text = 'Proc#bind is deprecated and will be removed in future versions'
-    ActiveSupport::Deprecation.warn warn_text, caller
+    ActiveSupport::Deprecation.warn "Proc#bind is deprecated and will be removed in future versions", caller
 
     block, time = self, Time.now
     object.class_eval do

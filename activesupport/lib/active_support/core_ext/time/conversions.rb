@@ -57,7 +57,6 @@ class Time
   #   Time.local(2000).formatted_offset         # => "-06:00"
   #   Time.local(2000).formatted_offset(false)  # => "-0600"
   def formatted_offset(colon = true, alternate_utc_string = nil)
-    utc? && alternate_utc_string ||
-    ActiveSupport::TimeZone.seconds_to_utc_offset(utc_offset, colon)
+    utc? && alternate_utc_string || ActiveSupport::TimeZone.seconds_to_utc_offset(utc_offset, colon)
   end
 end
