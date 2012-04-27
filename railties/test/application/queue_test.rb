@@ -32,6 +32,7 @@ module ApplicationTests
 
     test "in development mode, an enqueued job will be processed in a separate thread" do
       app("development")
+      current = Thread.current
 
       job = Struct.new(:origin, :target).new(Thread.current)
       def job.run
@@ -47,6 +48,7 @@ module ApplicationTests
 
     test "in test mode, explicitly draining the queue will process it in a separate thread" do
       app("test")
+      current = Thread.current
 
       job = Struct.new(:origin, :target).new(Thread.current)
       def job.run
