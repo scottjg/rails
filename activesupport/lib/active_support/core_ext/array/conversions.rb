@@ -10,12 +10,12 @@ class Array
   # * <tt>:last_word_connector</tt> - The sign or word used to join the last element in arrays with three or more elements (default: ", and ")
   def to_sentence(options = {})
     default_connectors = {
-      :words_connector     => ", ",
-      :two_words_connector => " and ",
-      :last_word_connector => ", and "
+      :words_connector     => ', ',
+      :two_words_connector => ' and ',
+      :last_word_connector => ', and '
     }
     if defined?(I18n)
-      namespace = "support.array."
+      namespace = 'support.array.'
       default_connectors.keys.each do |name|
         i18n_key = (namespace + name.to_s).to_sym
         default_connectors[name] = I18n.translate i18n_key, :locale => options[:locale]
@@ -27,7 +27,7 @@ class Array
 
     case length
     when 0
-      ""
+      ''
     when 1
       self[0].to_s.dup
     when 2
@@ -50,9 +50,9 @@ class Array
     case format
     when :db
       if respond_to?(:empty?) && empty?
-        "null"
+        'null'
       else
-        collect { |element| element.id }.join(",")
+        collect { |element| element.id }.join(',')
       end
     else
       to_default_s
@@ -143,11 +143,11 @@ class Array
     options[:indent]  ||= 2
     options[:builder] ||= Builder::XmlMarkup.new(:indent => options[:indent])
     options[:root]    ||= \
-      if first.class.to_s != "Hash" && all? { |e| e.is_a?(first.class) }
+      if first.class.to_s != 'Hash' && all? { |e| e.is_a?(first.class) }
         underscored = ActiveSupport::Inflector.underscore(first.class.name)
         ActiveSupport::Inflector.pluralize(underscored).tr('/', '_')
       else
-        "objects"
+        'objects'
       end
 
     builder = options[:builder]
@@ -155,7 +155,7 @@ class Array
 
     root = ActiveSupport::XmlMini.rename_key(options[:root].to_s, options)
     children = options.delete(:children) || root.singularize
-    attributes = options[:skip_types] ? {} : {:type => "array"}
+    attributes = options[:skip_types] ? {} : {:type => 'array'}
 
     if empty?
       builder.tag!(root, attributes)
