@@ -9,6 +9,8 @@ class Array
   # * <tt>:two_words_connector</tt> - The sign or word used to join the elements in arrays with two elements (default: " and ")
   # * <tt>:last_word_connector</tt> - The sign or word used to join the last element in arrays with three or more elements (default: ", and ")
   def to_sentence(options = {})
+    options.assert_valid_keys(:words_connector, :two_words_connector, :last_word_connector, :locale)
+
     default_connectors = {
       :words_connector     => ', ',
       :two_words_connector => ' and ',
@@ -16,13 +18,12 @@ class Array
     }
     if defined?(I18n)
       namespace = 'support.array.'
-      default_connectors.keys.each do |name|
+      default_connectors.each_key do |name|
         i18n_key = (namespace + name.to_s).to_sym
         default_connectors[name] = I18n.translate i18n_key, :locale => options[:locale]
       end
     end
 
-    options.assert_valid_keys(:words_connector, :two_words_connector, :last_word_connector, :locale)
     options.reverse_merge! default_connectors
 
     case length
@@ -49,7 +50,7 @@ class Array
   def to_formatted_s(format = :default)
     case format
     when :db
-      if respond_to?(:empty?) && empty?
+      if empty?
         'null'
       else
         collect { |element| element.id }.join(',')
@@ -89,20 +90,20 @@ class Array
   #     </project>
   #   </projects>
   #
-  # Otherwise the root element is "records":
+  # Otherwise the root element is "objects":
   #
   #   [{:foo => 1, :bar => 2}, {:baz => 3}].to_xml
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
-  #   <records type="array">
-  #     <record>
+  #   <objects type="array">
+  #     <object>
   #       <bar type="integer">2</bar>
   #       <foo type="integer">1</foo>
-  #     </record>
-  #     <record>
+  #     </object>
+  #     <object>
   #       <baz type="integer">3</baz>
-  #     </record>
-  #   </records>
+  #     </object>
+  #   </objects>
   #
   # If the collection is empty the root element is "nil-classes" by default:
   #
