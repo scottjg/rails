@@ -12,7 +12,14 @@ module RenderPartial
       "render_partial/basic/_final.json.erb"     => "{ final: json }",
       "render_partial/basic/overriden.html.erb"  => "<%= @test_unchanged = 'goodbye' %><%= render :partial => 'overriden' %><%= @test_unchanged %>",
       "render_partial/basic/_overriden.html.erb" => "ParentPartial!",
-      "render_partial/child/_overriden.html.erb" => "OverridenPartial!"
+      "render_partial/child/_overriden.html.erb" => "OverridenPartial!",
+      "render_partial/basic/hierarhical.html.erb"               => "<%= @test_unchanged = 'goodbye' %><%= render :partial => 'subfolder/hierarhical' %><%= @test_unchanged %>",
+      "render_partial/basic/subfolder/_hierarhical.html.erb"    => "SubfolderBasicHierarhicalPartial!",
+      "render_partial/basic/hierarhical_with_child.html.erb"               => "<%= @test_unchanged = 'goodbye' %><%= render :partial => 'subfolder/hierarhical_with_child' %><%= @test_unchanged %>",
+      "render_partial/basic/subfolder/_hierarhical_with_child.html.erb"    => "SubfolderBasicHierarhicalWithChildPartial!",
+      "render_partial/child/subfolder/_hierarhical_with_child.html.erb"    => "SubfolderBasicHierarhicalWithChildPartial!",
+      "render_partial/child/absolute.html.erb"               => "<%= @test_unchanged = 'goodbye' %><%= render :partial => '/render_partial/shared/absolute_partial' %><%= @test_unchanged %>",
+      "render_partial/shared/_absolute_partial.html.erb"    => "AbsolutePartial!"
     )]
 
     def html_with_json_inside_json
@@ -58,6 +65,22 @@ module RenderPartial
       get :overriden
       assert_response("goodbyeOverridenPartial!goodbye")
     end
+
+    test "partial from contoller from subfolder gets picked" do
+      get :hierarhical
+      assert_response("goodbyeSubfolderBasicHierarhicalPartial!goodbye")
+    end
+
+    test "partial from child contoller from subfolder gets picked" do
+      get :hierarhical_with_child
+      assert_response("goodbyeSubfolderBasicHierarhicalWithChildPartial!goodbye")
+    end
+
+    test "partial with absolute path gets picked" do
+      get :absolute
+      assert_response("goodbyeAbsolutePartial!goodbye")
+    end
+
   end
 
 end
