@@ -13,13 +13,16 @@ module ActiveSupport
     # By default, +camelize+ converts strings to UpperCamelCase. If the argument to +camelize+
     # is set to <tt>:lower</tt> then +camelize+ produces lowerCamelCase.
     #
-    # +camelize+ will also convert '/' to '::' which is useful for converting paths to namespaces.
+    # +camelize+ will convert '/' to '::' which is useful for converting paths to namespaces.
+    # +camelize+ will convert '__' to '_' which is useful for namespaces containing underscores.
     #
     # Examples:
     #   "active_record".camelize                # => "ActiveRecord"
     #   "active_record".camelize(:lower)        # => "activeRecord"
     #   "active_record/errors".camelize         # => "ActiveRecord::Errors"
     #   "active_record/errors".camelize(:lower) # => "activeRecord::Errors"
+    #   "api/v0__1__0".camelize                 # => "Api::V0_1_0"
+    #   "api/v0__1__0".camelize(:lower)         # => "api::V0_1_0"
     #
     # As a rule of thumb you can think of +camelize+ as the inverse of +underscore+,
     # though there are cases where that does not hold:
@@ -36,10 +39,12 @@ module ActiveSupport
     # Makes an underscored, lowercase form from the expression in the string.
     #
     # Changes '::' to '/' to convert namespaces to paths.
+    # Changes '_' to '__' to allow underscores in namespaces. 
     #
     # Examples:
     #   "ActiveRecord".underscore         # => "active_record"
-    #   "ActiveRecord::Errors".underscore # => active_record/errors
+    #   "ActiveRecord::Errors".underscore # => "active_record/errors"
+    #   "Api::V0_1_0".underscore          # => "api/v0__1__0"
     #
     # As a rule of thumb you can think of +underscore+ as the inverse of +camelize+,
     # though there are cases where that does not hold:
@@ -48,6 +53,7 @@ module ActiveSupport
     def underscore(camel_cased_word)
       word = camel_cased_word.to_s.dup
       word.gsub!(/::/, '/')
+      word.gsub!(/([A-Z\d])(_)/,'\1__') if !word.include?('__')
       word.gsub!(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
       word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
       word.tr!("-", "_")

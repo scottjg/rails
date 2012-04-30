@@ -166,7 +166,7 @@ module ActiveSupport
       result = lower_case_and_underscored_word.to_s.dup
 
       inflections.humans.each { |(rule, replacement)| break if result.gsub!(rule, replacement) }
-      result.gsub(/_id$/, "").gsub(/_/, " ").capitalize
+      result.gsub(/_id$/, "").gsub(/_+/, " ").capitalize
     end
 
     # Capitalizes all the words and replaces some characters in the string to create

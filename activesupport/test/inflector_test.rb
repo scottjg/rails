@@ -10,6 +10,14 @@ module Ace
   end
 end
 
+module Api
+  module V0_1_0
+    class Component
+    end
+  end
+end
+
+
 class InflectorTest < Test::Unit::TestCase
   include InflectorTestCases
 
@@ -101,6 +109,10 @@ class InflectorTest < Test::Unit::TestCase
     CamelToUnderscoreWithoutReverse.each do |camel, underscore|
       assert_equal(underscore, ActiveSupport::Inflector.underscore(camel))
     end
+  end
+
+  def test_underscores_in_namespace_idempotent_when_underscored
+    assert_equal("v0__1__0/application", ActiveSupport::Inflector.underscore("v0__1__0/application"))
   end
 
   def test_camelize_with_module
@@ -204,6 +216,7 @@ class InflectorTest < Test::Unit::TestCase
     assert_nothing_raised { assert_equal Ace::Base::Case, ActiveSupport::Inflector.constantize("::Ace::Base::Case") }
     assert_nothing_raised { assert_equal InflectorTest, ActiveSupport::Inflector.constantize("InflectorTest") }
     assert_nothing_raised { assert_equal InflectorTest, ActiveSupport::Inflector.constantize("::InflectorTest") }
+    assert_nothing_raised { assert_equal Api::V0_1_0::Component, ActiveSupport::Inflector.constantize("Api::V0_1_0::Component") }
     assert_raise(NameError) { ActiveSupport::Inflector.constantize("UnknownClass") }
     assert_raise(NameError) { ActiveSupport::Inflector.constantize("An invalid string") }
     assert_raise(NameError) { ActiveSupport::Inflector.constantize("InvalidClass\n") }
