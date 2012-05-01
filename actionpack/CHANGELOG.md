@@ -1,5 +1,8 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fallback to `:en` locale for all number helpers translations, using the translations
+    that ship with the framework, to avoid errors with empty ones. *Carlos Antonio da Silva*
+
 *   Remove `:mouseover` option from `image_tag` helper. *Rafael Mendonça França*
 
 *   The `select` method (select tag) forces :include_blank  if `required` is true and

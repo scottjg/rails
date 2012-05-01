@@ -15,13 +15,6 @@ module ActionView
     # Most methods expect a +number+ argument, and will return it
     # unchanged if can't be converted into a valid number.
     module NumberHelper
-
-      DEFAULT_NUMBER_VALUES = { :precision => 3, :separator => ".", :delimiter => "", :significant => false, :strip_insignificant_zeros => false }
-
-
-      DEFAULT_CURRENCY_VALUES = { :format => "%u%n", :negative_format => "-%u%n", :unit => "$", :separator => ".", :delimiter => ",",
-                                  :precision => 2, :significant => false, :strip_insignificant_zeros => false }
-
       # Raised when argument +number+ param given to the helpers is invalid and
       # the option :raise is set to  +true+.
       class InvalidNumberError < StandardError
@@ -136,7 +129,7 @@ module ActionView
         currency = translations_for('currency', options[:locale])
         currency[:negative_format] ||= "-" + currency[:format] if currency[:format]
 
-        defaults  = DEFAULT_CURRENCY_VALUES.merge(defaults_translations(options[:locale])).merge!(currency)
+        defaults  = defaults_translations(options[:locale]).merge(currency)
         defaults[:negative_format] = "-" + options[:format] if options[:format]
         options   = defaults.merge!(options)
 
@@ -152,12 +145,10 @@ module ActionView
           value = number_with_precision(number, options.merge(:raise => true))
           format.gsub('%n', value).gsub('%u', unit).html_safe
         rescue InvalidNumberError => e
-          if options[:raise]
-            raise
-          else
-            formatted_number = format.gsub('%n', e.number).gsub('%u', unit)
-            e.number.to_s.html_safe? ? formatted_number.html_safe : formatted_number
-          end
+          raise if options[:raise]
+
+          formatted_number = format.gsub('%n', e.number).gsub('%u', unit)
+          e.number.to_s.html_safe? ? formatted_number.html_safe : formatted_number
         end
       end
 
@@ -203,8 +194,7 @@ module ActionView
 
         defaults = format_translations('percentage', options[:locale])
         options  = defaults.merge!(options)
-
-        format = options[:format] || "%n%"
+        format   = options[:format] || "%n%"
 
         begin
           value = number_with_precision(number, options.merge(:raise => true))
@@ -253,7 +243,8 @@ module ActionView
 
         parse_float(number, options[:raise]) or return number
 
-        options = defaults_translations(options[:locale]).merge(options)
+        defaults = defaults_translations(options[:locale])
+        options  = defaults.merge(options)
 
         parts = number.to_s.to_str.split('.')
         parts[0].gsub!(/(\d)(?=(\d\d\d)+(?!\d))/, "\\1#{options[:delimiter]}")
@@ -307,13 +298,13 @@ module ActionView
         number = (parse_float(number, options[:raise]) or return number)
 
         defaults = format_translations('precision', options[:locale])
-        options  = DEFAULT_NUMBER_VALUES.merge(defaults).merge!(options)
+        options  = defaults.merge!(options)
 
         precision = options.delete :precision
         significant = options.delete :significant
         strip_insignificant_zeros = options.delete :strip_insignificant_zeros
 
-        if significant and precision > 0
+        if significant && precision > 0
           if number == 0
             digits, rounded_number = 1, 0
           else
@@ -322,18 +313,17 @@ module ActionView
             digits = (Math.log10(rounded_number.abs) + 1).floor # After rounding, the number of digits may have changed
           end
           precision -= digits
-          precision = precision > 0 ? precision : 0  #don't let it be negative
+          precision = 0 if precision < 0 # don't let it be negative
         else
           rounded_number = BigDecimal.new(number.to_s).round(precision).to_f
-          rounded_number = rounded_number.zero? ? rounded_number.abs : rounded_number #prevent showing negative zeros
+          rounded_number = rounded_number.abs if rounded_number.zero? # prevent showing negative zeros
         end
         formatted_number = number_with_delimiter("%01.#{precision}f" % rounded_number, options)
         if strip_insignificant_zeros
           escaped_separator = Regexp.escape(options[:separator])
-          formatted_number.sub(/(#{escaped_separator})(\d*[1-9])?0+\z/, '\1\2').sub(/#{escaped_separator}\z/, '').html_safe
-        else
-          formatted_number
+          formatted_number = formatted_number.sub(/(#{escaped_separator})(\d*[1-9])?0+\z/, '\1\2').sub(/#{escaped_separator}\z/, '').html_safe
         end
+        formatted_number
       end
 
       STORAGE_UNITS = [:byte, :kb, :mb, :gb, :tb].freeze
@@ -396,12 +386,12 @@ module ActionView
         #for backwards compatibility with those that didn't add strip_insignificant_zeros to their locale files
         options[:strip_insignificant_zeros] = true if not options.key?(:strip_insignificant_zeros)
 
-        storage_units_format = I18n.translate(:'number.human.storage_units.format', :locale => options[:locale], :raise => true)
+        storage_units_format = translate_value_with_fallback(:'number.human.storage_units.format', options[:locale])
 
         base = options[:prefix] == :si ? 1000 : 1024
 
         if number.to_i < base
-          unit = I18n.translate(:'number.human.storage_units.units.byte', :locale => options[:locale], :count => number.to_i, :raise => true)
+          unit = translate_value_with_fallback(:'number.human.storage_units.units.byte', options[:locale], :count => number.to_i)
           storage_units_format.gsub(/%n/, number.to_i.to_s).gsub(/%u/, unit).html_safe
         else
           max_exp  = STORAGE_UNITS.size - 1
@@ -410,7 +400,7 @@ module ActionView
           number  /= base ** exponent
 
           unit_key = STORAGE_UNITS[exponent]
-          unit = I18n.translate(:"number.human.storage_units.units.#{unit_key}", :locale => options[:locale], :count => number, :raise => true)
+          unit = translate_value_with_fallback(:"number.human.storage_units.units.#{unit_key}", options[:locale], :count => number)
 
           formatted_number = number_with_precision(number, options)
           storage_units_format.gsub(/%n/, formatted_number).gsub(/%u/, unit).html_safe
@@ -538,7 +528,7 @@ module ActionView
         when String, Symbol
           I18n.translate(:"#{units}", :locale => options[:locale], :raise => true)
         when nil
-          I18n.translate(:"number.human.decimal_units.units", :locale => options[:locale], :raise => true)
+          translations_with_fallback(:"number.human.decimal_units.units", options[:locale])
         else
           raise ArgumentError, ":units must be a Hash or String translation scope."
         end.keys.map{|e_name| inverted_du[e_name] }.sort_by{|e| -e}
@@ -553,10 +543,10 @@ module ActionView
         when String, Symbol
           I18n.translate(:"#{units}.#{DECIMAL_UNITS[display_exponent]}", :locale => options[:locale], :count => number.to_i)
         else
-          I18n.translate(:"number.human.decimal_units.units.#{DECIMAL_UNITS[display_exponent]}", :locale => options[:locale], :count => number.to_i)
+          translate_value_with_fallback(:"number.human.decimal_units.units.#{DECIMAL_UNITS[display_exponent]}", options[:locale], :count => number.to_i)
         end
 
-        decimal_format = options[:format] || I18n.translate(:'number.human.decimal_units.format', :locale => options[:locale], :default => "%n %u")
+        decimal_format = options[:format] || translate_value_with_fallback(:'number.human.decimal_units.format', options[:locale])
         formatted_number = number_with_precision(number, options)
         decimal_format.gsub(/%n/, formatted_number).gsub(/%u/, unit).strip.html_safe
       end
@@ -568,11 +558,23 @@ module ActionView
       end
 
       def defaults_translations(locale)
-        I18n.translate(:'number.format', :locale => locale, :default => {})
+        translations_with_fallback :'number.format', locale
       end
 
       def translations_for(namespace, locale)
-        I18n.translate(:"number.#{namespace}.format", :locale => locale, :default => {})
+        translations_with_fallback :"number.#{namespace}.format", locale
+      end
+
+      def translations_with_fallback(key, locale)
+        default    = I18n.translate(key, :locale => :en)
+        translated = I18n.translate(key, :locale => locale, :default => {})
+
+        default.merge(translated)
+      end
+
+      def translate_value_with_fallback(key, locale, extra_options = {})
+        default = I18n.translate(key, { :locale => :en }.merge!(extra_options))
+        I18n.translate(key, { :locale => locale, :default => default }.merge!(extra_options))
       end
 
       def parse_float(number, raise_error)
