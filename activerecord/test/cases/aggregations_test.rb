@@ -24,8 +24,12 @@ class AggregationsTest < ActiveRecord::TestCase
     assert_equal 100, customers(:david).reload.balance.amount
   end
 
-  def test_immutable_value_objects
+  def test_immutable_value_objects_on_write
     customers(:david).balance = Money.new(100)
+    assert_raise(ActiveSupport::FrozenObjectError) { customers(:david).balance.instance_eval { @amount = 20 } }
+  end
+
+  def test_immutable_value_objects_on_read
     assert_raise(ActiveSupport::FrozenObjectError) { customers(:david).balance.instance_eval { @amount = 20 } }
   end
 

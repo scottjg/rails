@@ -233,7 +233,7 @@ module ActiveRecord
               object = constructor.respond_to?(:call) ?
                 constructor.call(*attrs) :
                 class_name.constantize.send(constructor, *attrs)
-              @aggregation_cache[name] = object
+              @aggregation_cache[name] = object.freeze
             end
             @aggregation_cache[name]
           end
