@@ -20,6 +20,8 @@ class AggregationsTest < ActiveRecord::TestCase
 
   def test_change_single_value_object
     customers(:david).balance = Money.new(100)
+    assert_equal 100, customers(:david).balance.amount
+
     customers(:david).save
     assert_equal 100, customers(:david).reload.balance.amount
   end
@@ -71,6 +73,8 @@ class AggregationsTest < ActiveRecord::TestCase
 
   def test_allow_nil_gps_set_to_nil
     customers(:david).gps_location = nil
+    assert_nil customers(:david).gps_location
+
     customers(:david).save
     customers(:david).reload
     assert_nil customers(:david).gps_location
@@ -85,6 +89,8 @@ class AggregationsTest < ActiveRecord::TestCase
 
   def test_allow_nil_address_set_to_nil
     customers(:zaphod).address = nil
+    assert_nil customers(:zaphod).address
+
     customers(:zaphod).save
     customers(:zaphod).reload
     assert_nil customers(:zaphod).address
@@ -96,6 +102,8 @@ class AggregationsTest < ActiveRecord::TestCase
 
   def test_allow_nil_address_loaded_when_only_some_attributes_are_nil
     customers(:zaphod).address_street = nil
+    assert_nil customers(:zaphod).address.street
+
     customers(:zaphod).save
     customers(:zaphod).reload
     assert_kind_of Address, customers(:zaphod).address
