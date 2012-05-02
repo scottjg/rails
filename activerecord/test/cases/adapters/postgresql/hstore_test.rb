@@ -44,6 +44,18 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
     assert_equal({'c'=>'}','"a"'=>'b "a b'}, @column.type_cast(%q(c=>"}", "\"a\""=>"b \"a b")))
   end
 
+  def test_updating_key
+    x = Hstore.create! :tags => { "key1" => "old value 1", "key2" => "old value 2" }
+    x.reload
+    assert_equal "old value 1", x.tags["key1"]
+
+    x.tags["key1"] = "new"
+    x.save!
+
+    assert_equal "new", x.reload.tags["key1"]
+    assert_equal "old value 2",   x.reload.tags["key2"]
+  end
+
   def test_gen1
     assert_equal(%q(" "=>""), @column.class.hstore_to_string({' '=>''}))
   end
