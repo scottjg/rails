@@ -34,7 +34,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       default_url_options :host => "rubyonrails.org"
       resources_path_names :correlation_indexes => "info_about_correlation_indexes"
 
-      match ':something' => 'foo#something', :constraints => RequestLookup
+      get ':something' => 'foo#something', :constraints => RequestLookup
 
       controller :sessions do
         get  'login' => :new

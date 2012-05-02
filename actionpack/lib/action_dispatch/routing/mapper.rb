@@ -26,15 +26,12 @@ module ActionDispatch
         def matches?(env)
           req = @request.new(env)
 
-          @constraints.each { |constraint|
-            if constraint.respond_to?(:matches?) && !constraint.matches?(req)
-              return false
-            elsif constraint.respond_to?(:call) && !constraint.call(*constraint_args(constraint, req))
-              return false
-            end
-          }
-
-          return true
+          @constraints.find { |constraint|
+            !(constraint.respond_to?(:matches?) && !constraint.matches?(req)) ||
+              (constraint.respond_to?(:call) && !constraint.call(*constraint_args(constraint, req)))
+          }.tap {
+                req.reset_parameters
+              }
         end
 
         def call(env)
