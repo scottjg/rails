@@ -417,11 +417,14 @@ module ActionView
     end
 
     def partial_path(object = @object)
-      object = object.to_model if object.respond_to?(:to_model)
+      if object.respond_to?(:to_partial_path)
+        path = object.to_partial_path
+      elsif object.respond_to?(:to_model)
+        object = object.to_model
+        path = object.to_partial_path
+      end
 
-      path = if object.respond_to?(:to_partial_path)
-        object.to_partial_path
-      else
+      if path.blank?
         raise ArgumentError.new("'#{object.inspect}' is not an ActiveModel-compatible object. It must implement :to_partial_path.")
       end
 

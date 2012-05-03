@@ -44,6 +44,16 @@ class ValidatedCustomer < Customer
   end
 end
 
+class CustomerDecorator < SimpleDelegator
+  def initialize(customer)
+    super(customer)
+  end
+
+  def to_partial_path
+    "customers/decorated"
+  end
+end
+
 module Quiz
   class Question < Struct.new(:name, :id)
     extend ActiveModel::Naming

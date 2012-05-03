@@ -596,6 +596,16 @@ class TestController < ActionController::Base
     render :partial => LabellingFormBuilder.new(:post, nil, view_context, {})
   end
 
+  def partial_with_object_which_defines_to_partial_path
+    render :partial => CustomerDecorator.new(Customer.new("david"))
+  end
+
+  def partial_with_object_which_defines_to_partial_path_incorrectly
+    customer = CustomerDecorator.new(Customer.new("david"))
+    def customer.to_partial_path; '' end
+    render :partial => customer
+  end
+
   def partial_collection
     render :partial => "customer", :collection => [ Customer.new("david"), Customer.new("mary") ]
   end
@@ -1341,6 +1351,18 @@ class RenderTest < ActionController::TestCase
     get :partial_with_form_builder_subclass
     assert_match(/<label/, @response.body)
     assert_template('test/_labelling_form')
+  end
+
+  def test_partial_with_object_which_defines_to_partial_path
+    get :partial_with_object_which_defines_to_partial_path
+    assert_equal "from a decorator", @response.body
+    assert_template('customers/_decorated')
+  end
+
+  def test_partial_with_object_which_defines_to_partial_path_incorrectly
+    assert_raise ArgumentError do
+      get :partial_with_object_which_defines_to_partial_path_incorrectly
+    end
   end
 
   def test_nested_partial_with_form_builder
