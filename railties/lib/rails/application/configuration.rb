@@ -9,10 +9,11 @@ module Rails
       attr_accessor :allow_concurrency, :asset_host, :asset_path, :assets,
                     :cache_classes, :cache_store, :consider_all_requests_local,
                     :dependency_loading, :exceptions_app, :file_watcher, :filter_parameters,
-                    :force_ssl, :helpers_paths, :logger, :log_tags, :preload_frameworks,
-                    :railties_order, :relative_url_root, :reload_plugins, :secret_token,
+                    :force_ssl, :helpers_paths, :logger, :log_formatter, :log_tags,
+                    :preload_frameworks, :railties_order, :relative_url_root, :reload_plugins, :secret_token,
                     :serve_static_assets, :ssl_options, :static_cache_control, :session_options,
-                    :time_zone, :reload_classes_only_on_change, :whiny_nils, :use_schema_cache_dump, :queue
+                    :time_zone, :reload_classes_only_on_change, :whiny_nils, :use_schema_cache_dump,
+                    :queue, :queue_consumer
 
       attr_writer :log_level
       attr_reader :encoding
@@ -44,7 +45,8 @@ module Rails
         @autoflush_log                 = true
         @log_formatter                 = ActiveSupport::Logger::SimpleFormatter.new
         @use_schema_cache_dump         = true
-        @queue                         = Queue
+        @queue                         = Rails::Queueing::Queue
+        @queue_consumer                = Rails::Queueing::ThreadedConsumer
 
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled                  = false

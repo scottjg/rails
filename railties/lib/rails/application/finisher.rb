@@ -95,9 +95,9 @@ module Rails
       end
 
       initializer :activate_queue_consumer do |app|
-        if config.queue == Queue
-          consumer = Rails::Queueing::ThreadedConsumer.start(app.queue)
-          at_exit { consumer.shutdown }
+        if config.queue == Rails::Queueing::Queue
+          app.queue_consumer = config.queue_consumer.start(app.queue)
+          at_exit { app.queue_consumer.shutdown }
         end
       end
     end
