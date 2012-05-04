@@ -1,4 +1,4 @@
-require File.expand_path('../../../../load_paths', __FILE__)
+require_relative '../../../../load_paths'
 
 require 'config'
 
