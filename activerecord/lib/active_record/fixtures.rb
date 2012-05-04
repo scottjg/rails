@@ -792,7 +792,9 @@ module ActiveRecord
                 @fixture_cache[fixture_name].delete(fixture) if force_reload
 
                 if @loaded_fixtures[fixture_name][fixture.to_s]
-                  @fixture_cache[fixture_name][fixture] ||= @loaded_fixtures[fixture_name][fixture.to_s].find
+                  ActiveRecord::IdentityMap.without do
+                    @fixture_cache[fixture_name][fixture] ||= @loaded_fixtures[fixture_name][fixture.to_s].find
+                  end
                 else
                   raise StandardError, "No entry named '#{fixture}' found for fixture collection '#{fixture_name}'"
                 end

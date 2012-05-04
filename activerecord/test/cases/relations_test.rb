@@ -355,7 +355,7 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.comments.first
     end
 
-    assert_queries(2) do
+    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 2) do
       posts = Post.preload(:comments).order('posts.id')
       assert posts.first.comments.first
     end
@@ -365,12 +365,12 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.author
     end
 
-    assert_queries(2) do
+    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 2) do
       posts = Post.preload(:author).order('posts.id')
       assert posts.first.author
     end
 
-    assert_queries(3) do
+    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 3) do
       posts = Post.preload(:author, :comments).order('posts.id')
       assert posts.first.author
       assert posts.first.comments.first
@@ -383,7 +383,7 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.comments.first
     end
 
-    assert_queries(2) do
+    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 2) do
       posts = Post.scoped.includes(:comments).order('posts.id')
       assert posts.first.comments.first
     end
@@ -393,7 +393,7 @@ class RelationTest < ActiveRecord::TestCase
       assert posts.first.author
     end
 
-    assert_queries(3) do
+    assert_queries(ActiveRecord::IdentityMap.enabled? ? 1 : 3) do
       posts = Post.includes(:author, :comments).order('posts.id')
       assert posts.first.author
       assert posts.first.comments.first
@@ -717,8 +717,10 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_relation_merging_with_preload
-    [Post.scoped.merge(Post.preload(:author)), Post.preload(:author).merge(Post.scoped)].each do |posts|
-      assert_queries(2) { assert posts.first.author }
+    ActiveRecord::IdentityMap.without do
+      [Post.scoped.merge(Post.preload(:author)), Post.preload(:author).merge(Post.scoped)].each do |posts|
+        assert_queries(2) { assert posts.first.author }
+      end
     end
   end
 
