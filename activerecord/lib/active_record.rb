@@ -37,7 +37,6 @@ module ActiveRecord
     autoload :ConnectionNotEstablished, 'active_record/errors'
     autoload :ConnectionAdapters, 'active_record/connection_adapters/abstract_adapter'
 
-    autoload :Aggregations
     autoload :Associations
     autoload :AttributeMethods
     autoload :AttributeAssignment

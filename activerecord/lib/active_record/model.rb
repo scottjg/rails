@@ -62,7 +62,7 @@ module ActiveRecord
     include Associations
     include ActiveModel::SecurePassword
     include AutosaveAssociation, NestedAttributes
-    include Aggregations, Transactions, Reflection, Serialization, Store
+    include Transactions, Reflection, Serialization, Store
     include Core
 
     class << self
