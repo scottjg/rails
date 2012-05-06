@@ -75,7 +75,10 @@ module ActiveSupport
     #   end
     #
     def run_callbacks(kind, key = nil, &block)
-      #TODO: deprecate key argument
+      if key
+        ActiveSupport::Deprecaton.warn "key argument is deprecated"
+      end
+
       runner_name = self.class.__define_callbacks(kind, self)
       send(runner_name, &block)
     end
@@ -393,7 +396,7 @@ module ActiveSupport
       #
       # Before and around callbacks are called in the order that they are set; after
       # callbacks are called in the reverse order.
-      # 
+      #
       # Around callbacks can access the return value from the event, if it
       # wasn't halted, from the +yield+ call.
       #
