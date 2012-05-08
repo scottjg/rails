@@ -209,7 +209,8 @@ module InflectorTestCases
   UnderscoreToHuman = {
     "employee_salary" => "Employee salary",
     "employee_id"     => "Employee",
-    "underground"     => "Underground"
+    "underground"     => "Underground",
+    "foo :: bar"        => "Foo :: bar"
   }
 
   MixtureToTitleCase = {
@@ -228,7 +229,8 @@ module InflectorTestCases
     "maybe you'll be there" => "Maybe You'll Be There",
     "¿por qué?"             => '¿Por Qué?',
     "Fred’s"                => "Fred’s",
-    "Fred`s"                => "Fred`s"
+    "Fred`s"                => "Fred`s",
+    "foo :: bar"              => "Foo :: Bar"
   }
 
   OrdinalNumbers = {
