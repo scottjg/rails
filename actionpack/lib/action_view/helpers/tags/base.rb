@@ -131,7 +131,7 @@ module ActionView
         end
 
         def add_options(option_tags, options, value = nil)
-          if options[:include_blank]
+          if options[:include_blank] || (options[:required] && !options[:multiple])
             option_tags = content_tag('option', options[:include_blank].kind_of?(String) ? options[:include_blank] : nil, :value => '') + "\n" + option_tags
           end
           if value.blank? && options[:prompt]

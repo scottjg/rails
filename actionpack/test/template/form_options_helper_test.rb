@@ -633,6 +633,20 @@ class FormOptionsHelperTest < ActionView::TestCase
       select("post", "category", [nil, "othervalue"])
     )
   end
+  
+  def test_select_with_included
+    assert_dom_equal(
+    "<select id=\"post_category\" name=\"post[category]\"><option value=\"\"></option>\n<option value=\"abe\">abe</option>\n<option value=\"mus\">mus</option>\n<option value=\"hest\">hest</option></select>",
+    select("post", "category", %w( abe mus hest), :required => true)
+    )
+  end
+
+  def test_select_with_included_and_multiple
+    assert_dom_equal(
+    "<select id=\"post_category\" name=\"post[category]\"><option value=\"abe\">abe</option>\n<option value=\"mus\">mus</option>\n<option value=\"hest\">hest</option></select>",
+    select("post", "category", %w( abe mus hest), :required => true,:multiple=>true)
+    )
+  end
 
   def test_select_with_fixnum
     @post = Post.new
