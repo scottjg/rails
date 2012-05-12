@@ -32,6 +32,13 @@ class Object
       public_send(*a, &b)
     end
   end
+  
+  # The trick object || another_object works only if object is nil. With Object#or_if_blank
+  # You can do "Article.title.or_if_blank "[No title yet]"
+  def or_if_blank(other_object)
+    return other_object if self.blank?
+    self
+  end
 end
 
 class NilClass
