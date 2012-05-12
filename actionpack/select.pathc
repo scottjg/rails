@@ -1,0 +1,45 @@
+diff --git a/actionpack/lib/action_view/helpers/tags/base.rb b/actionpack/lib/action_view/helpers/tags/base.rb
+index e4f431a..dfb670c 100644
+--- a/actionpack/lib/action_view/helpers/tags/base.rb
++++ b/actionpack/lib/action_view/helpers/tags/base.rb
+@@ -121,6 +121,7 @@ module ActionView
+         def select_content_tag(option_tags, options, html_options)
+           html_options = html_options.stringify_keys
+           add_default_name_and_id(html_options)
++          options[:include_blank] = true if html_options["required"] && html_options["size"].to_i == 1 && !html_options["multiple"]
+           select = content_tag("select", add_options(option_tags, options, value(object)), html_options)
+ 
+           if html_options["multiple"] && options.fetch(:include_hidden, true)
+diff --git a/actionpack/test/template/form_options_helper_test.rb b/actionpack/test/template/form_options_helper_test.rb
+index 2c0da84..8b3a51b 100644
+--- a/actionpack/test/template/form_options_helper_test.rb
++++ b/actionpack/test/template/form_options_helper_test.rb
+@@ -633,7 +633,28 @@ class FormOptionsHelperTest < ActionView::TestCase
+       select("post", "category", [nil, "othervalue"])
+     )
+   end
++  
++  def test_select_with_included_and_display_size_equals_to_one
++    assert_dom_equal(
++    "<select id=\"post_category\" name=\"post[category]\" required=\"required\" size=\"1\"><option value=\"\"></option>\n<option value=\"abe\">abe</option>\n<option value=\"mus\">mus</option>\n<option value=\"hest\">hest</option></select>",
++    select("post", "category", %w( abe mus hest),{}, :required => true, :size => 1)
++    )
++  end
++  
++  def test_select_with_included_and_display_size_no_equals_to_one
++       assert_dom_equal(
++       "<select id=\"post_category\" name=\"post[category]\" required=\"required\" size=\"2\"><option value=\"abe\">abe</option>\n<option value=\"mus\">mus</option>\n<option value=\"hest\">hest</option></select>",
++       select("post", "category", %w( abe mus hest),{}, :required => true, :size => 2)
++       )
++  end
+ 
++  def test_select_with_included_and_multiple
++    assert_dom_equal(
++    "<input name=\"post[category][]\" type=\"hidden\" value=\"\"/><select id=\"post_category\" multiple=\"multiple\" name=\"post[category][]\" required=\"required\" size=\"1\"><option value=\"abe\">abe</option>\n<option value=\"mus\">mus</option>\n<option value=\"hest\">hest</option></select>",
++    select("post", "category", %w( abe mus hest), {}, :required => true, :size => 1, :multiple => true)
++    )
++  end
++ 
+   def test_select_with_fixnum
+     @post = Post.new
+     @post.category = ""
