@@ -787,7 +787,7 @@ uses_memcached 'memcached backed store' do
       cache.clear
       cache.with_local_cache do
         cache.write("foo", Marshal.dump([]))
-        assert_equal [], cache.read("foo")
+        assert_equal Marshal.dump([]), cache.read("foo")
       end
     end
   end

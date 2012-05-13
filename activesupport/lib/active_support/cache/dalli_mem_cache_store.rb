@@ -144,7 +144,12 @@ module ActiveSupport
         end
 
       private
+        # Memcache keys are binaries. So we need to force their encoding to binary
+        # before applying the regular expression to ensure we are escaping all
+        # characters properly.
         def escape_key(key)
+          key = key.to_s.dup
+          key = key.force_encoding("BINARY")
           key = key.to_s.gsub(ESCAPE_KEY_CHARS){|match| "%#{match.getbyte(0).to_s(16).upcase}"}
           key = "#{key[0, 213]}:md5:#{Digest::MD5.hexdigest(key)}" if key.size > 250
           key
