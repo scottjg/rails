@@ -36,7 +36,7 @@ module ActiveSupport
         addresses = addresses.flatten
         options = addresses.extract_options!
         addresses = ["localhost:11211"] if addresses.empty?
-        ActiveSupport::Deprecation.warn ":mem_cache_store is deprecated, please use :dalli_store instead"
+        ActiveSupport::Deprecation.warn ":mem_cache_store is deprecated, please use :dalli_mem_cache_store instead"
         MemCache.new(addresses, options)
       end
 

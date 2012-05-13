@@ -14,7 +14,7 @@ module ActiveSupport
     #
     # DalliStore implements the Strategy::LocalCache strategy which implements
     # an in memory cache inside of a block.
-    class DalliStore < Store
+    class DalliMemCacheStore < Store
 
       ESCAPE_KEY_CHARS = /[\x00-\x20%\x7F-\xFF]/
 
