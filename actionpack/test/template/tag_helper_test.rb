@@ -70,6 +70,10 @@ class TagHelperTest < ActionView::TestCase
                  output_buffer
   end
 
+  def test_content_tag_with_unallowed_tag
+    assert_equal "", content_tag("<script>alert('PWNED');</script>", "")
+  end
+
   def test_content_tag_nested_in_content_tag_in_erb
     assert_equal "<p>\n  <b>Hello</b>\n</p>", view.render("test/content_tag_nested_in_content_tag")
   end

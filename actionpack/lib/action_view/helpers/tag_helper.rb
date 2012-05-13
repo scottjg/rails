@@ -63,7 +63,7 @@ module ActionView
       #   tag("div", :data => {:name => 'Stephen', :city_state => %w(Chicago IL)})
       #   # => <div data-name="Stephen" data-city-state="[&quot;Chicago&quot;,&quot;IL&quot;]" />
       def tag(name, options = nil, open = false, escape = true)
-        "<#{name}#{tag_options(options, escape) if options}#{open ? ">" : " />"}".html_safe
+        "<#{name}#{tag_options(options, escape) if options}#{open ? ">" : " />"}".html_safe  
       end
 
       # Returns an HTML block tag of type +name+ surrounding the +content+. Add
@@ -132,6 +132,8 @@ module ActionView
       private
 
         def content_tag_string(name, content, options, escape = true)
+          return "" unless HTML::WhiteListSanitizer.allowed_tags.include?(name.to_s)
+          
           tag_options = tag_options(options, escape) if options
           content     = ERB::Util.h(content) if escape
           "<#{name}#{tag_options}>#{PRE_CONTENT_STRINGS[name.to_sym]}#{content}</#{name}>".html_safe
