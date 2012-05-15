@@ -6,7 +6,12 @@ module ActiveRecord
       def initialize(options)
         super(options.reverse_merge(:case_sensitive => true))
       end
-
+      
+  def build_relation(klass, table, attribute, value) #:nodoc:
+     debugger; column = klass.columns_hash[attribute.to_s]
+     value = column.limit ? value.to_s.mb_chars[0, column.limit] : value.to_s if column.text?
+ end      
+      
       # Unfortunately, we have to tie Uniqueness validators to a class.
       def setup(klass)
         @klass = klass
