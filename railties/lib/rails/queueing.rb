@@ -1,5 +1,11 @@
 module Rails
   module Queueing
+    # A Queue that simply inherits from STDLIB's Queue. Everytime this
+    # queue is used, Rails automatically sets up a ThreadedConsumer
+    # to consume it.
+    class Queue < ::Queue
+    end
+    
     # In test mode, the Rails queue is backed by an Array so that assertions
     # can be made about its contents. The test queue provides a +contents+
     # method to make assertions about the queue's contents and a +drain+
@@ -23,11 +29,6 @@ module Rails
           end
         end
         t.join
-      end
-
-      # implement the Queue API
-      def push(object)
-        @contents << object
       end
     end
 
@@ -59,6 +60,10 @@ module Rails
       def shutdown
         @queue.push nil
         @thread.join
+      end
+
+      def handle_exception(e)
+        Rails.logger.error "Job Error: #{e.message}\n#{e.backtrace.join("\n")}"
       end
     end
   end

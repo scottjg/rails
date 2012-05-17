@@ -43,7 +43,7 @@ module Rails
         @file_watcher                  = ActiveSupport::FileUpdateChecker
         @exceptions_app                = nil
         @autoflush_log                 = true
-        @log_formatter                 = ActiveSupport::Logger::SimpleFormatter.new
+        @log_formatter                 = Logger::Formatter.new
         @use_schema_cache_dump         = true
         @queue                         = Rails::Queueing::Queue
         @queue_consumer                = Rails::Queueing::ThreadedConsumer
