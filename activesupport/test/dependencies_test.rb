@@ -214,6 +214,13 @@ class DependenciesTest < ActiveSupport::TestCase
     end
   end
 
+  def test_nested_class_can_access_siblings_from_singleton_class
+    with_autoloading_fixtures do
+      assert_nothing_raised { ClassFolder::NestedClass.use_class_folder_subclass }
+      assert_nothing_raised { ClassFolder::NestedClass.use_sibling_class }
+    end
+  end
+
   def test_doesnt_break_normal_require
     path = File.expand_path("../autoloading_fixtures/load_path", __FILE__)
     original_path = $:.dup

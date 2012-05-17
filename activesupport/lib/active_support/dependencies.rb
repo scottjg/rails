@@ -171,7 +171,14 @@ module ActiveSupport #:nodoc:
       # Use const_missing to autoload associations so we don't have to
       # require_association when using single-table inheritance.
       def const_missing(const_name, nesting = nil)
-        klass_name = name.presence || "Object"
+        klass_name = name.presence 
+
+        # Account for a singleton class being self
+        if klass_name.blank?
+          klass_name = presence.to_s.gsub(/#<(Class|Module):/,"").gsub(/0x\S{14}>$/,"") 
+        end
+        
+        klass_name = "Object" if klass_name.blank?
 
         unless nesting
           # We'll assume that the nesting of Foo::Bar is ["Foo::Bar", "Foo"]
