@@ -1,3 +1,5 @@
+require "thread"
+
 module Rails
   module Queueing
     # A Queue that simply inherits from STDLIB's Queue. Everytime this
@@ -13,18 +15,16 @@ module Rails
     #
     # Jobs are run in a separate thread to catch mistakes where code
     # assumes that the job is run in the same thread.
-    class TestQueue
-      attr_reader :contents
-
-      def initialize
-        @contents = []
+    class TestQueue < ::Queue
+      def jobs
+        @que.dup
       end
 
       def drain
         # run the jobs in a separate thread so assumptions of synchronous
         # jobs are caught in test mode.
         t = Thread.new do
-          while job = @contents.pop
+          while job = jobs.pop
             job.run
           end
         end
