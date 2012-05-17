@@ -123,6 +123,11 @@ module ActiveRecord
     # The exceptions AdapterNotSpecified, AdapterNotFound and ArgumentError
     # may be returned on an error.
     def self.establish_connection(spec = ENV["DATABASE_URL"])
+      puts ">>> ENV['RACK_ENV'] is #{ENV['RACK_ENV']}"
+      puts ">>> ENV['RAILS_ENV'] is #{ENV['RAILS_ENV']}"
+      puts ">>> Rails.env is #{Rails.env}"
+      puts ">>> spec is [#{spec}]"
+      puts ">>> configurations is [#{configurations}]"
       resolver = ConnectionSpecification::Resolver.new spec, configurations
       spec = resolver.spec
 
