@@ -353,6 +353,7 @@ db_namespace = namespace :db do
       require 'active_record/schema_dumper'
       filename = ENV['SCHEMA'] || "#{Rails.root}/db/schema.rb"
       File.open(filename, "w:utf-8") do |file|
+        puts ">>> environment is [#{Rails.env}]"
         ActiveRecord::Base.establish_connection(Rails.env)
         ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, file)
       end
