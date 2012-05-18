@@ -55,6 +55,30 @@ module ActiveModel
       extend ActiveModel::Configuration
       config_attribute :_validators
       self._validators = Hash.new { |h,k| h[k] = [] }
+
+      self.class_eval do
+        def errors
+          @errors ||= []
+          @errors[0] ||= ActiveModel::Errors.new(self) 
+          @errors[0]
+        end
+
+        def validation_context=(val)
+          @validation_context ||= []
+          @validation_context[0] = val
+        end
+
+        def validation_context
+          @validation_context ||= []
+          @validation_context[0]
+        end
+
+        def freeze
+          @errors ||= []
+          @validation_context ||= []
+          super
+        end
+      end
     end
 
     module ClassMethods
