@@ -120,6 +120,24 @@ class ValidationsTest < ActiveModel::TestCase
     assert t.errors.empty?
   end
 
+  def test_errors_on_base_on_frozen_object
+    t = Topic.new
+    t.freeze
+    t.errors.add(:base, :invalid)
+    assert t.invalid?
+    assert_equal ["is invalid"], t.errors[:base]
+    assert_equal 1, t.errors.count
+  end
+
+  def test_errors_on_attribute_on_frozen_object
+    r = Reply.new
+    r.content = "Mismatch"
+    r.freeze
+    assert r.invalid?
+    assert_equal ["is Empty"], r.errors[:title]
+    assert_equal 1, r.errors.count
+  end
+
   def test_validates_each
     hits = 0
     Topic.validates_each(:title, :content, [:title, :content]) do |record, attr|
