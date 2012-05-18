@@ -4,7 +4,13 @@ module Rails
   class Application
     class RouteWrapper < SimpleDelegator
       def endpoint
-        rack_app ? rack_app.inspect : "#{controller}##{action}"
+        if rack_app 
+          rack_app.inspect
+        elsif redirect_path
+          redirect_path
+        else
+          "#{controller}##{action}"
+        end
       end
 
       def constraints
@@ -19,6 +25,17 @@ module Rails
           elsif class_name !~ /^ActionDispatch::Routing/
             app
           end
+        end
+      end
+
+      def redirect_path
+        @redirect_path ||= begin
+          class_name = app.class.name.to_s
+          if class_name =~ /^ActionDispatch::Routing::(Option)?Redirect/
+            app.path({},"")
+          end
+        rescue
+          nil
         end
       end
 
@@ -56,6 +73,10 @@ module Rails
 
       def engine?
         rack_app && rack_app.respond_to?(:routes)
+      end
+
+      def redirect?
+        redirect_path
       end
     end
 

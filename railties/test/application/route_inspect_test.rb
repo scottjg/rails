@@ -160,5 +160,35 @@ module ApplicationTests
       assert_no_match(/RackApp/, output.first)
       assert_no_match(/\/sprockets/, output.first)
     end
+
+    def test_rake_routes_show_basic_redirect
+      @set.draw do
+        get "/stories" => redirect("/posts"), as:'stories'
+      end
+
+      output = @inspector.format @set.routes
+      assert_equal ["stories GET /stories(.:format) /posts"], output
+    end
+
+    def test_rake_routes_show_redirect_with_interpolation
+      @set.draw do
+        get '/docs/:article', :to => redirect('/wiki/%{article}'), as:'doc'
+      end
+
+      output = @inspector.format @set.routes
+      assert_equal ["doc GET /docs/:article(.:format) /wiki/%{article}"], output
+    end
+
+    def test_rake_routes_show_redirect_with_block
+      @set.draw do
+        get 'jokes/:number', :to => redirect { |params, request|
+          path = (params[:number].to_i.even? ? "wheres-the-beef" : "i-love-lamp")
+          "http://#{request.host_with_port}/#{path}"
+        }, as:'joke'
+      end
+
+      output = @inspector.format @set.routes
+      assert_equal ["joke GET /jokes/:number(.:format) :controller#:action"], output
+    end
   end
 end
