@@ -1,4 +1,19 @@
-# Rails 2.3 stable development setup
+# Rails 2 (progress)
+
+This fork aims to renew Rails 2 enough to help some application to get out of migration panic.
+This does mean that we want you to migrate your app to Rails 3 and Ruby 1.9, and in order to do so we'll soften up the process a bit more.
+
+## Features:
+
+- **Bundler** integration (and deprecation for `config.gem`)
+- **Rubygems** revamp (v1.7 already supported)
+- **Upgraded requirements** (old rack, rake, etc.)
+- **Sass/Coffee** to be ready for 3.1
+- **RSpec2** (we're already working on a rails2/rspec2 rspec-rails fork)
+
+
+
+## Development setup
 
 ### Setup RVM (optional)
 
@@ -12,7 +27,7 @@ echo 'rvm 1.8.7-p334@rails-2-3-stable' > .rvmrc
 brew install fcgi
 ```
 
-## Gems
+### Gems
 
 ```bash
 gem install geminstaller -v '>= 0.4.3'
