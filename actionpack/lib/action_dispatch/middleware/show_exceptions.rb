@@ -19,7 +19,8 @@ module ActionDispatch
       'ActiveRecord::RecordNotSaved'               => :unprocessable_entity,
       'ActionController::MethodNotAllowed'         => :method_not_allowed,
       'ActionController::NotImplemented'           => :not_implemented,
-      'ActionController::InvalidAuthenticityToken' => :unprocessable_entity
+      'ActionController::InvalidAuthenticityToken' => :unprocessable_entity,
+      'ActionController::BadRequest'               => :bad_request
     })
 
     cattr_accessor :rescue_templates

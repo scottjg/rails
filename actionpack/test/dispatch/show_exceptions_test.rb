@@ -17,6 +17,8 @@ class ShowExceptionsTest < ActionDispatch::IntegrationTest
       raise ActionController::InvalidAuthenticityToken
     when "/not_found_original_exception"
       raise ActionView::Template::Error.new('template', {}, AbstractController::ActionNotFound.new)
+    when "/bad_request"
+      raise ActionController::BadRequest
     else
       raise "puke!"
     end
@@ -96,6 +98,10 @@ class ShowExceptionsTest < ActionDispatch::IntegrationTest
     get "/method_not_allowed", {}, {'action_dispatch.show_exceptions' => true}
     assert_response 405
     assert_match(/ActionController::MethodNotAllowed/, body)
+
+    get "/bad_request", {}, {'action_dispatch.show_exceptions' => true}
+    assert_response 400
+    assert_match(/ActionController::BadRequest/, body)
   end
 
   test "does not show filtered parameters" do
