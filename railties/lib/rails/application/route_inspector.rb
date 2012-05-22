@@ -60,6 +60,21 @@ module Rails
     end
 
     ##
+    # This class is just used for displaying route information
+    # People should not use this class.
+    class RoutePresenter # :nodoc:
+      def self.display_routes(routes = all_routes)
+        inspector = Rails::Application::RouteInspector.new
+        inspector.format(routes, ENV['CONTROLLER']).join "\n"
+      end
+
+      def self.all_routes
+        Rails.application.reload_routes!
+        Rails.application.routes.routes
+      end
+    end
+
+    ##
     # This class is just used for displaying route information when someone
     # executes `rake routes`.  People should not use this class.
     class RouteInspector # :nodoc:
