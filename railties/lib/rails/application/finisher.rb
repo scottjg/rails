@@ -22,7 +22,7 @@ module Rails
       initializer :add_builtin_route do |app|
         if Rails.env.development?
           app.routes.append do
-            get '/rails/info/properties' => "rails/info#properties"
+            get '/rails/info/:id' => "rails/info#show"
           end
         end
       end

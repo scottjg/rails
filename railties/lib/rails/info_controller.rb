@@ -1,8 +1,11 @@
 class Rails::InfoController < ActionController::Base
   before_filter :require_local!
 
-  def properties
-    render :inline => Rails::Info.to_html
+  def show
+    case params[:id].to_sym
+    when :properties
+      render :inline => Rails::Info.to_html
+    end
   end
 
   protected
