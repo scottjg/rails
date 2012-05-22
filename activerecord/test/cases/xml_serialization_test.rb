@@ -92,9 +92,9 @@ class DefaultXmlSerializationTest < ActiveRecord::TestCase
   end
 
   def test_should_serialize_datetime
-    assert_match %r{<created-at type=\"datetime\">2006-08-01T00:00:00Z</created-at>}, @xml
+    assert_match %r{<created-at type=\"dateTime\">2006-08-01T00:00:00Z</created-at>}, @xml
   end
-
+  
   def test_should_serialize_boolean
     assert_match %r{<awesome type=\"boolean\">false</awesome>}, @xml
   end
@@ -109,7 +109,7 @@ class DefaultXmlSerializationTimezoneTest < ActiveRecord::TestCase
     timezone, Time.zone = Time.zone, "Pacific Time (US & Canada)"
 
     toy = Toy.create(:name => 'Mickey', :updated_at => Time.utc(2006, 8, 1))
-    assert_match %r{<updated-at type=\"datetime\">2006-07-31T17:00:00-07:00</updated-at>}, toy.to_xml
+    assert_match %r{<updated-at type=\"dateTime\">2006-07-31T17:00:00-07:00</updated-at>}, toy.to_xml
   ensure
     Time.zone = timezone
   end
@@ -118,7 +118,7 @@ class DefaultXmlSerializationTimezoneTest < ActiveRecord::TestCase
     timezone, Time.zone = Time.zone, "Pacific Time (US & Canada)"
 
     toy = Toy.create(:name => 'Minnie', :updated_at => Time.utc(2006, 8, 1)).reload
-    assert_match %r{<updated-at type=\"datetime\">2006-07-31T17:00:00-07:00</updated-at>}, toy.to_xml
+    assert_match %r{<updated-at type=\"dateTime\">2006-07-31T17:00:00-07:00</updated-at>}, toy.to_xml
   ensure
     Time.zone = timezone
   end
@@ -152,7 +152,7 @@ class NilXmlSerializationTest < ActiveRecord::TestCase
     assert %r{<created-at (.*)></created-at>}.match(@xml)
     attributes = $1
     assert_match %r{nil="true"}, attributes
-    assert_match %r{type="datetime"}, attributes
+    assert_match %r{type="dateTime"}, attributes
   end
 
   def test_should_serialize_boolean
@@ -188,7 +188,7 @@ class DatabaseConnectedXmlSerializationTest < ActiveRecord::TestCase
     assert_equal "integer" , xml.elements["//replies-count"].attributes['type']
 
     assert_equal written_on_in_current_timezone, xml.elements["//written-on"].text
-    assert_equal "datetime" , xml.elements["//written-on"].attributes['type']
+    assert_equal "dateTime" , xml.elements["//written-on"].attributes['type']
 
     assert_equal "david@loudthinking.com", xml.elements["//author-email-address"].text
 
@@ -211,7 +211,7 @@ class DatabaseConnectedXmlSerializationTest < ActiveRecord::TestCase
       assert_equal "boolean" , xml.elements["//approved"].attributes['type']
 
       assert_equal bonus_time_in_current_timezone, xml.elements["//bonus-time"].text
-      assert_equal "datetime" , xml.elements["//bonus-time"].attributes['type']
+      assert_equal "dateTime" , xml.elements["//bonus-time"].attributes['type']
     end
   end
 
