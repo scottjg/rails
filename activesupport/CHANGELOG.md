@@ -1,5 +1,7 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Changed xml type `datetime` to `dateTime` (with upper case letter `T`). *Angelo Capilleri*  
+
 *   `constantize` now looks in the ancestor chain. *Marc-Andre Lafortune & Andrew White*
 
 *   `Object#try` can't call private methods. *Vasiliy Ermolovich*
