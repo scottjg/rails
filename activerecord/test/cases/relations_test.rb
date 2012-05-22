@@ -599,6 +599,7 @@ class RelationTest < ActiveRecord::TestCase
     assert ! davids.exists?(authors(:mary).id)
     assert ! davids.exists?("42")
     assert ! davids.exists?(42)
+    assert ! davids.exists?(davids.new)
 
     fake  = Author.where(:name => 'fake author')
     assert ! fake.exists?
@@ -641,6 +642,10 @@ class RelationTest < ActiveRecord::TestCase
 
     assert_equal [], davids.to_a
     assert davids.loaded?
+  end
+
+  def test_delete_all_limit_error
+    assert_raises(ActiveRecord::ActiveRecordError) { Author.limit(10).delete_all }
   end
 
   def test_select_argument_error

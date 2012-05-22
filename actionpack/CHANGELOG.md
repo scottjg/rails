@@ -1,4 +1,19 @@
-## Rails 3.2.3 (unreleased) ##
+## Rails 3.2.4 (unreleased) ##
+
+*   Deprecate old APIs for highlight, excerpt and word_wrap *Jeremy Walker*
+
+*   Deprecate `:disable_with` in favor of `'data-disable-with'` option for `button_to`, `button_tag` and `submit_tag` helpers.
+
+    *Carlos Galdino + Rafael Mendonça França*
+
+*   Deprecate `:mouseover` option for `image_tag` helper. *Rafael Mendonça França*
+
+*   Deprecate `button_to_function` and `link_to_function` helpers. *Rafael Mendonça França*
+
+
+## Rails 3.2.3 (March 30, 2012) ##
+
+*   Allow to lazy load `default_form_builder` by passing a `String` instead of a constant. *Piotr Sarnacki*
 
 *   Fix #5632, render :inline set the proper rendered format. *Santiago Pastorino*
 

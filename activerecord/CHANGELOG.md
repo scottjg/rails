@@ -1,10 +1,13 @@
 ## Rails 3.2.4 (unreleased) ##
 
+*   Perf fix: Don't load the records when doing assoc.delete_all.
+    GH #6289. *Jon Leighton*
+
 *   Association preloading shouldn't be affected by the current scoping.
     This could cause infinite recursion and potentially other problems.
     See GH #5667. *Jon Leighton*
 
-## Rails 3.2.3 (unreleased) ##
+## Rails 3.2.3 (March 30, 2012) ##
 
 *   Added find_or_create_by_{attribute}! dynamic method. *Andrew White*
 
