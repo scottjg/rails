@@ -23,6 +23,7 @@ module Rails
         if Rails.env.development?
           app.routes.append do
             get '/rails/info/:id' => "rails/info#show"
+            get '/rails/info'     => "rails/info#index"
           end
         end
       end

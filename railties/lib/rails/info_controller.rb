@@ -5,6 +5,10 @@ class Rails::InfoController < ActionController::Base
 
   before_filter :require_local!
 
+  def index
+    redirect_to '/rails/info/routes'
+  end
+
   def show
     case params[:id].to_sym
     when :properties
