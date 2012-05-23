@@ -10,6 +10,7 @@ require "models/interest"
 require "models/owner"
 require "models/pet"
 require 'active_support/hash_with_indifferent_access'
+require 'debugger'
 
 module AssertRaiseWithMessage
   def assert_raise_with_message(expected_exception, expected_message)
@@ -863,6 +864,16 @@ class TestNestedAttributesLimit < ActiveRecord::TestCase
                                                       'bar' => { :name => 'Blown Away' },
                                                       'car' => { :name => 'The Happening' }} }
     end
+  end
+  
+  def test_accept_with_0
+    Man.accepts_nested_attributes_for(:interests)
+    Interest.validates_numericality_of(:zine_id)
+    man = Man.create(:name => 'John')
+    interest = man.interests.create(:zine_id => 0)
+    man.update_attributes({:interests_attributes => { :id => interest.id, :zine_id => 'foo' }})
+    debugger
+    assert man.valid?
   end
 end
 
