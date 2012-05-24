@@ -74,6 +74,13 @@ module ActiveRecord
           @queue = []
         end
 
+        # Test if any threads are currently waiting on the queue.
+        def any_waiting?
+          synchronize do
+            @num_waiting > 0
+          end
+        end
+
         # Return the number of threads currently waiting on this
         # queue.
         def num_waiting
