@@ -75,8 +75,12 @@ module Rails
 
     def initialize
       super
-      @initialized = false
-      @reloaders   = []
+      @initialized      = false
+      @reloaders        = []
+      @routes_reloader  = nil
+      @env_config       = nil
+      @ordered_railties = nil
+      @queue            = nil
     end
 
     # This method is called just after an application inherits from Rails::Application,
@@ -93,7 +97,7 @@ module Rails
     # Rails application, you will need to add lib to $LOAD_PATH on your own in case
     # you need to load files in lib/ during the application configuration as well.
     def add_lib_to_load_path! #:nodoc:
-      path = config.root.join('lib').to_s
+      path = File.join config.root, 'lib'
       $LOAD_PATH.unshift(path) if File.exists?(path)
     end
 
