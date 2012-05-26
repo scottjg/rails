@@ -34,6 +34,21 @@ class ActiveModelI18nTests < ActiveModel::TestCase
     assert_equal 'Name', Person.human_attribute_name('name', :default => :default_name)
   end
 
+  def test_presence_of_sensible_translation_defaults_class_attribute
+    assert Person.respond_to?(:sensible_translation_defaults)
+  end
+
+  def test_sensible_translation_defaults_is_true_by_default
+    assert Class.new{ extend ActiveModel::Translation }.sensible_translation_defaults
+  end
+
+  def test_translated_model_attributes_without_sensible_translation_defaults
+    Person.sensible_translation_defaults = false
+    expected_i18n_message = "translation missing: en.activemodel.attributes.person.name"      
+    assert_equal expected_i18n_message, Person.human_attribute_name("name")
+    Person.sensible_translation_defaults = true
+  end
+
   def test_translated_model_attributes_with_symbols
     I18n.backend.store_translations 'en', :activemodel => {:attributes => {:person => {:name => 'person name attribute'} } }
     assert_equal 'person name attribute', Person.human_attribute_name(:name)

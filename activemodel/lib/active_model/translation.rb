@@ -21,6 +21,11 @@ module ActiveModel
   module Translation
     include ActiveModel::Naming
 
+    def self.extended(base)
+      base.class_attribute :sensible_translation_defaults
+      base.sensible_translation_defaults = true
+    end
+
     # Returns the +i18n_scope+ for the class. Overwrite if you want custom lookup.
     def i18n_scope
       :activemodel
@@ -62,8 +67,15 @@ module ActiveModel
       defaults << options.delete(:default) if options[:default]
       defaults << attribute.humanize
 
-      options[:default] = defaults
-      I18n.translate(defaults.shift, options)
+      options[:default] = defaults 
+
+      key = defaults.shift
+
+      if !self.sensible_translation_defaults
+        options.delete(:default)
+      end
+
+      I18n.translate(key, options)
     end
   end
 end
