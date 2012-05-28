@@ -378,6 +378,34 @@ h6 {
   margin: 0 2em 2em 0;
 }
 
+.alert {
+  position: relative;
+  background-color: #fff9d8;
+  color: #C09853;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  padding: 1.5em;
+  padding-left: 3em;
+  border: 1px solid #DDD7CC;
+  border-radius: 5px;
+}
+
+.alert[data-icon]:before {
+  position: absolute;
+  left: 12px;
+  font-size: 2em;
+  top: 22px;
+}
+
+.alert .alert-heading {
+  margin: 0;
+}
+
+.alert .alert-message {
+  font-size: .8751em;
+  margin: 0;
+  line-height: 1.75em;
+}
+
 #topNav strong {color: #999; margin-right: 0.5em;}
 #topNav strong a {color: #FFF;}
 
