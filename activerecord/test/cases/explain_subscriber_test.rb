@@ -27,6 +27,13 @@ if ActiveRecord::Base.connection.supports_explain?
       end
     end
 
+    def test_collects_nothing_if_unexplained_sqls
+      with_queries([]) do |queries|
+        SUBSCRIBER.call(:name => 'SQL', :sql => 'SHOW max_identifier_length')
+        assert queries.empty?
+      end
+    end
+
     def test_collects_pairs_of_queries_and_binds
       sql   = 'select 1 from users'
       binds = [1, 2]
