@@ -1,4 +1,56 @@
-*Rails 3.0.10 (unreleased)*
+* Rails 3.0.13 (May 31, 2012)
+
+* Strip null bytes from Location header
+
+* load the encoding converter to work around [ruby-core:41556] when switching
+  encodings
+
+* Avoid inspecting the whole route set, closes #1525
+
+* whitelist protocols for auto_link
+
+* Strip [nil] from parameters hash. Thanks to Ben Murphy for reporting this!
+  CVE-2012-2660
+
+*Rails 3.0.12 (unreleased)*
+
+* Fix using `tranlate` helper with a html translation which uses the `:count` option for
+  pluralization.
+
+  *Jon Leighton*
+
+*Rails 3.0.11 (unreleased)*
+
+* Fix XSS security vulnerability in the `translate` helper method. When using interpolation
+  in combination with HTML-safe translations, the interpolated input would not get HTML
+  escaped. *GH 3664*
+
+  Before:
+
+      translate('foo_html', :something => '<script>') # => "...<script>..."
+
+  After:
+
+      translate('foo_html', :something => '<script>') # => "...&lt;script&gt;..."
+
+  *Sergey Nartimov*
+
+* Implement a workaround for a bug in ruby-1.9.3p0 where an error would be
+  raised while attempting to convert a template from one encoding to another.
+
+  Please see http://redmine.ruby-lang.org/issues/5564 for details of the bug.
+
+  The workaround is to load all conversions into memory ahead of time, and will
+  only happen if the ruby version is exactly 1.9.3p0. The hope is obviously
+  that the underlying problem will be resolved in the next patchlevel release
+  of 1.9.3.
+
+* Fix assert_select_email to work on multipart and non-multipart emails as the method stopped working correctly in Rails 3.x due to changes in the new mail gem.
+
+* Fix url_for when passed a hash to prevent additional options (eg. :host, :protocol) from being added to the hash after calling it.
+
+
+*Rails 3.0.10 (August 16, 2011)*
 
 * Fixes an issue where cache sweepers with only after filters would have no
 controller object, it would raise undefined method controller_name for nil [jeroenj]
