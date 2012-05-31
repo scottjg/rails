@@ -21,4 +21,63 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
-require 'action_view/version'
+require 'active_support'
+require 'action_pack'
+
+module ActionView
+  extend ActiveSupport::Autoload
+
+  eager_autoload do
+    autoload :AssetPaths
+    autoload :Base
+    autoload :Context
+    autoload :CompiledTemplates, "action_view/context"
+    autoload :Helpers
+    autoload :LookupContext
+    autoload :PathSet
+    autoload :Template
+    autoload :TestCase
+
+    autoload_under "renderer" do
+      autoload :Renderer
+      autoload :AbstractRenderer
+      autoload :PartialRenderer
+      autoload :TemplateRenderer
+      autoload :StreamingTemplateRenderer
+    end
+
+    autoload_at "action_view/template/resolver" do
+      autoload :Resolver
+      autoload :PathResolver
+      autoload :FileSystemResolver
+      autoload :OptimizedFileSystemResolver
+      autoload :FallbackFileSystemResolver
+    end
+
+    autoload_at "action_view/buffers" do
+      autoload :OutputBuffer
+      autoload :StreamingBuffer
+    end
+
+    autoload_at "action_view/flows" do
+      autoload :OutputFlow
+      autoload :StreamingFlow
+    end
+
+    autoload_at "action_view/template/error" do
+      autoload :MissingTemplate
+      autoload :ActionViewError
+      autoload :EncodingError
+      autoload :TemplateError
+      autoload :WrongEncodingError
+    end
+  end
+
+  ENCODING_FLAG = '#.*coding[:=]\s*(\S+)[ \t]*'
+end
+
+require 'active_support/core_ext/string/output_safety'
+
+ActiveSupport.on_load(:i18n) do
+  I18n.load_path << "#{File.dirname(__FILE__)}/action_view/locale/en.yml"
+end
