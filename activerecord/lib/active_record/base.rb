@@ -756,7 +756,7 @@ module ActiveRecord #:nodoc:
       # values, eg:
       #
       #  class CreateJobLevels < ActiveRecord::Migration
-      #    def self.up
+      #    def up
       #      create_table :job_levels do |t|
       #        t.integer :id
       #        t.string :name
@@ -770,7 +770,7 @@ module ActiveRecord #:nodoc:
       #      end
       #    end
       #
-      #    def self.down
+      #    def down
       #      drop_table :job_levels
       #    end
       #  end
@@ -954,15 +954,7 @@ module ActiveRecord #:nodoc:
         record_id = sti_class.primary_key && record[sti_class.primary_key]
 
         if ActiveRecord::IdentityMap.enabled? && record_id
-          if (column = sti_class.columns_hash[sti_class.primary_key]) && column.number?
-            record_id = record_id.to_i
-          end
-          if instance = IdentityMap.get(sti_class, record_id)
-            instance.reinit_with('attributes' => record)
-          else
-            instance = sti_class.allocate.init_with('attributes' => record)
-            IdentityMap.add(instance)
-          end
+          instance = use_identity_map(sti_class, record_id, record)
         else
           instance = sti_class.allocate.init_with('attributes' => record)
         end
@@ -971,6 +963,21 @@ module ActiveRecord #:nodoc:
       end
 
       private
+
+        def use_identity_map(sti_class, record_id, record)
+          if (column = sti_class.columns_hash[sti_class.primary_key]) && column.number?
+            record_id = record_id.to_i
+          end
+
+          if instance = IdentityMap.get(sti_class, record_id)
+            instance.reinit_with('attributes' => record)
+          else
+            instance = sti_class.allocate.init_with('attributes' => record)
+            IdentityMap.add(instance)
+          end
+
+          instance
+        end
 
         def relation #:nodoc:
           @relation ||= Relation.new(self, arel_table)
@@ -1054,7 +1061,7 @@ module ActiveRecord #:nodoc:
             super unless all_attributes_exists?(attribute_names)
             if !arguments.first.is_a?(Hash) && arguments.size < attribute_names.size
               ActiveSupport::Deprecation.warn(<<-eowarn)
-Calling dynamic finder with less number of arguments than the number of attributes in method name is deprecated and will raise an ArguementError in the next version of Rails. Please passing `nil' to the argument you want it to be nil.
+Calling dynamic finder with less number of arguments than the number of attributes in the method name is deprecated and will raise an ArgumentError in the next version of Rails. Please pass `nil' explicitly to the arguments that are left out.
                 eowarn
             end
             if match.finder?
@@ -1070,8 +1077,8 @@ Calling dynamic finder with less number of arguments than the number of attribut
             if arguments.size < attribute_names.size
               ActiveSupport::Deprecation.warn(
                 "Calling dynamic scope with less number of arguments than the number of attributes in " \
-                "method name is deprecated and will raise an ArguementError in the next version of Rails. " \
-                "Please passing `nil' to the argument you want it to be nil."
+                "the method name is deprecated and will raise an ArgumentError in the next version of Rails. " \
+                "Please pass `nil' explicitly to the arguments that are left out."
               )
             end
             if match.scope?
@@ -2170,18 +2177,18 @@ MSG
     include AutosaveAssociation, NestedAttributes
     include Aggregations, Transactions, Reflection, Serialization
 
-    NilClass.add_whiner(self) if NilClass.respond_to?(:add_whiner)
-
     # Returns the value of the attribute identified by <tt>attr_name</tt> after it has been typecast (for example,
     # "2004-12-12" in a data column is cast to a date object, like Date.new(2004, 12, 12)).
     # (Alias for the protected read_attribute method).
-    alias [] read_attribute
+    def [](attr_name)
+      read_attribute(attr_name)
+    end
 
     # Updates the attribute identified by <tt>attr_name</tt> with the specified +value+.
     # (Alias for the protected write_attribute method).
-    alias []= write_attribute
-
-    public :[], :[]=
+    def []=(attr_name, value)
+      write_attribute(attr_name, value)
+    end
   end
 end
 

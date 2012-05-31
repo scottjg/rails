@@ -452,7 +452,7 @@ class FormOptionsHelperTest < ActionView::TestCase
 
   def test_select_under_fields_for_with_string_and_given_prompt
     @post = Post.new
-    options = "<option value=\"abe\">abe</option><option value=\"mus\">mus</option><option value=\"hest\">hest</option>"
+    options = "<option value=\"abe\">abe</option><option value=\"mus\">mus</option><option value=\"hest\">hest</option>".html_safe
 
     output_buffer = fields_for :post, @post do |f|
       concat f.select(:category, options, :prompt => 'The prompt')
@@ -553,6 +553,13 @@ class FormOptionsHelperTest < ActionView::TestCase
     assert_dom_equal(
       expected,
       select("album[]", "genre", %w[rap rock country], {}, { :index => nil })
+    )
+  end
+
+  def test_select_escapes_options
+    assert_dom_equal(
+      '<select id="post_title" name="post[title]">&lt;script&gt;alert(1)&lt;/script&gt;</select>',
+      select('post', 'title', '<script>alert(1)</script>')
     )
   end
 
@@ -934,17 +941,15 @@ class FormOptionsHelperTest < ActionView::TestCase
   end
 
   def test_option_html_attributes_with_multiple_element_hash
-    assert_dom_equal(
-      " class=\"fancy\" onclick=\"alert('Hello World');\"",
-      option_html_attributes([ 'foo', 'bar', { :class => 'fancy', 'onclick' => "alert('Hello World');" } ])
-    )
+    output = option_html_attributes([ 'foo', 'bar', { :class => 'fancy', 'onclick' => "alert('Hello World');" } ])
+    assert output.include?(" class=\"fancy\"")
+    assert output.include?(" onclick=\"alert('Hello World');\"")
   end
 
   def test_option_html_attributes_with_multiple_hashes
-    assert_dom_equal(
-      " class=\"fancy\" onclick=\"alert('Hello World');\"",
-      option_html_attributes([ 'foo', 'bar', { :class => 'fancy' }, { 'onclick' => "alert('Hello World');" } ])
-    )
+    output = option_html_attributes([ 'foo', 'bar', { :class => 'fancy' }, { 'onclick' => "alert('Hello World');" } ])
+    assert output.include?(" class=\"fancy\"")
+    assert output.include?(" onclick=\"alert('Hello World');\"")
   end
 
   def test_option_html_attributes_with_special_characters

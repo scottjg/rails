@@ -15,6 +15,7 @@ class RequestTest < ActiveSupport::TestCase
 
     assert_equal 'http://www.example.com',  url_for
     assert_equal 'http://api.example.com',  url_for(:subdomain => 'api')
+    assert_equal 'http://example.com',      url_for(:subdomain => false)
     assert_equal 'http://www.ror.com',      url_for(:domain => 'ror.com')
     assert_equal 'http://api.ror.co.uk',    url_for(:host => 'www.ror.co.uk', :subdomain => 'api', :tld_length => 2)
     assert_equal 'http://www.example.com:8080',   url_for(:port => 8080)
@@ -604,6 +605,30 @@ class RequestTest < ActiveSupport::TestCase
 
     path = request.filtered_path
     assert_equal "/authenticate?secret", path
+  end
+
+  test "original_fullpath returns ORIGINAL_FULLPATH" do
+    request = stub_request('ORIGINAL_FULLPATH' => "/foo?bar")
+
+    path = request.original_fullpath
+    assert_equal "/foo?bar", path
+  end
+
+  test "original_url returns url built using ORIGINAL_FULLPATH" do
+    request = stub_request('ORIGINAL_FULLPATH' => "/foo?bar",
+                           'HTTP_HOST'         => "example.org",
+                           'rack.url_scheme'   => "http")
+
+    url = request.original_url
+    assert_equal "http://example.org/foo?bar", url
+  end
+
+  test "original_fullpath returns fullpath if ORIGINAL_FULLPATH is not present" do
+    request = stub_request('PATH_INFO'    => "/foo",
+                           'QUERY_STRING' => "bar")
+
+    path = request.original_fullpath
+    assert_equal "/foo?bar", path
   end
 
 protected

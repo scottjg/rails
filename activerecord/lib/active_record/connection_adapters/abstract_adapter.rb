@@ -40,6 +40,7 @@ module ActiveRecord
       define_callbacks :checkout, :checkin
 
       attr_accessor :visitor
+      attr_reader :logger
 
       def initialize(connection, logger = nil) #:nodoc:
         @active = nil
@@ -128,7 +129,7 @@ module ActiveRecord
       # Returns a bind substitution value given a +column+ and list of current
       # +binds+
       def substitute_at(column, index)
-        Arel.sql '?'
+        Arel::Nodes::BindParam.new '?'
       end
 
       # REFERENTIAL INTEGRITY ====================================

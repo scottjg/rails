@@ -3,6 +3,7 @@ require 'active_support/core_ext/kernel/requires'
 require 'active_support/core_ext/object/blank'
 require 'set'
 require 'active_record/connection_adapters/statement_pool'
+require 'arel/visitors/bind_visitor'
 
 gem 'mysql', '~> 2.8.1'
 require 'mysql'
@@ -228,8 +229,18 @@ module ActiveRecord
         connect
       end
 
+      class BindSubstitution < Arel::Visitors::MySQL # :nodoc:
+        include Arel::Visitors::BindVisitor
+      end
+
       def self.visitor_for(pool) # :nodoc:
-        Arel::Visitors::MySQL.new(pool)
+        config = pool.spec.config
+
+        if config.fetch(:prepared_statements) { true }
+          Arel::Visitors::MySQL.new pool
+        else
+          BindSubstitution.new pool
+        end
       end
 
       def adapter_name #:nodoc:
@@ -688,7 +699,7 @@ module ActiveRecord
           table, arguments = args.shift, args
           method = :"#{command}_sql"
 
-          if respond_to?(method)
+          if respond_to?(method, true)
             send(method, table, *arguments)
           else
             raise "Unknown method called : #{method}(#{arguments.inspect})"
@@ -727,15 +738,26 @@ module ActiveRecord
 
       # Maps logical Rails types to MySQL-specific data types.
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-        return super unless type.to_s == 'integer'
-
-        case limit
-        when 1; 'tinyint'
-        when 2; 'smallint'
-        when 3; 'mediumint'
-        when nil, 4, 11; 'int(11)'  # compatibility with MySQL default
-        when 5..8; 'bigint'
-        else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+        case type.to_s
+        when 'integer'
+          case limit
+          when 1; 'tinyint'
+          when 2; 'smallint'
+          when 3; 'mediumint'
+          when nil, 4, 11; 'int(11)'  # compatibility with MySQL default
+          when 5..8; 'bigint'
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+          end
+        when 'text'
+          case limit
+          when 0..0xff;               'tinytext'
+          when nil, 0x100..0xffff;    'text'
+          when 0x10000..0xffffff;     'mediumtext'
+          when 0x1000000..0xffffffff; 'longtext'
+          else raise(ActiveRecordError, "No text type has character length #{limit}")
+          end
+        else
+          super
         end
       end
 
@@ -755,13 +777,16 @@ module ActiveRecord
 
       # Returns a table's primary key and belonging sequence.
       def pk_and_sequence_for(table) #:nodoc:
-        keys = []
-        result = execute("describe #{quote_table_name(table)}", 'SCHEMA')
-        result.each_hash do |h|
-          keys << h["Field"]if h["Key"] == "PRI"
-        end
+        result = execute("SHOW CREATE TABLE #{quote_table_name(table)}", 'SCHEMA')
+        create_table = result.fetch_hash["Create Table"]
         result.free
-        keys.length == 1 ? [keys.first, nil] : nil
+
+        if create_table.to_s =~ /PRIMARY KEY\s+\((.+)\)/
+          keys = $1.split(",").map { |key| key.gsub(/[`"]/, "") }
+          keys.length == 1 ? [keys.first, nil] : nil
+        else
+          nil
+        end
       end
 
       # Returns just a table's primary key

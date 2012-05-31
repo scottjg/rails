@@ -52,7 +52,7 @@ module ActionDispatch
     #
     # For convenience reasons, mailers provide a shortcut for ActionController::UrlFor#url_for.
     # So within mailers, you only have to type 'url_for' instead of 'ActionController::UrlFor#url_for'
-    # in full. However, mailers don't have hostname information, and what's why you'll still
+    # in full. However, mailers don't have hostname information, and that's why you'll still
     # have to specify the <tt>:host</tt> argument when generating URLs in mailers.
     #
     #
@@ -116,9 +116,10 @@ module ActionDispatch
       #   If <tt>:only_path</tt> is false, this option must be
       #   provided either explicitly, or via +default_url_options+.
       # * <tt>:subdomain</tt> - Specifies the subdomain of the link, using the +tld_length+
-      #   to split the domain from the host.
-      # * <tt>:domain</tt> - Specifies the domain of the link, using the +tld_length+
       #   to split the subdomain from the host.
+      #   If false, removes all subdomains from the host part of the link.
+      # * <tt>:domain</tt> - Specifies the domain of the link, using the +tld_length+
+      #   to split the domain from the host.
       # * <tt>:tld_length</tt> - Number of labels the TLD id composed of, only used if
       #   <tt>:subdomain</tt> or <tt>:domain</tt> are supplied. Defaults to
       #   <tt>ActionDispatch::Http::URL.tld_length</tt>, which in turn defaults to 1.

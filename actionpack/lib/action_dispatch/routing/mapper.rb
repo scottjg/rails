@@ -35,6 +35,8 @@ module ActionDispatch
           }
 
           return true
+        ensure
+          req.reset_parameters
         end
 
         def call(env)
@@ -107,7 +109,7 @@ module ActionDispatch
 
             # Add a constraint for wildcard route to make it non-greedy and match the
             # optional format part of the route by default
-            if path.match(/\*([^\/]+)$/) && @options[:format] != false
+            if path.match(%r{\*([^/\)]+)\)?$}) && @options[:format] != false
               @options.reverse_merge!(:"#{$1}" => /.+?/)
             end
 
@@ -331,7 +333,7 @@ module ActionDispatch
         #   +call+ or a string representing a controller's action.
         #
         #      match 'path', :to => 'controller#action'
-        #      match 'path', :to => lambda { [200, {}, "Success!"] }
+        #      match 'path', :to => lambda { |env| [200, {}, "Success!"] }
         #      match 'path', :to => RackApp
         #
         # [:on]
@@ -702,7 +704,7 @@ module ActionDispatch
         # Allows you to constrain the nested routes based on a set of rules.
         # For instance, in order to change the routes to allow for a dot character in the +id+ parameter:
         #
-        #   constraints(:id => /\d+\.\d+) do
+        #   constraints(:id => /\d+\.\d+/) do
         #     resources :posts
         #   end
         #
@@ -712,7 +714,7 @@ module ActionDispatch
         # You may use this to also restrict other parameters:
         #
         #   resources :posts do
-        #     constraints(:post_id => /\d+\.\d+) do
+        #     constraints(:post_id => /\d+\.\d+/) do
         #       resources :comments
         #     end
         #   end
@@ -741,7 +743,7 @@ module ActionDispatch
         # if the user should be given access to that route, or +false+ if the user should not.
         #
         #    class Iphone
-        #      def self.matches(request)
+        #      def self.matches?(request)
         #        request.env["HTTP_USER_AGENT"] =~ /iPhone/
         #      end
         #    end

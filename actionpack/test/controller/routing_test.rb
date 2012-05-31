@@ -85,11 +85,120 @@ class LegacyRouteSetTests < Test::Unit::TestCase
   attr_reader :rs
 
   def setup
-    @rs = ::ActionDispatch::Routing::RouteSet.new
+    @rs       = ::ActionDispatch::Routing::RouteSet.new
+    @response = nil
+  end
+
+  def get(uri_or_host, path = nil, port = nil)
+    host = uri_or_host.host unless path
+    path ||= uri_or_host.path
+
+    params = {'PATH_INFO'      => path,
+              'REQUEST_METHOD' => 'GET',
+              'HTTP_HOST'      => host}
+
+    @rs.call(params)[2].join
   end
 
   def teardown
     @rs.clear!
+  end
+
+  def test_star_paths_are_greedy
+    rs.draw do
+      match "/*path", :to => lambda { |env|
+        x = env["action_dispatch.request.path_parameters"][:path]
+        [200, {}, [x]]
+      }, :format => false
+    end
+
+    u = URI('http://example.org/foo/bar.html')
+    assert_equal u.path.sub(/^\//, ''), get(u)
+  end
+
+  def test_star_paths_are_greedy_but_not_too_much
+    rs.draw do
+      match "/*path", :to => lambda { |env|
+        x = JSON.dump env["action_dispatch.request.path_parameters"]
+        [200, {}, [x]]
+      }
+    end
+
+    expected = { "path" => "foo/bar", "format" => "html" }
+    u = URI('http://example.org/foo/bar.html')
+    assert_equal expected, JSON.parse(get(u))
+  end
+
+  def test_optional_star_paths_are_greedy
+    rs.draw do
+      match "/(*filters)", :to => lambda { |env|
+        x = env["action_dispatch.request.path_parameters"][:filters]
+        [200, {}, [x]]
+      }, :format => false
+    end
+
+    u = URI('http://example.org/ne_27.065938,-80.6092/sw_25.489856,-82.542794')
+    assert_equal u.path.sub(/^\//, ''), get(u)
+  end
+
+  def test_optional_star_paths_are_greedy_but_not_too_much
+    rs.draw do
+      match "/(*filters)", :to => lambda { |env|
+        x = JSON.dump env["action_dispatch.request.path_parameters"]
+        [200, {}, [x]]
+      }
+    end
+
+    expected = { "filters" => "ne_27.065938,-80.6092/sw_25.489856,-82",
+                 "format"  => "542794" }
+    u = URI('http://example.org/ne_27.065938,-80.6092/sw_25.489856,-82.542794')
+    assert_equal expected, JSON.parse(get(u))
+  end
+
+  def test_regexp_precidence
+    @rs.draw do
+      match '/whois/:domain', :constraints => {
+        :domain => /\w+\.[\w\.]+/ },
+        :to     => lambda { |env| [200, {}, %w{regexp}] }
+
+      match '/whois/:id', :to => lambda { |env| [200, {}, %w{id}] }
+    end
+
+    assert_equal 'regexp', get(URI('http://example.org/whois/example.org'))
+    assert_equal 'id', get(URI('http://example.org/whois/123'))
+  end
+
+  def test_class_and_lambda_constraints
+    subdomain = Class.new {
+      def matches? request
+        request.subdomain.present? and request.subdomain != 'clients'
+      end
+    }
+
+    @rs.draw do
+      match '/', :constraints => subdomain.new,
+                 :to          => lambda { |env| [200, {}, %w{default}] }
+      match '/', :constraints => { :subdomain => 'clients' },
+                 :to          => lambda { |env| [200, {}, %w{clients}] }
+    end
+
+    assert_equal 'default', get(URI('http://www.example.org/'))
+    assert_equal 'clients', get(URI('http://clients.example.org/'))
+  end
+
+  def test_lambda_constraints
+    @rs.draw do
+      match '/', :constraints => lambda { |req|
+        req.subdomain.present? and req.subdomain != "clients" },
+                 :to          => lambda { |env| [200, {}, %w{default}] }
+
+      match '/', :constraints => lambda { |req|
+        req.subdomain.present? && req.subdomain == "clients" },
+                 :to          => lambda { |env| [200, {}, %w{clients}] }
+    end
+
+    assert_equal 'default', get(URI('http://www.example.org/'))
+    assert_equal 'clients', get(URI('http://clients.example.org/'))
   end
 
   def test_draw_with_block_arity_one_raises

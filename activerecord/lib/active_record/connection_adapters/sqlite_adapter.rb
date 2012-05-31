@@ -2,6 +2,7 @@ require 'active_record/connection_adapters/abstract_adapter'
 require 'active_support/core_ext/kernel/requires'
 require 'active_record/connection_adapters/statement_pool'
 require 'active_support/core_ext/string/encoding'
+require 'arel/visitors/bind_visitor'
 
 module ActiveRecord
   module ConnectionAdapters #:nodoc:
@@ -85,6 +86,10 @@ module ActiveRecord
         end
       end
 
+      class BindSubstitution < Arel::Visitors::SQLite # :nodoc:
+        include Arel::Visitors::BindVisitor
+      end
+
       def initialize(connection, logger, config)
         super(connection, logger)
         @statements = StatementPool.new(@connection,
@@ -93,7 +98,13 @@ module ActiveRecord
       end
 
       def self.visitor_for(pool) # :nodoc:
-        Arel::Visitors::SQLite.new(pool)
+        config = pool.spec.config
+
+        if config.fetch(:prepared_statements) { true }
+          Arel::Visitors::SQLite.new pool
+        else
+          BindSubstitution.new pool
+        end
       end
 
       def adapter_name #:nodoc:
@@ -204,7 +215,7 @@ module ActiveRecord
 
           value = super
           if column.type == :string && value.encoding == Encoding::ASCII_8BIT
-            @logger.error "Binary data inserted for `string` type on column `#{column.name}`"
+            logger.error "Binary data inserted for `string` type on column `#{column.name}`" if logger
             value.encode! 'utf-8'
           end
           value
