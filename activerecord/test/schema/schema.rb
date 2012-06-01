@@ -231,6 +231,10 @@ ActiveRecord::Schema.define do
     t.integer :trainer_id
     t.integer :breeder_id
   end
+  
+  create_table :doors, :force => true do |t|
+    t.integer :house_id
+  end
 
   create_table :edges, :force => true, :id => false do |t|
     t.column :source_id, :integer, :null => false
@@ -278,7 +282,10 @@ ActiveRecord::Schema.define do
   create_table :guids, :force => true do |t|
     t.column :key, :string
   end
-
+  
+  create_table :Houses, :force => true do |t|
+  end
+  
   create_table :inept_wizards, :force => true do |t|
     t.column :name, :string, :null => false
     t.column :city, :string, :null => false
