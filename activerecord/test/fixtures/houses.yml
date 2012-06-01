@@ -1,7 +1,5 @@
 first_house:
   id: 1
 
-first_door:
-  id: 1
-  house_id: 1
+
   

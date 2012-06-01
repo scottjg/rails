@@ -14,11 +14,13 @@ require 'models/sponsor'
 require 'models/member'
 require 'models/essay'
 require 'models/toy'
+require 'models/house'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
            :developers_projects, :computers, :authors, :author_addresses,
-           :posts, :tags, :taggings, :comments, :sponsors, :members
+           :posts, :tags, :taggings, :comments, :sponsors, :members, :houses,
+           :doors
 
   def test_belongs_to
     Client.find(3).firm.name
