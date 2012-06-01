@@ -105,6 +105,16 @@ class QueryStringParsingTest < ActionController::IntegrationTest
     )
   end
 
+  #These tests are copied directly from the official patch
+  test "nested query with nil arrays" do
+    assert_parses({"action" => nil}, "action")
+    assert_parses({"action" => {"foo" => nil}}, "action[foo]")
+    assert_parses({"action" => {"foo" => { "bar" => nil }}}, "action[foo][bar]")
+    assert_parses({"action" => {"foo" => { "bar" => nil }}}, "action[foo][bar][]")
+    assert_parses({"action" => {"foo" => nil}}, "action[foo][]")
+    assert_parses({"action"=>{"foo"=>[{"bar"=>nil}]}}, "action[foo][][bar]")
+  end
+
   private
     def assert_parses(expected, actual)
       with_routing do |set|
