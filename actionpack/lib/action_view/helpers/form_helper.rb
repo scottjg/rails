@@ -354,7 +354,7 @@ module ActionView
       # <tt>address</tt> reader method and responds to the
       # <tt>address_attributes=</tt> writer method:
       #
-      #   class Person
+      #   class Person < ActiveRecord::Base
       #     def address
       #       @address
       #     end
