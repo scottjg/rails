@@ -283,7 +283,7 @@ ActiveRecord::Schema.define do
     t.column :key, :string
   end
   
-  create_table :Houses, :force => true do |t|
+  create_table :houses, :force => true do |t|
   end
   
   create_table :inept_wizards, :force => true do |t|
