@@ -872,18 +872,11 @@ class TestNestedAttributesLimit < ActiveRecord::TestCase
     Interest.validates_numericality_of(:zine_id)
     man = Man.create(:name => 'John')
     interest = man.interests.create(:topic=>'bar',:zine_id => 0)
-   # man.interests.first.zine_id='foo'
-    updated = man.update_attributes({:interests_attributes => { :id => interest.id, :zine_id => 'foo' }})
 
-    assert !updated
+    assert  interest.save
 
-    #assert !man.interests.first.valid?
-    i = Interest.create(:topic=>'bar',:zine_id => '0')
-    i.zine_id= 'foo'
-    # interest.topic = 'foo'
-    #    interest.zine_id = 1
+    assert  !man.update_attributes({:interests_attributes => { :id => interest.id, :zine_id => 'foo' }})
 
-    assert !i.valid?
   end
 end
 

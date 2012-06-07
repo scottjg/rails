@@ -56,7 +56,7 @@ module ActiveRecord
           @changed_attributes[attr] = old if _field_changed?(attr, old, value)
         end
 
-        # Carry on.
+        # Carry on.git
         super(attr, value)
       end
 
@@ -79,7 +79,8 @@ module ActiveRecord
             # be typecast back to 0 (''.to_i => 0)
             value = nil
           else
-            value = column.type_cast(value)
+           # debugger if value.is_a?(String) && column.number?
+            value = column.number? && old == 0 && value != '0' && !value.blank? && !old.nil? ? value : column.type_cast(value)
           end
         end
 
