@@ -33,7 +33,7 @@ class UnvalidatedSaveTest < ActiveRecord::TestCase
   def test_save_validate_false_after_association_created
     houseA = House.new
     door  = Door.new
-    door.house = houseA
+    door.house = houseA # This makes the test fail below!!!
     last_house_id = House.order(:id).last.id
     bad_house_id = last_house_id + 10000
     house_count = House.count
@@ -48,12 +48,12 @@ class UnvalidatedSaveTest < ActiveRecord::TestCase
   def test_save_validate_false_after_valid_test_after_association_created
     houseA = House.new
     door  = Door.new
-    door.house = houseA
+    door.house = houseA # This would make the test fail if it weren't for the valid test'
     last_house_id = House.order(:id).last.id
     bad_house_id = last_house_id + 10000
     house_count = House.count
     door.house_id = bad_house_id
-    door.valid?
+    door.valid? # The valid? call means that the tests pass.
     assert_raise(ActiveRecord::InvalidForeignKey) { door.save(validate: false) }
     assert_raise(ActiveRecord::RecordNotFound) { door.reload }
     assert_equal bad_house_id, door.house_id
