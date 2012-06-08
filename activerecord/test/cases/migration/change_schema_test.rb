@@ -74,6 +74,23 @@ module ActiveRecord
         assert_equal "hello", five.default unless mysql
       end
 
+      def test_create_table_without_limit
+        unless current_adapter?(:PostgreSQLAdapter)
+          skip "not supported on #{connection.class}"
+        end
+
+        connection.create_table :testings do |t|
+          t.column :foo, :string, :limit => false
+          t.string :bar, :limit => false
+        end
+
+        columns = connection.columns(:testings)
+        foo = columns.detect { |c| c.name == "foo" }
+        assert_equal nil, foo.limit, "t.column with :limit => false should not set 255 limit"
+        bar = columns.detect { |c| c.name == "bar" }
+        assert_equal nil, bar.limit, "t.string with :limit => false should not set 255 limit"
+      end
+
       def test_create_table_with_limits
         connection.create_table :testings do |t|
           t.column :foo, :string, :limit => 255
