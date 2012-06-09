@@ -23,4 +23,5 @@ Gem::Specification.new do |s|
   s.add_dependency('erubis',        '~> 2.7.0')
 
   s.add_development_dependency('tzinfo', '~> 0.3.29')
+  s.add_development_dependency('actionpack', version)
 end
