@@ -22,7 +22,6 @@
 #++
 
 require 'active_support'
-require 'action_pack'
 
 module ActionView
   extend ActiveSupport::Autoload
