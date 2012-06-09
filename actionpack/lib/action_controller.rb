@@ -47,7 +47,7 @@ end
 
 # All of these simply register additional autoloads
 require 'action_view'
-require 'action_controller/vendor/html-scanner'
+require 'action_view/vendor/html-scanner'
 
 # Common Active Support usage in Action Controller
 require 'active_support/concern'
