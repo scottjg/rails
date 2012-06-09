@@ -1,6 +1,6 @@
 require 'active_support/core_ext/module'
 
-module ActionController
+module ActionView
   # The record identifier encapsulates a number of naming conventions for dealing with records, like Active Records or
   # pretty much any other model type that has an id. These patterns are then used to try elevate the view actions to
   # a higher logical level.

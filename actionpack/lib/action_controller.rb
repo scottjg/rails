@@ -43,10 +43,6 @@ module ActionController
   autoload :Routing,            'action_controller/deprecated'
   autoload :TestCase,           'action_controller/test_case'
   autoload :TemplateAssertions, 'action_controller/test_case'
-
-  eager_autoload do
-    autoload :RecordIdentifier
-  end
 end
 
 # All of these simply register additional autoloads

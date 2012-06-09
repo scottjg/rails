@@ -212,7 +212,7 @@ module ActionController
       ForceSSL,
       Streaming,
       DataStreaming,
-      RecordIdentifier,
+      ActionView::RecordIdentifier,
       HttpAuthentication::Basic::ControllerMethods,
       HttpAuthentication::Digest::ControllerMethods,
       HttpAuthentication::Token::ControllerMethods,
