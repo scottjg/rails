@@ -192,8 +192,8 @@ module ActionController
     MODULES = [
       AbstractController::Layouts,
       AbstractController::Translation,
-      AbstractController::AssetPaths,
 
+      AssetPaths,
       Helpers,
       HideActions,
       UrlFor,
