@@ -36,7 +36,6 @@ module ActionView
     autoload :PathSet
     autoload :RecordIdentifier
     autoload :Template
-    autoload :TestCase
 
     autoload_under "renderer" do
       autoload :Renderer
