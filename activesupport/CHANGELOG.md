@@ -1,3 +1,7 @@
+## Rails 3.1.6 (Jun 12, 2012)
+
+*   No changes.
+
 ## Rails 3.1.5 (May 31, 2012) ##
 
 *   call binmode on the tempfile for Ruby 1.8 compatibility

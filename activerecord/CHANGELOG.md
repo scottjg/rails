@@ -1,3 +1,11 @@
+## Rails 3.1.6 (Jun 12, 2012)
+
+*   protect against the nesting of hashes changing the
+    table context in the next call to build_from_hash. This fix
+    covers this case as well.
+
+    CVE-2012-2695
+
 ## Rails 3.1.5 (May 31, 2012) ##
 
 *   Fix type_to_sql with text and limit on mysql/mysql2. Fix GH #3931.
