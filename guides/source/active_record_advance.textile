@@ -1,0 +1,124 @@
+h2. A Guide to Advance Topics on Active Record
+
+This guide covers advance features of Active Record. By referring to this guide, you'll be able to:
+
+* Use Single Table Inheritance
+* Configure your database to use Single Table Inheritance
+
+Please note we'll be referring to Single Table Inheritance as STI
+
+h3. Single Table Inheritance
+
+Single Table Inheritance allows you to have multiple classes that share the same table on the database.
+
+Why would you do that? Let's see an example:
+
+Imagine you are working on a project were you have Students and Professors and Parents. Therefore, you model the domain like:
+
+
+<ruby>
+class User < ActiveRecord::Base
+end
+
+class Professor < User
+end
+
+class Student < User
+end
+
+class Parent < User
+end
+</ruby>
+
+
+h4. Configuring your database for STI
+
+The corresponding migration may look like this: 
+
+<ruby>
+
+class CreateUsers < ActiveRecord::Migration
+  def change
+    create_table :users do |t|
+      t.string :name
+      t.string :type
+      t.timestamps
+    end
+
+    add_index :users, :type
+
+  end
+end
+
+</ruby>
+
+The only modification to your schema will be a new column called type.
+
+h5. Using STI
+
+Lets see how it'll look using the rails console: 
+
+<ruby>
+
+student = Student.create(:name => "Ivan Acosta-Rubio")
+=> #<Student id: 3, name: "Ivan Acosta-Rubio", type: "Student"> 
+
+
+professor = Professor.create(:name => "Corey")
+=> #<Professor id: 4, name: "Corey", type: "Professor">
+
+parent = Parent.create(:name => "Bellatrix")
+=> #<Parent id: 5, name: "Bellatrix", type: "Parent">
+
+</ruby>
+
+
+And now let's see the power of using STI:
+
+<ruby>
+
+User.count
+=> 3
+
+Student.count
+=> 1
+
+Professor.count
+=> 1
+
+Parent.count
+=> 1
+
+User.all
+=>
+[
+  #<Student id: 3, name: "Ivan Acosta-Rubio", type: "Student">,
+  #<Professor id: 4, name: "Corey", type: "Professor">,
+  #<Parent id: 5, name: "Bellatrix", type: "Parent">
+]
+
+</ruby>
+
+h6. Handy methods while using STI:
+
+<ruby>
+
+Student.base_class
+ => User(id: integer, name: string, type: string) 
+
+Student.symbolized_base_class
+ => :User
+
+Student.symbolized_sti_name
+=> :Student
+
+Student.sti_name
+ => "Student"
+
+User.descends_from_active_record?
+=> true
+
+Student.descends_from_active_record?
+ => false
+
+</ruby>
