@@ -115,6 +115,11 @@ class QueryStringParsingTest < ActionController::IntegrationTest
     assert_parses({"action"=>{"foo"=>[{"bar"=>nil}]}}, "action[foo][][bar]")
   end
 
+  test "remove nils from query parameter arrays" do
+    assert_parses({"action" => ['1']}, "action[]=1&action[]")
+    assert_parses({"action" => ['1', '2']}, "action[]=1&action[]&action[]=2")
+  end
+
   private
     def assert_parses(expected, actual)
       with_routing do |set|

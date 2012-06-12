@@ -489,7 +489,7 @@ EOM
           if value.length == 1 and value[0] == nil
             value = nil
           else
-            value.map { |e| normalize_parameters(e) }
+            value.map { |e| normalize_parameters(e) }.compact
           end
         else
           value
