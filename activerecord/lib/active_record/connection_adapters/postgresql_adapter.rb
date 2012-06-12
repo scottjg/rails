@@ -120,7 +120,7 @@ module ActiveRecord
               :integer
             # UUID type
             when 'uuid'
-              :string
+              :uuid
             # Small and big integer types
             when /^(?:small|big)int$/
               :integer
@@ -216,6 +216,10 @@ module ActiveRecord
           options = args.extract_options!
           column(args[0], 'tsvector', options)
         end
+
+        def uuid(name, options = {})
+          column(name, 'uuid', options)
+        end
       end
 
       ADAPTER_NAME = 'PostgreSQL'
@@ -234,7 +238,8 @@ module ActiveRecord
         :binary      => { :name => "bytea" },
         :boolean     => { :name => "boolean" },
         :xml         => { :name => "xml" },
-        :tsvector    => { :name => "tsvector" }
+        :tsvector    => { :name => "tsvector" },
+        :uuid        => { :name => "uuid" },
       }
 
       # Returns 'PostgreSQL' as adapter name for identification purposes.
