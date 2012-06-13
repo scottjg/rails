@@ -363,6 +363,22 @@ class FinderTest < ActiveRecord::TestCase
     }
   end
 
+  def test_hash_condition_find_with_improper_nested_hashes
+    assert_raise(ActiveRecord::StatementInvalid) {
+      Company.find(:first, :conditions => { :name => { :companies => { :id  => 1 }}})
+    }
+  end
+
+  def test_hash_condition_find_with_dot_in_nested_column_name
+    assert_raise(ActiveRecord::StatementInvalid) {
+      Company.find(:first, :conditions => { :name => { "companies.id" => 1 }})
+    }
+  end
+
+  def test_hash_condition_find_with_dot_in_column_name_okay
+    assert Company.find(:first, :conditions => { "companies.id" => 1 })
+  end
+
   def test_hash_condition_find_with_escaped_characters
     Company.create("name" => "Ain't noth'n like' \#stuff")
     assert Company.find(:first, :conditions => { :name => "Ain't noth'n like' \#stuff" })
@@ -1057,6 +1073,23 @@ class FinderTest < ActiveRecord::TestCase
     Topic.with_scope(:find => { :from => 'fake_topics' }) do
       assert_equal all_topics, Topic.all(:from => 'topics')
     end
+  end
+
+  def test_finder_with_association
+    comments_on_thinking = Post.find(2).comments.count
+
+    comments = Comment.find :all, :conditions=>["posts.title = ?", "So I was thinking"], :joins=>[:post]
+
+    assert_equal comments_on_thinking, comments.size
+  end
+
+  def test_finder_with_association_through
+    david = Author.find 1
+    comments_on_david = david.posts.inject(0) {|sum, post| sum += post.comments.count }
+
+    comments = Comment.find :all, :conditions=>["authors.name = ?", "David"], :joins=>[:post_author]
+
+    assert_equal comments_on_david, comments.size
   end
 
   protected

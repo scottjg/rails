@@ -2081,18 +2081,24 @@ module ActiveRecord
                     when reflection.options[:through]
                       through_conditions = through_reflection.options[:conditions] ? "AND #{interpolate_sql(sanitize_sql(through_reflection.options[:conditions]))}" : ''
 
-                      jt_foreign_key = jt_as_extra = jt_source_extra = jt_sti_extra = nil
+                      jt_first_key = jt_second_key = jt_as_extra = jt_source_extra = jt_sti_extra = nil
                       first_key = second_key = as_extra = nil
 
-                      if through_reflection.options[:as] # has_many :through against a polymorphic join
-                        jt_foreign_key = through_reflection.options[:as].to_s + '_id'
-                        jt_as_extra = " AND %s.%s = %s" % [
-                          connection.quote_table_name(aliased_join_table_name),
-                          connection.quote_column_name(through_reflection.options[:as].to_s + '_type'),
-                          klass.quote_value(parent.active_record.base_class.name)
-                        ]
+                      if through_reflection.macro == :belongs_to
+                        jt_first_key = through_reflection.primary_key_name
+                        jt_second_key = parent.primary_key
                       else
-                        jt_foreign_key = through_reflection.primary_key_name
+                        jt_first_key = parent.primary_key
+                        if through_reflection.options[:as] # has_many :through against a polymorphic join
+                          jt_second_key = through_reflection.options[:as].to_s + '_id'
+                          jt_as_extra = " AND %s.%s = %s" % [
+                            connection.quote_table_name(aliased_join_table_name),
+                            connection.quote_column_name(through_reflection.options[:as].to_s + '_type'),
+                            klass.quote_value(parent.active_record.base_class.name)
+                          ]
+                        else
+                          jt_second_key = through_reflection.primary_key_name
+                        end
                       end
 
                       case source_reflection.macro
@@ -2133,9 +2139,9 @@ module ActiveRecord
                       " #{join_type} %s ON (%s.%s = %s.%s%s%s%s) " % [
                         table_alias_for(through_reflection.klass.table_name, aliased_join_table_name),
                         connection.quote_table_name(parent.aliased_table_name),
-                        connection.quote_column_name(parent.primary_key),
+                        connection.quote_column_name(jt_first_key),
                         connection.quote_table_name(aliased_join_table_name),
-                        connection.quote_column_name(jt_foreign_key),
+                        connection.quote_column_name(jt_second_key),
                         jt_as_extra, jt_source_extra, jt_sti_extra
                       ] +
                       " #{join_type} %s ON (%s.%s = %s.%s%s) " % [
