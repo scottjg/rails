@@ -19,12 +19,10 @@ spec = Gem::Specification.new do |s|
     s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   end
   
-  s.add_dependency('activesupport', '= 2.3.10' + PKG_BUILD)
+  s.add_dependency('activesupport', '= 2.3.14' + PKG_BUILD)
 
   s.require_path = 'lib'
-  s.autorequire = 'active_resource'
 
-  s.has_rdoc = true
   s.extra_rdoc_files = %w( README )
   s.rdoc_options.concat ['--main',  'README']
   

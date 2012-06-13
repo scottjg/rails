@@ -17,12 +17,10 @@ spec = Gem::Specification.new do |s|
   s.rubyforge_project = "actionmailer"
   s.homepage = "http://www.rubyonrails.org"
 
-  s.add_dependency('actionpack', '= 2.3.10' + PKG_BUILD)
+  s.add_dependency('actionpack', '= 2.3.14' + PKG_BUILD)
 
-  s.has_rdoc = true
   s.requirements << 'none'
   s.require_path = 'lib'
-  s.autorequire = 'action_mailer'
 
   s.files = [ "Rakefile", "install.rb", "README", "CHANGELOG", "MIT-LICENSE" ]
   s.files = s.files + Dir.glob( "lib/**/*" ).delete_if { |item| item.include?( "\.svn" ) }

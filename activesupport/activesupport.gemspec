@@ -14,7 +14,6 @@ spec = Gem::Specification.new do |s|
 
   s.files = [ "CHANGELOG", "README" ] + Dir.glob( "lib/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   s.require_path = 'lib'
-  s.has_rdoc = true
 
   s.author = "David Heinemeier Hansson"
   s.email = "david@loudthinking.com"

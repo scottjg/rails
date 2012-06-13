@@ -19,14 +19,12 @@ spec = Gem::Specification.new do |s|
   s.rubyforge_project = "actionpack"
   s.homepage = "http://www.rubyonrails.org"
 
-  s.has_rdoc = true
   s.requirements << 'none'
 
-  s.add_dependency('activesupport', '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('rack', '~> 1.1.0')
+  s.add_dependency('activesupport', '= 2.3.14' + PKG_BUILD)
+  s.add_dependency('rack', '~> 1.1.3')
 
   s.require_path = 'lib'
-  s.autorequire = 'action_controller'
 
   s.files = [ "Rakefile", "install.rb", "README", "RUNNING_UNIT_TESTS", "CHANGELOG", "MIT-LICENSE" ]
   dist_dirs.each do |dir|
