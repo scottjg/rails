@@ -382,9 +382,28 @@ EOM
 
     # Returns both GET and POST \parameters in a single hash.
     def parameters
-      @parameters ||= request_parameters.merge(query_parameters).update(path_parameters).with_indifferent_access
+      @parameters ||= begin
+        p=deep_munge(request_parameters.merge(query_parameters).update(path_parameters))
+        p.with_indifferent_access
+      end
     end
     alias_method :params, :parameters
+    
+    # Remove nils from the params hash 
+    def deep_munge(hash) 
+      hash.each_value do |v| 
+        case v 
+        when Array 
+          v.grep(Hash) { |x| deep_munge(x) } 
+        when Hash 
+          deep_munge(v) 
+        end 
+      end 
+    
+      keys = hash.keys.find_all { |k| hash[k] == [nil] } 
+      keys.each { |k| hash[k] = nil } 
+      hash 
+    end
 
     def path_parameters=(parameters) #:nodoc:
       @env["action_controller.request.path_parameters"] = parameters
