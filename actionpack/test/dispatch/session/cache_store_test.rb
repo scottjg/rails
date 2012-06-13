@@ -31,6 +31,11 @@ class CacheStoreTest < ActionDispatch::IntegrationTest
       head :ok
     end
 
+    def redirect_with_session
+      session[:redirect] = 'true'
+      redirect_to '/somewhere'
+    end
+
     def rescue_action(e) raise end
   end
 
@@ -100,6 +105,14 @@ class CacheStoreTest < ActionDispatch::IntegrationTest
       get '/get_session_id'
       assert_response :success
       assert_not_equal session_id, response.body
+    end
+  end
+
+  def test_session_after_redirect
+    with_test_route_set do
+      get '/redirect_with_session'
+      assert_response :redirect
+      assert_equal 'true', @request.session[:redirect]
     end
   end
 
