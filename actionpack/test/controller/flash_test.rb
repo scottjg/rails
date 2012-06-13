@@ -235,6 +235,11 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
     def redirect_without_flash
       redirect_to '/somewhere'
     end
+
+    def redirect_with_flash
+      flash["redirect"] = "true"
+      redirect_to '/somewhere'
+    end
   end
 
   def test_flash
@@ -249,7 +254,7 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_redirect
+  def test_redirect_without_flash
     with_test_route_set do
       get '/set_flash'
       assert_response :success
@@ -262,6 +267,14 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
       get '/redirect_without_flash'
       assert_response :redirect
       assert_equal nil, @request.flash["that"]
+    end
+  end
+
+  def test_redirect_with_flash
+    with_test_route_set do
+      get '/redirect_with_flash'
+      assert_response :redirect
+      assert_equal "true", @request.flash["redirect"]
     end
   end
 
