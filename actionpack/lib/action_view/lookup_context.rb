@@ -184,6 +184,7 @@ module ActionView
       @cache = true
       @prefixes = prefixes
       @rendered_format = nil
+      @appended_html_to_formats = false
 
       self.view_paths = view_paths
       initialize_details(details)
@@ -192,11 +193,21 @@ module ActionView
     # Override formats= to expand ["*/*"] values and automatically
     # add :html as fallback to :js.
     def formats=(values)
+      @appended_html_to_formats = false
       if values
         values.concat(default_formats) if values.delete "*/*"
-        values << :html if values == [:js]
+        if values == [:js]
+          # Save information about appending :html format to allow
+          # deprecation warning
+          @appended_html_to_formats = true
+          values << :html
+        end
       end
       super(values)
+    end
+
+    def appended_html_to_formats? #:nodoc:
+      @appended_html_to_formats
     end
 
     # Do not use the default locale on template lookup.

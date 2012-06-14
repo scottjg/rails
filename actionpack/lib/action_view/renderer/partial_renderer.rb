@@ -229,6 +229,10 @@ module ActionView
         end
       end
 
+      if @lookup_context.rendered_format == :html && @lookup_context.appended_html_to_formats?
+        ActiveSupport::Deprecation.warn "The only format passed to controller was :js, but :html format was rendered as a fallback. This behavior is deprecated. Please either explicitly pass :formats => [:js, :html] when rendering or send appropriate Accept header"
+      end
+
       if @collection
         instrument(:collection, :identifier => identifier || "collection", :count => @collection.size) do
           render_collection

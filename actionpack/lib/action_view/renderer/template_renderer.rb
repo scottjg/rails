@@ -10,9 +10,16 @@ module ActionView
       template = determine_template(options)
       context  = @lookup_context
 
+      # it's just for deprecation warning
+      appended_html_to_formats = context.appended_html_to_formats?
+
       unless context.rendered_format
         context.formats = template.formats unless template.formats.empty?
         context.rendered_format = context.formats.first
+      end
+
+      if context.rendered_format == :html && appended_html_to_formats
+        ActiveSupport::Deprecation.warn "The only format passed to controller was :js, but :html format was rendered as a fallback. This behavior is deprecated. Please either explicitly pass :formats => [:js, :html] when rendering or send appropriate Accept header"
       end
 
       render_template(template, options[:layout], options[:locals])
