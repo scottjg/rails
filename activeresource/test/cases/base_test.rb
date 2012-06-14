@@ -5,6 +5,7 @@ require "fixtures/street_address"
 require "fixtures/sound"
 require "fixtures/beast"
 require "fixtures/proxy"
+require "fixtures/film"
 require 'active_support/json'
 require 'active_support/ordered_hash'
 require 'active_support/core_ext/hash/conversions'
@@ -665,6 +666,13 @@ class BaseTest < Test::Unit::TestCase
     assert_equal '/people//', StreetAddress.prefix
     assert_equal '/people/1/', StreetAddress.prefix(:person_id => 1)
     assert_equal [:person_id].to_set, StreetAddress.__send__(:prefix_parameters)
+  end
+
+  def test_global_prefix
+    assert_equal '/film/services/', Film.prefix
+    assert_equal '/still/services/', Still.prefix
+    assert_equal '/all/services/', Trailer.prefix
+    assert_equal '/foo/services/', Trailer.prefix(:global_namespace => 'foo')
   end
 
 

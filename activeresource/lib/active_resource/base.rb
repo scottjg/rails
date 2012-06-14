@@ -586,7 +586,14 @@ module ActiveResource
           # Redefine the new methods.
           instance_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
             def prefix_source() "#{value}" end
-            def prefix(options={}) "#{prefix_call}" end
+            def prefix(options={})
+              if global_prefix_options
+                global_options = global_prefix_options
+                global_options = global_options.call if global_options.is_a?(Proc)
+                options.reverse_merge!(global_options)
+              end
+              "#{prefix_call}"
+            end
           RUBY_EVAL
         end
       rescue Exception => e
@@ -929,6 +936,8 @@ module ActiveResource
           @uri_parser ||= URI.const_defined?(:Parser) ? URI::Parser.new : URI
         end
     end
+
+    class_attribute :global_prefix_options #:nodoc:
 
     attr_accessor :attributes #:nodoc:
     attr_accessor :prefix_options #:nodoc:
