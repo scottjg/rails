@@ -148,6 +148,9 @@ module ActionView #:nodoc:
     cattr_accessor :prefix_partial_path_with_controller_namespace
     @@prefix_partial_path_with_controller_namespace = true
 
+    # Specify default_formats that can be rendered.
+    cattr_accessor :default_formats
+
     class_attribute :helpers
     class_attribute :_routes
     class_attribute :logger
