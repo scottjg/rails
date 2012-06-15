@@ -222,10 +222,15 @@ module ActionView
       #  auto_discovery_link_tag(:rss, "http://www.example.com/feed.rss", {:title => "Example RSS"}) # =>
       #     <link rel="alternate" type="application/rss+xml" title="Example RSS" href="http://www.example.com/feed" />
       def auto_discovery_link_tag(type = :rss, url_options = {}, tag_options = {})
+        if !(type == :rss || type == :atom) && tag_options[:type].blank?
+          raise ArgumentError, "You have passed type other than :rss or :atom to auto_discovery_link_tag and haven't supplied " +
+                               "the :type option key. You need to pass :type explicitly if you want to use other types"
+        end
+
         tag(
           "link",
           "rel"   => tag_options[:rel] || "alternate",
-          "type"  => tag_options[:type] || Mime::Type.lookup_by_extension(type.to_s).to_s,
+          "type"  => tag_options[:type] || "application/#{type}+xml",
           "title" => tag_options[:title] || type.to_s.upcase,
           "href"  => url_options.is_a?(Hash) ? url_for(url_options.merge(:only_path => false)) : url_options
         )
