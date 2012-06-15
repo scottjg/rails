@@ -1,3 +1,5 @@
+original_verbosity = $VERBOSE
+$VERBOSE = nil
 require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
 require File.expand_path(File.dirname(__FILE__)) + "/test/config"
 
@@ -37,3 +39,4 @@ spec = Gem::Specification.new do |s|
   s.homepage = "http://www.rubyonrails.org"
   s.rubyforge_project = "activerecord"
 end
+$VERBOSE = original_verbosity

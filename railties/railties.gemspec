@@ -1,3 +1,6 @@
+original_verbosity = $VERBOSE
+$VERBOSE = nil
+
   ####################################################################
   # Mixin for creating easily cloned objects.
   #
@@ -468,3 +471,5 @@ spec = Gem::Specification.new do |s|
   s.homepage = "http://www.rubyonrails.org"
   s.rubyforge_project = "rails"
 end
+
+$VERBOSE = original_verbosity

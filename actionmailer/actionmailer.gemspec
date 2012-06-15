@@ -1,3 +1,5 @@
+original_verbosity = $VERBOSE
+$VERBOSE = nil
 require File.join(File.dirname(__FILE__), 'lib', 'action_mailer', 'version')
 
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
@@ -26,3 +28,4 @@ spec = Gem::Specification.new do |s|
   s.files = s.files + Dir.glob( "lib/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   s.files = s.files + Dir.glob( "test/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
 end
+$VERBOSE = original_verbosity

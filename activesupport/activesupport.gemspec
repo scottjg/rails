@@ -1,3 +1,5 @@
+original_verbosity = $VERBOSE
+$VERBOSE = nil
 require File.join(File.dirname(__FILE__), 'lib', 'active_support', 'version')
 
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
@@ -20,3 +22,4 @@ spec = Gem::Specification.new do |s|
   s.homepage = "http://www.rubyonrails.org"
   s.rubyforge_project = "activesupport"
 end
+$VERBOSE = original_verbosity
