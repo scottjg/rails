@@ -29,3 +29,4 @@ spec = Gem::Specification.new do |s|
   s.files = s.files + Dir.glob( "test/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
 end
 $VERBOSE = original_verbosity
+spec

@@ -34,3 +34,4 @@ spec = Gem::Specification.new do |s|
   end
 end
 $VERBOSE = original_verbosity
+spec

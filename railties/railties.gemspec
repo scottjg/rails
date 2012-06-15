@@ -473,3 +473,4 @@ spec = Gem::Specification.new do |s|
 end
 
 $VERBOSE = original_verbosity
+spec

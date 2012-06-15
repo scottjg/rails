@@ -34,3 +34,4 @@ spec = Gem::Specification.new do |s|
   s.rubyforge_project = "activeresource"
 end
 $VERBOSE = original_verbosity
+spec
