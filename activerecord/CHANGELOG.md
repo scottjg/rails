@@ -1,5 +1,30 @@
 ## Rails 3.2.7 (unreleased) ##
 
+*   `composed_of` has been deprecated. You'll have to write your own accessor
+    and mutator methods if you'd like to use value objects to represent some
+    portion of your models.
+
+    For example, rather than this:
+
+        class Customer < ActiveRecord::Base
+          composed_of :balance, :class_name => "Money", :mapping => %w(balance
+            amount)
+        end
+    
+    Instead, you should do something like this:
+    
+        def balance
+          @balance ||= Money.new(value, currency)
+        end
+    
+        def balance=(balance)
+          self[:value] = balance.value
+          self[:currency] = balance.currency
+          @balance = balance
+        end
+
+    *Steve Klabnik*
+
 *   `update_attribute` has been deprecated. Use `update_column` if
     you want to bypass mass-assignment protection, validations, callbacks,
     and touching of updated_at. Otherwise please use `update_attributes`.
