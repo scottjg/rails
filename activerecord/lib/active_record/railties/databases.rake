@@ -301,7 +301,7 @@ db_namespace = namespace :db do
   end
 
   desc 'Create the database, load the schema, and initialize with the seed data (use db:reset to also drop the db first)'
-  task :setup => ['db:schema:load_if_ruby', 'db:structure:load_if_sql', :seed]
+  task :setup => ['environment', 'load_config', 'db:schema:load_if_ruby', 'db:structure:load_if_sql', :seed]
 
   desc 'Load the seed data from db/seeds.rb'
   task :seed do

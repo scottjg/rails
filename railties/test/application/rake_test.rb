@@ -164,6 +164,22 @@ module ApplicationTests
       assert_no_match(/^\*\* Invoke db:structure:dump\s+$/, output)
     end
 
+    def test_rake_db_setup_when_using_sql_format
+      add_to_config "config.active_record.schema_format = :sql"
+
+      Dir.chdir(app_path) do
+        `rails generate model product name:string;
+         rake db:migrate;
+         rake db:drop:all 2>&1`
+
+         msg = `rake db:setup 2>&1`
+
+         assert $?.success?, msg
+         assert_no_match(/schema\.rb doesn't exist yet/, msg)
+         assert_equal "products", `rails r "puts Product.table_name"`.strip
+      end
+    end
+
     def test_rake_dump_schema_cache
       Dir.chdir(app_path) do
         `rails generate model post title:string;
