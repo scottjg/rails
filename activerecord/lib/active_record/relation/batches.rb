@@ -55,7 +55,7 @@ module ActiveRecord
     #     group.each { |person| person.party_all_night! }
     #   end
     def find_in_batches(options = {})
-      options.assert_valid_keys(:start, :batch_size)
+      options.assert_valid_keys(:start, :batch_size, :uncached)
 
       relation = self
 
@@ -65,24 +65,29 @@ module ActiveRecord
 
       start = options.delete(:start).to_i
       batch_size = options.delete(:batch_size) || 1000
+      uncached = options.delete(:uncached) || true
 
-      relation = relation.reorder(batch_order).limit(batch_size)
-      records = relation.where(table[primary_key].gteq(start)).all
-
-      while records.any?
-        records_size = records.size
-        primary_key_offset = records.last.id
-
-        yield records
-
-        break if records_size < batch_size
-
-        if primary_key_offset
-          records = relation.where(table[primary_key].gt(primary_key_offset)).to_a
-        else
-          raise "Primary key not included in the custom select clause"
+      block = Proc.new do
+        relation = relation.reorder(batch_order).limit(batch_size)
+        records = relation.where(table[primary_key].gteq(start)).all
+  
+        while records.any?
+          records_size = records.size
+          primary_key_offset = records.last.id
+  
+          yield records
+  
+          break if records_size < batch_size
+  
+          if primary_key_offset
+            records = relation.where(table[primary_key].gt(primary_key_offset)).to_a
+          else
+            raise "Primary key not included in the custom select clause"
+          end
         end
       end
+
+      uncached ? connection.uncached { block.call } : block.call
     end
 
     private

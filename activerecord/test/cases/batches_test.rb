@@ -124,4 +124,20 @@ class EachTest < ActiveRecord::TestCase
     assert_equal special_posts_ids, posts.map(&:id)
   end
 
+  def test_find_in_batches_should_uncached_queries_in_default
+    assert_no_difference "ActiveRecord::Base.connection.query_cache.size" do
+      Post.connection.cache do
+        Post.find_in_batches(:batch_size => Post.count + 1) { |batch| assert_kind_of Array, batch }
+      end
+    end
+  end
+
+  def test_find_in_batches_should_cached_queries_when_passing_false
+    assert_difference "ActiveRecord::Base.connection.query_cache.size" do
+      Post.connection.cache do
+        Post.find_in_batches(:batch_size => Post.count + 1, :uncached => false) { |batch| assert_kind_of Array, batch }
+      end
+    end
+  end
+
 end
