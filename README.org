@@ -12,3 +12,11 @@ patches applied.
 ** Notes
 
 We don't promise that any of this works.  Write your _own_ tests.
+
+** Usage
+
+Add this line to your Gemfile:
+
+#+begin_src ruby
+  gem "rails", :git => 'git://github.com/backstop/rails.git', :branch => "2-3-security-patches"
+#+end_src
