@@ -1,4 +1,24 @@
-## Rails 3.2.6 (unreleased) ##
+## Rails 3.2.7 (unreleased) ##
+
+*   `composed_of` has been deprecated. You'll have to write your own accessor
+    and mutator methods if you'd like to use value objects to represent some
+    portion of your models.
+
+    *Steve Klabnik*
+
+*   `update_attribute` has been deprecated. Use `update_column` if
+    you want to bypass mass-assignment protection, validations, callbacks,
+    and touching of updated_at. Otherwise please use `update_attributes`.
+
+    *Steve Klabnik*
+
+## Rails 3.2.6 (Jun 12, 2012) ##
+
+*   protect against the nesting of hashes changing the
+    table context in the next call to build_from_hash. This fix
+    covers this case as well.
+
+    CVE-2012-2695
 
 *   Revert earlier 'perf fix' (see 3.2.4 changelog / GH #6289). This
     change introduced a regression (GH #6609). assoc.clear and
