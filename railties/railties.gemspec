@@ -3,7 +3,7 @@ PKG_FILES = ["bin", "bin/rails", "builtin", "CHANGELOG", "configs", "dispatches"
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name    = 'rails'
-  s.version = '2.3.14-patched'
+  s.version = '2.3.14patched'
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick
