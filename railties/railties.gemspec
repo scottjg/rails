@@ -14,7 +14,7 @@ spec = Gem::Specification.new do |s|
   s.add_dependency('activesupport',    '= 2.3.14' )
   s.add_dependency('activerecord',     '= 2.3.14patched' )
   s.add_dependency('actionpack',       '= 2.3.14patched' )
-  s.add_dependency('actionmailer',     '= 2.3.14' )
+  s.add_dependency('actionmailer',     '= 2.3.14patched' )
   s.add_dependency('activeresource',   '= 2.3.14' )
 
   s.rdoc_options << '--exclude' << '.'
