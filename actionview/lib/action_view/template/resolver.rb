@@ -1,6 +1,7 @@
 require "pathname"
 require "active_support/core_ext/class"
 require "active_support/core_ext/class/attribute_accessors"
+require "active_support/core_ext/module/delegation"
 require "action_view/template"
 
 module ActionView
