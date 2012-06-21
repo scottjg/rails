@@ -1,0 +1,25 @@
+
+* Rails 2.3 with Security Patches
+
+We're losers that haven't upgraded from Rails 2.3.14 yet (pity us).
+This repository contains a fork of Rails with back-ported security
+patches applied.
+
+** Currently Applied Patches:
+
+  - http://seclists.org/oss-sec/2012/q2/504
+  - http://seclists.org/oss-sec/2012/q2/449
+  - http://seclists.org/oss-sec/2012/q2/503
+
+** Notes
+
+We don't promise that any of this works.  Write your _own_ tests.
+All of the changes are in the '2-3-security-patches' branch.
+
+** Usage
+
+Add this line to your Gemfile:
+
+#+begin_src ruby
+  gem "rails", :git => 'git://github.com/backstop/rails.git', :branch => "2-3-security-patches"
+#+end_src
