@@ -8,6 +8,8 @@ patches applied.
 ** Currently Applied Patches:
 
   - http://seclists.org/oss-sec/2012/q2/504
+  - http://seclists.org/oss-sec/2012/q2/449
+  - http://seclists.org/oss-sec/2012/q2/503
 
 ** Notes
 
