@@ -55,6 +55,9 @@ module ActionView
   autoload :TestCase
 end
 
+ActiveSupport.on_load(:action_view) do
+  ActionView::RoutingUrlFor.send(:include, ActionDispatch::Routing::UrlFor)
+end
 
 # Common Active Support usage in Action Controller
 require 'active_support/concern'
