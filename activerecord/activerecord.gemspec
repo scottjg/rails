@@ -1,18 +1,9 @@
-require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
-require File.expand_path(File.dirname(__FILE__)) + "/test/config"
-
-PKG_BUILD     = 'patched'
-PKG_NAME      = 'activerecord'
-PKG_VERSION   = ActiveRecord::VERSION::STRING + PKG_BUILD
-PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
-
-
 dist_dirs = [ "lib", "test", "examples" ]
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = PKG_NAME
-  s.version = PKG_VERSION
+  s.name = 'activerecord'
+  s.version = '2.3.14patched'
   s.summary = "Implements the ActiveRecord pattern for ORM."
   s.description = %q{Implements the ActiveRecord pattern (Fowler, PoEAA) for ORM. It ties database tables and classes together for business objects, like Customer or Subscription, that can find, save, and destroy themselves without resorting to manual SQL.}
 
