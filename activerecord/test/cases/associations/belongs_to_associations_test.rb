@@ -25,6 +25,10 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal companies(:first_firm).name, Client.find(3).firm.name
     assert_not_nil Client.find(3).firm, "Microsoft should have a firm"
   end
+  
+  def test_belongs_to_redefines
+    assert_equal Firm.find(1).name, SpecialAccount.find(1).firm.name
+  end
 
   def test_belongs_to_with_primary_key
     client = Client.create(:name => "Primary key client", :firm_name => companies(:first_firm).name)

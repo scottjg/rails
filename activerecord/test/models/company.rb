@@ -217,3 +217,20 @@ class Account < ActiveRecord::Base
     "Sir, yes sir!"
   end
 end
+
+class SpecialAccount < ActiveRecord::Base
+  self.table_name = 'accounts'
+  
+  module Special
+    
+    def firm
+      raise NotImplementedError
+    end
+  
+  end
+  
+  include Special
+    
+  belongs_to :firm
+  
+end
