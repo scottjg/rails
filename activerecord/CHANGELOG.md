@@ -1,5 +1,12 @@
 ## Rails 3.2.7 (unreleased) ##
 
+*   Don't change STI type when calling ActiveRecord::Base#becomes, add
+    ActiveRecord::Base#becomes!
+
+    See #3023.
+
+    *Thomas Hollstegge*
+
 *   `composed_of` has been deprecated. You'll have to write your own accessor
     and mutator methods if you'd like to use value objects to represent some
     portion of your models.
