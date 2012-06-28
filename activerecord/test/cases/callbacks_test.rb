@@ -47,6 +47,18 @@ class CallbackDeveloperWithFalseValidation < CallbackDeveloper
   before_validation proc { |model| model.history << [:before_validation, :should_never_get_here] }
 end
 
+class ModelWithAfterCreateCallbacks < ActiveRecord::Base
+  self.table_name = 'developers'
+
+  NAME = "foo"
+  after_create :set_name
+
+  private
+  def set_name
+    self.name = NAME
+  end
+end
+
 class ParentDeveloper < ActiveRecord::Base
   self.table_name = 'developers'
   attr_accessor :after_save_called
@@ -434,6 +446,13 @@ class CallbacksTest < ActiveRecord::TestCase
     assert !someone.destroy
     assert_raise(ActiveRecord::RecordNotDestroyed) { someone.destroy! }
     assert !someone.after_destroy_called
+  end
+
+  def test_after_create_callbacks_honor_dirty_tracking
+    m = ModelWithAfterCreateCallbacks.create
+    assert_equal m.valid?, true
+    assert_equal ModelWithAfterCreateCallbacks::NAME, m.name
+    assert_equal m.changed_attributes.has_key?("name"), true
   end
 
   def assert_save_callbacks_not_called(someone)
