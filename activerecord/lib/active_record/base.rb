@@ -387,7 +387,7 @@ module ActiveRecord #:nodoc:
   #
   # *Note*: The attributes listed are class-level attributes (accessible from both the class and instance level).
   # So it's possible to assign a logger to the class through <tt>Base.logger=</tt> which will then be used by all
-  # instances in the current object space.
+  # instances in the current object space.'
   class Base
     # Accepts a logger conforming to the interface of Log4r or the default Ruby 1.8+ Logger class, which is then passed
     # on to any new database connections made and which can be retrieved on both a class and instance level by calling +logger+.
@@ -2073,6 +2073,7 @@ sql << ", #{scoped_order}" if scoped_order
         #   ["name='%s' and group_id='%s'", "foo'bar", 4]  returns  "name='foo''bar' and group_id='4'"
         #   { :name => "foo'bar", :group_id => 4 }  returns "name='foo''bar' and group_id='4'"
         #   "name='foo''bar' and group_id='4'" returns "name='foo''bar' and group_id='4'"
+        #'"
         def sanitize_sql_for_conditions(condition)
           return nil if condition.blank?
 
@@ -2146,6 +2147,8 @@ sql << ", #{scoped_order}" if scoped_order
         #     # => "address_street='123 abc st.' and address_city='chicago'"
         #' this line restores emacs color highlighting: 2.2.2
         def sanitize_sql_hash_for_conditions(attrs, table_name = quoted_table_name, top_level = true)
+          print("---- sanitize_sql_hash_for_conditions: top_level = #{top_level}\n")
+          print("---- sanitize_sql_hash_for_conditions: attrs = #{attrs.inspect}\n")
           attrs = expand_hash_conditions_for_aggregates(attrs)
 
           conditions = attrs.map do |attr, value|
@@ -2153,20 +2156,25 @@ sql << ", #{scoped_order}" if scoped_order
               attr = attr.to_s
 
               # Extract table name from qualified attribute names.
-              if attr.include?('.') and top_level
+              if attr.include?('.')
                 table_name, attr = attr.split('.', 2)
                 table_name = connection.quote_table_name(table_name)
               end
 
-              attribute_condition("#{attr_table_name}.#{connection.quote_column_name(attr)}", value)
+              ret = "#{table_name}.#{connection.quote_column_name(attr)} #{attribute_condition(value)}"
+              print("---- sanitize_sql_hash_for_conditions: ret = #{ret}\n")
+              ret
+#              ret = attribute_condition("#{attr_table_name}.#{connection.quote_column_name(attr)}", value)
             elsif top_level
               sanitize_sql_hash_for_conditions(value, connection.quote_table_name(attr.to_s), false)
             else
               raise ActiveRecord::StatementInvalid
             end
           end.join(' AND ')
-
-          replace_bind_variables(conditions, expand_range_bind_variables(attrs.values))
+          print("---- sanitize_sql_hash_for_conditions: conditions = #{conditions}\n")
+          rep = replace_bind_variables(conditions, expand_range_bind_variables(attrs.values))
+          print("---- sanitize_sql_hash_for_conditions: rep = #{rep}\n")
+          rep
         end
         alias_method :sanitize_sql_hash, :sanitize_sql_hash_for_conditions
 
