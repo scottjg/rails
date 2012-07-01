@@ -155,6 +155,7 @@ class TimeZoneTest < ActiveSupport::TestCase
     zone = ActiveSupport::TimeZone['Eastern Time (US & Canada)']
     secs = DateTime.civil(1850).to_f
     twz = zone.at(secs)
+    assert_equal -3786825600.0, secs
     assert_equal [1850, 1, 1, 0], [twz.utc.year, twz.utc.mon, twz.utc.day, twz.utc.hour]
     assert_equal zone, twz.time_zone
     assert_equal secs, twz.to_f
