@@ -176,6 +176,11 @@ XML
     assert_equal params.to_query, @response.body
   end
 
+  def test_options
+    options :test_params
+    assert_equal 200, @response.status
+  end
+
   def test_process_without_flash
     process :set_flash
     assert_equal '><', flash['test']
