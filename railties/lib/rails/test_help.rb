@@ -10,7 +10,11 @@ require 'action_dispatch/testing/integration'
 # Enable turn if it is available
 begin
   require 'turn'
-  MiniTest::Unit.use_natural_language_case_names = true
+  if defined? Turn.config
+    Turn.config.natural = true
+  else
+    MiniTest::Unit.use_natural_language_case_names = true
+  end
 rescue LoadError
 end
 
