@@ -3,19 +3,44 @@ module ActionController #:nodoc:
     extend ActiveSupport::Concern
 
     included do
+      class_attribute :_flash_types
+      self._flash_types = []
+
       delegate :flash, :to => :request
-      delegate :alert, :notice, :to => "request.flash"
-      helper_method :alert, :notice
+      add_flash_type :alert, :notice
     end
 
+    module ClassMethods
+      def add_flash_type(*types)
+        types.each do |type|
+          delegate type, :to => "request.flash"
+          helper_method type
+
+          ActionDispatch::Flash::FlashNow.class_eval <<-EOS
+            def #{type}=(message)
+              self[:#{type}] = message
+            end
+          EOS
+
+          ActionDispatch::Flash::FlashHash.class_eval <<-EOS
+            def #{type}
+              self[:#{type}]
+            end
+            def #{type}=(message)
+              self[:#{type}] = message
+            end
+          EOS
+
+          _flash_types << type
+        end
+      end
+    end
     protected
       def redirect_to(options = {}, response_status_and_flash = {}) #:doc:
-        if alert = response_status_and_flash.delete(:alert)
-          flash[:alert] = alert
-        end
-
-        if notice = response_status_and_flash.delete(:notice)
-          flash[:notice] = notice
+        self.class._flash_types.each do |flash_type|
+          if type = response_status_and_flash.delete(flash_type)
+            flash[flash_type] = type
+          end
         end
 
         if other_flashes = response_status_and_flash.delete(:flash)

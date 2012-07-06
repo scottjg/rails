@@ -59,15 +59,6 @@ module ActionDispatch
         @flash[k]
       end
 
-      # Convenience accessor for flash.now[:alert]=
-      def alert=(message)
-        self[:alert] = message
-      end
-
-      # Convenience accessor for flash.now[:notice]=
-      def notice=(message)
-        self[:notice] = message
-      end
     end
 
     # Implementation detail: please do not change the signature of the
@@ -183,26 +174,6 @@ module ActionDispatch
       def sweep #:nodoc:
         @discard.each { |k| @flashes.delete k }
         @discard.replace @flashes.keys
-      end
-
-      # Convenience accessor for flash[:alert]
-      def alert
-        self[:alert]
-      end
-
-      # Convenience accessor for flash[:alert]=
-      def alert=(message)
-        self[:alert] = message
-      end
-
-      # Convenience accessor for flash[:notice]
-      def notice
-        self[:notice]
-      end
-
-      # Convenience accessor for flash[:notice]=
-      def notice=(message)
-        self[:notice] = message
       end
 
       protected

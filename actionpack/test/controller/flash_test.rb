@@ -90,6 +90,10 @@ class FlashTest < ActionController::TestCase
     def redirect_with_other_flashes
       redirect_to '/wonderland', :flash => { :joyride => "Horses!" }
     end
+
+    def redirect_with_foo_flash
+      redirect_to "/wonderland", :foo => 'for great justice'
+    end
   end
 
   tests TestController
@@ -203,6 +207,12 @@ class FlashTest < ActionController::TestCase
     get :redirect_with_other_flashes
     assert_equal "Horses!", @controller.send(:flash)[:joyride]
   end
+
+  def test_redirect_to_with_adding_flash_type
+    @controller.class.add_flash_type :foo
+    get :redirect_with_foo_flash
+    assert_equal "for great justice", @controller.send(:flash)[:foo]
+  end
 end
 
 class FlashIntegrationTest < ActionDispatch::IntegrationTest
@@ -210,6 +220,9 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
   SessionSecret = 'b3c631c314c0bbca50c1b2843150fe33'
 
   class TestController < ActionController::Base
+
+    add_flash_type :foobar
+
     def dont_set_flash
       head :ok
     end
@@ -226,6 +239,11 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
 
     def use_flash
       render :inline => "flash: #{flash["that"]}"
+    end
+
+    def set_foobar
+      flash.foobar = "for great justice"
+      head :ok
     end
   end
 
@@ -263,6 +281,14 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
       env = { 'action_dispatch.request.flash_hash' => ActionDispatch::Flash::FlashHash.new }
       get '/set_flash_now', nil, env
       get '/set_flash_now', nil, env
+    end
+  end
+
+  def test_added_flash_type_method
+    with_test_route_set do
+      get '/set_foobar'
+      assert_response :success
+      assert_equal 'for great justice', @controller.foobar
     end
   end
 
