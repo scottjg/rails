@@ -254,6 +254,12 @@ module ActiveRecord
         [[options[:conditions]].compact]
       end
 
+      # An array of arrays of scopes. Each item in the outside array corresponds to a reflection
+      # in the #chain.
+      def scope_chain
+        scope ? [[scope]] : [[]]
+      end
+
       alias :source_macro :macro
 
       def has_inverse?
@@ -441,6 +447,26 @@ module ActiveRecord
           conditions += through_conditions
 
           conditions
+        end
+      end
+
+      def scope_chain
+        @scope_chain ||= begin
+          scope_chain = source_reflection.scope_chain.map(&:dup)
+
+          # Add to it the scope from this reflection (if any)
+          scope_chain.first << scope if scope
+
+          through_scope_chain = through_reflection.scope_chain
+
+          if options[:source_type]
+            # FIXME: make this better
+            cond = through_reflection.klass.where(foreign_type => options[:source_type])
+            through_scope_chain.first << proc { cond }
+          end
+
+          # Recursively fill out the rest of the array from the through reflection
+          scope_chain + through_scope_chain
         end
       end
 

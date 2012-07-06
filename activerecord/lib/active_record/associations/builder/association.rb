@@ -22,6 +22,33 @@ module ActiveRecord::Associations::Builder
       else
         @scope   = nil
         @options = scope
+
+        convert_deprecated_options_to_scope!
+      end
+    end
+
+    # FIXME: references should not be in this list
+    DEPRECATED_OPTIONS = [:readonly, :references, :order, :limit, :joins, :group, :having,
+                          :offset, :select, :uniq, :include, :conditions]
+
+    def convert_deprecated_options_to_scope!
+      deprecated_options = options.slice(*DEPRECATED_OPTIONS)
+
+      unless deprecated_options.empty?
+        deprecated_options[:includes] = deprecated_options.delete(:include)    if deprecated_options[:include]
+        deprecated_options[:where]    = deprecated_options.delete(:conditions) if deprecated_options[:conditions]
+
+        @scope = proc do |owner|
+          if deprecated_options[:where].respond_to?(:to_proc)
+            context = owner || self
+            where(context.instance_eval(&deprecated_options[:where]))
+              .merge!(deprecated_options.except(:where))
+          else
+            scoped(deprecated_options)
+          end
+        end
+
+        @options = options.except(*DEPRECATED_OPTIONS)
       end
     end
 
