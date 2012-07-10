@@ -578,6 +578,10 @@ module ActiveRecord
       arel
     end
 
+    def random
+      spawn
+    end
+
     private
 
     def custom_join_ast(table, joins)
