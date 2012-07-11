@@ -32,11 +32,14 @@ module Rails
       #
       # Values set on app_generators will become defaults for application, unless
       # application overwrites them.
+      #
+      # Aliased as generators for Rails 3 compatibility
       def app_generators
         @@app_generators ||= Rails::Configuration::Generators.new
         yield(@@app_generators) if block_given?
         @@app_generators
       end
+      alias_method :generators, :app_generators
 
       # First configurable block to run. Called before any initializers are run.
       def before_configuration(&block)
