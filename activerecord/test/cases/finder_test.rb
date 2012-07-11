@@ -262,6 +262,11 @@ class FinderTest < ActiveRecord::TestCase
     assert_includes Topic.all, Topic.random
   end
 
+  def test_random_finds_a_scoped_topic
+    relation = Topic.where(:author_name => 'Carl')
+    assert_includes relation.all, relation.random
+  end
+
   def test_random_should_use_sql_offset
     assert_sql(/OFFSET/) { Topic.random }
   end
