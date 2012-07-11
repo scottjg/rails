@@ -1,12 +1,14 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Show routes in exception page while debugging a `RoutingError` in development. *Richard Schneeman and Mattt Thompson*
+
 *   Add `ActionController::Flash.add_flash_types` method to allow people to register their own flash types. e.g.:
 
         class ApplicationController
           add_flash_types :error, :warning
         end
 
-    If you add the above code, you can use `<%= error %>` in an erb, and `rediect_to /foo, :error => 'message'` in a controller.
+    If you add the above code, you can use `<%= error %>` in an erb, and `redirect_to /foo, :error => 'message'` in a controller.
 
     *kennyj*
 

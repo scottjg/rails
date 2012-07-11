@@ -1,4 +1,4 @@
-require 'rails/application/routes_inspector'
+require 'action_dispatch/routing/inspector'
 
 class Rails::InfoController < ActionController::Base
   self.view_paths = File.join(File.dirname(__FILE__), 'templates')
@@ -15,7 +15,7 @@ class Rails::InfoController < ActionController::Base
   end
 
   def routes
-    inspector = Rails::Application::RoutesInspector.new
+    inspector = ActionDispatch::Routing::RoutesInspector.new
     @info     = inspector.format(_routes.routes).join("\n")
   end
 

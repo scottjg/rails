@@ -1,7 +1,7 @@
 require 'delegate'
 
-module Rails
-  class Application
+module ActionDispatch
+  module Routing
     class RouteWrapper < SimpleDelegator
       def endpoint
         rack_app ? rack_app.inspect : "#{controller}##{action}"
