@@ -43,13 +43,10 @@ class Hash
   #   {:name => 'David', :nationality => 'Danish'}.to_param('user')
   #   # => "user[name]=David&user[nationality]=Danish"
   #
-  # The string pairs "key=value" that conform the query string
-  # are sorted lexicographically in ascending order.
-  #
   # This method is also aliased as +to_query+.
   def to_param(namespace = nil)
     collect do |key, value|
       value.to_query(namespace ? "#{namespace}[#{key}]" : key)
-    end.sort * '&'
+    end * '&'
   end
 end
