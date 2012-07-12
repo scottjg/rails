@@ -1,10 +1,10 @@
 require "fileutils"
 
 namespace :assets do
-  def ruby_rake_task(task, fork = true)
+  def ruby_rake_task(task, fork = true, largs = {})
     env    = ENV['RAILS_ENV'] || 'production'
     groups = ENV['RAILS_GROUPS'] || 'assets'
-    args   = [$0, task,"RAILS_ENV=#{env}","RAILS_GROUPS=#{groups}"]
+    args   = [$0, task + (largs[:files].nil? ? "" : "[#{largs[:files]}]"), "RAILS_ENV=#{env}","RAILS_GROUPS=#{groups}"]
     args << "--trace" if Rake.application.options.trace
     if $0 =~ /rake\.bat\Z/i
       Kernel.exec $0, *args
@@ -16,21 +16,21 @@ namespace :assets do
   # We are currently running with no explicit bundler group
   # and/or no explicit environment - we have to reinvoke rake to
   # execute this task.
-  def invoke_or_reboot_rake_task(task)
+  def invoke_or_reboot_rake_task(task, args)
     if ENV['RAILS_GROUPS'].to_s.empty? || ENV['RAILS_ENV'].to_s.empty?
-      ruby_rake_task task
+      ruby_rake_task task, true, args
     else
-      Rake::Task[task].invoke
+      Rake::Task[task].invoke(args[:files])
     end
   end
 
   desc "Compile all the assets named in config.assets.precompile"
-  task :precompile do
-    invoke_or_reboot_rake_task "assets:precompile:all"
+  task :precompile, :files do |t, args|
+    invoke_or_reboot_rake_task "assets:precompile:all", args
   end
 
   namespace :precompile do
-    def internal_precompile(digest=nil)
+    def internal_precompile(digest=nil, files = nil)
       unless Rails.application.config.assets.enabled
         warn "Cannot precompile assets if sprockets is disabled. Please set config.assets.enabled to true"
         exit
@@ -52,26 +52,28 @@ namespace :assets do
                                                config.assets.precompile,
                                                :manifest_path => config.assets.manifest,
                                                :digest => config.assets.digest,
-                                               :manifest => digest.nil?)
+                                               :manifest => digest.nil?,
+                                               :files => files)
       compiler.compile
     end
 
-    task :all do
-      Rake::Task["assets:precompile:primary"].invoke
+    task :all, :files do |t, args|
+      files = args[:files]
+      Rake::Task["assets:precompile:primary"].invoke(files)
       # We need to reinvoke in order to run the secondary digestless
       # asset compilation run - a fresh Sprockets environment is
       # required in order to compile digestless assets as the
       # environment has already cached the assets on the primary
       # run.
-      ruby_rake_task("assets:precompile:nondigest", false) if Rails.application.config.assets.digest
+      ruby_rake_task("assets:precompile:nondigest", false, {:files => files} ) if Rails.application.config.assets.digest
     end
 
-    task :primary => ["assets:environment", "tmp:cache:clear"] do
-      internal_precompile
+    task :primary, [:files] => ["assets:environment", "tmp:cache:clear"] do |t, args|
+      internal_precompile(nil, args[:files])
     end
 
-    task :nondigest => ["assets:environment", "tmp:cache:clear"] do
-      internal_precompile(false)
+    task :nondigest, [:files] => ["assets:environment", "tmp:cache:clear"] do |t, args|
+      internal_precompile(false, args[:files])
     end
   end
 
