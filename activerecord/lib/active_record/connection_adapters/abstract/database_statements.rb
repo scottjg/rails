@@ -168,7 +168,8 @@ module ActiveRecord
       def transaction(options = {})
         options.assert_valid_keys :requires_new, :joinable
 
-        last_transaction_joinable = defined?(@transaction_joinable) ? @transaction_joinable : nil
+        #Aakash - patching to make the joinable transaction default. This will stop the default savepoint creation.
+        last_transaction_joinable = defined?(@transaction_joinable) ? @transaction_joinable : true
         if options.has_key?(:joinable)
           @transaction_joinable = options[:joinable]
         else
