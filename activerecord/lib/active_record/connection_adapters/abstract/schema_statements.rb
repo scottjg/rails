@@ -206,9 +206,25 @@ module ActiveRecord
         column_options = options.delete(:column_options) || {}
         column_options.reverse_merge!({:null => false})
 
+        column_1_name = :"#{table_1.to_s.singularize}_id"
+        column_2_name = :"#{table_2.to_s.singularize}_id"
+
         create_table(join_table_name, options.merge!(:id => false)) do |td|
-          td.integer :"#{table_1.to_s.singularize}_id", column_options
-          td.integer :"#{table_2.to_s.singularize}_id", column_options
+          td.integer column_1_name, column_options
+          td.integer column_2_name, column_options
+        end
+
+        options = options.reverse_merge!({:indexes => true})
+
+        if options[:indexes]
+          index_options = options[:index_options] || {}
+
+          if one_index_per_table_query?
+            add_index join_table_name, [column_1_name, column_2_name], index_options
+          else
+            add_index join_table_name, column_1_name, index_options
+            add_index join_table_name, column_2_name, index_options
+          end
         end
       end
 

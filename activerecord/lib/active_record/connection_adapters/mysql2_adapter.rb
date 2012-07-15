@@ -40,6 +40,11 @@ module ActiveRecord
         true
       end
 
+      # MySQL uses only one index per table query
+      def one_index_per_table_query?
+        true
+      end
+
       # HELPER METHODS ===========================================
 
       def each_hash(result) # :nodoc:

@@ -132,6 +132,11 @@ module ActiveRecord
         connect
       end
 
+      # MySQL uses only one index per table query
+      def one_index_per_table_query?
+        true
+      end
+
       # Returns true, since this connection adapter supports prepared statement
       # caching.
       def supports_statement_cache?

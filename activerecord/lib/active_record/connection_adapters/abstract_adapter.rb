@@ -150,6 +150,11 @@ module ActiveRecord
         false
       end
 
+      # Does this adapter use only one index per table query?
+      def one_index_per_table_query?
+        false
+      end
+
       # Does this adapter support partial indices?
       def supports_partial_index?
         false
