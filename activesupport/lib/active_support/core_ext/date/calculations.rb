@@ -273,4 +273,9 @@ class Date
   def tomorrow
     self + 1
   end
+
+  # Returns the name of the current month as a string
+  def month_name
+    Date::MONTHNAMES[self.month]
+  end
 end
