@@ -283,8 +283,6 @@ db_namespace = namespace :db do
       case abcs[Rails.env]['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.structure_dump(abcs[Rails.env], filename)
-      when 'sqlserver'
-        `smoscript -s #{abcs[Rails.env]['host']} -d #{abcs[Rails.env]['database']} -u #{abcs[Rails.env]['username']} -p #{abcs[Rails.env]['password']} -f #{filename} -A -U`
       when "firebird"
         set_firebird_env(abcs[Rails.env])
         db_string = firebird_db_string(abcs[Rails.env])
@@ -308,8 +306,6 @@ db_namespace = namespace :db do
       case abcs[env]['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.structure_load(abcs[env], filename)
-      when 'sqlserver'
-        `sqlcmd -S #{abcs[env]['host']} -d #{abcs[env]['database']} -U #{abcs[env]['username']} -P #{abcs[env]['password']} -i #{filename}`
       when 'firebird'
         set_firebird_env(abcs[env])
         db_string = firebird_db_string(abcs[env])
@@ -375,12 +371,6 @@ db_namespace = namespace :db do
       case abcs['test']['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.purge abcs['test']
-      when 'sqlserver'
-        test = abcs.deep_dup['test']
-        test_database = test['database']
-        test['database'] = 'master'
-        ActiveRecord::Base.establish_connection(test)
-        ActiveRecord::Base.connection.recreate_database!(test_database)
       when 'firebird'
         ActiveRecord::Base.establish_connection(:test)
         ActiveRecord::Base.connection.recreate_database!
