@@ -1,9 +1,7 @@
 
 module ActiveRecord
   module AttributeAssignment
-    extend ActiveSupport::Concern
     include ActiveModel::ForbiddenAttributesProtection
-
     # Allows you to set all the attributes at once by passing in a hash with keys
     # matching the attribute names (which again matches the column names).
     #
@@ -24,8 +22,12 @@ module ActiveRecord
     def assign_attributes(new_attributes, options = {})
       return if new_attributes.blank?
 
-      attributes                  = new_attributes.stringify_keys
-      multi_parameter_attributes  = []
+      new_attributes.delete(self.class.primary_key)
+      new_attributes.delete(self.class.inheritance_column)
+      new_attributes.delete('id') unless self.class.primary_key == 'id'
+
+      attributes = new_attributes.stringify_keys
+      multi_parameter_attributes = []
       nested_parameter_attributes = []
       previous_options            = @mass_assignment_options
       @mass_assignment_options    = options
