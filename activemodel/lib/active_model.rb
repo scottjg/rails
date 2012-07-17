@@ -37,7 +37,6 @@ module ActiveModel
   autoload :Errors
   autoload :ForbiddenAttributesProtection
   autoload :Lint
-  autoload :MassAssignmentSecurity
   autoload :Model
   autoload :Name, 'active_model/naming'
   autoload :Naming
