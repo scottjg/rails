@@ -271,7 +271,6 @@ module ActiveRecord
       #   end
       #
       #   class Pet
-      #     attr_accessible :name
       #     validates :name, presence: true
       #   end
       #
