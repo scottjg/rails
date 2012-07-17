@@ -267,15 +267,6 @@ db_namespace = namespace :db do
   end
 
   namespace :structure do
-    def set_firebird_env(config)
-      ENV['ISC_USER']     = config['username'].to_s if config['username']
-      ENV['ISC_PASSWORD'] = config['password'].to_s if config['password']
-    end
-
-    def firebird_db_string(config)
-      FireRuby::Database.db_string_for(config.symbolize_keys)
-    end
-
     desc 'Dump the database structure to db/structure.sql. Specify another file with DB_STRUCTURE=db/my_structure.sql'
     task :dump => [:environment, :load_config] do
       abcs = ActiveRecord::Base.configurations
@@ -283,10 +274,6 @@ db_namespace = namespace :db do
       case abcs[Rails.env]['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.structure_dump(abcs[Rails.env], filename)
-      when "firebird"
-        set_firebird_env(abcs[Rails.env])
-        db_string = firebird_db_string(abcs[Rails.env])
-        sh "isql -a #{db_string} > #{filename}"
       else
         raise "Task not supported by '#{abcs[Rails.env]["adapter"]}'"
       end
@@ -306,10 +293,6 @@ db_namespace = namespace :db do
       case abcs[env]['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.structure_load(abcs[env], filename)
-      when 'firebird'
-        set_firebird_env(abcs[env])
-        db_string = firebird_db_string(abcs[env])
-        sh "isql -i #{filename} #{db_string}"
       else
         raise "Task not supported by '#{abcs[env]['adapter']}'"
       end
@@ -371,9 +354,6 @@ db_namespace = namespace :db do
       case abcs['test']['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.purge abcs['test']
-      when 'firebird'
-        ActiveRecord::Base.establish_connection(:test)
-        ActiveRecord::Base.connection.recreate_database!
       else
         raise "Task not supported by '#{abcs['test']['adapter']}'"
       end
