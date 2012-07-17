@@ -283,9 +283,6 @@ db_namespace = namespace :db do
       case abcs[Rails.env]['adapter']
       when /mysql/, /postgresql/, /sqlite/
         ActiveRecord::Tasks::DatabaseTasks.structure_dump(abcs[Rails.env], filename)
-      when 'oci', 'oracle'
-        ActiveRecord::Base.establish_connection(abcs[Rails.env])
-        File.open(filename, "w:utf-8") { |f| f << ActiveRecord::Base.connection.structure_dump }
       when 'sqlserver'
         `smoscript -s #{abcs[Rails.env]['host']} -d #{abcs[Rails.env]['database']} -u #{abcs[Rails.env]['username']} -p #{abcs[Rails.env]['password']} -f #{filename} -A -U`
       when "firebird"
@@ -313,11 +310,6 @@ db_namespace = namespace :db do
         ActiveRecord::Tasks::DatabaseTasks.structure_load(abcs[env], filename)
       when 'sqlserver'
         `sqlcmd -S #{abcs[env]['host']} -d #{abcs[env]['database']} -U #{abcs[env]['username']} -P #{abcs[env]['password']} -i #{filename}`
-      when 'oci', 'oracle'
-        ActiveRecord::Base.establish_connection(abcs[env])
-        IO.read(filename).split(";\n\n").each do |ddl|
-          ActiveRecord::Base.connection.execute(ddl)
-        end
       when 'firebird'
         set_firebird_env(abcs[env])
         db_string = firebird_db_string(abcs[env])
@@ -389,11 +381,6 @@ db_namespace = namespace :db do
         test['database'] = 'master'
         ActiveRecord::Base.establish_connection(test)
         ActiveRecord::Base.connection.recreate_database!(test_database)
-      when "oci", "oracle"
-        ActiveRecord::Base.establish_connection(:test)
-        ActiveRecord::Base.connection.structure_drop.split(";\n\n").each do |ddl|
-          ActiveRecord::Base.connection.execute(ddl)
-        end
       when 'firebird'
         ActiveRecord::Base.establish_connection(:test)
         ActiveRecord::Base.connection.recreate_database!
