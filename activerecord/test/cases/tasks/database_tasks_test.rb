@@ -30,6 +30,8 @@ module ActiveRecord
 
       ActiveRecord::Tasks::DatabaseTasks.register_task(/foo/, klazz)
       ActiveRecord::Tasks::DatabaseTasks.structure_dump({'adapter' => :foo}, "awesome-file.sql")
+
+      assert_raise(RuntimeError) { ActiveRecord::Tasks::DatabaseTasks.structure_dump({'adapter' => :bar}, "awesome-file.sql") }
     end
   end
  

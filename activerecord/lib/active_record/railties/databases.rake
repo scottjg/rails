@@ -271,12 +271,7 @@ db_namespace = namespace :db do
     task :dump => [:environment, :load_config] do
       abcs = ActiveRecord::Base.configurations
       filename = ENV['DB_STRUCTURE'] || File.join(Rails.root, "db", "structure.sql")
-      case abcs[Rails.env]['adapter']
-      when /mysql/, /postgresql/, /sqlite/
-        ActiveRecord::Tasks::DatabaseTasks.structure_dump(abcs[Rails.env], filename)
-      else
-        raise "Task not supported by '#{abcs[Rails.env]["adapter"]}'"
-      end
+      ActiveRecord::Tasks::DatabaseTasks.structure_dump(abcs[Rails.env], filename)
 
       if ActiveRecord::Base.connection.supports_migrations?
         File.open(filename, "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
@@ -290,12 +285,7 @@ db_namespace = namespace :db do
 
       abcs = ActiveRecord::Base.configurations
       filename = ENV['DB_STRUCTURE'] || File.join(Rails.root, "db", "structure.sql")
-      case abcs[env]['adapter']
-      when /mysql/, /postgresql/, /sqlite/
-        ActiveRecord::Tasks::DatabaseTasks.structure_load(abcs[env], filename)
-      else
-        raise "Task not supported by '#{abcs[env]['adapter']}'"
-      end
+      ActiveRecord::Tasks::DatabaseTasks.structure_load(abcs[env], filename)
     end
 
     task :load_if_sql => 'db:create' do
@@ -351,12 +341,7 @@ db_namespace = namespace :db do
     # desc "Empty the test database"
     task :purge => [:environment, :load_config] do
       abcs = ActiveRecord::Base.configurations
-      case abcs['test']['adapter']
-      when /mysql/, /postgresql/, /sqlite/
-        ActiveRecord::Tasks::DatabaseTasks.purge abcs['test']
-      else
-        raise "Task not supported by '#{abcs['test']['adapter']}'"
-      end
+      ActiveRecord::Tasks::DatabaseTasks.purge abcs['test']
     end
 
     # desc 'Check for pending migrations and load the test schema'

@@ -89,6 +89,7 @@ module ActiveRecord
 
       def class_for_adapter(adapter)
         key = @tasks.keys.detect { |pattern| adapter[pattern] }
+        raise "Not found database tasks class for '#{adapter}'" unless key
         @tasks[key]
       end
 
