@@ -2,7 +2,7 @@ require 'fileutils'
 
 module Sprockets
   class StaticCompiler
-    attr_accessor :env, :target, :paths, :files, :compiled_files, :digests
+    attr_accessor :env, :target, :paths, :files, :digests, :new_files, :expire_files
 
     def initialize(env, target, paths, options = {})
       @env = env
@@ -17,6 +17,8 @@ module Sprockets
 
     def compile
       @compiled_files = {}
+      @expire_files = {}
+      @new_files = {}
       if @digest && File.exists?("#{@manifest_path}/manifest.yml") && @files #we compile only specific files, so have to add
         @compiled_files = YAML.load_file("#{@manifest_path}/manifest.yml")
       end
@@ -29,6 +31,8 @@ module Sprockets
         next unless compile_path?(logical_path)
         if asset = env.find_asset(logical_path)
           manifest[logical_path] = write_asset(asset)
+          @expire_files[logical_path] = @compiled_files[logical_path]
+          @new_files[logical_path] = manifest[logical_path]
           ::Rails.logger.warn "Logial path: #{logical_path} Exists file: #{@compiled_files[logical_path]}. New manifest: #{manifest[logical_path]}"
           if @digest && @compiled_files[logical_path] && @compiled_files[logical_path] != manifest[logical_path]
             filename = File.join(target, @compiled_files[logical_path])
