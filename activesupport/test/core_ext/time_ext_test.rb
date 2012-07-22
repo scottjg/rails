@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'active_support/time'
+require 'active_support/core_ext/time/twenty_four'
 
 class TimeExtCalculationsTest < ActiveSupport::TestCase
   def test_seconds_since_midnight
@@ -692,6 +693,16 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
         end
       end
     end
+  end
+
+  def test_twenty_four_hours_db_format
+    Time.stubs(:now).returns(Time.utc(2012))
+    assert_equal "2012-01-01 24:00:00", Time.parse('24:00').to_s(:db)
+    assert_equal "2012-01-01 00:00:00", Time.parse('00:00').to_s(:db)
+    assert_equal "2012-01-01 24:00:00", Time.new(2012, 1, 1, 24, 0, 0).to_s(:db)
+    assert_equal "2012-01-01 00:00:00", Time.new(2012, 1, 1, 0, 0, 0).to_s(:db)
+    assert_equal "2011-12-31 24:00:00", Time.new(2012, 1, 1, 0, 0, 0).twenty_four.to_s(:db)
+    assert_equal "2012-01-01 12:34:56", Time.new(2012, 1, 1, 12, 34, 56).twenty_four.to_s(:db)
   end
 
   def test_utc_time
