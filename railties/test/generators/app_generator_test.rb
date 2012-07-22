@@ -212,7 +212,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
     run_generator [destination_root, "--skip-active-record"]
     assert_no_file "config/database.yml"
     assert_file "config/application.rb", /#\s+require\s+["']active_record\/railtie["']/
-    assert_file "config/application.rb", /#\s+config\.active_record\.whitelist_attributes = true/
     assert_file "test/test_helper.rb" do |helper_content|
       assert_no_match(/fixtures :all/, helper_content)
     end
@@ -352,9 +351,15 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+<<<<<<< HEAD
   def test_active_record_whitelist_attributes_is_present_application_config
     run_generator
     assert_file "config/application.rb", /config\.active_record\.whitelist_attributes = true/
+=======
+  def test_active_record_dependent_restrict_raises_is_present_application_config
+    run_generator
+    assert_file "config/application.rb", /config\.active_record\.dependent_restrict_raises = false/
+>>>>>>> Remove attributes whitelist tests from AppGenerator tests
   end
 
   def test_pretend_option
