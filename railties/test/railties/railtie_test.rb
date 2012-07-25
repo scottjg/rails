@@ -69,14 +69,16 @@ module RailtiesTest
     end
 
     test "railtie can add to_prepare callbacks" do
-      $to_prepare = false
-      class Foo < Rails::Railtie ; config.to_prepare { $to_prepare = true } ; end
-      assert !$to_prepare
+      $to_prepare = 0
+      class Foo < Rails::Railtie ; config.to_prepare { $to_prepare += 1 } ; end
+      assert_equal 0, $to_prepare
       require "#{app_path}/config/environment"
       require "rack/test"
       extend Rack::Test::Methods
       get "/"
-      assert $to_prepare
+      assert_equal 1, $to_prepare
+      get "/"
+      assert_equal 2, $to_prepare
     end
 
     test "railtie can add after_initialize callbacks" do
