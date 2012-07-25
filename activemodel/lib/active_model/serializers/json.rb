@@ -107,6 +107,16 @@ module ActiveModel
         self.attributes = hash
         self
       end
+
+      module ClassMethods
+
+        # Provides default options to +as_json+
+        def as_json(options = {})
+          define_method(:as_json) do |arg = {}|
+            super(options.merge(arg))
+          end
+        end
+      end
     end
   end
 end

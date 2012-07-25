@@ -21,6 +21,18 @@ class Contact
   end
 end
 
+class Administrator
+  extend ActiveModel::Naming
+  include ActiveModel::Serializers::JSON
+  include ActiveModel::Validations
+
+  as_json except: :password_digest
+
+  def attributes
+    instance_values
+  end
+end
+
 class JsonSerializationTest < ActiveModel::TestCase
   def setup
     @contact = Contact.new
@@ -29,6 +41,10 @@ class JsonSerializationTest < ActiveModel::TestCase
     @contact.created_at = Time.utc(2006, 8, 1)
     @contact.awesome = true
     @contact.preferences = { 'shows' => 'anime' }
+
+    @administrator = Administrator.new
+    @administrator.name = 'Tsukasa Hiiragi'
+    @administrator.password_digest = 'Balsamic vinegar'
   end
 
   def teardown
@@ -207,5 +223,28 @@ class JsonSerializationTest < ActiveModel::TestCase
     assert_no_match %r{"created_at":#{ActiveSupport::JSON.encode(Time.utc(2006, 8, 1))}}, json
     assert_no_match %r{"awesome":}, json
     assert_no_match %r{"preferences":}, json
+  end
+
+  test "class method as_json should provides default options" do
+    json = @administrator.to_json
+
+    assert_match %r{"name":"Tsukasa Hiiragi"}, json
+    assert_no_match %r{"password_digest":"Balsamic vinegar"}, json
+  end
+
+  test "custom as_json should be honored even if class method as_json is defined" do
+    def @administrator.as_json(options); { name: name, password_digest: password_digest }; end
+    json = @administrator.to_json
+
+    assert_match %r{"name":"Tsukasa Hiiragi"}, json
+    assert_match %r{"password_digest":"Balsamic vinegar"}, json
+  end
+
+  test "custom as_json options should be extendible even if class method as_json is defined" do
+    def @administrator.as_json(options); super(options.merge(only: :password_digest)); end
+    json = @administrator.to_json
+
+    assert_no_match %r{"name":"Tsukasa Hiiragi"}, json
+    assert_match %r{"password_digest":"Balsamic vinegar"}, json
   end
 end
