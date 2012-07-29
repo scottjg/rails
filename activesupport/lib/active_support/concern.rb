@@ -101,23 +101,25 @@ module ActiveSupport
     end
 
     def append_features(base)
-      # 如果base定义了@_dependencies，则把当前类加入@_dependencies
+      # 如果base定义了@_dependencies，则把当前模块加入base类的@_dependencies
       if base.instance_variable_defined?("@_dependencies")
         base.instance_variable_get("@_dependencies") << self
         return false
       else
+        # 如果base不是self的子类直接返回
         return false if base < self
         # 依次调用base.include方法include @_dependencies中的类
         @_dependencies.each { |dep| base.send(:include, dep) }
-        # 调用父类的append_features()
+        # 调用父类的append_features()，真正的执行mixin
         super
         # 调用base.extend, 将ClassMethods中定义的方法extend为base的类方法
         base.extend const_get("ClassMethods") if const_defined?("ClassMethods")
-        # 同时将用ClassMacro定义的included中定义的方法extend为base的类方法
+        # 同时将直接执行@_included_block中的代码，在base的类上下文中
         base.class_eval(&@_included_block) if instance_variable_defined?("@_included_block")
       end
     end
 
+    # NOTE: 和self.included()不一样
     def included(base = nil, &block)
       if base.nil?
         @_included_block = block

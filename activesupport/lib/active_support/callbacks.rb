@@ -84,6 +84,7 @@ module ActiveSupport
     end
 
     class Callback #:nodoc:#
+      # callback队列
       @@_callback_sequence = 0
 
       attr_accessor :chain, :filter, :kind, :options, :klass, :raw_filter
@@ -98,6 +99,7 @@ module ActiveSupport
         recompile_options!
       end
 
+      # 原来支持的per_key参数现在被deprecate了，用if和unless替代
       def deprecate_per_key_option(options)
         if options[:per_key]
           raise NotImplementedError, ":per_key option is no longer supported. Use generic :if and :unless options instead."
@@ -247,7 +249,10 @@ module ActiveSupport
       #   Objects::
       #     a method is created that calls the before_foo method
       #     on the object.
+      #
+      # 所有类型的filter都被转换为一个方法
       def _compile_filter(filter)
+        # 转换后方法的命名规范
         method_name = "_callback_#{@kind}_#{next_id}"
         case filter
         when Array
