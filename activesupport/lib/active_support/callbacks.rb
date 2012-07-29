@@ -70,6 +70,8 @@ module ActiveSupport
     #   run_callbacks :save do
     #     save
     #   end
+    #
+    # 
     def run_callbacks(kind, &block)
       runner_name = self.class.__define_callbacks(kind, self)
       send(runner_name, &block)
@@ -91,6 +93,7 @@ module ActiveSupport
 
       def initialize(chain, filter, kind, options, klass)
         @chain, @kind, @klass = chain, kind, klass
+        # 原来支持的per_key参数现在被deprecate了，用if和unless替代
         deprecate_per_key_option(options)
         normalize_options!(options)
 
@@ -99,7 +102,6 @@ module ActiveSupport
         recompile_options!
       end
 
-      # 原来支持的per_key参数现在被deprecate了，用if和unless替代
       def deprecate_per_key_option(options)
         if options[:per_key]
           raise NotImplementedError, ":per_key option is no longer supported. Use generic :if and :unless options instead."
@@ -116,6 +118,8 @@ module ActiveSupport
         obj
       end
 
+      # 如果option中是:if => true，改为:if => [true]
+      # unless也一样
       def normalize_options!(options)
         options[:if] = Array(options[:if])
         options[:unless] = Array(options[:unless])
@@ -146,9 +150,22 @@ module ActiveSupport
       end
 
       # Wraps code with filter
+      #
       def apply(code)
         case @kind
         when :before
+          # Here Document，以<<identifier或者<<"string"开头，当ruby找到接下来的某一行
+          # 以identifier或者"string"开头的时候（前面不能有空白，即identifier或者
+          # "string"必须顶行），就会认为字符串定义结束了。
+          #
+          # 当以<<-identifier或者<<-"string"开头，结束的行不用顶行写，可以有缩进。
+          #
+          # 如果是<<"string"，则字符串和双引号字符串一样
+          # 如果是<<'string'，则字符串和单引号字符串一样
+          #
+          # 默认<<identifier和双引号字符串一样
+          # 
+          # 详见http://ruby-doc.org/docs/ProgrammingRuby/html/language.html
           <<-RUBY_EVAL
             if !halted && #{@compiled_options}
               # This double assignment is to prevent warnings in 1.9.3 as
@@ -303,6 +320,8 @@ module ActiveSupport
     class CallbackChain < Array #:nodoc:#
       attr_reader :name, :config
 
+      # name是目标方法，比如define_callback :save, :scope => 'before_save'则
+      # 这里的name为:save，config为{:scope => 'before_save'}
       def initialize(name, config)
         @name = name
         @config = {
@@ -311,6 +330,31 @@ module ActiveSupport
         }.merge(config)
       end
 
+
+      # compile 和工具方法apply生成了整个callback chain的代码
+      #
+      # ## 来自于compile
+      # value = nil
+      # halted = false
+      # 
+      # ## 来自于Callback.apply
+      # if !halted && #{@compiled_options}
+      #   # This double assignment is to prevent warnings in 1.9.3 as
+      #   # the `result` variable is not always used except if the
+      #   # terminator code refers to it.
+      #   result = result = #{@filter}
+      #   halted = (#{chain.config[:terminator]})
+      #   if halted
+      #     halted_callback_hook(#{@raw_filter.inspect.inspect})
+      #   end
+      # end
+      #
+      # ## 来自于compile
+      # value = !halted && (!block_given? || yeild)
+      # 
+      # ## 返回值
+      # value
+      #
       def compile
         method = []
         method << "value = nil"
@@ -335,8 +379,12 @@ module ActiveSupport
       # This generated method plays caching role.
       def __define_callbacks(kind, object) #:nodoc:
         name = __callback_runner_name(kind)
+        # 除非生成的方法名字已经被用了
         unless object.respond_to?(name, true)
+          # compile()方法返回方法体的字符串
           str = object.send("_#{kind}_callbacks").compile
+
+          # 定义实例方法，并且将方法设置为protected
           class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
             def #{name}() #{str} end
             protected :#{name}
@@ -358,10 +406,14 @@ module ActiveSupport
       # CallbackChain.
       #
       def __update_callbacks(name, filters = [], block = nil) #:nodoc:
+        # 默认取before
         type = filters.first.in?([:before, :after, :around]) ? filters.shift : :before
+        # 最后一个参数是Hash，则取出来，否者为{}
         options = filters.last.is_a?(Hash) ? filters.pop : {}
+        # 如果callback是block，则将callback加入filter队列
         filters.unshift(block) if block
 
+        # 这里的name是目标方法的名字，如果为save()定义了filter，则创建一个_save_callbacks的队列
         ([self] + ActiveSupport::DescendantsTracker.descendants(self)).reverse.each do |target|
           chain = target.send("_#{name}_callbacks")
           yield target, chain.dup, type, filters, options
@@ -385,6 +437,26 @@ module ActiveSupport
       # lambda, or block; as a string to be instance evaluated; or as an object that
       # responds to a certain method determined by the <tt>:scope</tt> argument to
       # +define_callback+.
+      #
+      # 第一个参数是方法名称，即目标方法
+      #
+      # 第二个参数是callback类型（kind或者type），可以是before,after,around，默认是before
+      #
+      # 第三个参数，callback可以是
+      # 
+      # * 一个实例方法，用symbol制定，方法名字嘛
+      # * 一段代码，用proc，lambda或者block，和一个匿名方法一样，在运行时的当前对象
+      #   实例上下文中被执行
+      # * 一个字符串，同上
+      # * 一个对象，define_callback方法中:scope参数代表的那个方法被调用（scope这个参
+      #   数名感觉很一般啊）
+      #
+      #
+      # options可以是
+      # 
+      # * if，条件
+      # * unless，条件
+      # * prepend，添加在最前面
       #
       # If a proc, lambda, or block is given, its body is evaluated in the context
       # of the current object. It can also optionally accept the current object as
@@ -527,8 +599,15 @@ module ActiveSupport
       #
       #   would call <tt>Audit#save</tt>.
       def define_callbacks(*callbacks)
+        # 如果参数的最后一个是Hash，则取出来，这个参数是:scope配置信息
         config = callbacks.last.is_a?(Hash) ? callbacks.pop : {}
+        # 对除去配置信息的列表进行处理
         callbacks.each do |callback|
+          # 定义类变量，比如define_callbacks :save，即目标方法为save，则定义了一个
+          # 名称为_save_callbacks的类变量，并且赋值为CallbackChain，
+          # CallbackChain实际上是一个数组
+          # 
+          # http://apidock.com/rails/Class/class_attribute
           class_attribute "_#{callback}_callbacks"
           send("_#{callback}_callbacks=", CallbackChain.new(callback, config))
         end
@@ -536,3 +615,4 @@ module ActiveSupport
     end
   end
 end
+      def __define_callbacks(kind, object) #:nodoc:
