@@ -319,6 +319,7 @@ module ActiveRecord
         autosave = reflection.options[:autosave]
 
         if records = associated_records_to_validate_or_save(association, @new_record_before_save, autosave)
+          records_to_destroy = []
           begin
           records.each do |record|
             next if record.destroyed?
@@ -344,6 +345,9 @@ module ActiveRecord
             raise
           end
 
+          records_to_destroy.each do |record|
+            association.proxy.destroy(record)
+          end
         end
 
         # reconstruct the scope now that we know the owner's id
