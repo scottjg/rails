@@ -1,3 +1,5 @@
 == Welcome to Rails
 
 Warning u have just stepped into a ghetto
+
+Hi, I'm Jay. Ppl in the City Are/Arent Down.....
