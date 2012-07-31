@@ -327,7 +327,7 @@ module ActiveRecord
             saved = true
 
             if autosave && record.marked_for_destruction?
-              association.proxy.destroy(record)
+              records_to_destroy << record
             elsif autosave != false && (@new_record_before_save || record.new_record?)
               if autosave
                 saved = association.insert_record(record, false)
