@@ -995,7 +995,7 @@ class FormOptionsHelperTest < ActionView::TestCase
 
   def test_options_for_select_with_element_attributes
     assert_dom_equal(
-      "<option value=\"&lt;Denmark&gt;\" class=\"bold\">&lt;Denmark&gt;</option>\n<option value=\"USA\" onclick=\"alert('Hello World');\">USA</option>\n<option value=\"Sweden\">Sweden</option>\n<option value=\"Germany\">Germany</option>",
+      "<option value=\"&lt;Denmark&gt;\" class=\"bold\">&lt;Denmark&gt;</option>\n<option value=\"USA\" onclick=\"" + ERB::Util.html_escape("alert('Hello World');") + "\">USA</option>\n<option value=\"Sweden\">Sweden</option>\n<option value=\"Germany\">Germany</option>",
       options_for_select([ [ "<Denmark>", { :class => 'bold' } ], [ "USA", { :onclick => "alert('Hello World');" } ], [ "Sweden" ], "Germany" ])
     )
   end
@@ -1030,14 +1030,14 @@ class FormOptionsHelperTest < ActionView::TestCase
 
   def test_option_html_attributes_with_multiple_element_hash
     assert_dom_equal(
-      " class=\"fancy\" onclick=\"alert('Hello World');\"",
+      " class=\"fancy\" onclick=\"alert(&#x27;Hello World&#x27;);\"",
       option_html_attributes([ 'foo', 'bar', { :class => 'fancy', 'onclick' => "alert('Hello World');" } ])
     )
   end
 
   def test_option_html_attributes_with_multiple_hashes
     assert_dom_equal(
-      " class=\"fancy\" onclick=\"alert('Hello World');\"",
+      " class=\"fancy\" onclick=\"alert(&#x27;Hello World&#x27;);\"",
       option_html_attributes([ 'foo', 'bar', { :class => 'fancy' }, { 'onclick' => "alert('Hello World');" } ])
     )
   end
