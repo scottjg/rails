@@ -368,7 +368,7 @@ class FormTagHelperTest < ActionView::TestCase
 
   def test_submit_tag
     assert_dom_equal(
-      %(<input name='commit' data-disable-with="Saving..." onclick="alert('hello!')" type="submit" value="Save" />),
+      %(<input name='commit' data-disable-with="Saving..." onclick=") + ERB::Util.html_escape("alert('hello!')") + %(" type="submit" value="Save" />),
       submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
     )
   end
