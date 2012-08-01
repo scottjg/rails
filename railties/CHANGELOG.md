@@ -1,5 +1,7 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   `config.threadsafe!` is deprecated in favor of `config.eager_load` which provides a more fine grained control on what is eager loaded *José Valim*
+
 *   The migration generator will now produce AddXXXToYYY/RemoveXXXFromYYY migrations with references statements, for instance
 
         rails g migration AddReferencesToProducts user:references supplier:references{polymorphic}
