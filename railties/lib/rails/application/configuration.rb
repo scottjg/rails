@@ -7,7 +7,7 @@ module Rails
     class Configuration < ::Rails::Engine::Configuration
       attr_accessor :allow_concurrency, :asset_host, :asset_path, :assets, :autoflush_log,
                     :cache_classes, :cache_store, :consider_all_requests_local, :console,
-                    :dependency_loading, :exceptions_app, :file_watcher, :filter_parameters,
+                    :eager_load, :exceptions_app, :file_watcher, :filter_parameters,
                     :force_ssl, :helpers_paths, :logger, :log_formatter, :log_tags,
                     :preload_frameworks, :railties_order, :relative_url_root, :secret_token,
                     :serve_static_assets, :ssl_options, :static_cache_control, :session_options,
@@ -24,7 +24,6 @@ module Rails
         @consider_all_requests_local   = false
         @filter_parameters             = []
         @helpers_paths                 = []
-        @dependency_loading            = true
         @serve_static_assets           = true
         @static_cache_control          = nil
         @force_ssl                     = false
@@ -46,6 +45,7 @@ module Rails
         @use_schema_cache_dump         = true
         @queue                         = Rails::Queueing::Queue
         @queue_consumer                = Rails::Queueing::ThreadedConsumer
+        @eager_load                    = nil
 
         @assets = ActiveSupport::OrderedOptions.new
         @assets.enabled                  = false
@@ -99,7 +99,7 @@ module Rails
       def threadsafe!
         @preload_frameworks = true
         @cache_classes = true
-        @dependency_loading = false
+        @eager_load = true
         @allow_concurrency = true
         self
       end
