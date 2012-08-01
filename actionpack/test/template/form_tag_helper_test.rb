@@ -369,7 +369,7 @@ class FormTagHelperTest < ActionView::TestCase
   def test_submit_tag
     assert_deprecated ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead" do
       assert_dom_equal(
-        %(<input name='commit' data-disable-with="Saving..." onclick="alert('hello!')" type="submit" value="Save" />),
+        %(<input name='commit' data-disable-with="Saving..." onclick=") + ERB::Util.html_escape("alert('hello!')") + %(" type="submit" value="Save" />),
         submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
       )
     end
