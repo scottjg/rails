@@ -138,7 +138,7 @@ module ApplicationTests
 
       get '/posts'
       assert_match /AssetNotPrecompiledError/, last_response.body
-      assert_match /app.js isn't precompiled/, last_response.body
+      assert_match /app.js isn&#x27;t precompiled/, last_response.body
     end
 
     test "precompile appends the md5 hash to files referenced with asset_path and run in the provided RAILS_ENV" do
