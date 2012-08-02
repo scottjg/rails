@@ -85,6 +85,12 @@ class Topic < ActiveRecord::Base
     write_attribute(:approved, val)
   end
 
+  # Topics are always empty. This method is used to ensure find_by_*!
+  # methods work correctly.
+  def empty?
+    true
+  end
+
   protected
 
     def default_written_on
