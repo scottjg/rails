@@ -255,6 +255,17 @@ module ActiveRecord
       self
     end
 
+    def union(*args)
+      return self if args.compact.blank?
+
+      relation = clone
+
+      relation.unions_values ||= []
+      relation.unions_values += args
+
+      relation
+    end
+
     def bind(value)
       spawn.bind!(value)
     end
@@ -649,6 +660,8 @@ module ActiveRecord
       arel.from(build_from) if from_value
       arel.lock(lock_value) if lock_value
 
+      build_union(arel, @unions_values) unless @unions_values.empty?
+
       arel
     end
 
@@ -749,6 +762,10 @@ module ActiveRecord
       manager.join_sources.concat join_list
 
       manager
+    end
+
+    def build_union(arel, unions)
+      arel.union(*unions.map {|union| union.build_arel})
     end
 
     def build_select(arel, selects)
