@@ -57,6 +57,8 @@
     # methods and wrap them in a new FileList object.  We enumerate these
     # methods in the +SPECIAL_RETURN+ list below.
 
+  unless defined?(ARRAY_METHODS) #conditional define constants
+
     # List of array methods (that are not in +Object+) that need to be
     # delegated.
     ARRAY_METHODS = (Array.instance_methods - Object.instance_methods).map { |n| n.to_s }
@@ -77,6 +79,8 @@
     ]
 
     DELEGATING_METHODS = (ARRAY_METHODS + MUST_DEFINE - MUST_NOT_DEFINE).collect{ |s| s.to_s }.sort.uniq
+
+  end #conditional define constants
 
     # Now do the delegation.
     DELEGATING_METHODS.each_with_index do |sym, i|
