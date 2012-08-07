@@ -1,9 +1,11 @@
 require File.join(File.dirname(__FILE__), 'lib', 'active_support', 'version')
 
+unless defined? ACTIVESUPPORT_PKG_BUILD
 ACTIVESUPPORT_PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 ACTIVESUPPORT_PKG_NAME      = 'activesupport'
 ACTIVESUPPORT_PKG_VERSION   = ActiveSupport::VERSION::STRING + ACTIVESUPPORT_PKG_BUILD
 ACTIVESUPPORT_PKG_FILE_NAME = "#{ACTIVESUPPORT_PKG_NAME}-#{ACTIVESUPPORT_PKG_VERSION}"
+end
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY

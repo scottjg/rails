@@ -1,9 +1,11 @@
 require File.join(File.dirname(__FILE__), 'lib', 'active_resource', 'version')
 
+unless defined? ACTIVERESOURCE_PKG_BUILD
 ACTIVERESOURCE_PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 ACTIVERESOURCE_PKG_NAME      = 'activeresource'
 ACTIVERESOURCE_PKG_VERSION   = ActiveResource::VERSION::STRING + ACTIVERESOURCE_PKG_BUILD
 ACTIVERESOURCE_PKG_FILE_NAME = "#{ACTIVERESOURCE_PKG_NAME}-#{ACTIVERESOURCE_PKG_VERSION}"
+end
 
 dist_dirs = [ "lib", "test", "examples", "dev-utils" ]
 

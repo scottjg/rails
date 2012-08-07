@@ -1,9 +1,11 @@
 require File.join(File.dirname(__FILE__), 'lib', 'action_pack', 'version')
 
+unless defined? ACTIONPACK_PKG_BUILD
 ACTIONPACK_PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 ACTIONPACK_PKG_NAME      = 'actionpack'
 ACTIONPACK_PKG_VERSION   = ActionPack::VERSION::STRING + ACTIONPACK_PKG_BUILD
 ACTIONPACK_PKG_FILE_NAME = "#{ACTIONPACK_PKG_NAME}-#{ACTIONPACK_PKG_VERSION}"
+end
 
 dist_dirs = [ "lib", "test" ]
 

@@ -390,6 +390,7 @@
       fn =~ @exclude_re || @exclude_procs.any? { |p| p.call(fn) }
     end
 
+    unless defined? DEFAULT_IGNORE_PATTERNS
     DEFAULT_IGNORE_PATTERNS = [
       /(^|[\/\\])CVS([\/\\]|$)/,
       /(^|[\/\\])\.svn([\/\\]|$)/,
@@ -399,6 +400,7 @@
     DEFAULT_IGNORE_PROCS = [
       proc { |fn| fn =~ /(^|[\/\\])core$/ && ! File.directory?(fn) }
     ]
+    end
 #    @exclude_patterns = DEFAULT_IGNORE_PATTERNS.dup
 
     def import(array)
@@ -420,6 +422,7 @@ require 'date'
 require 'rbconfig'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
+unless defined? RAILTIES_PKG_BUILD
 RAILTIES_PKG_BUILD       = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 RAILTIES_PKG_NAME        = 'rails'
 RAILTIES_PKG_VERSION     = Rails::VERSION::STRING + RAILTIES_PKG_BUILD
@@ -441,6 +444,7 @@ RAILTIES_PKG_FILES = FileList[
   'html/**/*', 
   'lib/**/*'
 ] - [ 'test' ]
+end
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY

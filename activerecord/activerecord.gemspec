@@ -1,11 +1,12 @@
 require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
 require File.expand_path(File.dirname(__FILE__)) + "/test/config"
 
+unless defined? ACTIVERECORD_PKG_BUILD
 ACTIVERECORD_PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 ACTIVERECORD_PKG_NAME      = 'activerecord'
 ACTIVERECORD_PKG_VERSION   = ActiveRecord::VERSION::STRING + ACTIVERECORD_PKG_BUILD
 ACTIVERECORD_PKG_FILE_NAME = "#{ACTIVERECORD_PKG_NAME}-#{ACTIVERECORD_PKG_VERSION}"
-
+end
 
 dist_dirs = [ "lib", "test", "examples" ]
 
