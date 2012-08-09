@@ -909,7 +909,7 @@ module ActionDispatch
         # CANONICAL_ACTIONS holds all actions that does not need a prefix or
         # a path appended since they fit properly in their scope level.
         VALID_ON_OPTIONS  = [:new, :collection, :member]
-        RESOURCE_OPTIONS  = [:as, :controller, :path, :only, :except, :param]
+        RESOURCE_OPTIONS  = [:as, :controller, :path, :only, :except, :param, :concerns]
         CANONICAL_ACTIONS = %w(index create new show update destroy)
 
         class Resource #:nodoc:
@@ -1045,6 +1045,8 @@ module ActionDispatch
 
           resource_scope(:resource, SingletonResource.new(resources.pop, options)) do
             yield if block_given?
+
+            concerns(options[:concerns]) if options[:concerns]
 
             collection do
               post :create
@@ -1209,6 +1211,8 @@ module ActionDispatch
 
           resource_scope(:resources, Resource.new(resources.pop, options)) do
             yield if block_given?
+
+            concerns(options[:concerns]) if options[:concerns]
 
             collection do
               get  :index if parent_resource.actions.include?(:index)
@@ -1580,6 +1584,23 @@ module ActionDispatch
           end
       end
 
+      module Concerns
+        def concern(name, &block)
+          @concerns ||= {}
+          @concerns[name] = block
+        end
+
+        def concerns(*names)
+          Array(names).flatten.compact.each do |name|
+            if @concerns && concern = @concerns[name]
+              instance_eval(&concern)
+            else
+              raise "No concern named #{name} was found!"
+            end
+          end
+        end
+      end
+
       def initialize(set) #:nodoc:
         @set = set
         @scope = { :path_names => @set.resources_path_names }
@@ -1589,6 +1610,7 @@ module ActionDispatch
       include HttpHelpers
       include Redirection
       include Scoping
+      include Concerns
       include Resources
     end
   end
