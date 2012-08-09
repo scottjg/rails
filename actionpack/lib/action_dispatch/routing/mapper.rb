@@ -1595,7 +1595,7 @@ module ActionDispatch
             if @concerns && concern = @concerns[name]
               instance_eval(&concern)
             else
-              raise "No concern named #{name} was found!"
+              raise ArgumentError, "No concern named #{name} was found!"
             end
           end
         end
