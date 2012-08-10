@@ -36,7 +36,6 @@ module ActiveRecord
   module Model
     extend ActiveSupport::Concern
     extend ConnectionHandling
-    extend ActiveModel::Observing::ClassMethods
 
     # This allows us to detect an ActiveRecord::Model while it's in the process of being included.
     module Tag; end
@@ -80,7 +79,6 @@ module ActiveRecord
     include Locking::Pessimistic
     include AttributeMethods
     include Callbacks
-    include ActiveModel::Observing
     include Timestamp
     include Associations
     include ActiveModel::SecurePassword

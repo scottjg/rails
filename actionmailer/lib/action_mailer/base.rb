@@ -219,13 +219,10 @@ module ActionMailer #:nodoc:
   #
   #   <%= image_tag attachments['photo.png'].url, :alt => 'Our Photo', :class => 'photo' -%>
   #
-  # = Observing and Intercepting Mails
+  # = Intercepting Mails
   #
-  # Action Mailer provides hooks into the Mail observer and interceptor methods. These allow you to
+  # Action Mailer provides hooks into the Mail interceptor methods. These allow you to
   # register classes that are called during the mail delivery life cycle.
-  #
-  # An observer class must implement the <tt>:delivered_email(message)</tt> method which will be
-  # called once for every email sent after the email has been sent.
   #
   # An interceptor class must implement the <tt>:delivering_email(message)</tt> method which will be
   # called before the email is sent, allowing you to make modifications to the email before it hits
@@ -389,22 +386,9 @@ module ActionMailer #:nodoc:
     }.freeze
 
     class << self
-      # Register one or more Observers which will be notified when mail is delivered.
-      def register_observers(*observers)
-        observers.flatten.compact.each { |observer| register_observer(observer) }
-      end
-
       # Register one or more Interceptors which will be called before mail is sent.
       def register_interceptors(*interceptors)
         interceptors.flatten.compact.each { |interceptor| register_interceptor(interceptor) }
-      end
-
-      # Register an Observer which will be notified when mail is delivered.
-      # Either a class or a string can be passed in as the Observer. If a string is passed in
-      # it will be <tt>constantize</tt>d.
-      def register_observer(observer)
-        delivery_observer = (observer.is_a?(String) ? observer.constantize : observer)
-        Mail.register_observer(delivery_observer)
       end
 
       # Register an Interceptor which will be called before mail is sent.

@@ -32,8 +32,6 @@ module ActionController #:nodoc:
     #     end
     #   end
     #
-    # Additionally, you can expire caches using Sweepers that act on changes in the model to determine when a cache is supposed to be
-    # expired.
     module Pages
       extend ActiveSupport::Concern
 

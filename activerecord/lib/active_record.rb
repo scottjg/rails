@@ -46,7 +46,6 @@ module ActiveRecord
   autoload :Model
   autoload :ModelSchema
   autoload :NestedAttributes
-  autoload :Observer
   autoload :Persistence
   autoload :QueryCache
   autoload :Querying

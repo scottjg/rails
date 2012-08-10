@@ -8,10 +8,10 @@ module ActionController #:nodoc:
   # Action Controller affords you three approaches in varying levels of granularity:
   # Page, Action, Fragment.
   #
-  # You can read more about each approach and the sweeping assistance by clicking the
+  # You can read more about each approach and the by clicking the
   # modules below.
   #
-  # Note: To turn off all caching and sweeping, set
+  # Note: To turn off all caching, set
   #   config.action_controller.perform_caching = false.
   #
   # == \Caching stores
@@ -35,8 +35,6 @@ module ActionController #:nodoc:
       autoload :Actions
       autoload :Fragments
       autoload :Pages
-      autoload :Sweeper, 'action_controller/caching/sweeping'
-      autoload :Sweeping, 'action_controller/caching/sweeping'
     end
 
     module ConfigMethods
@@ -60,7 +58,6 @@ module ActionController #:nodoc:
 
     include ConfigMethods
     include Pages, Actions, Fragments
-    include Sweeping if defined?(ActiveRecord)
 
     included do
       extend ConfigMethods
