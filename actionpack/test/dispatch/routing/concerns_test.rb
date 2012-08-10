@@ -30,6 +30,10 @@ class RoutingConcernsTest < ActionDispatch::IntegrationTest
       resource :picture, concerns: :commentable do
         resources :posts, concerns: :commentable
       end
+
+      scope "/videos" do
+        concerns :commentable
+      end
     end
   end
 
@@ -69,6 +73,11 @@ class RoutingConcernsTest < ActionDispatch::IntegrationTest
   test "accessing concern from resources using only option" do
     get "/posts/1/image_attachment/1"
     assert_equal "404", @response.code
+  end
+
+  test "accessing concern from a scope" do
+    get "/videos/comments"
+    assert_equal "200", @response.code
   end
 
   test "with an invalid concern name" do
