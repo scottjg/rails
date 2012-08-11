@@ -127,8 +127,21 @@ module Rails
       VERSION::STRING
     end
 
+    # Much like Rails.root , Rails.public_path returns a Pathname instance pointing to 
+    # the application's public directory: where static files are served from.
+    #
+    #   Rails.public_path #=> #<Pathname:/User/you/rails-app/public>
+    #   Rails.public_path.to_s #=> "/User/you/rails-app/public"
+    #
+    # Since this is a Pathname, you can operate with it:
+    #
+    #   (Rails.root + 'tmp').children #=> [#<Pathname:/User/you/rails-app/tmp/emergency_smile.txt>]
+    #   (Rails.root + 'tmp' + 'emergency_smile.txt').read #=> ":)"
+    #
+    # Pathname has been part of the Ruby standard library since 1.8.0.
     def public_path
-      application && application.paths["public"].first
+      return nil unless application
+      Pathname.new(application.paths["public"].first)
     end
   end
 end
