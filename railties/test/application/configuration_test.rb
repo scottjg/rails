@@ -245,7 +245,7 @@ module ApplicationTests
       RUBY
 
       require "#{app_path}/config/application"
-      assert_equal File.join(app_path, "somewhere"), Rails.public_path
+      assert_equal(Pathname.new(app_path) + "somewhere", Rails.public_path)
     end
 
     test "config.secret_token is sent in env" do
