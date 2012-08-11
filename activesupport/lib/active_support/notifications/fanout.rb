@@ -2,6 +2,16 @@ require 'mutex_m'
 
 module ActiveSupport
   module Notifications
+    # 默认的消息队列实现，维护了一个列表@subscribers
+    # 
+    # subscribe(event_name, callback)
+    # unsubscribe
+    # start(event_name, id, payload) 启动事件
+    # finish(event_name, id, payload) 结束事件
+    # 
+    # publish
+    #
+    #
     # This is a default queue implementation that ships with Notifications.
     # It just pushes events to all registered log subscribers.
     #
@@ -59,12 +69,14 @@ module ActiveSupport
 
       module Subscribers # :nodoc:
         def self.new(pattern, listener)
+          # 如果回调支持call方法，则创建Timed类型的subscriber，相当于对回调的封装
           if listener.respond_to?(:call)
             subscriber = Timed.new pattern, listener
           else
             subscriber = Evented.new pattern, listener
           end
 
+          # 如果没给pattern，默认响应一切事件
           unless pattern
             AllMessages.new(subscriber)
           else
@@ -96,6 +108,7 @@ module ActiveSupport
           end
         end
 
+        # 多了一个@timestack，可以start多次，然后finish多次
         class Timed < Evented
           def initialize(pattern, delegate)
             @timestack = []
@@ -116,6 +129,7 @@ module ActiveSupport
           end
         end
 
+        # 响应一切事件
         class AllMessages # :nodoc:
           def initialize(delegate)
             @delegate = delegate

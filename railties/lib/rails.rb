@@ -86,6 +86,7 @@ module Rails
     end
 
     def env
+      # 默认是developer哦
       @_env ||= ActiveSupport::StringInquirer.new(ENV["RAILS_ENV"] || ENV["RACK_ENV"] || "development")
     end
 

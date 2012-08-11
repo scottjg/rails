@@ -16,6 +16,8 @@ module ActiveSupport
   #
   # That executes the block first and notifies all subscribers once done.
   #
+  # PayLoad有效载荷
+  #
   # In the example above "render" is the name of the event, and the rest is called
   # the _payload_. The payload is a mechanism that allows instrumenters to pass
   # extra information to subscribers. Payloads consist of a hash whose contents

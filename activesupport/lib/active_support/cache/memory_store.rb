@@ -2,6 +2,11 @@ require 'monitor'
 
 module ActiveSupport
   module Cache
+    # 同一个进程，如果使用mongrel_cluster或者phusion passenger部署多个Rails
+    # 进程的话，就没办法共享缓存数据了。但是，MemeoryStore是线程安全的
+    #
+    # 当cache满了的时候，cleanup会调用，清除掉1/4的数据
+    # 
     # A cache store implementation which stores everything into memory in the
     # same process. If you're running multiple Ruby on Rails server processes
     # (which is the case if you're using mongrel_cluster or Phusion Passenger),
@@ -19,12 +24,17 @@ module ActiveSupport
       def initialize(options = nil)
         options ||= {}
         super(options)
+        # @data 用来存数据
         @data = {}
+        # 记录所有的key的last hit时间
         @key_access = {}
+        # 默认最大32兆
         @max_size = options[:size] || 32.megabytes
+        # 最大申请新空间的时间2mm
         @max_prune_time = options[:max_prune_time] || 2
         @cache_size = 0
         @monitor = Monitor.new
+        # cleanup lock
         @pruning = false
       end
 
@@ -36,6 +46,7 @@ module ActiveSupport
         end
       end
 
+      # 清除已经过期的缓存
       def cleanup(options = nil)
         options = merged_options(options)
         instrument(:cleanup, :size => @data.size) do
@@ -56,9 +67,11 @@ module ActiveSupport
           start_time = Time.now
           cleanup
           instrument(:prune, target_size, :from => @cache_size) do
+            # 所有key按照last hit time排序，
             keys = synchronize{ @key_access.keys.sort{|a,b| @key_access[a].to_f <=> @key_access[b].to_f} }
             keys.each do |key|
               delete_entry(key, options)
+              # 当缓存的大小小于target_size的时候或者花费的时间大于max_time的时候放弃清除缓存
               return if @cache_size <= target_size || (max_time && Time.now - start_time > max_time)
             end
           end
@@ -126,6 +139,7 @@ module ActiveSupport
           entry = @data[key]
           synchronize do
             if entry
+              # 当缓存命中的时候，将其命中时间更新
               @key_access[key] = Time.now.to_f
             else
               @key_access.delete(key)
@@ -142,6 +156,7 @@ module ActiveSupport
             @cache_size += entry.size
             @key_access[key] = Time.now.to_f
             @data[key] = entry
+            # 存了之后发现所占空间大于max_size时，清除掉3/4
             prune(@max_size * 0.75, @max_prune_time) if @cache_size > @max_size
             true
           end

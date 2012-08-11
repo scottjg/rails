@@ -113,7 +113,9 @@ module ActiveSupport
     #   cache.read("city")   # => nil
     #   cache.write("city", "Duckburgh")
     #   cache.read("city")   # => "Duckburgh"
-    #
+    # 
+    # 如果一个对象作为key的话，先尝试调用#cache_key方法，如果没有，尝试#to_param
+    # 方法
     # Keys are always translated into Strings and are case sensitive. When an
     # object is specified as a key and has a +cache_key+ method defined, this
     # method will be called to define the key.  Otherwise, the +to_param+
@@ -180,6 +182,8 @@ module ActiveSupport
       # Fetches data from the cache, using the given key. If there is data in
       # the cache with the given key, then that data is returned.
       #
+      # 如果没有数据，返回nil，但是可以传进去block，如果cache miss会执行block，
+      # 将block的返回值返回并且加入cache
       # If there is no such data in the cache (a cache miss), then nil will be
       # returned. However, if a block has been passed, that block will be run
       # in the event of a cache miss. The return value of the block will be
@@ -526,6 +530,7 @@ module ActiveSupport
 
     # Entry that is put into caches. It supports expiration time on entries and can compress values
     # to save space in the cache.
+    # 用于保存数据，并且记录创建时间和过期时间
     class Entry
       attr_reader :created_at, :expires_in
 
@@ -613,6 +618,7 @@ module ActiveSupport
       end
 
       private
+        # 如果设置了:compress为true，并且大于16k的数据才会被压缩
         def should_compress?(serialized_value, options)
           if options[:compress]
             compress_threshold = options[:compress_threshold] || DEFAULT_COMPRESS_LIMIT

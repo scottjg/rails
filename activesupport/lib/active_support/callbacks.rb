@@ -415,7 +415,9 @@ module ActiveSupport
 
         # 这里的name是目标方法的名字，如果为save()定义了filter，则创建一个_save_callbacks的队列
         ([self] + ActiveSupport::DescendantsTracker.descendants(self)).reverse.each do |target|
+          # 找到_xxx_callbacks的CallbackChain，有define_callback()创建
           chain = target.send("_#{name}_callbacks")
+          # target 目标类，chain是callback chain，type是before/after/around
           yield target, chain.dup, type, filters, options
           target.__reset_runner(name)
         end
@@ -480,7 +482,10 @@ module ActiveSupport
         mapped = nil
 
         __update_callbacks(name, filter_list, block) do |target, chain, type, filters, options|
+          # filter是真正的植入的代码部分，因此，为每个filter创建一个Callback，并且加入Callback
+          # Chain
           mapped ||= filters.map do |filter|
+            # self这里表示定义callback的模块或者类，为这些类重新定义方法
             Callback.new(chain, filter, type, options.dup, self)
           end
 
@@ -533,6 +538,17 @@ module ActiveSupport
         __reset_runner(symbol)
       end
 
+      # 定义一系列事件，即callback/filter的插入点
+      #
+      # 为init,save,destroy三个方法定义callback
+      #
+      # define_callbacks :init, :save, :destroy 
+      # 
+      # 选项
+      # :terminator: 如果一个before filter挂掉了，其后续的callback是否继续执行，字符串，会被计算
+      # :skip_after_callbacks_if_terminated: 如果一个after filter挂掉了，后续callback是够执行
+      # :scope: 一个object作为callback时，哪个方法被调用
+      #
       # Define sets of events in the object lifecycle that support callbacks.
       #
       #   define_callbacks :validate
@@ -615,4 +631,4 @@ module ActiveSupport
     end
   end
 end
-      def __define_callbacks(kind, object) #:nodoc:
+
