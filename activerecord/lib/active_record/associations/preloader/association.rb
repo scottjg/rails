@@ -6,7 +6,7 @@ module ActiveRecord
 
         def initialize(klass, owners, reflection, preload_scope)
           @klass         = klass
-          @owners        = owners
+          @owners        = reject_already_loaded(owners, reflection.name)
           @reflection    = reflection
           @preload_scope = preload_scope
           @model         = owners.first && owners.first.class
@@ -15,9 +15,7 @@ module ActiveRecord
         end
 
         def run
-          unless owners.first.association(reflection.name).loaded?
-            preload
-          end
+          preload unless owners.empty?
         end
 
         def preload
@@ -66,6 +64,10 @@ module ActiveRecord
         end
 
         private
+
+        def reject_already_loaded(owners, reflection_name)
+          owners.reject { |owner| owner.association(reflection_name).loaded? }
+        end
 
         def associated_records_by_owner
           owners_map = owners_by_key

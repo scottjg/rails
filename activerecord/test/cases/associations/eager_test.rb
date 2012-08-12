@@ -1143,4 +1143,13 @@ class EagerAssociationTest < ActiveRecord::TestCase
       Post.where('1 = 0').scoping { Comment.preload(:post).find(1).post }
     )
   end
+
+  def test_eager_loading_when_first_record_already_loaded_association
+    post_one = Post.includes(:categories).first
+    post_two = Post.last
+
+    ActiveRecord::Associations::Preloader.new([post_one, post_two], :categories).run
+
+    assert post_two.categories.loaded?
+  end
 end
