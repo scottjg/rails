@@ -28,47 +28,47 @@ class RoutingConcernsTest < ActionDispatch::IntegrationTest
   include Routes.url_helpers
   def app; Routes end
 
-  test "accessing concern from resources" do
+  def test_accessing_concern_from_resources
     get "/posts/1/comments"
     assert_equal "200", @response.code
     assert_equal "/posts/1/comments", post_comments_path(post_id: 1)
   end
 
-  test "accessing concern from resource" do
+  def test_accessing_concern_from_resource
     get "/picture/comments"
     assert_equal "200", @response.code
     assert_equal "/picture/comments", picture_comments_path
   end
 
-  test "accessing concern from nested resource" do
+  def test_accessing_concern_from_nested_resource
     get "/posts/1/video/comments"
     assert_equal "200", @response.code
     assert_equal "/posts/1/video/comments", post_video_comments_path(post_id: 1)
   end
 
-  test "accessing concern from nested resources" do
+  def test_accessing_concern_from_nested_resources
     get "/picture/posts/1/comments"
     assert_equal "200", @response.code
     assert_equal "/picture/posts/1/comments", picture_post_comments_path(post_id: 1)
   end
 
-  test "accessing concern from resources with more than one concern" do
+  def test_accessing_concern_from_resources_with_more_than_one_concern
     get "/posts/1/images"
     assert_equal "200", @response.code
     assert_equal "/posts/1/images", post_images_path(post_id: 1)
   end
 
-  test "accessing concern from resources using only option" do
+  def test_accessing_concern_from_resources_using_only_option
     get "/posts/1/image/1"
     assert_equal "404", @response.code
   end
 
-  test "accessing concern from a scope" do
+  def test_accessing_concern_from_a_scope
     get "/videos/comments"
     assert_equal "200", @response.code
   end
 
-  test "with an invalid concern name" do
+  def test_with_an_invalid_concern_name
     e = assert_raise ArgumentError do
       ActionDispatch::Routing::RouteSet.new.tap do |app|
         app.draw do
