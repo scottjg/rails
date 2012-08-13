@@ -1609,7 +1609,6 @@ module ActionDispatch
         #
         # Any routing helpers can be used inside a concern.
         def concern(name, &block)
-          @concerns ||= {}
           @concerns[name] = block
         end
 
@@ -1626,7 +1625,7 @@ module ActionDispatch
         #   end
         def concerns(*names)
           Array(names).flatten.compact.each do |name|
-            if @concerns && concern = @concerns[name]
+            if concern = @concerns[name]
               instance_eval(&concern)
             else
               raise ArgumentError, "No concern named #{name} was found!"
@@ -1638,6 +1637,7 @@ module ActionDispatch
       def initialize(set) #:nodoc:
         @set = set
         @scope = { :path_names => @set.resources_path_names }
+        @concerns = {}
       end
 
       include Base
