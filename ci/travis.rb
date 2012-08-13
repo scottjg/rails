@@ -3,8 +3,8 @@ require 'fileutils'
 include FileUtils
 
 commands = [
-  'mysql -e "create database activerecord_unittest;" -u root',
-  'mysql -e "create database activerecord_unittest2;" -u root',
+  'mysql -e "create database activerecord_unittest;" -u rails',
+  'mysql -e "create database activerecord_unittest2;" -u rails',
   'psql  -c "create database activerecord_unittest;" -U postgres',
   'psql  -c "create database activerecord_unittest2;" -U postgres'
 ]
