@@ -1624,7 +1624,7 @@ module ActionDispatch
         #     concerns :commentable
         #   end
         def concerns(*names)
-          Array(names).flatten.compact.each do |name|
+          names.flatten.each do |name|
             if concern = @concerns[name]
               instance_eval(&concern)
             else
