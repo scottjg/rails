@@ -88,6 +88,7 @@ namespace :mysql do
   desc 'Build the MySQL test databases'
   task :build_databases do
     config = ARTest.config['connections']['mysql']
+    puts config.inspect
     %x( mysql --user=#{config['arunit']['username']} -e "create DATABASE #{config['arunit']['database']} DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_unicode_ci ")
     %x( mysql --user=#{config['arunit2']['username']} -e "create DATABASE #{config['arunit2']['database']} DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_unicode_ci ")
   end
@@ -95,6 +96,7 @@ namespace :mysql do
   desc 'Drop the MySQL test databases'
   task :drop_databases do
     config = ARTest.config['connections']['mysql']
+    puts config.inspect
     %x( mysqladmin --user=#{config['arunit']['username']} -f drop #{config['arunit']['database']} )
     %x( mysqladmin --user=#{config['arunit2']['username']} -f drop #{config['arunit2']['database']} )
   end
