@@ -289,7 +289,7 @@ These concerns can be used in resources to avoid code duplication and share beha
 resources :messages, concerns: :commentable
 </ruby>
 
-Also you can use they in any place that you want inside the routes, for example in given scope:
+Also you can use them in any place that you want inside the routes, for example in a scope or namespace call:
 
 <ruby>
 namespace :posts do
