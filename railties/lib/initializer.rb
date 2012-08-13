@@ -13,6 +13,10 @@ require 'rails/rack'
 
 RAILS_ENV = (ENV['RAILS_ENV'] || 'development').dup unless defined?(RAILS_ENV)
 
+# For Ruby 1.9, UTF-8 is the default internal and external encoding.
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
+
 module Rails
   class << self
     # The Configuration instance used to configure the Rails environment

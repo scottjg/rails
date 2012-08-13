@@ -382,7 +382,7 @@ EOM
 
     # Returns both GET and POST \parameters in a single hash.
     def parameters
-      @parameters ||= request_parameters.merge(query_parameters).update(path_parameters).with_indifferent_access
+      @parameters ||= encode_params(request_parameters.merge(query_parameters).update(path_parameters)).with_indifferent_access
     end
     alias_method :params, :parameters
 
@@ -467,6 +467,28 @@ EOM
     private
       def named_host?(host)
         !(host.nil? || /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.match(host))
+      end
+
+      # TODO: Validate that the characters are UTF-8. If they aren't,
+      # you'll get a weird error down the road, but our form handling
+      # should really prevent that from happening
+      def encode_params(params)
+        if params.is_a?(String)
+          return params.force_encoding("UTF-8").encode!
+        elsif !params.is_a?(Hash)
+          return params
+        end
+
+        params.each do |k, v|
+          case v
+            when Hash
+              encode_params(v)
+            when Array
+              v.map! { |el| encode_params(el) }
+            else
+              encode_params(v)
+          end
+        end
       end
 
       # Convert nested Hashs to HashWithIndifferentAccess and replace
