@@ -1591,11 +1591,15 @@ module ActionDispatch
       #     resources :comments
       #   end
       #
+      #   concern :image_attachable do
+      #     resources :images, only: :index
+      #   end
+      #
       # These concerns are used in Resources routing:
       #
-      #   resources :messages, concerns: :commentable
+      #   resources :messages, concerns: [:commentable, :image_attachable]
       #
-      # or in a given scope:
+      # or in a scope or namespace:
       #
       #   namespace :posts do
       #     concerns :commentable
