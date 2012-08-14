@@ -1788,6 +1788,17 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal original_errors, client.errors
   end
 
+  def test_becomes_changes_type_attribute
+    topic = topics(:second)
+    reply = topic.becomes(SillyReply)
+    assert reply.type_changed?
+    assert reply.is_a?(SillyReply)
+    assert_equal "SillyReply", reply.type
+    reply.type = "SillyReply"
+    reply.save!
+    assert_equal "SillyReply", Reply.find(reply.id).type
+  end
+
   def test_silence_sets_log_level_to_error_in_block
     original_logger = ActiveRecord::Base.logger
     log = StringIO.new
