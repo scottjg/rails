@@ -4,11 +4,11 @@ before_install:
 rvm:
   - 1.9.3
 env:
-  # - "GEM=railties"
-  # - "GEM=ap,am,amo,as"
+  - "GEM=railties"
+  - "GEM=ap,am,amo,as"
   - "GEM=ar:mysql"
   - "GEM=ar:mysql2"
-  # - "GEM=ar:sqlite3"
+  - "GEM=ar:sqlite3"
   - "GEM=ar:postgresql"
 notifications:
   email: false
