@@ -56,6 +56,7 @@ module Rails
     autoload :RoutesReloader, 'rails/application/routes_reloader'
 
     class << self
+      # http://www.ruby-doc.org/core-1.9.3/Class.html#method-i-inherited
       def inherited(base)
         raise "You cannot have more than one Rails::Application" if Rails.application
         super

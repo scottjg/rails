@@ -22,6 +22,10 @@ module Rails
 
       # Initialize the logger early in the stack in case we need to log some deprecation.
       initializer :initialize_logger, :group => :all do
+        # 可以通过config.logger定义rails的log
+        # config.autoflush_log
+        # config.log_formatter
+        # config.log_level
         Rails.logger ||= config.logger || begin
           path = config.paths["log"].first
           unless File.exist? File.dirname path

@@ -9,6 +9,7 @@ module Rails
         @app, @tags = app, tags.presence
       end
 
+      # 看这个视频http://railscasts.com/episodes/151-rack-middleware
       def call(env)
         if @tags
           Rails.logger.tagged(compute_tags(env)) { call_app(env) }
