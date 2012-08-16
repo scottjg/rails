@@ -122,11 +122,11 @@ module ActionView
         html_name = (options[:multiple] == true && !name.to_s.ends_with?("[]")) ? "#{name}[]" : name
 
         if options.delete(:include_blank)
-          option_tags = "<option value=\"\"></option>".html_safe + option_tags
+          option_tags = content_tag(:option, '', :value => '').safe_concat(option_tags)
         end
 
         if prompt = options.delete(:prompt)
-          option_tags = "<option value=\"\">#{prompt}</option>".html_safe + option_tags
+          option_tags = content_tag(:option, prompt, :value => '').safe_concat(option_tags)
         end
 
         content_tag :select, option_tags, { "name" => html_name, "id" => sanitize_to_id(name) }.update(options.stringify_keys)
@@ -417,14 +417,10 @@ module ActionView
         options = options.stringify_keys
 
         if disable_with = options.delete("disable_with")
-          ActiveSupport::Deprecation.warn ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead"
-
           options["data-disable-with"] = disable_with
         end
 
         if confirm = options.delete("confirm")
-          ActiveSupport::Deprecation.warn ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead"
-
           options["data-confirm"] = confirm
         end
 
@@ -471,14 +467,10 @@ module ActionView
         options = options.stringify_keys
 
         if disable_with = options.delete("disable_with")
-          ActiveSupport::Deprecation.warn ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead"
-
           options["data-disable-with"] = disable_with
         end
 
         if confirm = options.delete("confirm")
-          ActiveSupport::Deprecation.warn ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead"
-
           options["data-confirm"] = confirm
         end
 
@@ -514,8 +506,6 @@ module ActionView
         options = options.stringify_keys
 
         if confirm = options.delete("confirm")
-          ActiveSupport::Deprecation.warn ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead"
-
           options["data-confirm"] = confirm
         end
 

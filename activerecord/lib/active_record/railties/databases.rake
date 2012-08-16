@@ -2,7 +2,7 @@ require 'active_support/core_ext/object/inclusion'
 require 'active_record'
 
 db_namespace = namespace :db do
-  task :load_config => :rails_env do
+  task :load_config do
     ActiveRecord::Base.configurations = Rails.application.config.database_configuration
     ActiveRecord::Migrator.migrations_paths = Rails.application.paths['db/migrate'].to_a
 
@@ -36,7 +36,7 @@ db_namespace = namespace :db do
   end
 
   desc 'Create the database from config/database.yml for the current Rails.env (use db:create:all to create all dbs in the config)'
-  task :create => :load_config do
+  task :create => [:load_config, :rails_env] do
     configs_for_environment.each { |config| create_database(config) }
     ActiveRecord::Base.establish_connection(configs_for_environment.first)
   end
@@ -134,7 +134,7 @@ db_namespace = namespace :db do
   end
 
   desc 'Drops the database for the current Rails.env (use db:drop:all to drop all databases)'
-  task :drop => :load_config do
+  task :drop => [:load_config, :rails_env] do
     configs_for_environment.each { |config| drop_database_and_rescue(config) }
   end
 
@@ -201,7 +201,7 @@ db_namespace = namespace :db do
 
     desc 'Display status of migrations'
     task :status => [:environment, :load_config] do
-      config = ActiveRecord::Base.configurations[Rails.env || 'development']
+      config = ActiveRecord::Base.configurations[Rails.env]
       ActiveRecord::Base.establish_connection(config)
       unless ActiveRecord::Base.connection.table_exists?(ActiveRecord::Migrator.schema_migrations_table_name)
         puts 'Schema migrations table does not exist yet.'
@@ -254,7 +254,7 @@ db_namespace = namespace :db do
 
   # desc "Retrieves the charset for the current environment's database"
   task :charset => [:environment, :load_config] do
-    config = ActiveRecord::Base.configurations[Rails.env || 'development']
+    config = ActiveRecord::Base.configurations[Rails.env]
     case config['adapter']
     when /mysql/
       ActiveRecord::Base.establish_connection(config)
@@ -272,7 +272,7 @@ db_namespace = namespace :db do
 
   # desc "Retrieves the collation for the current environment's database"
   task :collation => [:environment, :load_config] do
-    config = ActiveRecord::Base.configurations[Rails.env || 'development']
+    config = ActiveRecord::Base.configurations[Rails.env]
     case config['adapter']
     when /mysql/
       ActiveRecord::Base.establish_connection(config)
@@ -369,7 +369,7 @@ db_namespace = namespace :db do
       end
     end
 
-    task :load_if_ruby => 'db:create' do
+    task :load_if_ruby => [:environment, 'db:create'] do
       db_namespace["schema:load"].invoke if ActiveRecord::Base.schema_format == :ruby
     end
   end
@@ -445,7 +445,7 @@ db_namespace = namespace :db do
       end
     end
 
-    task :load_if_sql => 'db:create' do
+    task :load_if_sql => [:environment, 'db:create'] do
       db_namespace["structure:load"].invoke if ActiveRecord::Base.schema_format == :sql
     end
   end
@@ -564,7 +564,7 @@ namespace :railties do
         puts "Copied migration #{migration.basename} from #{name}"
       end
 
-      ActiveRecord::Migration.copy( ActiveRecord::Migrator.migrations_paths.first, railties,
+      ActiveRecord::Migration.copy(ActiveRecord::Migrator.migrations_paths.first, railties,
                                     :on_skip => on_skip, :on_copy => on_copy)
     end
   end

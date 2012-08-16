@@ -3,11 +3,10 @@ require 'active_support/core_ext/kernel/singleton_class'
 
 class ERB
   module Util
-    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;' }
+    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#x27;' }
     JSON_ESCAPE = { '&' => '\u0026', '>' => '\u003E', '<' => '\u003C' }
 
-    # Detect whether 1.9 can transcode with XML escaping.
-    if '"&gt;&lt;&amp;&quot;"' == ('><&"'.encode('utf-8', :xml => :attr) rescue false)
+    if RUBY_VERSION >= '1.9'
       # A utility method for escaping HTML tag characters.
       # This method is also aliased as <tt>h</tt>.
       #
@@ -22,7 +21,7 @@ class ERB
         if s.html_safe?
           s
         else
-          s.encode(s.encoding, :xml => :attr)[1...-1].html_safe
+          s.gsub(/[&"'><]/, HTML_ESCAPE).html_safe
         end
       end
     else
@@ -31,7 +30,7 @@ class ERB
         if s.html_safe?
           s
         else
-          s.gsub(/[&"><]/n) { |special| HTML_ESCAPE[special] }.html_safe
+          s.gsub(/[&"'><]/n) { |special| HTML_ESCAPE[special] }.html_safe
         end
       end
     end

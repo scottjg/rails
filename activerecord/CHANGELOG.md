@@ -1,4 +1,76 @@
-## Rails 3.2.7 (unreleased) ##
+## Rails 3.2.9 (unreleased)
+
+*   Fix `increment!`, `decrement!`, `toggle!` that was skipping callbacks.
+    Fixes #7306.
+
+    *Rafael Mendonça França*
+
+*   Fix AR#create to return an unsaved record when AR::RecordInvalid is
+    raised. Fixes #3217.
+
+    *Dave Yeu*
+
+*   Remove unnecessary transaction when assigning has_one associations with a nil or equal value.
+    Fix #7191.
+
+    *kennyj*
+
+*   Allow store to work with an empty column.
+    Fix #4840.
+
+    *Jeremy Walker*
+
+*   Remove prepared statement from system query in postgresql adapter.
+    Fix #5872.
+
+    *Ivan Evtuhovich*
+
+*   Make sure `:environment` task is executed before `db:schema:load` or `db:structure:load`
+    Fixes #4772.
+
+    *Seamus Abshere*
+
+
+## Rails 3.2.8 (Aug 9, 2012) ##
+
+*   Do not consider the numeric attribute as changed if the old value is zero and the new value
+    is not a string.
+    Fixes #7237.
+
+    *Rafael Mendonça França*
+
+*   Removes the deprecation of `update_attribute`. *fxn*
+
+*   Reverted the deprecation of `composed_of`. *Rafael Mendonça França*
+
+*   Reverted the deprecation of `*_sql` association options. They will
+    be deprecated in 4.0 instead. *Jon Leighton*
+
+*   Do not eager load AR session store. ActiveRecord::SessionStore depends on the abstract store
+    in Action Pack. Eager loading this class would break client code that eager loads Active Record
+    standalone.
+    Fixes #7160
+
+    *Xavier Noria*
+
+*   Do not set RAILS_ENV to "development" when using `db:test:prepare` and related rake tasks.
+    This was causing the truncation of the development database data when using RSpec.
+    Fixes #7175.
+
+    *Rafael Mendonça França*
+
+## Rails 3.2.7 (Jul 26, 2012) ##
+
+*   `:finder_sql` and `:counter_sql` options on collection associations
+    are deprecated. Please transition to using scopes.
+
+    *Jon Leighton*
+
+*   `:insert_sql` and `:delete_sql` options on `has_and_belongs_to_many`
+    associations are deprecated. Please transition to using `has_many
+    :through`
+
+    *Jon Leighton*
 
 *   `composed_of` has been deprecated. You'll have to write your own accessor
     and mutator methods if you'd like to use value objects to represent some
