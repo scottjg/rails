@@ -46,6 +46,7 @@ module ActionMailer
       @parts = []
     end
 
+=begin
     # Convert the part to a mail object which can be included in the parts
     # list of another mail object.
     def to_mail(defaults)
@@ -98,7 +99,19 @@ module ActionMailer
 
       part
     end
+=end
 
+    def to_mail(defaults)
+      real_content_type, ctype_attrs = parse_content_type(defaults)
+      part = Mail::Part.new(:content_type => real_content_type, :content_disposition => "inline", :body => normalize_new_lines(body), :charset => "utf-8")
+
+      raise ArgumentError, "#{self.class}#to_mail: Not supported -- @parts not empty" unless @parts.empty?
+      raise ArgumentError, "#{self.class}#to_mail: Not supported -- transfer_encoding: base64" if (transfer_encoding || "").downcase == "base64"
+      raise ArgumentError, "#{self.class}#to_mail: Not supported -- attachments" if content_disposition == "attachment"
+      raise ArgumentError, "#{self.class}#to_mail: Not supported -- headers on parts" if headers.any?
+
+      part
+    end
     private
       def squish(values={})
         values.delete_if { |k,v| v.nil? }

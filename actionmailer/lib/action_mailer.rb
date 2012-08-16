@@ -32,6 +32,7 @@ rescue LoadError
 end
 
 require 'action_view'
+require 'mail'
 
 module ActionMailer
   def self.load_all!

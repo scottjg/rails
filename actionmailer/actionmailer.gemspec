@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://www.rubyonrails.org"
 
   s.add_dependency('actionpack', version)
+  s.add_dependency('mail', '2.4.4')
 
   s.requirements << 'none'
   s.require_path = 'lib'

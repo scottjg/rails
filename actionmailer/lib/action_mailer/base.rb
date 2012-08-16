@@ -664,6 +664,7 @@ module ActionMailer #:nodoc:
         parts
       end
 
+=begin
       def create_mail
         m = TMail::Mail.new
 
@@ -704,10 +705,52 @@ module ActionMailer #:nodoc:
 
         @mail = m
       end
+=end
+      def clean_address(str)
+        EmailAddress.parse(str, :no_default_name => true).quoted rescue str
+      end
+
+      def create_mail
+        m = Mail.new
+
+        m.charset = charset
+        m.subject = subject
+        m.to = clean_address(recipients)
+        m.from = clean_address(from)
+        m.bcc = bcc unless bcc.nil?
+        m.cc = cc unless cc.nil?
+        m.reply_to = reply_to unless reply_to.nil?
+
+        m.mime_version = mime_version unless mime_version.nil?
+        m.date = sent_on.to_time rescue sent_on if sent_on
+        m.message_id = "<#{Mail.random_tag}@yourdomain.com>"
+
+        real_content_type, ctype_attrs = parse_content_type
+        headers.each { |k, v| m[k] = v }
+
+        if @parts.empty?
+          m.content_type = real_content_type
+          m.charset = ctype_attrs['charset'] if ctype_attrs['charset']
+          m.body = normalize_new_lines(body)
+        else
+          if String === body
+            raise ArgumentError, "#{self.class}#create_mail: Not supported -- string body"
+          end
+
+          @parts.each do |p|
+            part = (Mail::Part === p ? p : p.to_mail(self))
+            m.add_part(part)
+          end
+
+          m.content_type(["multipart", "alternative", m.content_type_parameters])
+        end
+
+        @mail = m
+      end
 
       def perform_delivery_smtp(mail)
         destinations = mail.destinations
-        mail.ready_to_send
+        #mail.ready_to_send
         sender = (mail['return-path'] && mail['return-path'].spec) || Array(mail.from).first
 
         smtp = Net::SMTP.new(smtp_settings[:address], smtp_settings[:port])
