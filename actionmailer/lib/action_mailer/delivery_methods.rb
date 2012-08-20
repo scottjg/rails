@@ -51,7 +51,7 @@ module ActionMailer
       #     :location   => '/usr/sbin/sendmail',
       #     :arguments  => '-i -t'
       #
-      def add_delivery_method(symbol, klass, default_options={})
+      def add_delivery_method(symbol, klass, default_options=nil)
         class_attribute(:"#{symbol}_settings") unless respond_to?(:"#{symbol}_settings")
         send(:"#{symbol}_settings=", default_options)
         self.delivery_methods = delivery_methods.merge(symbol.to_sym => klass).freeze
@@ -66,7 +66,7 @@ module ActionMailer
           raise "Delivery method cannot be nil"
         when Symbol
           if klass = delivery_methods[method]
-            mail.delivery_method(klass, (send(:"#{method}_settings") || {}).merge!(options || {}))
+            mail.delivery_method(klass,(send(:"#{method}_settings") || {}).merge!(options || {}))
           else
             raise "Invalid delivery method #{method.inspect}"
           end
