@@ -57,7 +57,7 @@ module ActionMailer
         self.delivery_methods = delivery_methods.merge(symbol.to_sym => klass).freeze
       end
 
-      def wrap_delivery_behavior(mail, method=nil) #:nodoc:
+      def wrap_delivery_behavior(mail, method=nil, options={}) #:nodoc:
         method ||= self.delivery_method
         mail.delivery_handler = self
 
@@ -66,12 +66,12 @@ module ActionMailer
           raise "Delivery method cannot be nil"
         when Symbol
           if klass = delivery_methods[method]
-            mail.delivery_method(klass, send(:"#{method}_settings"))
+            mail.delivery_method(klass, (send(:"#{method}_settings") || {}).merge!(options || {}))
           else
             raise "Invalid delivery method #{method.inspect}"
           end
         else
-          mail.delivery_method(method)
+          mail.delivery_method(method,options)
         end
 
         mail.perform_deliveries    = perform_deliveries
