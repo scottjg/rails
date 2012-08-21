@@ -83,9 +83,8 @@ module ApplicationTests
 
       images_should_compile = ["a.png", "happyface.png", "happy_face.png", "happy.face.png",
                                "happy-face.png", "happy.happy_face.png", "happy_happy.face.png",
-                               "happy.happy.face.png", "happy", "happy.face", "-happyface",
-                               "-happy.png", "-happy.face.png", "_happyface", "_happy.face.png",
-                               "_happy.png"]
+                               "happy.happy.face.png", "-happy.png", "-happy.face.png",
+                               "_happy.face.png", "_happy.png"]
 
       images_should_compile.each do |filename|
         app_file "app/assets/images/#{filename}", "happy"
@@ -94,20 +93,28 @@ module ApplicationTests
       precompile!
 
       images_should_compile.each do |filename|
-        assert File.exists?("#{app_path}/public/assets/#{filename}")
+        assert_file_exists "#{app_path}/public/assets/#{filename}"
       end
 
-      assert File.exists?("#{app_path}/public/assets/application.js")
-      assert File.exists?("#{app_path}/public/assets/application.css")
+      assert_file_exists("#{app_path}/public/assets/application.js")
+      assert_file_exists("#{app_path}/public/assets/application.css")
 
-      assert !File.exists?("#{app_path}/public/assets/someapplication.js")
-      assert !File.exists?("#{app_path}/public/assets/someapplication.css")
+      assert_no_file_exists("#{app_path}/public/assets/someapplication.js")
+      assert_no_file_exists("#{app_path}/public/assets/someapplication.css")
 
-      assert !File.exists?("#{app_path}/public/assets/something.min.js")
-      assert !File.exists?("#{app_path}/public/assets/something.min.css")
+      assert_no_file_exists("#{app_path}/public/assets/something.min.js")
+      assert_no_file_exists("#{app_path}/public/assets/something.min.css")
 
-      assert !File.exists?("#{app_path}/public/assets/something.else.js")
-      assert !File.exists?("#{app_path}/public/assets/something.else.css")
+      assert_no_file_exists("#{app_path}/public/assets/something.else.js")
+      assert_no_file_exists("#{app_path}/public/assets/something.else.css")
+    end
+
+    def assert_file_exists(filename)
+      assert File.exists?(filename), "missing #{filename}"
+    end
+
+    def assert_no_file_exists(filename)
+      assert !File.exists?(filename), "#{filename} does exist"
     end
 
     test "precompile something.js for directory containing index file" do

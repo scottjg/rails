@@ -1,5 +1,40 @@
 ## Rails 3.2.9 (unreleased)
 
+*   Round usec when comparing timestamp attributes in the dirty tracking.
+    Fixes #6975.
+
+    *kennyj*
+
+*   Use inversed parent for first and last child of has_many association.
+
+    *Ravil Bayramgalin*
+
+*   Fix Column.microseconds and Column.fast_string_to_date to avoid converting
+    timestamp seconds to a float, since it occasionally results in inaccuracies
+    with microsecond-precision times. Fixes #7352.
+
+    *Ari Pollak*
+
+*   Fix `increment!`, `decrement!`, `toggle!` that was skipping callbacks.
+    Fixes #7306.
+
+    *Rafael Mendonça França*
+
+*   Fix AR#create to return an unsaved record when AR::RecordInvalid is
+    raised. Fixes #3217.
+
+    *Dave Yeu*
+
+*   Remove unnecessary transaction when assigning has_one associations with a nil or equal value.
+    Fix #7191.
+
+    *kennyj*
+
+*   Allow store to work with an empty column.
+    Fix #4840.
+
+    *Jeremy Walker*
+
 *   Remove prepared statement from system query in postgresql adapter.
     Fix #5872.
 
@@ -11,7 +46,7 @@
     *Seamus Abshere*
 
 
-## Rails 3.2.8 ##
+## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   Do not consider the numeric attribute as changed if the old value is zero and the new value
     is not a string.

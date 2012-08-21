@@ -509,6 +509,31 @@ class DirtyTest < ActiveRecord::TestCase
     assert_not_nil pirate.previous_changes['updated_on'][1]
     assert !pirate.previous_changes.key?('parrot_id')
     assert !pirate.previous_changes.key?('created_on')
+
+    pirate = Pirate.find_by_catchphrase("Ahoy!")
+    pirate.update_attribute(:catchphrase, "Ninjas suck!")
+
+    assert_equal 2, pirate.previous_changes.size
+    assert_equal ["Ahoy!", "Ninjas suck!"], pirate.previous_changes['catchphrase']
+    assert_not_nil pirate.previous_changes['updated_on'][0]
+    assert_not_nil pirate.previous_changes['updated_on'][1]
+    assert !pirate.previous_changes.key?('parrot_id')
+    assert !pirate.previous_changes.key?('created_on')
+  end
+
+  def test_setting_time_attributes_with_time_zone_field_to_same_time_should_not_be_marked_as_a_change
+    in_time_zone 'Paris' do
+      target = Class.new(ActiveRecord::Base)
+      target.table_name = 'pirates'
+
+      created_on = Time.now
+
+      pirate = target.create(:created_on => created_on)
+      pirate.reload # Here mysql truncate the usec value to 0
+      
+      pirate.created_on = created_on
+      assert !pirate.created_on_changed?
+    end
   end
 
   private
