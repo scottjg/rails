@@ -34,6 +34,25 @@ module ActiveSupport #:nodoc:
       end
     end
 
+    def self.deep_force_encoding(obj, target_encoding="UTF-8")
+      if obj.is_a?(String)
+        return obj.force_encoding(target_encoding).encode!
+      elsif !obj.is_a?(Hash)
+        return obj
+      end
+
+      obj.each do |k, v|
+        case v
+          when Hash
+            deep_force_encoding(v)
+          when Array
+            v.map! { |el| deep_force_encoding(el) }
+          else
+            deep_force_encoding(v)
+        end
+      end
+    end
+
     # Verifies the encoding of the string and raises an exception when it's not valid
     def self.verify!(string)
       raise EncodingError.new("Found characters with invalid encoding") unless verify(string)

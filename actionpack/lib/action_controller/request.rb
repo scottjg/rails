@@ -473,22 +473,7 @@ EOM
       # you'll get a weird error down the road, but our form handling
       # should really prevent that from happening
       def encode_params(params)
-        if params.is_a?(String)
-          return params.force_encoding("UTF-8").encode!
-        elsif !params.is_a?(Hash)
-          return params
-        end
-
-        params.each do |k, v|
-          case v
-            when Hash
-              encode_params(v)
-            when Array
-              v.map! { |el| encode_params(el) }
-            else
-              encode_params(v)
-          end
-        end
+        ActiveSupport::Multibyte.deep_force_encoding(params)
       end
 
       # Convert nested Hashs to HashWithIndifferentAccess and replace

@@ -292,6 +292,7 @@ module ActiveRecord
     # Returns the unserialized object of the attribute.
     def unserialize_attribute(attr_name)
       unserialized_object = object_from_yaml(@attributes[attr_name])
+      unserialized_object = ActiveSupport::Multibyte.deep_force_encoding(unserialized_object)
 
       if unserialized_object.is_a?(self.class.serialized_attributes[attr_name]) || unserialized_object.nil?
         @attributes.frozen? ? unserialized_object : @attributes[attr_name] = unserialized_object
