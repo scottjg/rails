@@ -615,6 +615,21 @@
 
 *   PostgreSQL hstore types are automatically deserialized from the database.
 
+*   Add `ignore_columns`, `reset_ignored_columns`, and `ignored_column?`.
+
+        class Topic < ActiveRecord::Base
+            ignore_columns :attributes, :class
+
+            ignored_column?(:attributes) # => true
+
+            self.new.attributes # => NoMethodError
+            self.new.respond_to?(:attributes) # => NoMethodError
+        end
+
+    Useful on legacy database structures with problematic column names.
+
+    * Nathaniel Jones *
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   Do not consider the numeric attribute as changed if the old value is zero and the new value
