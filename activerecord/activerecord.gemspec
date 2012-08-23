@@ -1,11 +1,13 @@
 # -*- encoding: utf-8 -*-
 version = File.read(File.expand_path("../../RAILS_VERSION",__FILE__)).strip
 
-TEST_ROOT       = File.expand_path(File.dirname(__FILE__))
-ASSETS_ROOT     = TEST_ROOT + "/assets"
-FIXTURES_ROOT   = TEST_ROOT + "/fixtures"
-MIGRATIONS_ROOT = TEST_ROOT + "/migrations"
-SCHEMA_ROOT     = TEST_ROOT + "/schema"
+unless defined?(TEST_ROOT)
+  TEST_ROOT = File.expand_path(File.dirname(__FILE__))
+  ASSETS_ROOT = TEST_ROOT + "/assets"
+  FIXTURES_ROOT = TEST_ROOT + "/fixtures"
+  MIGRATIONS_ROOT = TEST_ROOT + "/migrations"
+  SCHEMA_ROOT = TEST_ROOT + "/schema"
+end
 
 Gem::Specification.new do |s|
  s.platform = Gem::Platform::RUBY
