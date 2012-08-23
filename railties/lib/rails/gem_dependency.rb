@@ -17,6 +17,7 @@ module Rails
     @@framework_gems = {}
 
     def self.add_frozen_gem_path
+      Gem::Deprecate.skip_during do
       @@paths_loaded ||= begin
         source_index = Rails::VendorGemSourceIndex.new(Gem.source_index)
         Gem.clear_paths
@@ -26,6 +27,7 @@ module Rails
           @@framework_gems[name] = spec
         end
         true
+      end
       end
     end
 
