@@ -1,6 +1,8 @@
 # encoding: utf-8
 require 'singleton'
+oldverb = $VERBOSE; $VERBOSE = nil # Nasty and non thread-safe hack
 require 'iconv'
+$VERBOSE = oldverb
 require 'kconv'
 
 module ActiveSupport
