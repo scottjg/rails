@@ -15,7 +15,7 @@ module ActiveRecord
   #   class User < ActiveRecord::Base
   #     store :settings, accessors: [ :color, :homepage ]
   #   end
-  #   
+  #
   #   u = User.new(color: 'black', homepage: '37signals.com')
   #   u.color                          # Accessor stored attribute
   #   u.settings[:country] = 'Denmark' # Any attribute, even if not specified with an accessor
@@ -26,10 +26,10 @@ module ActiveRecord
   #   end
   module Store
     extend ActiveSupport::Concern
-  
+
     module ClassMethods
       def store(store_attribute, options = {})
-        serialize store_attribute, Hash
+        serialize store_attribute, options[:coder] || Hash
         store_accessor(store_attribute, options[:accessors]) if options.has_key? :accessors
       end
 
@@ -37,13 +37,13 @@ module ActiveRecord
         Array(keys).flatten.each do |key|
           define_method("#{key}=") do |value|
             send("#{store_attribute}=", {}) unless send(store_attribute).is_a?(Hash)
-            send(store_attribute)[key] = value
+            send(store_attribute)[key.to_s] = value
             send("#{store_attribute}_will_change!")
           end
-    
+
           define_method(key) do
             send("#{store_attribute}=", {}) unless send(store_attribute).is_a?(Hash)
-            send(store_attribute)[key]
+            send(store_attribute)[key.to_s]
           end
         end
       end
