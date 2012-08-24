@@ -329,7 +329,7 @@ module ActiveRecord
       ADAPTER_NAME = 'PostgreSQL'
 
       NATIVE_DATABASE_TYPES = {
-        :primary_key => "serial primary key",
+        :primary_key => "uuid primary key default uuid_generate_v4()",
         :string      => { :name => "character varying", :limit => 255 },
         :text        => { :name => "text" },
         :integer     => { :name => "integer" },
