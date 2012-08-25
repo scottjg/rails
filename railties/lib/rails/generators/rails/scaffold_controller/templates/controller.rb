@@ -92,7 +92,11 @@ class <%= controller_class_name %>Controller < ApplicationController
     # params.require(:person).permit(:name, :age)
     # Also, you can specialize this method with per-user checking of permissible attributes.
     def <%= "#{singular_table_name}_params" %>
+      <%- unless attributes.empty? -%>
       params.require(<%= ":#{singular_table_name}" %>).permit(<%= attributes.map {|a| ":#{a.name}" }.sort.join(', ') %>)
+      <%- else -%>
+      params[<%= ":#{singular_table_name}" %>]
+      <%- end -%>
     end
 end
 <% end -%>
