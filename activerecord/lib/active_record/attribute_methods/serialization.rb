@@ -38,6 +38,12 @@ module ActiveRecord
           # merge new serialized attribute and create new hash to ensure that each class in inheritance hierarchy
           # has its own hash of own serialized attributes
           self.serialized_attributes = serialized_attributes.merge(attr_name.to_s => coder)
+
+          if coder.is_a?(Coders::YAMLColumn)
+            validates_each attr_name do |record, attr, value|
+              record.errors.add attr, 'wrong type.' if value && value.class != class_name
+            end
+          end
         end
       end
 

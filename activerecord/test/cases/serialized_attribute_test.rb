@@ -10,6 +10,7 @@ class SerializedAttributeTest < ActiveRecord::TestCase
   def teardown
     super
     Topic.serialize("content")
+    Topic.reset_callbacks(:validate)
   end
 
   def test_list_of_serialized_attributes
@@ -120,6 +121,12 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     assert topic.save
     Topic.serialize(:content, Hash)
     assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.find(topic.id).content }
+  end
+
+  def test_serialized_attribute_should_raise_exception_on_valid_with_wrong_type
+    Topic.serialize(:content, Hash)
+    topic = Topic.new(:content => "string")
+    refute topic.valid?
   end
 
   def test_serialized_attribute_with_class_constraint
