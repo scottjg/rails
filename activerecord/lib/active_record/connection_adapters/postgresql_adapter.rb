@@ -50,6 +50,43 @@ module ActiveRecord
             super
           end
         end
+
+        def hstore_to_string(object)
+          if Hash === object
+            object.map { |k,v|
+              "#{escape_hstore(k)}=>#{escape_hstore(v)}"
+            }.join ','
+          else
+            object
+          end
+        end
+
+        def string_to_hstore(string)
+          if string.nil?
+            nil
+          elsif String === string
+            Hash[string.scan(HstorePair).map { |k,v|
+              v = v.upcase == 'NULL' ? nil : v.gsub(/^"(.*)"$/,'\1').gsub(/\\(.)/, '\1')
+              k = k.gsub(/^"(.*)"$/,'\1').gsub(/\\(.)/, '\1')
+              [k,v]
+            }]
+          else
+            string
+          end
+        end
+
+        private
+          HstorePair = begin
+            quoted_string = /"[^"\\]*(?:\\.[^"\\]*)*"/
+            unquoted_string = /(?:\\.|[^\s,])[^\s=,\\]*(?:\\.[^\s=,\\]*|=[^,>])*/
+            /(#{quoted_string}|#{unquoted_string})\s*=>\s*(#{quoted_string}|#{unquoted_string})/
+          end
+
+          def escape_hstore(value)
+              value.nil?         ? 'NULL'
+            : value == ""        ? '""'
+            :                      '"%s"' % value.to_s.gsub(/(["\\])/, '\\\\\1')
+          end
       end
       # :startdoc:
 
@@ -115,6 +152,8 @@ module ActiveRecord
             # Arrays
             when /^\D+\[\]$/
               :string
+            when 'hstore'
+              :hstore
             # Object identifier types
             when 'oid'
               :integer
@@ -178,6 +217,9 @@ module ActiveRecord
             # Arrays
             when /\A'(.*)'::"?\D+"?\[\]\z/
               $1
+            # Hstore
+            when /\A'(.*)'::hstore\z/
+              $1
             # Object identifier types
             when /\A-?\d+\z/
               $1
@@ -220,6 +262,10 @@ module ActiveRecord
         def uuid(name, options = {})
           column(name, 'uuid', options)
         end
+
+        def hstore(name, options = {})
+          column(name, 'hstore', options)
+        end
       end
 
       ADAPTER_NAME = 'PostgreSQL'
@@ -239,6 +285,7 @@ module ActiveRecord
         :boolean     => { :name => "boolean" },
         :xml         => { :name => "xml" },
         :tsvector    => { :name => "tsvector" },
+        :hstore      => { :name => "hstore" },
         :uuid        => { :name => "uuid" },
       }
 
@@ -438,6 +485,11 @@ module ActiveRecord
         return super unless column
 
         case value
+        when Hash
+          case column.sql_type
+          when 'hstore' then super(PostgreSQLColumn.hstore_to_string(value), column)
+          else super
+          end
         when Float
           return super unless value.infinite? && column.type == :datetime
           "'#{value.to_s.downcase}'"
@@ -469,6 +521,9 @@ module ActiveRecord
         when String
           return super unless 'bytea' == column.sql_type
           { :value => value, :format => 1 }
+        when Hash
+          return super unless 'hstore' == column.sql_type
+          PostgreSQLColumn.hstore_to_string(value)
         else
           super
         end
