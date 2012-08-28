@@ -168,6 +168,16 @@ class AssertSelectTest < ActionController::TestCase
     end
   end
 
+  def test_text_and_count_options_produce_reasonable_message
+    render_html %Q{<div id="1">bar</div><div id="2">foo</div>}
+    assert_failure(/Expected exactly 3 elements matching \"div\" with text \"foo\", found 1/) do
+      assert_select "div", :count => 3, :text => 'foo'
+    end
+    assert_failure(/Expected exactly 3 elements matching \"div\" with html \"foo\", found 1/) do
+      assert_select "div", :count => 3, :html => '<div id="1">bar</div>'
+    end
+  end
+
   def test_substitution_values
     render_html %Q{<div id="1">foo</div><div id="2">foo</div>}
     assert_select "div#?", /\d+/ do |elements|

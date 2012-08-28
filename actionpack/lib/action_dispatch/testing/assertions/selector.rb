@@ -1,4 +1,5 @@
 require 'action_controller/vendor/html-scanner'
+require 'active_support/core_ext/object/blank'
 
 #--
 # Copyright (c) 2006 Assaf Arkin (http://labnotes.org)
@@ -282,14 +283,26 @@ module ActionDispatch
             end
           end
         end
-        # Expecting foo found bar element only if found zero, not if
-        # found one but expecting two.
-        message ||= content_mismatch if matches.empty?
+
         # Test minimum/maximum occurrence.
         min, max, count = equals[:minimum], equals[:maximum], equals[:count]
 
-        # FIXME: minitest provides messaging when we use assert_operator,
-        # so is this custom message really needed?
+        # Expecting foo found bar element only if found zero, not if
+        # found one but expecting two.
+        if message.blank?
+          if matches.empty?
+            message = content_mismatch
+          elsif equals[:text].present?
+            message = %(Expected #{count_description(min, max, count)} matching "#{selector.to_s}" with text "#{equals[:text]}", found #{matches.size})
+          elsif equals[:html].present?
+            message = %(Expected #{count_description(min, max, count)} matching "#{selector.to_s}" with html #{equals[:html]}, found #{matches.size})
+          else
+            # FIXME: minitest provides messaging when we use assert_operator,
+            # so is this custom message really needed?
+            message = %(Expected #{count_description(min, max, count)} matching "#{selector.to_s}", found #{matches.size}.)
+          end
+        end
+
         message = message || %(Expected #{count_description(min, max, count)} matching "#{selector.to_s}", found #{matches.size}.)
         if count
           assert_equal matches.size, count, message
@@ -311,6 +324,17 @@ module ActionDispatch
 
         # Returns all matches elements.
         matches
+      end
+
+      def build_failure_message(selector, matches, equals) #:nodoc"
+        message = %(Expected #{count_description(equals[:min], equals[:max], equals[:count])} matching "#{selector.to_s}")
+        # Make the error message meaningful when the <tt>:text</tt> option is
+        # passed.
+        if equals[:text]
+          message << %( with text #{equals[:text]})
+        end
+        message << ", found #{matches.size}."
+        message
       end
 
       def count_description(min, max, count) #:nodoc:
