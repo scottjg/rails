@@ -604,6 +604,10 @@ class RequestTest < ActiveSupport::TestCase
     request.expects(:parameters).at_least_once.returns({})
     assert_equal [Mime::XML], request.formats
 
+    request = stub_request 'HTTP_ACCEPT' => 'application/json, text/javascript, */*'
+    request.expects(:parameters).at_least_once.returns({})
+    assert_equal with_set(Mime::JSON, Mime::JS, Mime::ALL), request.formats
+
     request = stub_request
     request.expects(:parameters).at_least_once.returns({ :format => :txt })
     assert_equal [Mime::TEXT], request.formats
