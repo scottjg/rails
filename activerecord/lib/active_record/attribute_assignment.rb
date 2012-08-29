@@ -1,6 +1,7 @@
 
 module ActiveRecord
   module AttributeAssignment
+    include ActiveModel::MassAssignmentSecurity
     include ActiveModel::ForbiddenAttributesProtection
     # Allows you to set all the attributes at once by passing in a hash with keys
     # matching the attribute names (which again matches the column names).
