@@ -13,12 +13,13 @@ module ActionController
   end
 
   class Parameters < ActiveSupport::HashWithIndifferentAccess
+    cattr_accessor :permit_all_parameters, instance_accessor: false
     attr_accessor :permitted
     alias :permitted? :permitted
 
     def initialize(attributes = nil)
       super(attributes)
-      @permitted = false
+      @permitted = self.class.permit_all_parameters
     end
 
     def permit!
@@ -104,6 +105,8 @@ module ActionController
     include ActiveSupport::Rescuable
 
     included do
+      config_accessor :permit_all_parameters
+
       rescue_from(ActionController::ParameterMissing) do |parameter_missing_exception|
         render text: "Required parameter missing: #{parameter_missing_exception.param}", status: :bad_request
       end
