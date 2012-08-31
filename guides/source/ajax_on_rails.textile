@@ -16,11 +16,36 @@ h3. An introdocution to AJAX
 
 h3. rails.js and "Unobtrusive Javascript"
 
+Rails 3 introduced major changes in the way that Rails applications utilized
+Javascript. Of course, the asset pipeline helped improve the way we organize
+and serve Javascript code, but there was another major innovation: UJS.
+
 h4. "Unobtrusive Javascript"
+
+h4. rails.js
+
++rails.js+ is a file that any UJS adapter should implement. It defines the
+Javascript half of the AJAX interactions that go with the HTML attributes
+that Rails' helpers generate.
 
 h4. jquery-ujs
 
+The default rails.js adapter uses jQuery. Known as "jquery-ujs":https://github.com/rails/jquery-ujs,
+it implements all of the rails.js methods using the jQuery library.
+
+If you're using jQuery in the rest of your application, choosing this adapter
+will allow you to not include two separate Javascript libraries for Rails'
+helpers and your application.
+
 h4. prototype-ujs
+
+Previous versions of Rails used the Prototype Javascript library heavily, and
+some still prefer Prototype to jQuery. If you'd prefer to use Prototype as
+your backend, you can use the "prototype-ujs adapter":https://github.com/rails/prototype-ujs instead.
+
+If you're using Prototype in the rest of your application, choosing this adapter
+will allow you to not include two separate Javascript libraries for Rails'
+helpers and your application.
 
 h3. Built-in Rails Helpers
 
@@ -58,13 +83,57 @@ h5. Capybara
 
 h5. Cucumber
 
+h5. Phantom.js
+
+h5. Zombie.js
+
 h3. Developing SPAs with Rails
+
+As sites became more and more AJAX heavy, people eventually turned it up to 11
+and created sites that are almost entirely AJAX. Because they only load one
+initial HTML page, they became known as Single Page Applications. If you
+find yourself writing a large amount of AJAX, Rails' defaults may not be
+enough.
+
+There are many different frameworks for building these kinds of sites, and
+it's a fairly new strategy in general. This means that there are a lot of
+frameworks battling it out for marketshare. With that said, there are two that
+are favored by the largest number of Rails developers: Ember and Backbone.js.
 
 h5. Ember
 
+Ember was created by Rails Core member Yehuda Katz. "The Ember homepage":http://emberjs.com/
+describes Ember as "a framework for creating ambitious web applications".
+"Applications" is a good word, as Ember is well-suited for developing complex,
+heavy applications, and is a bit verbose for sites that just need a smattering
+of Javascript.
+
+Ember is similar to Rails in that it is 'full-stack,' and provides you with
+many conventions so that you don't need to do a lot of configuration.
+
 h5. Backbone.js
 
+"Backbone.js":http://backbonejs.org/ was created by Jeremy Ashkenas, and is a
+very lightweight framework. Backbone "gives structure to web applications,"
+which makes it a great choice for apps that are starting to devolve into
+'callback spaghetti,' or that only need light amounts of interactivity.
+
+That doesn't mean that you can't build large applications with Backbone, and
+"DocumentCloud":http://www.documentcloud.org/, the company that Jeremy
+extracted Backbone from has done just that. Like Sinatra, building large apps
+with Backbone gives you a large degree of freedom to build exactly what you
+want.
+
 h5. Throne of JS
+
+Since SPAs are a very hot topic, there are many competing frameworks. Recently,
+a conference called "Throne of JS" was held in New York City. Covering seven
+different Javascript frameworks, the conference focused on bringing the
+creators of all of them together to discuss their strengths and weaknesses.
+
+While "the offical site":http://throneofjs.com/ is a bit light, the videos
+will all eventually be posted "on InfoQ":http://www.infoq.com/throne_of_js/
+Keep checking back as they add more.
 
 h3. Other resources
 
