@@ -1,11 +1,11 @@
 h2. AJAX on Rails
 
-This guide covers the built-in Ajax/JavaScript functionality of Rails (and more);
-it will enable you to create rich and dynamic AJAX applications with ease! We will
-cover the following topics:
+This guide covers the built-in Ajax/JavaScript functionality of Rails (and
+more); it will enable you to create rich and dynamic AJAX applications with
+ease! We will cover the following topics:
 
 * Quick introduction to AJAX and related technologies
-* Unobtrusive JavaScript helpers with drivers for Prototype, jQuery etc
+* Unobtrusive JavaScript helpers
 * Testing JavaScript functionality
 
 endprologue.
@@ -14,51 +14,54 @@ h3. Hello AJAX - a Quick Intro
 
 AJAX is about updating parts of a web page without reloading the page. An AJAX
 call happens as a response to an event, like when the page finished loading or
-when a user clicks on an element. For example, let say you click on a link, which
-would usually take you to a new page, but instead of doing that, an asynchronous
-HTTP request is made and the response is evaluated with JavaScript. That way the
-page is not reloaded and new information can be dynamically included in the page.
-The way that happens is by inserting, removing or changing parts of the DOM. The
-DOM, or Document Object Model, is a convention to represent the HTML document as
-a set of nodes that contain other nodes. For example, a list of names is represented
-as a +ul+ element node containing several +li+ element nodes. An AJAX call can
-be made to obtain a new list item to include, and append it inside a +li+ node to
-the +ul+ node.
+when a user clicks on an element. For example, let say you click on a link,
+which would usually take you to a new page, but instead of doing that, an
+asynchronous HTTP request is made and the response is evaluated with
+JavaScript. That way the page is not reloaded and new information can be
+dynamically included in the page.  The way that happens is by inserting,
+removing or changing parts of the DOM. The DOM, or Document Object Model, is a
+convention to represent the HTML document as a set of nodes that contain other
+nodes. For example, a list of names is represented as a +ul+ element node
+containing several +li+ element nodes. An AJAX call can be made to obtain a new
+list item to include, and append it inside a +li+ node to the +ul+ node.
 
 h4. Asynchronous JavaScript + XML
 
-AJAX means Asynchronous JavaScript + XML. Asynchronous means that the page is not
-reloaded, the request made is separate from the regular page request. JavaScript
-is used to evaluate the response and the XML part is a bit misleading as XML is
-not required, you respond to the HTTP request with JSON or regular HTML as well.
+AJAX means Asynchronous JavaScript + XML. Asynchronous means that the page is
+not reloaded, the request made is separate from the regular page request.
+JavaScript is used to evaluate the response and the XML part is a bit
+misleading as XML is not required, you respond to the HTTP request with JSON or
+regular HTML as well.
 
 h4. The DOM
 
 The DOM (Document Object Model) is a convention to represent HTML (or XML)
-documents, as a set of nodes that act as objects and contain other nodes. You can
-have a +div+ element that contains other +div+ elements as well as +p+ elements
-that contain text.
+documents, as a set of nodes that act as objects and contain other nodes. You
+can have a +div+ element that contains other +div+ elements as well as +p+
+elements that contain text.
 
 h4. Standard HTML communication vs AJAX
 
-In regular HTML comunications, when you click on a link, the browser makes an HTTP
-+GET+ request, the server responds with a new HTML document that the browsers renders
-and then replaces the previous one. The same thing happens when you click a button to
-submit a form, except that you make and HTTP +POST+ request, but you also get a new
-HTML document that the browser renders and replaces the current one. In AJAX
-communications, the request is separate, and the response is evaluated in JavaScript
-instead of rendered by the browser. That way you can have more control over the content
-that gets returned, and the page is not reloaded.
+In regular HTML comunications, when you click on a link, the browser makes an
+HTTP +GET+ request, the server responds with a new HTML document that the
+browsers renders and then replaces the previous one. The same thing happens
+when you click a button to submit a form, except that you make and HTTP +POST+
+request, but you also get a new HTML document that the browser renders and
+replaces the current one. In AJAX communications, the request is separate, and
+the response is evaluated in JavaScript instead of rendered by the browser.
+That way you can have more control over the content that gets returned, and the
+page is not reloaded.
 
 h3. Built-in Rails Helpers
 
-Rails 4.0 ships with "jQuery":http://jquery.com as the default JavaScript library.
-The Gemfile contains +gem 'jquery-rails'+ which provides the +jquery.js+ and
-+jquery_ujs.js+ files via the asset pipeline.
+Rails 4.0 ships with "jQuery":http://jquery.com as the default JavaScript
+library.  The Gemfile contains +gem 'jquery-rails'+ which provides the
++jquery.js+ and +jquery_ujs.js+ files via the asset pipeline.
 
-You will have to use the +require+ directive to tell Sprockets to load +jquery.js+
-and +jquery.js+. For example, a new Rails application includes a default
-+app/assets/javascripts/application.js+ file which contains the following lines:
+You will have to use the +require+ directive to tell Sprockets to load
++jquery.js+ and +jquery.js+. For example, a new Rails application includes a
+default +app/assets/javascripts/application.js+ file which contains the
+following lines:
 
 <plain>
 // ...
@@ -67,9 +70,9 @@ and +jquery.js+. For example, a new Rails application includes a default
 // ...
 </plain>
 
-The +application.js+ file acts like a manifest and is used to tell Sprockets the
-files that you wish to require. In this case, you are requiring the files +jquery.js+
-and +jquery_ujs.js+ provided by the +jquery-rails+ gem.
+The +application.js+ file acts like a manifest and is used to tell Sprockets
+the files that you wish to require. In this case, you are requiring the files
++jquery.js+ and +jquery_ujs.js+ provided by the +jquery-rails+ gem.
 
 If the application is not using the asset pipeline, this can be accessed as:
 
@@ -161,9 +164,14 @@ will produce
 
 h4. The Quintessential AJAX Rails Helper: link_to_remote
 
-Let's start with what is probably the most often used helper: +link_to_remote+. It has an interesting feature from the documentation point of view: the options supplied to +link_to_remote+ are shared by all other AJAX helpers, so learning the mechanics and options of +link_to_remote+ is a great help when using other helpers.
+Let's start with what is probably the most often used helper: +link_to_remote+.
+It has an interesting feature from the documentation point of view: the options
+supplied to +link_to_remote+ are shared by all other AJAX helpers, so learning
+the mechanics and options of +link_to_remote+ is a great help when using other
+helpers.
 
-The signature of +link_to_remote+ function is the same as that of the standard +link_to+ helper:
+The signature of +link_to_remote+ function is the same as that of the standard
++link_to+ helper:
 
 <ruby>
 def link_to_remote(name, options = {}, html_options = nil)
@@ -230,7 +238,9 @@ link_to_remote "Update record",
   :with => "'status=' <plus> 'encodeURIComponent($('status').value) <plus> '&completed=' <plus> $('completed')"
 </ruby>
 
-This generates a remote link which adds 2 parameters to the standard URL generated by Rails, taken from the page (contained in the elements matched by the 'status' and 'completed' DOM id).
+This generates a remote link which adds 2 parameters to the standard URL
+generated by Rails, taken from the page (contained in the elements matched by
+the 'status' and 'completed' DOM id).
 
 ** *Callbacks* Since an AJAX call is typically asynchronous, as its name suggests (this is not a rule, and you can fire a synchronous request - see the last option, +:type+) your only way of communicating with a request once it is fired is via specifying callbacks. There are six options at your disposal (in fact 508, counting all possible response types, but these six are the most frequent and therefore specified by a constant):
 *** +:loading:+ =&gt; +code+ The request is in the process of receiving the data, but the transfer is not completed yet.
@@ -263,11 +273,18 @@ link_to_remote "Add new item",
 ** If you specify the +href+ parameter, the AJAX link will degrade gracefully, i.e. the link will point to the URL even if JavaScript is disabled in the client browser
 ** +link_to_remote+ gains its AJAX behavior by specifying the remote call in the onclick handler of the link. If you supply +html_options[:onclick]+ you override the default behavior, so use this with care!
 
-We are finished with +link_to_remote+. I know this is quite a lot to digest for one helper function, but remember, these options are common for all the rest of the Rails view helpers, so we will take a look at the differences / additional parameters in the next sections.
+We are finished with +link_to_remote+. I know this is quite a lot to digest for
+one helper function, but remember, these options are common for all the rest of
+the Rails view helpers, so we will take a look at the differences / additional
+parameters in the next sections.
 
 h4. AJAX Forms
 
-There are three different ways of adding AJAX forms to your view using Rails Prototype helpers. They are slightly different, but striving for the same goal: instead of submitting the form using the standard HTTP request/response cycle, it is submitted asynchronously, thus not reloading the page. These methods are the following:
+There are three different ways of adding AJAX forms to your view using Rails
+Prototype helpers. They are slightly different, but striving for the same goal:
+instead of submitting the form using the standard HTTP request/response cycle,
+it is submitted asynchronously, thus not reloading the page. These methods are
+the following:
 
 * +remote_form_for+ (and its alias +form_remote_for+) is tied to Rails most tightly of the three since it takes a resource, model or array of resources (in case of a nested resource) as a parameter.
 * +form_remote_tag+ AJAXifies the form by serializing and sending its data in the background
@@ -283,7 +300,9 @@ h5. +submit_to_remote+
 
 h4. Serving JavaScript
 
-First we'll check out how to send JavaScript to the server manually. You are practically never going to need this, but it's interesting to understand what's going on under the hood.
+First we'll check out how to send JavaScript to the server manually. You are
+practically never going to need this, but it's interesting to understand what's
+going on under the hood.
 
 <ruby>
 def javascript_test
@@ -292,13 +311,21 @@ def javascript_test
 end
 </ruby>
 
-(Note: if you want to test the above method, create a +link_to_remote+ with a single parameter - +:url+, pointing to the +javascript_test+ action)
+(Note: if you want to test the above method, create a +link_to_remote+ with a
+single parameter - +:url+, pointing to the +javascript_test+ action)
 
-What happens here is that by specifying the Content-Type header variable, we instruct the browser to evaluate the text we are sending over (rather than displaying it as plain text, which is the default behavior).
+What happens here is that by specifying the Content-Type header variable, we
+instruct the browser to evaluate the text we are sending over (rather than
+displaying it as plain text, which is the default behavior).
 
 h3. Testing JavaScript
 
-JavaScript testing reminds me the definition of the world 'classic' by Mark Twain: "A classic is something that everybody wants to have read and nobody wants to read." It's similar with JavaScript testing: everyone would like to have it, yet it's not done by too much developers as it is tedious, complicated, there is a proliferation of tools and no consensus/accepted best practices, but we will nevertheless take a stab at it:
+JavaScript testing reminds me the definition of the world 'classic' by Mark
+Twain: "A classic is something that everybody wants to have read and nobody
+wants to read." It's similar with JavaScript testing: everyone would like to
+have it, yet it's not done by too much developers as it is tedious,
+complicated, there is a proliferation of tools and no consensus/accepted best
+practices, but we will nevertheless take a stab at it:
 
 * (Fire)Watir
 * Selenium
