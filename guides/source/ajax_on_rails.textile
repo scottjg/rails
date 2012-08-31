@@ -127,7 +127,7 @@ want.
 h5. Throne of JS
 
 Since SPAs are a very hot topic, there are many competing frameworks. Recently,
-a conference called "Throne of JS" was held in New York City. Covering seven
+a conference called "Throne of JS" was held in Toronto. Covering seven
 different Javascript frameworks, the conference focused on bringing the
 creators of all of them together to discuss their strengths and weaknesses.
 
