@@ -30,6 +30,11 @@ class ActiveModelMassUpdateProtectionTest < ActiveSupport::TestCase
     assert_equal({ "a" => "b" }, Account.new.sanitize_for_mass_assignment(params))
   end
 
+  test "attributes forbidden by default are cleaned" do
+    params = ProtectedParams.new({ "a" => "b", "id" => 1 }).permit!
+    assert_equal({ "a" => "b" }, Account.new.sanitize_for_mass_assignment(params))
+  end
+
   test "regular attributes should still be allowed" do
      assert_equal({ a: "b" }, Account.new.sanitize_for_mass_assignment(a: "b"))
   end
