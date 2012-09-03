@@ -142,4 +142,6 @@
 
 *   Remove deprecated ActiveSupport::JSON::Variable. *Erich Menge*
 
+*   ```ERB::Util.html_escape``` encodes single quote as ```#39```. Decimal form has better support in old browsers. *Kalys Osmonov*
+
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activesupport/CHANGELOG.md) for previous changes.
