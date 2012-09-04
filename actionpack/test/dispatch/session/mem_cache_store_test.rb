@@ -35,8 +35,8 @@ class MemCacheStoreTest < ActionDispatch::IntegrationTest
 
   begin
     require 'dalli'
-    ss = Dalli::Client.new('localhost:11211').stats
-    raise Dalli::DalliError unless ss['localhost:11211']
+    memcache = Dalli::Client.new('127.0.0.1:11211')
+    memcache.set('ping', '')
 
     def test_setting_and_getting_session_value
       with_test_route_set do
@@ -165,7 +165,7 @@ class MemCacheStoreTest < ActionDispatch::IntegrationTest
         assert_not_equal session_id, cookies['_session_id']
       end
     end
-  rescue LoadError, RuntimeError, Dalli::DalliError
+  rescue LoadError, RuntimeError
     $stderr.puts "Skipping MemCacheStoreTest tests. Start memcached and try again."
   end
 
