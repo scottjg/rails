@@ -180,6 +180,10 @@ module ActionController
         options = env[ENV_SESSION_OPTIONS_KEY]
 
         if !session_data.is_a?(AbstractStore::SessionHash) || session_data.loaded? || options[:expire_after]
+          request = ActionController::Request.new(env)
+
+          return response if (options[:secure] && !request.ssl?)
+        
           session_data.send(:load!) if session_data.is_a?(AbstractStore::SessionHash) && !session_data.loaded?
 
           sid = options[:id] || generate_sid
@@ -188,23 +192,12 @@ module ActionController
             return response
           end
 
-          if (env["rack.request.cookie_hash"] && env["rack.request.cookie_hash"][@key] != sid) || options[:expire_after]
-            cookie = Rack::Utils.escape(@key) + '=' + Rack::Utils.escape(sid)
-            cookie << "; domain=#{options[:domain]}" if options[:domain]
-            cookie << "; path=#{options[:path]}" if options[:path]
-            if options[:expire_after]
-              expiry = Time.now + options[:expire_after]
-              cookie << "; expires=#{expiry.httpdate}"
-            end
-            cookie << "; Secure" if options[:secure]
-            cookie << "; HttpOnly" if options[:httponly]
+          request_cookies = env["rack.request.cookie_hash"]
 
-            headers = response[1]
-            unless headers[SET_COOKIE].blank?
-              headers[SET_COOKIE] << "\n#{cookie}"
-            else
-              headers[SET_COOKIE] = cookie
-            end
+          if (request_cookies.nil? || request_cookies[@key] != sid) || options[:expire_after]
+            cookie = {:value => sid}
+            cookie[:expires] = Time.now + options[:expire_after] if options[:expire_after]
+            Rack::Utils.set_cookie_header!(response[1], @key, cookie.merge(options))
           end
         end
 
