@@ -1,8 +1,8 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'rails'
-  s.version = '2.3.9'
-  s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
+  s.version = '2.3.14'
+  s.summary = "Customised Rails for REMS3." 
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick
     on top of either MySQL, PostgreSQL, SQLite, DB2, SQL Server, or Oracle with eRuby- or Builder-based templates.
@@ -23,9 +23,4 @@ Gem::Specification.new do |s|
   s.bindir = "bin"
   s.executables = ["rails"]
   s.default_executable = "rails"
- 
-  s.author = "David Heinemeier Hansson"
-  s.email = "david@loudthinking.com"
-  s.homepage = "http://www.rubyonrails.org"
-  s.rubyforge_project = "rails"
 end
