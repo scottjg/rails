@@ -10,4 +10,8 @@ Gem::Specification.new do |s|
   s.add_dependency('rack', '~> 1.1.0')
   s.require_path = 'lib'
   s.autorequire = 'action_controller'
+  s.author = "David Heinemeier Hansson"
+  s.email = "david@loudthinking.com"
+  s.homepage = "http://www.rubyonrails.org"
+  s.rubyforge_project = "actionpack"
 end

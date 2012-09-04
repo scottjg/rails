@@ -7,4 +7,8 @@ Gem::Specification.new do |s|
   s.files = Dir['CHANGELOG', 'README', 'lib/**/*']
   s.require_path = 'lib'
   s.has_rdoc = true
+  s.author = "David Heinemeier Hansson"
+  s.email = "david@loudthinking.com"
+  s.homepage = "http://www.rubyonrails.org"
+  s.rubyforge_project = "activesupport"
 end
