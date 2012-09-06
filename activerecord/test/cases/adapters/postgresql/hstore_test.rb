@@ -12,10 +12,8 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
   def setup
     @connection = ActiveRecord::Base.connection
     begin
-      @connection.transaction do
-        @connection.create_table('hstores') do |t|
-          t.hstore 'tags', :default => ''
-        end
+      @connection.create_table('hstores') do |t|
+        t.hstore 'tags', :default => ''
       end
     rescue ActiveRecord::StatementInvalid
       return skip "do not test on PG without hstore"
@@ -94,7 +92,6 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
     x.tags = { '"a\'' => 'b' }
     assert x.save!
   end
-
 
   def test_select
     @connection.execute "insert into hstores (tags) VALUES ('1=>2')"
