@@ -276,24 +276,8 @@ module ActiveSupport
         if block_given?
           options = merged_options(options)
           key = namespaced_key(name, options)
-          unless options[:force]
-            entry = instrument(:read, name, options) do |payload|
-              payload[:super_operation] = :fetch if payload
-              read_entry(key, options)
-            end
-          end
-          if entry && entry.expired?
-            race_ttl = options[:race_condition_ttl].to_i
-            if race_ttl && (Time.now - entry.expires_at <= race_ttl)
-              # When an entry has :race_condition_ttl defined, put the stale entry back into the cache
-              # for a brief period while the entry is begin recalculated.
-              entry.expires_at = Time.now + race_ttl
-              write_entry(key, entry, :expires_in => race_ttl * 2)
-            else
-              delete_entry(key, options)
-            end
-            entry = nil
-          end
+          entry = find_cached_entry(key, name, options) unless options[:force]
+          entry = handle_expired_entry(entry, key, options)
 
           if entry
             instrument(:fetch_hit, name, options) { |payload| }
@@ -309,6 +293,33 @@ module ActiveSupport
           read(name, options)
         end
       end
+
+      private
+
+      def find_cached_entry(key, name, options)
+        instrument(:read, name, options) do |payload|
+          payload[:super_operation] = :fetch if payload
+          read_entry(key, options)
+        end
+      end
+
+      def handle_expired_entry(entry, key, options)
+        if entry && entry.expired?
+          race_ttl = options[:race_condition_ttl].to_i
+          if race_ttl && (Time.now - entry.expires_at <= race_ttl)
+            # When an entry has :race_condition_ttl defined, put the stale entry back into the cache
+            # for a brief period while the entry is begin recalculated.
+            entry.expires_at = Time.now + race_ttl
+            write_entry(key, entry, :expires_in => race_ttl * 2)
+          else
+            delete_entry(key, options)
+          end
+          return nil
+        end
+        entry
+      end
+
+      public
 
       # Fetches data from the cache, using the given key. If there is data in
       # the cache with the given key, then that data is returned. Otherwise,
