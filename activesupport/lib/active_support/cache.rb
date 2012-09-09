@@ -277,19 +277,12 @@ module ActiveSupport
 
         options = merged_options(options)
         key = namespaced_key(name, options)
+
         entry = find_cached_entry(key, name, options) unless options[:force]
         entry = handle_expired_entry(entry, key, options)
+        return get_entry_value(entry, name, options) if entry
 
-        if entry
-          instrument(:fetch_hit, name, options) { |payload| }
-          entry.value
-        else
-          result = instrument(:generate, name, options) do |payload|
-            yield(name)
-          end
-          write(name, result, options)
-          result
-        end
+        save_block_result_to_cache(name, options) { |name| yield name }
       end
 
       private
@@ -315,6 +308,19 @@ module ActiveSupport
           return nil
         end
         entry
+      end
+
+      def get_entry_value(entry, name, options)
+        instrument(:fetch_hit, name, options) { |payload| }
+        entry.value
+      end
+
+      def save_block_result_to_cache(name, options)
+        result = instrument(:generate, name, options) do |payload|
+          yield(name)
+        end
+        write(name, result, options)
+        result
       end
 
       public
