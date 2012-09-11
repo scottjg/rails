@@ -75,7 +75,7 @@ module ActiveRecord
 
         case type
         when :string, :text        then value
-        when :integer              then value.to_i rescue value ? 1 : 0
+        when :integer              then value.to_i
         when :float                then value.to_f
         when :decimal              then klass.value_to_decimal(value)
         when :datetime, :timestamp then klass.string_to_time(value)
@@ -93,7 +93,7 @@ module ActiveRecord
 
         case type
         when :string, :text        then var_name
-        when :integer              then "(#{var_name}.to_i rescue #{var_name} ? 1 : 0)"
+        when :integer              then "(#{var_name}.to_i)"
         when :float                then "#{var_name}.to_f"
         when :decimal              then "#{klass}.value_to_decimal(#{var_name})"
         when :datetime, :timestamp then "#{klass}.string_to_time(#{var_name})"
@@ -152,7 +152,13 @@ module ActiveRecord
           return string unless string.is_a?(String)
           return nil if string.empty?
 
-          string_to_time "2000-01-01 #{string}"
+          dummy_time_string = "2000-01-01 #{string}"
+
+          fast_string_to_time(dummy_time_string) || begin
+            time_hash = Date._parse(dummy_time_string)
+            return nil if time_hash[:hour].nil?
+            new_time(*time_hash.values_at(:year, :mon, :mday, :hour, :min, :sec, :sec_fraction))
+          end
         end
 
         # convert something to a boolean
