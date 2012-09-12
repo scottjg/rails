@@ -1,5 +1,10 @@
 ## Rails 3.2.9 (unreleased) ##
 
+*   Ensure double quotes in HTML attribute values are always encoded.
+    Fixes #7609.
+
+    *Joshua Flanagan*
+
 *   Fix handling of date selects when using both disabled and discard options.
     Fixes #7431.
 
