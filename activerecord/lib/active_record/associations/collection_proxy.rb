@@ -228,8 +228,8 @@ module ActiveRecord
       #
       #   person.pets.size  # => 5 # size of the collection
       #   person.pets.count # => 0 # count from database
-      def build(attributes = {}, options = {}, &block)
-        @association.build(attributes, options, &block)
+      def build(attributes = {}, &block)
+        @association.build(attributes, &block)
       end
 
       ##
@@ -259,8 +259,8 @@ module ActiveRecord
       #   #       #<Pet id: 2, name: "Spook", person_id: 1>,
       #   #       #<Pet id: 3, name: "Choo-Choo", person_id: 1>
       #   #    ]
-      def create(attributes = {}, options = {}, &block)
-        @association.create(attributes, options, &block)
+      def create(attributes = {}, &block)
+        @association.create(attributes, &block)
       end
 
       ##
@@ -276,8 +276,8 @@ module ActiveRecord
       #
       #   person.pets.create!(name: nil)
       #   # => ActiveRecord::RecordInvalid: Validation failed: Name can't be blank
-      def create!(attributes = {}, options = {}, &block)
-        @association.create!(attributes, options, &block)
+      def create!(attributes = {}, &block)
+        @association.create!(attributes, &block)
       end
 
       ##
