@@ -1,3 +1,8 @@
+== Globaldev Notice
+
+This repository is simply 3-1-stable with a patch to allow request specs to use HTTP 
+OPTIONS calls. Rails 4 will contain this {patch}[https://github.com/rails/rails/commit/0303c232]
+
 == Welcome to Rails
 
 Rails is a web-application framework that includes everything needed to create
