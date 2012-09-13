@@ -78,8 +78,8 @@ module ActiveRecord
           self.configurations = app.config.database_configuration
         end
         Rails.logger.info "Connecting to database specified by #{db_connection_type}"
-
-        establish_connection
+        raise self.inspect
+        # establish_connection
       end
     end
 
