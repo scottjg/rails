@@ -373,4 +373,19 @@ class ValidationsTest < ActiveModel::TestCase
     assert topic.invalid?
     assert duped.valid?
   end
+  
+  def test_error_frees
+    require 'debugger'
+    debugger
+    
+    auto = Automobile.new
+    auto.model = 'great car'
+
+    assert auto.invalid?
+    
+    auto.make = 'name'
+    auto.freeze
+    
+    assert auto.valid?
+  end
 end

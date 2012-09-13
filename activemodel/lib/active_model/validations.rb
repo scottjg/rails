@@ -3,6 +3,7 @@ require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/hash/except'
 require 'active_model/errors'
 require 'active_model/validations/callbacks'
+#require 'active_model/attribute_methods'
 
 module ActiveModel
 
@@ -220,7 +221,13 @@ module ActiveModel
       @errors = nil
       super
     end
-
+    
+    def freeze
+      self.extend ActiveModel::AttributeMethods
+      attributes = self.attributes  
+      puts attibutes
+      super
+    end
     # Returns the +Errors+ object that holds all information about attribute
     # error messages.
     #
