@@ -84,7 +84,7 @@ module ActiveRecord
     def assign_attributes(new_attributes, options = {})
       return if new_attributes.blank?
 
-      attributes                  = new_attributes.stringify_keys
+      attributes                  = MultiparameterAttributeParser.process_params(new_attributes.stringify_keys)
       multi_parameter_attributes  = []
       nested_parameter_attributes = []
       previous_options            = @mass_assignment_options
@@ -94,18 +94,26 @@ module ActiveRecord
         attributes = sanitize_for_mass_assignment(attributes, mass_assignment_role)
       end
 
+      errors = []
       attributes.each do |k, v|
-        if k.include?("(")
-          multi_parameter_attributes << [ k, v ]
-        elsif v.is_a?(Hash)
-          nested_parameter_attributes << [ k, v ]
-        else
-          _assign_attribute(k, v)
+        begin
+          if v.is_a?(Array)
+            _assign_multi_parameter_attribute(k, v)
+          elsif v.is_a?(Hash)
+            nested_parameter_attributes << [ k, v ]
+          else
+            _assign_attribute(k, v)
+          end
+        rescue AttributeAssignmentError => ex
+          errors << ex
         end
+      end
+      unless errors.empty?
+        error_descriptions = errors.map { |ex| ex.message }.join(",")
+        raise MultiparameterAssignmentErrors.new(errors), "#{errors.size} error(s) on assignment of multiparameter attributes [#{error_descriptions}]"
       end
 
       assign_nested_parameter_attributes(nested_parameter_attributes) unless nested_parameter_attributes.empty?
-      assign_multiparameter_attributes(multi_parameter_attributes) unless multi_parameter_attributes.empty?
     ensure
       @mass_assignment_options = previous_options
     end
@@ -132,22 +140,17 @@ module ActiveRecord
       end
     end
 
+    def _assign_multi_parameter_attribute(k, v)
+      begin
+        send("#{k}=", MultiparameterAttribute.new(self, k, v).read_value)
+      rescue => ex
+        raise AttributeAssignmentError.new("error on assignment #{v.inspect} to #{k} (#{ex.message})", ex, k)
+      end
+    end
+
     # Assign any deferred nested attributes after the base attributes have been set.
     def assign_nested_parameter_attributes(pairs)
       pairs.each { |k, v| _assign_attribute(k, v) }
-    end
-
-    # Instantiates objects for all attribute classes that needs more than one constructor parameter. This is done
-    # by calling new on the column type or aggregation type (through composed_of) object with these parameters.
-    # So having the pairs written_on(1) = "2004", written_on(2) = "6", written_on(3) = "24", will instantiate
-    # written_on (a date type) with Date.new("2004", "6", "24"). You can also specify a typecast character in the
-    # parentheses to have the parameters typecasted before they're used in the constructor. Use i for Fixnum,
-    # f for Float, s for String, and a for Array. If all the values for a given attribute are empty, the
-    # attribute will be set to nil.
-    def assign_multiparameter_attributes(pairs)
-      execute_callstack_for_multiparameter_attributes(
-        extract_callstack_for_multiparameter_attributes(pairs)
-      )
     end
 
     def execute_callstack_for_multiparameter_attributes(callstack)
@@ -165,26 +168,57 @@ module ActiveRecord
       end
     end
 
-    def extract_callstack_for_multiparameter_attributes(pairs)
-      attributes = { }
+    class MultiparameterAttributeParser
+      class << self
+        def process_params(attributes_standing_in_for_params)
+          processed_params = {}
+          multi_parameter_params = []
+          attributes_standing_in_for_params.each do |k, v|
+            if k.include?("(")
+              multi_parameter_params << [ k, v ]
+            else
+              processed_params[k] = v
+            end
+          end
+          processed_params.merge(extract_callstack_for_multiparameter_attributes(multi_parameter_params))
+        end
 
-      pairs.each do |(multiparameter_name, value)|
-        attribute_name = multiparameter_name.split("(").first
-        attributes[attribute_name] ||= {}
+        def extract_callstack_for_multiparameter_attributes(pairs)
+          attributes = { }
 
-        parameter_value = value.empty? ? nil : type_cast_attribute_value(multiparameter_name, value)
-        attributes[attribute_name][find_parameter_position(multiparameter_name)] ||= parameter_value
+          pairs.each do |(multiparameter_name, value)|
+            attribute_name = multiparameter_name.split("(").first
+            attributes[attribute_name] ||= {}
+
+            parameter_value = value.empty? ? nil : type_cast_attribute_value(multiparameter_name, value)
+            attributes[attribute_name][find_parameter_position(multiparameter_name)] ||= parameter_value
+          end
+          puts "MultiparameterAttributeParser! #{attributes.inspect}"
+          puts "YO: #{attributes.collect { |k, values_hash| [k, values_hash_to_array(values_hash)] }.inspect}"
+          puts "HO: #{Hash[attributes.collect { |k, values_hash| [k, values_hash_to_array(values_hash)] }].inspect}"
+
+          Hash[attributes.collect { |k, values_hash| [k, values_hash_to_array(values_hash)] }]
+        end
+
+        def type_cast_attribute_value(multiparameter_name, value)
+          multiparameter_name =~ /\([0-9]*([if])\)/ ? value.send("to_" + $1) : value
+        end
+
+        def find_parameter_position(multiparameter_name)
+          multiparameter_name.scan(/\(([0-9]*).*\)/).first.first.to_i
+        end
+
+        def values_hash_to_array(values_hash)
+          values_array = []
+          max_key = extract_max_param(values_hash)
+          (1..max_key).each { |k| values_array << (values_hash[k] || nil) }
+          values_array
+        end
+
+        def extract_max_param(values, upper_cap = 100)
+          [values.keys.max, upper_cap].min
+        end
       end
-
-      attributes
-    end
-
-    def type_cast_attribute_value(multiparameter_name, value)
-      multiparameter_name =~ /\([0-9]*([if])\)/ ? value.send("to_" + $1) : value
-    end
-
-    def find_parameter_position(multiparameter_name)
-      multiparameter_name.scan(/\(([0-9]*).*\)/).first.first.to_i
     end
 
     class MultiparameterAttribute #:nodoc:
@@ -197,7 +231,7 @@ module ActiveRecord
       end
 
       def read_value
-        return if values.values.compact.empty?
+        return if values.compact.empty?
 
         @column = object.class.reflect_on_aggregation(name.to_sym) || object.column_for_attribute(name)
         klass   = column.klass
@@ -213,11 +247,11 @@ module ActiveRecord
 
       private
 
-      def instantiate_time_object(set_values)
+      def instantiate_time_object(values)
         if object.class.send(:create_time_zone_conversion_attribute?, name, column)
-          Time.zone.local(*set_values)
+          Time.zone.local(*values)
         else
-          Time.time_with_datetime_fallback(object.class.default_timezone, *set_values)
+          Time.time_with_datetime_fallback(object.class.default_timezone, *values)
         end
       end
 
@@ -226,12 +260,12 @@ module ActiveRecord
         # there are year/month/day fields
         if column.type == :time
           # if the column is a time set the values to their defaults as January 1, 1970, but only if they're nil
-          { 1 => 1970, 2 => 1, 3 => 1 }.each do |key,value|
-            values[key] ||= value
+          [1970, 1, 1].each_with_index do |value, i|
+            values[i] ||= value
           end
         else
           # else column is a timestamp, so if Date bits were not provided, error
-          validate_missing_parameters!([1,2,3])
+          validate_missing_parameters!([0,1,2])
 
           # If Date bits were provided but blank, then return nil
           return if blank_date_parameter?
@@ -246,21 +280,20 @@ module ActiveRecord
 
       def read_date
         return if blank_date_parameter?
-        set_values = values.values_at(1,2,3)
         begin
-          Date.new(*set_values)
+          Date.new(*values)
         rescue ArgumentError # if Date.new raises an exception on an invalid date
-          instantiate_time_object(set_values).to_date # we instantiate Time object and convert it back to a date thus using Time's logic in handling invalid dates
+          instantiate_time_object(values).to_date # we instantiate Time object and convert it back to a date thus using Time's logic in handling invalid dates
         end
       end
 
       def read_other(klass)
-        max_position = extract_max_param
-        positions    = (1..max_position)
-        validate_missing_parameters!(positions)
+        validate_missing_parameters!(all_indexes(values))
+        klass.new(*values)
+      end
 
-        set_values = values.values_at(*positions)
-        klass.new(*set_values)
+      def all_indexes(values)
+        (0..(values.length - 1)).to_a
       end
 
       # Checks whether some blank date parameter exists. Note that this is different
@@ -268,12 +301,12 @@ module ActiveRecord
       # positions instead of missing ones, and does not raise in case one blank position
       # exists. The caller is responsible to handle the case of this returning true.
       def blank_date_parameter?
-        (1..3).any? { |position| values[position].blank? }
+        (0..2).any? { |index| values[index].blank? }
       end
 
       # If some position is not provided, it errors out a missing parameter exception.
-      def validate_missing_parameters!(positions)
-        if missing_parameter = positions.detect { |position| !values.key?(position) }
+      def validate_missing_parameters!(indexes)
+        if missing_parameter = indexes.detect { |position| !values.fetch(position, false) }
           raise ArgumentError.new("Missing Parameter - #{name}(#{missing_parameter})")
         end
       end
