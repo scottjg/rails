@@ -1,7 +1,7 @@
-source 'https://rubygems.org'
+source 'http://rubygems.org'
 
 gemspec
-
+gem 'debugger'
 if ENV['AREL']
   gem 'arel', path: ENV['AREL']
 else

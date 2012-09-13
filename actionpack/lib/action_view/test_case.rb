@@ -2,7 +2,7 @@ require 'active_support/core_ext/module/remove_method'
 require 'action_controller'
 require 'action_controller/test_case'
 require 'action_view'
-
+require 'action_view/helpers/asset_tag_helper'
 module ActionView
   # = Action View Test Case
   class TestCase < ActiveSupport::TestCase

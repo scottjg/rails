@@ -226,7 +226,6 @@ module ActiveRecord
     def arel_attributes_with_values(attribute_names)
       attrs = {}
       arel_table = self.class.arel_table
-
       attribute_names.each do |name|
         attrs[arel_table[name]] = typecasted_attribute_value(name)
       end
@@ -257,13 +256,21 @@ module ActiveRecord
     end
 
     def typecasted_attribute_value(name)
-      if self.class.serialized_attributes.include?(name)
-        @attributes[name].serialized_value
-      elsif @attributes_cache[name.to_sym].class == @attributes[name].class
-        @attributes[name] 
-      else
-        read_attribute(name) 
-      end
+      if  self.class.serialized_attributes.include?(name)
+                 # puts "serialized #{name} -> #{@attributes[name].serialized_value}"
+                  @attributes[name].serialized_value
+                elsif   @attributes_cache[name.to_sym]
+                #  puts "cached #{name} -> #{@attributes[name]} =>#{@attributes_cache[name.to_sym]}"
+                  @attributes[name.to_sym] 
+                else
+                #  puts "read #{name} -> #{read_attribute(name)}"
+                  read_attribute(name) 
+                end
+      # if self.class.serialized_attributes.include?(name)  
+      #                                          @attributes[name].serialized_value
+      #                                 else
+      #                                   read_attribute(name) 
+      #                                 end
     end
   end
 end

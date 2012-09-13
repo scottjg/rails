@@ -565,6 +565,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       assert_equal Date.civil(2010, 1, 1), record.last_read
     end
   end
+  
+
 
   def test_time_attributes_are_retrieved_in_current_time_zone
     in_time_zone "Pacific Time (US & Canada)" do
@@ -783,6 +785,21 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     topic.title = "lol"
     assert_equal "lol", topic.author_name
   end
+  
+  require 'benchmark'
+
+  def test_cached
+    1000.times {|i| Developer.create!(:name=>"name#{i}")}
+    Benchmark.benchmark do |x|
+      x.report do
+        Developer.all.each_with_index do |d, index| 
+        d.name = "name#{index}"
+        d.save
+     end
+    end
+  end
+  end
+
 
   private
 
