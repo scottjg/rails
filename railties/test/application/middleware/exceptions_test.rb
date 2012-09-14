@@ -44,6 +44,9 @@ module ApplicationTests
 
       get "/foo"
       assert_equal 404, last_response.status
+
+      log = File.read(Rails.application.config.paths["log"].first)
+      assert_match(/404/, log, log)
     end
 
     test "uses custom exceptions app" do
