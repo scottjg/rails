@@ -279,6 +279,7 @@ module ActiveSupport
 
       def _normalize_legacy_filter(kind, filter)
         if !filter.respond_to?(kind) && filter.respond_to?(:filter)
+          ActiveSupport::Deprecation.warn("Filter object with #filter method is deprecated. Define method corresponding to filter type (#before, #after or #around).")
           filter.singleton_class.class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
             def #{kind}(context, &block) filter(context, &block) end
           RUBY_EVAL
@@ -367,7 +368,7 @@ module ActiveSupport
       #
       #   set_callback :save, :before, :before_meth
       #   set_callback :save, :after,  :after_meth, :if => :condition
-      #   set_callback :save, :around, lambda { |r| stuff; result = yield; stuff }
+      #   set_callback :save, :around, lambda { |r, &block| stuff; result = block.call; stuff }
       #
       # The second arguments indicates whether the callback is to be run +:before+,
       # +:after+, or +:around+ the event. If omitted, +:before+ is assumed. This

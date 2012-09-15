@@ -18,12 +18,6 @@ class SerializationTest < ActiveRecord::TestCase
     }
   end
 
-  def test_serialized_init_with
-    topic = Topic.allocate
-    topic.init_with('attributes' => { 'content' => '--- foo' })
-    assert_equal 'foo', topic.content
-  end
-
   def test_serialize_should_be_reversible
     FORMATS.each do |format|
       @serialized = Contact.new.send("to_#{format}")
@@ -49,13 +43,6 @@ class SerializationTest < ActiveRecord::TestCase
       assert_nil contact.name, "For #{format}"
       assert_nil contact.age, "For #{format}"
       assert_equal @contact_attributes[:awesome], contact.awesome, "For #{format}"
-    end
-  end
-
-  def test_serialized_attributes_are_class_level_settings
-    assert_raise NoMethodError do
-      topic = Topic.new
-      topic.serialized_attributes = []
     end
   end
 end

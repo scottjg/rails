@@ -1,8 +1,7 @@
 require 'isolation/abstract_unit'
-require 'rack/test'
 
 module ApplicationTests
-  class GeneratorsTest < ActiveSupport::TestCase
+  class QueueTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::Isolation
 
     def setup
@@ -20,14 +19,14 @@ module ApplicationTests
 
     test "the queue is a TestQueue in test mode" do
       app("test")
-      assert_kind_of Rails::Queueing::TestQueue, Rails.application.queue[:default]
-      assert_kind_of Rails::Queueing::TestQueue, Rails.queue[:default]
+      assert_kind_of ActiveSupport::TestQueue, Rails.application.queue[:default]
+      assert_kind_of ActiveSupport::TestQueue, Rails.queue[:default]
     end
 
-    test "the queue is a Queue in development mode" do
+    test "the queue is a SynchronousQueue in development mode" do
       app("development")
-      assert_kind_of Rails::Queueing::Queue, Rails.application.queue[:default]
-      assert_kind_of Rails::Queueing::Queue, Rails.queue[:default]
+      assert_kind_of ActiveSupport::SynchronousQueue, Rails.application.queue[:default]
+      assert_kind_of ActiveSupport::SynchronousQueue, Rails.queue[:default]
     end
 
     class ThreadTrackingJob
@@ -56,7 +55,7 @@ module ApplicationTests
       sleep 0.1
 
       assert job.ran?, "Expected job to be run"
-      assert job.ran_in_different_thread?, "Expected job to run in a different thread"
+      assert job.ran_in_different_thread?, "Expected job to run in the same thread"
     end
 
     test "in test mode, explicitly draining the queue will process it in a separate thread" do
@@ -161,11 +160,12 @@ module ApplicationTests
     test "a custom consumer implementation can be provided" do
       add_to_env_config "production", <<-RUBY
         require "my_queue_consumer"
+        config.queue = ActiveSupport::Queue
         config.queue_consumer = MyQueueConsumer
       RUBY
 
       app_file "lib/my_queue_consumer.rb", <<-RUBY
-        class MyQueueConsumer < Rails::Queueing::ThreadedConsumer
+        class MyQueueConsumer < ActiveSupport::ThreadedQueueConsumer
           attr_reader :started
 
           def start

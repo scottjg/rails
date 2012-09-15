@@ -21,8 +21,11 @@ module ActionDispatch
 
     config.action_dispatch.default_headers = {
       'X-Frame-Options' => 'SAMEORIGIN',
-      'X-XSS-Protection' => '1; mode=block'
+      'X-XSS-Protection' => '1; mode=block',
+      'X-Content-Type-Options' => 'nosniff'
     }
+
+    config.eager_load_namespaces << ActionDispatch
 
     initializer "action_dispatch.configure" do |app|
       ActionDispatch::Http::URL.tld_length = app.config.action_dispatch.tld_length

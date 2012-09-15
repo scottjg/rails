@@ -20,9 +20,9 @@ else
 end
 
 if ENV['AR_DEPRECATED_FINDERS']
-  gem 'active_record_deprecated_finders', path: ENV['AR_DEPRECATED_FINDERS']
+  gem 'activerecord-deprecated_finders', path: ENV['AR_DEPRECATED_FINDERS']
 else
-  gem 'active_record_deprecated_finders', github: 'rails/active_record_deprecated_finders'
+  gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
 end
 
 # This needs to be with require false to avoid
@@ -40,7 +40,7 @@ group :doc do
 end
 
 # AS
-gem 'memcache-client', '>= 1.8.5'
+gem 'dalli', '>= 2.2.1'
 
 # Add your own local bundler stuff
 local_gemfile = File.dirname(__FILE__) + "/.Gemfile"
@@ -62,7 +62,7 @@ platforms :ruby do
 
   group :db do
     gem 'pg', '>= 0.11.0'
-    gem 'mysql', '>= 2.8.1'
+    gem 'mysql', '>= 2.8.1' if RUBY_VERSION < '2.0.0'
     gem 'mysql2', '>= 0.3.10'
   end
 end
@@ -96,3 +96,5 @@ end
 
 # A gem necessary for ActiveRecord tests with IBM DB
 gem 'ibm_db' if ENV['IBM_DB']
+
+gem 'benchmark-ips'

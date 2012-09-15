@@ -225,6 +225,18 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal expected, actual
   end
 
+  def test_select_tag_with_nil_option_tags_and_include_blank
+    actual = select_tag "places", nil, :include_blank => true
+    expected = %(<select id="places" name="places"><option value=""></option></select>)
+    assert_dom_equal expected, actual
+  end
+
+  def test_select_tag_with_nil_option_tags_and_prompt
+    actual = select_tag "places", nil, :prompt => "string"
+    expected = %(<select id="places" name="places"><option value="">string</option></select>)
+    assert_dom_equal expected, actual
+  end
+
   def test_text_area_tag_size_string
     actual = text_area_tag "body", "hello world", "size" => "20x40"
     expected = %(<textarea cols="20" id="body" name="body" rows="40">\nhello world</textarea>)
@@ -379,7 +391,7 @@ class FormTagHelperTest < ActionView::TestCase
 
   def test_submit_tag
     assert_dom_equal(
-      %(<input name='commit' data-disable-with="Saving..." onclick="alert(&#x27;hello!&#x27;)" type="submit" value="Save" />),
+      %(<input name='commit' data-disable-with="Saving..." onclick="alert(&#39;hello!&#39;)" type="submit" value="Save" />),
       submit_tag("Save", :onclick => "alert('hello!')", :data => { :disable_with => "Saving..." })
     )
   end

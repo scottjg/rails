@@ -25,7 +25,7 @@ require 'active_support'
 require 'active_support/rails'
 require 'active_model'
 require 'arel'
-require 'active_record_deprecated_finders'
+require 'active_record/deprecated_finders'
 
 require 'active_record/version'
 
@@ -53,17 +53,6 @@ module ActiveRecord
   autoload :ReadonlyAttributes
   autoload :Reflection
   autoload :Sanitization
-
-  # ActiveRecord::SessionStore depends on the abstract store in Action Pack.
-  # Eager loading this class would break client code that eager loads Active
-  # Record standalone.
-  #
-  # Note that the Rails application generator creates an initializer specific
-  # for setting the session store. Thus, albeit in theory this autoload would
-  # not be thread-safe, in practice it is because if the application uses this
-  # session store its autoload happens at boot time.
-  autoload :SessionStore
-
   autoload :Schema
   autoload :SchemaDumper
   autoload :SchemaMigration
@@ -160,6 +149,15 @@ module ActiveRecord
 
   autoload :TestCase
   autoload :TestFixtures, 'active_record/fixtures'
+
+  def self.eager_load!
+    super
+    ActiveRecord::Locking.eager_load!
+    ActiveRecord::Scoping.eager_load!
+    ActiveRecord::Associations.eager_load!
+    ActiveRecord::AttributeMethods.eager_load!
+    ActiveRecord::ConnectionAdapters.eager_load!
+  end
 end
 
 ActiveSupport.on_load(:active_record) do

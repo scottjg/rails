@@ -136,8 +136,8 @@ module ActiveRecord
     # Second: Modifies the SELECT statement for the query so that only certain
     # fields are retrieved:
     #
-    #   >> Model.select(:field)
-    #   => [#<Model field:value>]
+    #   Model.select(:field)
+    #   # => [#<Model field:value>]
     #
     # Although in the above example it looks as though this method returns an
     # array, it actually returns a relation object and can have other query
@@ -145,25 +145,26 @@ module ActiveRecord
     #
     # The argument to the method can also be an array of fields.
     #
-    #   >> Model.select([:field, :other_field, :and_one_more])
-    #   => [#<Model field: "value", other_field: "value", and_one_more: "value">]
+    #   Model.select(:field, :other_field, :and_one_more)
+    #   # => [#<Model field: "value", other_field: "value", and_one_more: "value">]
     #
     # Accessing attributes of an object that do not have fields retrieved by a select
     # will throw <tt>ActiveModel::MissingAttributeError</tt>:
     #
-    #   >> Model.select(:field).first.other_field
-    #   => ActiveModel::MissingAttributeError: missing attribute: other_field
-    def select(value = Proc.new)
+    #   Model.select(:field).first.other_field
+    #   # => ActiveModel::MissingAttributeError: missing attribute: other_field
+    def select(*fields)
       if block_given?
-        to_a.select { |*block_args| value.call(*block_args) }
+        to_a.select { |*block_args| yield(*block_args) }
       else
-        spawn.select!(value)
+        raise ArgumentError, 'Call this with at least one field' if fields.empty?
+        spawn.select!(*fields)
       end
     end
 
     # Like #select, but modifies relation in place.
-    def select!(value)
-      self.select_values += Array.wrap(value)
+    def select!(*fields)
+      self.select_values += fields.flatten
       self
     end
 
@@ -338,6 +339,24 @@ module ActiveRecord
     #
     #    User.where({ created_at: (Time.now.midnight - 1.day)..Time.now.midnight })
     #    # SELECT * FROM users WHERE (created_at BETWEEN '2012-06-09 07:00:00.000000' AND '2012-06-10 07:00:00.000000')
+    #
+    # In the case of a belongs_to relationship, an association key can be used
+    # to specify the model if an ActiveRecord object is used as the value.
+    #
+    #    author = Author.find(1)
+    #
+    #    # The following queries will be equivalent:
+    #    Post.where(:author => author)
+    #    Post.where(:author_id => author)
+    #
+    # This also works with polymorphic belongs_to relationships:
+    #
+    #    treasure = Treasure.create(:name => 'gold coins')
+    #    treasure.price_estimates << PriceEstimate.create(:price => 125)
+    #
+    #    # The following queries will be equivalent:
+    #    PriceEstimate.where(:estimate_of => treasure)
+    #    PriceEstimate.where(:estimate_of_type => 'Treasure', :estimate_of_id => treasure)
     #
     # === Joins
     #
@@ -689,7 +708,7 @@ module ActiveRecord
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
         attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
-        PredicateBuilder.build_from_hash(table.engine, attributes, table)
+        PredicateBuilder.build_from_hash(klass, attributes, table)
       else
         [opts]
       end

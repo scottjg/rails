@@ -72,14 +72,13 @@ module ActionController
           super
         end
 
+        def merge(other)
+          self.class.new @response, __getobj__.merge(other)
+        end
+
         def to_hash
           __getobj__.dup
         end
-      end
-
-      def initialize(status = 200, header = {}, body = [])
-        header = Header.new self, header
-        super(status, header, body)
       end
 
       def commit!
@@ -93,6 +92,10 @@ module ActionController
         buf = Live::Buffer.new response
         body.each { |part| buf.write part }
         buf
+      end
+
+      def merge_default_headers(original, default)
+        Header.new self, super
       end
     end
 

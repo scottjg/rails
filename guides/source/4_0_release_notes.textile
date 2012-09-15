@@ -82,8 +82,6 @@ will generate the model with <tt>belongs_to :supplier, polymorphic: true</tt> as
 
 * Load all environments available in <tt>config.paths["config/environments"]</tt>.
 
-* The application generator generates <tt>public/humans.txt</tt> with some basic data.
-
 * Add <tt>config.queue_consumer</tt> to allow the default consumer to be configurable.
 
 * Add <tt>Rails.queue</tt> as an interface with a default implementation that consumes jobs in a separate thread.
@@ -117,6 +115,20 @@ h3. Action Mailer
 * Raise an <tt>ActionView::MissingTemplate</tt> exception when no implicit template could be found.
 
 * Asynchronously send messages via the Rails Queue.
+
+* Delivery Options (such as SMTP Settings) can now be set dynamically per mailer action. 
+
+Delivery options are set via <tt>:delivery_method_options</tt> key on mail.
+
+<ruby>
+def welcome_mailer(user,company)
+  mail to: user.email, 
+       subject: "Welcome!", 
+       delivery_method_options: {user_name: company.smtp_user,
+                                 password: company.smtp_password,
+                                 address: company.smtp_server}
+end
+</ruby>
 
 h3. Action Pack
 
@@ -195,6 +207,37 @@ h5(#actioncontroller_deprecations). Deprecations
 * Deprecated <tt>ActionController::Routing</tt> in favour of <tt>ActionDispatch::Routing</tt>.
 
 h4. Action Dispatch
+
+* Add Routing Concerns to declare common routes that can be reused inside others resources and routes.
+
+Code before:
+
+<ruby>
+resources :messages do
+  resources :comments
+end
+
+resources :posts do
+  resources :comments
+  resources :images, only: :index
+end
+</ruby>
+
+Code after:
+
+<ruby>
+concern :commentable do
+  resources :comments
+end
+
+concern :image_attachable do
+  resources :images, only: :index
+end
+
+resources :messages, concerns: :commentable
+
+resources :posts, concerns: [:commentable, :image_attachable]
+</ruby>
 
 * Show routes in exception page while debugging a <tt>RoutingError</tt> in development.
 
@@ -450,34 +493,9 @@ end
 User.stored_attributes[:settings] # [:color, :homepage]
 </ruby>
 
-* <tt>composed_of</tt> was removed. You'll have to write your own accessor and mutator methods if you'd like to use value objects to represent some portion of your models. So, instead of:
-
-<ruby>
-class Person < ActiveRecord::Base
-  composed_of :address, :mapping => [ %w(address_street street), %w(address_city city) ]
-end
-</ruby>
-
-you could write something like this:
-
-<ruby>
-def address
-  @address ||= Address.new(address_street, address_city)
-end
-
-def address=(address)
-  self[:address_street] = @address.street
-  self[:address_city]   = @address.city
-
-  @address = address
-end
-</ruby>
-
 * PostgreSQL default log level is now 'warning', to bypass the noisy notice messages. You can change the log level using the <tt>min_messages</tt> option available in your <tt>config/database.yml</tt>.
 
 * Add uuid datatype support to PostgreSQL adapter.
-
-* <tt>update_attribute</tt> has been removed. Use <tt>update_column</tt> if you want to bypass mass-assignment protection, validations, callbacks, and touching of updated_at. Otherwise please use <tt>update_attributes</tt>.
 
 * Added <tt>ActiveRecord::Migration.check_pending!</tt> that raises an error if migrations are pending.
 
@@ -700,6 +718,8 @@ where(...).remove_conditions # => still has conditions
 * New rails application would be generated with the config.active_record.dependent_restrict_raises = false in the application config.
 
 * The migration generator now creates a join table with (commented) indexes every time the migration name contains the word "join_table".
+
+* <tt>ActiveRecord::SessionStore</tt> is removed from Rails 4.0 and is now a separate "gem":https://github.com/rails/activerecord-session_store.
 
 h3. Active Model
 

@@ -29,7 +29,10 @@ module ActiveRecord
       'ActiveRecord::RecordNotSaved'   => :unprocessable_entity
     )
 
+
     config.active_record.use_schema_cache_dump = true
+
+    config.eager_load_namespaces << ActiveRecord
 
     rake_tasks do
       require "active_record/base"
@@ -68,7 +71,7 @@ module ActiveRecord
       end
     end
 
-    initializer "active_record.check_schema_cache_dump" do |app|
+    initializer "active_record.check_schema_cache_dump" do
       if config.active_record.delete(:use_schema_cache_dump)
         config.after_initialize do |app|
           ActiveSupport.on_load(:active_record) do

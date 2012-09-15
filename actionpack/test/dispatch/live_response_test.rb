@@ -8,6 +8,23 @@ module ActionController
         @response = Live::Response.new
       end
 
+      def test_header_merge
+        header = @response.header.merge('Foo' => 'Bar')
+        assert_kind_of(ActionController::Live::Response::Header, header)
+        refute_equal header, @response.header
+      end
+
+      def test_initialize_with_default_headers
+        r = Class.new(Live::Response) do
+          def self.default_headers
+            { 'omg' => 'g' }
+          end
+        end
+
+        header = r.new.header
+        assert_kind_of(ActionController::Live::Response::Header, header)
+      end
+
       def test_parallel
         latch = ActiveSupport::Concurrency::Latch.new
 

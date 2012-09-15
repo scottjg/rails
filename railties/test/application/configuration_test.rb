@@ -139,22 +139,19 @@ module ApplicationTests
       assert_instance_of Pathname, Rails.root
     end
 
-    test "marking the application as threadsafe sets the correct config variables" do
+    test "initialize an eager loaded, cache classes app" do
       add_to_config <<-RUBY
-        config.threadsafe!
-      RUBY
-
-      require "#{app_path}/config/application"
-      assert AppTemplate::Application.config.allow_concurrency
-    end
-
-    test "initialize a threadsafe app" do
-      add_to_config <<-RUBY
-        config.threadsafe!
+        config.eager_load = true
+        config.cache_classes = true
       RUBY
 
       require "#{app_path}/config/application"
       assert AppTemplate::Application.initialize!
+    end
+
+    test "application is always added to eager_load namespaces" do
+      require "#{app_path}/config/application"
+      assert AppTemplate::Application, AppTemplate::Application.config.eager_load_namespaces
     end
 
     test "asset_path defaults to nil for application" do
@@ -162,10 +159,11 @@ module ApplicationTests
       assert_equal nil, AppTemplate::Application.config.asset_path
     end
 
-    test "the application can be marked as threadsafe when there are no frameworks" do
+    test "the application can be eager loaded even when there are no frameworks" do
       FileUtils.rm_rf("#{app_path}/config/environments")
       add_to_config <<-RUBY
-        config.threadsafe!
+        config.eager_load = true
+        config.cache_classes = true
       RUBY
 
       use_frameworks []
@@ -173,22 +171,6 @@ module ApplicationTests
       assert_nothing_raised do
         require "#{app_path}/config/application"
       end
-    end
-
-    test "frameworks are not preloaded by default" do
-      require "#{app_path}/config/environment"
-
-      assert ActionController.autoload?(:Caching)
-    end
-
-    test "frameworks are preloaded with config.preload_frameworks is set" do
-      add_to_config <<-RUBY
-        config.preload_frameworks = true
-      RUBY
-
-      require "#{app_path}/config/environment"
-
-      assert !ActionView.autoload?(:AssetPaths)
     end
 
     test "filter_parameters should be able to set via config.filter_parameters" do
@@ -647,6 +629,25 @@ module ApplicationTests
 
       ActiveRecord::Base
       assert defined?(FooObserver)
+    end
+
+    test "config.session_store with :active_record_store with activerecord-session_store gem" do
+      begin
+        make_basic_app do |app|
+          ActionDispatch::Session::ActiveRecordStore = Class.new(ActionDispatch::Session::CookieStore)
+          app.config.session_store :active_record_store
+        end
+      ensure
+        ActionDispatch::Session.send :remove_const, :ActiveRecordStore
+      end
+    end
+
+    test "config.session_store with :active_record_store without activerecord-session_store gem" do
+      assert_raise RuntimeError, /activerecord-session_store/ do
+        make_basic_app do |app|
+          app.config.session_store :active_record_store
+        end
+      end
     end
   end
 end

@@ -34,7 +34,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert t.attribute_present?("written_on")
     assert !t.attribute_present?("content")
     assert !t.attribute_present?("author_name")
-    
   end
 
   def test_attribute_present_with_booleans
@@ -396,7 +395,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_query_attribute_with_custom_fields
     object = Company.find_by_sql(<<-SQL).first
-      SELECT c1.*, c2.ruby_type as string_value, c2.rating as int_value
+      SELECT c1.*, c2.type as string_value, c2.rating as int_value
         FROM companies c1, companies c2
        WHERE c1.firm_id = c2.id
          AND c1.id = 2
@@ -543,10 +542,10 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       val = t.send attr_name unless attr_name == "type"
       if attribute_gets_cached
         assert cached_columns.include?(attr_name)
-        assert_equal val, cache[attr_name]
+        assert_equal val, cache[attr_name.to_sym]
       else
         assert uncached_columns.include?(attr_name)
-        assert !cache.include?(attr_name)
+        assert !cache.include?(attr_name.to_sym)
       end
     end
   end
@@ -728,11 +727,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_nil topic.title
 
     Object.send(:undef_method, :title) # remove test method from object
-  end
-
-  def test_list_of_serialized_attributes
-    assert_equal %w(content), Topic.serialized_attributes.keys
-    assert_equal %w(preferences), Contact.serialized_attributes.keys
   end
 
   def test_instance_method_should_be_defined_on_the_base_class

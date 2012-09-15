@@ -26,7 +26,6 @@ require 'active_support/rails'
 require 'active_support/core_ext/module/attribute_accessors'
 
 require 'action_pack'
-require 'active_model'
 require 'rack'
 
 module Rack
@@ -39,9 +38,11 @@ module ActionDispatch
   class IllegalStateError < StandardError
   end
 
-  autoload_under 'http' do
-    autoload :Request
-    autoload :Response
+  eager_autoload do
+    autoload_under 'http' do
+      autoload :Request
+      autoload :Response
+    end
   end
 
   autoload_under 'middleware' do
@@ -100,3 +101,8 @@ module ActionDispatch
 end
 
 autoload :Mime, 'action_dispatch/http/mime_type'
+
+ActiveSupport.on_load(:action_view) do
+  ActionView::Base.default_formats ||= Mime::SET.symbols
+  ActionView::Template::Types.delegate_to Mime
+end

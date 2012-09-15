@@ -565,7 +565,7 @@ I18n.translate :thanks, :name => 'Jeremy'
 # => 'Thanks Jeremy!'
 </ruby>
 
-If a translation uses +:default+ or +:scope+ as an interpolation variable, an I+18n::ReservedInterpolationKey+ exception is raised. If a translation expects an interpolation variable, but this has not been passed to +#translate+, an +I18n::MissingInterpolationArgument+ exception is raised.
+If a translation uses +:default+ or +:scope+ as an interpolation variable, an +I18n::ReservedInterpolationKey+ exception is raised. If a translation expects an interpolation variable, but this has not been passed to +#translate+, an +I18n::MissingInterpolationArgument+ exception is raised.
 
 h4. Pluralization
 
@@ -575,11 +575,14 @@ The +:count+ interpolation variable has a special role in that it both is interp
 
 <ruby>
 I18n.backend.store_translations :en, :inbox => {
-  :one => '1 message',
+  :one => 'one message',
   :other => '%{count} messages'
 }
 I18n.translate :inbox, :count => 2
 # => '2 messages'
+
+I18n.translate :inbox, :count => 1
+# => 'one message'
 </ruby>
 
 The algorithm for pluralizations in +:en+ is as simple as:

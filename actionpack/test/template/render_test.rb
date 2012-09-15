@@ -97,6 +97,14 @@ module RenderTestCases
     assert_equal %q;Here are some characters: !@#$%^&*()-="'}{`; + "\n", @view.render(:template => "plain_text_with_characters")
   end
 
+  def test_render_rb_template_with_handlers
+    assert_equal "Hello from Ruby code", @view.render(:template => "ruby_template")
+  end
+
+  def test_render_rb_template_inline
+    assert_equal '4', @view.render(:inline => "(2**2).to_s", :type => :rb)
+  end
+
   def test_render_file_with_localization_on_context_level
     old_locale, @view.locale = @view.locale, :da
     assert_equal "Hey verden", @view.render(:file => "test/hello_world")
@@ -201,6 +209,15 @@ module RenderTestCases
     assert_equal "1", e.line_number
     assert_equal "1: <%= doesnt_exist %>", e.annoted_source_code.strip
     assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
+  end
+
+  def test_render_error_indentation
+    e = assert_raises(ActionView::Template::Error) { @view.render(:partial => "test/raise_indentation") }
+    error_lines = e.annoted_source_code.split("\n")
+    assert_match %r!error\shere!, e.message
+    assert_equal "11", e.line_number
+    assert_equal "     9: <p>Ninth paragraph</p>", error_lines.second
+    assert_equal "    10: <p>Tenth paragraph</p>", error_lines.third
   end
 
   def test_render_sub_template_with_errors

@@ -1,23 +1,51 @@
 module ActiveRecord
   class PredicateBuilder # :nodoc:
-    def self.build_from_hash(engine, attributes, default_table)
-      attributes.map do |column, value|
+    def self.build_from_hash(klass, attributes, default_table)
+      queries = []
+
+      attributes.each do |column, value|
         table = default_table
 
         if value.is_a?(Hash)
-          table = Arel::Table.new(column, engine)
-          value.map { |k,v| build(table[k.to_sym], v) }
+          table       = Arel::Table.new(column, default_table.engine)
+          association = klass.reflect_on_association(column.to_sym)
+
+          value.each do |k, v|
+            queries.concat expand(association && association.klass, table, k, v)
+          end
         else
           column = column.to_s
 
           if column.include?('.')
             table_name, column = column.split('.', 2)
-            table = Arel::Table.new(table_name, engine)
+            table = Arel::Table.new(table_name, default_table.engine)
           end
 
-          build(table[column.to_sym], value)
+          queries.concat expand(klass, table, column, value)
         end
-      end.flatten
+      end
+
+      queries
+    end
+
+    def self.expand(klass, table, column, value)
+      queries = []
+
+      # Find the foreign key when using queries such as:
+      # Post.where(:author => author)
+      #
+      # For polymorphic relationships, find the foreign key and type:
+      # PriceEstimate.where(:estimate_of => treasure)
+      if klass && value.class < Model::Tag && reflection = klass.reflect_on_association(column.to_sym)
+        if reflection.polymorphic?
+          queries << build(table[reflection.foreign_type], value.class.base_class)
+        end
+
+        column = reflection.foreign_key
+      end
+
+      queries << build(table[column.to_sym], value)
+      queries
     end
 
     def self.references(attributes)

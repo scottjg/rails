@@ -171,7 +171,6 @@ ActiveRecord::Schema.define do
 
   create_table :companies, :force => true do |t|
     t.string  :type
-    t.string  :ruby_type
     t.integer :firm_id
     t.string  :firm_name
     t.string  :name
@@ -181,8 +180,14 @@ ActiveRecord::Schema.define do
     t.string :description, :default => ""
   end
 
-  add_index :companies, [:firm_id, :type, :rating, :ruby_type], :name => "company_index"
+  add_index :companies, [:firm_id, :type, :rating], :name => "company_index"
   add_index :companies, [:firm_id, :type], :name => "company_partial_index", :where => "rating > 10"
+
+  create_table :vegetables, :force => true do |t|
+    t.string :name
+    t.integer :seller_id
+    t.string :custom_type
+  end
 
   create_table :computers, :force => true do |t|
     t.integer :developer, :null => false
@@ -270,9 +275,18 @@ ActiveRecord::Schema.define do
     t.string :name
   end
 
+  create_table :friendships, :force => true do |t|
+    t.integer :friend_id
+    t.integer :person_id
+  end
+
   create_table :goofy_string_id, :force => true, :id => false do |t|
     t.string :id, :null => false
     t.string :info
+  end
+
+  create_table :having, :force => true do |t|
+    t.string :where
   end
 
   create_table :guids, :force => true do |t|
@@ -476,6 +490,7 @@ ActiveRecord::Schema.define do
     t.references :number1_fan
     t.integer    :lock_version, :null => false, :default => 0
     t.string     :comments
+    t.integer    :followers_count, :default => 0
     t.references :best_friend
     t.references :best_friend_of
     t.timestamps
@@ -678,6 +693,7 @@ ActiveRecord::Schema.define do
 
   create_table :treasures, :force => true do |t|
     t.column :name, :string
+    t.column :type, :string
     t.column :looter_id, :integer
     t.column :looter_type, :string
   end

@@ -843,9 +843,7 @@ module ActiveRecord
         end
         @fixture_connections = enlist_fixture_connections
         @fixture_connections.each do |connection|
-          connection.increment_open_transactions
-          connection.transaction_joinable = false
-          connection.begin_db_transaction
+          connection.begin_transaction joinable: false
         end
       # Load fixtures for every test.
       else
@@ -868,10 +866,7 @@ module ActiveRecord
       # Rollback changes if a transaction is active.
       if run_in_transaction?
         @fixture_connections.each do |connection|
-          if connection.open_transactions != 0
-            connection.rollback_db_transaction
-            connection.decrement_open_transactions
-          end
+          connection.rollback_transaction if connection.transaction_open?
         end
         @fixture_connections.clear
       end
@@ -879,7 +874,7 @@ module ActiveRecord
     end
 
     def enlist_fixture_connections
-      ActiveRecord::Base.connection_handler.connection_pools.values.map(&:connection)
+      ActiveRecord::Base.connection_handler.connection_pools.map(&:connection)
     end
 
     private

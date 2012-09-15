@@ -26,7 +26,6 @@ require 'models/bird'
 require 'models/teapot'
 require 'rexml/document'
 require 'active_support/core_ext/exception'
-require 'bcrypt'
 
 class FirstAbstractClass < ActiveRecord::Base
   self.abstract_class = true
@@ -231,6 +230,7 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
+      assert_equal 129346, Topic.find(3).written_on.usec
     end
   end
 
@@ -466,13 +466,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_singular_table_name_guesses_for_individual_table
-    CreditCard.pluralize_table_names = false
-    CreditCard.reset_table_name
-    assert_equal "credit_card", CreditCard.table_name
+    Post.pluralize_table_names = false
+    Post.reset_table_name
+    assert_equal "post", Post.table_name
     assert_equal "categories", Category.table_name
   ensure
-    CreditCard.pluralize_table_names = true
-    CreditCard.reset_table_name
+    Post.pluralize_table_names = true
+    Post.reset_table_name
   end
 
   if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
@@ -601,6 +601,12 @@ class BasicsTest < ActiveRecord::TestCase
     post.reload
     assert_equal "cannot change this", post.title
     assert_equal "changed", post.body
+  end
+
+  def test_attr_readonly_is_class_level_setting
+    post = ReadonlyTitlePost.new
+    assert_raise(NoMethodError) { post._attr_readonly = [:title] }
+    assert_deprecated { post._attr_readonly }
   end
 
   def test_non_valid_identifier_column_name
@@ -964,6 +970,18 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal Time.local(2000, 1, 1, 5, 42, 0), topic.bonus_time
   end
 
+  def test_attributes_on_dummy_time_with_invalid_time
+    # Oracle, and Sybase do not have a TIME datatype.
+    return true if current_adapter?(:OracleAdapter, :SybaseAdapter)
+
+    attributes = {
+      "bonus_time" => "not a time"
+    }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    assert_nil topic.bonus_time
+  end
+
   def test_boolean
     b_nil = Boolean.create({ "value" => nil })
     nil_id = b_nil.id
@@ -1290,195 +1308,6 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal 0, replies.size
   end
 
-  MyObject = Struct.new :attribute1, :attribute2
-
-  def test_serialized_attribute
-    Topic.serialize("content", MyObject)
-
-    myobj = MyObject.new('value1', 'value2')
-    topic = Topic.create("content" => myobj)
-    assert_equal(myobj, topic.content)
-
-    topic.reload
-    assert_equal(myobj, topic.content)
-  end
-
-  def test_serialized_attribute_in_base_class
-    Topic.serialize("content", Hash)
-
-    hash = { 'content1' => 'value1', 'content2' => 'value2' }
-    important_topic = ImportantTopic.create("content" => hash)
-    assert_equal(hash, important_topic.content)
-
-    important_topic.reload
-    assert_equal(hash, important_topic.content)
-  end
-
-  # This test was added to fix GH #4004. Obviously the value returned
-  # is not really the value 'before type cast' so we should maybe think
-  # about changing that in the future.
-  def test_serialized_attribute_before_type_cast_returns_unserialized_value
-    klass = Class.new(ActiveRecord::Base)
-    klass.table_name = "topics"
-    klass.serialize :content, Hash
-
-    t = klass.new(:content => { :foo => :bar })
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
-    t.save!
-    t.reload
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
-  end
-
-  def test_serialized_attribute_calling_dup_method
-    klass = Class.new(ActiveRecord::Base)
-    klass.table_name = "topics"
-    klass.serialize :content, JSON
-
-    t = klass.new(:content => { :foo => :bar }).dup
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
-  end
-
-  def test_serialized_attribute_declared_in_subclass
-    hash = { 'important1' => 'value1', 'important2' => 'value2' }
-    important_topic = ImportantTopic.create("important" => hash)
-    assert_equal(hash, important_topic.important)
-
-    important_topic.reload
-    assert_equal(hash, important_topic.important)
-    assert_equal(hash, important_topic.read_attribute(:important))
-  end
-
-  def test_serialized_time_attribute
-    myobj = Time.local(2008,1,1,1,0)
-    topic = Topic.create("content" => myobj).reload
-    assert_equal(myobj, topic.content)
-  end
-
-  def test_serialized_string_attribute
-    myobj = "Yes"
-    topic = Topic.create("content" => myobj).reload
-    assert_equal(myobj, topic.content)
-  end
-
-  def test_nil_serialized_attribute_without_class_constraint
-    topic = Topic.new
-    assert_nil topic.content
-  end
-
-  def test_nil_not_serialized_without_class_constraint
-    assert Topic.new(:content => nil).save
-    assert_equal 1, Topic.where(:content => nil).count
-  end
-
-  def test_nil_not_serialized_with_class_constraint
-    Topic.serialize :content, Hash
-    assert Topic.new(:content => nil).save
-    assert_equal 1, Topic.where(:content => nil).count
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_should_raise_exception_on_serialized_attribute_with_type_mismatch
-    myobj = MyObject.new('value1', 'value2')
-    topic = Topic.new(:content => myobj)
-    assert topic.save
-    Topic.serialize(:content, Hash)
-    assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.find(topic.id).reload.content }
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialized_attribute_with_class_constraint
-    settings = { "color" => "blue" }
-    Topic.serialize(:content, Hash)
-    topic = Topic.new(:content => settings)
-    assert topic.save
-    assert_equal(settings, Topic.find(topic.id).content)
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialized_default_class
-    Topic.serialize(:content, Hash)
-    topic = Topic.new
-    assert_equal Hash, topic.content.class
-    assert_equal Hash, topic.read_attribute(:content).class
-    topic.content["beer"] = "MadridRb"
-    assert topic.save
-    topic.reload
-    assert_equal Hash, topic.content.class
-    assert_equal "MadridRb", topic.content["beer"]
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialized_no_default_class_for_object
-    topic = Topic.new
-    assert_nil topic.content
-  end
-
-  def test_serialized_boolean_value_true
-    Topic.serialize(:content)
-    topic = Topic.new(:content => true)
-    assert topic.save
-    topic = topic.reload
-    assert_equal topic.content, true
-  end
-
-  def test_serialized_boolean_value_false
-    Topic.serialize(:content)
-    topic = Topic.new(:content => false)
-    assert topic.save
-    topic = topic.reload
-    assert_equal topic.content, false
-  end
-
-  def test_serialize_with_coder
-    coder = Class.new {
-      # Identity
-      def load(thing)
-        thing
-      end
-
-      # base 64
-      def dump(thing)
-        [thing].pack('m')
-      end
-    }.new
-
-    Topic.serialize(:content, coder)
-    s = 'hello world'
-    topic = Topic.new(:content => s)
-    assert topic.save
-    topic = topic.reload
-    assert_equal [s].pack('m'), topic.content
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialize_with_bcrypt_coder
-    crypt_coder = Class.new {
-      def load(thing)
-        return unless thing
-        BCrypt::Password.new thing
-      end
-
-      def dump(thing)
-        BCrypt::Password.create(thing).to_s
-      end
-    }.new
-
-    Topic.serialize(:content, crypt_coder)
-    password = 'password'
-    topic = Topic.new(:content => password)
-    assert topic.save
-    topic = topic.reload
-    assert_kind_of BCrypt::Password, topic.content
-    assert_equal(true, topic.content == password, 'password should equal')
-  ensure
-    Topic.serialize(:content)
-  end
-
   def test_quote
     author_name = "\\ \001 ' \n \\n \""
     topic = Topic.create('author_name' => author_name)
@@ -1790,26 +1619,32 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_silence_sets_log_level_to_error_in_block
     original_logger = ActiveRecord::Base.logger
-    log = StringIO.new
-    ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
-    ActiveRecord::Base.logger.level = Logger::DEBUG
-    ActiveRecord::Base.silence do
-      ActiveRecord::Base.logger.warn "warn"
-      ActiveRecord::Base.logger.error "error"
+
+    assert_deprecated do
+      log = StringIO.new
+      ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+      ActiveRecord::Base.logger.level = Logger::DEBUG
+      ActiveRecord::Base.silence do
+        ActiveRecord::Base.logger.warn "warn"
+        ActiveRecord::Base.logger.error "error"
+      end
+      assert_equal "error\n", log.string
     end
-    assert_equal "error\n", log.string
   ensure
     ActiveRecord::Base.logger = original_logger
   end
 
   def test_silence_sets_log_level_back_to_level_before_yield
     original_logger = ActiveRecord::Base.logger
-    log = StringIO.new
-    ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
-    ActiveRecord::Base.logger.level = Logger::WARN
-    ActiveRecord::Base.silence do
+
+    assert_deprecated do
+      log = StringIO.new
+      ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+      ActiveRecord::Base.logger.level = Logger::WARN
+      ActiveRecord::Base.silence do
+      end
+      assert_equal Logger::WARN, ActiveRecord::Base.logger.level
     end
-    assert_equal Logger::WARN, ActiveRecord::Base.logger.level
   ensure
     ActiveRecord::Base.logger = original_logger
   end
@@ -1918,7 +1753,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_attribute_names
-    assert_equal ["id", "type", "ruby_type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description"],
+    assert_equal ["id", "type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description"],
                  Company.attribute_names
   end
 

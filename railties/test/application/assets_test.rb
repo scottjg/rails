@@ -19,13 +19,10 @@ module ApplicationTests
 
     def precompile!(env = nil)
       quietly do
-        precompile_task = 'bundle exec rake assets:precompile'
-        precompile_task += ' ' + env if env
-        out = Dir.chdir(app_path){  %x[ #{precompile_task} ] }
-        assert $?.exitstatus == 0,
-               "#{precompile_task} has failed: #{out}.\
-                Probably you didn't install JavaScript runtime."
-        return out
+        precompile_task = "bundle exec rake assets:precompile #{env} 2>&1"
+        output = Dir.chdir(app_path) { %x[ #{precompile_task} ] }
+        assert $?.success?, output
+        output
       end
     end
 
@@ -241,7 +238,7 @@ module ApplicationTests
 
       get '/posts'
       assert_match(/AssetNotPrecompiledError/, last_response.body)
-      assert_match(/app.js isn&#x27;t precompiled/, last_response.body)
+      assert_match(/app.js isn&#39;t precompiled/, last_response.body)
     end
 
     test "assets raise AssetNotPrecompiledError when manifest file is present and requested file isn't precompiled if digest is disabled" do
@@ -265,7 +262,7 @@ module ApplicationTests
 
       get '/posts'
       assert_match(/AssetNotPrecompiledError/, last_response.body)
-      assert_match(/app.js isn&#x27;t precompiled/, last_response.body)
+      assert_match(/app.js isn&#39;t precompiled/, last_response.body)
     end
 
     test "precompile properly refers files referenced with asset_path and and run in the provided RAILS_ENV" do

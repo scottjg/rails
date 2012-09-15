@@ -656,6 +656,14 @@ class RelationTest < ActiveRecord::TestCase
     assert_raises(ActiveRecord::ActiveRecordError) { Author.limit(10).delete_all }
   end
 
+  def test_select_takes_a_variable_list_of_args
+    david = developers(:david)
+
+    developer = Developer.where(id: david.id).select(:name, :salary).first
+    assert_equal david.name, developer.name
+    assert_equal david.salary, developer.salary
+  end
+
   def test_select_argument_error
     assert_raises(ArgumentError) { Developer.select }
   end
@@ -666,6 +674,25 @@ class RelationTest < ActiveRecord::TestCase
 
     dev_with_count = Developer.limit(1).merge(Developer.order('id DESC')).merge(Developer.select('developers.*'))
     assert_equal [developers(:poor_jamis)], dev_with_count.to_a
+  end
+
+  def test_relation_merging_with_arel_equalities_keeps_last_equality
+    devs = Developer.where(Developer.arel_table[:salary].eq(80000)).merge(
+      Developer.where(Developer.arel_table[:salary].eq(9000))
+    )
+    assert_equal [developers(:poor_jamis)], devs.to_a
+  end
+
+  def test_relation_merging_with_arel_equalities_keeps_last_equality_with_non_attribute_left_hand
+    salary_attr = Developer.arel_table[:salary]
+    devs = Developer.where(
+      Arel::Nodes::NamedFunction.new('abs', [salary_attr]).eq(80000)
+    ).merge(
+      Developer.where(
+        Arel::Nodes::NamedFunction.new('abs', [salary_attr]).eq(9000)
+      )
+    )
+    assert_equal [developers(:poor_jamis)], devs.to_a
   end
 
   def test_relation_merging_with_eager_load
@@ -1120,6 +1147,10 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_ordering_with_extra_spaces
     assert_equal authors(:david), Author.order('id DESC , name DESC').last
+  end
+
+  def test_update_all_with_blank_argument
+    assert_raises(ArgumentError) { Comment.update_all({}) }
   end
 
   def test_update_all_with_joins

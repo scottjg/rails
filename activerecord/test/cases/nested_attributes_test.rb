@@ -771,9 +771,9 @@ module NestedAttributesOnACollectionAssociationTests
         assert !man.errors[:"interests.man"].empty?
       end
     end
-    # restore :inverse_of
+  ensure
     Man.reflect_on_association(:interests).options[:inverse_of] = :man
-    Interest.reflect_on_association(:man).options[:inverse_of] = :interests
+    Interest.reflect_on_association(:man).options[:inverse_of]  = :interests
   end
 
   def test_can_use_symbols_as_object_identifier
@@ -783,12 +783,14 @@ module NestedAttributesOnACollectionAssociationTests
 
   def test_numeric_colum_changes_from_zero_to_no_empty_string
     Man.accepts_nested_attributes_for(:interests)
-    Interest.validates_numericality_of(:zine_id)
-    man = Man.create(:name => 'John')
-    interest = man.interests.create(:topic=>'bar',:zine_id => 0)
-    assert  interest.save
 
-    assert  !man.update_attributes({:interests_attributes => { :id => interest.id, :zine_id => 'foo' }})
+    repair_validations(Interest) do
+      Interest.validates_numericality_of(:zine_id)
+      man = Man.create(name: 'John')
+      interest = man.interests.create(topic: 'bar', zine_id: 0)
+      assert interest.save
+      assert !man.update_attributes({interests_attributes: { id: interest.id, zine_id: 'foo' }})
+    end
   end
 
   private
@@ -846,13 +848,7 @@ class TestNestedAttributesOnAHasAndBelongsToManyAssociation < ActiveRecord::Test
   include NestedAttributesOnACollectionAssociationTests
 end
 
-class TestNestedAttributesLimit < ActiveRecord::TestCase
-  def setup
-    Pirate.accepts_nested_attributes_for :parrots, :limit => 2
-
-    @pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
-  end
-
+module NestedAttributesLimitTests
   def teardown
     Pirate.accepts_nested_attributes_for :parrots, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
   end
@@ -874,6 +870,36 @@ class TestNestedAttributesLimit < ActiveRecord::TestCase
                                                       'car' => { :name => 'The Happening' }} }
     end
   end
+end
+
+class TestNestedAttributesLimitNumeric < ActiveRecord::TestCase
+  def setup
+    Pirate.accepts_nested_attributes_for :parrots, :limit => 2
+
+    @pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+  end
+
+  include NestedAttributesLimitTests
+end
+
+class TestNestedAttributesLimitSymbol < ActiveRecord::TestCase
+  def setup
+    Pirate.accepts_nested_attributes_for :parrots, :limit => :parrots_limit
+
+    @pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?", :parrots_limit => 2)
+  end
+
+  include NestedAttributesLimitTests
+end
+
+class TestNestedAttributesLimitProc < ActiveRecord::TestCase
+  def setup
+    Pirate.accepts_nested_attributes_for :parrots, :limit => proc { 2 }
+
+    @pirate = Pirate.create!(:catchphrase => "Don' botharrr talkin' like one, savvy?")
+  end
+
+  include NestedAttributesLimitTests
 end
 
 class TestNestedAttributesWithNonStandardPrimaryKeys < ActiveRecord::TestCase

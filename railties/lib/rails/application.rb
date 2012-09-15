@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'active_support/queueing'
 require 'rails/engine'
 
 module Rails
@@ -16,7 +17,7 @@ module Rails
   #
   # Besides providing the same configuration as Rails::Engine and Rails::Railtie,
   # the application object has several specific configurations, for example
-  # "allow_concurrency", "cache_classes", "consider_all_requests_local", "filter_parameters",
+  # "cache_classes", "consider_all_requests_local", "filter_parameters",
   # "logger" and so forth.
   #
   # Check Rails::Application::Configuration to see them all.
@@ -46,7 +47,7 @@ module Rails
   #       One by one, each engine sets up its load paths, routes and runs its config/initializers/* files.
   #   9)  Custom Railtie#initializers added by railties, engines and applications are executed
   #   10) Build the middleware stack and run to_prepare callbacks
-  #   11) Run config.before_eager_load and eager_load if cache classes is true
+  #   11) Run config.before_eager_load and eager_load! if eager_load is true
   #   12) Run config.after_initialize callbacks
   #
   class Application < Engine
@@ -188,7 +189,7 @@ module Rails
     end
 
     def queue #:nodoc:
-      @queue ||= Queueing::Container.new(build_queue)
+      @queue ||= ActiveSupport::QueueContainer.new(build_queue)
     end
 
     def build_queue #:nodoc:
@@ -216,8 +217,9 @@ module Rails
       railties.each { |r| r.run_tasks_blocks(app) }
       super
       require "rails/tasks"
+      config = self.config
       task :environment do
-        $rails_rake_task = true
+        config.eager_load = false
         require_environment!
       end
     end
@@ -296,7 +298,7 @@ module Rails
           middleware.use ::ActionDispatch::Static, paths["public"].first, config.static_cache_control
         end
 
-        middleware.use ::Rack::Lock unless config.allow_concurrency
+        middleware.use ::Rack::Lock unless config.cache_classes
         middleware.use ::Rack::Runtime
         middleware.use ::Rack::MethodOverride
         middleware.use ::ActionDispatch::RequestId

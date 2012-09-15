@@ -1,6 +1,5 @@
 require 'zlib'
 require 'active_support/core_ext/file'
-require 'action_controller/metal/exceptions'
 
 module ActionView
   class AssetPaths #:nodoc:
@@ -98,7 +97,7 @@ module ActionView
     end
 
     def invalid_asset_host!(help_message)
-      raise ActionController::RoutingError, "This asset host cannot be computed without a request in scope. #{help_message}"
+      raise ActionView::MissingRequestError, "This asset host cannot be computed without a request in scope. #{help_message}"
     end
 
     # Pick an asset host for this source. Returns +nil+ if no host is set,

@@ -97,15 +97,13 @@ module ActiveRecord
           merged_wheres = relation.where_values + values[:where]
 
           unless relation.where_values.empty?
-            # Remove duplicates, last one wins.
-            seen = Hash.new { |h,table| h[table] = {} }
+            # Remove equalities with duplicated left-hand. Last one wins.
+            seen = {}
             merged_wheres = merged_wheres.reverse.reject { |w|
               nuke = false
               if w.respond_to?(:operator) && w.operator == :==
-                name              = w.left.name
-                table             = w.left.relation.name
-                nuke              = seen[table][name]
-                seen[table][name] = true
+                nuke         = seen[w.left]
+                seen[w.left] = true
               end
               nuke
             }.reverse

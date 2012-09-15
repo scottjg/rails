@@ -168,8 +168,8 @@ h3. Session
 Your application has a session for each user in which you can store small amounts of data that will be persisted between requests. The session is only available in the controller and the view and can use one of a number of different storage mechanisms:
 
 * ActionDispatch::Session::CookieStore - Stores everything on the client.
-* ActiveRecord::SessionStore - Stores the data in a database using Active Record.
 * ActionDispatch::Session::CacheStore - Stores the data in the Rails cache.
+* ActionDispatch::Session::ActiveRecordStore - Stores the data in a database using Active Record. (require `activerecord-session_store` gem).
 * ActionDispatch::Session::MemCacheStore - Stores the data in a memcached cluster (this is a legacy implementation; consider using CacheStore instead).
 
 All session stores use a cookie to store a unique ID for each session (you must use a cookie, Rails will not allow you to pass the session ID in the URL as this is less secure).
@@ -187,7 +187,7 @@ If you need a different session storage mechanism, you can change it in the +con
 <ruby>
 # Use the database for sessions instead of the cookie-based default,
 # which shouldn't be used to store highly confidential information
-# (create the session table with "script/rails g session_migration")
+# (create the session table with "script/rails g active_record:session_migration")
 # YourApp::Application.config.session_store :active_record_store
 </ruby>
 
@@ -278,26 +278,31 @@ To reset the entire session, use +reset_session+.
 
 h4. The Flash
 
-The flash is a special part of the session which is cleared with each request. This means that values stored there will only be available in the next request, which is useful for storing error messages etc. It is accessed in much the same way as the session, like a hash. Let's use the act of logging out as an example. The controller can send a message which will be displayed to the user on the next request:
+The flash is a special part of the session which is cleared with each request. This means that values stored there will only be available in the next request, which is useful for passing error messages etc.
+
+It is accessed in much the same way as the session, as a hash (it's a "FlashHash":http://api.rubyonrails.org/classes/ActionDispatch/Flash/FlashHash.html instance).
+
+Let's use the act of logging out as an example. The controller can send a message which will be displayed to the user on the next request:
 
 <ruby>
 class LoginsController < ApplicationController
   def destroy
     session[:current_user_id] = nil
-    flash[:notice] = "You have successfully logged out"
+    flash[:notice] = "You have successfully logged out."
     redirect_to root_url
   end
 end
 </ruby>
 
-Note it is also possible to assign a flash message as part of the redirection.
+Note that it is also possible to assign a flash message as part of the redirection. You can assign +:notice+, +:alert+ or the general purpose +:flash+:
 
 <ruby>
-redirect_to root_url, :notice => "You have successfully logged out"
+redirect_to root_url, :notice => "You have successfully logged out."
+redirect_to root_url, :alert => "You're stuck here!"
+redirect_to root_url, :flash => { :referral_code => 1234 }
 </ruby>
 
-
-The +destroy+ action redirects to the application's +root_url+, where the message will be displayed. Note that it's entirely up to the next action to decide what, if anything, it will do with what the previous action put in the flash. It's conventional to display eventual errors or notices from the flash in the application's layout:
+The +destroy+ action redirects to the application's +root_url+, where the message will be displayed. Note that it's entirely up to the next action to decide what, if anything, it will do with what the previous action put in the flash. It's conventional to display any error alerts or notices from the flash in the application's layout:
 
 <ruby>
 <html>
@@ -306,15 +311,23 @@ The +destroy+ action redirects to the application's +root_url+, where the messag
     <% if flash[:notice] %>
       <p class="notice"><%= flash[:notice] %></p>
     <% end %>
-    <% if flash[:error] %>
-      <p class="error"><%= flash[:error] %></p>
+    <% if flash[:alert] %>
+      <p class="alert"><%= flash[:alert] %></p>
     <% end %>
     <!-- more content -->
   </body>
 </html>
 </ruby>
 
-This way, if an action sets an error or a notice message, the layout will display it automatically.
+This way, if an action sets a notice or an alert message, the layout will display it automatically.
+
+You can pass anything that the session can store; you're not limited to notices and alerts:
+
+<ruby>
+<% if flash[:just_signed_up] %>
+  <p class="welcome">Welcome to our site!</p>
+<% end %>
+</ruby>
 
 If you want a flash value to be carried over to another request, use the +keep+ method:
 
@@ -478,9 +491,9 @@ class ChangesController < ActionController::Base
 end
 </ruby>
 
-Note that an around filter wraps also rendering. In particular, if in the example above the view itself reads from the database via a scope or whatever, it will do so within the transaction and thus present the data to preview.
+Note that an around filter also wraps rendering. In particular, if in the example above, the view itself reads from the database (e.g. via a scope), it will do so within the transaction and thus present the data to preview.
 
-They can choose not to yield and build the response themselves, in which case the action is not run.
+You can choose not to yield and build the response yourself, in which case the action will not be run.
 
 h4. Other Ways to Use Filters
 
