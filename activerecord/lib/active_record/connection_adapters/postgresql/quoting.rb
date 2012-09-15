@@ -54,8 +54,8 @@ module ActiveRecord
             when 'xml'   then "xml '#{quote_string(value)}'"
             when /^bit/
               case value
-              when /^[01]*$/      then "B'#{value}'" # Bit-string notation
-              when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+              when /^0x/i then "X'#{value[2..-1]}'" # Hexadecimal notation
+              else             "B'#{value}'"        # Bit-string notation
               end
             else
               super

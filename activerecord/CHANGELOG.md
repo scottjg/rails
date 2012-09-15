@@ -1,5 +1,9 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   `0x` prefix must be added when assigning hexadecimal string into `bit` column in PostgreSQL.
+
+    *kennyj*
+ 
 *   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
 
     *Alexis Bernard*
