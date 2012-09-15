@@ -20,6 +20,79 @@ Rails 3 introduced major changes in the way that Rails applications utilized
 Javascript. Of course, the asset pipeline helped improve the way we organize
 and serve Javascript code, but there was another major innovation: UJS.
 
+h4. Simple Example
+
+Image you have a series of users that you would like to display and provide a form on that same page
+to create a new user.  The index action of your controller looks like this :
+
+<ruby>
+class UsersController < ApplicationController
+  def index
+    @users = User.all
+    @user = User.new
+  end
+  # .......
+</ruby>
+
+The index view ( app/views/users/index.html.erb ) contains :
+
+<ruby>
+<b>Users</b>
+
+<ul id="users">
+<% @users.each do |user| %>
+    <%= render user %>
+<% end %>
+</ul>
+
+<br />
+
+<%= form_for(@user, :remote => true) do |f| %>
+  <%= f.label :name %><br />
+  <%= f.text_field :name %>
+  <%= f.submit %>
+<% end %>
+</ruby>
+
+The app/views/users/_user.html.erb partial contains the following :
+
+<ruby>
+<li><%=  user.name %></li>
+</ruby>
+
+The top portion of the index page displays the users, the bottom portion provides a form to create a new user.
+
+The bottom form will call the create action on the Users controller.  Because the form's remote option is set to true,
+the request will be posted to the users controller as a js (javascript) request.  In order to service that request, the create
+action of your controller would look like this :
+
+<ruby>
+  # app/controllers/users_controller.rb
+  # ......
+  def create
+    @user = User.new(params[:user])
+
+    respond_to do |format|
+      if @user.save
+        format.html { redirect_to @user, notice: 'User was successfully created.' }
+        format.js{}
+        format.json { render json: @user, status: :created, location: @user }
+      else
+        format.html { render action: "new" }
+        format.json { render json: @user.errors, status: :unprocessable_entity }
+      end
+    end
+  end
+</ruby>
+
+Notice the format.js in the respond_to block; that allows the controller to respond to your remote (ajax) request.
+You then have a corresponding app/views/users/create.js.erb view file that generates the actual Javascript code that
+will be sent and executed on the client side.
+
+<ruby>
+$("<%= escape_javascript(render @user) %>").appendTo("#users");
+</ruby>
+
 h4. "Unobtrusive Javascript"
 
 h4. rails.js
