@@ -225,11 +225,13 @@ ActiveRecord::Schema.define do
   create_table :dog_lovers, :force => true do |t|
     t.integer :trained_dogs_count, :default => 0
     t.integer :bred_dogs_count, :default => 0
+    t.integer :dogs_count, :default => 0
   end
 
   create_table :dogs, :force => true do |t|
     t.integer :trainer_id
     t.integer :breeder_id
+    t.integer :dog_lover_id
   end
 
   create_table :edges, :force => true, :id => false do |t|

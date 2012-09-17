@@ -7,9 +7,9 @@ module ActiveRecord::Associations::Builder
     self.valid_options += [:primary_key, :dependent, :as, :through, :source, :source_type, :inverse_of]
 
     def build
-      reflection = super
+      @reflection = super
       configure_dependency
-      reflection
+      @reflection
     end
 
     private
@@ -28,14 +28,20 @@ module ActiveRecord::Associations::Builder
 
       def define_destroy_dependency_method
         name = self.name
+        has_many_reflection = @reflection
         mixin.redefine_method(dependency_method_name) do
-          send(name).each do |o|
-            # No point in executing the counter update since we're going to destroy the parent anyway
-            counter_method = ('belongs_to_counter_cache_before_destroy_for_' + self.class.name.downcase).to_sym
-            if o.respond_to?(counter_method)
-              class << o
-                self
-              end.send(:define_method, counter_method, Proc.new {})
+          # Don't execute the counter update if we're going to destroy the parent anyway
+          self.class.reflect_on_all_associations.each do |belongs_to_reflection|
+            if belongs_to_reflection.foreign_key == has_many_reflection.foreign_key &&
+              belongs_to_reflection.klass == self.class.name
+              send(name).each do |o|
+                counter_method = ('belongs_to_counter_cache_before_destroy_for_' + self.class.name.downcase).to_sym
+                if o.respond_to?(counter_method)
+                  class << o
+                    self
+                  end.send(:define_method, counter_method, Proc.new {})
+                end
+              end
             end
           end
 
