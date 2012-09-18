@@ -1,4 +1,32 @@
 ## Rails 3.2.9 (unreleased)
+
+*   Make ActiveRecord::ConnectionPool 'fair', first thread waiting is
+    first thread given newly available connection. Backport of #6492 02b2335563
+
+    *jrochkind*
+
+*   Fix creation of through association models when using `collection=[]`
+    on a `has_many :through` association from an unsaved model.
+    Fix #7661.
+
+    *Ernie Miller*
+
+*   Explain only normal CRUD sql (select / update / insert / delete).
+    Fix problem that explains unexplainable sql. Closes #7544 #6458.
+
+    *kennyj*
+
+*   Backport test coverage to ensure that PostgreSQL auto-reconnect functionality
+    remains healthy.
+
+    *Steve Jorgensen*
+
+*   Use config['encoding'] instead of config['charset'] when executing
+    databases.rake in the mysql/mysql2. A correct option for a database.yml
+    is 'encoding'.
+
+    *kennyj*
+
 *   Fix ConnectionAdapters::Column.type_cast_code integer conversion,
     to always convert values to integer calling #to_i. Fixes #7509.
 
