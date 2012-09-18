@@ -4,6 +4,8 @@ pkg_build     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 pkg_name      = 'activesupport'
 pkg_version   = ActiveSupport::VERSION::STRING + pkg_build
 
+dist_dirs = [ "lib", "test"]
+
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = pkg_name

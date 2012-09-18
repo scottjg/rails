@@ -4,6 +4,8 @@ pkg_build     = ENV['pkg_build'] ? '.' + ENV['PKG_BUILD'] : ''
 pkg_name      = 'activeresource'
 pkg_version   = ActiveResource::VERSION::STRING + pkg_build
 
+dist_dirs = [ "lib", "test", "examples", "dev-utils" ]
+
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = pkg_name
@@ -12,6 +14,7 @@ Gem::Specification.new do |s|
   s.description = %q{Wraps web resources in model classes that can be manipulated through XML over REST.}
 
   s.files = [ "Rakefile", "README", "CHANGELOG" ]
+
   dist_dirs.each do |dir|
     s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   end
