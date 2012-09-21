@@ -168,34 +168,13 @@ module ActiveSupport #:nodoc:
         end
       end
 
-      def const_missing(const_name, nesting = nil)
-        klass_name = name.presence || "Object"
-
-        unless nesting
-          # We'll assume that the nesting of Foo::Bar is ["Foo::Bar", "Foo"]
-          # even though it might not be, such as in the case of
-          # class Foo::Bar; Baz; end
-          nesting = []
-          klass_name.to_s.scan(/::|$/) { nesting.unshift $` }
-        end
-
-        # If there are multiple levels of nesting to search under, the top
-        # level is the one we want to report as the lookup fail.
-        error = nil
-
-        nesting.each do |namespace|
-          begin
-            return Dependencies.load_missing_constant Inflector.constantize(namespace), const_name
-          rescue NoMethodError then raise
-          rescue NameError => e
-            error ||= e
-          end
-        end
-
-        # Raise the first error for this set. If this const_missing came from an
-        # earlier const_missing, this will result in the real error bubbling
-        # all the way up
-        raise error
+      def const_missing(const_name)
+        # The interpreter does not pass nesting information, and in the
+        # case of anonymous modules we cannot even make the trade-off of
+        # assuming their name reflects the nesting. Resort to Object as
+        # the only meaningful guess we can make.
+        from_mod = anonymous? ? ::Object : self
+        Dependencies.load_missing_constant(from_mod, const_name)
       end
 
       def unloadable(const_desc = self)
@@ -287,13 +266,11 @@ module ActiveSupport #:nodoc:
       Object.class_eval { include Loadable }
       Module.class_eval { include ModuleConstMissing }
       Exception.class_eval { include Blamable }
-      true
     end
 
     def unhook!
       ModuleConstMissing.exclude_from(Module)
       Loadable.exclude_from(Object)
-      true
     end
 
     def load?
@@ -319,7 +296,7 @@ module ActiveSupport #:nodoc:
 
     def require_or_load(file_name, const_path = nil)
       log_call file_name, const_path
-      file_name = $1 if file_name =~ /^(.*)\.rb$/
+      file_name = $` if file_name =~ /\.rb\z/
       expanded = File.expand_path(file_name)
       return if loaded.include?(expanded)
 
@@ -363,7 +340,7 @@ module ActiveSupport #:nodoc:
     # Given +path+, a filesystem path to a ruby file, return an array of constant
     # paths which would cause Dependencies to attempt to load this file.
     def loadable_constants_for_path(path, bases = autoload_paths)
-      path = $1 if path =~ /\A(.*)\.rb\Z/
+      path = $` if path =~ /\.rb\z/
       expanded_path = File.expand_path(path)
       paths = []
 
@@ -431,7 +408,7 @@ module ActiveSupport #:nodoc:
     def load_file(path, const_paths = loadable_constants_for_path(path))
       log_call path, const_paths
       const_paths = [const_paths].compact unless const_paths.is_a? Array
-      parent_paths = const_paths.collect { |const_path| /(.*)::[^:]+\Z/ =~ const_path ? $1 : :Object }
+      parent_paths = const_paths.collect { |const_path| const_path[/.*(?=::)/] || :Object }
 
       result = nil
       newly_defined_paths = new_constants_in(*parent_paths) do
@@ -467,10 +444,17 @@ module ActiveSupport #:nodoc:
 
       file_path = search_for_file(path_suffix)
 
-      if file_path && ! loaded.include?(File.expand_path(file_path)) # We found a matching file to load
-        require_or_load file_path
-        raise LoadError, "Expected #{file_path} to define #{qualified_name}" unless from_mod.const_defined?(const_name, false)
-        return from_mod.const_get(const_name)
+      if file_path
+        expanded = File.expand_path(file_path)
+        expanded.sub!(/\.rb\z/, '')
+
+        if loaded.include?(expanded)
+          raise "Circular dependency detected while autoloading constant #{qualified_name}"
+        else
+          require_or_load(expanded)
+          raise LoadError, "Unable to autoload constant #{qualified_name}, expected #{file_path} to define it" unless from_mod.const_defined?(const_name, false)
+          return from_mod.const_get(const_name)
+        end
       elsif mod = autoload_module!(from_mod, const_name, qualified_name, path_suffix)
         return mod
       elsif (parent = from_mod.parent) && parent != from_mod &&
@@ -480,6 +464,25 @@ module ActiveSupport #:nodoc:
         # const_missing must be due to from_mod::const_name, which should not
         # return constants from from_mod's parents.
         begin
+          # Since Ruby does not pass the nesting at the point the unknown
+          # constant triggered the callback we cannot fully emulate constant
+          # name lookup and need to make a trade-off: we are going to assume
+          # that the nesting in the body of Foo::Bar is [Foo::Bar, Foo] even
+          # though it might not be. Counterexamples are
+          #
+          #   class Foo::Bar
+          #     Module.nesting # => [Foo::Bar]
+          #   end
+          #
+          # or
+          #
+          #   module M::N
+          #     module S::T
+          #       Module.nesting # => [S::T, M::N]
+          #     end
+          #   end
+          #
+          # for example.
           return parent.const_missing(const_name)
         rescue NameError => e
           raise unless e.missing_name? qualified_name_for(parent, const_name)

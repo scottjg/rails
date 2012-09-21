@@ -1,5 +1,3 @@
-require 'active_support/core_ext/object/blank'
-require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/remove_method'
 require 'action_controller'
 require 'action_controller/test_case'
@@ -40,10 +38,11 @@ module ActionView
       include ActionView::Context
 
       include ActionDispatch::Routing::PolymorphicRoutes
-      include ActionController::RecordIdentifier
 
       include AbstractController::Helpers
       include ActionView::Helpers
+      include ActionView::RecordIdentifier
+      include ActionView::RoutingUrlFor
 
       delegate :lookup_context, :to => :controller
       attr_accessor :controller, :output_buffer, :rendered

@@ -38,6 +38,17 @@ module ActionDispatch
       METHOD
     end
 
+    def initialize(env)
+      super
+      @method            = nil
+      @request_method    = nil
+      @remote_ip         = nil
+      @original_fullpath = nil
+      @fullpath          = nil
+      @ip                = nil
+      @uuid              = nil
+    end
+
     def key?(key)
       @env.key?(key)
     end
@@ -119,9 +130,9 @@ module ActionDispatch
     end
 
     # Is this a HEAD request?
-    # Equivalent to <tt>request.method_symbol == :head</tt>.
+    # Equivalent to <tt>request.request_method_symbol == :head</tt>.
     def head?
-      HTTP_METHOD_LOOKUP[method] == :head
+      HTTP_METHOD_LOOKUP[request_method] == :head
     end
 
     # Provides access to the request's HTTP headers, for example:
@@ -216,8 +227,11 @@ module ActionDispatch
     # TODO This should be broken apart into AD::Request::Session and probably
     # be included by the session middleware.
     def reset_session
-      session.destroy if session && session.respond_to?(:destroy)
-      self.session = {}
+      if session && session.respond_to?(:destroy)
+        session.destroy
+      else
+        self.session = {}
+      end
       @env['action_dispatch.request.flash_hash'] = nil
     end
 

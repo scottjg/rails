@@ -3,12 +3,31 @@ module ActiveRecord
     module DatabaseTasks # :nodoc:
       extend self
 
-      TASKS_PATTERNS = {
-        /mysql/      => ActiveRecord::Tasks::MySQLDatabaseTasks,
-        /postgresql/ => ActiveRecord::Tasks::PostgreSQLDatabaseTasks,
-        /sqlite/     => ActiveRecord::Tasks::SQLiteDatabaseTasks
-      }
+      attr_writer :current_config
+
       LOCAL_HOSTS    = ['127.0.0.1', 'localhost']
+
+      def register_task(pattern, task)
+        @tasks ||= {}
+        @tasks[pattern] = task
+      end
+
+      register_task(/mysql/, ActiveRecord::Tasks::MySQLDatabaseTasks)
+      register_task(/postgresql/, ActiveRecord::Tasks::PostgreSQLDatabaseTasks)
+      register_task(/sqlite/, ActiveRecord::Tasks::SQLiteDatabaseTasks)
+
+      def current_config(options = {})
+        options.reverse_merge! :env => Rails.env
+        if options.has_key?(:config)
+          @current_config = options[:config]
+        else
+          @current_config ||= if ENV['DATABASE_URL']
+                                database_url_config
+                              else
+                                ActiveRecord::Base.configurations[options[:env]]
+                              end
+        end
+      end
 
       def create(*arguments)
         configuration = arguments.first
@@ -29,6 +48,10 @@ module ActiveRecord
         ActiveRecord::Base.establish_connection environment
       end
 
+      def create_database_url
+        create database_url_config
+      end
+
       def drop(*arguments)
         configuration = arguments.first
         class_for_adapter(configuration['adapter']).new(*arguments).drop
@@ -45,6 +68,10 @@ module ActiveRecord
         each_current_configuration(environment) { |configuration|
           drop configuration
         }
+      end
+
+      def drop_database_url
+        drop database_url_config
       end
 
       def charset_current(environment = Rails.env)
@@ -83,9 +110,14 @@ module ActiveRecord
 
       private
 
+      def database_url_config
+        @database_url_config ||=
+               ConnectionAdapters::ConnectionSpecification::Resolver.new(ENV["DATABASE_URL"], {}).spec.config.stringify_keys
+      end
+
       def class_for_adapter(adapter)
-        key = TASKS_PATTERNS.keys.detect { |pattern| adapter[pattern] }
-        TASKS_PATTERNS[key]
+        key = @tasks.keys.detect { |pattern| adapter[pattern] }
+        @tasks[key]
       end
 
       def each_current_configuration(environment)
@@ -111,7 +143,7 @@ module ActiveRecord
       end
 
       def local_database?(configuration)
-        configuration['host'].in?(LOCAL_HOSTS) || configuration['host'].blank?
+        configuration['host'].blank? || LOCAL_HOSTS.include?(configuration['host'])
       end
     end
   end

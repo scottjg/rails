@@ -1,6 +1,3 @@
-require 'active_support/deprecation'
-require 'active_support/concern'
-require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/attribute_accessors'
 
 module ActiveRecord
@@ -29,20 +26,20 @@ module ActiveRecord
     end
   end
 
-  # <tt>ActiveRecord::Model</tt> can be included into a class to add Active Record persistence.
-  # This is an alternative to inheriting from <tt>ActiveRecord::Base</tt>. Example:
+  # This allows us to detect an ActiveRecord::Model while it's in the process of
+  # being included.
+  module Tag; end
+
+  # <tt>ActiveRecord::Model</tt> can be included into a class to add Active Record
+  # persistence. This is an alternative to inheriting from <tt>ActiveRecord::Base</tt>.
   #
   #     class Post
   #       include ActiveRecord::Model
   #     end
-  #
   module Model
     extend ActiveSupport::Concern
     extend ConnectionHandling
     extend ActiveModel::Observing::ClassMethods
-
-    # This allows us to detect an ActiveRecord::Model while it's in the process of being included.
-    module Tag; end
 
     def self.append_features(base)
       base.class_eval do
@@ -74,9 +71,9 @@ module ActiveRecord
     include Inheritance
     include Scoping
     include Sanitization
-    include Integration
     include AttributeAssignment
     include ActiveModel::Conversion
+    include Integration
     include Validations
     include CounterCache
     include Locking::Optimistic
@@ -89,6 +86,7 @@ module ActiveRecord
     include ActiveModel::SecurePassword
     include AutosaveAssociation
     include NestedAttributes
+    include Aggregations
     include Transactions
     include Reflection
     include Serialization
@@ -104,31 +102,56 @@ module ActiveRecord
         false
       end
 
+      # Defines the name of the table column which will store the class name on single-table
+      # inheritance situations.
+      #
+      # The default inheritance column name is +type+, which means it's a
+      # reserved word inside Active Record. To be able to use single-table
+      # inheritance with another column name, or to use the column +type+ in
+      # your own model for something else, you can override this method to
+      # return a different name:
+      #
+      #   def self.inheritance_column
+      #     'zoink'
+      #   end
       def inheritance_column
         'type'
       end
     end
 
-    module DeprecationProxy #:nodoc:
-      class << self
-        instance_methods.each { |m| undef_method m unless m =~ /^__|^object_id$|^instance_eval$/ }
+    class DeprecationProxy < BasicObject #:nodoc:
+      def initialize(model = Model, base = Base)
+        @model = model
+        @base  = base
+      end
 
-        def method_missing(name, *args, &block)
-          if Model.respond_to?(name)
-            Model.send(name, *args, &block)
-          else
-            ActiveSupport::Deprecation.warn(
-              "The object passed to the active_record load hook was previously ActiveRecord::Base " \
-              "(a Class). Now it is ActiveRecord::Model (a Module). You have called `#{name}' which " \
-              "is only defined on ActiveRecord::Base. Please change your code so that it works with " \
-              "a module rather than a class. (Model is included in Base, so anything added to Model " \
-              "will be available on Base as well.)"
-            )
-            Base.send(name, *args, &block)
-          end
+      def method_missing(name, *args, &block)
+        if @model.respond_to?(name, true)
+          @model.send(name, *args, &block)
+        else
+          ::ActiveSupport::Deprecation.warn(
+            "The object passed to the active_record load hook was previously ActiveRecord::Base " \
+            "(a Class). Now it is ActiveRecord::Model (a Module). You have called `#{name}' which " \
+            "is only defined on ActiveRecord::Base. Please change your code so that it works with " \
+            "a module rather than a class. (Model is included in Base, so anything added to Model " \
+            "will be available on Base as well.)"
+          )
+          @base.send(name, *args, &block)
         end
+      end
 
-        alias send method_missing
+      alias send method_missing
+
+      def extend(*mods)
+        ::ActiveSupport::Deprecation.warn(
+          "The object passed to the active_record load hook was previously ActiveRecord::Base " \
+          "(a Class). Now it is ActiveRecord::Model (a Module). You have called `extend' which " \
+          "would add singleton methods to Model. This is presumably not what you want, since the " \
+          "methods would not be inherited down to Base. Rather than using extend, please use " \
+          "ActiveSupport::Concern + include, which will ensure that your class methods are " \
+          "inherited."
+        )
+        @base.extend(*mods)
       end
     end
   end

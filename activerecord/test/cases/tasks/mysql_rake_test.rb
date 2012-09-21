@@ -1,5 +1,4 @@
 require 'cases/helper'
-require 'mysql'
 
 module ActiveRecord
   class MysqlDBCreateTest < ActiveRecord::TestCase
@@ -33,7 +32,7 @@ module ActiveRecord
         with('my-app-db', {:charset => 'latin', :collation => 'latin_ci'})
 
       ActiveRecord::Tasks::DatabaseTasks.create @configuration.merge(
-        'charset' => 'latin', 'collation' => 'latin_ci'
+        'encoding' => 'latin', 'collation' => 'latin_ci'
       )
     end
 
@@ -46,6 +45,10 @@ module ActiveRecord
 
   class MysqlDBCreateAsRootTest < ActiveRecord::TestCase
     def setup
+      unless current_adapter?(:MysqlAdapter)
+        return skip("only tested on mysql")
+      end
+
       @connection    = stub(:create_database => true, :execute => true)
       @error         = Mysql::Error.new "Invalid permissions"
       @configuration = {
@@ -64,6 +67,7 @@ module ActiveRecord
     end
 
     def test_root_password_is_requested
+      skip "only if mysql is available" unless defined?(::Mysql)
       $stdin.expects(:gets).returns("secret\n")
 
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
@@ -172,7 +176,7 @@ module ActiveRecord
         with('test-db', {:charset => 'latin', :collation => 'latin_ci'})
 
       ActiveRecord::Tasks::DatabaseTasks.purge @configuration.merge(
-        'charset' => 'latin', 'collation' => 'latin_ci'
+        'encoding' => 'latin', 'collation' => 'latin_ci'
       )
     end
   end
@@ -215,49 +219,33 @@ module ActiveRecord
 
   class MySQLStructureDumpTest < ActiveRecord::TestCase
     def setup
-      @connection    = stub(:structure_dump => true)
       @configuration = {
         'adapter'  => 'mysql',
         'database' => 'test-db'
       }
-
-      ActiveRecord::Base.stubs(:connection).returns(@connection)
-      ActiveRecord::Base.stubs(:establish_connection).returns(true)
     end
 
     def test_structure_dump
       filename = "awesome-file.sql"
-      ActiveRecord::Base.expects(:establish_connection).with(@configuration)
-      @connection.expects(:structure_dump)
+      Kernel.expects(:system).with("mysqldump", "--result-file", filename, "--no-data", "test-db")
 
       ActiveRecord::Tasks::DatabaseTasks.structure_dump(@configuration, filename)
-      assert File.exists?(filename)
-    ensure
-      FileUtils.rm(filename)
     end
   end
 
   class MySQLStructureLoadTest < ActiveRecord::TestCase
     def setup
-      @connection    = stub
       @configuration = {
         'adapter'  => 'mysql',
         'database' => 'test-db'
       }
-
-      ActiveRecord::Base.stubs(:connection).returns(@connection)
-      ActiveRecord::Base.stubs(:establish_connection).returns(true)
     end
 
     def test_structure_load
       filename = "awesome-file.sql"
-      ActiveRecord::Base.expects(:establish_connection).with(@configuration)
-      @connection.expects(:execute).twice
+      Kernel.expects(:system).with('mysql', '--execute', %{SET FOREIGN_KEY_CHECKS = 0; SOURCE #{filename}; SET FOREIGN_KEY_CHECKS = 1}, "--database", "test-db")
 
-      open(filename, 'w') { |f| f.puts("SELECT CURDATE();") }
       ActiveRecord::Tasks::DatabaseTasks.structure_load(@configuration, filename)
-    ensure
-      FileUtils.rm(filename)
     end
   end
 

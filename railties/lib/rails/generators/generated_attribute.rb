@@ -8,6 +8,7 @@ module Rails
 
       attr_accessor :name, :type
       attr_reader   :attr_options
+      attr_writer   :index_name
 
       class << self
         def parse(column_definition)
@@ -89,16 +90,24 @@ module Rails
         end
       end
 
+      def plural_name
+        name.sub(/_id$/, '').pluralize
+      end
+
       def human_name
-        name.to_s.humanize
+        name.humanize
       end
 
       def index_name
-        if reference?
+        @index_name ||= if reference?
           polymorphic? ? %w(id type).map { |t| "#{name}_#{t}" } : "#{name}_id"
         else
           name
         end
+      end
+
+      def foreign_key?
+        !!(name =~ /_id$/)
       end
 
       def reference?

@@ -22,6 +22,18 @@ module Quiz
   end
 end
 
+class TestControllerWithExtraEtags < ActionController::Base
+  etag { nil  }
+  etag { 'ab' }
+  etag { :cde }
+  etag { [:f] }
+  etag { nil  }
+
+  def fresh
+    render text: "stale" if stale?(etag: '123')
+  end
+end
+
 class TestController < ActionController::Base
   protect_from_forgery
 
@@ -186,7 +198,7 @@ class TestController < ActionController::Base
 
   # :ported:
   def render_text_hello_world_with_layout
-    @variable_for_layout = ", I'm here!"
+    @variable_for_layout = ", I am here!"
     render :text => "hello world", :layout => true
   end
 
@@ -844,7 +856,7 @@ class RenderTest < ActionController::TestCase
   # :ported:
   def test_do_with_render_text_and_layout
     get :render_text_hello_world_with_layout
-    assert_equal "<html>hello world, I'm here!</html>", @response.body
+    assert_equal "<html>hello world, I am here!</html>", @response.body
   end
 
   # :ported:
@@ -1625,6 +1637,26 @@ class LastModifiedRenderTest < ActionController::TestCase
     assert_response :success
   end
 end
+
+class EtagRenderTest < ActionController::TestCase
+  tests TestControllerWithExtraEtags
+
+  def setup
+    super
+    @request.host = "www.nextangle.com"
+  end
+
+  def test_multiple_etags
+    @request.if_none_match = %("#{Digest::MD5.hexdigest(ActiveSupport::Cache.expand_cache_key([ "123", 'ab', :cde, [:f] ]))}")
+    get :fresh
+    assert_response :not_modified
+
+    @request.if_none_match = %("nomatch")
+    get :fresh
+    assert_response :success
+  end
+end
+
 
 class MetalRenderTest < ActionController::TestCase
   tests MetalTestController

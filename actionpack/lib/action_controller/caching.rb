@@ -48,11 +48,10 @@ module ActionController #:nodoc:
         config.cache_store = ActiveSupport::Cache.lookup_store(store)
       end
 
-    private
-
-      def cache_configured?
-        perform_caching && cache_store
-      end
+      private
+        def cache_configured?
+          perform_caching && cache_store
+        end
     end
 
     include RackDelegation
@@ -73,14 +72,14 @@ module ActionController #:nodoc:
       request.get? && response.status == 200
     end
 
-  protected
-    # Convenience accessor
-    def cache(key, options = {}, &block)
-      if cache_configured?
-        cache_store.fetch(ActiveSupport::Cache.expand_cache_key(key, :controller), options, &block)
-      else
-        yield
+    protected
+      # Convenience accessor
+      def cache(key, options = {}, &block)
+        if cache_configured?
+          cache_store.fetch(ActiveSupport::Cache.expand_cache_key(key, :controller), options, &block)
+        else
+          yield
+        end
       end
-    end
   end
 end

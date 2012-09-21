@@ -56,7 +56,7 @@ module ActiveRecord
       end
 
       def select_all(arel, name = nil, binds = [])
-        if @query_cache_enabled
+        if @query_cache_enabled && !locked?(arel)
           sql = to_sql(arel, binds)
           cache_sql(sql, binds) { super(sql, name, binds) }
         else
@@ -65,6 +65,7 @@ module ActiveRecord
       end
 
       private
+
       def cache_sql(sql, binds)
         result =
           if @query_cache[sql].key?(binds)
@@ -82,6 +83,10 @@ module ActiveRecord
         else
           result.collect { |row| row.dup }
         end
+      end
+
+      def locked?(arel)
+        arel.respond_to?(:locked) && arel.locked
       end
     end
   end

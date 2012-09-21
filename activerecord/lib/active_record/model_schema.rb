@@ -1,4 +1,3 @@
-require 'active_support/concern'
 
 module ActiveRecord
   ActiveSupport.on_load(:active_record_config) do
@@ -144,16 +143,12 @@ module ActiveRecord
 
       # Computes the table name, (re)sets it internally, and returns it.
       def reset_table_name #:nodoc:
-        if abstract_class?
-          self.table_name = if active_record_super == Base || active_record_super.abstract_class?
-                              nil
-                            else
-                              active_record_super.table_name
-                            end
+        self.table_name = if abstract_class?
+          active_record_super == Base ? nil : active_record_super.table_name
         elsif active_record_super.abstract_class?
-          self.table_name = active_record_super.table_name || compute_table_name
+          active_record_super.table_name || compute_table_name
         else
-          self.table_name = compute_table_name
+          compute_table_name
         end
       end
 
@@ -230,7 +225,7 @@ module ActiveRecord
       def decorate_columns(columns_hash) # :nodoc:
         return if columns_hash.empty?
 
-        serialized_attributes.keys.each do |key|
+        serialized_attributes.each_key do |key|
           columns_hash[key] = AttributeMethods::Serialization::Type.new(columns_hash[key])
         end
 
@@ -264,13 +259,12 @@ module ActiveRecord
       # and true as the value. This makes it possible to do O(1) lookups in respond_to? to check if a given method for attribute
       # is available.
       def column_methods_hash #:nodoc:
-        @dynamic_methods_hash ||= column_names.inject(Hash.new(false)) do |methods, attr|
+        @dynamic_methods_hash ||= column_names.each_with_object(Hash.new(false)) do |attr, methods|
           attr_name = attr.to_s
           methods[attr.to_sym]       = attr_name
           methods["#{attr}=".to_sym] = attr_name
           methods["#{attr}?".to_sym] = attr_name
           methods["#{attr}_before_type_cast".to_sym] = attr_name
-          methods
         end
       end
 
@@ -317,13 +311,19 @@ module ActiveRecord
         @relation             = nil
       end
 
+      # This is a hook for use by modules that need to do extra stuff to
+      # attributes when they are initialized. (e.g. attribute
+      # serialization)
+      def initialize_attributes(attributes, options = {}) #:nodoc:
+        attributes
+      end
+
       private
 
       # Guesses the table name, but does not decorate it with prefix and suffix information.
       def undecorated_table_name(class_name = base_class.name)
         table_name = class_name.to_s.demodulize.underscore
-        table_name = table_name.pluralize if pluralize_table_names
-        table_name
+        pluralize_table_names ? table_name.pluralize : table_name
       end
 
       # Computes and returns a table name according to default conventions.

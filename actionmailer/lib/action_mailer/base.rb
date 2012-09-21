@@ -1,9 +1,10 @@
 require 'mail'
+require 'action_mailer/queued_message'
 require 'action_mailer/collector'
-require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/inflections'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/module/anonymous'
+require 'active_support/queueing'
 require 'action_mailer/log_subscriber'
 
 module ActionMailer #:nodoc:
@@ -278,6 +279,11 @@ module ActionMailer #:nodoc:
   # set something in the defaults using a proc, and then set the same thing inside of your
   # mailer method, it will get over written by the mailer method.
   #
+  # It is also possible to set these default options that will be used in all mailers through
+  # the <tt>default_options=</tt> configuration in <tt>config/application.rb</tt>:
+  #
+  #    config.action_mailer.default_options = { from: "no-reply@example.org" }
+  #
   # = Callbacks
   #
   # You can specify callbacks using before_filter and after_filter for configuring your messages.
@@ -358,6 +364,9 @@ module ActionMailer #:nodoc:
   # * <tt>deliveries</tt> - Keeps an array of all the emails sent out through the Action Mailer with
   #   <tt>delivery_method :test</tt>. Most useful for unit and functional testing.
   #
+  # * <tt>queue</> - The queue that will be used to deliver the mail. The queue should expect a job that
+  #   responds to <tt>run</tt>
+  #
   class Base < AbstractController::Base
     include DeliveryMethods
     abstract!
@@ -372,7 +381,7 @@ module ActionMailer #:nodoc:
 
     self.protected_instance_variables = [:@_action_has_layout]
 
-    helper  ActionMailer::MailHelper
+    helper ActionMailer::MailHelper
 
     private_class_method :new #:nodoc:
 
@@ -383,6 +392,9 @@ module ActionMailer #:nodoc:
       :content_type => "text/plain",
       :parts_order  => [ "text/plain", "text/enriched", "text/html" ]
     }.freeze
+
+    class_attribute :queue
+    self.queue = ActiveSupport::SynchronousQueue.new
 
     class << self
       # Register one or more Observers which will be notified when mail is delivered.
@@ -421,6 +433,10 @@ module ActionMailer #:nodoc:
         self.default_params = default_params.merge(value).freeze if value
         default_params
       end
+      # Allows to set defaults through app configuration:
+      #
+      #    config.action_mailer.default_options = { from: "no-reply@example.org" }
+      alias :default_options= :default
 
       # Receives a raw email, parses it into an email object, decodes it,
       # instantiates a new mailer, and passes the email object to the mailer
@@ -456,19 +472,6 @@ module ActionMailer #:nodoc:
         super || action_methods.include?(method.to_s)
       end
 
-      # Will force ActionMailer to push new messages to the queue defined
-      # in the ActionMailer class when set to true.
-      #
-      #   class WelcomeMailer < ActionMailer::Base
-      #     self.async = true
-      #   end
-      def async=(truth)
-        if truth
-          require 'action_mailer/async'
-          extend ActionMailer::Async
-        end
-      end
-
     protected
 
       def set_payload_for_mail(payload, mail) #:nodoc:
@@ -483,9 +486,12 @@ module ActionMailer #:nodoc:
         payload[:mail]       = mail.encoded
       end
 
-      def method_missing(method, *args) #:nodoc:
-        return super unless respond_to?(method)
-        new(method, *args).message
+      def method_missing(method_name, *args)
+        if action_methods.include?(method_name.to_s)
+          QueuedMessage.new(queue, self, method_name, *args)
+        else
+          super
+        end
       end
     end
 
@@ -675,7 +681,7 @@ module ActionMailer #:nodoc:
       m.charset = charset = headers[:charset]
 
       # Set configure delivery behavior
-      wrap_delivery_behavior!(headers.delete(:delivery_method))
+      wrap_delivery_behavior!(headers.delete(:delivery_method),headers.delete(:delivery_method_options))
 
       # Assign all headers except parts_order, content_type and body
       assignable = headers.except(:parts_order, :content_type, :body, :template_name, :template_path)
@@ -748,7 +754,7 @@ module ActionMailer #:nodoc:
 
           responses << {
             :body => render(:template => template),
-            :content_type => template.mime_type.to_s
+            :content_type => template.type.to_s
           }
         end
       end

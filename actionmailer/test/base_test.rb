@@ -2,13 +2,14 @@
 require 'abstract_unit'
 require 'set'
 
+require 'action_dispatch'
+require 'active_support/queueing'
 require 'active_support/time'
 
 require 'mailers/base_mailer'
 require 'mailers/proc_mailer'
 require 'mailers/asset_mailer'
 require 'mailers/async_mailer'
-require 'rails/queueing'
 
 class BaseTest < ActiveSupport::TestCase
   def teardown
@@ -411,7 +412,7 @@ class BaseTest < ActiveSupport::TestCase
     BaseMailer.deliveries.clear
     BaseMailer.expects(:deliver_mail).once
     mail = BaseMailer.welcome.deliver
-    assert_instance_of Mail::Message, mail
+    assert_equal 'The first email on new API!', mail.subject
   end
 
   test "calling deliver on the action should increment the deliveries collection if using the test mailer" do
@@ -421,24 +422,15 @@ class BaseTest < ActiveSupport::TestCase
     assert_equal(1, BaseMailer.deliveries.length)
   end
 
-  def stub_queue(klass, queue)
-    Class.new(klass) {
-      extend Module.new {
-        define_method :queue do
-          queue
-        end
-      }
-    }
-  end
-
   test "delivering message asynchronously" do
-    testing_queue = Rails::Queueing::TestQueue.new
     AsyncMailer.delivery_method = :test
     AsyncMailer.deliveries.clear
-    stub_queue(AsyncMailer, testing_queue).welcome.deliver
-    assert_equal(0, AsyncMailer.deliveries.length)
-    testing_queue.drain
-    assert_equal(1, AsyncMailer.deliveries.length)
+
+    AsyncMailer.welcome.deliver
+    assert_equal 0, AsyncMailer.deliveries.length
+
+    AsyncMailer.queue.drain
+    assert_equal 1, AsyncMailer.deliveries.length
   end
 
   test "calling deliver, ActionMailer should yield back to mail to let it call :do_delivery on itself" do
@@ -493,14 +485,18 @@ class BaseTest < ActiveSupport::TestCase
   end
 
   test "assets tags should use a Mailer's asset_host settings when available" do
-    ActionMailer::Base.config.asset_host = "global.com"
-    ActionMailer::Base.config.assets_dir = "global/"
+    begin
+      ActionMailer::Base.config.asset_host = "http://global.com"
+      ActionMailer::Base.config.assets_dir = "global/"
 
-    AssetMailer.asset_host = "http://local.com"
+      AssetMailer.asset_host = "http://local.com"
 
-    mail = AssetMailer.welcome
+      mail = AssetMailer.welcome
 
-    assert_equal(%{<img alt="Dummy" src="http://local.com/images/dummy.png" />}, mail.body.to_s.strip)
+      assert_equal(%{<img alt="Dummy" src="http://local.com/images/dummy.png" />}, mail.body.to_s.strip)
+    ensure
+      AssetMailer.asset_host = ActionMailer::Base.config.asset_host
+    end
   end
 
   # Before and After hooks
@@ -570,11 +566,11 @@ class BaseTest < ActiveSupport::TestCase
   end
 
   test "being able to put proc's into the defaults hash and they get evaluated on mail sending" do
-    mail1 = ProcMailer.welcome
+    mail1 = ProcMailer.welcome['X-Proc-Method']
     yesterday = 1.day.ago
     Time.stubs(:now).returns(yesterday)
-    mail2 = ProcMailer.welcome
-    assert(mail1['X-Proc-Method'].to_s.to_i > mail2['X-Proc-Method'].to_s.to_i)
+    mail2 = ProcMailer.welcome['X-Proc-Method']
+    assert(mail1.to_s.to_i > mail2.to_s.to_i)
   end
 
   test "we can call other defined methods on the class as needed" do
@@ -651,6 +647,19 @@ class BaseTest < ActiveSupport::TestCase
 
     assert_equal "Welcome", mailer.welcome.subject
     assert_equal "Anonymous mailer body", mailer.welcome.body.encoded.strip
+  end
+
+  test "default_from can be set" do
+    class DefaultFromMailer < ActionMailer::Base
+      default :to => 'system@test.lindsaar.net'
+      self.default_options = {from: "robert.pankowecki@gmail.com"}
+
+      def welcome
+        mail(subject: "subject", body: "hello world")
+      end
+    end
+
+    assert_equal ["robert.pankowecki@gmail.com"], DefaultFromMailer.welcome.from
   end
 
   protected

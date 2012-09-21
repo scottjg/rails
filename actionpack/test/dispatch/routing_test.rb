@@ -2,7 +2,6 @@
 require 'erb'
 require 'abstract_unit'
 require 'controller/fake_controllers'
-require 'active_support/core_ext/object/inclusion'
 
 class TestRoutingMapper < ActionDispatch::IntegrationTest
   SprocketsApp = lambda { |env|
@@ -364,6 +363,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         resources :errors, :shallow => true do
           resources :notices
         end
+        get 'api/version'
       end
 
       scope :path => 'api' do
@@ -482,9 +482,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         get :preview, :on => :member
       end
 
-      resources :profiles, :param => :username do
+      resources :profiles, :param => :username, :username => /[a-z]+/ do
         get :details, :on => :member
         resources :messages
+      end
+
+      resources :orders do
+        constraints :download => /[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}/ do
+          resources :downloads, :param => :download, :shallow => true
+        end
       end
 
       scope :as => "routes" do
@@ -506,7 +512,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         resources :todos, :id => /\d+/
       end
 
-      scope '/countries/:country', :constraints => lambda { |params, req| params[:country].in?(["all", "France"]) } do
+      scope '/countries/:country', :constraints => lambda { |params, req| %w(all France).include?(params[:country]) } do
         get '/',       :to => 'countries#index'
         get '/cities', :to => 'countries#cities'
       end
@@ -1275,6 +1281,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal 'account#shorthand', @response.body
   end
 
+  def test_match_shorthand_with_module
+    assert_equal '/api/version', api_version_path
+    get '/api/version'
+    assert_equal 'api/api#version', @response.body
+  end
+
   def test_dynamically_generated_helpers_on_collection_do_not_clobber_resources_url_helper
     assert_equal '/replies', replies_path
   end
@@ -1794,7 +1806,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/movies/00001'
     assert_equal 'Not Found', @response.body
-    assert_raises(ActionController::RoutingError){ movie_path(:id => '00001') }
+    assert_raises(ActionController::UrlGenerationError){ movie_path(:id => '00001') }
 
     get '/movies/0001/reviews'
     assert_equal 'reviews#index', @response.body
@@ -1802,7 +1814,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/movies/00001/reviews'
     assert_equal 'Not Found', @response.body
-    assert_raises(ActionController::RoutingError){ movie_reviews_path(:movie_id => '00001') }
+    assert_raises(ActionController::UrlGenerationError){ movie_reviews_path(:movie_id => '00001') }
 
     get '/movies/0001/reviews/0001'
     assert_equal 'reviews#show', @response.body
@@ -1810,7 +1822,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/movies/00001/reviews/0001'
     assert_equal 'Not Found', @response.body
-    assert_raises(ActionController::RoutingError){ movie_path(:movie_id => '00001', :id => '00001') }
+    assert_raises(ActionController::UrlGenerationError){ movie_path(:movie_id => '00001', :id => '00001') }
 
     get '/movies/0001/trailer'
     assert_equal 'trailers#show', @response.body
@@ -1818,7 +1830,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/movies/00001/trailer'
     assert_equal 'Not Found', @response.body
-    assert_raises(ActionController::RoutingError){ movie_trailer_path(:movie_id => '00001') }
+    assert_raises(ActionController::UrlGenerationError){ movie_trailer_path(:movie_id => '00001') }
   end
 
   def test_only_should_be_read_from_scope
@@ -2137,7 +2149,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/lists/2/todos/1'
     assert_equal 'Not Found', @response.body
-    assert_raises(ActionController::RoutingError){ list_todo_path(:list_id => '2', :id => '1') }
+    assert_raises(ActionController::UrlGenerationError){ list_todo_path(:list_id => '2', :id => '1') }
   end
 
   def test_named_routes_collision_is_avoided_unless_explicitly_given_as
@@ -2241,6 +2253,23 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     get '/profiles/bob/messages/34'
     assert_equal 'bob', @request.params[:profile_username]
     assert_equal '34', @request.params[:id]
+  end
+
+  def test_custom_param_constraint
+    get '/profiles/bob1'
+    assert_equal 404, @response.status
+
+    get '/profiles/bob1/details'
+    assert_equal 404, @response.status
+
+    get '/profiles/bob1/messages/34'
+    assert_equal 404, @response.status
+  end
+
+  def test_shallow_custom_param
+    get '/downloads/0c0c0b68-d24b-11e1-a861-001ff3fffe6f.zip'
+    assert_equal 'downloads#show', @response.body
+    assert_equal '0c0c0b68-d24b-11e1-a861-001ff3fffe6f', @request.params[:download]
   end
 
 private
@@ -2603,7 +2632,7 @@ class TestNamedRouteUrlHelpers < ActionDispatch::IntegrationTest
 
     get "/categories/1"
     assert_response :success
-    assert_raises(ActionController::RoutingError) { product_path(nil) }
+    assert_raises(ActionController::UrlGenerationError) { product_path(nil) }
   end
 end
 
@@ -2677,5 +2706,32 @@ class TestInvalidUrls < ActionDispatch::IntegrationTest
       get "/bar/%E2%EF%BF%BD%A6"
       assert_response :bad_request
     end
+  end
+end
+
+class TestOptionalRootSegments < ActionDispatch::IntegrationTest
+  stub_controllers do |routes|
+    Routes = routes
+    Routes.draw do
+      get '/(page/:page)', :to => 'pages#index', :as => :root
+    end
+  end
+
+  def app
+    Routes
+  end
+
+  include Routes.url_helpers
+
+  def test_optional_root_segments
+    get '/'
+    assert_equal 'pages#index', @response.body
+    assert_equal '/', root_path
+
+    get '/page/1'
+    assert_equal 'pages#index', @response.body
+    assert_equal '1', @request.params[:page]
+    assert_equal '/page/1', root_path('1')
+    assert_equal '/page/1', root_path(:page => '1')
   end
 end

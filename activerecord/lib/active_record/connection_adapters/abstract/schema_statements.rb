@@ -1,4 +1,3 @@
-require 'active_support/deprecation/reporting'
 require 'active_record/migration/join_table'
 
 module ActiveRecord
@@ -57,7 +56,6 @@ module ActiveRecord
 
       # Checks to see if a column exists in a given table.
       #
-      # === Examples
       #  # Check a column exists
       #  column_exists?(:suppliers, :name)
       #
@@ -65,7 +63,10 @@ module ActiveRecord
       #  column_exists?(:suppliers, :name, :string)
       #
       #  # Check a column exists with a specific definition
-      #  column_exists?(:suppliers, :name, :string, :limit => 100)
+      #  column_exists?(:suppliers, :name, :string, limit: 100)
+      #  column_exists?(:suppliers, :name, :string, default: 'default')
+      #  column_exists?(:suppliers, :name, :string, null: false)
+      #  column_exists?(:suppliers, :tax, :decimal, precision: 8, scale: 2)
       def column_exists?(table_name, column_name, type = nil, options = {})
         columns(table_name).any?{ |c| c.name == column_name.to_s &&
                                       (!type                     || c.type == type) &&
@@ -202,11 +203,14 @@ module ActiveRecord
         join_table_name = find_join_table_name(table_1, table_2, options)
 
         column_options = options.delete(:column_options) || {}
-        column_options.reverse_merge!({:null => false})
+        column_options.reverse_merge!(null: false)
 
-        create_table(join_table_name, options.merge!(:id => false)) do |td|
-          td.integer :"#{table_1.to_s.singularize}_id", column_options
-          td.integer :"#{table_2.to_s.singularize}_id", column_options
+        t1_column, t2_column = [table_1, table_2].map{ |t| t.to_s.singularize.foreign_key }
+
+        create_table(join_table_name, options.merge!(id: false)) do |td|
+          td.integer t1_column, column_options
+          td.integer t2_column, column_options
+          yield td if block_given?
         end
       end
 
@@ -485,7 +489,7 @@ module ActiveRecord
       def dump_schema_information #:nodoc:
         sm_table = ActiveRecord::Migrator.schema_migrations_table_name
 
-        ActiveRecord::SchemaMigration.order('version').all.map { |sm|
+        ActiveRecord::SchemaMigration.order('version').map { |sm|
           "INSERT INTO #{sm_table} (version) VALUES ('#{sm.version}');"
         }.join "\n\n"
       end

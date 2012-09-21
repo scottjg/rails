@@ -92,7 +92,7 @@ class MimeTypeTest < ActiveSupport::TestCase
   #  (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; InfoPath.1)
   test "parse other broken acceptlines" do
     accept = "image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword,  , pronto/1.00.00, sslvpn/1.00.00.00, */*"
-    expect = ['image/gif', 'image/x-xbitmap', 'image/jpeg','image/pjpeg', 'application/x-shockwave-flash', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/msword', 'pronto/1.00.00', 'sslvpn/1.00.00.00', Mime::ALL  ]
+    expect = ['image/gif', 'image/x-xbitmap', 'image/jpeg','image/pjpeg', 'application/x-shockwave-flash', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/msword', 'pronto/1.00.00', 'sslvpn/1.00.00.00', Mime::ALL]
     assert_equal expect, Mime::Type.parse(accept).collect { |c| c.to_s }
   end
 
@@ -115,6 +115,20 @@ class MimeTypeTest < ActiveSupport::TestCase
       end
     ensure
       Mime::Type.unregister(:FOOBAR)
+    end
+  end
+
+  test "register callbacks" do
+    begin
+      registered_mimes = []
+      Mime::Type.register_callback do |mime|
+        registered_mimes << mime
+      end
+
+      Mime::Type.register("text/foo", :foo)
+      assert_equal registered_mimes, [Mime::FOO]
+    ensure
+      Mime::Type.unregister(:FOO)
     end
   end
 

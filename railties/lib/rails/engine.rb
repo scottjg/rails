@@ -176,8 +176,7 @@ module Rails
   #
   # * routes: when you mount an Engine with <tt>mount(MyEngine::Engine => '/my_engine')</tt>,
   #   it's used as default :as option
-  # * some of the rake tasks are based on engine name, e.g. <tt>my_engine:install:migrations</tt>,
-  #   <tt>my_engine:install:assets</tt>
+  # * rake task for installing migrations <tt>my_engine:install:migrations</tt>
   #
   # Engine name is set by default based on class name. For <tt>MyEngine::Engine</tt> it will be
   # <tt>my_engine_engine</tt>. You can change it manually using the <tt>engine_name</tt> method:
@@ -340,11 +339,16 @@ module Rails
 
     class << self
       attr_accessor :called_from, :isolated
+
       alias :isolated? :isolated
       alias :engine_name :railtie_name
 
+      delegate :eager_load!, to: :instance
+
       def inherited(base)
         unless base.abstract_railtie?
+          Rails::Railtie::Configuration.eager_load_namespaces << base
+
           base.called_from = begin
             # Remove the line number from backtraces making sure we don't leave anything behind
             call_stack = caller.map { |p| p.sub(/:\d+.*/, '') }
@@ -495,7 +499,11 @@ module Rails
 
     # Define the Rack API for this engine.
     def call(env)
-      app.call(env.merge!(env_config))
+      env.merge!(env_config)
+      if env['SCRIPT_NAME']
+        env.merge! "ROUTES_#{routes.object_id}_SCRIPT_NAME" => env['SCRIPT_NAME'].dup
+      end
+      app.call(env)
     end
 
     # Defines additional Rack env configuration that is added on each call.

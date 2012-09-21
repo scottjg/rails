@@ -1,5 +1,4 @@
 require 'base64'
-require 'active_support/core_ext/object/blank'
 
 module ActionController
   # Makes it dead easy to do HTTP Basic, Digest and Token authentication.
@@ -194,7 +193,7 @@ module ActionController
           return false unless password
 
           method = request.env['rack.methodoverride.original_method'] || request.env['REQUEST_METHOD']
-          uri    = credentials[:uri][0,1] == '/' ? request.original_fullpath : request.original_url
+          uri    = credentials[:uri]
 
           [true, false].any? do |trailing_question_mark|
             [true, false].any? do |password_is_ha1|
@@ -229,9 +228,9 @@ module ActionController
       end
 
       def decode_credentials(header)
-        Hash[header.to_s.gsub(/^Digest\s+/,'').split(',').map do |pair|
+        HashWithIndifferentAccess[header.to_s.gsub(/^Digest\s+/,'').split(',').map do |pair|
           key, value = pair.split('=', 2)
-          [key.strip.to_sym, value.to_s.gsub(/^"|"$/,'').delete('\'')]
+          [key.strip, value.to_s.gsub(/^"|"$/,'').delete('\'')]
         end]
       end
 
@@ -372,7 +371,7 @@ module ActionController
     #   def test_access_granted_from_xml
     #     get(
     #       "/notes/1.xml", nil,
-    #       :authorization => ActionController::HttpAuthentication::Token.encode_credentials(users(:dhh).token)
+    #       'HTTP_AUTHORIZATION' => ActionController::HttpAuthentication::Token.encode_credentials(users(:dhh).token)
     #     )
     #
     #     assert_equal 200, status
@@ -436,10 +435,12 @@ module ActionController
           values = Hash[$1.split(',').map do |value|
             value.strip!                      # remove any spaces between commas and values
             key, value = value.split(/\=\"?/) # split key=value pairs
-            value.chomp!('"')                 # chomp trailing " in value
-            value.gsub!(/\\\"/, '"')          # unescape remaining quotes
-            [key, value]
-          end]
+            if value
+              value.chomp!('"')                 # chomp trailing " in value
+              value.gsub!(/\\\"/, '"')          # unescape remaining quotes
+              [key, value]
+            end
+          end.compact]
           [values.delete("token"), values.with_indifferent_access]
         end
       end

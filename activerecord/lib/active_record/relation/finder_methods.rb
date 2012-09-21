@@ -1,4 +1,3 @@
-require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/hash/indifferent_access'
 
 module ActiveRecord
@@ -131,19 +130,6 @@ module ActiveRecord
     # is found. Note that <tt>last!</tt> accepts no arguments.
     def last!
       last or raise RecordNotFound
-    end
-
-    # Runs the query on the database and returns records with the used query
-    # methods.
-    #
-    #   Person.all # returns an array of objects for all the rows fetched by SELECT * FROM people
-    #   Person.where(["category IN (?)", categories]).limit(50).all
-    #   Person.where({ :friends => ["Bob", "Steve", "Fred"] }).all
-    #   Person.offset(10).limit(10).all
-    #   Person.includes([:account, :friends]).all
-    #   Person.group("category").all
-    def all
-      to_a
     end
 
     # Returns +true+ if a record exists in the table that matches the +id+ or
@@ -285,7 +271,7 @@ module ActiveRecord
     end
 
     def find_some(ids)
-      result = where(table[primary_key].in(ids)).all
+      result = where(table[primary_key].in(ids)).to_a
 
       expected_size =
         if limit_value && ids.size > limit_value
@@ -324,7 +310,7 @@ module ActiveRecord
         @records.first
       else
         @first ||=
-          if order_values.empty? && primary_key
+          if with_default_scope.order_values.empty? && primary_key
             order(arel_table[primary_key].asc).limit(1).to_a.first
           else
             limit(1).to_a.first

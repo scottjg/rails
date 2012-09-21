@@ -1,6 +1,11 @@
 module ActiveRecord
   module ConnectionAdapters # :nodoc:
     module DatabaseStatements
+      def initialize
+        super
+        reset_transaction
+      end
+
       # Converts an arel AST to SQL
       def to_sql(arel, binds = [])
         if arel.respond_to?(:ast)
@@ -102,20 +107,6 @@ module ActiveRecord
         exec_delete(to_sql(arel, binds), name, binds)
       end
 
-      # Checks whether there is currently no transaction active. This is done
-      # by querying the database driver, and does not use the transaction
-      # house-keeping information recorded by #increment_open_transactions and
-      # friends.
-      #
-      # Returns true if there is no transaction active, false if there is a
-      # transaction active, and nil if this information is unknown.
-      #
-      # Not all adapters supports transaction state introspection. Currently,
-      # only the PostgreSQL adapter supports this.
-      def outside_transaction?
-        nil
-      end
-
       # Returns +true+ when the connection adapter supports prepared statement
       # caching, otherwise returns +false+
       def supports_statement_cache?
@@ -167,82 +158,60 @@ module ActiveRecord
       def transaction(options = {})
         options.assert_valid_keys :requires_new, :joinable
 
-        last_transaction_joinable = defined?(@transaction_joinable) ? @transaction_joinable : nil
-        if options.has_key?(:joinable)
-          @transaction_joinable = options[:joinable]
+        if !options[:requires_new] && current_transaction.joinable?
+          yield
         else
-          @transaction_joinable = true
+          within_new_transaction(options) { yield }
         end
-        requires_new = options[:requires_new] || !last_transaction_joinable
+      rescue ActiveRecord::Rollback
+        # rollbacks are silently swallowed
+      end
 
-        transaction_open = false
-        @_current_transaction_records ||= []
-
-        begin
-          if block_given?
-            if requires_new || open_transactions == 0
-              if open_transactions == 0
-                begin_db_transaction
-              elsif requires_new
-                create_savepoint
-              end
-              increment_open_transactions
-              transaction_open = true
-              @_current_transaction_records.push([])
-            end
-            yield
-          end
-        rescue Exception => database_transaction_rollback
-          if transaction_open && !outside_transaction?
-            transaction_open = false
-            decrement_open_transactions
-            if open_transactions == 0
-              rollback_db_transaction
-              rollback_transaction_records(true)
-            else
-              rollback_to_savepoint
-              rollback_transaction_records(false)
-            end
-          end
-          raise unless database_transaction_rollback.is_a?(ActiveRecord::Rollback)
-        end
+      def within_new_transaction(options = {}) #:nodoc:
+        begin_transaction(options)
+        yield
+      rescue Exception => error
+        rollback_transaction
+        raise
       ensure
-        @transaction_joinable = last_transaction_joinable
-
-        if outside_transaction?
-          @open_transactions = 0
-        elsif transaction_open
-          decrement_open_transactions
-          begin
-            if open_transactions == 0
-              commit_db_transaction
-              commit_transaction_records
-            else
-              release_savepoint
-              save_point_records = @_current_transaction_records.pop
-              unless save_point_records.blank?
-                @_current_transaction_records.push([]) if @_current_transaction_records.empty?
-                @_current_transaction_records.last.concat(save_point_records)
-              end
-            end
-          rescue Exception => database_transaction_rollback
-            if open_transactions == 0
-              rollback_db_transaction
-              rollback_transaction_records(true)
-            else
-              rollback_to_savepoint
-              rollback_transaction_records(false)
-            end
-            raise
-          end
+        begin
+          commit_transaction unless error
+        rescue Exception
+          rollback_transaction
+          raise
         end
+      end
+
+      def current_transaction #:nodoc:
+        @transaction
+      end
+
+      def transaction_open?
+        @transaction.open?
+      end
+
+      def begin_transaction(options = {}) #:nodoc:
+        @transaction = @transaction.begin
+        @transaction.joinable = options.fetch(:joinable, true)
+        @transaction
+      end
+
+      def commit_transaction #:nodoc:
+        @transaction = @transaction.commit
+      end
+
+      def rollback_transaction #:nodoc:
+        @transaction = @transaction.rollback
+      end
+
+      def reset_transaction #:nodoc:
+        @transaction = ClosedTransaction.new(self)
       end
 
       # Register a record with the current transaction so that its after_commit and after_rollback callbacks
       # can be called.
       def add_transaction_record(record)
-        last_batch = @_current_transaction_records.last
-        last_batch << record if last_batch
+        @transaction.add_record(record)
       end
 
       # Begins the transaction (and turns off auto-committing).
@@ -354,42 +323,6 @@ module ActiveRecord
         # Executes the delete statement and returns the number of rows affected.
         def delete_sql(sql, name = nil)
           update_sql(sql, name)
-        end
-
-        # Send a rollback message to all records after they have been rolled back. If rollback
-        # is false, only rollback records since the last save point.
-        def rollback_transaction_records(rollback)
-          if rollback
-            records = @_current_transaction_records.flatten
-            @_current_transaction_records.clear
-          else
-            records = @_current_transaction_records.pop
-          end
-
-          unless records.blank?
-            records.uniq.each do |record|
-              begin
-                record.rolledback!(rollback)
-              rescue => e
-                record.logger.error(e) if record.respond_to?(:logger) && record.logger
-              end
-            end
-          end
-        end
-
-        # Send a commit message to all records after they have been committed.
-        def commit_transaction_records
-          records = @_current_transaction_records.flatten
-          @_current_transaction_records.clear
-          unless records.blank?
-            records.uniq.each do |record|
-              begin
-                record.committed!
-              rescue => e
-                record.logger.error(e) if record.respond_to?(:logger) && record.logger
-              end
-            end
-          end
         end
 
       def sql_for_insert(sql, pk, id_value, sequence_name, binds)

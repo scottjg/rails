@@ -4,15 +4,12 @@ require 'action_view/helpers/tag_helper'
 require 'action_view/helpers/form_tag_helper'
 require 'action_view/helpers/active_model_helper'
 require 'action_view/helpers/tags'
-require 'active_support/core_ext/class/attribute'
+require 'action_view/model_naming'
 require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/core_ext/hash/slice'
-require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/array/extract_options'
-require 'active_support/deprecation'
 require 'active_support/core_ext/string/inflections'
-require 'action_controller/model_naming'
 
 module ActionView
   # = Action View Form Helpers
@@ -118,7 +115,7 @@ module ActionView
 
       include FormTagHelper
       include UrlHelper
-      include ActionController::ModelNaming
+      include ModelNaming
 
       # Creates a form that allows the user to create or update the attributes
       # of a specific model object.
@@ -326,6 +323,24 @@ module ActionView
       #     ...
       #   </form>
       #
+      # === Setting HTML options
+      #
+      # You can set data attributes directly by passing in a data hash, but all other HTML options must be wrapped in
+      # the HTML key. Example:
+      #
+      #   <%= form_for(@post, data: { behavior: "autosave" }, html: { name: "go" }) do |f| %>
+      #     ...
+      #   <% end %>
+      #
+      # The HTML generated for this would be:
+      #
+      #   <form action='http://www.example.com' method='post' data-behavior='autosave' name='go'>
+      #     <div style='margin:0;padding:0;display:inline'>
+      #       <input name='_method' type='hidden' value='put' />
+      #     </div>
+      #     ...
+      #   </form>
+      #
       # === Removing hidden model id's
       #
       # The form_for method automatically includes the model id as a hidden field in the form.
@@ -408,10 +423,12 @@ module ActionView
           object      = nil
         else
           object      = record.is_a?(Array) ? record.last : record
+          raise ArgumentError, "First argument in form cannot contain nil or be empty" if object.blank?
           object_name = options[:as] || model_name_from_record_or_class(object).param_key
           apply_form_for_options!(record, object, options)
         end
 
+        options[:html][:data]   = options.delete(:data)   if options.has_key?(:data)
         options[:html][:remote] = options.delete(:remote) if options.has_key?(:remote)
         options[:html][:method] = options.delete(:method) if options.has_key?(:method)
         options[:html][:authenticity_token] = options.delete(:authenticity_token)
@@ -703,15 +720,15 @@ module ActionView
       #   label(:post, :title)
       #   # => <label for="post_title">Title</label>
       #
-      #   You can localize your labels based on model and attribute names.
-      #   For example you can define the following in your locale (e.g. en.yml)
+      # You can localize your labels based on model and attribute names.
+      # For example you can define the following in your locale (e.g. en.yml)
       #
       #   helpers:
       #     label:
       #       post:
       #         body: "Write your entire text here"
       #
-      #   Which then will result in
+      # Which then will result in
       #
       #   label(:post, :body)
       #   # => <label for="post_body">Write your entire text here</label>
@@ -768,7 +785,7 @@ module ActionView
       # Returns an input tag of the "password" type tailored for accessing a specified attribute (identified by +method+) on an object
       # assigned to the template (identified by +object+). Additional options on the input tag can be passed as a
       # hash with +options+. These options will be tagged onto the HTML as an HTML element attribute as in the example
-      # shown.
+      # shown. For security reasons this field is blank by default; pass in a value via +options+ if this is not desired.
       #
       # ==== Examples
       #   password_field(:login, :pass, :size => 20)
@@ -1139,7 +1156,7 @@ module ActionView
     end
 
     class FormBuilder
-      include ActionController::ModelNaming
+      include ModelNaming
 
       # The methods which wrap a form helper call.
       class_attribute :field_helpers

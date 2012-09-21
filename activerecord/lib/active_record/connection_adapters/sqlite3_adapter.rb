@@ -104,6 +104,8 @@ module ActiveRecord
 
       def initialize(connection, logger, config)
         super(connection, logger)
+
+        @active     = nil
         @statements = StatementPool.new(@connection,
                                         config.fetch(:statement_limit) { 1000 })
         @config = config
@@ -154,11 +156,15 @@ module ActiveRecord
         true
       end
 
+      def active?
+        @active != false
+      end
+
       # Disconnects from the database if already connected. Otherwise, this
       # method does nothing.
       def disconnect!
         super
-        clear_cache!
+        @active = false
         @connection.close rescue nil
       end
 
@@ -380,9 +386,9 @@ module ActiveRecord
           case field["dflt_value"]
           when /^null$/i
             field["dflt_value"] = nil
-          when /^'(.*)'$/
+          when /^'(.*)'$/m
             field["dflt_value"] = $1.gsub("''", "'")
-          when /^"(.*)"$/
+          when /^"(.*)"$/m
             field["dflt_value"] = $1.gsub('""', '"')
           end
 
@@ -397,7 +403,7 @@ module ActiveRecord
             table_name,
             row['name'],
             row['unique'] != 0,
-            exec_query("PRAGMA index_info('#{row['name']}')", "Columns for index #{row['name']} on #{table_name}").map { |col|
+            exec_query("PRAGMA index_info('#{row['name']}')", "SCHEMA").map { |col|
               col['name']
             })
         end

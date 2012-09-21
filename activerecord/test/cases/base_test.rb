@@ -26,7 +26,6 @@ require 'models/bird'
 require 'models/teapot'
 require 'rexml/document'
 require 'active_support/core_ext/exception'
-require 'bcrypt'
 
 class FirstAbstractClass < ActiveRecord::Base
   self.abstract_class = true
@@ -54,10 +53,6 @@ class TestOracleDefault < ActiveRecord::Base; end
 
 class ReadonlyTitlePost < Post
   attr_readonly :title
-end
-
-class ProtectedTitlePost < Post
-  attr_protected :title
 end
 
 class Weird < ActiveRecord::Base; end
@@ -131,36 +126,36 @@ class BasicsTest < ActiveRecord::TestCase
 
   unless current_adapter?(:PostgreSQLAdapter,:OracleAdapter,:SQLServerAdapter)
     def test_limit_with_comma
-      assert Topic.limit("1,2").all
+      assert Topic.limit("1,2").to_a
     end
   end
 
   def test_limit_without_comma
-    assert_equal 1, Topic.limit("1").all.length
-    assert_equal 1, Topic.limit(1).all.length
+    assert_equal 1, Topic.limit("1").to_a.length
+    assert_equal 1, Topic.limit(1).to_a.length
   end
 
   def test_invalid_limit
     assert_raises(ArgumentError) do
-      Topic.limit("asdfadf").all
+      Topic.limit("asdfadf").to_a
     end
   end
 
   def test_limit_should_sanitize_sql_injection_for_limit_without_comas
     assert_raises(ArgumentError) do
-      Topic.limit("1 select * from schema").all
+      Topic.limit("1 select * from schema").to_a
     end
   end
 
   def test_limit_should_sanitize_sql_injection_for_limit_with_comas
     assert_raises(ArgumentError) do
-      Topic.limit("1, 7 procedure help()").all
+      Topic.limit("1, 7 procedure help()").to_a
     end
   end
 
   unless current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter)
     def test_limit_should_allow_sql_literal
-      assert_equal 1, Topic.limit(Arel.sql('2-1')).all.length
+      assert_equal 1, Topic.limit(Arel.sql('2-1')).to_a.length
     end
   end
 
@@ -231,6 +226,7 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
+      assert_equal 129346, Topic.find(3).written_on.usec
     end
   end
 
@@ -349,13 +345,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_load
-    topics = Topic.scoped(:order => 'id').all
+    topics = Topic.all.merge!(:order => 'id').to_a
     assert_equal(4, topics.size)
     assert_equal(topics(:first).title, topics.first.title)
   end
 
   def test_load_with_condition
-    topics = Topic.scoped(:where => "author_name = 'Mary'").all
+    topics = Topic.all.merge!(:where => "author_name = 'Mary'").to_a
 
     assert_equal(1, topics.size)
     assert_equal(topics(:second).title, topics.first.title)
@@ -466,13 +462,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_singular_table_name_guesses_for_individual_table
-    CreditCard.pluralize_table_names = false
-    CreditCard.reset_table_name
-    assert_equal "credit_card", CreditCard.table_name
+    Post.pluralize_table_names = false
+    Post.reset_table_name
+    assert_equal "post", Post.table_name
     assert_equal "categories", Category.table_name
   ensure
-    CreditCard.pluralize_table_names = true
-    CreditCard.reset_table_name
+    Post.pluralize_table_names = true
+    Post.reset_table_name
   end
 
   if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
@@ -603,13 +599,19 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal "changed", post.body
   end
 
+  def test_attr_readonly_is_class_level_setting
+    post = ReadonlyTitlePost.new
+    assert_raise(NoMethodError) { post._attr_readonly = [:title] }
+    assert_deprecated { post._attr_readonly }
+  end
+
   def test_non_valid_identifier_column_name
     weird = Weird.create('a$b' => 'value')
     weird.reload
     assert_equal 'value', weird.send('a$b')
     assert_equal 'value', weird.read_attribute('a$b')
 
-    weird.update_column('a$b', 'value2')
+    weird.update_columns('a$b' => 'value2')
     weird.reload
     assert_equal 'value2', weird.send('a$b')
     assert_equal 'value2', weird.read_attribute('a$b')
@@ -907,6 +909,51 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_multiparameter_assignment_of_aggregation
+    customer = Customer.new
+    address = Address.new("The Street", "The City", "The Country")
+    attributes = { "address(1)" => address.street, "address(2)" => address.city, "address(3)" => address.country }
+    customer.attributes = attributes
+    assert_equal address, customer.address
+  end
+
+  def test_multiparameter_assignment_of_aggregation_out_of_order
+    customer = Customer.new
+    address = Address.new("The Street", "The City", "The Country")
+    attributes = { "address(3)" => address.country, "address(2)" => address.city, "address(1)" => address.street }
+    customer.attributes = attributes
+    assert_equal address, customer.address
+  end
+
+  def test_multiparameter_assignment_of_aggregation_with_missing_values
+    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+      customer = Customer.new
+      address = Address.new("The Street", "The City", "The Country")
+      attributes = { "address(2)" => address.city, "address(3)" => address.country }
+      customer.attributes = attributes
+    end
+    assert_equal("address", ex.errors[0].attribute)
+  end
+
+  def test_multiparameter_assignment_of_aggregation_with_blank_values
+    customer = Customer.new
+    address = Address.new("The Street", "The City", "The Country")
+    attributes = { "address(1)" => "", "address(2)" => address.city, "address(3)" => address.country }
+    customer.attributes = attributes
+    assert_equal Address.new(nil, "The City", "The Country"), customer.address
+  end
+
+  def test_multiparameter_assignment_of_aggregation_with_large_index
+    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+      customer = Customer.new
+      address = Address.new("The Street", "The City", "The Country")
+      attributes = { "address(1)" => "The Street", "address(2)" => address.city, "address(3000)" => address.country }
+      customer.attributes = attributes
+    end
+
+    assert_equal("address", ex.errors[0].attribute)
+  end
+
   def test_attributes_on_dummy_time
     # Oracle, and Sybase do not have a TIME datatype.
     return true if current_adapter?(:OracleAdapter, :SybaseAdapter)
@@ -917,6 +964,18 @@ class BasicsTest < ActiveRecord::TestCase
     topic = Topic.find(1)
     topic.attributes = attributes
     assert_equal Time.local(2000, 1, 1, 5, 42, 0), topic.bonus_time
+  end
+
+  def test_attributes_on_dummy_time_with_invalid_time
+    # Oracle, and Sybase do not have a TIME datatype.
+    return true if current_adapter?(:OracleAdapter, :SybaseAdapter)
+
+    attributes = {
+      "bonus_time" => "not a time"
+    }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    assert_nil topic.bonus_time
   end
 
   def test_boolean
@@ -994,6 +1053,26 @@ class BasicsTest < ActiveRecord::TestCase
 
     duped_topic.reload
     assert_equal("c", duped_topic.title)
+  end
+
+  def test_dup_with_aggregate_of_same_name_as_attribute
+    dev = DeveloperWithAggregate.find(1)
+    assert_kind_of DeveloperSalary, dev.salary
+
+    dup = nil
+    assert_nothing_raised { dup = dev.dup }
+    assert_kind_of DeveloperSalary, dup.salary
+    assert_equal dev.salary.amount, dup.salary.amount
+    assert !dup.persisted?
+
+    # test if the attributes have been dupd
+    original_amount = dup.salary.amount
+    dev.salary.amount = 1
+    assert_equal original_amount, dup.salary.amount
+
+    assert dup.save
+    assert dup.persisted?
+    assert_not_equal dup.id, dev.id
   end
 
   def test_dup_does_not_copy_associations
@@ -1218,200 +1297,11 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_quoting_arrays
-    replies = Reply.scoped(:where => [ "id IN (?)", topics(:first).replies.collect(&:id) ]).all
+    replies = Reply.all.merge!(:where => [ "id IN (?)", topics(:first).replies.collect(&:id) ]).to_a
     assert_equal topics(:first).replies.size, replies.size
 
-    replies = Reply.scoped(:where => [ "id IN (?)", [] ]).all
+    replies = Reply.all.merge!(:where => [ "id IN (?)", [] ]).to_a
     assert_equal 0, replies.size
-  end
-
-  MyObject = Struct.new :attribute1, :attribute2
-
-  def test_serialized_attribute
-    Topic.serialize("content", MyObject)
-
-    myobj = MyObject.new('value1', 'value2')
-    topic = Topic.create("content" => myobj)
-    assert_equal(myobj, topic.content)
-
-    topic.reload
-    assert_equal(myobj, topic.content)
-  end
-
-  def test_serialized_attribute_in_base_class
-    Topic.serialize("content", Hash)
-
-    hash = { 'content1' => 'value1', 'content2' => 'value2' }
-    important_topic = ImportantTopic.create("content" => hash)
-    assert_equal(hash, important_topic.content)
-
-    important_topic.reload
-    assert_equal(hash, important_topic.content)
-  end
-
-  # This test was added to fix GH #4004. Obviously the value returned
-  # is not really the value 'before type cast' so we should maybe think
-  # about changing that in the future.
-  def test_serialized_attribute_before_type_cast_returns_unserialized_value
-    klass = Class.new(ActiveRecord::Base)
-    klass.table_name = "topics"
-    klass.serialize :content, Hash
-
-    t = klass.new(:content => { :foo => :bar })
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
-    t.save!
-    t.reload
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
-  end
-
-  def test_serialized_attribute_calling_dup_method
-    klass = Class.new(ActiveRecord::Base)
-    klass.table_name = "topics"
-    klass.serialize :content, JSON
-
-    t = klass.new(:content => { :foo => :bar }).dup
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
-  end
-
-  def test_serialized_attribute_declared_in_subclass
-    hash = { 'important1' => 'value1', 'important2' => 'value2' }
-    important_topic = ImportantTopic.create("important" => hash)
-    assert_equal(hash, important_topic.important)
-
-    important_topic.reload
-    assert_equal(hash, important_topic.important)
-    assert_equal(hash, important_topic.read_attribute(:important))
-  end
-
-  def test_serialized_time_attribute
-    myobj = Time.local(2008,1,1,1,0)
-    topic = Topic.create("content" => myobj).reload
-    assert_equal(myobj, topic.content)
-  end
-
-  def test_serialized_string_attribute
-    myobj = "Yes"
-    topic = Topic.create("content" => myobj).reload
-    assert_equal(myobj, topic.content)
-  end
-
-  def test_nil_serialized_attribute_without_class_constraint
-    topic = Topic.new
-    assert_nil topic.content
-  end
-
-  def test_nil_not_serialized_without_class_constraint
-    assert Topic.new(:content => nil).save
-    assert_equal 1, Topic.where(:content => nil).count
-  end
-
-  def test_nil_not_serialized_with_class_constraint
-    Topic.serialize :content, Hash
-    assert Topic.new(:content => nil).save
-    assert_equal 1, Topic.where(:content => nil).count
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_should_raise_exception_on_serialized_attribute_with_type_mismatch
-    myobj = MyObject.new('value1', 'value2')
-    topic = Topic.new(:content => myobj)
-    assert topic.save
-    Topic.serialize(:content, Hash)
-    assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.find(topic.id).reload.content }
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialized_attribute_with_class_constraint
-    settings = { "color" => "blue" }
-    Topic.serialize(:content, Hash)
-    topic = Topic.new(:content => settings)
-    assert topic.save
-    assert_equal(settings, Topic.find(topic.id).content)
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialized_default_class
-    Topic.serialize(:content, Hash)
-    topic = Topic.new
-    assert_equal Hash, topic.content.class
-    assert_equal Hash, topic.read_attribute(:content).class
-    topic.content["beer"] = "MadridRb"
-    assert topic.save
-    topic.reload
-    assert_equal Hash, topic.content.class
-    assert_equal "MadridRb", topic.content["beer"]
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialized_no_default_class_for_object
-    topic = Topic.new
-    assert_nil topic.content
-  end
-
-  def test_serialized_boolean_value_true
-    Topic.serialize(:content)
-    topic = Topic.new(:content => true)
-    assert topic.save
-    topic = topic.reload
-    assert_equal topic.content, true
-  end
-
-  def test_serialized_boolean_value_false
-    Topic.serialize(:content)
-    topic = Topic.new(:content => false)
-    assert topic.save
-    topic = topic.reload
-    assert_equal topic.content, false
-  end
-
-  def test_serialize_with_coder
-    coder = Class.new {
-      # Identity
-      def load(thing)
-        thing
-      end
-
-      # base 64
-      def dump(thing)
-        [thing].pack('m')
-      end
-    }.new
-
-    Topic.serialize(:content, coder)
-    s = 'hello world'
-    topic = Topic.new(:content => s)
-    assert topic.save
-    topic = topic.reload
-    assert_equal [s].pack('m'), topic.content
-  ensure
-    Topic.serialize(:content)
-  end
-
-  def test_serialize_with_bcrypt_coder
-    crypt_coder = Class.new {
-      def load(thing)
-        return unless thing
-        BCrypt::Password.new thing
-      end
-
-      def dump(thing)
-        BCrypt::Password.create(thing).to_s
-      end
-    }.new
-
-    Topic.serialize(:content, crypt_coder)
-    password = 'password'
-    topic = Topic.new(:content => password)
-    assert topic.save
-    topic = topic.reload
-    assert_kind_of BCrypt::Password, topic.content
-    assert_equal(true, topic.content == password, 'password should equal')
-  ensure
-    Topic.serialize(:content)
   end
 
   def test_quote
@@ -1556,57 +1446,57 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_no_limit_offset
     assert_nothing_raised do
-      Developer.scoped(:offset => 2).all
+      Developer.all.merge!(:offset => 2).to_a
     end
   end
 
   def test_find_last
     last  = Developer.last
-    assert_equal last, Developer.scoped(:order => 'id desc').first
+    assert_equal last, Developer.all.merge!(:order => 'id desc').first
   end
 
   def test_last
-    assert_equal Developer.scoped(:order => 'id desc').first, Developer.last
+    assert_equal Developer.all.merge!(:order => 'id desc').first, Developer.last
   end
 
   def test_all
     developers = Developer.all
-    assert_kind_of Array, developers
+    assert_kind_of ActiveRecord::Relation, developers
     assert_equal Developer.all, developers
   end
 
   def test_all_with_conditions
-    assert_equal Developer.scoped(:order => 'id desc').all, Developer.order('id desc').all
+    assert_equal Developer.all.merge!(:order => 'id desc').to_a, Developer.order('id desc').to_a
   end
 
   def test_find_ordered_last
-    last  = Developer.scoped(:order => 'developers.salary ASC').last
-    assert_equal last, Developer.scoped(:order => 'developers.salary ASC').all.last
+    last  = Developer.all.merge!(:order => 'developers.salary ASC').last
+    assert_equal last, Developer.all.merge!(:order => 'developers.salary ASC').to_a.last
   end
 
   def test_find_reverse_ordered_last
-    last  = Developer.scoped(:order => 'developers.salary DESC').last
-    assert_equal last, Developer.scoped(:order => 'developers.salary DESC').all.last
+    last  = Developer.all.merge!(:order => 'developers.salary DESC').last
+    assert_equal last, Developer.all.merge!(:order => 'developers.salary DESC').to_a.last
   end
 
   def test_find_multiple_ordered_last
-    last  = Developer.scoped(:order => 'developers.name, developers.salary DESC').last
-    assert_equal last, Developer.scoped(:order => 'developers.name, developers.salary DESC').all.last
+    last  = Developer.all.merge!(:order => 'developers.name, developers.salary DESC').last
+    assert_equal last, Developer.all.merge!(:order => 'developers.name, developers.salary DESC').to_a.last
   end
 
   def test_find_keeps_multiple_order_values
-    combined = Developer.scoped(:order => 'developers.name, developers.salary').all
-    assert_equal combined, Developer.scoped(:order => ['developers.name', 'developers.salary']).all
+    combined = Developer.all.merge!(:order => 'developers.name, developers.salary').to_a
+    assert_equal combined, Developer.all.merge!(:order => ['developers.name', 'developers.salary']).to_a
   end
 
   def test_find_keeps_multiple_group_values
-    combined = Developer.scoped(:group => 'developers.name, developers.salary, developers.id, developers.created_at, developers.updated_at').all
-    assert_equal combined, Developer.scoped(:group => ['developers.name', 'developers.salary', 'developers.id', 'developers.created_at', 'developers.updated_at']).all
+    combined = Developer.all.merge!(:group => 'developers.name, developers.salary, developers.id, developers.created_at, developers.updated_at').to_a
+    assert_equal combined, Developer.all.merge!(:group => ['developers.name', 'developers.salary', 'developers.id', 'developers.created_at', 'developers.updated_at']).to_a
   end
 
   def test_find_symbol_ordered_last
-    last  = Developer.scoped(:order => :salary).last
-    assert_equal last, Developer.scoped(:order => :salary).all.last
+    last  = Developer.all.merge!(:order => :salary).last
+    assert_equal last, Developer.all.merge!(:order => :salary).to_a.last
   end
 
   def test_abstract_class
@@ -1617,18 +1507,6 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_abstract_class_table_name
     assert_nil AbstractCompany.table_name
-  end
-
-  def test_base_class
-    assert_equal LoosePerson,     LoosePerson.base_class
-    assert_equal LooseDescendant, LooseDescendant.base_class
-    assert_equal TightPerson,     TightPerson.base_class
-    assert_equal TightPerson,     TightDescendant.base_class
-
-    assert_equal Post, Post.base_class
-    assert_equal Post, SpecialPost.base_class
-    assert_equal Post, StiPost.base_class
-    assert_equal SubStiPost, SubStiPost.base_class
   end
 
   def test_descends_from_active_record
@@ -1684,6 +1562,12 @@ class BasicsTest < ActiveRecord::TestCase
     assert_kind_of String, Client.first.to_param
   end
 
+  def test_to_param_returns_id_even_if_not_persisted
+    client = Client.new
+    client.id = 1
+    assert_equal "1", client.to_param
+  end
+
   def test_inspect_class
     assert_equal 'ActiveRecord::Base', ActiveRecord::Base.inspect
     assert_equal 'LoosePerson(abstract)', LoosePerson.inspect
@@ -1700,8 +1584,8 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_inspect_limited_select_instance
-    assert_equal %(#<Topic id: 1>), Topic.scoped(:select => 'id', :where => 'id = 1').first.inspect
-    assert_equal %(#<Topic id: 1, title: "The First Topic">), Topic.scoped(:select => 'id, title', :where => 'id = 1').first.inspect
+    assert_equal %(#<Topic id: 1>), Topic.all.merge!(:select => 'id', :where => 'id = 1').first.inspect
+    assert_equal %(#<Topic id: 1, title: "The First Topic">), Topic.all.merge!(:select => 'id, title', :where => 'id = 1').first.inspect
   end
 
   def test_inspect_class_without_table
@@ -1731,26 +1615,32 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_silence_sets_log_level_to_error_in_block
     original_logger = ActiveRecord::Base.logger
-    log = StringIO.new
-    ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
-    ActiveRecord::Base.logger.level = Logger::DEBUG
-    ActiveRecord::Base.silence do
-      ActiveRecord::Base.logger.warn "warn"
-      ActiveRecord::Base.logger.error "error"
+
+    assert_deprecated do
+      log = StringIO.new
+      ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+      ActiveRecord::Base.logger.level = Logger::DEBUG
+      ActiveRecord::Base.silence do
+        ActiveRecord::Base.logger.warn "warn"
+        ActiveRecord::Base.logger.error "error"
+      end
+      assert_equal "error\n", log.string
     end
-    assert_equal "error\n", log.string
   ensure
     ActiveRecord::Base.logger = original_logger
   end
 
   def test_silence_sets_log_level_back_to_level_before_yield
     original_logger = ActiveRecord::Base.logger
-    log = StringIO.new
-    ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
-    ActiveRecord::Base.logger.level = Logger::WARN
-    ActiveRecord::Base.silence do
+
+    assert_deprecated do
+      log = StringIO.new
+      ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+      ActiveRecord::Base.logger.level = Logger::WARN
+      ActiveRecord::Base.silence do
+      end
+      assert_equal Logger::WARN, ActiveRecord::Base.logger.level
     end
-    assert_equal Logger::WARN, ActiveRecord::Base.logger.level
   ensure
     ActiveRecord::Base.logger = original_logger
   end
@@ -1814,7 +1704,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_current_scope_is_reset
     Object.const_set :UnloadablePost, Class.new(ActiveRecord::Base)
-    UnloadablePost.send(:current_scope=, UnloadablePost.scoped)
+    UnloadablePost.send(:current_scope=, UnloadablePost.all)
 
     UnloadablePost.unloadable
     assert_not_nil Thread.current[:UnloadablePost_current_scope]
@@ -1859,7 +1749,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_attribute_names
-    assert_equal ["id", "type", "ruby_type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description"],
+    assert_equal ["id", "type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description"],
                  Company.attribute_names
   end
 
@@ -1890,13 +1780,13 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_cache_key_format_for_existing_record_with_nil_updated_at
     dev = Developer.first
-    dev.update_column(:updated_at, nil)
+    dev.update_columns(updated_at: nil)
     assert_match(/\/#{dev.id}$/, dev.cache_key)
   end
 
   def test_uniq_delegates_to_scoped
     scope = stub
-    Bird.stubs(:scoped).returns(mock(:uniq => scope))
+    Bird.stubs(:all).returns(mock(:uniq => scope))
     assert_equal scope, Bird.uniq
   end
 
@@ -1963,7 +1853,7 @@ class BasicsTest < ActiveRecord::TestCase
       scope.expects(meth).with(:foo, :bar).returns(record)
 
       klass = Class.new(ActiveRecord::Base)
-      klass.stubs(:scoped => scope)
+      klass.stubs(:all => scope)
 
       assert_equal record, klass.public_send(meth, :foo, :bar)
     end
@@ -1971,6 +1861,6 @@ class BasicsTest < ActiveRecord::TestCase
 
   test "scoped can take a values hash" do
     klass = Class.new(ActiveRecord::Base)
-    assert_equal ['foo'], klass.scoped(select: 'foo').select_values
+    assert_equal ['foo'], klass.all.merge!(select: 'foo').select_values
   end
 end

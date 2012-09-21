@@ -5,6 +5,8 @@ module ActiveSupport
   class Railtie < Rails::Railtie
     config.active_support = ActiveSupport::OrderedOptions.new
 
+    config.eager_load_namespaces << ActiveSupport
+
     initializer "active_support.deprecation_behavior" do |app|
       if deprecation = app.config.active_support.deprecation
         ActiveSupport::Deprecation.behavior = deprecation
@@ -23,6 +25,15 @@ module ActiveSupport
       end
 
       Time.zone_default = zone_default
+    end
+
+    # Sets the default week start
+    # If assigned value is not a valid day symbol (e.g. :sunday, :monday, ...), an exception will be raised.
+    initializer "active_support.initialize_beginning_of_week" do |app|
+      require 'active_support/core_ext/date/calculations'
+      beginning_of_week_default = Date.find_beginning_of_week!(app.config.beginning_of_week)
+
+      Date.beginning_of_week_default = beginning_of_week_default
     end
 
     initializer "active_support.set_configs" do |app|
