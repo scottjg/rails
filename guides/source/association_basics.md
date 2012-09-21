@@ -637,7 +637,7 @@ The `create_association` method returns a new object of the associated type. Thi
 
 #### Options for `belongs_to`
 
-While Rails uses intelligent defaults that will work well in most situations, there may be times when you want to customize the behavior of the `belongs_to` association reference. Such customizations can easily be accomplished by passing options and scope blocks when you create the association. For example, this assocation uses two such options:
+While Rails uses intelligent defaults that will work well in most situations, there may be times when you want to customize the behavior of the `belongs_to` association reference. Such customizations can easily be accomplished by passing options and scope blocks when you create the association. For example, this association uses two such options:
 
 ```ruby
 class Order < ActiveRecord::Base
@@ -977,7 +977,7 @@ end
 Controls what happens to the associated object when its owner is destroyed:
 
 * `:destroy` causes the associated object to also be destroyed
-* `:delete` causes the asssociated object to be deleted directly from the database (so callbacks will not execute)
+* `:delete` causes the associated object to be deleted directly from the database (so callbacks will not execute)
 * `:nullify` causes the foreign key to be set to `NULL`. Callbacks are not executed.
 * `:restrict_with_exception` causes an exception to be raised if there is an associated record
 * `:restrict_with_error` causes an error to be added to the owner if there is an associated object
