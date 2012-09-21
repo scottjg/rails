@@ -63,6 +63,8 @@ module Rails
     end
 
     def logger=(logger)
+      puts "logger has been set!"
+      p caller
       @@logger = logger
     end
 
