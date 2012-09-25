@@ -1,9 +1,14 @@
 ## Rails 3.2.9 (unreleased)
 
-*   Make ActiveRecord::ConnectionPool 'fair', first thread waiting is
-    first thread given newly available connection. Backport of #6492 02b2335563
+*   ConnectionPool recognizes checkout_timeout spec key as taking
+    precedence over legacy wait_timeout spec key, can be used to avoid
+    conflict with mysql2 use of wait_timeout.  Closes #7684.
 
     *jrochkind*
+
+*   Rename field_changed? to _field_changed? so that users can create a field named field
+
+    *Akira Matsuda*, backported by *Steve Klabnik*
 
 *   Fix creation of through association models when using `collection=[]`
     on a `has_many :through` association from an unsaved model.
