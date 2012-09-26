@@ -61,7 +61,7 @@ module ActiveSupport
         end
 
         klasses.each do |klass|
-          key = if klass.is_a?(Class) && klass <= Exception
+          key = if (klass.is_a?(Module) || (klass.is_a?(Class) && klass <= Exception))
             klass.name
           elsif klass.is_a?(String)
             klass

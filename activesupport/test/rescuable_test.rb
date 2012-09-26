@@ -12,6 +12,9 @@ end
 class CoolError < StandardError
 end
 
+module StargateError
+end
+
 class Stargate
   attr_accessor :result
 
@@ -20,6 +23,8 @@ class Stargate
   rescue_from WraithAttack, :with => :sos_first
 
   rescue_from WraithAttack, :with => :sos
+
+  rescue_from StargateError, :with => :sos
 
   rescue_from NuclearExplosion do
     @result = 'alldead'
@@ -37,6 +42,13 @@ class Stargate
 
   def attack
     raise WraithAttack
+  end
+
+  def tagged_attack
+    raise WraithAttack
+  rescue => e
+    e.extend StargateError
+    raise
   end
 
   def nuke
@@ -92,15 +104,20 @@ class RescuableTest < ActiveSupport::TestCase
   end
 
   def test_rescues_defined_later_are_added_at_end_of_the_rescue_handlers_array
-    expected = ["WraithAttack", "WraithAttack", "NuclearExplosion", "MadRonon"]
+    expected = ["WraithAttack", "WraithAttack", "StargateError", "NuclearExplosion", "MadRonon"]
     result = @stargate.send(:rescue_handlers).collect {|e| e.first}
     assert_equal expected, result
   end
 
   def test_children_should_inherit_rescue_defintions_from_parents_and_child_rescue_should_be_appended
-    expected = ["WraithAttack", "WraithAttack", "NuclearExplosion", "MadRonon", "CoolError"]
+    expected = ["WraithAttack", "WraithAttack", "StargateError", "NuclearExplosion", "MadRonon", "CoolError"]
     result = @cool_stargate.send(:rescue_handlers).collect {|e| e.first}
     assert_equal expected, result
+  end
+
+  def test_rescue_from_tagged_error
+    @stargate.dispatch :tagged_attack
+    assert_equal 'killed', @stargate.result
   end
 
 end
