@@ -1,4 +1,4 @@
-version = ARGV.pop
+version = (ARGV.length > 0) ? ARGV.pop : File.open(File.expand_path('../RAILS_VERSION', __FILE__)).read.chomp
 
 %w( activesupport activemodel activerecord actionpack actionmailer railties ).each do |framework|
   puts "Installing #{framework}..."
