@@ -800,6 +800,20 @@ class FragmentCachingTest < ActionController::TestCase
     assert_equal 'generated till now -> fragment content', buffer
   end
 
+  def test_fragment_for_forced
+    @store.write('views/expensive', 'fragment content')
+    fragment_computed = false
+
+    view_context = @controller.view_context
+    view_context.output_buffer = ActionView::OutputBuffer.new
+
+    buffer = 'generated till now -> '.html_safe
+    buffer << view_context.send(:fragment_for, 'expensive', :force => true) { fragment_computed = true }
+
+    assert fragment_computed
+    assert_equal 'generated till now -> ', buffer
+  end
+
   def test_html_safety
     assert_nil @store.read('views/name')
     content = 'value'.html_safe
@@ -862,7 +876,7 @@ CACHED
     get :html_fragment_cached_with_partial
     assert_response :success
     assert_match(/Old fragment caching in a partial/, @response.body)
-    
+
     assert_match("Old fragment caching in a partial",
       @store.read("views/test.host/functional_caching/html_fragment_cached_with_partial/#{template_digest("functional_caching/_partial", "html")}"))
   end
@@ -897,7 +911,7 @@ CACHED
     assert_equal "  <p>Builder</p>\n",
       @store.read("views/test.host/functional_caching/formatted_fragment_cached/#{template_digest("functional_caching/formatted_fragment_cached", "xml")}")
   end
-  
+
   private
     def template_digest(name, format)
       ActionView::Digestor.digest(name, format, @controller.lookup_context)

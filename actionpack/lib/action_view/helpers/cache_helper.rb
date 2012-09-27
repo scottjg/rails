@@ -116,7 +116,7 @@ module ActionView
     private
       # TODO: Create an object that has caching read/write on it
       def fragment_for(name = {}, options = nil, &block) #:nodoc:
-        if fragment = controller.read_fragment(name, options)
+        if !(options.is_a?(Hash) && options[:force]) && fragment = controller.read_fragment(name, options)
           fragment
         else
           # VIEW TODO: Make #capture usable outside of ERB
@@ -131,7 +131,7 @@ module ActionView
           controller.write_fragment(name, fragment, options)
         end
       end
-      
+
       def fragment_name_with_digest(name)
         if @virtual_path
           [
