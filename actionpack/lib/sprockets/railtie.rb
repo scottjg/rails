@@ -7,6 +7,8 @@ module Sprockets
   autoload :LazyCompressor, "sprockets/compressors"
   autoload :NullCompressor, "sprockets/compressors"
   autoload :StaticCompiler, "sprockets/static_compiler"
+  autoload :StaticCleaner,  "sprockets/static_cleaner"
+  autoload :StaticNonDigestGenerator, "sprockets/static_non_digest_generator"
 
   # TODO: Get rid of config.assets.enabled
   class Railtie < ::Rails::Railtie
@@ -33,13 +35,15 @@ module Sprockets
       end
 
       if config.assets.manifest
-        path = File.join(config.assets.manifest, "manifest.yml")
+        manifest_path = File.join(config.assets.manifest, "manifest.yml")
       else
-        path = File.join(Rails.public_path, config.assets.prefix, "manifest.yml")
+        manifest_path = File.join(Rails.public_path, config.assets.prefix, "manifest.yml")
       end
 
-      if File.exist?(path)
-        config.assets.digests = YAML.load_file(path)
+      if File.exist?(manifest_path)
+        manifest = YAML.load_file(manifest_path)
+        config.assets.digest_files   = manifest[:digest_files]   || {}
+        config.assets.source_digests = manifest[:source_digests] || {}
       end
 
       ActiveSupport.on_load(:action_view) do
