@@ -10,7 +10,7 @@ module Sprockets
         @asset_paths ||= begin
           paths = RailsHelper::AssetPaths.new(config, controller)
           paths.asset_environment = asset_environment
-          paths.asset_digests     = asset_digests
+          paths.digest_files      = digest_files
           paths.compile_assets    = compile_assets?
           paths.digest_assets     = digest_assets?
           paths
@@ -95,8 +95,8 @@ module Sprockets
         Rails.application.config.assets.prefix
       end
 
-      def asset_digests
-        Rails.application.config.assets.digests
+      def digest_files
+        Rails.application.config.assets.digest_files
       end
 
       def compile_assets?
@@ -115,7 +115,7 @@ module Sprockets
       end
 
       class AssetPaths < ::ActionView::AssetPaths #:nodoc:
-        attr_accessor :asset_environment, :asset_prefix, :asset_digests, :compile_assets, :digest_assets
+        attr_accessor :asset_environment, :asset_prefix, :digest_files, :compile_assets, :digest_assets
 
         class AssetNotPrecompiledError < StandardError; end
 
@@ -129,7 +129,7 @@ module Sprockets
         end
 
         def digest_for(logical_path)
-          if digest_assets && asset_digests && (digest = asset_digests[logical_path])
+          if digest_assets && digest_files && (digest = digest_files[logical_path])
             return digest
           end
 
