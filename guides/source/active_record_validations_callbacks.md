@@ -51,7 +51,7 @@ We can see how it works by looking at some `rails console` output:
 
 ```ruby
 >> p = Person.new(:name => "John Doe")
-=> #<Person id: nil, name: "John Doe", created_at: nil, :updated_at: nil>
+=> #<Person id: nil, name: "John Doe", created_at: nil, updated_at: nil>
 >> p.new_record?
 => true
 >> p.save
@@ -143,7 +143,7 @@ end
 #=> ActiveRecord::RecordInvalid: Validation failed: Name can't be blank
 ```
 
-`invalid?` is simply the inverse of `valid?`. `invalid?` triggers your validations, returning true if any errors were found in the object, and false otherwise.
+`invalid?` is simply the inverse of `valid?`. It triggers your validations, returning true if any errors were found in the object, and false otherwise.
 
 ### `errors[]`
 
@@ -994,6 +994,25 @@ class User < ActiveRecord::Base
   end
 end
 ```
+
+Callbacks can also be registered to only fire on certain lifecycle events:
+<ruby>
+class User < ActiveRecord::Base
+  before_validation :normalize_name, :on => :create
+  
+  # :on takes an array as well
+  after_validation :set_location, :on => [ :create, :update ]
+
+  protected
+  def normalize_name
+    self.name = self.name.downcase.titleize
+  end
+
+  def set_location
+    self.location = LocationService.query(self)
+  end
+end
+</ruby>
 
 It is considered good practice to declare callback methods as protected or private. If left public, they can be called from outside of the model and violate the principle of object encapsulation.
 

@@ -30,6 +30,9 @@ module ActionView
       end
     end
 
+    # Use AV::TestCase for the base class for helpers and views
+    register_spec_type(/(Helper|View)( ?Test)?\z/i, self)
+
     module Behavior
       extend ActiveSupport::Concern
 
@@ -43,6 +46,8 @@ module ActionView
       include ActionView::Helpers
       include ActionView::RecordIdentifier
       include ActionView::RoutingUrlFor
+
+      include ActiveSupport::Testing::ConstantLookup
 
       delegate :lookup_context, :to => :controller
       attr_accessor :controller, :output_buffer, :rendered
@@ -58,10 +63,9 @@ module ActionView
         end
 
         def determine_default_helper_class(name)
-          mod = name.sub(/Test$/, '').constantize
-          mod.is_a?(Class) ? nil : mod
-        rescue NameError
-          nil
+          determine_constant_from_test_name(name) do |constant|
+            Module === constant && !(Class === constant)
+          end
         end
 
         def helper_method(*methods)
@@ -201,6 +205,7 @@ module ActionView
         :@rendered,
         :@request,
         :@routes,
+        :@tagged_logger,
         :@templates,
         :@options,
         :@test_passed,

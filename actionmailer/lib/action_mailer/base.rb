@@ -7,7 +7,7 @@ require 'active_support/core_ext/module/anonymous'
 require 'active_support/queueing'
 require 'action_mailer/log_subscriber'
 
-module ActionMailer #:nodoc:
+module ActionMailer
   # Action Mailer allows you to send email from your application using a mailer model and views.
   #
   # = Mailer Models
@@ -142,6 +142,7 @@ module ActionMailer #:nodoc:
   # for delivery later:
   #
   #   Notifier.welcome(david).deliver # sends the email
+  #   Notifier.deliver_welcome(david) # synonym for the former
   #   mail = Notifier.welcome(david)  # => a Mail::Message object
   #   mail.deliver                    # sends the email
   #
@@ -364,9 +365,7 @@ module ActionMailer #:nodoc:
   # * <tt>deliveries</tt> - Keeps an array of all the emails sent out through the Action Mailer with
   #   <tt>delivery_method :test</tt>. Most useful for unit and functional testing.
   #
-  # * <tt>queue</> - The queue that will be used to deliver the mail. The queue should expect a job that
-  #   responds to <tt>run</tt>
-  #
+  # * <tt>queue</> - The queue that will be used to deliver the mail. The queue should expect a job that responds to <tt>run</tt>.
   class Base < AbstractController::Base
     include DeliveryMethods
     abstract!
@@ -489,6 +488,8 @@ module ActionMailer #:nodoc:
       def method_missing(method_name, *args)
         if action_methods.include?(method_name.to_s)
           QueuedMessage.new(queue, self, method_name, *args)
+        elsif method_name.to_s =~ /^deliver_(.+)$/ && action_methods.include?($1)
+          public_send($1, *args).deliver
         else
           super
         end

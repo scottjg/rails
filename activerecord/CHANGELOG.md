@@ -1,5 +1,57 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Support for partial inserts.
+
+    When inserting new records, only the fields which have been changed
+    from the defaults will actually be included in the INSERT statement.
+    The other fields will be populated by the database.
+
+    This is more efficient, and also means that it will be safe to
+    remove database columns without getting subsequent errors in running
+    app processes (so long as the code in those processes doesn't
+    contain any references to the removed column).
+
+    *Jon Leighton*
+
+*   Allow before and after validations to take an array of lifecycle events
+
+    *John Foley*
+
+*   Support for specifying transaction isolation level
+
+    If your database supports setting the isolation level for a transaction, you can set
+    it like so:
+
+        Post.transaction(isolation: :serializable) do
+          # ...
+        end
+
+    Valid isolation levels are:
+
+    * `:read_uncommitted`
+    * `:read_committed`
+    * `:repeatable_read`
+    * `:serializable`
+
+    You should consult the documentation for your database to understand the
+    semantics of these different levels:
+
+    * http://www.postgresql.org/docs/9.1/static/transaction-iso.html
+    * https://dev.mysql.com/doc/refman/5.0/en/set-transaction.html
+
+    An `ActiveRecord::TransactionIsolationError` will be raised if:
+
+    * The adapter does not support setting the isolation level
+    * You are joining an existing open transaction
+    * You are creating a nested (savepoint) transaction
+
+    The mysql, mysql2 and postgresql adapters support setting the transaction
+    isolation level. However, support is disabled for mysql versions below 5,
+    because they are affected by a bug (http://bugs.mysql.com/bug.php?id=39170)
+    which means the isolation level gets persisted outside the transaction.
+
+    *Jon Leighton*
+
 *   `ActiveModel::ForbiddenAttributesProtection` is included by default
     in Active Record models. Check the docs of `ActiveModel::ForbiddenAttributesProtection`
     for more details.
@@ -40,21 +92,6 @@
     Closes #7544 #6458.
 
     *kennyj*
-
-*   Fix `find_in_batches` when primary_key is set other than id.
-    You can now use this method with the primary key which is not integer-based.
-
-    Example:
-
-        class Post < ActiveRecord::Base
-          self.primary_key = :title
-        end
-
-        Post.find_in_batches(start: 'My First Post') do |batch|
-          batch.each { |post| post.author.greeting }
-        end
-
-    *Toshiyuki Kawanishi*
 
 *   You can now override the generated accessor methods for stored attributes
     and reuse the original behavior with `read_store_attribute` and `write_store_attribute`,
@@ -264,6 +301,15 @@
 
     *Jon Leighton*
 
+*   `Relation#order`: make new order prepend old one.
+
+        User.order("name asc").order("created_at desc")
+        # SELECT * FROM users ORDER BY created_at desc, name asc
+
+    This also affects order defined in `default_scope` or any kind of associations.
+
+    *Bogdan Gusiev*
+
 *   `Model.all` now returns an `ActiveRecord::Relation`, rather than an
     array of records. Use `Relation#to_a` if you really want an array.
 
@@ -292,6 +338,17 @@
     :through`.
 
     *Jon Leighton*
+
+*   Added `#update_columns` method which updates the attributes from
+    the passed-in hash without calling save, hence skipping validations and
+    callbacks. `ActiveRecordError` will be raised when called on new objects
+    or when at least one of the attributes is marked as read only.
+
+        post.attributes # => {"id"=>2, "title"=>"My title", "body"=>"My content", "author"=>"Peter"}
+        post.update_columns(title: 'New title', author: 'Sebastian') # => true
+        post.attributes # => {"id"=>2, "title"=>"New title", "body"=>"My content", "author"=>"Sebastian"}
+
+    *Sebastian Martinez + Rafael Mendonça França*
 
 *   The migration generator now creates a join table with (commented) indexes every time
     the migration name contains the word `join_table`:

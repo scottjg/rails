@@ -1,5 +1,26 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Tests tag the Rails log with the current test class and test case:
+
+        [SessionsControllerTest] [test_0002_sign in] Processing by SessionsController#create as HTML
+        [SessionsControllerTest] [test_0002_sign in] ...
+
+    *Jeremy Kemper*
+
+*   Add logger.push_tags and .pop_tags to complement logger.tagged:
+
+        class Job
+          def before
+            Rails.logger.push_tags :jobs, self.class.name
+          end
+
+          def after
+            Rails.logger.pop_tags 2
+          end
+        end
+
+    *Jeremy Kemper*
+
 *   Allow delegation to the class using the `:class` keyword, replacing
     `self.class` usage:
 

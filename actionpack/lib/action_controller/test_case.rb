@@ -86,16 +86,23 @@ module ActionController
       response.body
 
       case options
-      when NilClass, String, Symbol, Regexp
+      when NilClass, Regexp, String, Symbol
         options = options.to_s if Symbol === options
         rendered = @templates
         msg = message || sprintf("expecting <%s> but rendering with <%s>",
                 options.inspect, rendered.keys)
         matches_template =
-          if options
+          case options
+          when String
+            rendered.any? do |t, num|
+              options_splited = options.split(File::SEPARATOR)
+              t_splited = t.split(File::SEPARATOR)
+              t_splited.last(options_splited.size) == options_splited
+            end
+          when Regexp
             rendered.any? { |t,num| t.match(options) }
-          else
-            @templates.blank?
+          when NilClass
+            rendered.blank?
           end
         assert matches_template, msg
       when Hash
@@ -347,14 +354,16 @@ module ActionController
   #  assert_redirected_to page_url(:title => 'foo')
   class TestCase < ActiveSupport::TestCase
 
-    # Use AS::TestCase for the base class when describing a model
+    # Use AC::TestCase for the base class when describing a controller
     register_spec_type(self) do |desc|
-      Class === desc && desc < ActionController::Base
+      Class === desc && desc < ActionController::Metal
     end
+    register_spec_type(/Controller( ?Test)?\z/i, self)
 
     module Behavior
       extend ActiveSupport::Concern
       include ActionDispatch::TestProcess
+      include ActiveSupport::Testing::ConstantLookup
 
       attr_reader :response, :request
 
@@ -391,7 +400,9 @@ module ActionController
         end
 
         def determine_default_controller_class(name)
-          name.sub(/Test$/, '').safe_constantize
+          determine_constant_from_test_name(name) do |constant|
+            Class === constant && constant < ActionController::Metal
+          end
         end
 
         def prepare_controller_class(new_class)
