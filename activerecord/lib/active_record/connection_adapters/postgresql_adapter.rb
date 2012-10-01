@@ -32,6 +32,11 @@ module ActiveRecord
         options = args.extract_options!
         column(args[0], 'xml', options)
       end
+      
+      def tsvector(*args)
+        options = args.extract_options!
+        column(args[0], 'tsvector', options)
+      end
     end
     # PostgreSQL-specific extensions to column definitions in a table.
     class PostgreSQLColumn < Column #:nodoc:
