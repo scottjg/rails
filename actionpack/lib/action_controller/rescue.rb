@@ -78,13 +78,19 @@ module ActionController #:nodoc:
       # logs as fatal.
       def log_error(exception) #:doc:
         ActiveSupport::Deprecation.silence do
-          if ActionView::TemplateError === exception
-            logger.fatal(exception.to_s)
+          if Rails.env == "development"
+            if ActionView::TemplateError === exception
+              logger.fatal(exception.to_s)
+            else
+              logger.fatal(
+                "\n#{exception.class} (#{exception.message}):\n  " +
+                clean_backtrace(exception).join("\n  ") + "\n\n"
+              )
+            end
           else
-            logger.fatal(
-              "\n#{exception.class} (#{exception.message}):\n  " +
-              clean_backtrace(exception).join("\n  ") + "\n\n"
-            )
+            ActiveSupport::Notifications.instrument "report_exception.action_controller" do |log|
+              log[:log_message] = {exception_class:exception.class, exception_message:exception.message, backtrace:clean_backtrace(exception)}
+            end
           end
         end
       end
