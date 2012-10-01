@@ -1,6 +1,6 @@
 # encoding: utf-8
 require 'singleton'
-require 'iconv' if RUBY_VERSION < '1.9'
+require 'iconv'
 require 'kconv'
 
 module ActiveSupport
@@ -283,7 +283,8 @@ module ActiveSupport
     if RUBY_VERSION >= '1.9'
       undef_method :transliterate
       def transliterate(string)
-        string.encode("us-ascii", :undef => :replace, :invalid => :replace, :replace => "")
+        #string.encode("us-ascii", :undef => :replace, :invalid => :replace, :replace => "")
+        string.dup
       end
 
     # The iconv transliteration code doesn't function correctly
