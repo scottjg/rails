@@ -1,6 +1,6 @@
 # encoding: utf-8
 require 'singleton'
-require 'iconv'
+require 'iconv' if RUBY_VERSION < '1.9'
 require 'kconv'
 
 module ActiveSupport
@@ -274,10 +274,9 @@ module ActiveSupport
       parameterized_string.downcase
     end
 
-
     # Replaces accented characters with their ascii equivalents.
     def transliterate(string)
-        string.dup
+      string.dup
     end
 
     # Create the name of a table like Rails does for models to table names. This method
