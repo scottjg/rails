@@ -283,7 +283,6 @@ module ActiveSupport
     if RUBY_VERSION >= '1.9'
       undef_method :transliterate
       def transliterate(string)
-        #string.encode("us-ascii", :undef => :replace, :invalid => :replace, :replace => "")
         string.dup
       end
 
