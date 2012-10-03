@@ -251,7 +251,7 @@ module ActiveSupport
 
         class DigitalInformationUnit < Base
           def format(measurement)
-            number_to_human_size(measurement, :precision => 2)
+            number_to_human_size(measurement, :precision => 2, :prefix => :iec)
           end
         end
 

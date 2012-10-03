@@ -440,12 +440,12 @@ module ActiveSupport
 
       storage_units_format = translate_number_value_with_default('human.storage_units.format', :locale => options[:locale], :raise => true)
 
-      if options[:prefix] == :si
-        base = 1000
-        system_key = "si_units"
-      else
+      if options[:prefix] == :iec
         base = 1024
         system_key = "iec_units"
+      else
+        base = 1000
+        system_key = "si_units"
       end
 
       if number.to_i < base
