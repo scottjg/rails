@@ -102,6 +102,12 @@ module Rails
         remove_file 'app/assets/images/rails.png'
         keep_file 'app/assets/images'
       end
+
+      if options[:skip_sprockets]
+        empty_directory 'public/assets'
+        copy_file 'app/assets/images/rails.png', 'public/assets/rails.png'
+        remove_file 'app/assets'
+      end
     end
 
     def script

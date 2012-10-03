@@ -237,6 +237,10 @@ class AppGeneratorTest < Rails::Generators::TestCase
       assert_no_match(/config\.assets\.compress = true/, content)
     end
     assert_file "test/performance/browsing_test.rb"
+
+    assert_no_file 'app/assets'
+    assert_file 'public/assets/rails.png'
+    assert_file "config/application.rb", /config\.assets\.enabled = false/
   end
 
   def test_inclusion_of_javascript_runtime
