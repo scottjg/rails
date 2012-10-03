@@ -552,6 +552,16 @@ module ActiveRecord
         exec_query "SET SESSION AUTHORIZATION #{user}"
       end
 
+      def add_index(table_name, column_name, options = {}) #:nodoc:
+        if Hash === options && options[:method]
+          index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
+          execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} USING #{options[:method]} (#{index_columns})#{index_options}"
+        else
+          super
+        end
+      end
+
+
       module Utils
         extend self
 
