@@ -426,15 +426,15 @@ RELEASE_NAME  = "REL #{PKG_VERSION}"
 
 PKG_FILES = FileList[
   '[a-zA-Z]*',
-  'bin/**/*', 
+  'bin/**/*',
   'builtin/**/*',
-  'configs/**/*', 
-  'doc/**/*', 
-  'dispatches/**/*', 
-  'environments/**/*', 
-  'helpers/**/*', 
-  'generators/**/*', 
-  'html/**/*', 
+  'configs/**/*',
+  'doc/**/*',
+  'dispatches/**/*',
+  'environments/**/*',
+  'helpers/**/*',
+  'generators/**/*',
+  'html/**/*',
   'lib/**/*'
 ] - [ 'test' ]
 
@@ -449,11 +449,11 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3')
-  s.add_dependency('activesupport',    '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.3.10' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.3.10' + PKG_BUILD)
+  s.add_dependency('activesupport',    '= 2.3.14' + PKG_BUILD)
+  s.add_dependency('activerecord',     '= 2.3.14' + PKG_BUILD)
+  s.add_dependency('actionpack',       '= 2.3.14' + PKG_BUILD)
+  s.add_dependency('actionmailer',     '= 2.3.14' + PKG_BUILD)
+  s.add_dependency('activeresource',   '= 2.3.14' + PKG_BUILD)
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
