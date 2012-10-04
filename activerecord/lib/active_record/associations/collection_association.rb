@@ -179,6 +179,8 @@ module ActiveRecord
 
       # Calculate sum using SQL, not Enumerable
       def sum(*args)
+        return 0 if owner.new_record?
+
         if block_given?
           scoped.sum(*args) { |*block_args| yield(*block_args) }
         else
