@@ -35,7 +35,7 @@ module ActiveSupport #:nodoc:
     end
 
     def self.deep_force_encoding(obj, target_encoding="UTF-8")
-      if obj.is_a?(String)
+      if obj.is_a?(String) && !obj.frozen?
         return obj.force_encoding(target_encoding).encode!
       elsif !obj.is_a?(Hash)
         return obj
