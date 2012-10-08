@@ -230,8 +230,11 @@ module ActiveModel
     #
     # If +message+ is a symbol, it will be translated using the appropriate scope (see +translate_error+).
     # If +message+ is a proc, it will be called, allowing for things like <tt>Time.now</tt> to be used within an error.
-    def add(attribute, message = nil, options = {})
-      message = normalize_message(attribute, message, options)
+    def add(attribute, type = nil, options = {})
+      message = normalize_message(attribute, type, options)
+      message.singleton_class.class_eval do
+        define_method :type do type end
+      end
       if options[:strict]
         raise ActiveModel::StrictValidationFailed, full_message(attribute, message)
       end
