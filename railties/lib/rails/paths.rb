@@ -102,7 +102,9 @@ module Rails
         all = []
         all_paths.each do |path|
           if path.send(constraint)
+            # ['something/app/assets', ...]
             paths  = path.existent
+            # ['something/app/assets/javascript', 'something/app/assets/images', 'something/app/assets/stylesheet']
             paths -= path.children.map { |p| p.send(constraint) ? [] : p.existent }.flatten
             all.concat(paths)
           end
