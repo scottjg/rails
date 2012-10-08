@@ -1,5 +1,6 @@
 require "cases/helper"
 require 'models/house'
+require 'pry'
 
 class UnvalidatedSaveTest < ActiveRecord::TestCase
   fixtures :houses, :doors

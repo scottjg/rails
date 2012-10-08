@@ -2,6 +2,8 @@ source 'https://rubygems.org'
 
 gemspec
 
+gem 'pry'  ### Do not PUSH UPSTREAM
+
 gem 'arel', github: 'rails/arel', branch: 'master'
 
 gem 'mocha', '>= 0.11.2', :require => false
