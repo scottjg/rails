@@ -1,3 +1,222 @@
+## Rails 3.2.9 (unreleased)
+
+*   Synchronize around deleting from the reserved connections hash.
+    Fixes #7955
+
+*   PostgreSQL adapter correctly fetches default values when using
+    multiple schemas and domains in a db. Fixes #7914
+
+    *Arturo Pie*
+
+*   Fix deprecation notice when loading a collection association that
+    selects columns from other tables, if a new record was previously
+    built using that association.
+
+    *Ernie Miller*
+
+*   The postgres adapter now supports tables with capital letters.
+    Fix #5920
+
+    *Yves Senn*
+
+*   `CollectionAssociation#count` returns `0` without querying if the
+    parent record is not persisted.
+
+    Before:
+
+        person.pets.count
+        # SELECT COUNT(*) FROM "pets" WHERE "pets"."person_id" IS NULL
+        # => 0
+
+    After:
+
+        person.pets.count
+        # fires without sql query
+        # => 0
+
+    *Francesco Rodriguez*
+
+*   Fix `reset_counters` crashing on `has_many :through` associations.
+    Fix #7822.
+
+    *lulalala*
+
+*   ConnectionPool recognizes checkout_timeout spec key as taking
+    precedence over legacy wait_timeout spec key, can be used to avoid
+    conflict with mysql2 use of wait_timeout.  Closes #7684.
+
+    *jrochkind*
+
+*   Rename field_changed? to _field_changed? so that users can create a field named field
+
+    *Akira Matsuda*, backported by *Steve Klabnik*
+
+*   Fix creation of through association models when using `collection=[]`
+    on a `has_many :through` association from an unsaved model.
+    Fix #7661.
+
+    *Ernie Miller*
+
+*   Explain only normal CRUD sql (select / update / insert / delete).
+    Fix problem that explains unexplainable sql. Closes #7544 #6458.
+
+    *kennyj*
+
+*   Backport test coverage to ensure that PostgreSQL auto-reconnect functionality
+    remains healthy.
+
+    *Steve Jorgensen*
+
+*   Use config['encoding'] instead of config['charset'] when executing
+    databases.rake in the mysql/mysql2. A correct option for a database.yml
+    is 'encoding'.
+
+    *kennyj*
+
+*   Fix ConnectionAdapters::Column.type_cast_code integer conversion,
+    to always convert values to integer calling #to_i. Fixes #7509.
+
+    *Thiago Pradi*
+
+*   Fix time column type casting for invalid time string values to correctly return nil.
+
+    *Adam Meehan*
+
+*   Fix `becomes` when using a configured `inheritance_column`.
+
+    *Yves Senn*
+
+*   Fix `reset_counters` when there are multiple `belongs_to` association with the
+    same foreign key and one of them have a counter cache.
+    Fixes #5200.
+
+    *Dave Desrochers*
+
+*   Round usec when comparing timestamp attributes in the dirty tracking.
+    Fixes #6975.
+
+    *kennyj*
+
+*   Use inversed parent for first and last child of has_many association.
+
+    *Ravil Bayramgalin*
+
+*   Fix Column.microseconds and Column.fast_string_to_date to avoid converting
+    timestamp seconds to a float, since it occasionally results in inaccuracies
+    with microsecond-precision times. Fixes #7352.
+
+    *Ari Pollak*
+
+*   Fix `increment!`, `decrement!`, `toggle!` that was skipping callbacks.
+    Fixes #7306.
+
+    *Rafael Mendonça França*
+
+*   Fix AR#create to return an unsaved record when AR::RecordInvalid is
+    raised. Fixes #3217.
+
+    *Dave Yeu*
+
+*   Remove unnecessary transaction when assigning has_one associations with a nil or equal value.
+    Fix #7191.
+
+    *kennyj*
+
+*   Allow store to work with an empty column.
+    Fix #4840.
+
+    *Jeremy Walker*
+
+*   Remove prepared statement from system query in postgresql adapter.
+    Fix #5872.
+
+    *Ivan Evtuhovich*
+
+*   Make sure `:environment` task is executed before `db:schema:load` or `db:structure:load`
+    Fixes #4772.
+
+    *Seamus Abshere*
+
+
+## Rails 3.2.8 (Aug 9, 2012) ##
+
+*   Do not consider the numeric attribute as changed if the old value is zero and the new value
+    is not a string.
+    Fixes #7237.
+
+    *Rafael Mendonça França*
+
+*   Removes the deprecation of `update_attribute`. *fxn*
+
+*   Reverted the deprecation of `composed_of`. *Rafael Mendonça França*
+
+*   Reverted the deprecation of `*_sql` association options. They will
+    be deprecated in 4.0 instead. *Jon Leighton*
+
+*   Do not eager load AR session store. ActiveRecord::SessionStore depends on the abstract store
+    in Action Pack. Eager loading this class would break client code that eager loads Active Record
+    standalone.
+    Fixes #7160
+
+    *Xavier Noria*
+
+*   Do not set RAILS_ENV to "development" when using `db:test:prepare` and related rake tasks.
+    This was causing the truncation of the development database data when using RSpec.
+    Fixes #7175.
+
+    *Rafael Mendonça França*
+
+## Rails 3.2.7 (Jul 26, 2012) ##
+
+*   `:finder_sql` and `:counter_sql` options on collection associations
+    are deprecated. Please transition to using scopes.
+
+    *Jon Leighton*
+
+*   `:insert_sql` and `:delete_sql` options on `has_and_belongs_to_many`
+    associations are deprecated. Please transition to using `has_many
+    :through`
+
+    *Jon Leighton*
+
+*   `composed_of` has been deprecated. You'll have to write your own accessor
+    and mutator methods if you'd like to use value objects to represent some
+    portion of your models.
+
+    *Steve Klabnik*
+
+*   `update_attribute` has been deprecated. Use `update_column` if
+    you want to bypass mass-assignment protection, validations, callbacks,
+    and touching of updated_at. Otherwise please use `update_attributes`.
+
+    *Steve Klabnik*
+
+## Rails 3.2.6 (Jun 12, 2012) ##
+
+*   protect against the nesting of hashes changing the
+    table context in the next call to build_from_hash. This fix
+    covers this case as well.
+
+    CVE-2012-2695
+
+*   Revert earlier 'perf fix' (see 3.2.4 changelog / GH #6289). This
+    change introduced a regression (GH #6609). assoc.clear and
+    assoc.delete_all have loaded the association before doing the delete
+    since at least Rails 2.3. Doing the delete without loading the
+    records means that the `before_remove` and `after_remove` callbacks do
+    not get invoked. Therefore, this change was less a fix a more an
+    optimisation, which should only have gone into master.
+
+    *Jon Leighton*
+
+## Rails 3.2.5 (Jun 1, 2012) ##
+
+*   Restore behavior of Active Record 3.2.3 scopes.
+    A series of commits relating to preloading and scopes caused a regression.
+
+    *Andrew White*
+
+
 ## Rails 3.2.4 (May 31, 2012) ##
 
 *   Perf fix: Don't load the records when doing assoc.delete_all.
