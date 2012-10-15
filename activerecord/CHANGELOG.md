@@ -1,5 +1,43 @@
 ## Rails 3.2.9 (unreleased)
 
+*   PostgreSQL adapter correctly fetches default values when using
+    multiple schemas and domains in a db. Fixes #7914
+
+    *Arturo Pie*
+
+*   Fix deprecation notice when loading a collection association that
+    selects columns from other tables, if a new record was previously
+    built using that association.
+
+    *Ernie Miller*
+
+*   The postgres adapter now supports tables with capital letters.
+    Fix #5920
+
+    *Yves Senn*
+
+*   `CollectionAssociation#count` returns `0` without querying if the
+    parent record is not persisted.
+
+    Before:
+
+        person.pets.count
+        # SELECT COUNT(*) FROM "pets" WHERE "pets"."person_id" IS NULL
+        # => 0
+
+    After:
+
+        person.pets.count
+        # fires without sql query
+        # => 0
+
+    *Francesco Rodriguez*
+
+*   Fix `reset_counters` crashing on `has_many :through` associations.
+    Fix #7822.
+
+    *lulalala*
+
 *   ConnectionPool recognizes checkout_timeout spec key as taking
     precedence over legacy wait_timeout spec key, can be used to avoid
     conflict with mysql2 use of wait_timeout.  Closes #7684.

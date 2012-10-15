@@ -25,6 +25,10 @@ module ActiveRecord
           self.name
         end
 
+        if has_many_association.is_a? ActiveRecord::Reflection::ThroughReflection
+          has_many_association = has_many_association.through_reflection
+        end
+
         foreign_key  = has_many_association.foreign_key.to_s
         child_class  = has_many_association.klass
         belongs_to   = child_class.reflect_on_all_associations(:belongs_to)

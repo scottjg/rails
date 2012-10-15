@@ -1,5 +1,62 @@
 ## Rails 3.2.9 (unreleased) ##
 
+*   Accept :remote as symbolic option for `link_to` helper. *Riley Lynch*
+
+*   Warn when the `:locals` option is passed to `assert_template` outside of a view test case
+    Fix #3415
+
+    *Yves Senn*
+
+*   Rename internal variables on ActionController::TemplateAssertions to prevent
+    naming collisions. @partials, @templates and @layouts are now prefixed with an underscore.
+    Fix #7459
+
+    *Yves Senn*
+
+*   `resource` and `resources` don't modify the passed options hash
+    Fix #7777
+
+    *Yves Senn*
+
+*   Precompiled assets include aliases from foo.js to foo/index.js and vice versa.
+
+        # Precompiles phone-<digest>.css and aliases phone/index.css to phone.css.
+        config.assets.precompile = [ 'phone.css' ]
+
+        # Precompiles phone/index-<digest>.css and aliases phone.css to phone/index.css.
+        config.assets.precompile = [ 'phone/index.css' ]
+
+        # Both of these work with either precompile thanks to their aliases.
+        <%= stylesheet_link_tag 'phone', media: 'all' %>
+        <%= stylesheet_link_tag 'phone/index', media: 'all' %>
+
+    *Jeremy Kemper*
+
+*   `assert_template` is no more passing with what ever string that matches
+    with the template name.
+
+    Before when we have a template `/layout/hello.html.erb`, `assert_template`
+    was passing with any string that matches. This behavior allowed false
+    positive like:
+
+        assert_template "layout"
+        assert_template "out/hello"
+
+    Now it only passes with:
+
+        assert_template "layout/hello"
+        assert_template "hello"
+
+    Fixes #3849.
+
+    *Hugolnx*
+
+*   Handle `ActionDispatch::Http::UploadedFile` like `Rack::Test::UploadedFile`, don't call to_param on it. Since
+    `Rack::Test::UploadedFile` isn't API compatible this is needed to test file uploads that rely on `tempfile`
+    being available.
+
+    *Tim Vandecasteele*
+
 *   Fixed a bug with shorthand routes scoped with the `:module` option not
     adding the module to the controller as described in issue #6497.
     This should now work properly:
