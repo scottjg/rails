@@ -1,5 +1,15 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Added option `config.action_dispatch.last_forwarded_ip` to enable different
+    order for getting `remote_ip` from `X_FORWARDED_FOR` header.
+    Set last valid IP from `X_FORWARDED_FOR` header as `client_ip` by default.
+    To change order to first valid IP, set option `config.action_dispatch.last_forwarded_ip`
+    to `false`.
+    Reverted filtering for valid IPs from `X_FORWARDED_FOR` header.
+    Fix #7979
+
+    *Steve Klabnik*, *André Arko*, *Alexey Gaziev*
+
 *   Introduce `ActionView::Template::Handlers::ERB.escape_whitelist`. This is a list
     of mime types where template text is not html escaped by default. It prevents `Jack & Joe`
     from rendering as `Jack &amp; Joe` for the whitelisted mime types. The default whitelist

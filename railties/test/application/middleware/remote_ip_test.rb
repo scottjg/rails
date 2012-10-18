@@ -44,6 +44,14 @@ module ApplicationTests
       end
     end
 
+    test "can set different order in X_FORWARDED_FOR" do
+      make_basic_app do |app|
+        app.config.action_dispatch.last_forwarded_ip = false
+      end
+
+      assert_equal "1.1.1.2", remote_ip("HTTP_X_FORWARDED_FOR" => "1.1.1.2,1.1.1.1")
+    end
+
     test "the user can set trusted proxies" do
       make_basic_app do |app|
         app.config.action_dispatch.trusted_proxies = /^4\.2\.42\.42$/

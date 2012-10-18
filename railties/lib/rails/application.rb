@@ -354,7 +354,12 @@ module Rails
         middleware.use ::Rails::Rack::Logger, config.log_tags # must come after Rack::MethodOverride to properly log overridden methods
         middleware.use ::ActionDispatch::ShowExceptions, config.exceptions_app || ActionDispatch::PublicExceptions.new(Rails.public_path)
         middleware.use ::ActionDispatch::DebugExceptions, app
-        middleware.use ::ActionDispatch::RemoteIp, config.action_dispatch.ip_spoofing_check, config.action_dispatch.trusted_proxies
+        middleware.use(
+          ::ActionDispatch::RemoteIp,
+          config.action_dispatch.ip_spoofing_check,
+          config.action_dispatch.trusted_proxies,
+          config.action_dispatch.last_forwarded_ip
+        )
 
         unless config.cache_classes
           middleware.use ::ActionDispatch::Reloader, lambda { app.reload_dependencies? }

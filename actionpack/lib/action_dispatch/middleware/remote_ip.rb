@@ -8,19 +8,20 @@ module ActionDispatch
     # http://en.wikipedia.org/wiki/Private_network#Private_IPv6_addresses.
     TRUSTED_PROXIES = %r{
       ^127\.0\.0\.1$                | # localhost
-      ^::1$                         |
-      ^(10                          | # private IP 10.x.x.x
-        172\.(1[6-9]|2[0-9]|3[0-1]) | # private IP in the range 172.16.0.0 .. 172.31.255.255
-        192\.168                    | # private IP 192.168.x.x
-        fc00::                        # private IP fc00
+      ^::1$                         | # localhost
+      ^fc00:                        | # private IP range fc00
+      ^(10                          | # private IP range 10.x.x.x
+        172\.(1[6-9]|2[0-9]|3[0-1]) | # private IP range 172.16.0.0 .. 172.31.255.255
+        192\.168                    | # private IP range 192.168.x.x
        )\.
     }x
 
-    attr_reader :check_ip, :proxies
+    attr_reader :check_ip, :proxies, :last_ip
 
-    def initialize(app, check_ip_spoofing = true, custom_proxies = nil)
+    def initialize(app, check_ip_spoofing = true, custom_proxies = nil, last_forwarded_ip = true)
       @app = app
       @check_ip = check_ip_spoofing
+      @last_ip = last_forwarded_ip
       @proxies = case custom_proxies
         when Regexp
           custom_proxies
@@ -72,53 +73,47 @@ module ActionDispatch
       # but will be wrong if the user is behind a proxy. Proxies will set
       # HTTP_CLIENT_IP and/or HTTP_X_FORWARDED_FOR, so we prioritize those.
       # HTTP_X_FORWARDED_FOR may be a comma-delimited list in the case of
-      # multiple chained proxies. The first address which is in this list
-      # if it's not a known proxy will be the originating IP.
-      # Format of HTTP_X_FORWARDED_FOR:
-      # client_ip, proxy_ip1, proxy_ip2...
-      # http://en.wikipedia.org/wiki/X-Forwarded-For
+      # multiple chained proxies. The last address which is not a known proxy
+      # by default will be the originating IP according to this bug in Apache:
+      # https://issues.apache.org/bugzilla/show_bug.cgi?id=50453 and behavior of
+      # ruby servers: http://andre.arko.net/2011/12/26/repeated-headers-and-ruby-web-servers
+      # In some exception cases it can be changed with config option
+      # config.action_dispatch.last_forwarded_ip set to false.
+      # It compiles to w3c spec:
+      # http://www.w3.org/TR/2009/WD-ct-guidelines-20091006/#sec-additional-headers
+      # See also http://en.wikipedia.org/wiki/X-Forwarded-For
       def calculate_ip
-        client_ip    = @env['HTTP_CLIENT_IP']
-        forwarded_ip = ips_from('HTTP_X_FORWARDED_FOR').first
-        remote_addrs = ips_from('REMOTE_ADDR')
+        client_ip     = @env['HTTP_CLIENT_IP']
+        forwarded_ips = ips_from('HTTP_X_FORWARDED_FOR')
+        forwarded_ips.reverse! if @middleware.last_ip
+        remote_addrs  = ips_from('REMOTE_ADDR').reverse
 
         check_ip = client_ip && @middleware.check_ip
-        if check_ip && forwarded_ip != client_ip
+        if check_ip && !forwarded_ips.include?(client_ip)
           # We don't know which came from the proxy, and which from the user
           raise IpSpoofAttackError, "IP spoofing attack?!" \
             "HTTP_CLIENT_IP=#{@env['HTTP_CLIENT_IP'].inspect}" \
             "HTTP_X_FORWARDED_FOR=#{@env['HTTP_X_FORWARDED_FOR'].inspect}"
         end
 
-        client_ips = remove_proxies [client_ip, forwarded_ip, remote_addrs].flatten
-        if client_ips.present?
-          client_ips.first
-        else
-          # If there is no client ip we can return first valid proxy ip from REMOTE_ADDR
-          remote_addrs.find { |ip| valid_ip? ip }
-        end
+        client_ips = [client_ip, forwarded_ips, remote_addrs].flatten.compact
+        # Without a client IP, just return the first REMOTE_ADDR
+        remove_proxies(client_ips).first || remote_addrs.first
       end
 
       def to_s
         @ip ||= calculate_ip
       end
 
-      private
+    protected
 
       def ips_from(header)
-        @env[header] ? @env[header].strip.split(/[,\s]+/) : []
-      end
-
-      def valid_ip?(ip)
-        ip =~ VALID_IP
-      end
-
-      def not_a_proxy?(ip)
-        ip !~ @middleware.proxies
+        ips = @env[header] ? @env[header].strip.split(/[,\s]+/) : []
+        ips.select{ |ip| ip =~ VALID_IP }
       end
 
       def remove_proxies(ips)
-        ips.select { |ip| valid_ip?(ip) && not_a_proxy?(ip) }
+        ips.reject { |ip| ip =~ @middleware.proxies }
       end
 
     end

@@ -5,6 +5,7 @@ module ActionDispatch
     config.action_dispatch = ActiveSupport::OrderedOptions.new
     config.action_dispatch.x_sendfile_header = nil
     config.action_dispatch.ip_spoofing_check = true
+    config.action_dispatch.last_forwarded_ip = true
     config.action_dispatch.show_exceptions = true
     config.action_dispatch.best_standards_support = true
     config.action_dispatch.tld_length = 1
