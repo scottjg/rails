@@ -51,9 +51,13 @@ module Rails
 
     def run_initializers(group=:default, *args)
       return if instance_variable_defined?(:@ran)
+      t0 = Time.now
       initializers.tsort.each do |initializer|
+        t = Time.now
         initializer.run(*args) if initializer.belongs_to?(group)
+        puts("%60s: %.3f sec" % [initializer.name, Time.now - t])
       end
+      puts "%60s: %.3f sec" % ["for all", Time.now - t0]
       @ran = true
     end
 
