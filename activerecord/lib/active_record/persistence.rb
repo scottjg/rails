@@ -51,6 +51,14 @@ module ActiveRecord
       @destroyed
     end
 
+    # Returns true if the row mapped to this object has been deleted by calling destroy
+    # on this record. This method can be used in after_destroy callbacks to detect if the
+    # row was deleted by the current transaction since destroy calls will succeed even if
+    # the row no longer exists in the database.
+    def row_deleted?
+      defined?(@row_deleted) && @row_deleted
+    end
+
     # Returns true if the record is persisted, i.e. it's not a new record and it was
     # not destroyed, otherwise returns false.
     def persisted?
@@ -122,7 +130,8 @@ module ActiveRecord
     def destroy
       raise ReadOnlyRecord if readonly?
       destroy_associations
-      destroy_row if persisted?
+      affected_rows = destroy_row if persisted?
+      @row_deleted = true if affected_rows && affected_rows > 0
       @destroyed = true
       freeze
     end

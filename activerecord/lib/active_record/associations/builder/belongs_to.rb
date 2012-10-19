@@ -28,7 +28,7 @@ module ActiveRecord::Associations::Builder
           record.class.increment_counter(:#{cache_column}, record.id) unless record.nil?
         end
 
-        def belongs_to_counter_cache_before_destroy_for_#{name}
+        def belongs_to_counter_cache_after_destroy_for_#{name}
           unless marked_for_destruction?
             record = #{name}
             record.class.decrement_counter(:#{cache_column}, record.id) unless record.nil?
@@ -37,7 +37,7 @@ module ActiveRecord::Associations::Builder
       CODE
 
       model.after_create   "belongs_to_counter_cache_after_create_for_#{name}"
-      model.before_destroy "belongs_to_counter_cache_before_destroy_for_#{name}"
+      model.after_destroy "belongs_to_counter_cache_after_destroy_for_#{name}", :if => :row_deleted?
 
       klass = reflection.class_name.safe_constantize
       klass.attr_readonly cache_column if klass && klass.respond_to?(:attr_readonly)
