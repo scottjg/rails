@@ -910,4 +910,8 @@
 
     *Aaron Patterson*
 
+*   Use database lock to ensure data integrity on counter caches.
+
+    *Brian Durand*
+
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activerecord/CHANGELOG.md) for previous changes.

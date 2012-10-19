@@ -393,6 +393,20 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 17, reply.replies.size
   end
 
+  def test_counter_cache_with_destroy
+    topic = Topic.create!(:title => "Zoom-zoom-zoom")
+    topic.replies.create!(:title => "re: zoom", :content => "speedy quick!")
+
+    assert_equal 1, topic.reload[:replies_count]
+
+    reply_1 = Reply.find(topic.replies.first.id)
+    reply_2 = Reply.find(topic.replies.first.id)
+    reply_1.destroy
+    reply_2.destroy
+
+    assert_equal 0, topic.reload[:replies_count]
+  end
+
   def test_association_assignment_sticks
     post = Post.first
 

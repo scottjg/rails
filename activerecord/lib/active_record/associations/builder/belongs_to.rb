@@ -31,7 +31,9 @@ module ActiveRecord::Associations::Builder
         def belongs_to_counter_cache_before_destroy_for_#{name}
           unless marked_for_destruction?
             record = #{name}
-            record.class.decrement_counter(:#{cache_column}, record.id) unless record.nil?
+            if record && self.class.obtain_lock(id)
+              record.class.decrement_counter(:#{cache_column}, record.id)
+            end
           end
         end
       CODE

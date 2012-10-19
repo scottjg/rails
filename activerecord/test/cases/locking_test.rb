@@ -408,6 +408,11 @@ unless current_adapter?(:SybaseAdapter, :OpenBaseAdapter) || in_memory_db?
       assert_equal old, person.reload.first_name
     end
 
+    def test_obtain_lock
+      assert Person.obtain_lock(1)
+      assert !Person.obtain_lock(0)
+    end
+
     if current_adapter?(:PostgreSQLAdapter, :OracleAdapter)
       def test_no_locks_no_wait
         first, second = duel { Person.find 1 }

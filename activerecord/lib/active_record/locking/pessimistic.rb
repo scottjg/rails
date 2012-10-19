@@ -54,6 +54,17 @@ module ActiveRecord
     #   MySQL: http://dev.mysql.com/doc/refman/5.1/en/innodb-locking-reads.html
     #   PostgreSQL: http://www.postgresql.org/docs/current/interactive/sql-select.html#SQL-FOR-UPDATE-SHARE
     module Pessimistic
+      extend ActiveSupport::Concern
+
+      module ClassMethods
+        # Obtain a row level lock on the row with the specified primary key value (if row locking is supported).
+        # Returns +true+ if the row exists or +false+ if the row does not exist.
+        def obtain_lock(id, lock = true)
+          sql = where(primary_key => id).select(primary_key).lock(lock).to_sql
+          !!connection.select_one(sql)
+        end
+      end
+
       # Obtain a row lock on this record. Reloads the record to obtain the requested
       # lock. Pass an SQL locking clause to append the end of the SELECT statement
       # or pass true for "FOR UPDATE" (the default, an exclusive row lock). Returns
