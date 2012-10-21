@@ -713,21 +713,6 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal posts_with_no_comments, author.posts_with_no_comments
   end
 
-  def test_eager_with_invalid_association_reference
-    assert_raise(ActiveRecord::ConfigurationError, "Association was not found; perhaps you misspelled it?  You specified :include => :monkeys") {
-      Post.find(6, :include=> :monkeys )
-    }
-    assert_raise(ActiveRecord::ConfigurationError, "Association was not found; perhaps you misspelled it?  You specified :include => :monkeys") {
-      Post.find(6, :include=>[ :monkeys ])
-    }
-    assert_raise(ActiveRecord::ConfigurationError, "Association was not found; perhaps you misspelled it?  You specified :include => :monkeys") {
-      Post.find(6, :include=>[ 'monkeys' ])
-    }
-    assert_raise(ActiveRecord::ConfigurationError, "Association was not found; perhaps you misspelled it?  You specified :include => :monkeys, :elephants") {
-      Post.find(6, :include=>[ :monkeys, :elephants ])
-    }
-  end
-
   def test_eager_with_default_scope
     developer = EagerDeveloperWithDefaultScope.where(:name => 'David').first
     projects = Project.order(:id).all
