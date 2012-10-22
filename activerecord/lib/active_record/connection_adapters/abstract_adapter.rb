@@ -75,7 +75,7 @@ module ActiveRecord
       def supports_ddl_transactions?
         false
       end
-      
+
       # Does this adapter support savepoints? PostgreSQL and MySQL do, SQLite
       # does not.
       def supports_savepoints?
@@ -202,8 +202,12 @@ module ActiveRecord
       protected
         def log(sql, name)
           if block_given?
+            started = Time.now
             result = nil
-            ms = Benchmark.ms { result = yield }
+            ms = nil
+            ActiveSupport::Notifications.publish("sql.active_record", :sql => sql) do
+              ms = Benchmark.ms { result = yield }
+            end
             @runtime += ms
             log_info(sql, name, ms)
             result
