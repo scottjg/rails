@@ -205,7 +205,7 @@ module ActiveRecord
             started = Time.now
             result = nil
             ms = nil
-            ActiveSupport::Notifications.publish("sql.active_record", :sql => sql) do
+            ActiveSupport::Notifications.instrument("sql.active_record", :name => name, :sql => sql) do
               ms = Benchmark.ms { result = yield }
             end
             @runtime += ms
