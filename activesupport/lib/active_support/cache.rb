@@ -25,7 +25,7 @@ module ActiveSupport
     #
     #   ActiveSupport::Cache.lookup_store(:memory_store)
     #   # => returns a new ActiveSupport::Cache::MemoryStore object
-    #   
+    #
     #   ActiveSupport::Cache.lookup_store(:drb_store)
     #   # => returns a new ActiveSupport::Cache::DRbStore object
     #
@@ -84,7 +84,7 @@ module ActiveSupport
     # Ruby objects, but don't count on every cache store to be able to do that.
     #
     #   cache = ActiveSupport::Cache::MemoryStore.new
-    #   
+    #
     #   cache.read("city")   # => nil
     #   cache.write("city", "Duckburgh")
     #   cache.read("city")   # => "Duckburgh"
@@ -119,7 +119,7 @@ module ActiveSupport
       #
       #   cache.write("today", "Monday")
       #   cache.fetch("today")  # => "Monday"
-      #   
+      #
       #   cache.fetch("city")   # => nil
       #   cache.fetch("city") do
       #     "Duckburgh"
@@ -149,24 +149,14 @@ module ActiveSupport
       #   sleep(6)
       #   cache.fetch("foo")  # => nil
       def fetch(key, options = {})
-        @logger_off = true
         if !options[:force] && value = read(key, options)
-          @logger_off = false
-          log("hit", key, options)
+          instrument(:fetch_hit, key, options) { |payload| }
           value
         elsif block_given?
-          @logger_off = false
-          log("miss", key, options)
-
-          value = nil
-          ms = Benchmark.ms { value = yield }
-
-          @logger_off = true
+          value = instrument(:generate, key, options) do |payload|
+            yield
+          end
           write(key, value, options)
-          @logger_off = false
-
-          log('write (will save %.2fms)' % ms, key, nil)
-
           value
         end
       end
@@ -187,7 +177,7 @@ module ActiveSupport
       # You may also specify additional options via the +options+ argument.
       # The specific cache store implementation will decide what to do with
       # +options+.
-      # 
+      #
       # For example, MemCacheStore supports the +:expires_in+ option, which
       # tells the memcached server to automatically expire the cache item after
       # a certain period:
@@ -232,6 +222,15 @@ module ActiveSupport
       end
 
       private
+        # Backport from Rails 3
+        def instrument(operation, key, options = nil)
+          log(operation, key, options)
+
+          payload = { :key => key }
+          payload.merge!(options) if options.is_a?(Hash)
+          ActiveSupport::Notifications.instrument("cache_#{operation}.active_support", payload){ yield(payload) }
+        end
+
         def expires_in(options)
           expires_in = options && options[:expires_in]
 
