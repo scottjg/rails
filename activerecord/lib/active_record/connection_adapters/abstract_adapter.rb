@@ -202,11 +202,12 @@ module ActiveRecord
       protected
         def log(sql, name)
           if block_given?
-            started = Time.now
             result = nil
             ms = nil
             ActiveSupport::Notifications.instrument("sql.active_record", :name => name, :sql => sql) do
-              ms = Benchmark.ms { result = yield }
+              ms = Benchmark.ms {
+                result = yield
+              }
             end
             @runtime += ms
             log_info(sql, name, ms)
