@@ -68,7 +68,7 @@ module ActionController #:nodoc:
         parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
         parameters = parameters.except('controller', 'action', 'format', '_method', 'protocol')
 
-        payload = payload.merge({
+        payload = {
           :uuid          => (request.uuid if request.respond_to?(:uuid)),
           :env           => request.env,
           :controller    => self.class.name,
@@ -80,7 +80,7 @@ module ActionController #:nodoc:
           :path          => (request.fullpath rescue "unknown"),
           :status        => response.status.to_s[0..2],
           :location      => response.location
-        })
+        }
 
         logging_view          = defined?(@view_runtime)
         logging_active_record = Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
