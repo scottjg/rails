@@ -69,7 +69,7 @@ module ActionController #:nodoc:
           parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
           parameters = parameters.except('controller', 'action', 'format', '_method', 'protocol')
 
-          payload.merge({
+          payload = payload.merge({
             :uuid          => (request.uuid if request.respond_to?(:uuid)),
             :env           => request.env,
             :controller    => self.class.name,
