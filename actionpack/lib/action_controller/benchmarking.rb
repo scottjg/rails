@@ -42,7 +42,7 @@ module ActionController #:nodoc:
 
     protected
       def render_with_benchmark(options = nil, extra_options = {}, &block)
-        ActiveSupport::Notifications.instrument("render.action_controller") do |payload|
+        ActiveSupport::Notifications.instrument("render.action_controller", {:options => options, :extra_options => extra_options) do |payload|
           if Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
             db_runtime = ActiveRecord::Base.connection.reset_runtime
           end
@@ -55,51 +55,50 @@ module ActionController #:nodoc:
             @db_rt_after_render = ActiveRecord::Base.connection.reset_runtime
             @view_runtime -= @db_rt_after_render
           end
-          payload[:options] = options
-          payload[:extra] = extra_options
           render_output
         end
       end
 
     private
       def perform_action_with_benchmark
-        ActiveSupport::Notifications.instrument("perform_action.action_controller") do |payload|
-          ms = [Benchmark.ms { perform_action_without_benchmark }, 0.01].max
+        started = Time.now
+        ms = [Benchmark.ms { perform_action_without_benchmark }, 0.01].max
+        finished = Time.now
 
-          parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
-          parameters = parameters.except('controller', 'action', 'format', '_method', 'protocol')
+        parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
+        parameters = parameters.except('controller', 'action', 'format', '_method', 'protocol')
 
-          payload = payload.merge({
-            :uuid          => (request.uuid if request.respond_to?(:uuid)),
-            :env           => request.env,
-            :controller    => self.class.name,
-            :action        => self.action_name,
-            :full_action   => "#{params[:controller]}##{params[:action]}",
-            :params        => parameters,
-            :format        => request.format.to_sym,
-            :method        => request.method,
-            :path          => (request.fullpath rescue "unknown"),
-            :status        => response.status.to_s[0..2],
-            :location      => response.location
-          })
+        payload = payload.merge({
+          :uuid          => (request.uuid if request.respond_to?(:uuid)),
+          :env           => request.env,
+          :controller    => self.class.name,
+          :action        => self.action_name,
+          :full_action   => "#{params[:controller]}##{params[:action]}",
+          :params        => parameters,
+          :format        => request.format.to_sym,
+          :method        => request.method,
+          :path          => (request.fullpath rescue "unknown"),
+          :status        => response.status.to_s[0..2],
+          :location      => response.location
+        })
 
-          logging_view          = defined?(@view_runtime)
-          logging_active_record = Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
+        logging_view          = defined?(@view_runtime)
+        logging_active_record = Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
 
-          if logging_active_record
-            db_runtime = ActiveRecord::Base.connection.reset_runtime
-            db_runtime += @db_rt_before_render if @db_rt_before_render
-            db_runtime += @db_rt_after_render if @db_rt_after_render
+        if logging_active_record
+          db_runtime = ActiveRecord::Base.connection.reset_runtime
+          db_runtime += @db_rt_before_render if @db_rt_before_render
+          db_runtime += @db_rt_after_render if @db_rt_after_render
 
-            payload[:db_runtime] = db_runtime
-          end
-
-          if logging_view
-            payload[:view_runtime] = @view_runtime
-          end
-
-          response.headers["X-Runtime"] = "%.0f" % ms
+          payload[:db_runtime] = db_runtime
         end
+
+        if logging_view
+          payload[:view_runtime] = @view_runtime
+        end
+
+        ActiveSupport::Notifications.publish("perform_action.action_controller", started, finished, ActiveSupport::Notifications.instrumenter.id, payload)
+        response.headers["X-Runtime"] = "%.0f" % ms
       end
 
       def view_runtime
