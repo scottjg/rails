@@ -75,7 +75,7 @@ module ActionController #:nodoc:
           :full_action   => "#{params[:controller]}##{params[:action]}",
           :params        => parameters,
           :format        => request.format.to_sym,
-          :method        => request.method,
+          :method        => request.method.to_s.upcase,
           :path          => (request.fullpath rescue "unknown"),
           :status        => response.status.to_s[0..2],
           :location      => response.location
