@@ -61,16 +61,15 @@ module ActionController #:nodoc:
 
     private
       def perform_action_with_benchmark
-        started = Time.now
+        ActiveSupport::Notifications.instrumenter.notifier.start("perform_action.action_controller", ActiveSupport::Notifications.instrumenter.id, {})
         ms = [Benchmark.ms { perform_action_without_benchmark }, 0.01].max
-        finished = Time.now
 
         parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
         parameters = parameters.except('controller', 'action', 'format', '_method', 'protocol')
 
         payload = {
           :uuid          => (request.uuid if request.respond_to?(:uuid)),
-          :env           => request.env,
+          :env           => request.env['notifications'],
           :controller    => self.class.name,
           :action        => self.action_name,
           :full_action   => "#{params[:controller]}##{params[:action]}",
@@ -90,14 +89,14 @@ module ActionController #:nodoc:
           db_runtime += @db_rt_before_render if @db_rt_before_render
           db_runtime += @db_rt_after_render if @db_rt_after_render
 
-          payload[:db_runtime] = db_runtime
+          payload[:db_runtime] = db_runtime.to_i
         end
 
         if logging_view
-          payload[:view_runtime] = @view_runtime
+          payload[:view_runtime] = @view_runtime.to_i
         end
 
-        ActiveSupport::Notifications.publish("perform_action.action_controller", started, finished, ActiveSupport::Notifications.instrumenter.id, payload)
+        ActiveSupport::Notifications.instrumenter.notifier.finish("perform_action.action_controller", ActiveSupport::Notifications.instrumenter.id, payload)
         response.headers["X-Runtime"] = "%.0f" % ms
       end
 

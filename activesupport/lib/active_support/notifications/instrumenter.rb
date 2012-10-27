@@ -4,7 +4,7 @@ module ActiveSupport
   module Notifications
     # Instrumentors are stored in a thread local.
     class Instrumenter
-      attr_reader :id
+      attr_reader :id, :notifier
 
       def initialize(notifier)
         @id = unique_id

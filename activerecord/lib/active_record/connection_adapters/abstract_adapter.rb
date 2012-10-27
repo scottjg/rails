@@ -210,10 +210,8 @@ module ActiveRecord
               }
             end
             @runtime += ms
-            log_info(sql, name, ms)
             result
           else
-            log_info(sql, name, 0)
             nil
           end
         rescue SystemExit, SignalException, NoMemoryError => e
@@ -228,7 +226,6 @@ module ActiveRecord
           # upon reentering the request loop
           @last_verification = 0
           message = "#{e.class.name}: #{e.message}: #{sql}"
-          log_info(message, name, 0)
           raise ActiveRecord::StatementInvalid, message
         end
 

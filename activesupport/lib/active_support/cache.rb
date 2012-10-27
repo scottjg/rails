@@ -169,7 +169,6 @@ module ActiveSupport
       # The specific cache store implementation will decide what to do with
       # +options+.
       def read(key, options = nil)
-        log("read", key, options)
       end
 
       # Writes the given value to the cache, with the given key.
@@ -188,23 +187,18 @@ module ActiveSupport
       #   sleep(6)
       #   cache.read("foo")  # => nil
       def write(key, value, options = nil)
-        log("write", key, options)
       end
 
       def delete(key, options = nil)
-        log("delete", key, options)
       end
 
       def delete_matched(matcher, options = nil)
-        log("delete matched", matcher.inspect, options)
       end
 
       def exist?(key, options = nil)
-        log("exist?", key, options)
       end
 
       def increment(key, amount = 1)
-        log("incrementing", key, amount)
         if num = read(key)
           write(key, num + amount)
         else
@@ -213,7 +207,6 @@ module ActiveSupport
       end
 
       def decrement(key, amount = 1)
-        log("decrementing", key, amount)
         if num = read(key)
           write(key, num - amount)
         else
@@ -224,8 +217,6 @@ module ActiveSupport
       private
         # Backport from Rails 3
         def instrument(operation, key, options = nil)
-          log(operation, key, options)
-
           payload = { :key => key }
           payload.merge!(options) if options.is_a?(Hash)
           ActiveSupport::Notifications.instrument("cache_#{operation}.active_support", payload){ yield(payload) }
