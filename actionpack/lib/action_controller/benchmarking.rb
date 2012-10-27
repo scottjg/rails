@@ -72,7 +72,6 @@ module ActionController #:nodoc:
           :env           => request.env['notifications'],
           :controller    => self.class.name,
           :action        => self.action_name,
-          :full_action   => "#{params[:controller]}##{params[:action]}",
           :params        => parameters,
           :format        => request.format.to_sym,
           :method        => request.method.to_s.upcase,
