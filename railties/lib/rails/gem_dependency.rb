@@ -18,7 +18,9 @@ module Rails
 
     def self.add_frozen_gem_path
       @@paths_loaded ||= begin
-        source_index = Rails::VendorGemSourceIndex.new(Gem.source_index)
+        source_index = Gem::Deprecate.skip_during do
+          Rails::VendorGemSourceIndex.new(Gem.source_index)
+        end
         Gem.clear_paths
         Gem.source_index = source_index
         # loaded before us - we can't change them, so mark them
@@ -31,10 +33,10 @@ module Rails
 
     def self.from_directory_name(directory_name, load_spec=true)
       directory_name_parts = File.basename(directory_name).split('-')
-      
+
       version = directory_name_parts.find { |s| s.match(/^\d(\.\d|\.\w+)*$/) }
       name    = directory_name_parts[0..directory_name_parts.index(version)-1].join('-') if version
-      
+
       result = self.new(name, :version => version)
       spec_filename = File.join(directory_name, '.specification')
       if load_spec
