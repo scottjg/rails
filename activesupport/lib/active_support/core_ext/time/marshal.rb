@@ -9,9 +9,11 @@ if Time.local(2010).zone != Marshal.load(Marshal.dump(Time.local(2010))).zone
         time = _load_without_zone(marshaled_time)
         time.instance_eval do
           if zone = defined?(@_zone) && remove_instance_variable('@_zone')
+            dst = defined?(@_dst) && remove_instance_variable('@_dst')
             ary = to_a
             ary[0] += subsec if ary[0] == sec
             ary[-1] = zone
+            ary[-2] = dst
             utc? ? Time.utc(*ary) : Time.local(*ary)
           else
             self
@@ -24,6 +26,7 @@ if Time.local(2010).zone != Marshal.load(Marshal.dump(Time.local(2010))).zone
     def _dump(*args)
       obj = dup
       obj.instance_variable_set('@_zone', zone)
+      obj.instance_variable_set('@_dst', dst?)
       obj._dump_without_zone(*args)
     end
   end
