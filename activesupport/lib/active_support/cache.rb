@@ -150,7 +150,7 @@ module ActiveSupport
       #   cache.fetch("foo")  # => nil
       def fetch(key, options = {})
         if !options[:force] && value = read(key, options)
-          instrument(:fetch_hit, key, options) { |payload| }
+          instrument(:hit, key, options) { |payload| }
           value
         elsif block_given?
           value = instrument(:generate, key, options) do |payload|
