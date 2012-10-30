@@ -1,5 +1,25 @@
 ## Rails 3.2.9 (unreleased)
 
+*   Fix bug when Column is trying to type cast boolean values to integer.
+    Fixes #8067.
+
+    *Rafael Mendonça França*
+
+*   Fix bug where `rake db:test:prepare` tries to load the structure.sql into development database.
+    Fixes #8032.
+
+    *Grace Liu + Rafael Mendonça França*
+
+*   Fixed support for DATABASE_URL environment variable for rake db tasks. *Grace Liu*
+
+*   Fix bug where `update_columns` and `update_column` would not let you update the primary key column.
+
+    *Henrik Nyh*
+
+*   Decode URI encoded attributes on database connection URLs.
+
+    *Shawn Veader*
+
 *   Fix AR#dup to nullify the validation errors in the dup'ed object. Previously the original
     and the dup'ed object shared the same errors.
 
