@@ -1550,6 +1550,11 @@ class BasicsTest < ActiveRecord::TestCase
     Object.class_eval{ remove_const :UnloadablePost } if defined?(UnloadablePost)
   end
 
+  def test_attribute_names
+    assert_equal ["id", "type", "ruby_type", "firm_id", "firm_name", "name", "client_of", "rating"],
+                 Company.find(1).attribute_names
+  end
+
   def test_cache_key_for_existing_record_is_not_timezone_dependent
     ActiveRecord::Base.time_zone_aware_attributes = true
 
