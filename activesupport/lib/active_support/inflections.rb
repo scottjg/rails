@@ -56,6 +56,8 @@ module ActiveSupport
     inflect.irregular('man', 'men')
     inflect.irregular('child', 'children')
     inflect.irregular('sex', 'sexes')
+    inflect.irregular('taxi', 'taxis')
+    inflect.irregular('tax', 'taxes')
     inflect.irregular('move', 'moves')
     inflect.irregular('cow', 'kine')
     inflect.irregular('zombie', 'zombies')
