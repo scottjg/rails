@@ -273,24 +273,22 @@ module ActiveSupport
       #   end
       #   cache.fetch('foo') # => "bar"
       def fetch(name, options = nil)
-        if block_given?
-          options = merged_options(options)
-          key = namespaced_key(name, options)
-          entry = find_cached_entry(key, name, options) unless options[:force]
-          entry = handle_expired_entry(entry, key, options)
+        read(name, options) unless  block_given?
 
-          if entry
-            instrument(:fetch_hit, name, options) { |payload| }
-            entry.value
-          else
-            result = instrument(:generate, name, options) do |payload|
-              yield(name)
-            end
-            write(name, result, options)
-            result
-          end
+        options = merged_options(options)
+        key = namespaced_key(name, options)
+        entry = find_cached_entry(key, name, options) unless options[:force]
+        entry = handle_expired_entry(entry, key, options)
+
+        if entry
+          instrument(:fetch_hit, name, options) { |payload| }
+          entry.value
         else
-          read(name, options)
+          result = instrument(:generate, name, options) do |payload|
+            yield(name)
+          end
+          write(name, result, options)
+          result
         end
       end
 
