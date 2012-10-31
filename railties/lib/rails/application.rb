@@ -124,6 +124,12 @@ module Rails
     #
     def env_config
       @env_config ||= begin
+        if config.action_dispatch.derive_signed_cookie_key.nil?
+          ActiveSupport::Deprecation.warn "You didn't set derive_keys to true. " +
+            "This will be set to true by default in Rails 4.1. " +
+            "Add derive_keys: true as option in config/initializers/session_store.rb"
+        end
+
         if config.action_dispatch.derive_signed_cookie_key
           key_generator = self.key_generator
         else
