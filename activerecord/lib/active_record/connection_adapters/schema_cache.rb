@@ -51,7 +51,7 @@ module ActiveRecord
         # if we get current version during initialization, it happens stack over flow.
         @version = ActiveRecord::Migrator.current_version
         [@version] + [:@columns, :@columns_hash, :@primary_keys, :@tables].map do |val|
-          self.instance_variable_get(val).inject({}) { |h, v| h[v[0]] = v[1]; h }
+          self.instance_variable_get(val).map_to_hash { |(k, v), h| h[k] = v }
         end
       end
 

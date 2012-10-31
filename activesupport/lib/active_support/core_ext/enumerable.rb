@@ -39,6 +39,29 @@ module Enumerable
     end
   end
 
+  # Convert an enumerable to a hash, with the same block syntax as <tt>each_with_object</tt>.
+  # Allows a default value or proc to be given. If <tt>set_default_on_lookup</tt> is <tt>true</tt>,
+  # the default value will be converted to a proc that sets the Hash key when looked up.
+  # This is ignored if default is already a proc.
+  #
+  # [1,3,5].map_to_hash {|i, h| h[i] = i ** 2 }
+  #   => {1=>1, 3=>9, 5=>25}
+  #
+  # [3,4,5,4].map_to_hash(0) {|i, h| h[i] += i }
+  #   => {3=>3, 4=>8, 5=>5}
+  #
+  # ['red', 'blue'].map_to_hash(-> h, k { h[k] = k.upcase }) {|c, h| h[c] << '!' }
+  #   => {'red'=>'RED!', 'blue'=>'BLUE!'}
+  def map_to_hash(default = nil)
+    if block_given?
+      hash = Proc === default ? Hash.new(&default) : Hash.new(default)
+      self.each { |el| yield el, hash }
+      hash
+    else
+      to_enum :map_to_hash, default
+    end
+  end
+
   # Returns +true+ if the enumerable has more than 1 element. Functionally
   # equivalent to <tt>enum.to_a.size > 1</tt>. Can be called with a block too,
   # much like any?, so <tt>people.many? { |p| p.age > 26 }</tt> returns +true+

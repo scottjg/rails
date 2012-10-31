@@ -808,7 +808,7 @@ module ActiveRecord
         when Symbol
           { o => :desc }
         when Hash
-          o.each_with_object({}) do |(field, dir), memo|
+          o.map_to_hash do |(field, dir), memo|
             memo[field] = (dir == :asc ? :desc : :asc )
           end
         else

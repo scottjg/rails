@@ -52,7 +52,7 @@ class SourceAnnotationExtractor
   # Returns a hash that maps filenames under +dirs+ (recursively) to arrays
   # with their annotations.
   def find(dirs = Annotation.directories)
-    dirs.inject({}) { |h, dir| h.update(find_in(dir)) }
+    dirs.map_to_hash { |dir, h| h.update(find_in(dir)) }
   end
 
   # Returns a hash that maps filenames under +dir+ (recursively) to arrays
