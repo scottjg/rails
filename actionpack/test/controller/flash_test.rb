@@ -217,7 +217,7 @@ end
 
 class FlashIntegrationTest < ActionDispatch::IntegrationTest
   SessionKey = '_myapp_session'
-  SessionSecret = 'b3c631c314c0bbca50c1b2843150fe33'
+  Generator  =  ActiveSupport::DummyKeyGenerator.new('b3c631c314c0bbca50c1b2843150fe33')
 
   class TestController < ActionController::Base
     add_flash_types :bar
@@ -291,7 +291,7 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
 
     # Overwrite get to send SessionSecret in env hash
     def get(path, parameters = nil, env = {})
-      env["action_dispatch.secret_token"] ||= SessionSecret
+      env["action_dispatch.key_generator"] ||= Generator
       super
     end
 

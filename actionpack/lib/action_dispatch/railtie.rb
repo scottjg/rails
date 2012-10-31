@@ -13,6 +13,7 @@ module ActionDispatch
     config.action_dispatch.rescue_responses = { }
     config.action_dispatch.default_charset = nil
     config.action_dispatch.rack_cache = false
+    config.action_dispatch.derive_signed_cookie_key = nil
 
     config.action_dispatch.default_headers = {
       'X-Frame-Options' => 'SAMEORIGIN',

@@ -45,6 +45,7 @@ module ActiveSupport
     autoload :Callbacks
     autoload :Configurable
     autoload :Deprecation
+    autoload :DummyKeyGenerator, "active_support/key_generator"
     autoload :Gzip
     autoload :Inflector
     autoload :JSON
