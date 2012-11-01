@@ -1,6 +1,6 @@
 ActiveRecord::Schema.define do
 
-  %w(postgresql_tsvectors postgresql_hstores postgresql_arrays postgresql_moneys postgresql_numbers postgresql_times postgresql_network_addresses postgresql_bit_strings postgresql_uuids
+  %w(postgresql_tsvectors postgresql_hstores postgresql_arrays postgresql_moneys postgresql_numbers postgresql_times postgresql_network_addresses postgresql_bit_strings postgresql_uuids postgresql_null_constraint
       postgresql_oids postgresql_xml_data_type defaults geometrics postgresql_timestamp_with_zones postgresql_partitioned_table postgresql_partitioned_table_parent postgresql_json_data_type).each do |table_name|
     execute "DROP TABLE IF EXISTS #{quote_table_name table_name}"
   end
@@ -54,6 +54,13 @@ _SQL
     a_path path,
     a_polygon polygon,
     a_circle circle
+  );
+_SQL
+
+  execute <<_SQL
+  CREATE TABLE postgresql_null_constraint (
+    id serial primary key,
+    name text NOT NULL
   );
 _SQL
 

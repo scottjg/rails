@@ -624,6 +624,8 @@ module ActiveRecord
           RecordNotUnique.new(message, exception)
         when 1452
           InvalidForeignKey.new(message, exception)
+        when 1048
+          InvalidNotNullValue.new(message, exception)
         else
           super
         end

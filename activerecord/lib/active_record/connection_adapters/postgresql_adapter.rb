@@ -580,8 +580,9 @@ module ActiveRecord
         end
 
         # See http://www.postgresql.org/docs/9.1/static/errcodes-appendix.html
+        NOT_NULL_VIOLATION    = "23502"
         FOREIGN_KEY_VIOLATION = "23503"
-        UNIQUE_VIOLATION      = "23505"
+        UNIQUE_VIOLATION      = "23505"       
 
         def translate_exception(exception, message)
           case exception.result.try(:error_field, PGresult::PG_DIAG_SQLSTATE)
@@ -589,6 +590,8 @@ module ActiveRecord
             RecordNotUnique.new(message, exception)
           when FOREIGN_KEY_VIOLATION
             InvalidForeignKey.new(message, exception)
+          when NOT_NULL_VIOLATION
+            InvalidNotNullValue.new(message, exception)
           else
             super
           end

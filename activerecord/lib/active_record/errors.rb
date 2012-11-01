@@ -85,6 +85,10 @@ module ActiveRecord
   class InvalidForeignKey < WrappedDatabaseException
   end
 
+  # Raised when a record cannot be inserted or updated because a field violates a type constraint.
+  class InvalidValue < WrappedDatabaseException
+  end
+
   # Raised when number of bind variables in statement given to <tt>:condition</tt> key (for example,
   # when using +find+ method)
   # does not match number of expected variables.
