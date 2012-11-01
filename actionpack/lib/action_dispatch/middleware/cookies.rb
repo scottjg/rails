@@ -317,7 +317,7 @@ module ActionDispatch
       def initialize(parent_jar, key_generator, options = {})
         @parent_jar = parent_jar
         @options = options
-        secret = key_generator.generate_key(@options[:signed_cookie_salt])
+        secret = key_generator.generate_cached_key(@options[:signed_cookie_salt])
         ensure_secret_secure(secret)
         @verifier   = ActiveSupport::MessageVerifier.new(secret)
       end
@@ -372,8 +372,8 @@ module ActionDispatch
       def initialize(parent_jar, key_generator, options = {})
         @parent_jar = parent_jar
         @options = options
-        secret = key_generator.generate_key(@options[:encrypted_cookie_salt])
-        sign_secret = key_generator.generate_key(@options[:encrypted_signed_cookie_salt])
+        secret = key_generator.generate_cached_key(@options[:encrypted_cookie_salt])
+        sign_secret = key_generator.generate_cached_key(@options[:encrypted_signed_cookie_salt])
         @encryptor = ActiveSupport::MessageEncryptor.new(secret, sign_secret)
         ensure_secret_secure(secret)
       end

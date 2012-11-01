@@ -1,3 +1,4 @@
+require 'mutex_m'
 require 'openssl'
 
 module ActiveSupport
@@ -21,12 +22,29 @@ module ActiveSupport
     end
   end
 
+  class CachingKeyGenerator
+    def initialize(key_generator)
+      @key_generator = key_generator
+      @cache_keys = {}.extend(Mutex_m)
+    end
+
+    def generate_key(salt, key_size=64)
+      @cache_keys.synchronize do
+        @cache_keys["#{salt}#{key_size}"] ||= @key_generator.generate_key(salt, key_size)
+      end
+    end
+  end
+
   class DummyKeyGenerator
     def initialize(secret)
       @secret = secret
     end
 
     def generate_key(salt)
+      @secret
+    end
+
+    def generate_cached_key(salt, key_size=64)
       @secret
     end
   end
