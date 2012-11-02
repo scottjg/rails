@@ -8,7 +8,7 @@ module ActiveSupport
   # key in multiple incompatible contexts.
   class KeyGenerator
     def initialize(secret, options = {})
-      @secret = secret
+      @secret = secret.freeze
       # The default iterations are higher than required for our key derivation uses
       # on the off chance someone uses this for password storage
       @iterations = options[:iterations] || 2**16
@@ -37,7 +37,7 @@ module ActiveSupport
 
   class DummyKeyGenerator
     def initialize(secret)
-      @secret = secret
+      @secret = secret.freeze
     end
 
     def generate_key(salt)
