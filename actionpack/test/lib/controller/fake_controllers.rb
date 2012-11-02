@@ -17,6 +17,12 @@ module Api
   class ProductsController < ActionController::Base; end
 end
 
+module App
+  module Api
+    class ProductsController < ActionController::Base; end
+  end
+end
+
 # TODO: Reduce the number of test controllers we use
 class AccountController < ActionController::Base; end
 class AddressesController < ActionController::Base; end

@@ -280,6 +280,20 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         scope(':version', :version => /.+/) do
           resources :users, :id => /.+?/, :format => /json|xml/
         end
+
+        scope :controller => :products do
+          get "products/list"
+        end
+      end
+
+      namespace :app do
+        namespace :api do
+          scope :controller => :products do
+            get "products/list"
+          end
+
+          get "products/show"
+        end
       end
 
       match 'sprockets.js' => ::TestRoutingMapper::SprocketsApp
@@ -1394,6 +1408,30 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/account/shorthand', account_shorthand_path
       get '/account/shorthand'
       assert_equal 'account#shorthand', @response.body
+    end
+  end
+
+  def test_match_shorthand_inside_namespace_and_scope
+    with_test_routes do
+      assert_equal '/api/products/list', api_products_list_path
+      get '/api/products/list'
+      assert_equal 'api/products#list', @response.body
+    end
+  end
+
+  def test_match_shorthand_inside_two_namespace_and_scope
+    with_test_routes do
+      assert_equal '/app/api/products/list', app_api_products_list_path
+      get '/app/api/products/list'
+      assert_equal 'app/api/products#list', @response.body
+    end
+  end
+
+  def test_match_shorthand_inside_two_namespace
+    with_test_routes do
+      assert_equal '/app/api/products/show', app_api_products_show_path
+      get '/app/api/products/show'
+      assert_equal 'app/api/products#show', @response.body
     end
   end
 
