@@ -77,7 +77,8 @@ module ActionController #:nodoc:
           :method        => request.method.to_s.upcase,
           :path          => (request.fullpath rescue "unknown"),
           :status        => response.status.to_s[0..2],
-          :location      => response.location
+          :location      => response.location,
+          :length        => response.body.bytesize
         }
 
         logging_view          = defined?(@view_runtime)
