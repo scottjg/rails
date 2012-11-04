@@ -77,9 +77,12 @@ module ActionController #:nodoc:
           :method        => request.method.to_s.upcase,
           :path          => (request.fullpath rescue "unknown"),
           :status        => response.status.to_s[0..2],
-          :location      => response.location,
-          :length        => response.body.bytesize
+          :location      => response.location
         }
+
+        if response.body
+          payload[:length] = (response.body.respond_to?(:bytesize) ? response.body.bytesize : response.body.size)
+        end
 
         logging_view          = defined?(@view_runtime)
         logging_active_record = Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
