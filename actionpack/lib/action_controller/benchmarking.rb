@@ -80,7 +80,7 @@ module ActionController #:nodoc:
           :location      => response.location
         }
 
-        if response.body
+        if !response.body.respond_to?(:call) && response.status.to_s[0..2] != '304'
           payload[:length] = (response.body.respond_to?(:bytesize) ? response.body.bytesize : response.body.size)
         end
 
