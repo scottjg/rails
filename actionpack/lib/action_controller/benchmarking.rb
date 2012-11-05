@@ -42,7 +42,7 @@ module ActionController #:nodoc:
 
     protected
       def render_with_benchmark(options = nil, extra_options = {}, &block)
-        ActiveSupport::Notifications.instrument("render.action_controller", {:options => options, :extra_options => extra_options}) do |payload|
+        ActiveSupport::Notifications.instrument("render.action_controller") do |payload|
           if Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
             db_runtime = ActiveRecord::Base.connection.reset_runtime
           end
