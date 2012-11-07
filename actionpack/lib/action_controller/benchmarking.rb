@@ -69,7 +69,6 @@ module ActionController #:nodoc:
 
         payload = {
           :uuid          => (request.uuid if request.respond_to?(:uuid)),
-          :env           => request.env['notifications'],
           :controller    => self.class.name,
           :action        => self.action_name,
           :params        => parameters,
