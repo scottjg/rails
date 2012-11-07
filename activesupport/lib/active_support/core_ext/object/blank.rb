@@ -65,7 +65,7 @@ end
 
 class String #:nodoc:
   def blank?
-    self !~ /\S/u
+    self !~ /[[:space]]/
   end
 end
 
