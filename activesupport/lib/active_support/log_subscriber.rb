@@ -135,8 +135,6 @@ module ActiveSupport
       "#{bold}#{color}#{text}#{CLEAR}"
     end
 
-    private
-
     def event_stack
       Thread.current[@queue_key] ||= []
     end
