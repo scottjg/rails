@@ -760,6 +760,10 @@ module ActiveRecord
             " TABLESPACE = \"#{value}\""
           when :connection_limit
             " CONNECTION LIMIT = #{value}"
+          when :collation
+            " LC_COLLATE = '#{value}'"
+          when :ctype
+            " LC_CTYPE = '#{value}'"
           else
             ""
           end
