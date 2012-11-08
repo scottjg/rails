@@ -280,6 +280,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         scope(':version', :version => /.+/) do
           resources :users, :id => /.+?/, :format => /json|xml/
         end
+
+        get "products/list"
       end
 
       match 'sprockets.js' => ::TestRoutingMapper::SprocketsApp
@@ -362,7 +364,6 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         resources :errors, :shallow => true do
           resources :notices
         end
-        get 'api/version'
       end
 
       scope :path => 'api' do
@@ -1397,10 +1398,12 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_match_shorthand_with_module
-    assert_equal '/api/version', api_version_path
-    get '/api/version'
-    assert_equal 'api/api#version', @response.body
+  def test_match_shorthand_inside_namespace_with_controller
+    with_test_routes do
+      assert_equal '/api/products/list', api_products_list_path
+      get '/api/products/list'
+      assert_equal 'api/products#list', @response.body
+    end
   end
 
   def test_dynamically_generated_helpers_on_collection_do_not_clobber_resources_url_helper

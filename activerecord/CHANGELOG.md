@@ -1,4 +1,42 @@
+## Rails 3.2.10 (unreleased)
+
+*   Fix issue that raises `NameError` when overriding the `accepts_nested_attributes` in child classes.
+
+    Before:
+
+        class Shared::Person < ActiveRecord::Base
+          has_one :address
+
+          accepts_nested_attributes :address, :reject_if => :all_blank
+        end
+
+        class Person < Shared::Person
+          accepts_nested_attributes :address
+        end
+
+        Person
+        #=> NameError: method `address_attributes=' not defined in Person
+
+    After:
+
+        Person
+        #=> Person(id: integer, ...)
+
+    Fixes #8131.
+
+    *Gabriel Sobrinho, Ricardo Henrique*
+
+
 ## Rails 3.2.9 (unreleased)
+
+*   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
+
+    *Alexis Bernard*
+
+*   Fix issue with collection associations calling first(n)/last(n) and attempting
+    to set the inverse association when `:inverse_of` was used. Fixes #8087.
+
+    *Carlos Antonio da Silva*
 
 *   Fix bug when Column is trying to type cast boolean values to integer.
     Fixes #8067.
@@ -10,7 +48,7 @@
 
     *Grace Liu + Rafael Mendonça França*
 
-*   Fixed support for DATABASE_URL environment variable for rake db tasks. *Grace Liu*
+*   Fixed support for `DATABASE_URL` environment variable for rake db tasks. *Grace Liu*
 
 *   Fix bug where `update_columns` and `update_column` would not let you update the primary key column.
 
@@ -23,7 +61,7 @@
 *   Fix AR#dup to nullify the validation errors in the dup'ed object. Previously the original
     and the dup'ed object shared the same errors.
 
-    * Christian Seiler*
+    *Christian Seiler*
 
 *   Synchronize around deleting from the reserved connections hash.
     Fixes #7955
