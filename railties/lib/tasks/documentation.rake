@@ -1,3 +1,4 @@
+=begin
 namespace :doc do
   desc "Generate documentation for the application. Set custom template with TEMPLATE=/path/to/rdoc/template.rb or title with TITLE=\"Custom Title\""
   Rake::RDocTask.new("app") { |rdoc|
@@ -86,3 +87,4 @@ namespace :doc do
     end
   end
 end
+=end
