@@ -86,4 +86,9 @@ end
 # A gem necessary for ActiveRecord tests with IBM DB
 gem 'ibm_db' if ENV['IBM_DB']
 
+# A gem necessary for ActiveRecord tests with Sqlanywhere database
+if ENV['SQLANYWHERE']
+  gem 'activerecord-sqlanywhere-adapter', git: 'git://github.com/ccouzens/activerecord-sqlanywhere-adapter.git', branch: 'remove_dead_code'
+end
+
 gem 'benchmark-ips'
