@@ -54,8 +54,9 @@ module ActionDispatch
     RFC3744 = %w(ACL)
     RFC5323 = %w(SEARCH)
     RFC5789 = %w(PATCH)
+    UPNP    = %w(NOTIFY SUBSCRIBE UNSUBSCRIBE)
 
-    HTTP_METHODS = RFC2616 + RFC2518 + RFC3253 + RFC3648 + RFC3744 + RFC5323 + RFC5789
+    HTTP_METHODS = RFC2616 + RFC2518 + RFC3253 + RFC3648 + RFC3744 + RFC5323 + RFC5789 + UPNP
     HTTP_METHOD_LOOKUP = Hash.new { |h, m| h[m] = m.underscore.to_sym if HTTP_METHODS.include?(m) }
 
     # Returns the HTTP \method that the application should see.
