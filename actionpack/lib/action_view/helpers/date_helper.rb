@@ -697,9 +697,7 @@ module ActionView
           [:day, :month, :year].each { |o| order.unshift(o) unless order.include?(o) }
           order += [:hour, :minute, :second] unless @options[:discard_hour]
 
-          html  = build_selects_from_types(order)
-          html << build_hidden(:type, 'DateTime') if @options[:include_position]
-          html
+          build_selects_from_types(order, 'DateTime')
         end
       end
 
@@ -718,9 +716,7 @@ module ActionView
 
         [:day, :month, :year].each { |o| order.unshift(o) unless order.include?(o) }
 
-        html  = build_selects_from_types(order)
-        html << build_hidden(:type, 'Date') if @options[:include_position]
-        html
+        build_selects_from_types(order, 'Date')
       end
 
       def select_time
@@ -736,9 +732,7 @@ module ActionView
         order += [:hour, :minute]
         order << :second if @options[:include_seconds]
 
-        html  = build_selects_from_types(order)
-        html << build_hidden(:type, 'Time') if @options[:include_position]
-        html
+        build_selects_from_types(order, 'Time')
       end
 
       def select_second
@@ -1018,14 +1012,17 @@ module ActionView
 
         # Given an ordering of datetime components, create the selection HTML
         # and join them with their appropriate separators.
-        def build_selects_from_types(order)
+        def build_selects_from_types(order, target_type)
           select = ''
           first_visible = order.find { |type| !@options[:"discard_#{type}"] }
           order.reverse.each do |type|
             separator = separator(type) unless type == first_visible # don't add before first visible field
             select.insert(0, separator.to_s + send("select_#{type}").to_s)
           end
-          select.html_safe
+
+          html  = select.html_safe
+          html << build_hidden(:type, target_type) if @options[:include_position]
+          html
         end
 
         # Returns the separator for a given datetime component.
