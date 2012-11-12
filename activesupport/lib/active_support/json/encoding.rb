@@ -58,27 +58,29 @@ module ActiveSupport
             end
         end
 
+        # A fix for badly encoded emoji in active support
+        # @see http://blog.sosedoff.com/2012/04/26/emoji-and-rails-json-output-issue/
         def escape(string)
-          string = string.dup.force_encoding(::Encoding::BINARY) if string.respond_to?(:force_encoding)
+          if string.respond_to?(:force_encoding)
+            string = string.encode(::Encoding::UTF_8, :undef => :replace).force_encoding(::Encoding::BINARY)
+          end
           json = string.
             gsub(escape_regex) { |s| ESCAPED_CHARS[s] }.
             gsub(/([\xC0-\xDF][\x80-\xBF]|
                    [\xE0-\xEF][\x80-\xBF]{2}|
                    [\xF0-\xF7][\x80-\xBF]{3})+/nx) { |s|
-            s.unpack("U*").pack("n*").unpack("H*")[0].gsub(/.{4}/n, '\\\\u\&')
+            s = s.encode('utf-16be', 'utf-8')
+            s.unpack("H*")[0].gsub(/.{4}/n, '\\\\u\&')
           }
-          %("#{json}")
+          json = %("#{json}")
+          json.force_encoding(::Encoding::UTF_8) if json.respond_to?(:force_encoding)
+          json
         end
+
 
         # Converts a Ruby object into a JSON string.
         def encode(value, options = nil)
-          options = {} unless Hash === options
-          seen = (options[:seen] ||= [])
-          raise CircularReferenceError, 'object references itself' if seen.include?(value)
-          seen << value
-          value.to_json(options)
-        ensure
-          seen.pop
+          Yajl.dump(value, options)
         end
       end
 
@@ -89,12 +91,7 @@ module ActiveSupport
   end
 end
 
-# Hack to load json gem first so we can overwrite its to_json.
-begin
-  require 'json'
-rescue LoadError
-end
-
+require 'yajl/json_gem'
 require 'active_support/json/variable'
 require 'active_support/json/encoders/date'
 require 'active_support/json/encoders/date_time'
