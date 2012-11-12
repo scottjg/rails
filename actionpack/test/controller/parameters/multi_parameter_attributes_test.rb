@@ -2,6 +2,10 @@ require 'abstract_unit'
 require 'action_controller/metal/strong_parameters'
 
 class MultiParameterAttributesTest < ActiveSupport::TestCase
+  teardown do
+    ActionController::MultiParameterConverter.registered_types.delete('Money')
+  end
+
   test "multi-parameter DateTime attributes" do
     params = ActionController::Parameters.new({
       book: {
@@ -32,6 +36,21 @@ class MultiParameterAttributesTest < ActiveSupport::TestCase
                  params[:book][:published_at]
   end
 
+  test "multi-parameter attributes with bad data" do
+    params = ActionController::Parameters.new({
+      book: {
+        "shipped_at(1i)"   => "2012",
+        "shipped_at(2i)"   => "2012",
+        "shipped_at(2i)"   => "2012",
+        "shipped_at(type)" => "Date"
+      }
+    })
+
+    assert_raise(ActionController::MultiParameterAssignmentError) do
+      params[:book]
+    end
+  end
+
   test "multi-parameter attributes for unregistered custom types" do
     params = ActionController::Parameters.new({
       book: {
@@ -41,7 +60,9 @@ class MultiParameterAttributesTest < ActiveSupport::TestCase
       }
     })
 
-    assert_nil params[:book][:price]
+    assert_raise(ActionController::MultiParameterAssignmentError) do
+      params[:book]
+    end
   end
 
   test "multi-parameter attributes for registered custom types" do

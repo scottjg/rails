@@ -19,6 +19,9 @@ module ActionController
     end
   end
 
+  class MultiParameterAssignmentError < StandardError
+  end
+
   class MultiParameterConverter
     class << self
       def registered_types
@@ -64,11 +67,16 @@ module ActionController
 
       private
         def convert_attribute(type, args)
-          if type = registered_types[type]
+          type = registered_types[type]
+
+          unless type
+            raise MultiParameterAssignmentError, "Unregistered type (#{type})"
+          end
+
+          begin
             type.call(*args)
-          else
-            #TODO Warning?
-            nil
+          rescue StandardError => e
+            raise MultiParameterAssignmentError, e
           end
         end
     end
