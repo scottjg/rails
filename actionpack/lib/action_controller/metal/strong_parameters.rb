@@ -19,6 +19,64 @@ module ActionController
     end
   end
 
+  class MultiParameterConverter
+    class << self
+      def registered_types
+        @registered_types ||= {}
+      end
+
+      def register_type(type, &block)
+        registered_types[type] = block
+      end
+
+      def convert(attributes)
+        result = {}
+
+        return result if attributes.nil?
+
+        multi_param_types = {}
+        multi_param_values = Hash.new{ |h,k| h[k] = [] }
+        multi_param_regex = %r[^(.*)\((type|\d+)([if]?)\)$]
+
+        attributes.each do |key, value|
+          if key.to_s.include?('(') && key =~ multi_param_regex
+            name, position, type = $1, $2, $3
+
+            if position == 'type'
+              multi_param_types[name] = value
+            else
+              value = value.send("to_#{type}") if type.present?
+              multi_param_values[name][position.to_i] = value
+            end
+          else
+            result[key] = value
+          end
+        end
+
+        multi_param_values.each do |key, values|
+          values.shift
+          type = multi_param_types[key]
+          result[key] = convert_attribute(type, values)
+        end
+
+        result
+      end
+
+      private
+        def convert_attribute(type, args)
+          if type = registered_types[type]
+            type.call(*args)
+          else
+            #TODO Warning?
+            nil
+          end
+        end
+    end
+
+    register_type('Date'){ |*args| Date.new(*args) }
+    register_type('DateTime'){ |*args| DateTime.new(*args) }
+  end
+
   # == Action Controller \Parameters
   #
   # Allows to choose which attributes should be whitelisted for mass updating
@@ -84,7 +142,8 @@ module ActionController
     #   params.permitted?  # => true
     #   Person.new(params) # => #<Person id: nil, name: "Francesco">
     def initialize(attributes = nil)
-      super(attributes)
+      converted_attributes = MultiParameterConverter.convert(attributes)
+      super(converted_attributes)
       @permitted = self.class.permit_all_parameters
     end
 

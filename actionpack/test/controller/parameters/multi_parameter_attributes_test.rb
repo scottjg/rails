@@ -2,7 +2,7 @@ require 'abstract_unit'
 require 'action_controller/metal/strong_parameters'
 
 class MultiParameterAttributesTest < ActiveSupport::TestCase
-  test "permitted multi-parameter attribute keys" do
+  test "multi-parameter DateTime attributes" do
     params = ActionController::Parameters.new({
       book: {
         "shipped_at(1i)"   => "2012",
@@ -10,29 +10,57 @@ class MultiParameterAttributesTest < ActiveSupport::TestCase
         "shipped_at(3i)"   => "25",
         "shipped_at(4i)"   => "10",
         "shipped_at(5i)"   => "15",
-        "published_at(1i)" => "1999",
-        "published_at(2i)" => "2",
-        "published_at(3i)" => "5",
-        "price(1)"         => "R$",
-        "price(2f)"        => "2.02"
+        "shipped_at(type)" => "DateTime"
       }
     })
 
-    permitted = params.permit book: [ :shipped_at, :price ]
+    assert_equal DateTime.new(2012, 3, 25, 10, 15),
+                 params[:book][:shipped_at]
+  end
 
-    assert permitted.permitted?
+  test "multi-parameter Date attributes" do
+    params = ActionController::Parameters.new({
+      book: {
+        "published_at(1i)" => "1999",
+        "published_at(2i)" => "2",
+        "published_at(3i)" => "5",
+        "published_at(type)" => "Date"
+      }
+    })
 
-    assert_equal "2012", permitted[:book]["shipped_at(1i)"]
-    assert_equal "3", permitted[:book]["shipped_at(2i)"]
-    assert_equal "25", permitted[:book]["shipped_at(3i)"]
-    assert_equal "10", permitted[:book]["shipped_at(4i)"]
-    assert_equal "15", permitted[:book]["shipped_at(5i)"]
+    assert_equal Date.new(1999, 2, 5),
+                 params[:book][:published_at]
+  end
 
-    assert_equal "R$", permitted[:book]["price(1)"]
-    assert_equal "2.02", permitted[:book]["price(2f)"]
+  test "multi-parameter attributes for unregistered custom types" do
+    params = ActionController::Parameters.new({
+      book: {
+        "price(1)"         => "R$",
+        "price(2f)"        => "2.02",
+        "price(type)"      => "Money"
+      }
+    })
 
-    assert_nil permitted[:book]["published_at(1i)"]
-    assert_nil permitted[:book]["published_at(2i)"]
-    assert_nil permitted[:book]["published_at(3i)"]
+    assert_nil params[:book][:price]
+  end
+
+  test "multi-parameter attributes for registered custom types" do
+    ActionController::MultiParameterConverter.register_type('Money') do |c, p|
+      {price: p, currency: c}
+    end
+
+    params = ActionController::Parameters.new({
+      book: {
+        "price(1)"         => "R$",
+        "price(2f)"        => "2.02",
+        "price(type)"      => "Money"
+      }
+    })
+
+    assert_equal HashWithIndifferentAccess.new(price: 2.02, currency: 'R$'),
+                 params[:book][:price]
+  end
+
+  test "multi-parameter attributes with invalid values" do
   end
 end
