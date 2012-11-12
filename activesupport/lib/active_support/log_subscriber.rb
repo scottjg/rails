@@ -79,6 +79,8 @@ module ActiveSupport
       end
     end
 
+    attr_reader :queue_key
+
     def initialize
       @queue_key = [self.class.name, object_id].join  "-"
       super
@@ -92,8 +94,6 @@ module ActiveSupport
       return unless logger
 
       e = ActiveSupport::Notifications::Event.new(name, Time.now, nil, id, payload)
-      parent = event_stack.last
-      parent << e if parent
 
       event_stack.push e
     end
