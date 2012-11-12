@@ -106,13 +106,14 @@ module ActiveSupport
               Mocha::TestCaseAdapter::AssertionCounter.new(result)
             elsif defined?(Mocha::Integration::TestUnit::AssertionCounter)
               Mocha::Integration::TestUnit::AssertionCounter.new(result)
+            elsif defined?(Mocha::Integration::AssertionCounter)
+              Mocha::Integration::AssertionCounter.new(result)
             else
               Mocha::MonkeyPatching::TestUnit::AssertionCounter.new(result)
             end
           end
         end
       end
-
     end
   end
 end
