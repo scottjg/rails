@@ -658,7 +658,9 @@ module ActionView
 
       DEFAULT_PREFIX = 'date'.freeze
       POSITION = {
-        :year => 1, :month => 2, :day => 3, :hour => 4, :minute => 5, :second => 6
+        :year => '1i', :month => '2i', :day => '3i',
+        :hour => '4i', :minute => '5i', :second => '6i',
+        :type => 'type'
       }.freeze
 
       AMPM_TRANSLATION = Hash[
@@ -695,7 +697,9 @@ module ActionView
           [:day, :month, :year].each { |o| order.unshift(o) unless order.include?(o) }
           order += [:hour, :minute, :second] unless @options[:discard_hour]
 
-          build_selects_from_types(order)
+          html  = build_selects_from_types(order)
+          html << build_hidden(:type, 'DateTime') if @options[:include_position]
+          html
         end
       end
 
@@ -714,7 +718,9 @@ module ActionView
 
         [:day, :month, :year].each { |o| order.unshift(o) unless order.include?(o) }
 
-        build_selects_from_types(order)
+        html  = build_selects_from_types(order)
+        html << build_hidden(:type, 'Date') if @options[:include_position]
+        html
       end
 
       def select_time
@@ -730,7 +736,9 @@ module ActionView
         order += [:hour, :minute]
         order << :second if @options[:include_seconds]
 
-        build_selects_from_types(order)
+        html  = build_selects_from_types(order)
+        html << build_hidden(:type, 'Time') if @options[:include_position]
+        html
       end
 
       def select_second
@@ -993,7 +1001,7 @@ module ActionView
 
           field_name = @options[:field_name] || type
           if @options[:include_position]
-            field_name += "(#{ActionView::Helpers::DateTimeSelector::POSITION[type]}i)"
+            field_name += "(#{ActionView::Helpers::DateTimeSelector::POSITION[type]})"
           end
 
           @options[:discard_type] ? prefix : "#{prefix}[#{field_name}]"
