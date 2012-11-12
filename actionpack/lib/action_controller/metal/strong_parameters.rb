@@ -39,7 +39,18 @@ module ActionController
 
         multi_param_types = {}
         multi_param_values = Hash.new{ |h,k| h[k] = [] }
-        multi_param_regex = %r[^(.*)\((type|\d+)([if]?)\)$]
+
+        # Matches multi-parameter attribute names
+        # e.g. "created_at(3i)" or "published_on(type)"
+        multi_param_regex = %r[
+          ^
+          (.*)            # Name of the field
+          \(
+            (type|\d+)    # Numeric position, or "type"
+            ([if]?)       # Type to convert the value to: 'i' => to_i, etc
+          \)
+          $
+        ]x
 
         attributes.each do |key, value|
           if key.to_s.include?('(') && key =~ multi_param_regex
