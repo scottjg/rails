@@ -22,6 +22,22 @@ class MultiParameterAttributesTest < ActiveSupport::TestCase
                  params[:book][:shipped_at]
   end
 
+  test "multi-parameter Time attributes" do
+    params = ActionController::Parameters.new({
+      book: {
+        "shipped_at(1i)"   => "2012",
+        "shipped_at(2i)"   => "3",
+        "shipped_at(3i)"   => "25",
+        "shipped_at(4i)"   => "10",
+        "shipped_at(5i)"   => "15",
+        "shipped_at(type)" => "Time"
+      }
+    })
+
+    assert_equal Time.new(2012, 3, 25, 10, 15),
+                 params[:book][:shipped_at]
+  end
+
   test "multi-parameter Date attributes" do
     params = ActionController::Parameters.new({
       book: {

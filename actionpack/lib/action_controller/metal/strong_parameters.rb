@@ -83,6 +83,7 @@ module ActionController
 
     register_type('Date'){ |*args| Date.new(*args) }
     register_type('DateTime'){ |*args| DateTime.new(*args) }
+    register_type('Time'){ |*args| Time.new(*args) }
   end
 
   # == Action Controller \Parameters
