@@ -3,9 +3,50 @@ h2. A Guide to Advance Topics on Active Record
 This guide covers advance features of Active Record. By referring to this guide, you'll be able to:
 
 * Use Single Table Inheritance
-* Configure your database to use Single Table Inheritance
+* Merge ActiveRecord:Relations
 
-Please note we'll be referring to Single Table Inheritance as STI
+h3. Merging ActiveRecord::Relations
+
+Mergint two ActiveRecord::Relations objects is easy with the merge function. Let's assume we have the following:
+
+
+<ruby>
+
+class Book < ActiveRecord::Base
+
+ scope :with_questions, where(:have_questions => true).order('title ASC')
+
+ class SortType
+    def initialize(sort_type)
+      @sort_type = sort_type
+    end
+
+    def solve
+      @sort_type.nil? ? :subject_id : @sort_type.to_sym
+    end
+  end
+
+
+  def self.sorted(sort_type)
+    sort_order = SortType.new(sort_type).solve
+    order(sort_order).includes(:subject)
+  end
+
+Book.sorted(nil).class
+=> ActiveRecord::Relation 
+
+Book.with_questions.class
+ => ActiveRecord::Relation 
+
+
+</ruby>
+
+One may create a query that composes the two methods above like:
+
+<ruby>
+  Book.with_questions.merge(Book.sorted(nil))
+</ruby>
+
 
 h3. Single Table Inheritance
 
@@ -30,6 +71,8 @@ class Parent < User
 end
 </ruby>
 
+
+Please note we'll be referring to Single Table Inheritance as STI
 
 h4. Configuring your database for STI
 
