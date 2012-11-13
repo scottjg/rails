@@ -62,6 +62,7 @@ module ActiveModel
         extend  ActiveModel::Translation
         include ActiveModel::Validations
         include ActiveModel::Conversion
+        include ActiveModel::AttributeAssignment
       end
     end
 
@@ -76,9 +77,7 @@ module ActiveModel
     #   person.name # => "bob"
     #   person.age  # => 18
     def initialize(params={})
-      params.each do |attr, value|
-        self.public_send("#{attr}=", value)
-      end if params
+      assign_attributes(params) if params
     end
 
     # Indicates if the model is persisted. Default is +false+.

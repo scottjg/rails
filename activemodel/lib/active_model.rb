@@ -29,6 +29,7 @@ module ActiveModel
   extend ActiveSupport::Autoload
 
   autoload :AttributeMethods
+  autoload :AttributeAssignment
   autoload :BlockValidator, 'active_model/validator'
   autoload :Callbacks
   autoload :Conversion

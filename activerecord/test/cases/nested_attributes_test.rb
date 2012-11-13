@@ -675,7 +675,7 @@ module NestedAttributesOnACollectionAssociationTests
   end
 
   def test_should_not_assign_destroy_key_to_a_record
-    assert_nothing_raised ActiveRecord::UnknownAttributeError do
+    assert_nothing_raised ActiveModel::UnknownAttributeError do
       @pirate.send(association_setter, { 'foo' => { '_destroy' => '0' }})
     end
   end

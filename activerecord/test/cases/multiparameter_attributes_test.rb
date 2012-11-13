@@ -92,7 +92,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_attributes_on_time_with_no_date
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+    ex = assert_raise(ActiveModel::MultiparameterAssignmentErrors) do
       attributes = {
         "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
       }
@@ -103,7 +103,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_attributes_on_time_with_invalid_time_params
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+    ex = assert_raise(ActiveModel::MultiparameterAssignmentErrors) do
       attributes = {
         "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
         "written_on(4i)" => "2004", "written_on(5i)" => "36", "written_on(6i)" => "64",
@@ -126,7 +126,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_attributes_on_time_will_raise_on_big_time_if_missing_date_parts
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+    ex = assert_raise(ActiveModel::MultiparameterAssignmentErrors) do
       attributes = {
         "written_on(4i)" => "16", "written_on(5i)" => "24"
       }
@@ -137,7 +137,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_attributes_on_time_with_raise_on_small_time_if_missing_date_parts
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+    ex = assert_raise(ActiveModel::MultiparameterAssignmentErrors) do
       attributes = {
         "written_on(4i)" => "16", "written_on(5i)" => "12", "written_on(6i)" => "02"
       }
@@ -298,7 +298,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_attributes_setting_time_but_not_date_on_date_field
-    assert_raise( ActiveRecord::MultiparameterAssignmentErrors ) do
+    assert_raise( ActiveModel::MultiparameterAssignmentErrors ) do
       Topic.new( "written_on(4i)" => "13", "written_on(5i)" => "55" )
     end
   end
@@ -320,7 +320,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_assignment_of_aggregation_with_missing_values
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+    ex = assert_raise(ActiveModel::MultiparameterAssignmentErrors) do
       customer = Customer.new
       address = Address.new("The Street", "The City", "The Country")
       attributes = { "address(2)" => address.city, "address(3)" => address.country }
@@ -338,7 +338,7 @@ class MultiParameterAttributeTest < ActiveRecord::TestCase
   end
 
   def test_multiparameter_assignment_of_aggregation_with_large_index
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
+    ex = assert_raise(ActiveModel::MultiparameterAssignmentErrors) do
       customer = Customer.new
       address = Address.new("The Street", "The City", "The Country")
       attributes = { "address(1)" => "The Street", "address(2)" => address.city, "address(3000)" => address.country }

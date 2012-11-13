@@ -716,8 +716,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   def test_bulk_update_respects_access_control
     privatize("title=(value)")
 
-    assert_raise(ActiveRecord::UnknownAttributeError) { @target.new(:title => "Rants about pants") }
-    assert_raise(ActiveRecord::UnknownAttributeError) { @target.new.attributes = { :title => "Ants in pants" } }
+    assert_raise(ActiveModel::UnknownAttributeError) { @target.new(:title => "Rants about pants") }
+    assert_raise(ActiveModel::UnknownAttributeError) { @target.new.attributes = { :title => "Ants in pants" } }
   end
 
   def test_read_attribute_overwrites_private_method_not_considered_implemented
