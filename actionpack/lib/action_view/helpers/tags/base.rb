@@ -80,18 +80,16 @@ module ActionView
             options["name"] ||= options.fetch("name"){ tag_name_with_index(@auto_index) }
             options["id"] = options.fetch("id"){ tag_id_with_index(@auto_index) }
           else
-            options["name"] ||= options.fetch("name"){ options['multiple'] ? tag_name_multiple : tag_name }
+            options["name"] ||= options.fetch("name"){ tag_name }
             options["id"] = options.fetch("id"){ tag_id }
           end
+
+          options["name"] += "[]" if options["multiple"]
           options["id"] = [options.delete('namespace'), options["id"]].compact.join("_").presence
         end
 
         def tag_name
           "#{@object_name}[#{sanitized_method_name}]"
-        end
-
-        def tag_name_multiple
-          "#{tag_name}[]"
         end
 
         def tag_name_with_index(index)
@@ -137,10 +135,10 @@ module ActionView
 
         def add_options(option_tags, options, value = nil)
           if options[:include_blank]
-            option_tags = content_tag('option', options[:include_blank].kind_of?(String) ? options[:include_blank] : nil, :value => '') + "\n" + option_tags
+            option_tags = content_tag_string('option', options[:include_blank].kind_of?(String) ? options[:include_blank] : nil, :value => '') + "\n" + option_tags
           end
           if value.blank? && options[:prompt]
-            option_tags = content_tag('option', prompt_text(options[:prompt]), :value => '') + "\n" + option_tags
+            option_tags = content_tag_string('option', prompt_text(options[:prompt]), :value => '') + "\n" + option_tags
           end
           option_tags
         end

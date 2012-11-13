@@ -5,7 +5,7 @@ module Rails
     # paths by a Hash like API. It requires you to give a physical path on initialization.
     #
     #   root = Root.new "/rails"
-    #   root.add "app/controllers", :eager_load => true
+    #   root.add "app/controllers", eager_load: true
     #
     # The command above creates a new root object and add "app/controllers" as a path.
     # This means we can get a <tt>Rails::Paths::Path</tt> object back like below:
@@ -26,7 +26,7 @@ module Rails
     # contains the path with the same path value given to +add+. In some situations,
     # you may not want this behavior, so you can give :with as option.
     #
-    #   root.add "config/routes", :with => "config/routes.rb"
+    #   root.add "config/routes", with: "config/routes.rb"
     #   root["config/routes"].inspect # => ["config/routes.rb"]
     #
     # The +add+ method accepts the following options as arguments:
@@ -51,7 +51,8 @@ module Rails
       end
 
       def []=(path, value)
-        add(path, :with => value)
+        glob = self[path] ? self[path].glob : nil
+        add(path, with: value, glob: glob)
       end
 
       def add(path, options={})
@@ -98,14 +99,15 @@ module Rails
     protected
 
       def filter_by(constraint)
-        all = []
+        yes = []
+        no  = []
+
         all_paths.each do |path|
-          if path.send(constraint)
-            paths  = path.existent
-            paths -= path.children.map { |p| p.send(constraint) ? [] : p.existent }.flatten
-            all.concat(paths)
-          end
+          paths = path.existent + path.existent_base_paths
+          path.send(constraint) ? yes.concat(paths) : no.concat(paths)
         end
+
+        all = yes - no
         all.uniq!
         all
       end
@@ -114,7 +116,6 @@ module Rails
     class Path
       include Enumerable
 
-      attr_reader :path, :root
       attr_accessor :glob
 
       def initialize(root, current, paths, options = {})
@@ -134,6 +135,7 @@ module Rails
         keys.delete(@current)
         @root.values_at(*keys.sort)
       end
+      deprecate :children
 
       def first
         expanded.first
@@ -180,14 +182,6 @@ module Rails
         @paths
       end
 
-      def paths
-        raise "You need to set a path root" unless @root.path
-
-        map do |p|
-          File.join @root.path, p
-        end
-      end
-
       # Expands all paths against the root and return all unique values.
       def expanded
         raise "You need to set a path root" unless @root.path
@@ -216,6 +210,10 @@ module Rails
 
       def existent_directories
         expanded.select { |d| File.directory?(d) }
+      end
+
+      def existent_base_paths
+        map { |p| File.expand_path(p, @root.path) }.select{ |f| File.exist? f }
       end
 
       alias to_a expanded

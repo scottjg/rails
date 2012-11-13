@@ -50,7 +50,7 @@ module ApplicationTests
       controller :foo, <<-RUBY
         class FooController < ApplicationController
           def index
-            render :inline => "<%= foo_or_bar? %>"
+            render inline: "<%= foo_or_bar? %>"
           end
         end
       RUBY
@@ -76,7 +76,7 @@ module ApplicationTests
     test "mount rack app" do
       app_file 'config/routes.rb', <<-RUBY
         AppTemplate::Application.routes.draw do
-          mount lambda { |env| [200, {}, [env["PATH_INFO"]]] }, :at => "/blog"
+          mount lambda { |env| [200, {}, [env["PATH_INFO"]]] }, at: "/blog"
           # The line below is required because mount sometimes
           # fails when a resource route is added.
           resource :user
@@ -91,7 +91,7 @@ module ApplicationTests
       controller :foo, <<-RUBY
         class FooController < ApplicationController
           def index
-            render :text => "foo"
+            render text: "foo"
           end
         end
       RUBY
@@ -99,7 +99,7 @@ module ApplicationTests
       controller :bar, <<-RUBY
         class BarController < ActionController::Base
           def index
-            render :text => "bar"
+            render text: "bar"
           end
         end
       RUBY
@@ -121,7 +121,7 @@ module ApplicationTests
       controller 'foo', <<-RUBY
         class FooController < ApplicationController
           def index
-            render :text => "foo"
+            render text: "foo"
           end
         end
       RUBY
@@ -130,7 +130,7 @@ module ApplicationTests
         module Admin
           class FooController < ApplicationController
             def index
-              render :text => "admin::foo"
+              render text: "admin::foo"
             end
           end
         end
@@ -138,8 +138,8 @@ module ApplicationTests
 
       app_file 'config/routes.rb', <<-RUBY
         AppTemplate::Application.routes.draw do
-          get 'admin/foo', :to => 'admin/foo#index'
-          get 'foo', :to => 'foo#index'
+          get 'admin/foo', to: 'admin/foo#index'
+          get 'foo', to: 'foo#index'
         end
       RUBY
 
@@ -178,106 +178,23 @@ module ApplicationTests
       assert_equal 'WIN', last_response.body
     end
 
-    test "routes drawing from config/routes" do
-      app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do
-          draw :external
-        end
-      RUBY
-
-      app_file 'config/routes/external.rb', <<-RUBY
-        get ':controller/:action'
-      RUBY
-
-      controller :success, <<-RUBY
-        class SuccessController < ActionController::Base
-          def index
-            render :text => "success!"
-          end
-        end
-      RUBY
-
-      app 'development'
-      get '/success/index'
-      assert_equal 'success!', last_response.body
-    end
-
     {"development" => "baz", "production" => "bar"}.each do |mode, expected|
-      test "reloads routes when external configuration is changed in #{mode}" do
-        controller :foo, <<-RUBY
-          class FooController < ApplicationController
-            def bar
-              render :text => "bar"
-            end
-
-            def baz
-              render :text => "baz"
-            end
-          end
-        RUBY
-
-        app_file 'config/routes.rb', <<-RUBY
-          AppTemplate::Application.routes.draw do
-            draw :external
-          end
-        RUBY
-
-        app_file 'config/routes/external.rb', <<-RUBY
-          get 'foo', :to => 'foo#bar'
-        RUBY
-
-        app(mode)
-
-        get '/foo'
-        assert_equal 'bar', last_response.body
-
-        app_file 'config/routes/external.rb', <<-RUBY
-          get 'foo', :to => 'foo#baz'
-        RUBY
-
-        sleep 0.1
-
-        get '/foo'
-        assert_equal expected, last_response.body
-
-        app_file 'config/routes.rb', <<-RUBY
-          AppTemplate::Application.routes.draw do
-            draw :external
-            draw :other_external
-          end
-        RUBY
-
-        app_file 'config/routes/other_external.rb', <<-RUBY
-          get 'win', :to => 'foo#baz'
-        RUBY
-
-        sleep 0.1
-
-        get '/win'
-
-        if mode == "development"
-          assert_equal expected, last_response.body
-        else
-          assert_equal 404, last_response.status
-        end
-      end
-
       test "reloads routes when configuration is changed in #{mode}" do
         controller :foo, <<-RUBY
           class FooController < ApplicationController
             def bar
-              render :text => "bar"
+              render text: "bar"
             end
 
             def baz
-              render :text => "baz"
+              render text: "baz"
             end
           end
         RUBY
 
         app_file 'config/routes.rb', <<-RUBY
           AppTemplate::Application.routes.draw do
-            get 'foo', :to => 'foo#bar'
+            get 'foo', to: 'foo#bar'
           end
         RUBY
 
@@ -288,7 +205,7 @@ module ApplicationTests
 
         app_file 'config/routes.rb', <<-RUBY
           AppTemplate::Application.routes.draw do
-            get 'foo', :to => 'foo#baz'
+            get 'foo', to: 'foo#baz'
           end
         RUBY
 
@@ -309,7 +226,7 @@ module ApplicationTests
 
       app_file 'config/routes.rb', <<-RUBY
         AppTemplate::Application.routes.draw do
-          get 'foo', :to => ::InitializeRackApp
+          get 'foo', to: ::InitializeRackApp
         end
       RUBY
 
@@ -340,7 +257,7 @@ module ApplicationTests
       controller 'yazilar', <<-RUBY
         class YazilarController < ApplicationController
           def index
-            render :text => 'yazilar#index'
+            render text: 'yazilar#index'
           end
         end
       RUBY

@@ -24,7 +24,7 @@ module ActiveRecord
         @conn.extend(LogIntercepter)
         @conn.intercepted = true
       end
-    
+
       def teardown
         @conn.intercepted = false
         @conn.logged = []
@@ -41,11 +41,6 @@ module ActiveRecord
         esql
 
         assert(!result.rows.first.include?("blob"), "should not store blobs")
-      end
-
-      def test_time_column
-        owner = Owner.create!(:eats_at => Time.utc(1995,1,1,6,0))
-        assert_match(/1995-01-01/, owner.reload.eats_at.to_s)
       end
 
       def test_exec_insert
@@ -157,6 +152,12 @@ module ActiveRecord
 
       ensure
         DualEncoding.connection.drop_table('dual_encodings')
+      end
+
+      def test_type_cast_should_not_mutate_encoding
+        name  = 'hello'.force_encoding(Encoding::ASCII_8BIT)
+        Owner.create(name: name)
+        assert_equal Encoding::ASCII_8BIT, name.encoding
       end
 
       def test_execute

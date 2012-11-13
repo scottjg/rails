@@ -16,26 +16,9 @@ require 'models/ship_part'
 require 'models/tag'
 require 'models/tagging'
 require 'models/treasure'
-require 'models/company'
 require 'models/eye'
 
 class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
-  def test_autosave_should_be_a_valid_option_for_has_one
-    assert ActiveRecord::Associations::Builder::HasOne.valid_options.include?(:autosave)
-  end
-
-  def test_autosave_should_be_a_valid_option_for_belongs_to
-    assert ActiveRecord::Associations::Builder::BelongsTo.valid_options.include?(:autosave)
-  end
-
-  def test_autosave_should_be_a_valid_option_for_has_many
-    assert ActiveRecord::Associations::Builder::HasMany.valid_options.include?(:autosave)
-  end
-
-  def test_autosave_should_be_a_valid_option_for_has_and_belongs_to_many
-    assert ActiveRecord::Associations::Builder::HasAndBelongsToMany.valid_options.include?(:autosave)
-  end
-
   def test_should_not_add_the_same_callbacks_multiple_times_for_has_one
     assert_no_difference_when_adding_callbacks_twice_for Pirate, :ship
   end
@@ -155,13 +138,13 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
   end
 
   def test_not_resaved_when_unchanged
-    firm = Firm.scoped(:includes => :account).first
+    firm = Firm.all.merge!(:includes => :account).first
     firm.name += '-changed'
     assert_queries(1) { firm.save! }
 
     firm = Firm.first
     firm.account = Account.first
-    assert_queries(Firm.partial_updates? ? 0 : 1) { firm.save! }
+    assert_queries(Firm.partial_writes? ? 0 : 1) { firm.save! }
 
     firm = Firm.first.dup
     firm.account = Account.first

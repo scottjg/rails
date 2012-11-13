@@ -33,6 +33,8 @@ module ActiveRecord
         assert_equal 0, column.type_cast('bad1')
         assert_equal 0, column.type_cast('bad')
         assert_equal 1, column.type_cast(1.7)
+        assert_equal 0, column.type_cast(false)
+        assert_equal 1, column.type_cast(true)
         assert_nil column.type_cast(nil)
       end
 
@@ -41,11 +43,9 @@ module ActiveRecord
         assert_raises(NoMethodError) do
           column.type_cast([])
         end
+
         assert_raises(NoMethodError) do
-          column.type_cast(true)
-        end
-        assert_raises(NoMethodError) do
-          column.type_cast(false)
+          column.type_cast(Object.new)
         end
       end
 
@@ -75,6 +75,12 @@ module ActiveRecord
 
         date_string = Time.now.utc.strftime("%F")
         assert_equal date_string, column.type_cast(date_string).strftime("%F")
+      end
+
+      def test_type_cast_duration_to_integer
+        column = Column.new("field", nil, "integer")
+        assert_equal 1800, column.type_cast(30.minutes)
+        assert_equal 7200, column.type_cast(2.hours)
       end
     end
   end

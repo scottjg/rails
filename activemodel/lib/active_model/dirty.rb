@@ -1,10 +1,9 @@
 require 'active_model/attribute_methods'
 require 'active_support/hash_with_indifferent_access'
 require 'active_support/core_ext/object/duplicable'
-require 'active_support/core_ext/object/blank'
 
 module ActiveModel
-  # == Active Model Dirty
+  # == Active \Model \Dirty
   #
   # Provides a way to track changes in your object in the same way as
   # Active Record does.
@@ -80,8 +79,8 @@ module ActiveModel
   #   person.changes        # => {"name" => ["Bill", "Bob"]}
   #
   # If an attribute is modified in-place then make use of <tt>[attribute_name]_will_change!</tt>
-  # to mark that the attribute is changing. Otherwise ActiveModel can't track changes to
-  # in-place attributes.
+  # to mark that the attribute is changing. Otherwise ActiveModel can't track
+  # changes to in-place attributes.
   #
   #   person.name_will_change!
   #   person.name_change    # => ["Bill", "Bill"]
@@ -115,7 +114,7 @@ module ActiveModel
     end
 
     # Returns a hash of changed attributes indicating their original
-    # and new values like <tt>attr => [original value, new value]</tt>. 
+    # and new values like <tt>attr => [original value, new value]</tt>.
     #
     #   person.changes # => {}
     #   person.name = 'bob'

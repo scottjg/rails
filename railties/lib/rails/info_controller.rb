@@ -1,4 +1,4 @@
-require 'rails/application/route_inspector'
+require 'action_dispatch/routing/inspector'
 
 class Rails::InfoController < ActionController::Base
   self.view_paths = File.join(File.dirname(__FILE__), 'templates')
@@ -15,7 +15,7 @@ class Rails::InfoController < ActionController::Base
   end
 
   def routes
-    inspector = Rails::Application::RouteInspector.new
+    inspector = ActionDispatch::Routing::RoutesInspector.new
     @info     = inspector.format(_routes.routes).join("\n")
   end
 
@@ -23,7 +23,7 @@ class Rails::InfoController < ActionController::Base
 
   def require_local!
     unless local_request?
-      render :text => '<p>For security purposes, this information is only available to local requests.</p>', :status => :forbidden
+      render text: '<p>For security purposes, this information is only available to local requests.</p>', status: :forbidden
     end
   end
 

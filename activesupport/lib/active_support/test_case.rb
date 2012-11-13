@@ -1,24 +1,23 @@
+gem 'minitest' # make sure we get the gem, not stdlib
 require 'minitest/spec'
+require 'active_support/testing/tagged_logging'
 require 'active_support/testing/setup_and_teardown'
 require 'active_support/testing/assertions'
 require 'active_support/testing/deprecation'
-require 'active_support/testing/declarative'
 require 'active_support/testing/isolation'
-require 'active_support/testing/mochaing'
+require 'active_support/testing/mocha_module'
+require 'active_support/testing/constant_lookup'
 require 'active_support/core_ext/kernel/reporting'
+require 'active_support/deprecation'
 
 module ActiveSupport
   class TestCase < ::MiniTest::Spec
 
-    if MiniTest::Unit::VERSION < '2.6.1'
-      class << self
-        alias :name :to_s
-      end
-    end
+    include ActiveSupport::Testing::MochaModule
 
     # Use AS::TestCase for the base class when describing a model
     register_spec_type(self) do |desc|
-      desc < ActiveRecord::Model
+      Class === desc && desc < ActiveRecord::Base
     end
 
     Assertion = MiniTest::Assertion
@@ -35,10 +34,29 @@ module ActiveSupport
       :sorted
     end
 
+    include ActiveSupport::Testing::TaggedLogging
     include ActiveSupport::Testing::SetupAndTeardown
     include ActiveSupport::Testing::Assertions
     include ActiveSupport::Testing::Deprecation
-    extend ActiveSupport::Testing::Declarative
+
+    def self.describe(text)
+      if block_given?
+        super
+      else
+        message = "`describe` without a block is deprecated, please switch to: `def self.name; #{text.inspect}; end`\n"
+        ActiveSupport::Deprecation.warn message
+
+        class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
+          def self.name
+            "#{text}"
+          end
+        RUBY_EVAL
+      end
+    end
+
+    class << self
+      alias :test :it
+    end
 
     # test/unit backwards compatibility methods
     alias :assert_raise :assert_raises
@@ -47,6 +65,11 @@ module ActiveSupport
     alias :assert_no_match :refute_match
     alias :assert_not_same :refute_same
 
+    # Fails if the block raises an exception.
+    #
+    #   assert_nothing_raised do
+    #     ...
+    #   end
     def assert_nothing_raised(*args)
       yield
     end

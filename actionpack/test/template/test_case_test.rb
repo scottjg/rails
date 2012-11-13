@@ -64,18 +64,18 @@ module ActionView
       assert_equal 'Howdy!', from_another_helper
     end
 
-    test "determine_default_helper_class returns nil if name.sub(/Test$/, '').constantize resolves to a class" do
+    test "determine_default_helper_class returns nil if the test name constant resolves to a class" do
       assert_nil self.class.determine_default_helper_class("String")
     end
 
-    test "delegates notice to request.flash" do
-      view.request.flash.expects(:notice).with("this message")
-      view.notice("this message")
+    test "delegates notice to request.flash[:notice]" do
+      view.request.flash.expects(:[]).with(:notice)
+      view.notice
     end
 
-    test "delegates alert to request.flash" do
-      view.request.flash.expects(:alert).with("this message")
-      view.alert("this message")
+    test "delegates alert to request.flash[:alert]" do
+      view.request.flash.expects(:[]).with(:alert)
+      view.alert
     end
 
     test "uses controller lookup context" do
@@ -321,6 +321,14 @@ module ActionView
         assert_template :partial => "_partial_for_use_in_layout", :locals => { :name => "Somebody Else" }
       end
     end
+
+    test 'supports different locals on the same partial' do
+      controller.controller_path = "test"
+      render(:template => "test/render_two_partials")
+      assert_template partial: '_partial', locals: { 'first' => '1' }
+      assert_template partial: '_partial', locals: { 'second' => '2' }
+    end
+
   end
 
   module AHelperWithInitialize

@@ -1,11 +1,9 @@
-require 'active_support/core_ext/class/attribute'
+require 'active_support/lazy_load_hooks'
 
 module ActiveRecord
   module Explain
     def self.extended(base)
-      # If a query takes longer than these many seconds we log its query plan
-      # automatically. nil disables this feature.
-      base.config_attribute :auto_explain_threshold_in_seconds, :global => true
+      base.mattr_accessor :auto_explain_threshold_in_seconds, instance_accessor: false
     end
 
     # If auto explain is enabled, this method triggers EXPLAIN logging for the

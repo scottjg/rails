@@ -1,11 +1,9 @@
 module ActionDispatch
-  # A simple Rack application that renders exceptions in the given public path.
   class PublicExceptions
     attr_accessor :public_path
 
-    def initialize(public_path, consider_all_requests_local = false)
+    def initialize(public_path)
       @public_path = public_path
-      @consider_all_requests_local = consider_all_requests_local
     end
 
     def call(env)
@@ -13,26 +11,24 @@ module ActionDispatch
       status       = env["PATH_INFO"][1..-1]
       request      = ActionDispatch::Request.new(env)
       content_type = request.formats.first
-      format       = (mime = Mime[content_type]) && "to_#{mime.to_sym}"
       body         = { :status => status, :error => exception.message }
 
-      render(status, body, :format => format, :content_type => content_type)
+      render(status, content_type, body)
     end
 
     private
 
-    def render(status, body, options)
-      format = options[:format]
-
-      if !@consider_all_requests_local && format && body.respond_to?(format)
-        render_format(status, body.public_send(format), options)
+    def render(status, content_type, body)
+      format = content_type && "to_#{content_type.to_sym}"
+      if format && body.respond_to?(format)
+        render_format(status, content_type, body.public_send(format))
       else
         render_html(status)
       end
     end
 
-    def render_format(status, body, options)
-      [status, {'Content-Type' => "#{options[:content_type]}; charset=#{ActionDispatch::Response.default_charset}",
+    def render_format(status, content_type, body)
+      [status, {'Content-Type' => "#{content_type}; charset=#{ActionDispatch::Response.default_charset}",
                 'Content-Length' => body.bytesize.to_s}, [body]]
     end
 
@@ -42,8 +38,7 @@ module ActionDispatch
       path = "#{public_path}/#{status}.html" unless path && (found = File.exist?(path))
 
       if found || File.exist?(path)
-        body = File.read(path)
-        [status, {'Content-Type' => "text/html; charset=#{Response.default_charset}", 'Content-Length' => body.bytesize.to_s}, [body]]
+        render_format(status, 'text/html', File.read(path))
       else
         [404, { "X-Cascade" => "pass" }, []]
       end

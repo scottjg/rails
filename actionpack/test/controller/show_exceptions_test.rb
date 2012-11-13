@@ -22,14 +22,6 @@ module ShowExceptions
     end
   end
 
-  class ShowLocalExceptionsController < ActionController::Base
-    use ActionDispatch::ShowExceptions, ActionDispatch::PublicExceptions.new("#{FIXTURE_LOAD_PATH}/public", true)
-
-    def boom
-      raise 'boom!'
-    end
-  end
-
   class ShowExceptionsTest < ActionDispatch::IntegrationTest
     test 'show error page from a remote ip' do
       @app = ShowExceptionsController.action(:boom)
@@ -102,13 +94,19 @@ module ShowExceptions
     end
   end
 
-  class ShowExceptionsFormatsTest < ActionDispatch::IntegrationTest
-    def test_render_formatted_exception_in_development
-      @app = ShowLocalExceptionsController.action(:boom)
-      get "/", {}, 'HTTP_ACCEPT' => 'application/xml'
+  class ShowFailsafeExceptionsTest < ActionDispatch::IntegrationTest
+    def test_render_failsafe_exception
+      @app = ShowExceptionsOverridenController.action(:boom)
+      @exceptions_app = @app.instance_variable_get(:@exceptions_app)
+      @app.instance_variable_set(:@exceptions_app, nil)
+      $stderr = StringIO.new
 
+      get '/', {}, 'HTTP_ACCEPT' => 'text/json'
       assert_response :internal_server_error
-      assert_equal 'text/html', response.content_type.to_s
+      assert_equal 'text/plain', response.content_type.to_s
+    ensure
+      @app.instance_variable_set(:@exceptions_app, @exceptions_app)
+      $stderr = STDERR
     end
   end
 end

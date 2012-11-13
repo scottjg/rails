@@ -29,7 +29,7 @@ module ActionController #:nodoc:
   #   class PostsController
   #     def index
   #       @posts = Post.scoped
-  #       render :stream => true
+  #       render stream: true
   #     end
   #   end
   #
@@ -56,7 +56,7 @@ module ActionController #:nodoc:
   #     @posts = Post.scoped
   #     @pages = Page.scoped
   #     @articles = Article.scoped
-  #     render :stream => true
+  #     render stream: true
   #   end
   #
   # Notice that :stream only works with templates. Rendering :json
@@ -139,9 +139,6 @@ module ActionController #:nodoc:
   # session or flash after the template starts rendering will not propagate
   # to the client.
   #
-  # If you try to modify cookies, session or flash, an <tt>ActionDispatch::ClosedError</tt>
-  # will be raised, showing those objects are closed for modification.
-  #
   # == Middlewares
   #
   # Middlewares that need to manipulate the body won't work with streaming.
@@ -179,7 +176,7 @@ module ActionController #:nodoc:
   # need to create a config file as follow:
   #
   #   # unicorn.config.rb
-  #   listen 3000, :tcp_nopush => false
+  #   listen 3000, tcp_nopush: false
   #
   # And use it on initialization:
   #

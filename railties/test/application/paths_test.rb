@@ -50,8 +50,6 @@ module ApplicationTests
       assert_path @paths["config/locales"],      "config/locales/en.yml"
       assert_path @paths["config/environment"],  "config/environment.rb"
       assert_path @paths["config/environments"], "config/environments/development.rb"
-      assert_path @paths["config/routes.rb"],    "config/routes.rb"
-      assert_path @paths["config/routes"],       "config/routes"
 
       assert_equal root("app", "controllers"), @paths["app/controllers"].expanded.first
     end
@@ -61,6 +59,8 @@ module ApplicationTests
       assert eager_load.include?(root("app/controllers"))
       assert eager_load.include?(root("app/helpers"))
       assert eager_load.include?(root("app/models"))
+      assert !eager_load.include?(root("app/views")), "expected to not be in the eager_load_path"
+      assert !eager_load.include?(root("app/assets")), "expected to not be in the eager_load_path"
     end
 
     test "environments has a glob equal to the current environment" do
@@ -75,11 +75,18 @@ module ApplicationTests
       assert_in_load_path "vendor"
 
       assert_not_in_load_path "app", "views"
+      assert_not_in_load_path "app", "assets"
       assert_not_in_load_path "config"
       assert_not_in_load_path "config", "locales"
       assert_not_in_load_path "config", "environments"
       assert_not_in_load_path "tmp"
       assert_not_in_load_path "tmp", "cache"
+    end
+
+    test "deprecated children method" do
+      assert_deprecated "children is deprecated and will be removed from Rails 4.1." do
+        @paths["app/assets"].children
+      end
     end
   end
 end

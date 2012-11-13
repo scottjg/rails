@@ -2,12 +2,13 @@ require 'active_support/time'
 
 module Rails
   module Generators
-    class GeneratedAttribute
+    class GeneratedAttribute # :nodoc:
       INDEX_OPTIONS = %w(index uniq)
       UNIQ_INDEX_OPTIONS = %w(uniq)
 
       attr_accessor :name, :type
       attr_reader   :attr_options
+      attr_writer   :index_name
 
       class << self
         def parse(column_definition)
@@ -22,7 +23,7 @@ module Rails
           type = type.to_sym if type
 
           if type && reference?(type)
-            references_index = UNIQ_INDEX_OPTIONS.include?(has_index) ? { :unique => true } : true
+            references_index = UNIQ_INDEX_OPTIONS.include?(has_index) ? { unique: true } : true
             attr_options[:index] = references_index
           end
 
@@ -35,14 +36,16 @@ module Rails
 
         private
 
-        # parse possible attribute options like :limit for string/text/binary/integer or :precision/:scale for decimals
+        # parse possible attribute options like :limit for string/text/binary/integer, :precision/:scale for decimals or :polymorphic for references/belongs_to
         # when declaring options curly brackets should be used
         def parse_type_and_options(type)
           case type
           when /(string|text|binary|integer)\{(\d+)\}/
-            return $1, :limit => $2.to_i
+            return $1, limit: $2.to_i
           when /decimal\{(\d+)[,.-](\d+)\}/
-            return :decimal, :precision => $1.to_i, :scale => $2.to_i
+            return :decimal, precision: $1.to_i, scale: $2.to_i
+          when /(references|belongs_to)\{polymorphic\}/
+            return $1, polymorphic: true
           else
             return type, {}
           end
@@ -87,16 +90,32 @@ module Rails
         end
       end
 
+      def plural_name
+        name.sub(/_id$/, '').pluralize
+      end
+
       def human_name
-        name.to_s.humanize
+        name.humanize
       end
 
       def index_name
-        reference? ? "#{name}_id" : name
+        @index_name ||= if reference?
+          polymorphic? ? %w(id type).map { |t| "#{name}_#{t}" } : "#{name}_id"
+        else
+          name
+        end
+      end
+
+      def foreign_key?
+        !!(name =~ /_id$/)
       end
 
       def reference?
         self.class.reference?(type)
+      end
+
+      def polymorphic?
+        self.attr_options.has_key?(:polymorphic)
       end
 
       def has_index?

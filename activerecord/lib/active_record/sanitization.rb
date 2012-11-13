@@ -1,5 +1,3 @@
-require 'active_support/concern'
-
 module ActiveRecord
   module Sanitization
     extend ActiveSupport::Concern
@@ -90,8 +88,8 @@ module ActiveRecord
       def sanitize_sql_hash_for_conditions(attrs, default_table_name = self.table_name)
         attrs = expand_hash_conditions_for_aggregates(attrs)
 
-        table = Arel::Table.new(table_name).alias(default_table_name)
-        PredicateBuilder.build_from_hash(arel_engine, attrs, table).map { |b|
+        table = Arel::Table.new(table_name, arel_engine).alias(default_table_name)
+        PredicateBuilder.build_from_hash(self.class, attrs, table).map { |b|
           connection.visitor.accept b
         }.join(' AND ')
       end
@@ -143,23 +141,6 @@ module ActiveRecord
         end
       end
 
-      def expand_range_bind_variables(bind_vars) #:nodoc:
-        expanded = []
-
-        bind_vars.each do |var|
-          next if var.is_a?(Hash)
-
-          if var.is_a?(Range)
-            expanded << var.first
-            expanded << var.last
-          else
-            expanded << var
-          end
-        end
-
-        expanded
-      end
-
       def quote_bound_value(value, c = connection) #:nodoc:
         if value.respond_to?(:map) && !value.acts_like?(:string)
           if value.respond_to?(:empty?) && value.empty?
@@ -180,15 +161,8 @@ module ActiveRecord
     end
 
     # TODO: Deprecate this
-    def quoted_id #:nodoc:
-      quote_value(id, column_for_attribute(self.class.primary_key))
-    end
-
-    private
-
-    # Quote strings appropriately for SQL statements.
-    def quote_value(value, column = nil)
-      self.class.connection.quote(value, column)
+    def quoted_id
+      self.class.quote_value(id, column_for_attribute(self.class.primary_key))
     end
   end
 end

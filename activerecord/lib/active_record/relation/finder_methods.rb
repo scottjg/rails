@@ -1,6 +1,3 @@
-require 'active_support/core_ext/object/blank'
-require 'active_support/core_ext/hash/indifferent_access'
-
 module ActiveRecord
   module FinderMethods
     # Find by id - This can either be a specific id (1), a list of ids (1, 5, 6), or an array of ids ([5, 6, 10]).
@@ -133,21 +130,8 @@ module ActiveRecord
       last or raise RecordNotFound
     end
 
-    # Runs the query on the database and returns records with the used query
-    # methods.
-    #
-    #   Person.all # returns an array of objects for all the rows fetched by SELECT * FROM people
-    #   Person.where(["category IN (?)", categories]).limit(50).all
-    #   Person.where({ :friends => ["Bob", "Steve", "Fred"] }).all
-    #   Person.offset(10).limit(10).all
-    #   Person.includes([:account, :friends]).all
-    #   Person.group("category").all
-    def all
-      to_a
-    end
-
-    # Returns true if a record exists in the table that matches the +id+ or
-    # conditions given, or false otherwise. The argument can take five forms:
+    # Returns +true+ if a record exists in the table that matches the +id+ or
+    # conditions given, or +false+ otherwise. The argument can take six forms:
     #
     # * Integer - Finds the record with this primary key.
     # * String - Finds the record with a primary key corresponding to this
@@ -155,8 +139,9 @@ module ActiveRecord
     # * Array - Finds the record that matches these +find+-style conditions
     #   (such as <tt>['color = ?', 'red']</tt>).
     # * Hash - Finds the record that matches these +find+-style conditions
-    #   (such as <tt>{:color => 'red'}</tt>).
-    # * No args - Returns false if the table is empty, true otherwise.
+    #   (such as <tt>{color: 'red'}</tt>).
+    # * +false+ - Returns always +false+.
+    # * No args - Returns +false+ if the table is empty, +true+ otherwise.
     #
     # For more information about specifying conditions as a Hash or Array,
     # see the Conditions section in the introduction to ActiveRecord::Base.
@@ -168,21 +153,22 @@ module ActiveRecord
     #   Person.exists?(5)
     #   Person.exists?('5')
     #   Person.exists?(['name LIKE ?', "%#{query}%"])
-    #   Person.exists?(:name => "David")
+    #   Person.exists?(name: 'David')
+    #   Person.exists?(false)
     #   Person.exists?
-    def exists?(id = false)
-      id = id.id if ActiveRecord::Model === id
-      return false if id.nil?
+    def exists?(conditions = :none)
+      conditions = conditions.id if Base === conditions
+      return false if !conditions
 
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)
       relation = relation.except(:select, :order).select("1 AS one").limit(1)
 
-      case id
+      case conditions
       when Array, Hash
-        relation = relation.where(id)
+        relation = relation.where(conditions)
       else
-        relation = relation.where(table[primary_key].eq(id)) if id
+        relation = relation.where(table[primary_key].eq(conditions)) if conditions != :none
       end
 
       connection.select_value(relation, "#{name} Exists", relation.bind_values)
@@ -237,7 +223,7 @@ module ActiveRecord
 
     def construct_limited_ids_condition(relation)
       orders = relation.order_values.map { |val| val.presence }.compact
-      values = @klass.connection.distinct("#{@klass.connection.quote_table_name table_name}.#{primary_key}", orders)
+      values = @klass.connection.distinct("#{quoted_table_name}.#{primary_key}", orders)
 
       relation = relation.dup
 
@@ -246,8 +232,6 @@ module ActiveRecord
     end
 
     def find_with_ids(*ids)
-      return to_a.find { |*block_args| yield(*block_args) } if block_given?
-
       expects_array = ids.first.kind_of?(Array)
       return ids.first if expects_array && ids.first.empty?
 
@@ -283,7 +267,7 @@ module ActiveRecord
     end
 
     def find_some(ids)
-      result = where(table[primary_key].in(ids)).all
+      result = where(table[primary_key].in(ids)).to_a
 
       expected_size =
         if limit_value && ids.size > limit_value
@@ -322,7 +306,7 @@ module ActiveRecord
         @records.first
       else
         @first ||=
-          if order_values.empty? && primary_key
+          if with_default_scope.order_values.empty? && primary_key
             order(arel_table[primary_key].asc).limit(1).to_a.first
           else
             limit(1).to_a.first

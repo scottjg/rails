@@ -89,7 +89,7 @@ module ActiveRecord
       end
 
       def test_full_pool_exception
-        assert_raises(PoolFullError) do
+        assert_raises(ConnectionTimeoutError) do
           (@pool.size + 1).times do
             @pool.checkout
           end
@@ -225,7 +225,7 @@ module ActiveRecord
         threads = expected.map do |i|
           t = Thread.new {
             begin
-              conn = @pool.checkout # never checked back in
+              @pool.checkout # never checked back in
               mutex.synchronize { order << i }
             rescue => e
               mutex.synchronize { errors << e }
@@ -262,7 +262,7 @@ module ActiveRecord
         make_thread = proc do |i|
           t = Thread.new {
             begin
-              conn = @pool.checkout # never checked back in
+              @pool.checkout # never checked back in
               mutex.synchronize { successes << i }
             rescue => e
               mutex.synchronize { errors << e }
