@@ -1,6 +1,4 @@
-## Rails 3.2.9 (unreleased)
-
-*   Don't eager-load app/assets and app/views *Elia Schito*
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Update supported ruby versions error message in ruby_version_check.rb *Lihan Li*
 

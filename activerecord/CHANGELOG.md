@@ -1,5 +1,18 @@
 ## Rails 3.2.10 (unreleased)
 
+*   Do not create useless database transaction when building `has_one` association. [Backport #8154]
+
+    Example:
+
+        User.has_one :profile
+        User.new.build_profile
+
+    *Bogdan Gusiev*
+
+*   `AR::Base#attributes_before_type_cast` now returns unserialized values for serialized attributes.
+
+    *Nikita Afanasenko*
+
 *   Fix issue that raises `NameError` when overriding the `accepts_nested_attributes` in child classes.
 
     Before:
@@ -27,7 +40,7 @@
     *Gabriel Sobrinho, Ricardo Henrique*
 
 
-## Rails 3.2.9 (unreleased)
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
 

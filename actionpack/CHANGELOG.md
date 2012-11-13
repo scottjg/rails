@@ -1,5 +1,10 @@
 ## Rails 3.2.10 (unreleased) ##
 
+*   `BestStandardsSupport` middleware now appends it's `X-UA-Compatible` value to app's
+    returned value if any. Fix #8086 [Backport #8093]
+
+    *Nikita Afanasenko*
+
 *   prevent double slashes in engine urls when `Rails.application.default_url_options[:trailing_slash] = true` is set
     Fix #7842
 
@@ -21,7 +26,7 @@
 
     *Daniel Fox, Grant Hutchins & Trace Wax*
 
-## Rails 3.2.9 (unreleased) ##
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Clear url helpers when reloading routes.
 
