@@ -80,7 +80,9 @@ module ActiveSupport
 
         # Converts a Ruby object into a JSON string.
         def encode(value, options = nil)
-          Yajl.dump(value, options)
+          ActiveSupport::Notifications.instrument("json_encode.active_support", :value => value) do
+            Yajl.dump(value, options)
+          end
         end
       end
 
