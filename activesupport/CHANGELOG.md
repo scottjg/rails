@@ -1,6 +1,5 @@
 ## Rails 4.0.0 (unreleased) ##
 
-<<<<<<< HEAD
 *   It's now possible to compare Date, DateTime, Time and TimeWithZone with Infinity
     This allows to create date/time ranges with one infinite bound.
     Example:
@@ -13,7 +12,7 @@
         range.include?(DateTime.now + 1.year) # => true
 
     *Alexander Grebennik*
-=======
+
 *   Simplify mocha integration and remove monkey-patches, bumping mocha to 0.13.0. *James Mead*
 
 *   `#as_json` isolates options when encoding a hash.

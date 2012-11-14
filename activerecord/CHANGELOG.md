@@ -135,7 +135,6 @@
 
     *Scott Willson*
 
-<<<<<<< HEAD
 *   PostgreSQL ranges type support. Includes: int4range, int8range,
     numrange, tsrange, tstzrange, daterange
 
@@ -156,9 +155,6 @@
     *Alexander Grebennik*
 
 *   Fix bug where sum(expression) returns string '0' for no matching records
-=======
-*   Fix bug where sum(expression) returns string '0' for no matching records.
->>>>>>> upstream/master
     Fixes #7439
 
     *Tim Macfarlane*
