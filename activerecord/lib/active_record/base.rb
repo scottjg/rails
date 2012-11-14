@@ -8,7 +8,6 @@ require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/core_ext/class/delegating_attributes'
 require 'active_support/core_ext/array/extract_options'
 require 'active_support/core_ext/hash/deep_merge'
-require 'active_support/core_ext/hash/indifferent_access'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/string/behavior'
 require 'active_support/core_ext/kernel/singleton_class'
@@ -321,8 +320,47 @@ module ActiveRecord #:nodoc:
   # So it's possible to assign a logger to the class through <tt>Base.logger=</tt> which will then be used by all
   # instances in the current object space.
   class Base
-    include ActiveRecord::Model
-  end
-end
+    extend ActiveModel::Observing::ClassMethods
+    extend ActiveModel::Naming
 
-ActiveSupport.run_load_hooks(:active_record, ActiveRecord::Model::DeprecationProxy.new)
+    extend ActiveSupport::Benchmarkable
+    extend ActiveSupport::DescendantsTracker
+
+    extend ConnectionHandling
+    extend QueryCache::ClassMethods
+    extend Querying
+    extend Translation
+    extend DynamicMatchers
+    extend Explain
+
+    include Persistence
+    include ReadonlyAttributes
+    include ModelSchema
+    include Inheritance
+    include Scoping
+    include Sanitization
+    include AttributeAssignment
+    include ActiveModel::Conversion
+    include Integration
+    include Validations
+    include CounterCache
+    include Locking::Optimistic
+    include Locking::Pessimistic
+    include AttributeMethods
+    include Callbacks
+    include ActiveModel::Observing
+    include Timestamp
+    include Associations
+    include ActiveModel::SecurePassword
+    include AutosaveAssociation
+    include NestedAttributes
+    include Aggregations
+    include Transactions
+    include Reflection
+    include Serialization
+    include Store
+    include Core
+  end
+
+  ActiveSupport.run_load_hooks(:active_record, Base)
+end

@@ -499,6 +499,12 @@ class BaseTest < ActiveSupport::TestCase
     end
   end
 
+  test 'the view is not rendered when mail was never called' do
+    mail = BaseMailer.without_mail_call
+    assert_equal('', mail.body.to_s.strip)
+    mail.deliver
+  end
+
   # Before and After hooks
 
   class MyObserver
@@ -660,13 +666,6 @@ class BaseTest < ActiveSupport::TestCase
     end
 
     assert_equal ["robert.pankowecki@gmail.com"], DefaultFromMailer.welcome.from
-  end
-
-  test "Mailer.deliver_welcome calls Mailer.welcome.deliver" do
-    BaseMailer.deliveries.clear
-    BaseMailer.deliver_welcome(subject: 'omg')
-    assert_equal 1, BaseMailer.deliveries.length
-    assert_equal 'omg', BaseMailer.deliveries.first.subject
   end
 
   protected

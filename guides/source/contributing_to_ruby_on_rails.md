@@ -208,6 +208,7 @@ Rails follows a simple set of coding style conventions.
 * Two spaces, no tabs (for indentation).
 * No trailing whitespace. Blank lines should not have any spaces.
 * Indent after private/protected.
+* Use Ruby >= 1.9 syntax for hashes. Prefer `{ a: :b }` over `{ :a => :b }`.
 * Prefer `&&`/`||` over `and`/`or`.
 * Prefer class << self over self.method for class methods.
 * Use `MyClass.my_method(my_arg)` not `my_method( my_arg )` or `my_method my_arg`.
@@ -374,6 +375,44 @@ Now you need to get other people to look at your patch, just as you've looked at
 ### Iterate as Necessary
 
 It’s entirely possible that the feedback you get will suggest changes. Don’t get discouraged: the whole point of contributing to an active open source project is to tap into community knowledge. If people are encouraging you to tweak your code, then it’s worth making the tweaks and resubmitting. If the feedback is that your code doesn’t belong in the core, you might still think about releasing it as a gem.
+
+#### Squashing commits
+
+One of the things that we may ask you to do is "squash your commits," which
+will combine all of your commits into a single commit. We prefer pull requests
+that are a single commit. This makes it easier to backport changes to stable
+branches, squashing makes it easier to revert bad commits, and the git history
+can be a bit easier to follow. Rails is a large project, and a bunch of
+extraneous commits can add a lot of noise.
+
+In order to do this, you'll need to have a git remote that points at the main
+Rails repository. This is useful anyway, but just in case you don't have it set
+up, make sure that you do this first:
+
+```bash
+$ git remote add upstream https://github.com/rails/rails.git
+```
+
+You can call this remote whatever you'd like, but if you don't use `upstream`,
+then change the name to your own in the instructions below.
+
+Given that your remote branch is called `my_pull_request`, then you can do the
+following:
+
+```bash
+$ git fetch upstream
+$ git checkout my_pull_request 
+$ git rebase upstream/master
+$ git rebase -i
+
+< Choose 'squash' for all of your commits except the first one. >
+< Edit the commit message to make sense, and describe all your changes. >
+
+$ git push origin my_pull_request -f
+```
+
+You should be able to refresh the pull request on GitHub and see that it has
+been updated.
 
 ### Backporting
 

@@ -1,5 +1,97 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*  `#pluck` can be used on a relation with `select` clause
+   Fix #7551
+
+   Example:
+
+        Topic.select([:approved, :id]).order(:id).pluck(:id)
+
+   *Yves Senn*
+
+*   Do not create useless database transaction when building `has_one` association.
+
+    Example:
+
+        User.has_one :profile
+        User.new.build_profile
+
+    *Bogdan Gusiev*
+
+*   :counter_cache option for `has_many` associations to support custom named counter caches.
+    Fix #7993
+
+    *Yves Senn*
+
+*   Deprecate the possibility to pass a string as third argument of `add_index`.
+    Pass `unique: true` instead.
+
+        add_index(:users, :organization_id, unique: true)
+
+    *Rafael Mendonça França*
+
+*   Raise an `ArgumentError` when passing an invalid option to `add_index`.
+
+    *Rafael Mendonça França*
+
+*   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
+
+    *Alexis Bernard*
+
+*   `AR::Base#attributes_before_type_cast` now returns unserialized values for serialized attributes.
+
+    *Nikita Afanasenko*
+
+*   Use query cache/uncache when using DATABASE_URL.
+    Fix #6951.
+
+    *kennyj*
+
+*   Added `#none!` method for mutating `ActiveRecord::Relation` objects to a NullRelation.
+    It acts like `#none` but modifies relation in place.
+
+    *Juanjo Bazán*
+
+*   Fix bug where `update_columns` and `update_column` would not let you update the primary key column.
+
+    *Henrik Nyh*
+
+*   The `create_table` method raises an `ArgumentError` when the primary key column is redefined.
+    Fix #6378
+
+    *Yves Senn*
+
+*   `ActiveRecord::AttributeMethods#[]` raises `ActiveModel::MissingAttributeError`
+    error if the given attribute is missing. Fixes #5433.
+
+        class Person < ActiveRecord::Base
+          belongs_to :company
+        end
+
+        # Before:
+        person = Person.select('id').first
+        person[:name]       # => nil
+        person.name         # => ActiveModel::MissingAttributeError: missing_attribute: name
+        person[:company_id] # => nil
+        person.company      # => nil
+
+        # After:
+        person = Person.select('id').first
+        person[:name]       # => ActiveModel::MissingAttributeError: missing_attribute: name
+        person.name         # => ActiveModel::MissingAttributeError: missing_attribute: name
+        person[:company_id] # => ActiveModel::MissingAttributeError: missing_attribute: company_id
+        person.company      # => ActiveModel::MissingAttributeError: missing_attribute: company_id
+
+    *Francesco Rodriguez*
+
+*   Small binary fields use the `VARBINARY` MySQL type, instead of `TINYBLOB`.
+
+    *Victor Costan*
+
+*   Decode URI encoded attributes on database connection URLs.
+
+    *Shawn Veader*
+
 *   Add `find_or_create_by`, `find_or_create_by!` and
     `find_or_initialize_by` methods to `Relation`.
 
@@ -38,11 +130,12 @@
 
     *Jon Leighton*
 
-*   Fix bug with presence validation of associations. Would incorrectly add duplicated errors 
+*   Fix bug with presence validation of associations. Would incorrectly add duplicated errors
     when the association was blank. Bug introduced in 1fab518c6a75dac5773654646eb724a59741bc13.
 
     *Scott Willson*
 
+<<<<<<< HEAD
 *   PostgreSQL ranges type support. Includes: int4range, int8range,
     numrange, tsrange, tstzrange, daterange
 
@@ -63,6 +156,9 @@
     *Alexander Grebennik*
 
 *   Fix bug where sum(expression) returns string '0' for no matching records
+=======
+*   Fix bug where sum(expression) returns string '0' for no matching records.
+>>>>>>> upstream/master
     Fixes #7439
 
     *Tim Macfarlane*
@@ -357,7 +453,7 @@
 *   Fix AR#dup to nullify the validation errors in the dup'ed object. Previously the original
     and the dup'ed object shared the same errors.
 
-    * Christian Seiler*
+    *Christian Seiler*
 
 *   Raise `ArgumentError` if list of attributes to change is empty in `update_all`.
 
@@ -944,34 +1040,6 @@
     connection pool can fill and an exception will be raised.
 
     *Aaron Patterson*
-
-*   Added the `ActiveRecord::Model` module which can be included in a
-    class as an alternative to inheriting from `ActiveRecord::Base`:
-
-        class Post
-          include ActiveRecord::Model
-        end
-
-    Please note:
-
-      * Up until now it has been safe to assume that all AR models are
-        descendants of `ActiveRecord::Base`. This is no longer a safe
-        assumption, but it may transpire that there are areas of the
-        code which still make this assumption. So there may be
-        'teething difficulties' with this feature. (But please do try it
-        and report bugs.)
-
-      * Plugins & libraries etc that add methods to `ActiveRecord::Base`
-        will not be compatible with `ActiveRecord::Model`. Those libraries
-        should add to `ActiveRecord::Model` instead (which is included in
-        `Base`), or better still, avoid monkey-patching AR and instead
-        provide a module that users can include where they need it.
-
-      * To minimise the risk of conflicts with other code, it is
-        advisable to include `ActiveRecord::Model` early in your class
-        definition.
-
-    *Jon Leighton*
 
 *   PostgreSQL hstore records can be created.
 

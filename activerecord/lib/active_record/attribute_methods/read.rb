@@ -1,8 +1,4 @@
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :attribute_types_cached_by_default, instance_accessor: false
-  end
-
   module AttributeMethods
     module Read
       extend ActiveSupport::Concern
@@ -10,7 +6,8 @@ module ActiveRecord
       ATTRIBUTE_TYPES_CACHED_BY_DEFAULT = [:datetime, :timestamp, :time, :date]
 
       included do
-        config_attribute :attribute_types_cached_by_default
+        class_attribute :attribute_types_cached_by_default, instance_writer: false
+        self.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
       end
 
       module ClassMethods
@@ -35,36 +32,21 @@ module ActiveRecord
 
         protected
 
-        # We want to generate the methods via module_eval rather than
-        # define_method, because define_method is slower on dispatch and
-        # uses more memory (because it creates a closure).
+        # We want to generate the methods via module_eval rather than define_method,
+        # because define_method is slower on dispatch and uses more memory (because it
+        # creates a closure).
         #
-        # But sometimes the database might return columns with
-        # characters that are not allowed in normal method names (like
-        # 'my_column(omg)'. So to work around this we first define with
-        # the __temp__ identifier, and then use alias method to rename
-        # it to what we want.
-        #
-        # We are also defining a constant to hold the frozen string of
-        # the attribute name. Using a constant means that we do not have
-        # to allocate an object on each call to the attribute method.
-        # Making it frozen means that it doesn't get duped when used to
-        # key the @attributes_cache in read_attribute.
-        def define_method_attribute(name)
-          safe_name = name.unpack('h*').first
+        # But sometimes the database might return columns with characters that are not
+        # allowed in normal method names (like 'my_column(omg)'. So to work around this
+        # we first define with the __temp__ identifier, and then use alias method to
+        # rename it to what we want.
+        def define_method_attribute(attr_name)
           generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
-            module AttrNames
-              unless defined? ATTR_#{safe_name}
-                ATTR_#{safe_name} = #{name.inspect}.freeze
-              end
+            def __temp__
+              read_attribute('#{attr_name}') { |n| missing_attribute(n, caller) }
             end
-
-            def __temp__#{safe_name}
-              read_attribute(AttrNames::ATTR_#{safe_name}) { |n| missing_attribute(n, caller) }
-            end
-
-            alias_method #{name.inspect}, :__temp__#{safe_name}
-            undef_method :__temp__#{safe_name}
+            alias_method '#{attr_name}', :__temp__
+            undef_method :__temp__
           STR
         end
 
@@ -78,8 +60,6 @@ module ActiveRecord
           end
         end
       end
-
-      ActiveRecord::Model.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
 
       # Returns the value of the attribute identified by <tt>attr_name</tt> after
       # it has been typecast (for example, "2004-12-12" in a data column is cast

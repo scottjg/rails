@@ -185,6 +185,17 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
     assert_equal "James", mean_pirate.parrot.name
     assert_equal "blue", mean_pirate.parrot.color
   end
+
+  def test_accepts_nested_attributes_for_can_be_overridden_in_subclasses
+    Pirate.accepts_nested_attributes_for(:parrot)
+
+    mean_pirate_class = Class.new(Pirate) do
+      accepts_nested_attributes_for :parrot
+    end
+    mean_pirate = mean_pirate_class.new
+    mean_pirate.parrot_attributes = { :name => "James" }
+    assert_equal "James", mean_pirate.parrot.name
+  end
 end
 
 class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
@@ -464,17 +475,15 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
   end
 
   def test_should_unset_association_when_an_existing_record_is_destroyed
-    @ship.reload
     original_pirate_id = @ship.pirate.id
-    @ship.attributes = {:pirate_attributes => {:id => @ship.pirate.id, :_destroy => true}}
-    @ship.save!
+    @ship.update_attributes! pirate_attributes: { id: @ship.pirate.id, _destroy: true }
 
-    assert_empty Pirate.where(["id = ?", original_pirate_id])
+    assert_empty Pirate.where(id: original_pirate_id)
     assert_nil @ship.pirate_id
     assert_nil @ship.pirate
 
     @ship.reload
-    assert_empty Pirate.where(["id = ?", original_pirate_id])
+    assert_empty Pirate.where(id: original_pirate_id)
     assert_nil @ship.pirate_id
     assert_nil @ship.pirate
   end
@@ -491,7 +500,7 @@ class TestNestedAttributesOnABelongsToAssociation < ActiveRecord::TestCase
 
     @ship.update_attributes(:pirate_attributes => { :id => @ship.pirate.id, :_destroy => '1' })
     assert_nothing_raised(ActiveRecord::RecordNotFound) { @ship.pirate.reload }
-
+  ensure
     Ship.accepts_nested_attributes_for :pirate, :allow_destroy => true, :reject_if => proc { |attributes| attributes.empty? }
   end
 

@@ -3,11 +3,6 @@ require 'active_support/core_ext/object/try'
 require 'active_support/core_ext/hash/indifferent_access'
 
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :nested_attributes_options, instance_accessor: false
-    self.nested_attributes_options = {}
-  end
-
   module NestedAttributes #:nodoc:
     class TooManyRecords < ActiveRecordError
     end
@@ -15,7 +10,8 @@ module ActiveRecord
     extend ActiveSupport::Concern
 
     included do
-      config_attribute :nested_attributes_options
+      class_attribute :nested_attributes_options, instance_writer: false
+      self.nested_attributes_options = {}
     end
 
     # = Active Record Nested Attributes
@@ -109,7 +105,7 @@ module ActiveRecord
     #     ]
     #   }}
     #
-    #   member = Member.create(params['member'])
+    #   member = Member.create(params[:member])
     #   member.posts.length # => 2
     #   member.posts.first.title # => 'Kari, the awesome Ruby documentation browser!'
     #   member.posts.second.title # => 'The egalitarian assumption of the modern citizen'
@@ -131,7 +127,7 @@ module ActiveRecord
     #     ]
     #   }}
     #
-    #   member = Member.create(params['member'])
+    #   member = Member.create(params[:member])
     #   member.posts.length # => 2
     #   member.posts.first.title # => 'Kari, the awesome Ruby documentation browser!'
     #   member.posts.second.title # => 'The egalitarian assumption of the modern citizen'
@@ -181,7 +177,7 @@ module ActiveRecord
     #     :posts_attributes => [{ :id => '2', :_destroy => '1' }]
     #   }}
     #
-    #   member.attributes = params['member']
+    #   member.attributes = params[:member]
     #   member.posts.detect { |p| p.id == 2 }.marked_for_destruction? # => true
     #   member.posts.length # => 2
     #   member.save

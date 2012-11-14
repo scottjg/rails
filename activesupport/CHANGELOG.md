@@ -1,5 +1,6 @@
 ## Rails 4.0.0 (unreleased) ##
 
+<<<<<<< HEAD
 *   It's now possible to compare Date, DateTime, Time and TimeWithZone with Infinity
     This allows to create date/time ranges with one infinite bound.
     Example:
@@ -12,6 +13,33 @@
         range.include?(DateTime.now + 1.year) # => true
 
     *Alexander Grebennik*
+=======
+*   Simplify mocha integration and remove monkey-patches, bumping mocha to 0.13.0. *James Mead*
+
+*   `#as_json` isolates options when encoding a hash.
+    Fix #8182
+
+    *Yves Senn*
+
+*   Deprecate Hash#diff in favor of MiniTest's #diff. *Steve Klabnik*
+
+*   Kernel#capture can catch output from subprocesses *Dmitry Vorotilin*
+
+*   `to_xml` conversions now use builder's `tag!` method instead of explicit invocation of `method_missing`.
+
+    *Nikita Afanasenko*
+
+*   Fixed timezone mapping of the Solomon Islands. *Steve Klabnik*
+
+*   Make callstack attribute optional in
+    ActiveSupport::Deprecation::Reporting methods `warn` and `deprecation_warning`
+
+    *Alexey Gaziev*
+
+*   Implement HashWithIndifferentAccess#replace so key? works correctly. *David Graham*
+
+*   Handle the possible Permission Denied errors atomic.rb might trigger due to its chown and chmod calls. *Daniele Sluijters*
+>>>>>>> upstream/master
 
 *   Hash#extract! returns only those keys that present in the receiver.
 

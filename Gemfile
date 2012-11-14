@@ -4,7 +4,7 @@ gemspec
 
 gem 'arel', github: 'rails/arel', branch: 'master'
 
-gem 'mocha', '>= 0.11.2', :require => false
+gem 'mocha', '~> 0.13.0', require: false
 gem 'rack-test', github: 'brynary/rack-test'
 gem 'rack-cache', '~> 1.2'
 gem 'bcrypt-ruby', '~> 3.0.0'
@@ -27,8 +27,8 @@ group :doc do
   # to a bug, but the PR that fixes it has been there
   # for some weeks unapplied. As a temporary solution
   # this is our own fork with the fix.
-  gem 'sdoc',  github: 'fxn/sdoc'
-  gem 'redcarpet', '~> 2.1.1', :platforms => :ruby
+  gem 'sdoc',  github: 'voloko/sdoc'
+  gem 'redcarpet', '~> 2.2.2', platforms: :ruby
   gem 'w3c_validators'
 end
 
@@ -42,12 +42,12 @@ instance_eval File.read local_gemfile if File.exists? local_gemfile
 platforms :mri do
   group :test do
     gem 'ruby-prof', '~> 0.11.2' if RUBY_VERSION < '2.0'
-    gem 'debugger' if !ENV['TRAVIS'] && RUBY_VERSION < '2.0' && RUBY_PATCHLEVEL < 286
+    gem 'debugger' if !ENV['TRAVIS'] && RUBY_VERSION < '2.0' && RUBY_PATCHLEVEL < 327
+
   end
 end
 
 platforms :ruby do
-  gem 'json'
   gem 'yajl-ruby'
   gem 'nokogiri', '>= 1.4.5'
 

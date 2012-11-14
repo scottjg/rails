@@ -28,10 +28,12 @@ module ActiveRecord
     # is computed directly through SQL and does not trigger by itself the
     # instantiation of the actual post records.
     class CollectionProxy < Relation
+      delegate(*(ActiveRecord::Calculations.public_instance_methods - [:count]), to: :scope)
+
       def initialize(association) #:nodoc:
         @association = association
         super association.klass, association.klass.arel_table
-        merge! association.scope
+        merge! association.scope(nullify: false)
       end
 
       def target

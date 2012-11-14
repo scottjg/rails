@@ -142,7 +142,6 @@ module ActionMailer
   # for delivery later:
   #
   #   Notifier.welcome(david).deliver # sends the email
-  #   Notifier.deliver_welcome(david) # synonym for the former
   #   mail = Notifier.welcome(david)  # => a Mail::Message object
   #   mail.deliver                    # sends the email
   #
@@ -488,8 +487,6 @@ module ActionMailer
       def method_missing(method_name, *args)
         if action_methods.include?(method_name.to_s)
           QueuedMessage.new(queue, self, method_name, *args)
-        elsif method_name.to_s =~ /^deliver_(.+)$/ && action_methods.include?($1)
-          public_send($1, *args).deliver
         else
           super
         end
@@ -510,7 +507,19 @@ module ActionMailer
 
     def process(*args) #:nodoc:
       lookup_context.skip_default_locale!
-      super
+
+      generated_mail = super
+      unless generated_mail
+        @_message = NullMail.new
+      end
+    end
+
+    class NullMail #:nodoc:
+      def body; '' end
+
+      def method_missing(*args)
+        nil
+      end
     end
 
     def mailer_name

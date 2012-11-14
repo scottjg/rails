@@ -353,9 +353,9 @@ module ActiveRecord
       # Charset defaults to utf8.
       #
       # Example:
-      #   create_database 'charset_test', :charset => 'latin1', :collation => 'latin1_bin'
+      #   create_database 'charset_test', charset: 'latin1', collation: 'latin1_bin'
       #   create_database 'matt_development'
-      #   create_database 'matt_development', :charset => :big5
+      #   create_database 'matt_development', charset: :big5
       def create_database(name, options = {})
         if options[:collation]
           execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
@@ -498,6 +498,13 @@ module ActiveRecord
       # Maps logical Rails types to MySQL-specific data types.
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
         case type.to_s
+        when 'binary'
+          case limit
+          when 0..0xfff;           "varbinary(#{limit})"
+          when nil;                "blob"
+          when 0x1000..0xffffffff; "blob(#{limit})"
+          else raise(ActiveRecordError, "No binary type has character length #{limit}")
+          end
         when 'integer'
           case limit
           when 1; 'tinyint'

@@ -428,6 +428,18 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal 2, hash['b']
   end
 
+  def test_indifferent_replace
+    hash = HashWithIndifferentAccess.new
+    hash[:a] = 42
+
+    replaced = hash.replace(b: 12)
+
+    assert hash.key?('b')
+    assert !hash.key?(:a)
+    assert_equal 12, hash[:b]
+    assert_same hash, replaced
+  end
+
   def test_indifferent_merging_with_block
     hash = HashWithIndifferentAccess.new
     hash[:a] = 1
@@ -644,7 +656,9 @@ class HashExtTest < ActiveSupport::TestCase
   end
 
   def test_diff
-    assert_equal({ :a => 2 }, { :a => 2, :b => 5 }.diff({ :a => 1, :b => 5 }))
+    assert_deprecated do
+      assert_equal({ :a => 2 }, { :a => 2, :b => 5 }.diff({ :a => 1, :b => 5 }))
+    end
   end
 
   def test_slice

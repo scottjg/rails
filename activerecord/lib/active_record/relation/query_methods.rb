@@ -218,7 +218,6 @@ module ActiveRecord
     # Like #order, but modifies relation in place.
     def order!(*args)
       args.flatten!
-
       validate_order_args args
 
       references = args.reject { |arg| Arel::Node === arg }
@@ -245,7 +244,6 @@ module ActiveRecord
     # Like #reorder, but modifies relation in place.
     def reorder!(*args)
       args.flatten!
-
       validate_order_args args
 
       self.reordering_value = true
@@ -494,6 +492,11 @@ module ActiveRecord
     #
     def none
       extending(NullRelation)
+    end
+
+    # Like #none, but modifies relation in place.
+    def none!
+      extending!(NullRelation)
     end
 
     # Sets readonly attributes for the returned relation. If value is
@@ -791,7 +794,7 @@ module ActiveRecord
     def reverse_sql_order(order_query)
       order_query = ["#{quoted_table_name}.#{quoted_primary_key} ASC"] if order_query.empty?
 
-      order_query.map do |o|
+      order_query.flat_map do |o|
         case o
         when Arel::Nodes::Ordering
           o.reverse
@@ -809,7 +812,7 @@ module ActiveRecord
         else
           o
         end
-      end.flatten
+      end
     end
 
     def array_of_strings?(o)
@@ -820,7 +823,7 @@ module ActiveRecord
       orders = order_values
       orders = reverse_sql_order(orders) if reverse_order_value
 
-      orders = orders.uniq.reject(&:blank?).map do |order|
+      orders = orders.uniq.reject(&:blank?).flat_map do |order|
         case order
         when Symbol
           table[order].asc
@@ -829,7 +832,7 @@ module ActiveRecord
         else
           order
         end
-      end.flatten
+      end
 
       arel.order(*orders) unless orders.empty?
     end

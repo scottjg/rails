@@ -262,12 +262,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal firm.limited_clients.length, firm.limited_clients.count
   end
 
-  def test_counting_should_not_fire_sql_if_parent_is_unsaved
-    assert_no_queries do
-      assert_equal 0, Person.new.readers.count
-    end
-  end
-
   def test_finding
     assert_equal 2, Firm.all.merge!(:order => "id").first.clients.length
   end
@@ -751,6 +745,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_difference "post.reload.taggings_with_destroy_count", -1 do
       post.taggings_with_destroy.delete(post.taggings_with_destroy.first)
+    end
+  end
+
+  def test_custom_named_counter_cache
+    topic = topics(:first)
+
+    assert_difference "topic.reload.replies_count", -1 do
+      topic.approved_replies.clear
     end
   end
 
@@ -1647,5 +1649,17 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   test ":counter_sql is deprecated" do
     klass = Class.new(ActiveRecord::Base)
     assert_deprecated { klass.has_many :foo, :counter_sql => 'lol' }
+  end
+
+  test "has many associations on new records use null relations" do
+    post = Post.new
+
+    assert_no_queries do
+      assert_equal [], post.comments
+      assert_equal [], post.comments.where(body: 'omg')
+      assert_equal [], post.comments.pluck(:body)
+      assert_equal 0,  post.comments.sum(:id)
+      assert_equal 0,  post.comments.count
+    end
   end
 end

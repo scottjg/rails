@@ -1,5 +1,30 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fix input name when `:multiple => true` and `:index` are set.
+
+    Before:
+
+        check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+        #=> <input name=\"post[foo][comment_ids]\" type=\"hidden\" value=\"0\" /><input id=\"post_foo_comment_ids_1\" name=\"post[foo][comment_ids]\" type=\"checkbox\" value=\"1\" />
+
+    After:
+
+        check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+        #=> <input name=\"post[foo][comment_ids][]\" type=\"hidden\" value=\"0\" /><input id=\"post_foo_comment_ids_1\" name=\"post[foo][comment_ids][]\" type=\"checkbox\" value=\"1\" />
+
+    Fix #8108
+
+    *Daniel Fox, Grant Hutchins & Trace Wax*
+
+*   Clear url helpers when reloading routes.
+
+    *Santiago Pastorino*
+
+*   `BestStandardsSupport` middleware now appends it's `X-UA-Compatible` value to app's
+    returned value if any. Fix #8086
+
+    *Nikita Afanasenko*
+
 *   `date_select` helper accepts `with_css_classes: true` to add css classes similar with type
     of generated select tags.
 
@@ -133,16 +158,6 @@
 *   Allow pass couple extensions to `ActionView::Template.register_template_handler` call.
 
     *Tima Maslyuchenko*
-
-*   Fixed a bug with shorthand routes scoped with the `:module` option not
-    adding the module to the controller as described in issue #6497.
-    This should now work properly:
-
-        scope :module => "engine" do
-          get "api/version" # routes to engine/api#version
-        end
-
-    *Luiz Felipe Garcia Pereira*
 
 *   Sprockets integration has been extracted from Action Pack to the `sprockets-rails`
     gem. `rails` gem is depending on `sprockets-rails` by default.

@@ -65,7 +65,6 @@ module ActionController
   #   params["key"] # => "value"
   class Parameters < ActiveSupport::HashWithIndifferentAccess
     cattr_accessor :permit_all_parameters, instance_accessor: false
-    attr_accessor :permitted # :nodoc:
 
     # Returns a new instance of <tt>ActionController::Parameters</tt>.
     # Also, sets the +permitted+ attribute to the default value of
@@ -196,7 +195,7 @@ module ActionController
     def permit(*filters)
       params = self.class.new
 
-      filters.each do |filter|
+      filters.flatten.each do |filter|
         case filter
         when Symbol, String then
           if has_key?(filter)
@@ -260,7 +259,9 @@ module ActionController
     #   params.slice(:a, :b) # => {"a"=>1, "b"=>2}
     #   params.slice(:d)     # => {}
     def slice(*keys)
-      self.class.new(super)
+      self.class.new(super).tap do |new_instance|
+        new_instance.instance_variable_set :@permitted, @permitted
+      end
     end
 
     # Returns an exact copy of the <tt>ActionController::Parameters</tt>
@@ -361,7 +362,7 @@ module ActionController
   #         # It's mandatory to specify the nested attributes that should be whitelisted.
   #         # If you use `permit` with just the key that points to the nested attributes hash,
   #         # it will return an empty hash.
-  #         params.require(:person).permit(:name, :age, pets_attributes: { :name, :category })
+  #         params.require(:person).permit(:name, :age, pets_attributes: [ :name, :category ])
   #       end
   #   end
   #
