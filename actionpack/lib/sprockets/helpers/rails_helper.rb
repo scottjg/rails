@@ -134,8 +134,10 @@ module Sprockets
           end
 
           if compile_assets
-            if digest_assets && asset = asset_environment[logical_path]
-              return asset.digest_path
+            logical_path =~ /^([^#\?]+)([#\?].*)?$/
+            stripped_logical_path, appendix = $1, $2
+            if digest_assets && asset = asset_environment[stripped_logical_path]
+              return "#{asset.digest_path}#{appendix}"
             end
             return logical_path
           else
