@@ -123,7 +123,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_nil Edge.primary_key
   end
 
-  unless current_adapter?(:PostgreSQLAdapter,:OracleAdapter,:SQLServerAdapter)
+  unless current_adapter?(:PostgreSQLAdapter,:OracleAdapter,:SQLServerAdapter,:SQLAnywhereAdapter)
     def test_limit_with_comma
       assert Topic.limit("1,2").to_a
     end
