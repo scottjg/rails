@@ -100,12 +100,13 @@ class BasicsTest < ActiveRecord::TestCase
       'Mysql2Adapter'     => '`',
       'PostgreSQLAdapter' => '"',
       'OracleAdapter'     => '"',
+      'SQLAnywhereAdapter'=> '"',
     }.fetch(classname) {
       raise "need a bad char for #{classname}"
     }
 
     quoted = conn.quote_column_name "foo#{badchar}bar"
-    if current_adapter?(:OracleAdapter)
+    if current_adapter?(:OracleAdapter, :SQLAnywhereAdapter)
       # Oracle does not allow double quotes in table and column names at all
       # therefore quoting removes them
       assert_equal("#{badchar}foobar#{badchar}", quoted)
