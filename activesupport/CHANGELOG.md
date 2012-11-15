@@ -1,5 +1,6 @@
 ## Rails 4.0.0 (unreleased) ##
 
+<<<<<<< HEAD
 *   It's now possible to compare Date, DateTime, Time and TimeWithZone with Infinity
     This allows to create date/time ranges with one infinite bound.
     Example:
@@ -12,6 +13,22 @@
         range.include?(DateTime.now + 1.year) # => true
 
     *Alexander Grebennik*
+=======
+*   `XmlMini.with_backend` now may be safely used with threads:
+
+        Thread.new do
+          XmlMini.with_backend("REXML") { rexml_power }
+        end
+        Thread.new do
+          XmlMini.with_backend("LibXML") { libxml_power }
+        end
+
+    Each thread will use it's own backend.
+
+    *Nikita Afanasenko*
+
+*   Dependencies no longer trigger Kernel#autoload in remove_constant [fixes #8213]. *Xavier Noria*
+>>>>>>> upstream/master
 
 *   Simplify mocha integration and remove monkey-patches, bumping mocha to 0.13.0. *James Mead*
 
