@@ -1,0 +1,15 @@
+.test1a {
+  content: image-url("testimage.png");
+}
+
+.test1b {
+  content: image-url("testimage.png#iefix");
+}
+
+.test2a {
+  content: font-url("testfont.eot");
+}
+
+.test2b {
+  content: font-url("testfont.eot#foo");
+}
