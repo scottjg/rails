@@ -81,7 +81,7 @@ module ActiveSupport
         # Converts a Ruby object into a JSON string.
         def encode(value, options = nil)
           ActiveSupport::Notifications.instrument("json_encode.active_support", :value => value) do
-            Yajl.dump(value, options)
+            MultiJson.encode(value, options)
           end
         end
       end
@@ -93,7 +93,7 @@ module ActiveSupport
   end
 end
 
-require 'yajl/json_gem'
+require 'multi_json'
 require 'active_support/json/variable'
 require 'active_support/json/encoders/date'
 require 'active_support/json/encoders/date_time'
