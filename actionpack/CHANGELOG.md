@@ -1,4 +1,7 @@
-## Rails 3.2.10 ##
+## Rails 3.2.10 (Dec 23, 2012) ##
+
+*   A security fix: CVE-2012-5664.
+
 
 ## Rails 3.2.9 (Nov 12, 2012) ##
 
