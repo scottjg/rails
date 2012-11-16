@@ -176,6 +176,8 @@ HEADER
 
             statement_parts << ('where: ' + index.where.inspect) if index.where
 
+            statement_parts << ('type: ' + index.type.inspect) if index.type
+
             '  ' + statement_parts.join(', ')
           end
 

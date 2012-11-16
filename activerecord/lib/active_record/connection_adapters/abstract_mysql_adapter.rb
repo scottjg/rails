@@ -499,7 +499,8 @@ module ActiveRecord
       def add_index(table_name, column_name, options = {}) #:nodoc:
         if options.is_a?(Hash) && options[:type]
           index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
-          execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} USING #{options[:type]} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
+          # USING #{options[:type]} # TODO: add back in using for Hash and btree, see tests
+          execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
         else
           super
         end
@@ -700,6 +701,14 @@ module ActiveRecord
 
       def remove_timestamps_sql(table_name)
         [remove_column_sql(table_name, :updated_at), remove_column_sql(table_name, :created_at)]
+      end
+
+      def add_index_options(table_name, column_name, options={})
+        index_name, index_type, index_columns, index_options = super(table_name, column_name, options.except(:type))
+
+        index_type = options[:type] unless options[:type].blank?
+
+        [index_name, index_type, index_columns, index_options]
       end
 
       private
