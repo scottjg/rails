@@ -79,7 +79,7 @@ module ActiveSupport
 
 
         # Converts a Ruby object into a JSON string.
-        def encode(value, options = nil)
+        def encode(value, options = {})
           ActiveSupport::Notifications.instrument("json_encode.active_support", :value => value) do
             MultiJson.encode(value, options)
           end
