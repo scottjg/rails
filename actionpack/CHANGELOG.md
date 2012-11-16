@@ -1,8 +1,14 @@
-## Rails 3.2.11 ##
+## Rails 3.2.11 (Jan 9, 2013) ##
 
-* Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
+*   Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
 
-## Rails 3.2.10 ##
+*   Don't allow serializable types in XML params. [CVE-2013-0156]
+
+
+## Rails 3.2.10 (Dec 23, 2012) ##
+
+*   A security fix: CVE-2012-5664.
+
 
 ## Rails 3.2.9 (Nov 12, 2012) ##
 
