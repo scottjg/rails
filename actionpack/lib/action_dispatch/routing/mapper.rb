@@ -166,7 +166,7 @@ module ActionDispatch
               controller ||= default_controller
               action     ||= default_action
 
-              unless controller.is_a?(Regexp)
+              unless controller.is_a?(Regexp) || to_shorthand
                 controller = [@scope[:module], controller].compact.join("/").presence
               end
 
@@ -451,7 +451,7 @@ module ActionDispatch
                 # we must actually delete prefix segment keys to avoid passing them to next url_for
                 _route.segment_keys.each { |k| options.delete(k) }
                 prefix = _routes.url_helpers.send("#{name}_path", prefix_options)
-                prefix = '' if prefix == '/'
+                prefix = prefix.gsub(%r{/\z}, '')
                 prefix
               end
             end

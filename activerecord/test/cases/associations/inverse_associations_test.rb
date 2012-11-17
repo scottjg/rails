@@ -261,8 +261,28 @@ class InverseHasManyTests < ActiveRecord::TestCase
 
   def test_parent_instance_should_be_shared_with_first_and_last_child
     man = Man.first
+
     assert man.interests.first.man.equal? man
     assert man.interests.last.man.equal? man
+  end
+
+  def test_parent_instance_should_be_shared_with_first_and_last_child_when_given_options
+    man = Man.first
+
+    assert man.interests.first(:order => 'topic').man.equal? man
+    assert man.interests.last(:order => 'topic').man.equal? man
+  end
+
+  def test_parent_instance_should_be_shared_with_first_n_and_last_n_children
+    man = Man.first
+
+    interests = man.interests.first(2)
+    assert interests[0].man.equal? man
+    assert interests[1].man.equal? man
+
+    interests = man.interests.last(2)
+    assert interests[0].man.equal? man
+    assert interests[1].man.equal? man
   end
 
   def test_trying_to_use_inverses_that_dont_exist_should_raise_an_error

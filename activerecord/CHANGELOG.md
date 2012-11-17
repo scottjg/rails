@@ -1,9 +1,112 @@
-## Rails 3.2.9 (unreleased)
+## Rails 3.2.10 (unreleased)
+
+*   Calling `include?` on `has_many` associations on unsaved records no longer
+    returns `true` when passed a record with a `nil` foreign key.
+    Fixes #7950.
+
+    *George Brocklehurst*
+
+*  `#pluck` can be used on a relation with `select` clause. [Backport #8176]
+   Fix #7551
+
+   Example:
+
+        Topic.select([:approved, :id]).order(:id).pluck(:id)
+
+   *Yves Senn*
+
+*   Use `nil?` instead of `blank?` to check whether dynamic finder with a bang
+    should raise RecordNotFound.
+    Fixes #7238.
+
+    *Nikita Afanasenko*
+
+*   Fix deleting from a HABTM join table upon destroying an object of a model
+    with optimistic locking enabled.
+    Fixes #5332.
+
+    *Nick Rogers*
+
+*   Use query cache/uncache when using ENV["DATABASE_URL"].
+    Fixes #6951. [Backport #8074]
+
+    *kennyj*
+
+*   Do not create useless database transaction when building `has_one` association. [Backport #8154]
+
+    Example:
+
+        User.has_one :profile
+        User.new.build_profile
+
+    *Bogdan Gusiev*
+
+*   `AR::Base#attributes_before_type_cast` now returns unserialized values for serialized attributes.
+
+    *Nikita Afanasenko*
+
+*   Fix issue that raises `NameError` when overriding the `accepts_nested_attributes` in child classes.
+
+    Before:
+
+        class Shared::Person < ActiveRecord::Base
+          has_one :address
+
+          accepts_nested_attributes :address, :reject_if => :all_blank
+        end
+
+        class Person < Shared::Person
+          accepts_nested_attributes :address
+        end
+
+        Person
+        #=> NameError: method `address_attributes=' not defined in Person
+
+    After:
+
+        Person
+        #=> Person(id: integer, ...)
+
+    Fixes #8131.
+
+    *Gabriel Sobrinho, Ricardo Henrique*
+
+
+## Rails 3.2.9 (Nov 12, 2012) ##
+
+*   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
+
+    *Alexis Bernard*
+
+*   Fix issue with collection associations calling first(n)/last(n) and attempting
+    to set the inverse association when `:inverse_of` was used. Fixes #8087.
+
+    *Carlos Antonio da Silva*
+
+*   Fix bug when Column is trying to type cast boolean values to integer.
+    Fixes #8067.
+
+    *Rafael Mendonça França*
+
+*   Fix bug where `rake db:test:prepare` tries to load the structure.sql into development database.
+    Fixes #8032.
+
+    *Grace Liu + Rafael Mendonça França*
+
+*   Fixed support for `DATABASE_URL` environment variable for rake db tasks. *Grace Liu*
+
+*   Fix bug where `update_columns` and `update_column` would not let you update the primary key column.
+
+    *Henrik Nyh*
+
+*   Decode URI encoded attributes on database connection URLs.
+
+    *Shawn Veader*
 
 *   Fix AR#dup to nullify the validation errors in the dup'ed object. Previously the original
     and the dup'ed object shared the same errors.
 
-    * Christian Seiler*
+    *Christian Seiler*
 
 *   Synchronize around deleting from the reserved connections hash.
     Fixes #7955

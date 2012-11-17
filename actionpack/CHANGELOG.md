@@ -1,4 +1,79 @@
-## Rails 3.2.9 (unreleased) ##
+## Rails 3.2.10 (unreleased) ##
+
+*   Fix side effect of `url_for` changing the `:controller` string option. [Backport #6003]
+
+    Before:
+
+        controller = '/projects'
+        url_for :controller => controller, :action => 'status'
+
+        puts controller #=> 'projects'
+
+    After
+
+        puts controller #=> '/projects'
+
+    [Nikita Beloglazov + Andrew White]
+
+*   Introduce `ActionView::Template::Handlers::ERB.escape_whitelist`. This is a list
+    of mime types where template text is not html escaped by default. It prevents `Jack & Joe`
+    from rendering as `Jack &amp; Joe` for the whitelisted mime types. The default whitelist
+    contains text/plain. Fix #7976 [Backport #8235]
+
+    *Joost Baaij*
+
+*   `BestStandardsSupport` middleware now appends it's `X-UA-Compatible` value to app's
+    returned value if any. Fix #8086 [Backport #8093]
+
+    *Nikita Afanasenko*
+
+*   prevent double slashes in engine urls when `Rails.application.default_url_options[:trailing_slash] = true` is set
+    Fix #7842
+
+    *Yves Senn*
+
+*   Fix input name when `:multiple => true` and `:index` are set.
+
+    Before:
+
+        check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+        #=> <input name=\"post[foo][comment_ids]\" type=\"hidden\" value=\"0\" /><input id=\"post_foo_comment_ids_1\" name=\"post[foo][comment_ids]\" type=\"checkbox\" value=\"1\" />
+
+    After:
+
+        check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+        #=> <input name=\"post[foo][comment_ids][]\" type=\"hidden\" value=\"0\" /><input id=\"post_foo_comment_ids_1\" name=\"post[foo][comment_ids][]\" type=\"checkbox\" value=\"1\" />
+
+    Fix #8108
+
+    *Daniel Fox, Grant Hutchins & Trace Wax*
+
+## Rails 3.2.9 (Nov 12, 2012) ##
+
+*   Clear url helpers when reloading routes.
+
+    *Santiago Pastorino*
+
+*   Revert the shorthand routes scoped with `:module` option fix
+    This added a regression since it is changing the URL mapping.
+    This makes the stable release backward compatible.
+
+    *Rafael Mendonça França*
+
+*   Revert the `assert_template` fix to not pass with ever string that matches the template name.
+    This added a regression since people were relying on this buggy behavior.
+    This will introduce back #3849 but this stable release will be backward compatible.
+    Fixes #8068.
+
+    *Rafael Mendonça França*
+
+*   Revert the rename of internal variable on ActionController::TemplateAssertions to prevent
+    naming collisions. This added a regression related with shoulda-matchers, since it is
+    expecting the [instance variable @layouts](https://github.com/thoughtbot/shoulda-matchers/blob/9e1188eea68c47d9a56ce6280e45027da6187ab1/lib/shoulda/matchers/action_controller/render_with_layout_matcher.rb#L74).
+    This will introduce back #7459 but this stable release will be backward compatible.
+    Fixes #8068.
+
+    *Rafael Mendonça França*
 
 *   Accept :remote as symbolic option for `link_to` helper. *Riley Lynch*
 
@@ -56,16 +131,6 @@
     being available.
 
     *Tim Vandecasteele*
-
-*   Fixed a bug with shorthand routes scoped with the `:module` option not
-    adding the module to the controller as described in issue #6497.
-    This should now work properly:
-
-        scope :module => "engine" do
-          get "api/version" # routes to engine/api#version
-        end
-
-    *Luiz Felipe Garcia Pereira*
 
 *   Respect `config.digest = false` for `asset_path`
 

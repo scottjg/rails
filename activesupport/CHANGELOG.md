@@ -1,4 +1,18 @@
-## Rails 3.2.9 (unreleased)
+## Rails 3.2.10 (unreleased)
+
+*   Fix mocha v0.13.0 compatibility. *James Mead*
+
+*   `#as_json` isolates options when encoding a hash. [Backport #8185]
+    Fix #8182
+
+    *Yves Senn*
+
+*   Handle the possible Permission Denied errors atomic.rb might trigger due to
+    its chown and chmod calls. [Backport #8027]
+
+    *Daniele Sluijters*
+
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Add logger.push_tags and .pop_tags to complement logger.tagged:
 
