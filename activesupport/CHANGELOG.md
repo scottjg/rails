@@ -1,6 +1,12 @@
 ## Rails 3.2.15 (Oct 16, 2013) ##
 
 *   Fix ActiveSupport::Cache::FileStore#cleanup to no longer rely on missing each_key method.
+*   Patched Marshal#load to work with constant autoloading.
+    Fixes autoloading with cache stores that relay on Marshal(MemCacheStore and FileStore). [fixes #8167]
+
+    *Uriel Katz*
+
+*   Make `Time.zone.parse` to work with JavaScript format date strings. *Andrew White*
 
     *Murray Steele*
 

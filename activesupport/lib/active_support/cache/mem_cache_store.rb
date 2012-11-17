@@ -7,6 +7,7 @@ end
 
 require 'digest/md5'
 require 'active_support/core_ext/string/encoding'
+require 'active_support/core_ext/marshal'
 
 module ActiveSupport
   module Cache
