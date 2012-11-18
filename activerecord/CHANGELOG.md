@@ -1,5 +1,6 @@
 ## Rails 4.0.0 (unreleased) ##
 
+<<<<<<< HEAD
 *   Fix quoting for sqlite migrations using copy_table_contents() with binary
     columns.
 
@@ -743,6 +744,13 @@
         end
 
     *Jarek Radosz*
+=======
+*   Add support for char(n) types by passing "fixed: true" for string columns. Example:
+
+        add_column :people, :zip, :string, limit: 5, fixed: true
+
+    *George Ogata*
+>>>>>>> Add support for char(n) columns.
 
 *   `#pluck` can be used on a relation with `select` clause. Fix #7551
 

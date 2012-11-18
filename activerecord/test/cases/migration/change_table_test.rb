@@ -4,6 +4,20 @@ require "minitest/mock"
 module ActiveRecord
   class Migration
     class TableTest < ActiveRecord::TestCase
+
+      class MockConnection < MiniTest::Mock
+        def native_database_types
+          {
+            :string  => 'varchar(255)',
+            :integer => 'integer',
+          }
+        end
+
+        def type_to_sql(type, limit, precision, scale, fixed)
+          native_database_types[type]
+        end
+      end
+
       def setup
         @connection = MiniTest::Mock.new
       end
