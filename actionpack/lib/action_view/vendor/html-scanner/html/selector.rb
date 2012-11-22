@@ -536,134 +536,16 @@ module HTML
 
       # Get identifier, class, attribute name, pseudo or negation.
       while true
-        # Element identifier.
-        next if statement.sub!(/^#(\?|[\w\-]+)/) do |match|
-          id = $1
-          if id == "?"
-            id = values.shift
-          end
-          @source << "##{id}"
-          id = Regexp.new("^#{Regexp.escape(id.to_s)}$") unless id.is_a?(Regexp)
-          attributes << ["id", id]
-          "" # Remove
-        end
 
-        # Class name.
-        next if statement.sub!(/^\.([\w\-]+)/) do |match|
-          class_name = $1
-          @source << ".#{class_name}"
-          class_name = Regexp.new("(^|\s)#{Regexp.escape(class_name)}($|\s)") unless class_name.is_a?(Regexp)
-          attributes << ["class", class_name]
-          "" # Remove
-        end
-
-        # Attribute value.
-        next if statement.sub!(/^\[\s*([[:alpha:]][\w\-:]*)\s*((?:[~|^$*])?=)?\s*('[^']*'|"[^*]"|[^\]]*)\s*\]/) do |match|
-          name, equality, value = $1, $2, $3
-          if value == "?"
-            value = values.shift
-          else
-            # Handle single and double quotes.
-            value.strip!
-            if (value[0] == ?" || value[0] == ?') && value[0] == value[-1]
-              value = value[1..-2]
-            end
-          end
-          @source << "[#{name}#{equality}'#{value}']"
-          attributes << [name.downcase.strip, attribute_match(equality, value)]
-          "" # Remove
-        end
-
-        # Root element only.
-        next if statement.sub!(/^:root/) do |match|
-          pseudo << lambda do |element|
-            element.parent.nil? || !element.parent.tag?
-          end
-          @source << ":root"
-          "" # Remove
-        end
-
-        # Nth-child including last and of-type.
-        next if statement.sub!(/^:nth-(last-)?(child|of-type)\((odd|even|(\d+|\?)|(-?\d*|\?)?n([+\-]\d+|\?)?)\)/) do |match|
-          reverse = $1 == "last-"
-          of_type = $2 == "of-type"
-          @source << ":nth-#{$1}#{$2}("
-          case $3
-            when "odd"
-              pseudo << nth_child(2, 1, of_type, reverse)
-              @source << "odd)"
-            when "even"
-              pseudo << nth_child(2, 2, of_type, reverse)
-              @source << "even)"
-            when /^(\d+|\?)$/  # b only
-              b = ($1 == "?" ? values.shift : $1).to_i
-              pseudo << nth_child(0, b, of_type, reverse)
-              @source << "#{b})"
-            when /^(-?\d*|\?)?n([+\-]\d+|\?)?$/
-              a = ($1 == "?" ? values.shift :
-                   $1 == "" ? 1 : $1 == "-" ? -1 : $1).to_i
-              b = ($2 == "?" ? values.shift : $2).to_i
-              pseudo << nth_child(a, b, of_type, reverse)
-              @source << (b >= 0 ? "#{a}n+#{b})" : "#{a}n#{b})")
-            else
-              raise ArgumentError, "Invalid nth-child #{match}"
-          end
-          "" # Remove
-        end
-        # First/last child (of type).
-        next if statement.sub!(/^:(first|last)-(child|of-type)/) do |match|
-          reverse = $1 == "last"
-          of_type = $2 == "of-type"
-          pseudo << nth_child(0, 1, of_type, reverse)
-          @source << ":#{$1}-#{$2}"
-          "" # Remove
-        end
-        # Only child (of type).
-        next if statement.sub!(/^:only-(child|of-type)/) do |match|
-          of_type = $1 == "of-type"
-          pseudo << only_child(of_type)
-          @source << ":only-#{$1}"
-          "" # Remove
-        end
-
-        # Empty: no child elements or meaningful content (whitespaces
-        # are ignored).
-        next if statement.sub!(/^:empty/) do |match|
-          pseudo << lambda do |element|
-            empty = true
-            for child in element.children
-              if child.tag? || !child.content.strip.empty?
-                empty = false
-                break
-              end
-            end
-            empty
-          end
-          @source << ":empty"
-          "" # Remove
-        end
-        # Content: match the text content of the element, stripping
-        # leading and trailing spaces.
-        next if statement.sub!(/^:content\(\s*(\?|'[^']*'|"[^"]*"|[^)]*)\s*\)/) do |match|
-          content = $1
-          if content == "?"
-            content = values.shift
-          elsif (content[0] == ?" || content[0] == ?') && content[0] == content[-1]
-            content = content[1..-2]
-          end
-          @source << ":content('#{content}')"
-          content = Regexp.new("^#{Regexp.escape(content.to_s)}$") unless content.is_a?(Regexp)
-          pseudo << lambda do |element|
-            text = ""
-            for child in element.children
-              unless child.tag?
-                text << child.content
-              end
-            end
-            text.strip =~ content
-          end
-          "" # Remove
-        end
+        next if has_an_element_match?(statement, values, attributes)
+        next if has_a_class_name_match?(statement, attributes)
+        next if has_an_attribute_match?(statement, values, attributes)
+        next if has_a_root_element_match?(statement, pseudo)
+        next if has_an_nth_child_match?(statement, values, pseudo)
+        next if has_a_first_last_child_match?(statement, pseudo)
+        next if has_an_only_child_match?(statement, pseudo)
+        next if has_an_empty_match?(statement, pseudo)
+        next if has_a_content_match?(statement, values, pseudo)
 
         # Negation. Create another simple selector to handle it.
         if statement.sub!(/^:not\(\s*/, "")
@@ -809,6 +691,162 @@ module HTML
       second
     end
 
+    def has_an_element_match?(statement, values, attributes)
+      res = statement.sub!(/^#(\?|[\w\-]+)/) do |match|
+        id = $1
+        if id == "?"
+          id = values.shift
+        end
+        @source << "##{id}"
+        id = Regexp.new("^#{Regexp.escape(id.to_s)}$") unless id.is_a?(Regexp)
+        attributes << ["id", id]
+        "" # Remove
+      end
+      res
+    end
+
+    def has_a_class_name_match?(statement, attributes)
+      # Class name.
+      res = statement.sub!(/^\.([\w\-]+)/) do |match|
+        class_name = $1
+        @source << ".#{class_name}"
+        class_name = Regexp.new("(^|\s)#{Regexp.escape(class_name)}($|\s)") unless class_name.is_a?(Regexp)
+        attributes << ["class", class_name]
+        "" # Remove
+      end
+      res
+    end
+
+    def has_an_attribute_match?(statement, values, attributes)
+      res = statement.sub!(/^\[\s*([[:alpha:]][\w\-:]*)\s*((?:[~|^$*])?=)?\s*('[^']*'|"[^*]"|[^\]]*)\s*\]/) do |match|
+        name, equality, value = $1, $2, $3
+        if value == "?"
+          value = values.shift
+        else
+          # Handle single and double quotes.
+          value.strip!
+          if (value[0] == ?" || value[0] == ?') && value[0] == value[-1]
+            value = value[1..-2]
+          end
+        end
+        @source << "[#{name}#{equality}'#{value}']"
+        attributes << [name.downcase.strip, attribute_match(equality, value)]
+        "" # Remove
+      end
+      res
+    end
+
+    def has_a_root_element_match?(statement, pseudo)
+      # Root element only.
+      res = statement.sub!(/^:root/) do |match|
+        pseudo << lambda do |element|
+          element.parent.nil? || !element.parent.tag?
+        end
+        @source << ":root"
+        "" # Remove
+      end
+      res
+    end
+
+    def has_an_nth_child_match?(statement, values, pseudo)
+      # Nth-child including last and of-type.
+      res = statement.sub!(/^:nth-(last-)?(child|of-type)\((odd|even|(\d+|\?)|(-?\d*|\?)?n([+\-]\d+|\?)?)\)/) do |match|
+        reverse = $1 == "last-"
+        of_type = $2 == "of-type"
+        @source << ":nth-#{$1}#{$2}("
+        case $3
+          when "odd"
+            pseudo << nth_child(2, 1, of_type, reverse)
+            @source << "odd)"
+          when "even"
+            pseudo << nth_child(2, 2, of_type, reverse)
+            @source << "even)"
+          when /^(\d+|\?)$/  # b only
+            b = ($1 == "?" ? values.shift : $1).to_i
+            pseudo << nth_child(0, b, of_type, reverse)
+            @source << "#{b})"
+          when /^(-?\d*|\?)?n([+\-]\d+|\?)?$/
+            a = ($1 == "?" ? values.shift :
+                 $1 == "" ? 1 : $1 == "-" ? -1 : $1).to_i
+            b = ($2 == "?" ? values.shift : $2).to_i
+            pseudo << nth_child(a, b, of_type, reverse)
+            @source << (b >= 0 ? "#{a}n+#{b})" : "#{a}n#{b})")
+          else
+            raise ArgumentError, "Invalid nth-child #{match}"
+        end
+        "" # Remove
+      end
+      res
+    end
+
+    def has_a_first_last_child_match?(statement, pseudo)
+      # First/last child (of type).
+      res = statement.sub!(/^:(first|last)-(child|of-type)/) do |match|
+        reverse = $1 == "last"
+        of_type = $2 == "of-type"
+        pseudo << nth_child(0, 1, of_type, reverse)
+        @source << ":#{$1}-#{$2}"
+        "" # Remove
+      end
+      res
+    end
+
+    def has_an_only_child_match?(statement, pseudo)
+      # Only child (of type).
+      res = statement.sub!(/^:only-(child|of-type)/) do |match|
+        of_type = $1 == "of-type"
+        pseudo << only_child(of_type)
+        @source << ":only-#{$1}"
+        "" # Remove
+      end
+      res
+    end
+
+    def has_an_empty_match?(statement, pseudo)
+      # Empty: no child elements or meaningful content (whitespaces
+      # are ignored).
+      res = statement.sub!(/^:empty/) do |match|
+        pseudo << lambda do |element|
+          empty = true
+          for child in element.children
+            if child.tag? || !child.content.strip.empty?
+              empty = false
+              break
+            end
+          end
+          empty
+        end
+        @source << ":empty"
+        "" # Remove
+      end
+      res
+    end
+
+    def has_a_content_match?(statement, values, pseudo)
+      # Content: match the text content of the element, stripping
+      # leading and trailing spaces.
+      res = statement.sub!(/^:content\(\s*(\?|'[^']*'|"[^"]*"|[^)]*)\s*\)/) do |match|
+        content = $1
+        if content == "?"
+          content = values.shift
+        elsif (content[0] == ?" || content[0] == ?') && content[0] == content[-1]
+          content = content[1..-2]
+        end
+        @source << ":content('#{content}')"
+        content = Regexp.new("^#{Regexp.escape(content.to_s)}$") unless content.is_a?(Regexp)
+        pseudo << lambda do |element|
+          text = ""
+          for child in element.children
+            unless child.tag?
+              text << child.content
+            end
+          end
+          text.strip =~ content
+        end
+        "" # Remove
+      end
+      res
+    end
   end
 
 
