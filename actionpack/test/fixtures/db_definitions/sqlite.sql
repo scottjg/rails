@@ -1,11 +1,11 @@
 CREATE TABLE 'companies' (
-  'id' INTEGER PRIMARY KEY NOT NULL,
+  'id' SERIAL,
   'name' TEXT DEFAULT NULL,
   'rating' INTEGER DEFAULT 1
 );
 
 CREATE TABLE 'replies' (
-  'id' INTEGER PRIMARY KEY NOT NULL,
+  'id' SERIAL,
   'content' text,
   'created_at' datetime,
   'updated_at' datetime,
@@ -14,7 +14,7 @@ CREATE TABLE 'replies' (
 );
 
 CREATE TABLE 'topics' (
-  'id' INTEGER PRIMARY KEY NOT NULL,
+  'id' SERIAL,
   'title' varchar(255),
   'subtitle' varchar(255),
   'content' text,
@@ -23,7 +23,7 @@ CREATE TABLE 'topics' (
 );
 
 CREATE TABLE 'developers' (
-  'id' INTEGER PRIMARY KEY NOT NULL,
+  'id' SERIAL,
   'name' TEXT DEFAULT NULL,
   'salary' INTEGER DEFAULT 70000,
   'created_at' DATETIME DEFAULT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE 'developers' (
 );
 
 CREATE TABLE 'projects' (
-  'id' INTEGER PRIMARY KEY NOT NULL,
+  'id' SERIAL,
   'name' TEXT DEFAULT NULL
 );
 
@@ -43,7 +43,7 @@ CREATE TABLE 'developers_projects' (
 );
 
 CREATE TABLE 'mascots' (
-  'id' INTEGER PRIMARY KEY NOT NULL,
+  'id' SERIAL,
   'company_id' INTEGER NOT NULL,
   'name' TEXT DEFAULT NULL
 );

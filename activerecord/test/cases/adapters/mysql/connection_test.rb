@@ -61,7 +61,7 @@ class MysqlConnectionTest < ActiveRecord::TestCase
   def test_exec_no_binds
     @connection.exec_query('drop table if exists ex')
     @connection.exec_query(<<-eosql)
-      CREATE TABLE `ex` (`id` int(11) DEFAULT NULL auto_increment PRIMARY KEY,
+      CREATE TABLE `ex` (`id` SERIAL,
         `data` varchar(255))
     eosql
     result = @connection.exec_query('SELECT id, data FROM ex')
@@ -83,7 +83,7 @@ class MysqlConnectionTest < ActiveRecord::TestCase
   def test_exec_with_binds
     @connection.exec_query('drop table if exists ex')
     @connection.exec_query(<<-eosql)
-      CREATE TABLE `ex` (`id` int(11) DEFAULT NULL auto_increment PRIMARY KEY,
+      CREATE TABLE `ex` (`id` SERIAL,
         `data` varchar(255))
     eosql
     @connection.exec_query('INSERT INTO ex (id, data) VALUES (1, "foo")')
@@ -99,7 +99,7 @@ class MysqlConnectionTest < ActiveRecord::TestCase
   def test_exec_typecasts_bind_vals
     @connection.exec_query('drop table if exists ex')
     @connection.exec_query(<<-eosql)
-      CREATE TABLE `ex` (`id` int(11) DEFAULT NULL auto_increment PRIMARY KEY,
+      CREATE TABLE `ex` (`id` SERIAL,
         `data` varchar(255))
     eosql
     @connection.exec_query('INSERT INTO ex (id, data) VALUES (1, "foo")')

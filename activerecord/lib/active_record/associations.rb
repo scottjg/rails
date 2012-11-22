@@ -348,16 +348,14 @@ module ActiveRecord
     # The tables for these classes could look something like:
     #
     #   CREATE TABLE users (
-    #     id int(11) NOT NULL auto_increment,
+    #     id SERIAL,
     #     account_id int(11) default NULL,
-    #     name varchar default NULL,
-    #     PRIMARY KEY  (id)
+    #     name varchar default NULL
     #   )
     #
     #   CREATE TABLE accounts (
-    #     id int(11) NOT NULL auto_increment,
-    #     name varchar default NULL,
-    #     PRIMARY KEY  (id)
+    #     id SERIAL,
+    #     name varchar default NULL
     #   )
     #
     # == Unsaved objects and associations

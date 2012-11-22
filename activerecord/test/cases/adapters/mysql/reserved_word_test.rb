@@ -30,10 +30,10 @@ class MysqlReservedWordTest < ActiveRecord::TestCase
     # we call execute directly here (and do similar below) because ActiveRecord::Base#create_table()
     # will fail with these table names if these test cases fail
 
-    create_tables_directly 'group'=>'id int auto_increment primary key, `order` varchar(255), select_id int',
-      'select'=>'id int auto_increment primary key',
-      'values'=>'id int auto_increment primary key, group_id int',
-      'distinct'=>'id int auto_increment primary key',
+    create_tables_directly 'group'=>'id serial, `order` varchar(255), select_id int',
+      'select'=>'id serial',
+      'values'=>'id serial, group_id int',
+      'distinct'=>'id serial',
       'distinct_select'=>'distinct_id int, select_id int'
   end
 

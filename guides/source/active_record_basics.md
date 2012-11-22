@@ -88,9 +88,8 @@ This will create a `Product` model, mapped to a `products` table at the database
 
 ```sql
 CREATE TABLE products (
-   id int(11) NOT NULL auto_increment,
-   name varchar(255),
-   PRIMARY KEY  (id)
+   id SERIAL,
+   name varchar(255)
 );
 ```
 

@@ -24,9 +24,8 @@ A short rundown of some of the major features:
    which might look like this:
 
    CREATE TABLE products (
-     id int(11) NOT NULL auto_increment,
-     name varchar(255),
-     PRIMARY KEY  (id)
+     id SERIAL,
+     name varchar(255)
    );
 
    This would also define the following accessors: `Product#name` and
