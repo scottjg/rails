@@ -823,13 +823,7 @@ module HTML
         @source << ":content('#{content}')"
         content = Regexp.new("^#{Regexp.escape(content.to_s)}$") unless content.is_a?(Regexp)
         pseudo << lambda do |element|
-          text = ""
-          for child in element.children
-            unless child.tag?
-              text << child.content
-            end
-          end
-          text.strip =~ content
+          element.children.reduce("") { |memo, child| memo << child.content unless child.tag? }.strip =~ content
         end
         "" # Remove
       end
