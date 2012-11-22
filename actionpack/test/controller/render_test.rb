@@ -1417,6 +1417,16 @@ class RenderTest < ActionController::TestCase
     assert_equal "david david davidmary mary mary", @response.body
   end
 
+  def test_partial_collection_with_collection_counter
+    get :partial_collection_with_counter
+    assert_equal "david0/1mary1/1", @response.body
+  end
+
+  def test_partial_collection_with_as_and_collection_counter
+    get :partial_collection_with_as_and_counter
+    assert_equal "david0/1mary1/1", @response.body
+  end
+
   def test_partial_collection_with_counter
     get :partial_collection_with_counter
     assert_equal "david0mary1", @response.body
@@ -1456,6 +1466,20 @@ class RenderTest < ActionController::TestCase
   end
 
   def test_partial_collection_shorthand_with_locals
+    get :partial_collection_shorthand_with_locals
+    assert_equal "Bonjour: davidBonjour: mary", @response.body
+    assert_template :partial => 'customers/_customer', :count => 2
+    assert_template :partial => '_completely_fake_and_made_up_template_that_cannot_possibly_be_rendered', :count => 0
+  end
+
+  def test_partial_collection_counter
+    get :partial_collection_shorthand_with_locals
+    assert_equal "Bonjour: davidBonjour: mary", @response.body
+    assert_template :partial => 'customers/_customer', :count => 2
+    assert_template :partial => '_completely_fake_and_made_up_template_that_cannot_possibly_be_rendered', :count => 0
+  end
+
+  def test_partial_collection_size_counter
     get :partial_collection_shorthand_with_locals
     assert_equal "Bonjour: davidBonjour: mary", @response.body
     assert_template :partial => 'customers/_customer', :count => 2
