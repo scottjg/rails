@@ -719,16 +719,8 @@ module HTML
 
     def has_an_attribute_match?(statement, values, attributes)
       res = statement.sub!(/^\[\s*([[:alpha:]][\w\-:]*)\s*((?:[~|^$*])?=)?\s*('[^']*'|"[^*]"|[^\]]*)\s*\]/) do |match|
-        name, equality, value = $1, $2, $3
-        if value == "?"
-          value = values.shift
-        else
-          # Handle single and double quotes.
-          value.strip!
-          if (value[0] == ?" || value[0] == ?') && value[0] == value[-1]
-            value = value[1..-2]
-          end
-        end
+        name, equality= $1, $2
+        value = ($3 == "?" ? values.shift : quoteless_str($3))
         @source << "[#{name}#{equality}'#{value}']"
         attributes << [name.downcase.strip, attribute_match(equality, value)]
         "" # Remove
@@ -826,12 +818,8 @@ module HTML
       # Content: match the text content of the element, stripping
       # leading and trailing spaces.
       res = statement.sub!(/^:content\(\s*(\?|'[^']*'|"[^"]*"|[^)]*)\s*\)/) do |match|
-        content = $1
-        if content == "?"
-          content = values.shift
-        elsif (content[0] == ?" || content[0] == ?') && content[0] == content[-1]
-          content = content[1..-2]
-        end
+        content = ($1 == "?" ? values.shift : quoteless_str($1))
+        
         @source << ":content('#{content}')"
         content = Regexp.new("^#{Regexp.escape(content.to_s)}$") unless content.is_a?(Regexp)
         pseudo << lambda do |element|
@@ -846,6 +834,15 @@ module HTML
         "" # Remove
       end
       res
+    end
+
+    def quoteless_str(str)
+      str.strip!
+      (is_between_quotes?(str) ? str[1..-2] : str)
+    end
+
+    def is_between_quotes?(str)
+      ((str[0] == ?" || str[0] == ?') && str[0] == str[-1])
     end
   end
 
