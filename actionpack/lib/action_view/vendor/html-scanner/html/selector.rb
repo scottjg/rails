@@ -745,30 +745,39 @@ module HTML
       res = statement.sub!(/^:nth-(last-)?(child|of-type)\((odd|even|(\d+|\?)|(-?\d*|\?)?n([+\-]\d+|\?)?)\)/) do |match|
         reverse = $1 == "last-"
         of_type = $2 == "of-type"
+        capture = $3
         @source << ":nth-#{$1}#{$2}("
-        case $3
-          when "odd"
-            pseudo << nth_child(2, 1, of_type, reverse)
-            @source << "odd)"
-          when "even"
-            pseudo << nth_child(2, 2, of_type, reverse)
-            @source << "even)"
-          when /^(\d+|\?)$/  # b only
-            b = ($1 == "?" ? values.shift : $1).to_i
-            pseudo << nth_child(0, b, of_type, reverse)
-            @source << "#{b})"
-          when /^(-?\d*|\?)?n([+\-]\d+|\?)?$/
-            a = ($1 == "?" ? values.shift :
-                 $1 == "" ? 1 : $1 == "-" ? -1 : $1).to_i
-            b = ($2 == "?" ? values.shift : $2).to_i
-            pseudo << nth_child(a, b, of_type, reverse)
-            @source << (b >= 0 ? "#{a}n+#{b})" : "#{a}n#{b})")
-          else
-            raise ArgumentError, "Invalid nth-child #{match}"
-        end
+
+        m = nth_child_matches(reverse, of_type, match, values).select {|c| c[:t].call(capture) }.first
+        p, s = m[:v].call(m[:t].call(capture))
+
+        raise ArgumentError, "Invalid nth-child #{match}" if p.nil? && s.blank?
+
+        pseudo << p
+        @source << s
         "" # Remove
       end
       res
+    end
+
+    def nth_child_matches(reverse, of_type, match, values)
+      [
+        { :t => lambda {|m| m === "odd" }, :v => lambda { |_| [nth_child(2, 1, of_type, reverse), "odd)"] } },
+        { :t => lambda {|m| m === "even"}, :v => lambda { |_| [nth_child(2, 2, of_type, reverse), "even)"] } },
+        { :t => lambda {|m| m.match(/^(\d+|\?)$/) }, :v => lambda do |matches|
+            m = matches.captures[0]
+            b = (m == "?" ? values.shift : m).to_i
+            [nth_child(0, b, of_type, reverse), "#{b})"]
+          end
+        },
+        { :t => lambda {|m| m.match(/^(-?\d*|\?)?n([+\-]\d+|\?)?$/) }, :v => lambda do |matches|
+            m1, m2 = matches.captures
+            a = (m1 == "?" ? values.shift : m1 == "" ? 1 : m1 == "-" ? -1 : m1).to_i
+            b = (m2 == "?" ? values.shift : m2).to_i
+            [nth_child(a, b, of_type, reverse), (b >= 0 ? "#{a}n+#{b})" : "#{a}n#{b})")]
+          end
+        }
+      ]
     end
 
     def has_a_first_last_child_match?(statement, pseudo)
