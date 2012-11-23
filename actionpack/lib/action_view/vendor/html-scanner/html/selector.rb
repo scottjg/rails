@@ -534,6 +534,13 @@ module HTML
         "" # Remove
       end
 
+      options = {
+        :values => values, 
+        :attributes => attributes,
+        :pseudo => pseudo,
+        :statement => statement
+      }
+
       # Get identifier, class, attribute name, pseudo or negation.
       while true
 
@@ -541,7 +548,7 @@ module HTML
         next if has_a_class_name_match?(statement, attributes)
         next if has_an_attribute_match?(statement, values, attributes)
         next if has_a_root_element_match?(statement, pseudo)
-        next if has_an_nth_child_match?(statement, values, pseudo)
+        next if has_an_nth_child_match?(options)
         next if has_a_first_last_child_match?(statement, pseudo)
         next if has_an_only_child_match?(statement, pseudo)
         next if has_an_empty_match?(statement, pseudo)
@@ -740,41 +747,43 @@ module HTML
       res
     end
 
-    def has_an_nth_child_match?(statement, values, pseudo)
+    def has_an_nth_child_match?(options)
       # Nth-child including last and of-type.
-      res = statement.sub!(/^:nth-(last-)?(child|of-type)\((odd|even|(\d+|\?)|(-?\d*|\?)?n([+\-]\d+|\?)?)\)/) do |match|
-        reverse = $1 == "last-"
-        of_type = $2 == "of-type"
+      re = /^:nth-(last-)?(child|of-type)\((odd|even|(\d+|\?)|(-?\d*|\?)?n([+\-]\d+|\?)?)\)/
+      res = options[:statement].sub!(re) do |match|
         capture = $3
         @source << ":nth-#{$1}#{$2}("
+        
+        procs = 
+          nth_child_matches(
+            { :reverse => ($1 == "last-"), :of_type => ($2 == "of-type")}.merge(options)).
+          select {|c| c[:t].call(capture) }.first
+        p, s = procs[:v].call(procs[:t].call(capture))
 
-        m = nth_child_matches(reverse, of_type, match, values).select {|c| c[:t].call(capture) }.first
-        p, s = m[:v].call(m[:t].call(capture))
+        raise ArgumentError, "Invalid nth-child #{match}" unless procs
 
-        raise ArgumentError, "Invalid nth-child #{match}" if p.nil? && s.blank?
-
-        pseudo << p
+        options[:pseudo] << p
         @source << s
         "" # Remove
       end
       res
     end
 
-    def nth_child_matches(reverse, of_type, match, values)
+    def nth_child_matches(options)
       [
-        { :t => lambda {|m| m === "odd" }, :v => lambda { |_| [nth_child(2, 1, of_type, reverse), "odd)"] } },
-        { :t => lambda {|m| m === "even"}, :v => lambda { |_| [nth_child(2, 2, of_type, reverse), "even)"] } },
+        { :t => lambda {|m| m === "odd" }, :v => lambda { |_| [nth_child(2, 1, options[:of_type], options[:reverse]), "odd)"] } },
+        { :t => lambda {|m| m === "even"}, :v => lambda { |_| [nth_child(2, 2, options[:of_type], options[:reverse]), "even)"] } },
         { :t => lambda {|m| m.match(/^(\d+|\?)$/) }, :v => lambda do |matches|
             m = matches.captures[0]
-            b = (m == "?" ? values.shift : m).to_i
-            [nth_child(0, b, of_type, reverse), "#{b})"]
+            b = (m == "?" ? options[:values].shift : m).to_i
+            [nth_child(0, b, options[:of_type], options[:reverse]), "#{b})"]
           end
         },
         { :t => lambda {|m| m.match(/^(-?\d*|\?)?n([+\-]\d+|\?)?$/) }, :v => lambda do |matches|
             m1, m2 = matches.captures
-            a = (m1 == "?" ? values.shift : m1 == "" ? 1 : m1 == "-" ? -1 : m1).to_i
-            b = (m2 == "?" ? values.shift : m2).to_i
-            [nth_child(a, b, of_type, reverse), (b >= 0 ? "#{a}n+#{b})" : "#{a}n#{b})")]
+            a = (m1 == "?" ? options[:values].shift : m1 == "" ? 1 : m1 == "-" ? -1 : m1).to_i
+            b = (m2 == "?" ? options[:values].shift : m2).to_i
+            [nth_child(a, b, options[:of_type], options[:reverse]), (b >= 0 ? "#{a}n+#{b})" : "#{a}n#{b})")]
           end
         }
       ]
