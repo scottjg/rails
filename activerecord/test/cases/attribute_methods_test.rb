@@ -486,8 +486,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_typecast_attribute_from_select_to_false
     Topic.create(:title => 'Budget')
-    # Oracle does not support boolean expressions in SELECT
-    if current_adapter?(:OracleAdapter)
+    # Oracle and SQLAnywhere do not support boolean expressions in SELECT
+    if current_adapter?(:OracleAdapter, :SQLAnywhereAdapter)
       topic = Topic.all.merge!(:select => "topics.*, 0 as is_test").first
     else
       topic = Topic.all.merge!(:select => "topics.*, 1=2 as is_test").first
@@ -497,8 +497,8 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_typecast_attribute_from_select_to_true
     Topic.create(:title => 'Budget')
-    # Oracle does not support boolean expressions in SELECT
-    if current_adapter?(:OracleAdapter)
+    # Oracle and SQLAnywhere do not support boolean expressions in SELECT
+    if current_adapter?(:OracleAdapter, :SQLAnywhereAdapter)
       topic = Topic.all.merge!(:select => "topics.*, 1 as is_test").first
     else
       topic = Topic.all.merge!(:select => "topics.*, 2=2 as is_test").first
