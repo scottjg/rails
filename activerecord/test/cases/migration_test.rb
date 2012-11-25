@@ -64,6 +64,11 @@ class MigrationTest < ActiveRecord::TestCase
     assert_equal 3, ActiveRecord::Migrator.current_version
     assert_equal 3, ActiveRecord::Migrator.last_version
     assert_equal false, ActiveRecord::Migrator.needs_migration?
+    rows = connection.select_all("SELECT * FROM #{connection.quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)}")
+    assert_equal "valid_people_have_last_names", rows[0]["name"]
+    rows.each do |row|
+      assert_match /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/, row["migrated_at"], "missing migrated_at"
+    end
 
     ActiveRecord::Migrator.down(MIGRATIONS_ROOT + "/valid")
     assert_equal 0, ActiveRecord::Migrator.current_version

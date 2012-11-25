@@ -724,7 +724,7 @@ module ActiveRecord
       raise UnknownMigrationVersionError.new(@target_version) if target.nil?
       unless (up? && migrated.include?(target.version.to_i)) || (down? && !migrated.include?(target.version.to_i))
         target.migrate(@direction)
-        record_version_state_after_migrating(target.version)
+        record_version_state_after_migrating(target)
       end
     end
 
@@ -747,7 +747,7 @@ module ActiveRecord
         begin
           ddl_transaction do
             migration.migrate(@direction)
-            record_version_state_after_migrating(migration.version)
+            record_version_state_after_migrating(migration)
           end
         rescue => e
           canceled_msg = Base.connection.supports_ddl_transactions? ? "this and " : ""
@@ -805,13 +805,17 @@ module ActiveRecord
       raise DuplicateMigrationVersionError.new(version) if version
     end
 
-    def record_version_state_after_migrating(version)
+    def record_version_state_after_migrating(target)
       if down?
-        migrated.delete(version)
-        ActiveRecord::SchemaMigration.where(:version => version.to_s).delete_all
+        migrated.delete(target.version)
+        ActiveRecord::SchemaMigration.where(:version => target.version.to_s).delete_all
       else
-        migrated << version
-        ActiveRecord::SchemaMigration.create!(:version => version.to_s)
+        migrated << target.version
+        ActiveRecord::SchemaMigration.create!(
+          :version => target.version.to_s,
+          :name => File.basename(target.filename,'.rb').gsub(/^\d+_/,''),
+          :migrated_at => Time.now
+        )
       end
     end
 
