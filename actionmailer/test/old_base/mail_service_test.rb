@@ -1117,6 +1117,8 @@ class MethodNamingTest < ActiveSupport::TestCase
 
   class TestMailer < ActionMailer::Base
     def send
+      recipients "xxx@yyy.com"
+      from "xxx@yyy.com"
       body       'foo'
     end
   end
