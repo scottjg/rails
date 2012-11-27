@@ -135,6 +135,7 @@ module ActionView
         end
       end
 
+    private
       def fragment_name_with_digest(name) #:nodoc:
         if @virtual_path
           [
@@ -146,7 +147,6 @@ module ActionView
         end
       end
 
-    private
       # TODO: Create an object that has caching read/write on it
       def fragment_for(name = {}, options = nil, &block) #:nodoc:
         if fragment = controller.read_fragment(name, options)
