@@ -126,7 +126,7 @@ module ActionView
       # cannot be manually expired unless you know the exact key which is the
       # case when using memcached.
       def cache_fragment_name(name = {}, options = nil)
-        skip_digest = options && options.delete(:skip_digest)
+        skip_digest = options && options[:skip_digest]
 
         if skip_digest
           name
