@@ -6,7 +6,7 @@ module ActiveRecord
       # mysql can't roll back ddl changes
       self.use_transactional_fixtures = false
 
-      Migration = Struct.new(:name, :version) do
+      Migration = Struct.new(:name, :version, :filename) do
         def migrate direction
           # do nothing
         end
@@ -26,7 +26,7 @@ module ActiveRecord
       def test_migration_should_be_run_without_logger
         previous_logger = ActiveRecord::Base.logger
         ActiveRecord::Base.logger = nil
-        migrations = [Migration.new('a', 1), Migration.new('b', 2), Migration.new('c', 3)]
+        migrations = [Migration.new('a', 1, 'anon.rb'), Migration.new('b', 2, 'anon.rb'), Migration.new('c', 3, 'anon.rb')]
         ActiveRecord::Migrator.new(:up, migrations).migrate
       ensure
         ActiveRecord::Base.logger = previous_logger
