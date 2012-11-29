@@ -27,68 +27,21 @@ In this guide, you'll learn all about migrations including:
 
 --------------------------------------------------------------------------------
 
-Anatomy of a Migration
-----------------------
+Migration Overview
+------------------
 
-Before we dive into the details of a migration, here are a few examples of the
-sorts of things you can do:
+Migrations are a convenient way to alter your database schema over time in a
+consistent and easy way. They use a Ruby DSL so that you don't have to write
+SQL by hand, allowing your schema and changes to be database independent.
 
-```ruby
-class CreateProducts < ActiveRecord::Migration
-  def up
-    create_table :products do |t|
-      t.string :name
-      t.text :description
+You can think of each migration as being a new 'version' of the database. A
+schema starts off with nothing in it, and each migration modifies it to add or
+remove tables, columns, or entries. Active Record knows how to update your
+schema along this timeline, bringing it from whatever point it is in the
+history to the latest version. Active Record will also update your
+`db/schema.rb` file to match the up-to-date structure of your database.
 
-      t.timestamps
-    end
-  end
-
-  def down
-    drop_table :products
-  end
-end
-```
-
-This migration adds a table called `products` with a string column called `name`
-and a text column called `description`. A primary key column called `id` will
-also be added, however since this is the default we do not need to explicitly specify it.
-The timestamp columns `created_at` and `updated_at` which Active Record
-populates automatically will also be added. Reversing this migration is as
-simple as dropping the table.
-
-Migrations are not limited to changing the schema. You can also use them to fix
-bad data in the database or populate new fields:
-
-```ruby
-class AddReceiveNewsletterToUsers < ActiveRecord::Migration
-  def up
-    change_table :users do |t|
-      t.boolean :receive_newsletter, default: false
-    end
-    User.update_all receive_newsletter: true
-  end
-
-  def down
-    remove_column :users, :receive_newsletter
-  end
-end
-```
-
-NOTE: Some [caveats](#using-models-in-your-migrations) apply to using models in
-your migrations.
-
-This migration adds a `receive_newsletter` column to the `users` table. We want
-it to default to `false` for new users, but existing users are considered to
-have already opted in, so we use the User model to set the flag to `true` for
-existing users.
-
-### Using the change method
-
-Rails 3.1 and up makes migrations smarter by providing a `change` method.
-This method is preferred for writing constructive migrations (adding columns or
-tables). The migration knows how to migrate your database and reverse it when
-the migration is rolled back without the need to write a separate `down` method.
+Here's an example of a migration:
 
 ```ruby
 class CreateProducts < ActiveRecord::Migration
@@ -103,40 +56,43 @@ class CreateProducts < ActiveRecord::Migration
 end
 ```
 
-### Migrations are Classes
+This migration adds a table called `products` with a string column called
+`name` and a text column called `description`. A primary key column called `id`
+will also be added implicitly, as it's the default primary key for all Active
+Record models. The `timestamps` macro adds two columns, `created_at` and
+`updated_at`. These special columns are automatically managed by Active Record
+if they exist.
 
-A migration is a subclass of `ActiveRecord::Migration` that implements
-two methods: `up` (perform the required transformations) and `down` (revert
-them).
-
-Active Record provides methods that perform common data definition tasks in a
-database independent way (you'll read about them in detail later):
-
-* `add_column`
-* `add_reference`
-* `add_index`
-* `change_column`
-* `change_table`
-* `create_table`
-* `create_join_table`
-* `drop_table`
-* `remove_column`
-* `remove_index`
-* `rename_column`
-* `remove_reference`
-
-If you need to perform tasks specific to your database (e.g., create a
-[foreign key](#active-record-and-referential-integrity) constraint) then the
-`execute` method allows you to execute arbitrary SQL. A migration is just a
-regular Ruby class so you're not limited to these functions. For example, after
-adding a column you could write code to set the value of that column for
-existing records (if necessary using your models).
+Note that we define the change that we want to happen moving forward in time.
+Before this migration is run, there will be no table. After, the table will
+exist. Active Record knows how to reverse this migration as well: if we roll
+this migration back, it will remove the table.
 
 On databases that support transactions with statements that change the schema
-(such as PostgreSQL or SQLite3), migrations are wrapped in a transaction. If the
-database does not support this (for example MySQL) then when a migration fails
-the parts of it that succeeded will not be rolled back. You will have to rollback
-the changes that were made by hand.
+(such as PostgreSQL or SQLite3), migrations are wrapped in a transaction. If
+the database does not support this (for example MySQL) then when a migration
+fails the parts of it that succeeded will not be rolled back. You will have to
+rollback the changes that were made by hand.
+
+If you wish for a migration to do something that Active Record doesn't know how
+to reverse, you can use `up` and `down` instead of `change`:
+
+```ruby
+class AddDefaultProducts < ActiveRecord::Migration
+  def up
+    5.times do |i|
+      Product.create(name: "Product ##{i}", description: "A product.")
+    end
+  end
+
+  def down
+    Product.delete_all
+  end
+end
+```
+
+Creating a Migration
+--------------------
 
 ### What's in a Name
 
@@ -176,53 +132,6 @@ Of course this is no substitution for communication within the team. For
 example, if Alice's migration removed a table that Bob's migration assumed to
 exist, then trouble would certainly strike.
 
-### Changing Migrations
-
-Occasionally you will make a mistake when writing a migration. If you have
-already run the migration then you cannot just edit the migration and run the
-migration again: Rails thinks it has already run the migration and so will do
-nothing when you run `rake db:migrate`. You must rollback the migration (for
-example with `rake db:rollback`), edit your migration and then run `rake db:migrate` to run the corrected version.
-
-In general, editing existing migrations is not a good idea. You will be creating
-extra work for yourself and your co-workers and cause major headaches if the
-existing version of the migration has already been run on production machines.
-Instead, you should write a new migration that performs the changes you require.
-Editing a freshly generated migration that has not yet been committed to source
-control (or, more generally, which has not been propagated beyond your
-development machine) is relatively harmless.
-
-### Supported Types
-
-Active Record supports the following database column types:
-
-* `:binary`
-* `:boolean`
-* `:date`
-* `:datetime`
-* `:decimal`
-* `:float`
-* `:integer`
-* `:primary_key`
-* `:string`
-* `:text`
-* `:time`
-* `:timestamp`
-
-These will be mapped onto an appropriate underlying database type. For example,
-with MySQL the type `:string` is mapped to `VARCHAR(255)`. You can create
-columns of types not supported by Active Record when using the non-sexy syntax such as
-
-```ruby
-create_table :products do |t|
-  t.column :name, 'polygon', null: false
-end
-```
-
-This may however hinder portability to other databases.
-
-Creating a Migration
---------------------
 
 ### Creating a Model
 
@@ -769,6 +678,24 @@ generates the following output
 If you want Active Record to not output anything, then running `rake db:migrate
 VERBOSE=false` will suppress all output.
 
+Changing Existing Migrations
+----------------------------
+
+Occasionally you will make a mistake when writing a migration. If you have
+already run the migration then you cannot just edit the migration and run the
+migration again: Rails thinks it has already run the migration and so will do
+nothing when you run `rake db:migrate`. You must rollback the migration (for
+example with `rake db:rollback`), edit your migration and then run `rake db:migrate` to run the corrected version.
+
+In general, editing existing migrations is not a good idea. You will be creating
+extra work for yourself and your co-workers and cause major headaches if the
+existing version of the migration has already been run on production machines.
+Instead, you should write a new migration that performs the changes you require.
+Editing a freshly generated migration that has not yet been committed to source
+control (or, more generally, which has not been propagated beyond your
+development machine) is relatively harmless.
+
+
 Using Models in Your Migrations
 -------------------------------
 
@@ -1012,3 +939,4 @@ features, the `execute` method can be used to execute arbitrary SQL. You could
 also use some plugin like [foreigner](https://github.com/matthuhiggins/foreigner)
 which add foreign key support to Active Record (including support for dumping
 foreign keys in `db/schema.rb`).
+
