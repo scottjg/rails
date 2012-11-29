@@ -77,15 +77,17 @@ If you wish for a migration to do something that Active Record doesn't know how
 to reverse, you can use `up` and `down` instead of `change`:
 
 ```ruby
-class AddDefaultProducts < ActiveRecord::Migration
+class ChangeProductsPrice < ActiveRecord::Migration
   def up
-    5.times do |i|
-      Product.create(name: "Product ##{i}", description: "A product.")
+    change_table :products do |t|
+      t.string :price, null: false
     end
   end
-
+ 
   def down
-    Product.delete_all
+    change_table :products do |t|
+      t.integer :price, null: false
+    end
   end
 end
 ```
