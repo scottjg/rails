@@ -267,8 +267,9 @@ get to work!
 
 ### Creating a Table
 
-Migration method `create_table` will be one of your workhorses. A typical use
-would be
+The `create_table` method is one of the most fundamental, but most of the time,
+will be generated for you from using a model or scaffold generator. A typical
+use would be
 
 ```ruby
 create_table :products do |t|
@@ -279,31 +280,11 @@ end
 which creates a `products` table with a column called `name` (and as discussed
 below, an implicit `id` column).
 
-The object yielded to the block allows you to create columns on the table. There
-are two ways of doing it. The first (traditional) form looks like
-
-```ruby
-create_table :products do |t|
-  t.column :name, :string, null: false
-end
-```
-
-The second form, the so called "sexy" migration, drops the somewhat redundant
-`column` method. Instead, the `string`, `integer`, etc. methods create a column
-of that type. Subsequent parameters are the same.
-
-```ruby
-create_table :products do |t|
-  t.string :name, null: false
-end
-```
-
 By default, `create_table` will create a primary key called `id`. You can change
 the name of the primary key with the `:primary_key` option (don't forget to
-update the corresponding model) or, if you don't want a primary key at all (for
-example for a HABTM join table), you can pass the option `id: false`. If you
-need to pass database specific options you can place an SQL fragment in the
-`:options` option. For example,
+update the corresponding model) or, if you don't want a primary key at all, you
+can pass the option `id: false`. If you need to pass database specific options
+you can place an SQL fragment in the `:options` option. For example,
 
 ```ruby
 create_table :products, options: "ENGINE=BLACKHOLE" do |t|
@@ -323,10 +304,12 @@ would be
 create_join_table :products, :categories
 ```
 
-which creates a `categories_products` table with two columns called `category_id` and `product_id`.
-These columns have the option `:null` set to `false` by default.
+which creates a `categories_products` table with two columns called
+`category_id` and `product_id`.  These columns have the option `:null` set to
+`false` by default.
 
-You can pass the option `:table_name` with you want to customize the table name. For example,
+You can pass the option `:table_name` with you want to customize the table
+name. For example,
 
 ```ruby
 create_join_table :products, :categories, table_name: :categorization
@@ -334,20 +317,21 @@ create_join_table :products, :categories, table_name: :categorization
 
 will create a `categorization` table.
 
-By default, `create_join_table` will create two columns with no options, but you can specify these
-options using the `:column_options` option. For example,
+By default, `create_join_table` will create two columns with no options, but
+you can specify these options using the `:column_options` option. For example,
 
 ```ruby
 create_join_table :products, :categories, column_options: {null: true}
 ```
 
-will create the `product_id` and `category_id` with the `:null` option as `true`.
+will create the `product_id` and `category_id` with the `:null` option as
+`true`.
 
 ### Changing Tables
 
 A close cousin of `create_table` is `change_table`, used for changing existing
-tables. It is used in a similar fashion to `create_table` but the object yielded
-to the block knows more tricks. For example
+tables. It is used in a similar fashion to `create_table` but the object
+yielded to the block knows more tricks. For example
 
 ```ruby
 change_table :products do |t|
@@ -361,66 +345,14 @@ end
 removes the `description` and `name` columns, creates a `part_number` string
 column and adds an index on it. Finally it renames the `upccode` column.
 
-### Special Helpers
-
-Active Record provides some shortcuts for common functionality. It is for
-example very common to add both the `created_at` and `updated_at` columns and so
-there is a method that does exactly that:
-
-```ruby
-create_table :products do |t|
-  t.timestamps
-end
-```
-
-will create a new products table with those two columns (plus the `id` column)
-whereas
-
-```ruby
-change_table :products do |t|
-  t.timestamps
-end
-```
-adds those columns to an existing table.
-
-Another helper is called `references` (also available as `belongs_to`). In its
-simplest form it just adds some readability.
-
-```ruby
-create_table :products do |t|
-  t.references :category
-end
-```
-
-will create a `category_id` column of the appropriate type. Note that you pass
-the model name, not the column name. Active Record adds the `_id` for you. If
-you have polymorphic `belongs_to` associations then `references` will add both
-of the columns required:
-
-```ruby
-create_table :products do |t|
-  t.references :attachment, polymorphic: {default: 'Photo'}
-end
-```
-
-will add an `attachment_id` column and a string `attachment_type` column with
-a default value of 'Photo'. `references` also allows you to define an
-index directly, instead of using `add_index` after the `create_table` call:
-
-```ruby
-create_table :products do |t|
-  t.references :category, index: true
-end
-```
-
-will create an index identical to calling `add_index :products, :category_id`.
-
-NOTE: The `references` helper does not actually create foreign key constraints
-for you. You will need to use `execute` or a plugin that adds [foreign key
-support](#active-record-and-referential-integrity).
+### When Helpers Aren't Enough
 
 If the helpers provided by Active Record aren't enough you can use the `execute`
-method to execute arbitrary SQL.
+method to execute arbitrary SQL:
+
+```ruby
+Products.connection.execute('UPDATE `products` SET `price`=`free` WHERE 1')
+```
 
 For more details and examples of individual methods, check the API documentation.
 In particular the documentation for
@@ -434,9 +366,10 @@ and
 
 ### Using the `change` Method
 
-The `change` method removes the need to write both `up` and `down` methods in
-those cases that Rails knows how to revert the changes automatically. Currently,
-the `change` method supports only these migration definitions:
+The `change` method is the primary way of writing migrations. It works for the
+majority of cases, where Active Record knows how to reverse the migration
+automatically. Currently, the `change` method supports only these migration
+definitions:
 
 * `add_column`
 * `add_index`
@@ -452,12 +385,13 @@ If you're going to need to use any other methods, you'll have to write the
 
 ### Using the `up`/`down` Methods
 
-The `down` method of your migration should revert the transformations done by
-the `up` method. In other words, the database schema should be unchanged if you
-do an `up` followed by a `down`. For example, if you create a table in the `up`
-method, you should drop it in the `down` method. It is wise to reverse the
-transformations in precisely the reverse order they were made in the `up`
-method. For example,
+The `up` method should describe the transformation you'd like to make to your
+schema, and the `down` method of your migration should revert the
+transformations done by the `up` method. In other words, the database schema
+should be unchanged if you do an `up` followed by a `down`. For example, if you
+create a table in the `up` method, you should drop it in the `down` method. It
+is wise to reverse the transformations in precisely the reverse order they were
+made in the `up` method. For example,
 
 ```ruby
 class ExampleMigration < ActiveRecord::Migration
@@ -465,6 +399,7 @@ class ExampleMigration < ActiveRecord::Migration
     create_table :products do |t|
       t.references :category
     end
+
     #add a foreign key
     execute <<-SQL
       ALTER TABLE products
@@ -472,6 +407,7 @@ class ExampleMigration < ActiveRecord::Migration
         FOREIGN KEY (category_id)
         REFERENCES categories(id)
     SQL
+
     add_column :users, :home_page_url, :string
     rename_column :users, :email, :email_address
   end
@@ -479,10 +415,12 @@ class ExampleMigration < ActiveRecord::Migration
   def down
     rename_column :users, :email_address, :email
     remove_column :users, :home_page_url
+
     execute <<-SQL
       ALTER TABLE products
         DROP FOREIGN KEY fk_products_categories
     SQL
+
     drop_table :products
   end
 end
