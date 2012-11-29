@@ -435,8 +435,7 @@ can't be done.
 Running Migrations
 ------------------
 
-Rails provides a set of rake tasks to work with migrations which boil down to
-running certain sets of migrations.
+Rails provides a set of rake tasks to run certain sets of migrations.
 
 The very first migration related rake task you will use will probably be
 `rake db:migrate`. In its most basic form it just runs the `up` or `change`
@@ -498,9 +497,10 @@ version to migrate to.
 The `rake db:reset` task will drop the database, recreate it and load the
 current schema into it.
 
-NOTE: This is not the same as running all the migrations. It will only use the contents 
-of the current schema.rb file. If a migration can't be rolled back, 'rake db:reset'
-may not help you. To find out more about dumping the schema see [schema.rb](#schema-dumping-and-you).
+NOTE: This is not the same as running all the migrations. It will only use the
+contents of the current schema.rb file. If a migration can't be rolled back,
+'rake db:reset' may not help you. To find out more about dumping the schema see
+'[schema dumping and you](#schema-dumping-and-you).'
 
 ### Running Specific Migrations
 
@@ -513,13 +513,16 @@ example,
 $ rake db:migrate:up VERSION=20080906120000
 ```
 
-will run the `up` method from the 20080906120000 migration. This task will first
-check whether the migration is already performed and will do nothing if Active Record believes
-that it has already been run.
+will run the `up` method from the 20080906120000 migration. This task will
+first check whether the migration is already performed and will do nothing if
+Active Record believes that it has already been run.
 
 ### Running Migrations in Different Environments
 
-By default running `rake db:migrate` will run in the `development` environment. To run migrations against another environment you can specify it using the `RAILS_ENV` environment variable while running the command. For example to run migrations against the `test` environment you could run:
+By default running `rake db:migrate` will run in the `development` environment.
+To run migrations against another environment you can specify it using the
+`RAILS_ENV` environment variable while running the command. For example to run
+migrations against the `test` environment you could run:
 
 ```bash
 $ rake db:migrate RAILS_ENV=test
@@ -557,9 +560,12 @@ class CreateProducts < ActiveRecord::Migration
         t.timestamps
       end
     end
+
     say "Created a table"
+
     suppress_messages {add_index :products, :name}
     say "and an index!", true
+
     say_with_time 'Waiting for a while' do
       sleep 10
       250
