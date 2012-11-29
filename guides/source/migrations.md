@@ -68,11 +68,10 @@ Before this migration is run, there will be no table. After, the table will
 exist. Active Record knows how to reverse this migration as well: if we roll
 this migration back, it will remove the table.
 
-On databases that support transactions with statements that change the schema
-(such as PostgreSQL or SQLite3), migrations are wrapped in a transaction. If
-the database does not support this (for example MySQL) then when a migration
-fails the parts of it that succeeded will not be rolled back. You will have to
-rollback the changes that were made by hand.
+On databases that support transactions with statements that change the schema ,
+migrations are wrapped in a transaction. If the database does not support this
+then when a migration fails the parts of it that succeeded will not be rolled
+back. You will have to rollback the changes that were made by hand.
 
 If you wish for a migration to do something that Active Record doesn't know how
 to reverse, you can use `up` and `down` instead of `change`:
