@@ -610,8 +610,8 @@ beyond your development machine) is relatively harmless.
 Using Models in Your Migrations
 -------------------------------
 
-When creating or updating data in a migration it is often tempting to use one of
-your models. After all, they exist to provide easy access to the underlying
+When creating or updating data in a migration it is often tempting to use one
+of your models. After all, they exist to provide easy access to the underlying
 data. This can be done, but some caution should be observed.
 
 For example, problems occur when the model uses database columns which are (1)
@@ -673,8 +673,8 @@ Both migrations work for Alice.
 
 Bob comes back from vacation and:
 
-*   Updates the source - which contains both migrations and the latest version of
-    the Product model.
+*   Updates the source - which contains both migrations and the latest version
+    of the Product model.
 *   Runs outstanding migrations with `rake db:migrate`, which
     includes the one that updates the `Product` model.
 
@@ -689,10 +689,10 @@ An error has occurred, this and all later migrations canceled:
 undefined method `fuzz' for #<Product:0x000001049b14a0>
 ```
 
-A fix for this is to create a local model within the migration. This keeps Rails
-from running the validations, so that the migrations run to completion.
+A fix for this is to create a local model within the migration. This keeps
+Rails from running the validations, so that the migrations run to completion.
 
-When using a faux model, it's a good idea to call
+When using a local model, it's a good idea to call
 `Product.reset_column_information` to refresh the `ActiveRecord` cache for the
 `Product` model prior to updating data in the database.
 
