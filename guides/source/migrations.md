@@ -94,7 +94,7 @@ end
 Creating a Migration
 --------------------
 
-### What's in a Name
+### Creating a Standalone Migration
 
 Migrations are stored as files in the `db/migrate` directory, one for each
 migration class. The name of the file is of the form
@@ -104,72 +104,10 @@ of the migration. The name of the migration class (CamelCased version)
 should match the latter part of the file name. For example
 `20080906120000_create_products.rb` should define class `CreateProducts` and
 `20080906120001_add_details_to_products.rb` should define
-`AddDetailsToProducts`. If you do feel the need to change the file name then you
-<em>have to</em> update the name of the class inside or Rails will complain
-about a missing class.
+`AddDetailsToProducts`. 
 
-Internally Rails only uses the migration's number (the timestamp) to identify
-them. Prior to Rails 2.1 the migration number started at 1 and was incremented
-each time a migration was generated. With multiple developers it was easy for
-these to clash requiring you to rollback migrations and renumber them. With
-Rails 2.1+ this is largely avoided by using the creation time of the migration
-to identify them. You can revert to the old numbering scheme by adding the
-following line to `config/application.rb`.
-
-```ruby
-config.active_record.timestamped_migrations = false
-```
-
-The combination of timestamps and recording which migrations have been run
-allows Rails to handle common situations that occur with multiple developers.
-
-For example, Alice adds migrations `20080906120000` and `20080906123000` and Bob
-adds `20080906124500` and runs it. Alice finishes her changes and checks in her
-migrations and Bob pulls down the latest changes. When Bob runs `rake db:migrate`,
-Rails knows that it has not run Alice's two migrations so it executes the `up` method for each migration.
-
-Of course this is no substitution for communication within the team. For
-example, if Alice's migration removed a table that Bob's migration assumed to
-exist, then trouble would certainly strike.
-
-
-### Creating a Model
-
-The model and scaffold generators will create migrations appropriate for adding
-a new model. This migration will already contain instructions for creating the
-relevant table. If you tell Rails what columns you want, then statements for
-adding these columns will also be created. For example, running
-
-```bash
-$ rails generate model Product name:string description:text
-```
-
-TIP: All lines starting with a dollar sign `$` are intended to be run on the command line.
-
-will create a migration that looks like this
-
-```ruby
-class CreateProducts < ActiveRecord::Migration
-  def change
-    create_table :products do |t|
-      t.string :name
-      t.text :description
-
-      t.timestamps
-    end
-  end
-end
-```
-
-You can append as many column name/type pairs as you want. By default, the
-generated migration will include `t.timestamps` (which creates the
-`updated_at` and `created_at` columns that are automatically populated
-by Active Record).
-
-### Creating a Standalone Migration
-
-If you are creating migrations for other purposes (e.g., to add a column
-to an existing table) then you can also use the migration generator:
+Of course, calculating timestamps is no fun, so Active Record provides a
+generator to handle making it for you:
 
 ```bash
 $ rails generate migration AddPartNumberToProducts
@@ -244,10 +182,11 @@ or remove from it as you see fit by editing the
 `db/migrate/YYYYMMDDHHMMSS_add_details_to_products.rb` file.
 
 NOTE: The generated migration file for destructive migrations will still be
-old-style using the `up` and `down` methods. This is because Rails needs to know
-the original data types defined when you made the original changes.
+old-style using the `up` and `down` methods. This is because Rails needs to
+know the original data types defined when you made the original changes.
 
-Also, the generator accepts column type as `references`(also available as `belongs_to`). For instance
+Also, the generator accepts column type as `references`(also available as
+`belongs_to`). For instance
 
 ```bash
 $ rails generate migration AddUserRefToProducts user:references
@@ -263,12 +202,40 @@ class AddUserRefToProducts < ActiveRecord::Migration
 end
 ```
 
-This migration will create a user_id column and appropriate index.
+This migration will create a `user_id` column and appropriate index.
+
+### Model Generators
+
+The model and scaffold generators will create migrations appropriate for adding
+a new model. This migration will already contain instructions for creating the
+relevant table. If you tell Rails what columns you want, then statements for
+adding these columns will also be created. For example, running
+
+```bash
+$ rails generate model Product name:string description:text
+```
+
+will create a migration that looks like this
+
+```ruby
+class CreateProducts < ActiveRecord::Migration
+  def change
+    create_table :products do |t|
+      t.string :name
+      t.text :description
+
+      t.timestamps
+    end
+  end
+end
+```
+
+You can append as many column name/type pairs as you want.
 
 ### Supported Type Modifiers
 
-You can also specify some options just after the field type between curly braces. You can use the
-following modifiers:
+You can also specify some options just after the field type between curly
+braces. You can use the following modifiers:
 
 * `limit`        Sets the maximum size of the `string/text/binary/integer` fields
 * `precision`    Defines the precision for the `decimal` fields
