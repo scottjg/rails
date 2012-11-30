@@ -1,5 +1,10 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Integrate the Journey gem into Action Dispatch so that the global namespace
+    is not polluted with names that may be used as models.
+
+    *Andrew White*
+
 *   Sweepers was extracted from Action Controller as `rails-observers` gem.
 
     *Rafael Mendonça França*

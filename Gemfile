@@ -12,9 +12,10 @@ gem 'jquery-rails', '~> 2.1.4', github: 'rails/jquery-rails'
 gem 'turbolinks'
 gem 'coffee-rails', github: 'rails/coffee-rails'
 
-gem 'journey', github: 'rails/journey', branch: 'master'
-
 gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
+
+# Needed for compiling the Journey parser
+gem 'racc', '>=1.4.6'
 
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
