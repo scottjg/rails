@@ -1,4 +1,3 @@
-require 'active_support/basic_object'
 require 'active_support/core_ext/array/conversions'
 require 'active_support/core_ext/object/acts_like'
 
@@ -7,7 +6,7 @@ module ActiveSupport
   # Time#advance, respectively. It mainly supports the methods on Numeric.
   #
   #   1.month.ago       # equivalent to Time.now.advance(months: -1)
-  class Duration < BasicObject
+  class Duration < ::BasicObject
     attr_accessor :value, :parts
 
     def initialize(value, parts) #:nodoc:
