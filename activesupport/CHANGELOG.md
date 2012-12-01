@@ -1,6 +1,7 @@
 ## Rails 4.0.0 (unreleased) ##
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 *   It's now possible to compare Date, DateTime, Time and TimeWithZone with Infinity
     This allows to create date/time ranges with one infinite bound.
     Example:
@@ -14,6 +15,21 @@
 
     *Alexander Grebennik*
 =======
+=======
+*   Add `DateTime#seconds_until_end_of_day` and `Time#seconds_until_end_of_day`
+    as a complement for `seconds_from_midnight`; useful when setting expiration
+    times for caches, e.g.:
+
+        <% cache('dashboard', expires_in: Date.current.seconds_until_end_of_day) do %>
+          ...
+
+    *Olek Janiszewski*
+
+*   No longer proxy ActiveSupport::Multibyte#class. *Steve Klabnik*
+
+*   Deprecate `ActiveSupport::TestCase#pending` method, use `skip` from MiniTest instead. *Carlos Antonio da Silva*
+
+>>>>>>> upstream/master
 *   `XmlMini.with_backend` now may be safely used with threads:
 
         Thread.new do
@@ -77,7 +93,7 @@
 
     *Jeremy Kemper*
 
-*   Add logger.push_tags and .pop_tags to complement logger.tagged:
+*   Add `logger.push_tags` and `.pop_tags` to complement logger.tagged:
 
         class Job
           def before
@@ -285,8 +301,6 @@
 *   `AS::Callbacks#define_callbacks`: add `:skip_after_callbacks_if_terminated` option.
 
 *   Add html_escape_once to ERB::Util, and delegate escape_once tag helper to it. *Carlos Antonio da Silva*
-
-*   Remove ActiveSupport::TestCase#pending method, use `skip` instead. *Carlos Antonio da Silva*
 
 *   Deprecates the compatibility method Module#local_constant_names,
     use Module#local_constants instead (which returns symbols). *fxn*

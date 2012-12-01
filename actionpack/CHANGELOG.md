@@ -1,5 +1,76 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Sweepers was extracted from Action Controller as `rails-observers` gem.
+
+    *Rafael Mendonça França*
+
+*   Add option flag to `CacheHelper#cache` to manually bypass automatic template digests:
+
+        <% cache project, skip_digest: true do %>
+          ...
+        <% end %>
+
+    *Drew Ulmer*
+
+*   No sort Hash options in #grouped_options_for_select. *Sergey Kojin*
+
+*   Accept symbols as #send_data :disposition value *Elia Schito*
+
+*   Add i18n scope to distance_of_time_in_words. *Steve Klabnik*
+
+*   `assert_template`:
+    - is no more passing with empty string.
+    - is now validating option keys. It accepts: `:layout`, `:partial`, `:locals` and `:count`.
+
+    *Roberto Soares*
+
+*   Allow setting a symbol as path in scope on routes. This is now allowed:
+
+        scope :api do
+          resources :users
+        end
+
+    It is also possible to pass multiple symbols to scope to shorten multiple nested scopes:
+
+        scope :api do
+          scope :v1 do
+            resources :users
+          end
+        end
+
+    can be rewritten as:
+
+        scope :api, :v1 do
+          resources :users
+        end
+
+    *Guillermo Iguaran*
+
+*   Fix error when using a non-hash query argument named "params" in `url_for`.
+
+    Before:
+
+        url_for(params: "") # => undefined method `reject!' for "":String
+
+    After:
+
+        url_for(params: "") # => http://www.example.com?params=
+
+    *tumayun + Carlos Antonio da Silva*
+
+*   Render every partial with a new `ActionView::PartialRenderer`. This resolves
+    issues when rendering nested partials.
+    Fix #8197
+
+    *Yves Senn*
+
+*   Introduce `ActionView::Template::Handlers::ERB.escape_whitelist`. This is a list
+    of mime types where template text is not html escaped by default. It prevents `Jack & Joe`
+    from rendering as `Jack &amp; Joe` for the whitelisted mime types. The default whitelist
+    contains text/plain. Fix #7976
+
+    *Joost Baaij*
+
 *   Fix input name when `:multiple => true` and `:index` are set.
 
     Before:
