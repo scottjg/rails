@@ -1,5 +1,10 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fix counter cache columns not updated when replacing `has_many :through`
+    associations.
+
+    *Matthew Robertson*
+
 *   Add STI support to init and building associations.
     Allows you to do BaseClass.new(:type => "SubClass") as well as
     parent.children.build(:type => "SubClass") or parent.build_child
