@@ -153,6 +153,11 @@ module ActiveRecord
 
           delete_through_records(records)
 
+          if source_reflection.options[:counter_cache]
+            counter = source_reflection.counter_cache_column
+            klass.update_counters records.map(&:id), counter => -count
+          end
+
           if through_reflection.macro == :has_many && update_through_counter?(method)
             update_counter(-count, through_reflection)
           end
