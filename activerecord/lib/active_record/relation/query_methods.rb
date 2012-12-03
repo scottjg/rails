@@ -66,8 +66,7 @@ module ActiveRecord
       args.empty? ? self : spawn.includes!(*args)
     end
 
-    # Like #includes, but modifies the relation in place.
-    def includes!(*args)
+    def includes!(*args) # :nodoc:
       args.reject! {|a| a.blank? }
 
       self.includes_values = (includes_values + args).flatten.uniq
@@ -84,8 +83,7 @@ module ActiveRecord
       args.blank? ? self : spawn.eager_load!(*args)
     end
 
-    # Like #eager_load, but modifies relation in place.
-    def eager_load!(*args)
+    def eager_load!(*args) # :nodoc:
       self.eager_load_values += args
       self
     end
@@ -98,8 +96,7 @@ module ActiveRecord
       args.blank? ? self : spawn.preload!(*args)
     end
 
-    # Like #preload, but modifies relation in place.
-    def preload!(*args)
+    def preload!(*args) # :nodoc:
       self.preload_values += args
       self
     end
@@ -116,8 +113,7 @@ module ActiveRecord
       args.blank? ? self : spawn.references!(*args)
     end
 
-    # Like #references, but modifies relation in place.
-    def references!(*args)
+    def references!(*args) # :nodoc:
       args.flatten!
 
       self.references_values = (references_values + args.map!(&:to_s)).uniq
@@ -162,8 +158,7 @@ module ActiveRecord
       end
     end
 
-    # Like #select, but modifies relation in place.
-    def select!(*fields)
+    def select!(*fields) # :nodoc:
       self.select_values += fields.flatten
       self
     end
@@ -184,8 +179,7 @@ module ActiveRecord
       args.blank? ? self : spawn.group!(*args)
     end
 
-    # Like #group, but modifies relation in place.
-    def group!(*args)
+    def group!(*args) # :nodoc:
       args.flatten!
 
       self.group_values += args
@@ -215,10 +209,8 @@ module ActiveRecord
       args.blank? ? self : spawn.order!(*args)
     end
 
-    # Like #order, but modifies relation in place.
-    def order!(*args)
+    def order!(*args) # :nodoc:
       args.flatten!
-
       validate_order_args args
 
       references = args.reject { |arg| Arel::Node === arg }
@@ -242,10 +234,8 @@ module ActiveRecord
       args.blank? ? self : spawn.reorder!(*args)
     end
 
-    # Like #reorder, but modifies relation in place.
-    def reorder!(*args)
+    def reorder!(*args) # :nodoc:
       args.flatten!
-
       validate_order_args args
 
       self.reordering_value = true
@@ -261,8 +251,7 @@ module ActiveRecord
       args.compact.blank? ? self : spawn.joins!(*args.flatten)
     end
 
-    # Like #joins, but modifies relation in place.
-    def joins!(*args)
+    def joins!(*args) # :nodoc:
       self.joins_values += args
       self
     end
@@ -271,7 +260,7 @@ module ActiveRecord
       spawn.bind!(value)
     end
 
-    def bind!(value)
+    def bind!(value) # :nodoc:
       self.bind_values += [value]
       self
     end
@@ -357,17 +346,17 @@ module ActiveRecord
     #    author = Author.find(1)
     #
     #    # The following queries will be equivalent:
-    #    Post.where(:author => author)
-    #    Post.where(:author_id => author)
+    #    Post.where(author: author)
+    #    Post.where(author_id: author)
     #
     # This also works with polymorphic belongs_to relationships:
     #
-    #    treasure = Treasure.create(:name => 'gold coins')
-    #    treasure.price_estimates << PriceEstimate.create(:price => 125)
+    #    treasure = Treasure.create(name: 'gold coins')
+    #    treasure.price_estimates << PriceEstimate.create(price: 125)
     #
     #    # The following queries will be equivalent:
-    #    PriceEstimate.where(:estimate_of => treasure)
-    #    PriceEstimate.where(:estimate_of_type => 'Treasure', :estimate_of_id => treasure)
+    #    PriceEstimate.where(estimate_of: treasure)
+    #    PriceEstimate.where(estimate_of_type: 'Treasure', estimate_of_id: treasure)
     #
     # === Joins
     #
@@ -379,7 +368,7 @@ module ActiveRecord
     # For hash conditions, you can either use the table name in the key, or use a sub-hash.
     #
     #    User.joins(:posts).where({ "posts.published" => true })
-    #    User.joins(:posts).where({ :posts => { :published => true } })
+    #    User.joins(:posts).where({ posts: { published: true } })
     #
     # === empty condition
     #
@@ -388,9 +377,7 @@ module ActiveRecord
       opts.blank? ? self : spawn.where!(opts, *rest)
     end
 
-    # #where! is identical to #where, except that instead of returning a new relation, it adds
-    # the condition to the existing relation.
-    def where!(opts, *rest)
+    def where!(opts, *rest) # :nodoc:
       references!(PredicateBuilder.references(opts)) if Hash === opts
 
       self.where_values += build_where(opts, rest)
@@ -405,8 +392,7 @@ module ActiveRecord
       opts.blank? ? self : spawn.having!(opts, *rest)
     end
 
-    # Like #having, but modifies relation in place.
-    def having!(opts, *rest)
+    def having!(opts, *rest) # :nodoc:
       references!(PredicateBuilder.references(opts)) if Hash === opts
 
       self.having_values += build_where(opts, rest)
@@ -422,8 +408,7 @@ module ActiveRecord
       spawn.limit!(value)
     end
 
-    # Like #limit, but modifies relation in place.
-    def limit!(value)
+    def limit!(value) # :nodoc:
       self.limit_value = value
       self
     end
@@ -439,8 +424,7 @@ module ActiveRecord
       spawn.offset!(value)
     end
 
-    # Like #offset, but modifies relation in place.
-    def offset!(value)
+    def offset!(value) # :nodoc:
       self.offset_value = value
       self
     end
@@ -451,8 +435,7 @@ module ActiveRecord
       spawn.lock!(locks)
     end
 
-    # Like #lock, but modifies relation in place.
-    def lock!(locks = true)
+    def lock!(locks = true) # :nodoc:
       case locks
       when String, TrueClass, NilClass
         self.lock_value = locks || true
@@ -478,13 +461,13 @@ module ActiveRecord
     #
     # For example:
     #
-    #   @posts = current_user.visible_posts.where(:name => params[:name])
+    #   @posts = current_user.visible_posts.where(name: params[:name])
     #   # => the visible_posts method is expected to return a chainable Relation
     #
     #   def visible_posts
     #     case role
     #     when 'Country Manager'
-    #       Post.where(:country => country)
+    #       Post.where(country: country)
     #     when 'Reviewer'
     #       Post.published
     #     when 'Bad User'
@@ -496,8 +479,7 @@ module ActiveRecord
       extending(NullRelation)
     end
 
-    # Like #none, but modifies relation in place.
-    def none!
+    def none! # :nodoc:
       extending!(NullRelation)
     end
 
@@ -511,8 +493,7 @@ module ActiveRecord
       spawn.readonly!(value)
     end
 
-    # Like #readonly, but modifies relation in place.
-    def readonly!(value = true)
+    def readonly!(value = true) # :nodoc:
       self.readonly_value = value
       self
     end
@@ -534,12 +515,7 @@ module ActiveRecord
       spawn.create_with!(value)
     end
 
-    # Like #create_with but modifies the relation in place. Raises
-    # +ImmutableRelation+ if the relation has already been loaded.
-    #
-    #   users = User.all.create_with!(name: 'Oscar')
-    #   users.new.name # => 'Oscar'
-    def create_with!(value)
+    def create_with!(value) # :nodoc:
       self.create_with_value = value ? create_with_value.merge(value) : {}
       self
     end
@@ -562,7 +538,7 @@ module ActiveRecord
     end
 
     # Like #from, but modifies relation in place.
-    def from!(value, subquery_name = nil)
+    def from!(value, subquery_name = nil) # :nodoc:
       self.from_value = [value, subquery_name]
       self
     end
@@ -582,7 +558,7 @@ module ActiveRecord
     end
 
     # Like #uniq, but modifies relation in place.
-    def uniq!(value = true)
+    def uniq!(value = true) # :nodoc:
       self.uniq_value = value
       self
     end
@@ -631,8 +607,7 @@ module ActiveRecord
       end
     end
 
-    # Like #extending, but modifies relation in place.
-    def extending!(*modules, &block)
+    def extending!(*modules, &block) # :nodoc:
       modules << Module.new(&block) if block_given?
 
       self.extending_values += modules.flatten
@@ -648,8 +623,7 @@ module ActiveRecord
       spawn.reverse_order!
     end
 
-    # Like #reverse_order, but modifies relation in place.
-    def reverse_order!
+    def reverse_order! # :nodoc:
       self.reverse_order_value = !reverse_order_value
       self
     end
@@ -796,7 +770,7 @@ module ActiveRecord
     def reverse_sql_order(order_query)
       order_query = ["#{quoted_table_name}.#{quoted_primary_key} ASC"] if order_query.empty?
 
-      order_query.map do |o|
+      order_query.flat_map do |o|
         case o
         when Arel::Nodes::Ordering
           o.reverse
@@ -814,7 +788,7 @@ module ActiveRecord
         else
           o
         end
-      end.flatten
+      end
     end
 
     def array_of_strings?(o)
@@ -825,7 +799,7 @@ module ActiveRecord
       orders = order_values
       orders = reverse_sql_order(orders) if reverse_order_value
 
-      orders = orders.uniq.reject(&:blank?).map do |order|
+      orders = orders.uniq.reject(&:blank?).flat_map do |order|
         case order
         when Symbol
           table[order].asc
@@ -834,7 +808,7 @@ module ActiveRecord
         else
           order
         end
-      end.flatten
+      end
 
       arel.order(*orders) unless orders.empty?
     end

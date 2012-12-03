@@ -1,5 +1,111 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   More descriptive error messages when calling `render :partial` with
+    an invalid `:layout` argument.
+    #8376
+
+        render :partial => 'partial', :layout => true
+
+        # results in ActionView::MissingTemplate: Missing partial /true
+
+    *Yves Senn*
+
+*   Sweepers was extracted from Action Controller as `rails-observers` gem.
+
+    *Rafael Mendonça França*
+
+*   Add option flag to `CacheHelper#cache` to manually bypass automatic template digests:
+
+        <% cache project, skip_digest: true do %>
+          ...
+        <% end %>
+
+    *Drew Ulmer*
+
+*   No sort Hash options in #grouped_options_for_select. *Sergey Kojin*
+
+*   Accept symbols as #send_data :disposition value *Elia Schito*
+
+*   Add i18n scope to distance_of_time_in_words. *Steve Klabnik*
+
+*   `assert_template`:
+    - is no more passing with empty string.
+    - is now validating option keys. It accepts: `:layout`, `:partial`, `:locals` and `:count`.
+
+    *Roberto Soares*
+
+*   Allow setting a symbol as path in scope on routes. This is now allowed:
+
+        scope :api do
+          resources :users
+        end
+
+    It is also possible to pass multiple symbols to scope to shorten multiple nested scopes:
+
+        scope :api do
+          scope :v1 do
+            resources :users
+          end
+        end
+
+    can be rewritten as:
+
+        scope :api, :v1 do
+          resources :users
+        end
+
+    *Guillermo Iguaran*
+
+*   Fix error when using a non-hash query argument named "params" in `url_for`.
+
+    Before:
+
+        url_for(params: "") # => undefined method `reject!' for "":String
+
+    After:
+
+        url_for(params: "") # => http://www.example.com?params=
+
+    *tumayun + Carlos Antonio da Silva*
+
+*   Render every partial with a new `ActionView::PartialRenderer`. This resolves
+    issues when rendering nested partials.
+    Fix #8197
+
+    *Yves Senn*
+
+*   Introduce `ActionView::Template::Handlers::ERB.escape_whitelist`. This is a list
+    of mime types where template text is not html escaped by default. It prevents `Jack & Joe`
+    from rendering as `Jack &amp; Joe` for the whitelisted mime types. The default whitelist
+    contains text/plain. Fix #7976
+
+    *Joost Baaij*
+
+*   Fix input name when `:multiple => true` and `:index` are set.
+
+    Before:
+
+        check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+        #=> <input name=\"post[foo][comment_ids]\" type=\"hidden\" value=\"0\" /><input id=\"post_foo_comment_ids_1\" name=\"post[foo][comment_ids]\" type=\"checkbox\" value=\"1\" />
+
+    After:
+
+        check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+        #=> <input name=\"post[foo][comment_ids][]\" type=\"hidden\" value=\"0\" /><input id=\"post_foo_comment_ids_1\" name=\"post[foo][comment_ids][]\" type=\"checkbox\" value=\"1\" />
+
+    Fix #8108
+
+    *Daniel Fox, Grant Hutchins & Trace Wax*
+
+*   Clear url helpers when reloading routes.
+
+    *Santiago Pastorino*
+
+*   `BestStandardsSupport` middleware now appends it's `X-UA-Compatible` value to app's
+    returned value if any. Fix #8086
+
+    *Nikita Afanasenko*
+
 *   `date_select` helper accepts `with_css_classes: true` to add css classes similar with type
     of generated select tags.
 
@@ -133,16 +239,6 @@
 *   Allow pass couple extensions to `ActionView::Template.register_template_handler` call.
 
     *Tima Maslyuchenko*
-
-*   Fixed a bug with shorthand routes scoped with the `:module` option not
-    adding the module to the controller as described in issue #6497.
-    This should now work properly:
-
-        scope :module => "engine" do
-          get "api/version" # routes to engine/api#version
-        end
-
-    *Luiz Felipe Garcia Pereira*
 
 *   Sprockets integration has been extracted from Action Pack to the `sprockets-rails`
     gem. `rails` gem is depending on `sprockets-rails` by default.

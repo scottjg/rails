@@ -65,14 +65,12 @@ module ActionController
   #   params["key"] # => "value"
   class Parameters < ActiveSupport::HashWithIndifferentAccess
     cattr_accessor :permit_all_parameters, instance_accessor: false
-    attr_accessor :permitted # :nodoc:
 
     # Returns a new instance of <tt>ActionController::Parameters</tt>.
     # Also, sets the +permitted+ attribute to the default value of
     # <tt>ActionController::Parameters.permit_all_parameters</tt>.
     #
-    #   class Person
-    #     include ActiveRecord::Base
+    #   class Person < ActiveRecord::Base
     #   end
     #
     #   params = ActionController::Parameters.new(name: 'Francesco')
@@ -126,10 +124,10 @@ module ActionController
     # <tt>ActionController::ParameterMissing</tt> error.
     #
     #   ActionController::Parameters.new(person: { name: 'Francesco' }).require(:person)
-    #   # => {"name"=>"Francesco"}
+    #   # => {"name"=>"Francesco"}
     #
     #   ActionController::Parameters.new(person: nil).require(:person)
-    #   # => ActionController::ParameterMissing: param not found: person
+    #   # => ActionController::ParameterMissing: param not found: person
     #
     #   ActionController::Parameters.new(person: {}).require(:person)
     #   # => ActionController::ParameterMissing: param not found: person
@@ -189,14 +187,14 @@ module ActionController
     #   # => {}
     #
     #   params.require(:person).permit(contact: :phone)
-    #   # => {"contact"=>{"phone"=>"555-1234"}}
+    #   # => {"contact"=>{"phone"=>"555-1234"}}
     #
     #   params.require(:person).permit(contact: [ :email, :phone ])
     #   # => {"contact"=>{"email"=>"none@test.com", "phone"=>"555-1234"}}
     def permit(*filters)
       params = self.class.new
 
-      filters.each do |filter|
+      filters.flatten.each do |filter|
         case filter
         when Symbol, String then
           if has_key?(filter)
@@ -205,6 +203,8 @@ module ActionController
           end
           keys.grep(/\A#{Regexp.escape(filter)}\(\d+[if]?\)\z/) { |key| params[key] = self[key] }
         when Hash then
+          filter = filter.with_indifferent_access
+
           self.slice(*filter.keys).each do |key, values|
             return unless values
 
@@ -260,7 +260,9 @@ module ActionController
     #   params.slice(:a, :b) # => {"a"=>1, "b"=>2}
     #   params.slice(:d)     # => {}
     def slice(*keys)
-      self.class.new(super)
+      self.class.new(super).tap do |new_instance|
+        new_instance.instance_variable_set :@permitted, @permitted
+      end
     end
 
     # Returns an exact copy of the <tt>ActionController::Parameters</tt>
@@ -361,7 +363,7 @@ module ActionController
   #         # It's mandatory to specify the nested attributes that should be whitelisted.
   #         # If you use `permit` with just the key that points to the nested attributes hash,
   #         # it will return an empty hash.
-  #         params.require(:person).permit(:name, :age, pets_attributes: { :name, :category })
+  #         params.require(:person).permit(:name, :age, pets_attributes: [ :name, :category ])
   #       end
   #   end
   #

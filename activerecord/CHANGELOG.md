@@ -1,6 +1,104 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   Use query cache/uncache when using DATABASE_URL.
+*   Add STI support to init and building associations.
+    Allows you to do BaseClass.new(:type => "SubClass") as well as
+    parent.children.build(:type => "SubClass") or parent.build_child
+    to initialize an STI subclass. Ensures that the class name is a
+    valid class and that it is in the ancestors of the super class
+    that the association is expecting.
+
+    *Jason Rush*
+
+*   Observers was extracted from Active Record as `rails-observers` gem.
+
+    *Rafael Mendonça França*
+
+*   Ensure that associations take a symbol argument. *Steve Klabnik*
+
+*   Fix dirty attribute checks for `TimeZoneConversion` with nil and blank
+    datetime attributes. Setting a nil datetime to a blank string should not
+    result in a change being flagged. Fix #8310
+
+    *Alisdair McDiarmid*
+
+*   Prevent mass assignment to the type column of polymorphic associations when using `build`
+    Fix #8265
+
+    *Yves Senn*
+
+*   Deprecate calling `Relation#sum` with a block. To perform a calculation over
+    the array result of the relation, use `to_a.sum(&block)`.
+
+    *Carlos Antonio da Silva*
+
+*   Fix postgresql adapter to handle BC timestamps correctly
+
+        HistoryEvent.create!(:name => "something", :occured_at => Date.new(0) - 5.years)
+
+    *Bogdan Gusiev*
+
+*   When running migrations on Postgresql, the `:limit` option for `binary` and `text` columns is silently dropped.
+    Previously, these migrations caused sql exceptions, because Postgresql doesn't support limits on these types.
+
+    *Victor Costan*
+
+*   Don't change STI type when calling `ActiveRecord::Base#becomes`.
+    Add `ActiveRecord::Base#becomes!` with the previous behavior.
+
+    See #3023 for more information.
+
+    *Thomas Hollstegge*
+
+*   `rename_index` can be used inside a `change_table` block.
+
+        change_table :accounts do |t|
+          t.rename_index :user_id, :account_id
+        end
+
+    *Jarek Radosz*
+
+*   `#pluck` can be used on a relation with `select` clause. Fix #7551
+
+    Example:
+
+        Topic.select([:approved, :id]).order(:id).pluck(:id)
+
+    *Yves Senn*
+
+*   Do not create useless database transaction when building `has_one` association.
+
+    Example:
+
+        User.has_one :profile
+        User.new.build_profile
+
+    *Bogdan Gusiev*
+
+*   `:counter_cache` option for `has_many` associations to support custom named counter caches.
+    Fix #7993
+
+    *Yves Senn*
+
+*   Deprecate the possibility to pass a string as third argument of `add_index`.
+    Pass `unique: true` instead.
+
+        add_index(:users, :organization_id, unique: true)
+
+    *Rafael Mendonça França*
+
+*   Raise an `ArgumentError` when passing an invalid option to `add_index`.
+
+    *Rafael Mendonça França*
+
+*   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
+
+    *Alexis Bernard*
+
+*   `AR::Base#attributes_before_type_cast` now returns unserialized values for serialized attributes.
+
+    *Nikita Afanasenko*
+
+*   Use query cache/uncache when using `DATABASE_URL`.
     Fix #6951.
 
     *kennyj*
@@ -375,11 +473,11 @@
 
     *kennyj*
 
-*   Use inversed parent for first and last child of has_many association.
+*   Use inversed parent for first and last child of `has_many` association.
 
     *Ravil Bayramgalin*
 
-*   Fix Column.microseconds and Column.fast_string_to_date to avoid converting
+*   Fix `Column.microseconds` and `Column.fast_string_to_time` to avoid converting
     timestamp seconds to a float, since it occasionally results in inaccuracies
     with microsecond-precision times. Fixes #7352.
 
@@ -668,13 +766,6 @@
     `ActiveRecord::RecordNotDestroyed` exception instead of returning `false`.
 
     *Marc-André Lafortune*
-
-*   Allow blocks for `count` with `ActiveRecord::Relation`, to work similar as
-    `Array#count`:
-
-        Person.where("age > 26").count { |person| person.gender == 'female' }
-
-    *Chris Finne & Carlos Antonio da Silva*
 
 *   Added support to `CollectionAssociation#delete` for passing `fixnum`
     or `string` values as record ids. This finds the records responding

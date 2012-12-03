@@ -50,16 +50,9 @@ module ActiveRecord
         def define_method_attribute(name)
           safe_name = name.unpack('h*').first
           generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
-            module AttrNames
-              unless defined? ATTR_#{safe_name}
-                ATTR_#{safe_name} = #{name.inspect}.freeze
-              end
-            end
-
             def __temp__#{safe_name}
               read_attribute(AttrNames::ATTR_#{safe_name}) { |n| missing_attribute(n, caller) }
             end
-
             alias_method #{name.inspect}, :__temp__#{safe_name}
             undef_method :__temp__#{safe_name}
           STR

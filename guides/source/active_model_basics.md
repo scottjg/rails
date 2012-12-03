@@ -1,11 +1,11 @@
 Active Model Basics
 ===================
 
-This guide should provide you with all you need to get started using model classes. Active Model allows for Action Pack helpers to interact with non-ActiveRecord models. Active Model also helps building custom ORMs for use outside of the Rails framework.
+This guide should provide you with all you need to get started using model classes. Active Model allows for Action Pack helpers to interact with non-Active Record models. Active Model also helps building custom ORMs for use outside of the Rails framework.
+
+After reading this guide, you will know:
 
 --------------------------------------------------------------------------------
-
-WARNING. This guide is based on Rails 3.0. Some of the code shown here will not work in earlier versions of Rails.
 
 Introduction
 ------------
@@ -188,13 +188,13 @@ class Person
 
   attr_accessor :name, :email, :token
   
-  validates :name, :presence => true
-  validates_format_of :email, :with => /\A([^\s]+)((?:[-a-z0-9]\.)[a-z]{2,})\z/i  
-  validates! :token, :presence => true
+  validates :name, presence: true
+  validates_format_of :email, with: /\A([^\s]+)((?:[-a-z0-9]\.)[a-z]{2,})\z/i  
+  validates! :token, presence: true
   
 end
 
-person = Person.new(:token => "2b1f325")
+person = Person.new(token: "2b1f325")
 person.valid?                        #=> false
 person.name  = 'vishnu'
 person.email  = 'me'

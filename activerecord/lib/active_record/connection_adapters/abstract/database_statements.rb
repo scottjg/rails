@@ -150,7 +150,7 @@ module ActiveRecord
       # already-automatically-released savepoints:
       #
       #   Model.connection.transaction do  # BEGIN
-      #     Model.connection.transaction(:requires_new => true) do  # CREATE SAVEPOINT active_record_1
+      #     Model.connection.transaction(requires_new: true) do  # CREATE SAVEPOINT active_record_1
       #       Model.connection.create_table(...)
       #       # active_record_1 now automatically released
       #     end  # RELEASE SAVEPOINT active_record_1  <--- BOOM! database error!
@@ -287,7 +287,7 @@ module ActiveRecord
       # Inserts the given fixture into the table. Overridden in adapters that require
       # something beyond a simple insert (eg. Oracle).
       def insert_fixture(fixture, table_name)
-        columns = Hash[columns(table_name).map { |c| [c.name, c] }]
+        columns = schema_cache.columns_hash(table_name)
 
         key_list   = []
         value_list = fixture.map do |name, value|

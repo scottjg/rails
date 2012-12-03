@@ -616,6 +616,12 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal 'value2', weird.read_attribute('a$b')
   end
 
+  def test_group_weirds_by_from
+    Weird.create('a$b' => 'value', :from => 'aaron')
+    count = Weird.group(Weird.arel_table[:from]).count
+    assert_equal 1, count['aaron']
+  end
+
   def test_attributes_on_dummy_time
     # Oracle, and Sybase do not have a TIME datatype.
     return true if current_adapter?(:OracleAdapter, :SybaseAdapter)
@@ -1440,6 +1446,13 @@ class BasicsTest < ActiveRecord::TestCase
     dev = Developer.first
     dev.update_columns(updated_at: nil)
     assert_match(/\/#{dev.id}$/, dev.cache_key)
+  end
+
+  def test_cache_key_format_is_precise_enough
+    dev = Developer.first
+    key = dev.cache_key
+    dev.touch
+    assert_not_equal key, dev.cache_key
   end
 
   def test_uniq_delegates_to_scoped

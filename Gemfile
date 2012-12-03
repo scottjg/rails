@@ -4,7 +4,7 @@ gemspec
 
 gem 'arel', github: 'rails/arel', branch: 'master'
 
-gem 'mocha', '>= 0.11.2', require: false
+gem 'mocha', '~> 0.13.0', require: false
 gem 'rack-test', github: 'brynary/rack-test'
 gem 'rack-cache', '~> 1.2'
 gem 'bcrypt-ruby', '~> 3.0.0'
@@ -23,11 +23,7 @@ gem 'uglifier', require: false
 gem 'sprockets-rails', github: 'rails/sprockets-rails', branch: 'master'
 
 group :doc do
-  # The current sdoc cannot generate GitHub links due
-  # to a bug, but the PR that fixes it has been there
-  # for some weeks unapplied. As a temporary solution
-  # this is our own fork with the fix.
-  gem 'sdoc',  github: 'fxn/sdoc'
+  gem 'sdoc',  github: 'voloko/sdoc'
   gem 'redcarpet', '~> 2.2.2', platforms: :ruby
   gem 'w3c_validators'
 end
@@ -55,7 +51,7 @@ platforms :ruby do
 
   group :db do
     gem 'pg', '>= 0.11.0'
-    gem 'mysql', '>= 2.8.1' if RUBY_VERSION < '2.0.0'
+    gem 'mysql', '>= 2.9.0'
     gem 'mysql2', '>= 0.3.10'
   end
 end

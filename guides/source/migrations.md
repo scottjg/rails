@@ -1,5 +1,22 @@
-Migrations
-==========
+Active Record Migrations
+========================
+
+Migrations are a feature of Active Record that allows you to evolve your
+database schema over time. Rather than write schema modifications in pure SQL,
+migrations allow you to use an easy Ruby DSL to describe changes to your
+tables.
+
+After reading this guide, you will know:
+
+* The generators you can use to create them.
+* The methods Active Record provides to manipulate your database.
+* The Rake tasks that manipulate migrations and your schema.
+* How migrations relate to `schema.rb`.
+
+--------------------------------------------------------------------------------
+
+What are Migrations?
+--------------------
 
 Migrations are a convenient way for you to alter your database in a structured
 and organized manner. You could edit fragments of SQL by hand but you would then
@@ -9,7 +26,8 @@ production machines next time you deploy.
 
 Active Record tracks which migrations have already been run so all you have to
 do is update your source and run `rake db:migrate`. Active Record will work out
-which migrations should be run. Active Record will also update your `db/schema.rb` file to match the up-to-date structure of your database.
+which migrations should be run. Active Record will also update your
+`db/schema.rb` file to match the up-to-date structure of your database.
 
 Migrations also allow you to describe these transformations using Ruby. The
 great thing about this is that (like most of Active Record's functionality) it
@@ -17,15 +35,6 @@ is database independent: you don't need to worry about the precise syntax of
 `CREATE TABLE` any more than you worry about variations on `SELECT *` (you can
 drop down to raw SQL for database specific features). For example, you could use
 SQLite3 in development, but MySQL in production.
-
-In this guide, you'll learn all about migrations including:
-
-* The generators you can use to create them
-* The methods Active Record provides to manipulate your database
-* The Rake tasks that manipulate them
-* How they relate to `schema.rb`
-
---------------------------------------------------------------------------------
 
 Anatomy of a Migration
 ----------------------
@@ -64,9 +73,9 @@ bad data in the database or populate new fields:
 class AddReceiveNewsletterToUsers < ActiveRecord::Migration
   def up
     change_table :users do |t|
-      t.boolean :receive_newsletter, :default => false
+      t.boolean :receive_newsletter, default: false
     end
-    User.update_all :receive_newsletter => true
+    User.update_all receive_newsletter: true
   end
 
   def down
@@ -215,7 +224,7 @@ columns of types not supported by Active Record when using the non-sexy syntax s
 
 ```ruby
 create_table :products do |t|
-  t.column :name, 'polygon', :null => false
+  t.column :name, 'polygon', null: false
 end
 ```
 
@@ -349,7 +358,7 @@ generates
 ```ruby
 class AddUserRefToProducts < ActiveRecord::Migration
   def change
-    add_reference :products, :user, :index => true
+    add_reference :products, :user, index: true
   end
 end
 ```
@@ -377,8 +386,8 @@ will produce a migration that looks like this
 ```ruby
 class AddDetailsToProducts < ActiveRecord::Migration
   def change
-    add_column :products, :price, :precision => 5, :scale => 2
-    add_reference :products, :user, :polymorphic => true, :index => true
+    add_column :products, :price, precision: 5, scale: 2
+    add_reference :products, :user, polymorphic: true, index: true
   end
 end
 ```
@@ -408,7 +417,7 @@ are two ways of doing it. The first (traditional) form looks like
 
 ```ruby
 create_table :products do |t|
-  t.column :name, :string, :null => false
+  t.column :name, :string, null: false
 end
 ```
 
@@ -418,20 +427,20 @@ of that type. Subsequent parameters are the same.
 
 ```ruby
 create_table :products do |t|
-  t.string :name, :null => false
+  t.string :name, null: false
 end
 ```
 
 By default, `create_table` will create a primary key called `id`. You can change
 the name of the primary key with the `:primary_key` option (don't forget to
 update the corresponding model) or, if you don't want a primary key at all (for
-example for a HABTM join table), you can pass the option `:id => false`. If you
+example for a HABTM join table), you can pass the option `id: false`. If you
 need to pass database specific options you can place an SQL fragment in the
 `:options` option. For example,
 
 ```ruby
-create_table :products, :options => "ENGINE=BLACKHOLE" do |t|
-  t.string :name, :null => false
+create_table :products, options: "ENGINE=BLACKHOLE" do |t|
+  t.string :name, null: false
 end
 ```
 
@@ -453,7 +462,7 @@ These columns have the option `:null` set to `false` by default.
 You can pass the option `:table_name` with you want to customize the table name. For example,
 
 ```ruby
-create_join_table :products, :categories, :table_name => :categorization
+create_join_table :products, :categories, table_name: :categorization
 ```
 
 will create a `categorization` table.
@@ -462,7 +471,7 @@ By default, `create_join_table` will create two columns with no options, but you
 options using the `:column_options` option. For example,
 
 ```ruby
-create_join_table :products, :categories, :column_options => {:null => true}
+create_join_table :products, :categories, column_options: {null: true}
 ```
 
 will create the `product_id` and `category_id` with the `:null` option as `true`.
@@ -523,7 +532,7 @@ of the columns required:
 
 ```ruby
 create_table :products do |t|
-  t.references :attachment, :polymorphic => {:default => 'Photo'}
+  t.references :attachment, polymorphic: {default: 'Photo'}
 end
 ```
 
@@ -533,7 +542,7 @@ index directly, instead of using `add_index` after the `create_table` call:
 
 ```ruby
 create_table :products do |t|
-  t.references :category, :index => true
+  t.references :category, index: true
 end
 ```
 
@@ -684,8 +693,9 @@ version to migrate to.
 The `rake db:reset` task will drop the database, recreate it and load the
 current schema into it.
 
-NOTE: This is not the same as running all the migrations - see the section on
-[schema.rb](#schema-dumping-and-you).
+NOTE: This is not the same as running all the migrations. It will only use the contents 
+of the current schema.rb file. If a migration can't be rolled back, 'rake db:reset'
+may not help you. To find out more about dumping the schema see [schema.rb](#schema-dumping-and-you).
 
 ### Running Specific Migrations
 
@@ -794,7 +804,7 @@ column.
 class AddFlagToProduct < ActiveRecord::Migration
   def change
     add_column :products, :flag, :boolean
-    Product.update_all :flag => false
+    Product.update_all flag: false
   end
 end
 ```
@@ -803,7 +813,7 @@ end
 # app/model/product.rb
 
 class Product < ActiveRecord::Base
-  validates :flag, :presence => true
+  validates :flag, presence: true
 end
 ```
 
@@ -817,7 +827,7 @@ column.
 class AddFuzzToProduct < ActiveRecord::Migration
   def change
     add_column :products, :fuzz, :string
-    Product.update_all :fuzz => 'fuzzy'
+    Product.update_all fuzz: 'fuzzy'
   end
 end
 ```
@@ -826,7 +836,7 @@ end
 # app/model/product.rb
 
 class Product < ActiveRecord::Base
-  validates :flag, :fuzz, :presence => true
+  validates :flag, :fuzz, presence: true
 end
 ```
 
@@ -869,7 +879,7 @@ class AddFlagToProduct < ActiveRecord::Migration
   def change
     add_column :products, :flag, :boolean
     Product.reset_column_information
-    Product.update_all :flag => false
+    Product.update_all flag: false
   end
 end
 ```
@@ -884,7 +894,7 @@ class AddFuzzToProduct < ActiveRecord::Migration
   def change
     add_column :products, :fuzz, :string
     Product.reset_column_information
-    Product.update_all :fuzz => 'fuzzy'
+    Product.update_all fuzz: 'fuzzy'
   end
 end
 ```
@@ -999,7 +1009,7 @@ the database. As such, features such as triggers or foreign key constraints,
 which push some of that intelligence back into the database, are not heavily
 used.
 
-Validations such as `validates :foreign_key, :uniqueness => true` are one way in
+Validations such as `validates :foreign_key, uniqueness: true` are one way in
 which models can enforce data integrity. The `:dependent` option on associations
 allows models to automatically destroy child objects when the parent is
 destroyed. Like anything which operates at the application level, these cannot

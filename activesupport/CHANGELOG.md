@@ -1,5 +1,57 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Patched Marshal#load to work with constant autoloading.
+    Fixes autoloading with cache stores that relay on Marshal(MemCacheStore and FileStore). [fixes #8167]
+
+    *Uriel Katz*
+
+*   Make `Time.zone.parse` to work with JavaScript format date strings. *Andrew White*
+
+*   Add `DateTime#seconds_until_end_of_day` and `Time#seconds_until_end_of_day`
+    as a complement for `seconds_from_midnight`; useful when setting expiration
+    times for caches, e.g.:
+
+        <% cache('dashboard', expires_in: Date.current.seconds_until_end_of_day) do %>
+          ...
+
+    *Olek Janiszewski*
+
+*   No longer proxy ActiveSupport::Multibyte#class. *Steve Klabnik*
+
+*   Deprecate `ActiveSupport::TestCase#pending` method, use `skip` from MiniTest instead. *Carlos Antonio da Silva*
+
+*   `XmlMini.with_backend` now may be safely used with threads:
+
+        Thread.new do
+          XmlMini.with_backend("REXML") { rexml_power }
+        end
+        Thread.new do
+          XmlMini.with_backend("LibXML") { libxml_power }
+        end
+
+    Each thread will use it's own backend.
+
+    *Nikita Afanasenko*
+
+*   Dependencies no longer trigger Kernel#autoload in remove_constant [fixes #8213]. *Xavier Noria*
+
+*   Simplify mocha integration and remove monkey-patches, bumping mocha to 0.13.0. *James Mead*
+
+*   `#as_json` isolates options when encoding a hash.
+    Fix #8182
+
+    *Yves Senn*
+
+*   Deprecate Hash#diff in favor of MiniTest's #diff. *Steve Klabnik*
+
+*   Kernel#capture can catch output from subprocesses *Dmitry Vorotilin*
+
+*   `to_xml` conversions now use builder's `tag!` method instead of explicit invocation of `method_missing`.
+
+    *Nikita Afanasenko*
+
+*   Fixed timezone mapping of the Solomon Islands. *Steve Klabnik*
+
 *   Make callstack attribute optional in
     ActiveSupport::Deprecation::Reporting methods `warn` and `deprecation_warning`
 
@@ -29,7 +81,7 @@
 
     *Jeremy Kemper*
 
-*   Add logger.push_tags and .pop_tags to complement logger.tagged:
+*   Add `logger.push_tags` and `.pop_tags` to complement logger.tagged:
 
         class Job
           def before
@@ -237,8 +289,6 @@
 *   `AS::Callbacks#define_callbacks`: add `:skip_after_callbacks_if_terminated` option.
 
 *   Add html_escape_once to ERB::Util, and delegate escape_once tag helper to it. *Carlos Antonio da Silva*
-
-*   Remove ActiveSupport::TestCase#pending method, use `skip` instead. *Carlos Antonio da Silva*
 
 *   Deprecates the compatibility method Module#local_constant_names,
     use Module#local_constants instead (which returns symbols). *fxn*

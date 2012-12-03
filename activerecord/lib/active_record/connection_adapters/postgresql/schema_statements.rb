@@ -16,7 +16,7 @@ module ActiveRecord
         #
         # Example:
         #   create_database config[:database], config
-        #   create_database 'foo_development', :encoding => 'unicode'
+        #   create_database 'foo_development', encoding: 'unicode'
         def create_database(name, options = {})
           options = options.reverse_merge(:encoding => "utf8")
 
@@ -396,6 +396,13 @@ module ActiveRecord
             when nil, 0..0x3fffffff; super(type)
             else raise(ActiveRecordError, "No binary type has byte size #{limit}.")
             end
+          when 'text'
+            # PostgreSQL doesn't support limits on text columns.
+            # The hard limit is 1Gb, according to section 8.3 in the manual.
+            case limit
+            when nil, 0..0x3fffffff; super(type)
+            else raise(ActiveRecordError, "The limit on text can be at most 1GB - 1byte.")
+            end
           when 'integer'
             return 'integer' unless limit
 
@@ -422,20 +429,17 @@ module ActiveRecord
         # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
         # requires that the ORDER BY include the distinct column.
         #
-        #   distinct("posts.id", "posts.created_at desc")
+        #   distinct("posts.id", ["posts.created_at desc"])
+        #   # => "DISTINCT posts.id, posts.created_at AS alias_0"
         def distinct(columns, orders) #:nodoc:
-          return "DISTINCT #{columns}" if orders.empty?
+          order_columns = orders.map{ |s|
+              # Convert Arel node to string
+              s = s.to_sql unless s.is_a?(String)
+              # Remove any ASC/DESC modifiers
+              s.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '')
+            }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
 
-          # Construct a clean list of column names from the ORDER BY clause, removing
-          # any ASC/DESC modifiers
-          order_columns = orders.collect do |s|
-            s = s.to_sql unless s.is_a?(String)
-            s.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '')
-          end
-          order_columns.delete_if { |c| c.blank? }
-          order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
-
-          "DISTINCT #{columns}, #{order_columns * ', '}"
+          [super].concat(order_columns).join(', ')
         end
       end
     end

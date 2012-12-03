@@ -31,6 +31,14 @@ module ActiveRecord
       @default_scoped    = false
     end
 
+    def initialize_copy(other)
+      # This method is a hot spot, so for now, use Hash[] to dup the hash.
+      #   https://bugs.ruby-lang.org/issues/7166
+      @values        = Hash[@values]
+      @values[:bind] = @values[:bind].dup if @values.key? :bind
+      reset
+    end
+
     def insert(values)
       primary_key_value = nil
 
@@ -88,14 +96,6 @@ module ActiveRecord
     #   user.name # => Oscar
     def new(*args, &block)
       scoping { @klass.new(*args, &block) }
-    end
-
-    def initialize_copy(other)
-      # This method is a hot spot, so for now, use Hash[] to dup the hash.
-      #   https://bugs.ruby-lang.org/issues/7166
-      @values        = Hash[@values]
-      @values[:bind] = @values[:bind].dup if @values.key? :bind
-      reset
     end
 
     alias build new
@@ -235,7 +235,7 @@ module ActiveRecord
 
     # Scope all queries to the current scope.
     #
-    #   Comment.where(:post_id => 1).scoping do
+    #   Comment.where(post_id: 1).scoping do
     #     Comment.first # SELECT * FROM comments WHERE post_id = 1
     #   end
     #
@@ -266,7 +266,7 @@ module ActiveRecord
     #   Book.where('title LIKE ?', '%Rails%').update_all(author: 'David')
     #
     #   # Update all books that match conditions, but limit it to 5 ordered by date
-    #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).update_all(:author => 'David')
+    #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).update_all(author: 'David')
     def update_all(updates)
       raise ArgumentError, "Empty list of attributes to change" if updates.blank?
 
@@ -315,11 +315,9 @@ module ActiveRecord
 
     # Destroys the records matching +conditions+ by instantiating each
     # record and calling its +destroy+ method. Each object's callbacks are
-    # executed (including <tt>:dependent</tt> association options and
-    # +before_destroy+/+after_destroy+ Observer methods). Returns the
+    # executed (including <tt>:dependent</tt> association options). Returns the
     # collection of objects that were destroyed; each will be frozen, to
-    # reflect that no changes should be made (since they can't be
-    # persisted).
+    # reflect that no changes should be made (since they can't be persisted).
     #
     # Note: Instantiation, callback execution, and deletion of each
     # record can be time consuming when you're removing many records at
@@ -339,7 +337,7 @@ module ActiveRecord
     #
     #   Person.destroy_all("last_login < '2004-04-04'")
     #   Person.destroy_all(status: "inactive")
-    #   Person.where(:age => 0..18).destroy_all
+    #   Person.where(age: 0..18).destroy_all
     def destroy_all(conditions = nil)
       if conditions
         where(conditions).destroy_all
@@ -384,7 +382,7 @@ module ActiveRecord
     #
     #   Post.delete_all("person_id = 5 AND (category = 'Something' OR category = 'Else')")
     #   Post.delete_all(["person_id = ? AND (category = ? OR category = ?)", 5, 'Something', 'Else'])
-    #   Post.where(:person_id => 5).where(:category => ['Something', 'Else']).delete_all
+    #   Post.where(person_id: 5).where(category: ['Something', 'Else']).delete_all
     #
     # Both calls delete the affected posts all at once with a single DELETE statement.
     # If you need to destroy dependent associations or call your <tt>before_*</tt> or
@@ -419,8 +417,7 @@ module ActiveRecord
     # Deletes the row with a primary key matching the +id+ argument, using a
     # SQL +DELETE+ statement, and returns the number of rows deleted. Active
     # Record objects are not instantiated, so the object's callbacks are not
-    # executed, including any <tt>:dependent</tt> association options or
-    # Observer methods.
+    # executed, including any <tt>:dependent</tt> association options.
     #
     # You can delete multiple rows at once by passing an Array of <tt>id</tt>s.
     #
@@ -486,7 +483,7 @@ module ActiveRecord
     # Returns a hash of where conditions
     #
     #   Users.where(name: 'Oscar').where_values_hash
-    #   # => {:name=>"oscar"}
+    #   # => {name: "oscar"}
     def where_values_hash
       equalities = with_default_scope.where_values.grep(Arel::Nodes::Equality).find_all { |node|
         node.left.relation.name == table_name
@@ -514,7 +511,7 @@ module ActiveRecord
     # Joins that are also marked for preloading. In which case we should just eager load them.
     # Note that this is a naive implementation because we could have strings and symbols which
     # represent the same association, but that aren't matched by this. Also, we could have
-    # nested hashes which partially match, e.g. { :a => :b } & { :a => [:b, :c] }
+    # nested hashes which partially match, e.g. { a: :b } & { a: [:b, :c] }
     def joined_includes_values
       includes_values & joins_values
     end

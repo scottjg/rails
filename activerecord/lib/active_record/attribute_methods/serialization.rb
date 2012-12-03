@@ -5,7 +5,7 @@ module ActiveRecord
 
       included do
         # Returns a hash of all the attributes that have been specified for
-        # serialization as keys and their class restriction as values.
+        # serialization as keys and their class restriction as values.
         class_attribute :serialized_attributes, instance_accessor: false
         self.serialized_attributes = {}
       end
@@ -115,6 +115,24 @@ module ActiveRecord
         def read_attribute_before_type_cast(attr_name)
           if self.class.serialized_attributes.include?(attr_name)
             super.unserialized_value
+          else
+            super
+          end
+        end
+
+        def attributes_before_type_cast
+          super.dup.tap do |attributes|
+            self.class.serialized_attributes.each_key do |key|
+              if attributes.key?(key)
+                attributes[key] = attributes[key].unserialized_value
+              end
+            end
+          end
+        end
+
+        def typecasted_attribute_value(name)
+          if self.class.serialized_attributes.include?(name)
+            @attributes[name].serialized_value
           else
             super
           end

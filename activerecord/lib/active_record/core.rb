@@ -3,9 +3,6 @@ require 'active_support/core_ext/object/duplicable'
 require 'thread'
 
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-  end
-
   module Core
     extend ActiveSupport::Concern
 
@@ -86,7 +83,12 @@ module ActiveRecord
         @attribute_methods_mutex = Mutex.new
 
         # force attribute methods to be higher in inheritance hierarchy than other generated methods
-        generated_attribute_methods
+        generated_attribute_methods.const_set(:AttrNames, Module.new {
+          def self.const_missing(name)
+            const_set(name, [name.to_s.sub(/ATTR_/, '')].pack('h*').freeze)
+          end
+        })
+
         generated_feature_methods
       end
 
@@ -157,7 +159,7 @@ module ActiveRecord
     #
     # ==== Example:
     #   # Instantiates a single new object
-    #   User.new(:first_name => 'Jamie')
+    #   User.new(first_name: 'Jamie')
     def initialize(attributes = nil)
       defaults = self.class.column_defaults.dup
       defaults.each { |k, v| defaults[k] = v.dup if v.duplicable? }

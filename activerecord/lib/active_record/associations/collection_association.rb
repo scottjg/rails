@@ -34,7 +34,7 @@ module ActiveRecord
           reload
         end
 
-        CollectionProxy.new(self)
+        CollectionProxy.new(klass, self)
       end
 
       # Implements the writer method, e.g. foo.items= for Foo.has_many :items
@@ -161,21 +161,10 @@ module ActiveRecord
         end
       end
 
-      # Calculate sum using SQL, not Enumerable.
-      def sum(*args)
-        if block_given?
-          scope.sum(*args) { |*block_args| yield(*block_args) }
-        else
-          scope.sum(*args)
-        end
-      end
-
       # Count all records using SQL. If the +:counter_sql+ or +:finder_sql+ option is set for the
       # association, it will be used for the query. Otherwise, construct options and pass them with
       # scope to the target class's +count+.
       def count(column_name = nil, count_options = {})
-        return 0 if owner.new_record?
-
         column_name, count_options = nil, column_name if column_name.is_a?(Hash)
 
         if options[:counter_sql] || options[:finder_sql]
@@ -364,6 +353,16 @@ module ActiveRecord
         set_inverse_instance(record)
 
         record
+      end
+
+      def scope(opts = {})
+        scope = super()
+        scope.none! if opts.fetch(:nullify, true) && null_scope?
+        scope
+      end
+
+      def null_scope?
+        owner.new_record? && !foreign_key_present?
       end
 
       private
@@ -576,7 +575,9 @@ module ActiveRecord
           args.shift if args.first.is_a?(Hash) && args.first.empty?
 
           collection = fetch_first_or_last_using_find?(args) ? scope : load_target
-          collection.send(type, *args).tap {|it| set_inverse_instance it }
+          collection.send(type, *args).tap do |record|
+            set_inverse_instance record if record.is_a? ActiveRecord::Base
+          end
         end
     end
   end

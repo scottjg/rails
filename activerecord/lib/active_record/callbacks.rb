@@ -35,7 +35,7 @@ module ActiveRecord
   #   class CreditCard < ActiveRecord::Base
   #     # Strip everything but digits, so the user can specify "555 234 34" or
   #     # "5552-3434" and both will mean "55523434"
-  #     before_validation(:on => :create) do
+  #     before_validation(on: :create) do
   #       self.number = number.gsub(/[^0-9]/, "") if attribute_present?("number")
   #     end
   #   end
@@ -212,11 +212,10 @@ module ActiveRecord
   #
   #     before_destroy :log_children
   #
-  #     def log_children
-  #       children.each do |child|
-  #         # Some child processing
+  #     private
+  #       def log_children
+  #         # Child processing
   #       end
-  #     end
   #   end
   #
   # In this case, the problem is that when the +before_destroy+ callback is executed, the children are not available
@@ -227,11 +226,10 @@ module ActiveRecord
   #
   #     before_destroy :log_children, prepend: true
   #
-  #     def log_children
-  #       children.each do |child|
-  #         # Some child processing
+  #     private
+  #       def log_children
+  #         # Child processing
   #       end
-  #     end
   #   end
   #
   # This way, the +before_destroy+ gets executed before the <tt>dependent: destroy</tt> is called, and the data is still available.

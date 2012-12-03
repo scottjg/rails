@@ -1,5 +1,26 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Add `db` to list of folders included by `rake notes` and `rake notes:custom`. *Antonio Cangiano*
+
+*   Engines with a dummy app include the rake tasks of dependencies in the app namespace.
+    Fix #8229
+
+    *Yves Senn*
+
+*   Add sqlserver.yml template file to satisfy '-d sqlserver' being passed to 'rails new'.
+    Fix #6882
+
+		*Robert Nesius*
+
+*   Rake test:uncommitted finds git directory in ancestors *Nicolas Despres*
+
+*   Add dummy app Rake tasks when --skip-test-unit and --dummy-path is passed to the plugin generator.
+    Fix #8121
+
+    *Yves Senn*
+
+*   Ensure that RAILS_ENV is set when accessing Rails.env *Steve Klabnik*
+
 *   Don't eager-load app/assets and app/views *Elia Schito*
 
 *   Add `.rake` to list of file extensions included by `rake notes` and `rake notes:custom`. *Brent J. Nordquist*
@@ -7,7 +28,7 @@
 *   New test locations `test/models`, `test/helpers`, `test/controllers`, and
     `test/mailers`. Corresponding rake tasks added as well. *Mike Moore*
 
-*   Set a different cache per environment for assets pipeline 
+*   Set a different cache per environment for assets pipeline
     through `config.assets.cache`.
 
     *Guillermo Iguaran*

@@ -3,13 +3,15 @@ Working with JavaScript in Rails
 
 This guide covers the built-in Ajax/JavaScript functionality of Rails (and
 more); it will enable you to create rich and dynamic Ajax applications with
-ease! We will cover the following topics:
+ease!
 
-* Quick introduction to Ajax
-* Unobtrusive JavaScript
-* How Rails' built-in helpers assist you
-* Handling Ajax on the server side
-* The Turbolinks gem
+After reading this guide, you will know:
+
+* Quick introduction to Ajax.
+* Unobtrusive JavaScript.
+* How Rails' built-in helpers assist you.
+* Handling Ajax on the server side.
+* The Turbolinks gem.
 
 -------------------------------------------------------------------------------
 
@@ -138,6 +140,7 @@ and Rails has got your back in those cases.
 
 Because of Unobtrusive JavaScript, the Rails "Ajax helpers" are actually in two
 parts: the JavaScript half and the Ruby half.
+
 [rails.js](https://github.com/rails/jquery-ujs/blob/master/src/rails.js)
 provides the JavaScript half, and the regular Ruby view helpers add appropriate
 tags to your DOM. The CoffeeScript in rails.js then listens for these
@@ -321,7 +324,7 @@ this:
   end
 ```
 
-Notice the format.js in the respond_to block; that allows the controller to
+Notice the format.js in the `respond_to` block; that allows the controller to
 respond to your Ajax request. You then have a corresponding
 `app/views/users/create.js.erb` view file that generates the actual JavaScript
 code that will be sent and executed on the client side.
@@ -378,7 +381,7 @@ $(document).on "page:change", ->
 
 For more details, including other events you can bind to, check out [the
 Turbolinks
-README](https://github.com/rails/turbolinks/blob/ec9ca4d6cf9626e03a672f3b9e7968c816aff94e/README.md).
+README](https://github.com/rails/turbolinks/blob/master/README.md).
 
 Other Resources
 ---------------

@@ -572,7 +572,6 @@ module ActiveSupport #:nodoc:
 
     # Determine if the given constant has been automatically loaded.
     def autoloaded?(desc)
-      # No name => anonymous module.
       return false if desc.is_a?(Module) && desc.anonymous?
       name = to_constant_name desc
       return false unless qualified_const_defined? name
@@ -641,19 +640,62 @@ module ActiveSupport #:nodoc:
     end
 
     def remove_constant(const) #:nodoc:
-      return false unless qualified_const_defined? const
+      # Normalize ::Foo, ::Object::Foo, Object::Foo, Object::Object::Foo, etc. as Foo.
+      normalized = const.to_s.sub(/\A::/, '')
+      normalized.sub!(/\A(Object::)+/, '')
 
-      # Normalize ::Foo, Foo, Object::Foo, and ::Object::Foo to Object::Foo
-      names = const.to_s.sub(/^::(Object)?/, 'Object::').split("::")
-      to_remove = names.pop
-      parent = Inflector.constantize(names * '::')
+      constants = normalized.split('::')
+      to_remove = constants.pop
+
+      if constants.empty?
+        parent = Object
+      else
+        # This method is robust to non-reachable constants.
+        #
+        # Non-reachable constants may be passed if some of the parents were
+        # autoloaded and already removed. It is easier to do a sanity check
+        # here than require the caller to be clever. We check the parent
+        # rather than the very const argument because we do not want to
+        # trigger Kernel#autoloads, see the comment below.
+        parent_name = constants.join('::')
+        return unless qualified_const_defined?(parent_name)
+        parent = constantize(parent_name)
+      end
 
       log "removing constant #{const}"
-      constantized = constantize(const)
-      constantized.before_remove_const if constantized.respond_to?(:before_remove_const)
-      parent.instance_eval { remove_const to_remove }
 
-      true
+      # In an autoloaded user.rb like this
+      #
+      #   autoload :Foo, 'foo'
+      #
+      #   class User < ActiveRecord::Base
+      #   end
+      #
+      # we correctly register "Foo" as being autoloaded. But if the app does
+      # not use the "Foo" constant we need to be careful not to trigger
+      # loading "foo.rb" ourselves. While #const_defined? and #const_get? do
+      # require the file, #autoload? and #remove_const don't.
+      #
+      # We are going to remove the constant nonetheless ---which exists as
+      # far as Ruby is concerned--- because if the user removes the macro
+      # call from a class or module that were not autoloaded, as in the
+      # example above with Object, accessing to that constant must err.
+      unless parent.autoload?(to_remove)
+        begin
+          constantized = parent.const_get(to_remove, false)
+        rescue NameError
+          log "the constant #{const} is not reachable anymore, skipping"
+          return
+        else
+          constantized.before_remove_const if constantized.respond_to?(:before_remove_const)
+        end
+      end
+
+      begin
+        parent.instance_eval { remove_const to_remove }
+      rescue NameError
+        log "the constant #{const} is not reachable anymore, skipping"
+      end
     end
 
     protected

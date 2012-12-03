@@ -5,7 +5,7 @@ Active Support is the Ruby on Rails component responsible for providing Ruby lan
 
 It offers a richer bottom-line at the language level, targeted both at the development of Rails applications, and at the development of Ruby on Rails itself.
 
-By referring to this guide you will learn the extensions to the Ruby core classes and modules provided by Active Support.
+After reading this guide, you will know:
 
 --------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ How to Load Core Extensions
 
 ### Stand-Alone Active Support
 
-In order to have a near zero default footprint, Active Support does not load anything by default. It is broken in small pieces so that you may load just what you need, and also has some convenience entry points to load related extensions in one shot, even everything.
+In order to have a near-zero default footprint, Active Support does not load anything by default. It is broken in small pieces so that you can load just what you need, and also has some convenience entry points to load related extensions in one shot, even everything.
 
 Thus, after a simple require like:
 
@@ -85,11 +85,11 @@ The following values are considered to be blank in a Rails application:
 
 * empty arrays and hashes, and
 
-* any other object that responds to `empty?` and it is empty.
+* any other object that responds to `empty?` and is empty.
 
 INFO: The predicate for strings uses the Unicode-aware character class `[:space:]`, so for example U+2029 (paragraph separator) is considered to be whitespace.
 
-WARNING: Note that numbers are not mentioned, in particular 0 and 0.0 are **not** blank.
+WARNING: Note that numbers are not mentioned. In particular, 0 and 0.0 are **not** blank.
 
 For example, this method from `ActionDispatch::Session::AbstractStore` uses `blank?` for checking whether a session key is present:
 
@@ -147,19 +147,21 @@ Some numbers which are not singletons are not duplicable either:
 Active Support provides `duplicable?` to programmatically query an object about this property:
 
 ```ruby
+"foo".duplicable? # => true
 "".duplicable?     # => true
+0.0.duplicable?   # => false
 false.duplicable?  # => false
 ```
 
-By definition all objects are `duplicable?` except `nil`, `false`, `true`, symbols, numbers, and class and module objects.
+By definition all objects are `duplicable?` except `nil`, `false`, `true`, symbols, numbers, class, and module objects.
 
-WARNING. Any class can disallow duplication removing `dup` and `clone` or raising exceptions from them, only `rescue` can tell whether a given arbitrary object is duplicable. `duplicable?` depends on the hard-coded list above, but it is much faster than `rescue`. Use it only if you know the hard-coded list is enough in your use case.
+WARNING: Any class can disallow duplication by removing `dup` and `clone` or raising exceptions from them. Thus only `rescue` can tell whether a given arbitrary object is duplicable. `duplicable?` depends on the hard-coded list above, but it is much faster than `rescue`. Use it only if you know the hard-coded list is enough in your use case.
 
 NOTE: Defined in `active_support/core_ext/object/duplicable.rb`.
 
 ### `deep_dup`
 
-The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, ruby does not `dup` them. If you have an array with a string, for example, it will look like this:
+The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
 
 ```ruby
 array     = ['string']
@@ -167,18 +169,18 @@ duplicate = array.dup
 
 duplicate.push 'another-string'
 
-# object was duplicated, so element was added only to duplicate
+# the object was duplicated, so the element was added only to the duplicate
 array     #=> ['string']
 duplicate #=> ['string', 'another-string']
 
 duplicate.first.gsub!('string', 'foo')
 
-# first element was not duplicated, it will be changed for both arrays
+# first element was not duplicated, it will be changed in both arrays
 array     #=> ['foo']
 duplicate #=> ['foo', 'another-string']
 ```
 
-As you can see, after duplicating `Array` instance, we got another object, therefore we can modify it and the original object will stay unchanged. This is not true for array's elements, however. Since `dup` does not make deep copy, the string inside array is still the same object.
+As you can see, after duplicating the `Array` instance, we got another object, therefore we can modify it and the original object will stay unchanged. This is not true for array's elements, however. Since `dup` does not make deep copy, the string inside the array is still the same object.
 
 If you need a deep copy of an object, you should use `deep_dup`. Here is an example:
 
@@ -192,12 +194,12 @@ array     #=> ['string']
 duplicate #=> ['foo']
 ```
 
-If object is not duplicable, `deep_dup` will just return this object:
+If the object is not duplicable, `deep_dup` will just return it:
 
 ```ruby
 number = 1
-dup = number.deep_dup
-number.object_id == dup.object_id   # => true
+duplicate = number.deep_dup
+number.object_id == duplicate.object_id   # => true
 ```
 
 NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
@@ -1913,8 +1915,8 @@ Produce a string representation of a number as a telephone number:
 Produce a string representation of a number as currency:
 
 ```ruby
-1234567890.50.to_s(:currency)                    # => $1,234,567,890.50
-1234567890.506.to_s(:currency)                   # => $1,234,567,890.51
+1234567890.50.to_s(:currency)                 # => $1,234,567,890.50
+1234567890.506.to_s(:currency)                # => $1,234,567,890.51
 1234567890.506.to_s(:currency, precision: 3)  # => $1,234,567,890.506
 ```
 
@@ -1934,8 +1936,8 @@ Produce a string representation of a number as a percentage:
 Produce a string representation of a number in delimited form:
 
 ```ruby
-12345678.to_s(:delimited)                        # => 12,345,678
-12345678.05.to_s(:delimited)                     # => 12,345,678.05
+12345678.to_s(:delimited)                     # => 12,345,678
+12345678.05.to_s(:delimited)                  # => 12,345,678.05
 12345678.to_s(:delimited, delimiter: ".")     # => 12.345.678
 12345678.to_s(:delimited, delimiter: ",")     # => 12,345,678
 12345678.05.to_s(:delimited, separator: " ")  # => 12,345,678 05
@@ -1944,7 +1946,7 @@ Produce a string representation of a number in delimited form:
 Produce a string representation of a number rounded to a precision:
 
 ```ruby
-111.2345.to_s(:rounded)                        # => 111.235
+111.2345.to_s(:rounded)                     # => 111.235
 111.2345.to_s(:rounded, precision: 2)       # => 111.23
 13.to_s(:rounded, precision: 5)             # => 13.00000
 389.32314.to_s(:rounded, precision: 0)      # => 389
@@ -2063,14 +2065,6 @@ The sum of an empty receiver can be customized in this form as well:
 
 ```ruby
 [].sum(1) {|n| n**3} # => 1
-```
-
-The method `ActiveRecord::Observer#observed_subclasses` for example is implemented this way:
-
-```ruby
-def observed_subclasses
-  observed_classes.sum([]) { |klass| klass.send(:subclasses) }
-end
 ```
 
 NOTE: Defined in `active_support/core_ext/enumerable.rb`.
@@ -2372,7 +2366,7 @@ This method is similar in purpose to `Kernel#Array`, but there are some differen
 The last point is particularly worth comparing for some enumerables:
 
 ```ruby
-Array.wrap(foo: :bar) # => [{foo: :bar}]
+Array.wrap(foo: :bar) # => [{:foo=>:bar}]
 Array(foo: :bar)      # => [[:foo, :bar]]
 ```
 
@@ -2557,7 +2551,7 @@ Ruby has a built-in method `Hash#merge` that merges two hashes:
 
 ```ruby
 {a: 1, b: 1}.merge(a: 0, c: 2)
-# => {a: 0, b: 1, c: 2}
+# => {:a=>0, :b=>1, :c=>2}
 ```
 
 Active Support defines a few more ways of merging hashes that may be convenient.
@@ -2602,7 +2596,7 @@ Active Support defines `Hash#deep_merge`. In a deep merge, if a key is found in 
 
 ```ruby
 {a: {b: 1}}.deep_merge(a: {c: 2})
-# => {a: {b: 1, c: 2}}
+# => {:a=>{:b=>1, :c=>2}}
 ```
 
 The method `deep_merge!` performs a deep merge in place.
@@ -2641,17 +2635,17 @@ The method `diff` returns a hash that represents a diff of the receiver and the 
 # => {}, first rule
 
 {a: 1}.diff(a: 2)
-# => {a: 1}, second rule
+# => {:a=>1}, second rule
 
 {a: 1}.diff(b: 2)
-# => {a: 1, b: 2}, third rule
+# => {:a=>1, :b=>2}, third rule
 
 {a: 1, b: 2, c: 3}.diff(b: 1, c: 3, d: 4)
-# => {a: 1, b: 2, d: 4}, all rules
+# => {:a=>1, :b=>2, :d=>4}, all rules
 
 {}.diff({})        # => {}
-{a: 1}.diff({}) # => {a: 1}
-{}.diff(a: 1)   # => {a: 1}
+{a: 1}.diff({})    # => {:a=>1}
+{}.diff(a: 1)      # => {:a=>1}
 ```
 
 An important property of this diff hash is that you can retrieve the original hash by applying `diff` twice:
@@ -2671,7 +2665,7 @@ NOTE: Defined in `active_support/core_ext/hash/diff.rb`.
 The method `except` returns a hash with the keys in the argument list removed, if present:
 
 ```ruby
-{a: 1, b: 2}.except(:a) # => {b: 2}
+{a: 1, b: 2}.except(:a) # => {:b=>2}
 ```
 
 If the receiver responds to `convert_key`, the method is called on each of the arguments. This allows `except` to play nice with hashes with indifferent access for instance:
@@ -2776,7 +2770,7 @@ The method `symbolize_keys` returns a hash that has a symbolized version of the 
 
 ```ruby
 {nil => nil, 1 => 1, "a" => "a"}.symbolize_keys
-# => {1 => 1, nil => nil, a: "a"}
+# => {1=>1, nil=>nil, :a=>"a"}
 ```
 
 WARNING. Note in the previous example only one key was symbolized.
@@ -2785,7 +2779,7 @@ The result in case of collision is undefined:
 
 ```ruby
 {"a" => 1, a: 2}.symbolize_keys
-# => {a: 2}, in my test, can't rely on this result though
+# => {:a=>2}, in my test, can't rely on this result though
 ```
 
 This method may be useful for example to easily accept both symbols and strings as options. For instance `ActionController::UrlRewriter` defines
@@ -2836,17 +2830,17 @@ Ruby has built-in support for taking slices out of strings and arrays. Active Su
 
 ```ruby
 {a: 1, b: 2, c: 3}.slice(:a, :c)
-# => {c: 3, a: 1}
+# => {:c=>3, :a=>1}
 
 {a: 1, b: 2, c: 3}.slice(:b, :X)
-# => {b: 2} # non-existing keys are ignored
+# => {:b=>2} # non-existing keys are ignored
 ```
 
 If the receiver responds to `convert_key` keys are normalized:
 
 ```ruby
 {a: 1, b: 2}.with_indifferent_access.slice("a")
-# => {a: 1}
+# => {:a=>1}
 ```
 
 NOTE. Slicing may come in handy for sanitizing option hashes with a white list of keys.
@@ -2855,8 +2849,8 @@ There's also `slice!` which in addition to perform a slice in place returns what
 
 ```ruby
 hash = {a: 1, b: 2}
-rest = hash.slice!(:a) # => {b: 2}
-hash                   # => {a: 1}
+rest = hash.slice!(:a) # => {:b=>2}
+hash                   # => {:a=>1}
 ```
 
 NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
@@ -2867,8 +2861,8 @@ The method `extract!` removes and returns the key/value pairs matching the given
 
 ```ruby
 hash = {a: 1, b: 2}
-rest = hash.extract!(:a) # => {a: 1}
-hash                     # => {b: 2}
+rest = hash.extract!(:a) # => {:a=>1}
+hash                     # => {:b=>2}
 ```
 
 The method `extract!` returns the same subclass of Hash, that the receiver is.
@@ -3725,6 +3719,25 @@ WARNING. Note you can't append with `atomic_write`.
 The auxiliary file is written in a standard directory for temporary files, but you can pass a directory of your choice as second argument.
 
 NOTE: Defined in `active_support/core_ext/file/atomic.rb`.
+
+Extensions to `Marshal`
+-----------------------
+
+### `load`
+
+Active Support adds constant autoloading support to `load`.
+
+For example, the file cache store deserializes this way:
+
+```ruby
+File.open(file_name) { |f| Marshal.load(f) }
+```
+
+If the cached data refers to a constant that is unknown at that point, the autoloading mechanism is triggered and if it succeeds the deserialization is retried transparently.
+
+WARNING. If the argument is an `IO` it needs to respond to `rewind` to be able to retry. Regular files respond to `rewind`.
+
+NOTE: Defined in `active_support/core_ext/marshal.rb`.
 
 Extensions to `Logger`
 ----------------------
