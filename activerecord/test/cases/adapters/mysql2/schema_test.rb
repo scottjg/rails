@@ -49,20 +49,36 @@ module ActiveRecord
       def test_dump_indexes
         index_a_name = 'index_post_title'
         index_b_name = 'index_post_body'
+        index_c_name = 'index_post_title_fulltext'
 
         table = Post.table_name
 
+        @connection.execute "ALTER TABLE `#{table}` ENGINE=MyISAM"
+
         @connection.execute "CREATE INDEX `#{index_a_name}` ON `#{table}` (`title`);"
         @connection.execute "CREATE INDEX `#{index_b_name}` USING btree ON `#{table}` (`body`(10));"
+        @connection.execute "CREATE FULLTEXT INDEX `#{index_c_name}` ON `#{table}` (`title`);"
 
         indexes = @connection.indexes(table).sort_by {|i| i.name}
-        assert_equal 2,indexes.size
+        assert_equal 3,indexes.size
 
-        assert_equal({:using => :btree }, indexes.select{|i| i.name == index_a_name}[0].options)
-        assert_equal({:using => :btree }, indexes.select{|i| i.name == index_b_name}[0].options)
+        index_a = indexes.select{|i| i.name == index_a_name}[0]
+        index_b = indexes.select{|i| i.name == index_b_name}[0]
+        index_c = indexes.select{|i| i.name == index_c_name}[0]
+        assert_equal({:using => :btree }, index_a.options)
+        assert_nil index_a.type
+        assert_equal({:using => :btree }, index_b.options)
+        assert_nil index_b.type
+
+        assert_nil index_c.options
+        assert_equal(:fulltext, index_c.type)
 
         @connection.execute "DROP INDEX `#{index_a_name}` ON `#{table}`;"
         @connection.execute "DROP INDEX `#{index_b_name}` ON `#{table}`;"
+        @connection.execute "DROP INDEX `#{index_c_name}` ON `#{table}`;"
+
+
+        @connection.execute "ALTER TABLE `#{table}` ENGINE=InnoDB"
       end
     end
   end

@@ -411,7 +411,7 @@ module ActiveRecord
         tables(nil, schema, table).any?
       end
 
-      INDEX_TYPES  = [:fulltext, :spacial, :unique]
+      INDEX_TYPES  = [:fulltext, :spacial]
       INDEX_USINGS = [:btree, :hash]
 
       # Returns an array of indexes for the given table.
@@ -426,7 +426,7 @@ module ActiveRecord
               indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [])
 
               index_type = row[:Index_type].downcase.to_sym
-              indexes.last.type if INDEX_TYPES.include?(index_type)
+              indexes.last.type = index_type if INDEX_TYPES.include?(index_type)
               indexes.last.options = {:using => index_type } if INDEX_USINGS.include?(index_type)
             end
 
