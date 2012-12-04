@@ -358,6 +358,14 @@ class FilterTest < ActionController::TestCase
     end
   end
 
+  class AuditSkippedController < AuditController
+    skip_before_filter(AuditFilter)
+
+    def show
+      render :text => "hello"
+    end
+  end
+
   class AroundFilterController < PrependingController
     around_filter AroundFilter.new
   end
@@ -574,6 +582,11 @@ class FilterTest < ActionController::TestCase
   def test_running_filters_with_class
     test_process(AuditController)
     assert assigns["was_audited"]
+  end
+
+  def test_skipping_filters_with_class
+    test_process(AuditController)
+    assert !assigns["was_audited"]
   end
 
   def test_running_anomolous_yet_valid_condition_filters
