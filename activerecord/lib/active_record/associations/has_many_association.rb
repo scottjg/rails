@@ -90,12 +90,12 @@ module ActiveRecord
             update_counter(-records.length) unless inverse_updates_counter_cache?
           else
             keys  = records.map { |r| r[reflection.association_primary_key] }
-            scope = scoped.where("#{reflection.quoted_table_name}.#{reflection.association_primary_key}" => keys)
+            scope = scoped.where("#{reflection.table_name}.#{reflection.association_primary_key}" => keys)
 
             if method == :delete_all
               update_counter(-scope.delete_all)
             else
-              update_counter(-scope.update_all("#{reflection.quoted_table_name}.#{reflection.foreign_key}" => nil))
+              update_counter(-scope.update_all("#{reflection.table_name}.#{reflection.foreign_key}" => nil))
             end
           end
         end
