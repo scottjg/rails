@@ -168,7 +168,6 @@ class RelationScopingTest < ActiveRecord::TestCase
   end
 
   def test_update_all_default_scope_filters_on_joins
-      Developer.joins(:projects).where(:projects => { :name => 'Active Controller' }).update_all(:salary => 34353)
       DeveloperFilteredOnJoins.update_all(:salary => 65000)
       assert_equal 65000, Developer.find(developers(:david).id).salary
 
