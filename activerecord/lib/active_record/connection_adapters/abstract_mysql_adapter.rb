@@ -423,11 +423,11 @@ module ActiveRecord
             if current_index != row[:Key_name]
               next if row[:Key_name] == 'PRIMARY' # skip the primary key
               current_index = row[:Key_name]
-              indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [])
 
-              index_type = row[:Index_type].downcase.to_sym
-              indexes.last.type = index_type if INDEX_TYPES.include?(index_type)
-              indexes.last.options = {:using => index_type } if INDEX_USINGS.include?(index_type)
+              mysql_index_type = row[:Index_type].downcase.to_sym
+              index_type  = INDEX_TYPES.include?(mysql_index_type)  ? mysql_index_type : nil
+              index_using = INDEX_USINGS.include?(mysql_index_type) ? mysql_index_type : nil
+              indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [], nil, nil, index_type, index_using)
             end
 
             indexes.last.columns << row[:Column_name]
@@ -503,9 +503,9 @@ module ActiveRecord
       end
 
       def add_index(table_name, column_name, options = {}) #:nodoc:
-        if options.is_a?(Hash) && options.symbolize_keys[:using]
+        if options.is_a?(Hash) && options.symbolize_keys.has_key?(:using)
           options = options.symbolize_keys
-          index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options.except(:using))
+          index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
           execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} USING #{options[:using]} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
         else
           super
