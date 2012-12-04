@@ -10,7 +10,7 @@ module ActiveRecord
                   :where_values, :having_values, :bind_values,
                   :limit_value, :offset_value, :lock_value, :readonly_value, :create_with_value,
                   :from_value, :reordering_value, :reverse_order_value,
-                  :uniq_value
+                  :uniq_value, :with_values
 
     def includes(*args)
       args.reject! {|a| a.blank? }
@@ -204,6 +204,33 @@ module ActiveRecord
       relation
     end
 
+    # Adds the WITH queries (Common Table Expressions) support to
+    # ActiveRecord::Relation.
+    #
+    # \name  is the CTE you want
+    # \value can be a plain SQL query or another AR::Relation
+    #
+    # Example:
+    #
+    #   Post.with('posts',
+    #     Post.from('history.posts').
+    #       where('? BETWEEN valid_from AND valid_to', 1.month.ago)
+    #   ).where(:author_id => 1)
+    #
+    # yields:
+    #
+    #   WITH posts AS (
+    #     SELECT * FROM history.posts WHERE ... BETWEEN valid_from AND valid_to
+    #   ) SELECT * FROM posts
+    def with(name, value)
+      relation = clone
+      relation.with_values ||= {}
+
+      value = value.to_sql if value.respond_to? :to_sql
+      relation.with_values[name] = value
+      relation
+    end
+
     # Used to extend a scope with additional methods, either through
     # a module or through a block provided.
     #
@@ -283,6 +310,8 @@ module ActiveRecord
       arel.distinct(@uniq_value)
       arel.from(@from_value) if @from_value
       arel.lock(@lock_value) if @lock_value
+
+      arel.with(@with_values) unless @with_values.blank?
 
       arel
     end
