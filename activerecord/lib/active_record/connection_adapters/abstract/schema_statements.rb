@@ -628,6 +628,7 @@ module ActiveRecord
           index_name   = index_name(table_name, column: column_names)
 
           if Hash === options # legacy support, since this param was a string
+            options = options.symbolize_keys
             options.assert_valid_keys(:unique, :order, :name, :where, :length, :type)
 
             index_type = options[:unique] ? "UNIQUE" : "" # TODO add warning if type and unique

@@ -417,10 +417,13 @@ module ActiveRecord
         current_index = nil
         execute_and_free("SHOW KEYS FROM #{quote_table_name(table_name)}", 'SCHEMA') do |result|
           each_hash(result) do |row|
+            puts row.inspect
             if current_index != row[:Key_name]
               next if row[:Key_name] == 'PRIMARY' # skip the primary key
               current_index = row[:Key_name]
               indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [])
+              # Index_type includes the USING and TYPE parts.  We need to parse them out depending on
+              # which it corresponds to.  Need to add both into the definition accordingly.
               indexes.last.type = row[:Index_type].downcase.to_sym
             end
 
@@ -429,6 +432,7 @@ module ActiveRecord
           end
         end
 
+        puts indexes.inspect
         indexes
       end
 
@@ -497,10 +501,10 @@ module ActiveRecord
       end
 
       def add_index(table_name, column_name, options = {}) #:nodoc:
-        if options.is_a?(Hash) && options[:type]
-          index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
-          # USING #{options[:type]} # TODO: add back in using for Hash and btree, see tests
-          execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
+        if options.is_a?(Hash) && options.symbolize_keys[:using]
+          options = options.symbolize_keys
+          index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options.except(:using))
+          execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} USING #{options[:using]} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
         else
           super
         end
