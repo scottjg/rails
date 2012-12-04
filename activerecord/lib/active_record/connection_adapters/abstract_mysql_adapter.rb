@@ -703,14 +703,6 @@ module ActiveRecord
         [remove_column_sql(table_name, :updated_at), remove_column_sql(table_name, :created_at)]
       end
 
-      def add_index_options(table_name, column_name, options={})
-        index_name, index_type, index_columns, index_options = super(table_name, column_name, options.except(:type))
-
-        index_type = options[:type] unless options[:type].blank?
-
-        [index_name, index_type, index_columns, index_options]
-      end
-
       private
 
       def supports_views?
