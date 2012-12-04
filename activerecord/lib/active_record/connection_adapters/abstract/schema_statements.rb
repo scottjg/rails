@@ -632,7 +632,7 @@ module ActiveRecord
             options.assert_valid_keys(:unique, :order, :name, :where, :length, :type)
 
             index_type = options[:unique] ? "UNIQUE" : "" # TODO add warning if type and unique
-            index_type = options[:type] unless options[:type].blank?
+            index_type = options[:type].to_s if options.key?(:type)
             index_name = options[:name].to_s if options.key?(:name)
 
             if supports_partial_index?

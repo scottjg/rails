@@ -126,6 +126,9 @@ module ActiveRecord
         :boolean     => { :name => "tinyint", :limit => 1 }
       }
 
+      INDEX_TYPES  = [:fulltext, :spacial]
+      INDEX_USINGS = [:btree, :hash]
+
       class BindSubstitution < Arel::Visitors::MySQL # :nodoc:
         include Arel::Visitors::BindVisitor
       end
@@ -410,9 +413,6 @@ module ActiveRecord
 
         tables(nil, schema, table).any?
       end
-
-      INDEX_TYPES  = [:fulltext, :spacial]
-      INDEX_USINGS = [:btree, :hash]
 
       # Returns an array of indexes for the given table.
       def indexes(table_name, name = nil) #:nodoc:
