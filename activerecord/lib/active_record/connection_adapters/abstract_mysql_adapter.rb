@@ -411,20 +411,23 @@ module ActiveRecord
         tables(nil, schema, table).any?
       end
 
+      INDEX_TYPES  = [:fulltext, :spacial, :unique]
+      INDEX_USINGS = [:btree, :hash]
+
       # Returns an array of indexes for the given table.
       def indexes(table_name, name = nil) #:nodoc:
         indexes = []
         current_index = nil
         execute_and_free("SHOW KEYS FROM #{quote_table_name(table_name)}", 'SCHEMA') do |result|
           each_hash(result) do |row|
-            puts row.inspect
             if current_index != row[:Key_name]
               next if row[:Key_name] == 'PRIMARY' # skip the primary key
               current_index = row[:Key_name]
               indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [])
-              # Index_type includes the USING and TYPE parts.  We need to parse them out depending on
-              # which it corresponds to.  Need to add both into the definition accordingly.
-              indexes.last.type = row[:Index_type].downcase.to_sym
+
+              index_type = row[:Index_type].downcase.to_sym
+              indexes.last.type if INDEX_TYPES.include?(index_type)
+              indexes.last.options = {:using => index_type } if INDEX_USINGS.include?(index_type)
             end
 
             indexes.last.columns << row[:Column_name]
@@ -432,7 +435,6 @@ module ActiveRecord
           end
         end
 
-        puts indexes.inspect
         indexes
       end
 
