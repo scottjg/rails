@@ -631,7 +631,7 @@ module ActiveRecord
             options = options.symbolize_keys
             options.assert_valid_keys(:unique, :order, :name, :where, :length, :type, :using)
 
-            index_type = options[:unique] ? "UNIQUE" : "" # TODO add warning if type and unique
+            index_type = options[:unique] ? "UNIQUE" : ""
             index_type = options[:type].to_s if options.key?(:type)
             index_name = options[:name].to_s if options.key?(:name)
 
