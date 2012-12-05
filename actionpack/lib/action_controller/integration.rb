@@ -14,7 +14,7 @@ module ActionController
     # IntegrationTest#open_session, rather than instantiating
     # Integration::Session directly.
     class Session
-      include Test::Unit::Assertions
+      include MiniTest::Assertions
       include ActionController::TestCase::Assertions
       include ActionController::TestProcess
 
