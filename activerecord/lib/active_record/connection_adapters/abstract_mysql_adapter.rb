@@ -503,7 +503,7 @@ module ActiveRecord
       end
 
       def add_index(table_name, column_name, options = {}) #:nodoc:
-        if options.is_a?(Hash) && options.symbolize_keys.has_key?(:using)
+        if options.is_a?(Hash) && options.has_key?(:using)
           options = options.symbolize_keys
           index_name, index_type, index_columns, index_options = add_index_options(table_name, column_name, options)
           execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} USING #{options[:using]} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options}"
