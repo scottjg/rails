@@ -1,4 +1,5 @@
 require 'rails/ruby_version_check'
+require 'rails/env_choice_helper'
 
 require 'pathname'
 
@@ -86,7 +87,7 @@ module Rails
 
     def env
       @_env ||= begin
-        ENV["RAILS_ENV"] ||= ENV["RACK_ENV"] || "development"
+        ENV["RAILS_ENV"] = Rails::EnvChoiceHelper.env
         ActiveSupport::StringInquirer.new(ENV["RAILS_ENV"])
       end
     end

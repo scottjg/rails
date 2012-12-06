@@ -1,6 +1,7 @@
 require 'optparse'
 require 'irb'
 require 'irb/completion'
+require 'rails/env_choice_helper'
 
 module Rails
   class Console
@@ -45,7 +46,7 @@ module Rails
     end
 
     def environment
-      options[:environment] ||= ENV['RAILS_ENV'] || ENV['RACK_ENV'] || 'development'
+      options[:environment] ||= Rails::EnvChoiceHelper.env
     end
 
     def environment?

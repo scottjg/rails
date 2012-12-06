@@ -1,7 +1,8 @@
 require 'optparse'
 require 'rbconfig'
+require 'rails/env_choice_helper'
 
-options = { environment: (ENV['RAILS_ENV'] || ENV['RACK_ENV'] || "development").dup }
+options = { environment: Rails::EnvChoiceHelper.env.dup }
 code_or_file = nil
 
 if ARGV.first.nil?

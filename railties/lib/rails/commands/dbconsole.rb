@@ -2,6 +2,7 @@ require 'erb'
 require 'yaml'
 require 'optparse'
 require 'rbconfig'
+require 'rails/env_choice_helper'
 
 module Rails
   class DBConsole
@@ -96,7 +97,7 @@ module Rails
       if Rails.respond_to?(:env)
         Rails.env
       else
-        ENV["RAILS_ENV"] || ENV["RACK_ENV"] || "development"
+        Rails::EnvChoiceHelper.env
       end
     end
 
