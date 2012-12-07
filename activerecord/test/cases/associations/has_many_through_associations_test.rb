@@ -24,6 +24,8 @@ require 'models/member'
 require 'models/membership'
 require 'models/club'
 
+require 'debugger'
+
 class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :posts, :readers, :people, :comments, :authors, :categories, :taggings, :tags,
            :owners, :pets, :toys, :jobs, :references, :companies, :members, :author_addresses,

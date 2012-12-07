@@ -15,6 +15,8 @@ require 'models/member'
 require 'models/essay'
 require 'models/toy'
 
+require 'debugger'
+
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
            :developers_projects, :computers, :authors, :author_addresses,
@@ -231,7 +233,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal p.id, c.post_id
     assert_equal 2, Post.find(p.id).comments.size
 
-    c.post = nil
+    c.post = nil # wat!?
 
     assert_equal 1, Post.find(p.id).comments.size
   end

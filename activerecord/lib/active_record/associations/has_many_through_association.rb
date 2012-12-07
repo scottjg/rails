@@ -26,6 +26,14 @@ module ActiveRecord
         end
       end
 
+      def has_cached_counter?(reflection = reflection)
+        owner.attribute_present?(cached_counter_attribute_name(reflection))
+      end
+
+      def cached_counter_attribute_name(reflection = reflection)
+        options[:counter_cache] || "#{reflection.name}_count"
+      end
+
       def concat(*records)
         unless owner.new_record?
           records.flatten.each do |record|

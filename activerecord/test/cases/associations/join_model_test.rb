@@ -522,11 +522,17 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert !author.comments.loaded?
   end
 
-  def test_has_many_through_collection_size_uses_counter_cache_if_it_exists
+  def test_has_many_does_not_detect_false_positive_counter_caches
     c = categories(:general)
-    c.categorizations_count = 100
-    assert_equal 100, c.categorizations.size
-    assert !c.categorizations.loaded?
+    c.categorizations_count = c.categorizations.count + 1
+    assert_equal c.categorizations.count, c.categorizations.size
+  end
+
+  def test_has_many_through_collection_size_uses_counter_cache_if_it_exists
+    post = posts(:thinking)
+    post.tags_count = 100
+    assert_equal 100, post.tags.size
+    assert !post.tags.loaded?
   end
 
   def test_adding_junk_to_has_many_through_should_raise_type_mismatch

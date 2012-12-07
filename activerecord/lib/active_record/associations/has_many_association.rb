@@ -1,3 +1,4 @@
+require 'debugger'
 module ActiveRecord
   # = Active Record Has Many Association
   module Associations
@@ -71,12 +72,44 @@ module ActiveRecord
           [association_scope.limit_value, count].compact.min
         end
 
+        def belongs_to_reflection(reflection = reflection)
+          # if reflection.has_inverse?
+          #   reflection.inverse_of
+          # else
+          #   if reflection.options[:as]
+          #     association = reflection.options[:as]
+          #   else
+          #     association = owner.class.name.split('::').last.underscore.to_sym
+          #   end
+          #   reflection.klass.reflect_on_association(association)
+          # end
+          if reflection.has_inverse?
+            [ reflection.inverse_of ]
+          elsif reflection.options[:as]
+            [reflection.klass.reflect_on_association(reflection.options[:as])]
+          else
+            reflection.klass.reflect_on_all_associations(:belongs_to).select do |r|
+              owner.is_a?(r.klass)
+            end
+          end
+        end
+
         def has_cached_counter?(reflection = reflection)
-          owner.attribute_present?(cached_counter_attribute_name(reflection))
+          belongs_to_reflection.select {|r| r.options[:counter_cache] }.any?
         end
 
         def cached_counter_attribute_name(reflection = reflection)
-          options[:counter_cache] || "#{reflection.name}_count"
+          # belongs_to_reflection.counter_cache_column
+          if reflection.options[:counter_cache]
+            reflection.options[:counter_cache]
+          else
+            ref = belongs_to_reflection.select {|r| r.options[:counter_cache] }.first
+            if ref.options[:counter_cache] == true
+              "#{reflection.name}_count"
+            else
+              ref.counter_cache_column
+            end
+          end
         end
 
         def update_counter(difference, reflection = reflection)
@@ -99,10 +132,12 @@ module ActiveRecord
         #
         # Hence this method.
         def inverse_updates_counter_cache?(reflection = reflection)
-          counter_name = cached_counter_attribute_name(reflection)
-          reflection.klass.reflect_on_all_associations(:belongs_to).any? { |inverse_reflection|
-            inverse_reflection.counter_cache_column == counter_name
-          }
+          if has_cached_counter?
+            counter_name = cached_counter_attribute_name(reflection)
+            reflection.klass.reflect_on_all_associations(:belongs_to).any? { |inverse_reflection|
+              inverse_reflection.counter_cache_column == counter_name
+            }
+          end
         end
 
         # Deletes the records according to the <tt>:dependent</tt> option.
