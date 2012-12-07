@@ -155,7 +155,14 @@ module ActiveRecord
         quote_column_name(name)
       end
 
-      # Override to return the quoted table name for assignment. Defaults to table quoting.
+      # Override to return the quoted table name for assignment. Defaults to
+      # table quoting.
+      #
+      # This works for mysql and mysql2 where table.column can be used to
+      # resolve ambiguity.
+      #
+      # We override this in the sqlite and postgresql adaptors to use only
+      # the column name (as per syntax requirements).
       def quote_table_name_for_assignment(name)
         quote_table_name(name)
       end
