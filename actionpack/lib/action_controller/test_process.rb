@@ -417,6 +417,12 @@ module ActionController #:nodoc:
       def head(action, parameters = nil, session = nil, flash = nil)
         process(action, parameters, session, flash, "HEAD")
       end
+
+      # Backport from test/unit
+      def build_message(message, template = nil, *args)
+        template = template.gsub('<?>', '<%s>')
+        message || sprintf(template, *args)
+      end
     end
 
     def process(action, parameters = nil, session = nil, flash = nil, http_method = 'GET')

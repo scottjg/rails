@@ -1,6 +1,7 @@
 require 'minitest/unit'
 require 'active_support/testing/setup_and_teardown'
 require 'active_support/testing/assertions'
+require 'active_support/testing/deprecation'
 require 'active_support/testing/declarative'
 
 module ActiveSupport
@@ -14,9 +15,16 @@ module ActiveSupport
     Assertion = MiniTest::Assertion
     alias_method :method_name, :__name__
 
+
     include ActiveSupport::Testing::SetupAndTeardown
     include ActiveSupport::Testing::Assertions
-    # include ActiveSupport::Testing::Deprecation
+    include ActiveSupport::Testing::Deprecation
     extend ActiveSupport::Testing::Declarative
+
+    # Backport from test/unit
+    def build_message(message, template = nil, *args)
+      template = template.gsub('<?>', '<%s>')
+      message || sprintf(template, *args)
+    end
   end
 end

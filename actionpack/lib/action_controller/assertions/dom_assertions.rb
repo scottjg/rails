@@ -12,7 +12,7 @@ module ActionController
           end
         end
       end
-      
+
       # Test two HTML strings for equivalency (e.g., identical up to reordering of attributes)
       #
       # ==== Examples
@@ -28,10 +28,10 @@ module ActionController
           DomAssertions.strip_whitespace!(actual_dom.children)
 
           full_message = build_message(message, "<?> expected but was\n<?>.", expected_dom.to_s, actual_dom.to_s)
-          assert_block(full_message) { expected_dom == actual_dom }
+          assert(lambda { expected_dom == actual_dom }, full_message)
         end
       end
-      
+
       # The negated form of +assert_dom_equal+.
       #
       # ==== Examples
@@ -47,7 +47,7 @@ module ActionController
           DomAssertions.strip_whitespace!(actual_dom.children)
 
           full_message = build_message(message, "<?> expected to be != to\n<?>.", expected_dom.to_s, actual_dom.to_s)
-          assert_block(full_message) { expected_dom != actual_dom }
+          assert(lambda { expected_dom != actual_dom }, full_message)
         end
       end
     end

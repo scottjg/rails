@@ -24,18 +24,18 @@ module ActionController
       def assert_response(type, message = nil)
         clean_backtrace do
           if [ :success, :missing, :redirect, :error ].include?(type) && @response.send("#{type}?")
-            assert_block("") { true } # to count the assertion
+            assert true # to count the assertion
           elsif type.is_a?(Fixnum) && @response.response_code == type
-            assert_block("") { true } # to count the assertion
+            assert true # to count the assertion
           elsif type.is_a?(Symbol) && @response.response_code == ActionController::StatusCodes::SYMBOL_TO_STATUS_CODE[type]
-            assert_block("") { true } # to count the assertion
+            assert true # to count the assertion
           else
             if @response.error?
               exception = @response.template.instance_variable_get(:@exception)
               exception_message = exception && exception.message
-              assert_block(build_message(message, "Expected response to be a <?>, but was <?>\n<?>", type, @response.response_code, exception_message.to_s)) { false }
+              assert(false, build_message(message, "Expected response to be a <?>, but was <?>\n<?>", type, @response.response_code, exception_message.to_s))
             else
-              assert_block(build_message(message, "Expected response to be a <?>, but was <?>", type, @response.response_code)) { false }
+              assert(false, build_message(message, "Expected response to be a <?>, but was <?>", type, @response.response_code))
             end
           end
         end
@@ -104,13 +104,13 @@ module ActionController
             msg = build_message(message,
                     "expecting <?> but rendering with <?>",
                     options, rendered)
-            assert_block(msg) do
+            assert(lambda do
               if options.nil?
                 @response.rendered[:template].blank?
               else
                 rendered.to_s.match(options.to_s)
               end
-            end
+            end, msg)
           when Hash
             if expected_partial = options[:partial]
               partials = @response.rendered[:partials]
@@ -132,7 +132,7 @@ module ActionController
                 "Expected no partials to be rendered"
             end
           else
-            raise ArgumentError  
+            raise ArgumentError
           end
         end
       end
