@@ -745,8 +745,9 @@ ActiveRecord::Schema.define do
   end
 
   create_table :countries, :force => true, :id => false, :primary_key => 'country_id' do |t|
-    t.string :country_id
-    t.string :name
+    t.string  :country_id
+    t.integer :treaties_count, :default => 0
+    t.string  :name
   end
   create_table :treaties, :force => true, :id => false, :primary_key => 'treaty_id' do |t|
     t.string :treaty_id

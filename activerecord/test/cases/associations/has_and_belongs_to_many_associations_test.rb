@@ -799,6 +799,61 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, developer.projects.count
   end
 
+  def test_counter_cache_is_used_for_size_when_defined
+    country = Country.create(:name => 'India', :country_id => 'c1', :treaties_count => 100)
+    assert_equal 100, country.treaties.size
+  end
+
+  def test_counter_cache_is_ignored_when_nil
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    treaty = country.treaties.create(:name => 'peace', :treaty_id => 't1')
+    country.treaties_count = nil
+    assert_equal 1, country.treaties.size
+  end
+
+  def test_counter_cache_is_not_used_by_count
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    country.treaties_count = 100
+    assert_equal 0, country.treaties.count
+  end
+
+  def test_counter_cache_is_incremented_when_creating_records
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    assert_difference "country.reload.treaties_count", 1 do
+      country.treaties.create(:name => 'peace', :treaty_id => 't1')
+    end
+  end
+
+  def test_counter_cache_is_incremented_when_addings_records
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    treaty = country.treaties.create(:name => 'peace', :treaty_id => 't1')
+    assert_difference "country.reload.treaties_count", 1 do
+      country.treaties << treaty
+    end
+  end
+
+  def test_counter_cache_is_decremented_when_records_are_destoyed
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    treaty = country.treaties.create(:name => 'peace', :treaty_id => 't1')
+    assert_difference "country.reload.treaties_count", -1 do
+      treaty.destroy
+    end
+  end
+
+  def test_counter_cache_adjusted_when_replacing_associations
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    t1 = Treaty.create(:name => 'peace', :treaty_id => 't1')
+    t2 = Treaty.create(:name => 'war', :treaty_id => 't2')
+
+    # test incrementing
+    country.treaties = [t1, t2]
+    assert_equal 2, country.reload.treaties_count
+
+    # test decrementing
+    country.treaties = [t1]
+    assert_equal 1, country.reload.treaties_count
+  end
+
   unless current_adapter?(:PostgreSQLAdapter)
     def test_count_with_finder_sql
       assert_equal 3, projects(:active_record).developers_with_finder_sql.count
