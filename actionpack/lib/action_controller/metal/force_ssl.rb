@@ -27,6 +27,10 @@ module ActionController
         host = options.delete(:host)
         before_filter(options) do
           if !request.ssl? && !Rails.env.development?
+
+Rails.logger.info "request.ssl?"
+Rails.logger.info request.ssl?
+
             redirect_options = {:protocol => 'https://', :status => :moved_permanently}
             redirect_options.merge!(:host => host) if host
             redirect_options.merge!(:params => request.query_parameters)
