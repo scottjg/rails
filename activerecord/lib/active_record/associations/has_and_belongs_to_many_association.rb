@@ -30,14 +30,18 @@ module ActiveRecord
 
           owner.connection.insert stmt
         end
+
+        if options[:counter_cache]
+          record.class.increment_counter(cached_counter_attribute_name(reflection), record.id)
+        end
         update_counter(1)
         record
       end
 
       private
 
-        def cached_counter_attribute_name
-          source_reflection.counter_cache_column
+        def cached_counter_attribute_name(reflection = source_reflection)
+          reflection.counter_cache_column
         end
 
         def count_records
@@ -56,23 +60,28 @@ module ActiveRecord
             relation  = join_table
             condition = relation[reflection.foreign_key].eq(owner.id)
 
+            if records == :all
+              ids = owner.send("#{reflection.name.to_s.singularize}_ids")
+            end
+
             unless records == :all
               condition = condition.and(
                 relation[reflection.association_foreign_key]
                   .in(records.map { |x| x.id }.compact)
               )
             end
-
             count = owner.connection.delete(relation.where(condition).compile_delete)
           end
           update_counter(-count)
+          if options[:counter_cache]
+            ids ||= records.map(&:id)
+            counter = cached_counter_attribute_name(reflection)
+            reflection.klass.decrement_counter(counter, ids)
+          end
           count
         end
 
         def has_cached_counter?
-          unless source_reflection
-            debugger
-          end
           source_reflection.options[:counter_cache]
         end
 

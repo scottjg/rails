@@ -19,16 +19,16 @@ module ActiveRecord::Associations::Builder
       cache_column = reflection.counter_cache_column
       klass = reflection.class_name.safe_constantize
 
-      mixin.class_eval <<-CODE, __FILE__, __LINE__ + 1
-        def habtm_counter_cache_before_destroy_for_#{name}
-          unless marked_for_destruction?
-            ids = #{name.to_s.singularize}_ids
-            #{klass}.decrement_counter(:#{cache_column}, ids) unless ids.empty?
-          end
-        end
-      CODE
+      # mixin.class_eval <<-CODE, __FILE__, __LINE__ + 1
+      #   def habtm_counter_cache_before_destroy_for_#{name}
+      #     unless marked_for_destruction?
+      #       ids = #{name.to_s.singularize}_ids
+      #       #{klass}.decrement_counter(:#{cache_column}, ids) unless ids.empty?
+      #     end
+      #   end
+      # CODE
 
-      model.before_destroy "habtm_counter_cache_before_destroy_for_#{name}"
+      # model.before_destroy "habtm_counter_cache_before_destroy_for_#{name}"
       klass.attr_readonly cache_column if klass && klass.respond_to?(:attr_readonly)
     end
 

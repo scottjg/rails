@@ -854,6 +854,23 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, country.reload.treaties_count
   end
 
+  def test_counter_cache_incremented_when_adding_to_the_source_association
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    treaty = Treaty.create(:name => 'peace', :treaty_id => 't1')
+    assert_difference "country.reload.treaties_count", 1 do
+      treaty.countries << country
+    end
+  end
+
+  def test_counter_cache_decremented_when_removing_from_the_source_association
+    country = Country.create(:name => 'India', :country_id => 'c1')
+    treaty = country.treaties.create(:name => 'peace', :treaty_id => 't1')
+    assert_difference "country.reload.treaties_count", -1 do
+      # treaty.countries = []
+      treaty.countries.destroy_all
+    end
+  end
+
   unless current_adapter?(:PostgreSQLAdapter)
     def test_count_with_finder_sql
       assert_equal 3, projects(:active_record).developers_with_finder_sql.count
