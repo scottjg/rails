@@ -771,6 +771,7 @@ ActiveRecord::Schema.define do
   end
   create_table :weirds, :force => true do |t|
     t.string 'a$b'
+    t.string 'from'
   end
 
   except 'SQLite' do

@@ -1,4 +1,4 @@
-require 'active_support/core_ext/object/try'
+require 'active_support/deprecation'
 
 module ActiveRecord
   module Calculations
@@ -15,16 +15,9 @@ module ActiveRecord
     #
     #   Person.count(:age, distinct: true)
     #   # => counts the number of different age values
-    #
-    #   Person.where("age > 26").count { |person| person.gender == 'female' }
-    #   # => queries people where "age > 26" then count the loaded results filtering by gender
     def count(column_name = nil, options = {})
-      if block_given?
-        self.to_a.count { |item| yield item }
-      else
-        column_name, options = nil, column_name if column_name.is_a?(Hash)
-        calculate(:count, column_name, options)
-      end
+      column_name, options = nil, column_name if column_name.is_a?(Hash)
+      calculate(:count, column_name, options)
     end
 
     # Calculates the average value on a given column. Returns +nil+ if there's
@@ -58,13 +51,13 @@ module ActiveRecord
     # +calculate+ for examples with options.
     #
     #   Person.sum('age') # => 4562
-    #   # => returns the total sum of all people's age
-    #
-    #   Person.where('age > 100').sum { |person| person.age - 100 }
-    #   # queries people where "age > 100" then perform a sum calculation with the block returns
     def sum(*args)
       if block_given?
-        self.to_a.sum(*args) { |item| yield item }
+        ActiveSupport::Deprecation.warn(
+          "Calling #sum with a block is deprecated and will be removed in Rails 4.1. " \
+          "If you want to perform sum calculation over the array of elements, use `to_a.sum(&block)`."
+        )
+        self.to_a.sum(*args) {|*block_args| yield(*block_args)}
       else
         calculate(:sum, *args)
       end
@@ -83,18 +76,17 @@ module ActiveRecord
     #
     #       values = Person.group('last_name').maximum(:age)
     #       puts values["Drake"]
-    #       => 43
+    #       # => 43
     #
     #       drake  = Family.find_by_last_name('Drake')
     #       values = Person.group(:family).maximum(:age) # Person belongs_to :family
     #       puts values[drake]
-    #       => 43
+    #       # => 43
     #
     #       values.each do |family, max_age|
     #       ...
     #       end
     #
-    # Examples:
     #   Person.calculate(:count, :all) # The same as Person.count
     #   Person.average(:age) # SELECT AVG(age) FROM people...
     #
@@ -118,8 +110,8 @@ module ActiveRecord
       0
     end
 
-    # Use <tt>pluck</tt> as a shortcut to select a single attribute without
-    # loading a bunch of records just to grab one attribute you want.
+    # Use <tt>pluck</tt> as a shortcut to select one or more attributes without
+    # loading a bunch of records just to grab the attributes you want.
     #
     #   Person.pluck(:name)
     #
@@ -128,10 +120,8 @@ module ActiveRecord
     #   Person.all.map(&:name)
     #
     # Pluck returns an <tt>Array</tt> of attribute values type-casted to match
-    # the plucked column name, if it can be deduced. Plucking an SQL fragment
+    # the plucked column names, if they can be deduced. Plucking an SQL fragment
     # returns String values by default.
-    #
-    # Examples:
     #
     #   Person.pluck(:id)
     #   # SELECT people.id FROM people
@@ -145,7 +135,7 @@ module ActiveRecord
     #   # SELECT DISTINCT role FROM people
     #   # => ['admin', 'member', 'guest']
     #
-    #   Person.where(:age => 21).limit(5).pluck(:id)
+    #   Person.where(age: 21).limit(5).pluck(:id)
     #   # SELECT people.id FROM people WHERE people.age = 21 LIMIT 5
     #   # => [2, 3]
     #
@@ -188,8 +178,6 @@ module ActiveRecord
     end
 
     # Pluck all the ID's for the relation using the table's primary key
-    #
-    # Examples:
     #
     #   Person.ids # SELECT people.id FROM people
     #   Person.joins(:companies).ids # SELECT people.id FROM people INNER JOIN companies ON companies.person_id = people.id
@@ -273,17 +261,19 @@ module ActiveRecord
         group_fields = group_attrs
       end
 
-      group_aliases = group_fields.map { |field| column_alias_for(field) }
+      group_aliases = group_fields.map { |field|
+        column_alias_for(field)
+      }
       group_columns = group_aliases.zip(group_fields).map { |aliaz,field|
         [aliaz, column_for(field)]
       }
 
-      group = @klass.connection.adapter_name == 'FrontBase' ? group_aliases : group_fields
+      group = group_fields
 
       if operation == 'count' && column_name == :all
         aggregate_alias = 'count_all'
       else
-        aggregate_alias = column_alias_for(operation, column_name)
+        aggregate_alias = column_alias_for([operation, column_name].join(' '))
       end
 
       select_values = [
@@ -302,7 +292,8 @@ module ActiveRecord
         end
       }
 
-      relation = except(:group).group(group)
+      relation = except(:group)
+      relation.group_values  = group
       relation.select_values = select_values
 
       calculated_data = @klass.connection.select_all(relation, nil, bind_values)
@@ -331,10 +322,12 @@ module ActiveRecord
     #   column_alias_for("count(distinct users.id)") # => "count_distinct_users_id"
     #   column_alias_for("count(*)")                 # => "count_all"
     #   column_alias_for("count", "id")              # => "count_id"
-    def column_alias_for(*keys)
-      keys.map! {|k| k.respond_to?(:to_sql) ? k.to_sql : k}
-      table_name = keys.join(' ')
-      table_name.downcase!
+    def column_alias_for(keys)
+      if keys.respond_to? :name
+        keys = "#{keys.relation.name}.#{keys.name}"
+      end
+
+      table_name = keys.to_s.downcase
       table_name.gsub!(/\*/, 'all')
       table_name.gsub!(/\W+/, ' ')
       table_name.strip!
