@@ -1,4 +1,6 @@
 class Thread
+  LOCK = Mutex.new # :nodoc:
+
   # Returns the value of a thread local variable that has been set. Note that
   # these are different than fiber local values.
   #
@@ -63,6 +65,6 @@ class Thread
   private
 
   def locals
-    @locals ||= {}
+    @locals || LOCK.synchronize { @locals ||= {} }
   end
 end unless Thread.instance_methods.include?(:thread_variable_set)
