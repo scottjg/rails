@@ -1,5 +1,8 @@
 ## Rails 3.0.20 (unreleased)
 
+* Merge with upstream for commit 182d4e37191d0243ed95aea6a7670d4025b6d4b0
+* Merge 815a9431ab61376a7e8e1bdff21f87bc557992f8 to fix JSON encode bug
+
 ## Rails 3.0.19 (Jan 8, 2013)
 
 * Hash.from_xml raises when it encounters type="symbol" or type="yaml".
