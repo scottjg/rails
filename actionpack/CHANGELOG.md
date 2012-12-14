@@ -42,7 +42,7 @@
           <%= render project.topics %>
         <% end %>
 
-        and
+        #and
 
         <%= cache_unless condition, project do %>
           <b>All the topics on this project</b>
