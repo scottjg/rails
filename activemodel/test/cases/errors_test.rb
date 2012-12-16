@@ -178,7 +178,7 @@ class ErrorsTest < ActiveModel::TestCase
     assert_equal ["name can not be blank"], person.errors.full_messages_for(:name)
   end
 
-  test "full_messages_for should return an empty array in case if errors hash doesn't contain given method" do
+  test "full_messages_for should return an empty array in case if errors hash doesn't contain a given method" do
     person = Person.new
     person.errors.add(:name, "can not be blank")
     assert_equal [], person.errors.full_messages_for(:email)
