@@ -376,7 +376,7 @@ module ActiveModel
     #   person.errors.full_messages_for(:name)
     #   # => ["Name is too short (minimum is 5 characters)", "Name can't be blank"]
     def full_messages_for(attribute)
-      get(attribute).map { |message| full_message(attribute, message) }
+      (get(attribute) || []).map { |message| full_message(attribute, message) }
     end
 
     # Returns a full message for a given attribute.
