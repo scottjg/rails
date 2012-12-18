@@ -261,6 +261,18 @@ class ActionsTest < Rails::Generators::TestCase
     assert_equal("", action(:log, :yes, "YES"))
   end
 
+  def test_template_with_editor
+    generator(default_arguments, editor: "vim")
+    generator.expects(:run).once.with("vim \"Gemfile\"")
+    action :template, 'Gemfile'
+  end
+
+  def test_copy_file_with_editor
+    generator(default_arguments, editor: "vim")
+    generator.expects(:run).once.with("vim \"README\"")
+    action :copy_file, 'README'
+  end
+
   protected
 
     def action(*args, &block)

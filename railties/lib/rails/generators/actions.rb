@@ -295,6 +295,31 @@ module Rails
         log File.read(find_in_source_paths(path))
       end
 
+
+      # Wrapper around Thor's template action.
+      # Opens generated template in editor if generator is run with the <tt>--editor</tt> option.
+      #
+      #   template "Gemfile"
+      def template(source, *args, &block)
+        super
+        if options["editor"].present?
+          destination = args.first || source.sub(/\.tt$/, '')
+          open_file_in_editor(destination)
+        end
+      end
+
+      # Wrapper around Thor's copy_file action.
+      # Opens copied files in editor if generator is run with the <tt>--editor</tt> option.
+      #
+      #   copy_file "gitignore", ".gitignore"
+      def copy_file(source, *args, &block)
+        super
+        if options["editor"].present?
+          destination = args.first || source
+          open_file_in_editor(destination)
+        end
+      end
+
       protected
 
         # Define log for backwards compatibility. If just one argument is sent,
@@ -320,6 +345,9 @@ module Rails
           end
         end
 
+        def open_file_in_editor(path)
+          run("#{options["editor"]} \"#{path}\"")
+        end
     end
   end
 end
