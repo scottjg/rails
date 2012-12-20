@@ -1,7 +1,31 @@
 ## Rails 3.2.10 (unreleased) ##
 
-*   Fix side effect of `url_for` changing the `:controller` string option. [Backport #6003]
+*   Clear url helper methods when routes are reloaded by removing the methods
+    explicitly rather than just clearing the module because it didn't work
+    properly and could be the source of a memory leak.
 
+    *Andrew White*
+
+*   Fix a bug in ActionDispatch::Request#raw_post that caused env['rack.input']
+    to be read but not rewound.
+
+    *Matt Venables*
+
+*   More descriptive error messages when calling `render :partial` with
+    an invalid `:layout` argument.
+    #8376
+
+        render :partial => 'partial', :layout => true
+
+        # results in ActionView::MissingTemplate: Missing partial /true
+
+    *Yves Senn*
+
+*   Accept symbols as #send_data :disposition value. [Backport #8329] *Elia Schito*
+
+*   Add i18n scope to distance_of_time_in_words. [Backport #7997] *Steve Klabnik*
+
+*   Fix side effect of `url_for` changing the `:controller` string option. [Backport #6003]
     Before:
 
         controller = '/projects'
