@@ -16,24 +16,30 @@ After reading this guide, you will know:
 Guide Assumptions
 -----------------
 
-This guide is designed for beginners who want to get started with a Rails
-application from scratch. It does not assume that you have any prior experience
-with Rails. However, to get the most out of it, you need to have some
-prerequisites installed:
+### Knowledge pre-requisites
 
-* The [Ruby](http://www.ruby-lang.org/en/downloads) language version 1.9.3 or higher
-* The [RubyGems](http://rubygems.org/) packaging system
-    * To learn more about RubyGems, please read the [RubyGems User Guide](http://docs.rubygems.org/read/book/1)
-* A working installation of the [SQLite3 Database](http://www.sqlite.org)
+This guide was written for people who want to get started with Rails. It does
+not assume that you have any prior experience with Rails.
 
 Rails is a web application framework running on the Ruby programming language.
-If you have no prior experience with Ruby, you will find a very steep learning
-curve diving straight into Rails. There are some good free resources on the
-internet for learning Ruby, including:
+If you have no prior experience with Ruby, you may have trouble trying to begin
+with Rails. There are many quality free resources on the internet for learning
+Ruby, including:
 
 * [Mr. Neighborly's Humble Little Ruby Book](http://www.humblelittlerubybook.com)
 * [Programming Ruby](http://www.ruby-doc.org/docs/ProgrammingRuby/)
 * [Why's (Poignant) Guide to Ruby](http://mislav.uniqpath.com/poignant-guide/)
+
+
+### Software pre-requisites
+
+You will need to have two pieces of software installed to complete the
+exercises in this guide:
+
+* The [Ruby](http://www.ruby-lang.org/en/downloads) programming language
+  version 1.9.3 or higher. You can see what version of Ruby you have installed
+  by typing `ruby -v` in a console window. Rails will not work with Ruby 1.8.
+* A working installation of the [SQLite3 Database](http://www.sqlite.org).
 
 What is Rails?
 --------------
