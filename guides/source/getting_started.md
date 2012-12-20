@@ -41,6 +41,11 @@ exercises in this guide:
   by typing `ruby -v` in a console window. Rails will not work with Ruby 1.8.
 * A working installation of the [SQLite3 Database](http://www.sqlite.org).
 
+TIP. A number of tools exist to help you quickly install Ruby and Ruby on Rails
+on your system. Windows users can use [Rails
+Installer](http://railsinstaller.org), while Mac OS X users can use [Rails One
+Click](http://railsoneclick.com).
+
 What is Rails?
 --------------
 
@@ -70,91 +75,77 @@ quickly.
 Creating a New Rails Project
 ----------------------------
 
-The best way to use this guide is to follow each step as it happens, no code or
-step needed to make this example application has been left out, so you can
-literally follow along step by step. You can get the complete code
-[here](https://github.com/lifo/docrails/tree/master/guides/code/getting_started).
-
-By following along with this guide, you'll create a Rails project called
-`blog`, a
-(very) simple weblog. Before you can start building the application, you need to
-make sure that you have Rails itself installed.
-
-TIP: The examples below use # and $ to denote superuser and regular user terminal prompts respectively in a UNIX-like OS. If you are using Windows, your prompt will look something like c:\source_code>
+Let's build a simple application with Rails: a blog. This guide will walk you
+through every step, so follow along! If you'd like to compare your code to a
+finished, working version, we've [put one on
+GitHub](https://github.com/rails/rails/tree/master/guides/blog) for you.
 
 ### Installing Rails
 
-Open up a command line prompt. On Mac OS X open Terminal.app, on Windows choose
-"Run" from your Start menu and type 'cmd.exe'. Any commands prefaced with a
-dollar sign `$` should be run in the command line. Verify that you have a
-current version of Ruby installed:
+The first step to using Rails is to install it! We can do that from the
+terminal with Rubygems, Ruby's package manager.
 
-```bash
-$ ruby -v
-ruby 1.9.3p327
-```
+TIP: The examples below use # and $ to denote superuser and regular user
+  terminal prompts respectively in a UNIX-like OS. If you are using Windows,
+  your prompt will look something like `c:\source_code>`
 
-To install Rails, use the `gem install` command provided by RubyGems:
+To do so, just type
 
 ```bash
 $ gem install rails
 ```
 
-TIP. A number of tools exist to help you quickly install Ruby and Ruby
-on Rails on your system. Windows users can use [Rails Installer](http://railsinstaller.org), while Mac OS X users can use
-[Rails One Click](http://railsoneclick.com).
-
-To verify that you have everything installed correctly, you should be able to run the following:
+To test that it worked properly, try asking Rails what version it is:
 
 ```bash
 $ rails --version
+Rails 4.0.0
 ```
 
-If it says something like "Rails 3.2.9", you are ready to continue.
+If you see that "4.0.0" you're good to go.
 
 ### Creating the Blog Application
 
-Rails comes with a number of scripts called generators that are designed to make your development life easier by creating everything that's necessary to start working on a particular task. One of these is the new application generator, which will provide you with the foundation of a fresh Rails application so that you don't have to write it yourself.
+In order to make a blog, we need to write some code, and in order to write some
+code, we need to make some files to put the code in! A web application can
+have many files, so Rails includes a feature called 'generators' that will
+make many of the files you need. That way, you don't have to.
 
-To use this generator, open a terminal, navigate to a directory where you have rights to create files, and type:
+To use the generator to make a new application, enter this into your terminal:
 
 ```bash
-$ rails new blog
+$ rails new Blog
 ```
 
-This will create a Rails application called Blog in a directory called blog and install the gem dependencies that are already mentioned in `Gemfile` using `bundle install`.
-
-TIP: You can see all of the command line options that the Rails
-application builder accepts by running `rails new -h`.
-
-After you create the blog application, switch to its folder to continue work directly in that application:
+You'll see a whole list of files fly past your screen, and then a bunch of
+messages about installing gems. If all goes well, you'll have a new Rails
+application with the very innovative name 'Blog' in a directory called `blog`.
+Let's move into that directory and check out what's in it:
 
 ```bash
 $ cd blog
+$ ls
 ```
-
-The `rails new blog` command we ran above created a folder in your
-working directory called `blog`. The `blog` directory has a number of
-auto-generated files and folders that make up the structure of a Rails
-application. Most of the work in this tutorial will happen in the `app/` folder, but here's a basic rundown on the function of each of the files and folders that Rails created by default:
+Rails generated a bunch of files for you. Here's a quick overview of what they
+are and what they do:
 
 | File/Folder | Purpose |
 | ----------- | ------- |
-|app/|Contains the controllers, models, views, helpers, mailers and assets for your application. You'll focus on this folder for the remainder of this guide.|
-|config/|Configure your application's runtime rules, routes, database, and more.  This is covered in more detail in [Configuring Rails Applications](configuring.html)|
-|config.ru|Rack configuration for Rack based servers used to start the application.|
-|db/|Contains your current database schema, as well as the database migrations.|
-|doc/|In-depth documentation for your application.|
-|Gemfile<br />Gemfile.lock|These files allow you to specify what gem dependencies are needed for your Rails application. These files are used by the Bundler gem. For more information about Bundler, see [the Bundler website](http://gembundler.com) |
-|lib/|Extended modules for your application.|
-|log/|Application log files.|
-|public/|The only folder seen to the world as-is. Contains the static files and compiled assets.|
-|Rakefile|This file locates and loads tasks that can be run from the command line. The task definitions are defined throughout the components of Rails. Rather than changing Rakefile, you should add your own tasks by adding files to the lib/tasks directory of your application.|
-|README.rdoc|This is a brief instruction manual for your application. You should edit this file to tell others what your application does, how to set it up, and so on.|
-|script/|Contains the rails script that starts your app and can contain other scripts you use to deploy or run your application.|
-|test/|Unit tests, fixtures, and other test apparatus. These are covered in [Testing Rails Applications](testing.html)|
-|tmp/|Temporary files (like cache, pid and session files)|
-|vendor/|A place for all third-party code. In a typical Rails application, this includes Ruby Gems and the Rails source code (if you optionally install it into your project).|
+|app/|Contains your application code. We'll focus on this folder for the remainder of this guide.|
+|config/|All of the configuration for your application. The files here are covered in depth in '[Configuring Rails Applications](configuring.html)'.|
+|config.ru|Configuration that lets Rails talk to web servers. You shouldn't edit this file.|
+|db/|Everything relating to your database. Schemas, migrations, and other related files. You'll learn more about this directory in '[Active Record Migrations](migrations.html)'.|
+|doc/|This is where the documentation for your application goes.|
+|Gemfile<br />Gemfile.lock|These files manage your applications dependencies on third party modules, called 'gems.' These files are used by the [Bundler](http://gembundler.com/) gem.|
+|lib/|This directory is used for library files that your application uses. Generally, files in this directory eventually make their way into a gem.|
+|log/|Log files that contain a detailed record of your interactions with your application.|
+|public/|This is the 'document root' of your application, and any files you want to be statically served go here.|
+|Rakefile|This file sets up integration between Rails and the Rake gem. You can put your own rake tasks in `lib/tasks`.|
+|README.rdoc|Your application's README. Rails generates a basic one for you.|
+|script/|This is where the `rails` command lives. You may store any small scripts you write to interact with your application here.|
+|test/|Rails encourages you to test your applications, and this is where those tests go.|
+|tmp/|Temporary files related to your application, such as pidfiles.|
+|vendor/|Historically, this directory held modified versions of third party libraries. Today, this is easier to do with Bundler, but some people still like to store other people's code here.|
 
 Hello, Rails!
 -------------
