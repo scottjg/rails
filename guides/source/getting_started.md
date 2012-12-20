@@ -44,25 +44,28 @@ exercises in this guide:
 What is Rails?
 --------------
 
-Rails is a web application development framework written in the Ruby language.
-It is designed to make programming web applications easier by making assumptions
-about what every developer needs to get started. It allows you to write less
-code while accomplishing more than many other languages and frameworks.
-Experienced Rails developers also report that it makes web application
-development more fun.
+Rails is a full-stack web application framework written in Ruby. [Originally
+released in
+2004](http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-talk/107370),
+Rails has had a major impact on web development, with many frameworks building
+upon the ideas it pioneered. Many world-class applications have been written
+in Rails, serving untold number of users each and every day.
 
-Rails is opinionated software. It makes the assumption that there is a "best"
-way to do things, and it's designed to encourage that way - and in some cases to
-discourage alternatives. If you learn "The Rails Way" you'll probably discover a
-tremendous increase in productivity. If you persist in bringing old habits from
-other languages to your Rails development, and trying to use patterns you
-learned elsewhere, you may have a less happy experience.
+Rails is built upon two ideas: [Don't Repeat
+Yourself](http://en.wikipedia.org/wiki/Don't_repeat_yourself) and [Convention
+Over
+Configuration](http://en.wikipedia.org/wiki/Convention_over_configuration). DRY
+principle suggests that duplication of ideas in your code is bad, and so Rails
+(assisted by Ruby) provides many tools that allow you to create useful
+abstractions in your code. Convention Over Configuration is a principle that
+dictates selecting useful defaults for any given feature in your application.
+This way, developers can get started with no configuration, and only make 
+changes when they wish to alter the defaults.
 
-The Rails philosophy includes two major guiding principles:
-
-* DRY - "Don't Repeat Yourself" - suggests that writing the same code over and over again is a bad thing.
-* Convention Over Configuration - means that Rails makes assumptions about what you want to do and how you're going to
-do it, rather than requiring you to specify every little thing through endless configuration files.
+These two principles form the 'golden path' of Rails. If you stick with the
+Rails opinions about how to build a Web application, and follow its
+conventions, you will be able to build complex web applications incredibly
+quickly.
 
 Creating a New Rails Project
 ----------------------------
