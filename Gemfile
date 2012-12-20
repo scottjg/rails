@@ -1,6 +1,6 @@
 source 'http://rubygems.org'
 
-gemspec
+gemspec :path => "./actionmailer"
 
 gem "rake",  ">= 0.8.7"
 gem 'mocha', '>= 0.13.0', :require => false
