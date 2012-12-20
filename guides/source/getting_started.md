@@ -1,15 +1,15 @@
 Getting Started with Rails
 ==========================
 
-This guide covers getting up and running with Ruby on Rails.
+This guide explains everything you need to know to get started with Rails.
+We'll build a little blog application together and show off the basic features
+of the framework.
 
 After reading this guide, you will know:
 
-* How to install Rails, create a new Rails application, and connect your
-  application to a database.
+* How to install Rails and create a new application.
 * The general layout of a Rails application.
-* The basic principles of MVC (Model, View, Controller) and RESTful design.
-* How to quickly generate the starting pieces of a Rails application.
+* The basics of two architectural choices of Rails applications: MVC and REST.
 
 --------------------------------------------------------------------------------
 
