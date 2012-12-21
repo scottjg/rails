@@ -1,5 +1,9 @@
 ## Rails 3.2.10 (unreleased)
 
+*   Allow calculation of seconds until end_of_days, and conversion of time to end_of_days. [Backport #8563]
+
+    *Timo Schilling*
+
 *   Remove surrogate unicode character encoding from ActiveSupport::JSON.encode
     The encoding scheme was broken for unicode characters outside the basic
     multilingual plane; since json is assumed to be UTF-8, and we already force the

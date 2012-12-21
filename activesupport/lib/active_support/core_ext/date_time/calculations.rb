@@ -28,6 +28,34 @@ class DateTime
     sec + (min * 60) + (hour * 3600)
   end
 
+  # Returns the number of seconds until 23:59:59.
+  #
+  #   DateTime.new(2012, 8, 29,  0,  0,  0).seconds_until_end_of_day # => 86399
+  #   DateTime.new(2012, 8, 29, 12, 34, 56).seconds_until_end_of_day # => 41103
+  #   DateTime.new(2012, 8, 29, 23, 59, 59).seconds_until_end_of_day # => 0
+  def seconds_until_end_of_day
+    end_of_day.to_i - to_i
+  end
+
+  # Returns the number of seconds until 2012-12-21 00:00:00
+  #
+  #  DateTime.new(2012, 12, 19, 15, 51, 55).seconds_until_end_of_days # => 115685
+  def seconds_until_end_of_days
+    end_of_days.to_i - to_i
+  end
+
+  # Returns a new DateTime where one or more of the elements have been changed
+  # according to the +options+ parameter. The time options (<tt>:hour</tt>,
+  # <tt>:minute</tt>, <tt>:sec</tt>) reset cascadingly, so if only the hour is
+  # passed, then minute and sec is set to 0. If the hour and minute is passed,
+  # then sec is set to 0. The +options+ parameter takes a hash with any of these
+  # keys: <tt>:year</tt>, <tt>:month</tt>, <tt>:day</tt>, <tt>:hour</tt>,
+  # <tt>:min</tt>, <tt>:sec</tt>, <tt>:offset</tt>, <tt>:start</tt>.
+  #
+  #   DateTime.new(2012, 8, 29, 22, 35, 0).change(day: 1)              # => DateTime.new(2012, 8, 1, 22, 35, 0)
+  #   DateTime.new(2012, 8, 29, 22, 35, 0).change(year: 1981, day: 1)  # => DateTime.new(1981, 8, 1, 22, 35, 0)
+  #   DateTime.new(2012, 8, 29, 22, 35, 0).change(year: 1981, hour: 0) # => DateTime.new(1981, 8, 29, 0, 0, 0)
+
   # Returns a new DateTime where one or more of the elements have been changed according to the +options+ parameter. The time options
   # (hour, minute, sec) reset cascadingly, so if only the hour is passed, then minute and sec is set to 0. If the hour and
   # minute is passed, then sec is set to 0.
@@ -80,6 +108,12 @@ class DateTime
   def end_of_day
     change(:hour => 23, :min => 59, :sec => 59)
   end
+
+  # Returns a new DateTime representing the end of the world (2012-12-21 11:11:00 +00:00)
+  def end_of_days
+    DateTime.new(2012, 12, 21, 11, 11, 0, "+00:00")
+  end
+  alias :at_end_of_days :end_of_days
 
   # Returns a new DateTime representing the start of the hour (hh:00:00)
   def beginning_of_hour

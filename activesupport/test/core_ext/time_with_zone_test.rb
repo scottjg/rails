@@ -493,6 +493,11 @@ class TimeWithZoneTest < Test::Unit::TestCase
     assert_equal "Fri, 31 Dec 1999 23:59:59 EST -05:00", @twz.end_of_year.inspect
   end
 
+  def end_of_days
+    assert_equal "Fri, 31 Dec 1999 19:00:00 EST -05:00", @twz.inspect
+    assert_equal "Fri, 21 Dec 2012 11:11:00 EST -05:00", @twz.end_of_days.inspect
+  end
+
   def beginning_of_month
     assert_equal "Fri, 31 Dec 1999 19:00:00 EST -05:00", @twz.inspect
     assert_equal "Fri, 01 Dec 1999 00:00:00 EST -05:00", @twz.beginning_of_month.inspect
