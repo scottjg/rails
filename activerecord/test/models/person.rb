@@ -1,4 +1,20 @@
+class Insure
+  INSURES = %W{life annuality}
+
+  def self.load mask
+    INSURES.select do |insure|
+      (1 << INSURES.index(insure)) & mask > 0
+    end
+  end
+
+  def self.dump insures
+    numbers = insures.compact.uniq.collect{|insure|INSURES.index(insure)}.compact
+    numbers.inject(0){|sum,n| sum + (1<<n)}
+  end
+end
+
 class Person < ActiveRecord::Base
+  serialize :insures, Insure
   has_many :readers
   has_many :secure_readers
   has_one  :reader
