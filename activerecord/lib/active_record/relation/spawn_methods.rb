@@ -50,10 +50,7 @@ module ActiveRecord
     #   Post.order('id asc').except(:order)                  # discards the order condition
     #   Post.where('id > 10').order('id asc').except(:where) # discards the where condition but keeps the order
     def except(*skips)
-      result = Relation.new(klass, table, values.except(*skips))
-      result.default_scoped = default_scoped
-      result.extend(*extending_values) if extending_values.any?
-      result
+      result(values.except(*skips))
     end
 
     # Removes any condition from the query other than the one(s) specified in +onlies+.
@@ -61,7 +58,12 @@ module ActiveRecord
     #   Post.order('id asc').only(:where)         # discards the order condition
     #   Post.order('id asc').only(:where, :order) # uses the specified order
     def only(*onlies)
-      result = Relation.new(klass, table, values.slice(*onlies))
+      result(values.slice(*onlies))
+    end
+    
+    private
+    def result(arg)
+      result = Relation.new(klass, table, arg)
       result.default_scoped = default_scoped
       result.extend(*extending_values) if extending_values.any?
       result
