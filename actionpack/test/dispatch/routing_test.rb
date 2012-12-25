@@ -1085,9 +1085,46 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       end
     end
 
+    assert_equal "/", root_path
     assert_equal '/en', root_path(:locale => 'en')
+
     get '/en'
     assert_equal 'projects#index', @response.body
+  end
+
+  def test_scoped_root_with_multiple_optional_parameters
+    draw do
+      scope "(:locale-)(:country_code)" do
+        root to: "hello#index"
+      end
+    end
+
+    assert_equal "/", root_path
+    assert_equal "/uk", root_path(country_code: "uk")
+    assert_equal "/es-uk", root_path(country_code: "uk", locale: "es")
+
+    get "/pl"
+    assert_equal "hello#index", @response.body
+
+    get "/en-es"
+    assert_equal "hello#index", @response.body
+  end
+
+  def test_scoped_root_with_leading_optional_parameter
+    draw do
+      scope "(:locale-):country_code" do
+        root to: "hello#index"
+      end
+    end
+
+    assert_equal "/en-uk", root_path(country_code: "uk", locale: "en")
+    assert_equal "/uk", root_path(country_code: "uk")
+
+    get "/en-uk"
+    assert_equal "hello#index", @response.body
+
+    get "/uk"
+    assert_equal "hello#index", @response.body
   end
 
   def test_index
