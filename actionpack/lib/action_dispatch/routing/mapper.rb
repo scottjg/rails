@@ -57,6 +57,8 @@ module ActionDispatch
         def initialize(set, scope, path, options)
           @set, @scope = set, scope
           @options = (@scope[:options] || {}).merge(options)
+
+
           @path = normalize_path(path)
           normalize_options!
         end
@@ -234,11 +236,13 @@ module ActionDispatch
       end
 
       # Invokes Rack::Mount::Utils.normalize path and ensure that
-      # (:locale) becomes (/:locale) instead of /(:locale). Except
-      # for root cases, where the latter is the correct one.
+      # (:locale) becomes (/:locale) instead of /(:locale)(. Except
+      # for root cases, where the latter is the correct one. Works
+      # also with multiple optional parameters in the root path, ex.
+      # /(:locale-)(:country_code) or /(:locale-):country_code are correct as well.
       def self.normalize_path(path)
         path = Journey::Router::Utils.normalize_path(path)
-        path.gsub!(%r{/(\(+)/?}, '\1/') unless path =~ %r{^/\(+[^)]+\)$}
+        path.gsub!(%r{/(\(+)/?}, '\1/') unless path =~ %r{^/(\(+[^)]+\))+[^/]*$}
         path
       end
 
