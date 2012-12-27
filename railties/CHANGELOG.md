@@ -1,25 +1,55 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Quote column names in generates fixture files. This prevents
+    conflicts with reserved YAML keywords such as 'yes' and 'no'
+    Fix #8612
+
+    *Yves Senn*
+
+*   Explicit options have precedence over `~/.railsrc` on the `rails new` command.
+
+    *Rafael Mendonça França*
+
+*   Generated migrations now always use the `change` method.
+
+    *Marc-André Lafortune*
+
+*   Add `app/models/concerns` and `app/controllers/concerns` to the default directory structure and load path.
+    See http://37signals.com/svn/posts/3372-put-chubby-models-on-a-diet-with-concerns for usage instructions.
+
+    *DHH*
+
+*   The `rails/info/routes` now correctly formats routing output as an html table.
+
+    *Richard Schneeman*
+
+*   The `public/index.html` is no longer generated for new projects.
+    Page is replaced by internal `welcome_controller` inside of railties.
+
+    *Richard Schneeman*
+
+*   Add `ENV['RACK_ENV']` support to `rails runner/console/server`.
+
+    *kennyj*
+
+*   Add `db` to list of folders included by `rake notes` and `rake notes:custom`. *Antonio Cangiano*
+
 *   Engines with a dummy app include the rake tasks of dependencies in the app namespace.
     Fix #8229
 
     *Yves Senn*
 
-*   Add sqlserver.yml template file to satisfy '-d sqlserver' being passed to 'rails new'.
+*   Add `sqlserver.yml` template file to satisfy `-d sqlserver` being passed to `rails new`.
     Fix #6882
 
-		*Robert Nesius*
+    *Robert Nesius*
 
 *   Rake test:uncommitted finds git directory in ancestors *Nicolas Despres*
 
-*   Add dummy app Rake tasks when --skip-test-unit and --dummy-path is passed to the plugin generator.
+*   Add dummy app Rake tasks when `--skip-test-unit` and `--dummy-path` is passed to the plugin generator.
     Fix #8121
 
     *Yves Senn*
-
-*   Ensure that RAILS_ENV is set when accessing Rails.env *Steve Klabnik*
-
-*   Don't eager-load app/assets and app/views *Elia Schito*
 
 *   Add `.rake` to list of file extensions included by `rake notes` and `rake notes:custom`. *Brent J. Nordquist*
 
@@ -101,10 +131,6 @@
 *   Improved `rake routes` output for redirects *Łukasz Strzałkowski & Andrew White*
 
 *   Load all environments available in `config.paths["config/environments"]`. *Piotr Sarnacki*
-
-*   Add `config.queue_consumer` to change the job queue consumer from the default `ActiveSupport::ThreadedQueueConsumer`. *Carlos Antonio da Silva*
-
-*   Add `Rails.queue` for processing jobs in the background. *Yehuda Katz*
 
 *   Remove Rack::SSL in favour of ActionDispatch::SSL. *Rafael Mendonça França*
 

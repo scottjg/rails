@@ -1,10 +1,12 @@
 Configuring Rails Applications
 ==============================
 
-This guide covers the configuration and initialization features available to Rails applications. By referring to this guide, you will be able to:
+This guide covers the configuration and initialization features available to Rails applications.
 
-* Adjust the behavior of your Rails applications
-* Add additional code to be run at application start time
+After reading this guide, you will know:
+
+* How to adjust the behavior of your Rails applications.
+* How to add additional code to be run at application start time.
 
 --------------------------------------------------------------------------------
 
@@ -103,13 +105,9 @@ These configuration methods are to be called on a `Rails::Railtie` object, such 
 
 * `config.log_tags` accepts a list of methods that respond to `request` object. This makes it easy to tag log lines with debug information like subdomain and request id — both very helpful in debugging multi-user production applications.
 
-* `config.logger` accepts a logger conforming to the interface of Log4r or the default Ruby `Logger` class. Defaults to an instance of `ActiveSupport::BufferedLogger`, with auto flushing off in production mode.
+* `config.logger` accepts a logger conforming to the interface of Log4r or the default Ruby `Logger` class. Defaults to an instance of `ActiveSupport::Logger`, with auto flushing off in production mode.
 
 * `config.middleware` allows you to configure the application's middleware. This is covered in depth in the [Configuring Middleware](#configuring-middleware) section below.
-
-* `config.queue` configures the default job queue for the application. Defaults to `ActiveSupport::Queue.new` which processes jobs in a background thread. If you change the queue, you're responsible for running the jobs as well.
-
-* `config.queue_consumer` configures a different job consumer for the default queue. Defaults to `ActiveSupport::ThreadedQueueConsumer`. The job consumer must respond to `start`.
 
 * `config.reload_classes_only_on_change` enables or disables reloading of classes only when tracked files change. By default tracks everything on autoload paths and is set to true. If `config.cache_classes` is true, this option is ignored.
 
@@ -132,8 +130,6 @@ These configuration methods are to be called on a `Rails::Railtie` object, such 
 * `config.whiny_nils` enables or disables warnings when a certain set of methods are invoked on `nil` and it does not respond to them. Defaults to true in development and test environments.
 
 ### Configuring Assets
-
-Rails 3.1 and up, by default, is set up to use the `sprockets` gem to manage assets within an application. This gem concatenates and compresses assets in order to make serving them much less painful.
 
 * `config.assets.enabled` a flag that controls whether the asset pipeline is enabled. It is explicitly initialized in `config/application.rb`.
 
@@ -163,7 +159,7 @@ Rails 3.1 and up, by default, is set up to use the `sprockets` gem to manage ass
 
 ### Configuring Generators
 
-Rails 3 allows you to alter what generators are used with the `config.generators` method. This method takes a block:
+Rails allows you to alter what generators are used with the `config.generators` method. This method takes a block:
 
 ```ruby
 config.generators do |g|
@@ -275,6 +271,8 @@ config.middleware.delete ActionDispatch::BestStandardsSupport
 * `config.active_record.lock_optimistically` controls whether Active Record will use optimistic locking and is true by default.
 
 * `config.active_record.auto_explain_threshold_in_seconds` configures the threshold for automatic EXPLAINs (`nil` disables this feature). Queries exceeding the threshold get their query plan logged. Default is 0.5 in development mode.
+
+* +config.active_record.cache_timestamp_format+ controls the format of the timestamp value in the cache key. Default is +:number+.
 
 The MySQL adapter adds one additional configuration option:
 
@@ -429,11 +427,6 @@ There are a number of settings available on `config.action_mailer`:
     config.action_mailer.interceptors = ["MailInterceptor"]
     ```
 
-* `config.action_mailer.queue` registers the queue that will be used to deliver the mail.
-```ruby
-config.action_mailer.queue = SomeQueue.new
-```
-
 ### Configuring Active Support
 
 There are a few configuration options available in Active Support:
@@ -444,7 +437,7 @@ There are a few configuration options available in Active Support:
 
 * `config.active_support.use_standard_json_time_format` enables or disables serializing dates to ISO 8601 format. Defaults to `true`.
 
-* `ActiveSupport::BufferedLogger.silencer` is set to `false` to disable the ability to silence logging in a block. The default is `true`.
+* `ActiveSupport::Logger.silencer` is set to `false` to disable the ability to silence logging in a block. The default is `true`.
 
 * `ActiveSupport::Cache::Store.logger` specifies the logger to use within cache store operations.
 
@@ -644,7 +637,7 @@ Below is a comprehensive list of all the initializers found in Rails in the orde
 
 * `load_active_support` Requires `active_support/dependencies` which sets up the basis for Active Support. Optionally requires `active_support/all` if `config.active_support.bare` is un-truthful, which is the default.
 
-* `initialize_logger` Initializes the logger (an `ActiveSupport::BufferedLogger` object) for the application and makes it accessible at `Rails.logger`, provided that no initializer inserted before this point has defined `Rails.logger`.
+* `initialize_logger` Initializes the logger (an `ActiveSupport::Logger` object) for the application and makes it accessible at `Rails.logger`, provided that no initializer inserted before this point has defined `Rails.logger`.
 
 * `initialize_cache` If `Rails.cache` isn't set yet, initializes the cache by referencing the value in `config.cache_store` and stores the outcome as `Rails.cache`. If this object responds to the `middleware` method, its middleware is inserted before `Rack::Runtime` in the middleware stack.
 

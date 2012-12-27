@@ -51,7 +51,7 @@ module ActionDispatch
       end
 
       def internal?
-        path =~ %r{/rails/info.*|^#{Rails.application.config.assets.prefix}}
+        controller =~ %r{\Arails/(info|welcome)} || path =~ %r{\A#{Rails.application.config.assets.prefix}}
       end
 
       def engine?
@@ -86,7 +86,7 @@ module ActionDispatch
         end.collect do |route|
           collect_engine_routes(route)
 
-          {:name => route.name, :verb => route.verb, :path => route.path, :reqs => route.reqs }
+          { name: route.name, verb: route.verb, path: route.path, reqs: route.reqs }
         end
       end
 

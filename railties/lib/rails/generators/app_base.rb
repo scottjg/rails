@@ -52,9 +52,6 @@ module Rails
         class_option :skip_javascript,    type: :boolean, aliases: '-J', default: false,
                                           desc: 'Skip JavaScript files'
 
-        class_option :skip_index_html,    type: :boolean, aliases: '-I', default: false,
-                                          desc: 'Skip public/index.html and app/assets/images/rails.png files'
-
         class_option :dev,                type: :boolean, default: false,
                                           desc: "Setup the #{name} with Gemfile pointing to your Rails checkout"
 
@@ -141,14 +138,12 @@ module Rails
         if options.dev?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     path: '#{Rails::Generators::RAILS_DEV_PATH}'
-            gem 'journey',   github: 'rails/journey'
             gem 'arel',      github: 'rails/arel'
             gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
           GEMFILE
         elsif options.edge?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     github: 'rails/rails'
-            gem 'journey',   github: 'rails/journey'
             gem 'arel',      github: 'rails/arel'
             gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
           GEMFILE
@@ -266,7 +261,14 @@ module Rails
       end
 
       def run_bundle
-        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
+        command = "install --binstubs"
+        command << " --shebang ruby-local-exec" if detect_ruby_local_exec
+
+        bundle_command(command) unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
+      end
+
+      def detect_ruby_local_exec
+        ENV["PATH"].split(":").find { |path| File.file?(File.join(path, "ruby-local-exec")) }
       end
 
       def empty_directory_with_keep_file(destination, config = {})

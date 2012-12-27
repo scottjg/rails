@@ -4,6 +4,51 @@ module ActiveRecord
   module QueryMethods
     extend ActiveSupport::Concern
 
+    # WhereChain objects act as placeholder for queries in which #where does not have any parameter.
+    # In this case, #where must be chained with either #not, #like, or #not_like to return a new relation.
+    class WhereChain
+      def initialize(scope)
+        @scope = scope
+      end
+
+      # Returns a new relation expressing WHERE + NOT condition
+      # according to the conditions in the arguments.
+      #
+      # #not accepts conditions in one of these formats: String, Array, Hash.
+      # See #where for more details on each format.
+      #
+      #    User.where.not("name = 'Jon'")
+      #    # SELECT * FROM users WHERE NOT (name = 'Jon')
+      #
+      #    User.where.not(["name = ?", "Jon"])
+      #    # SELECT * FROM users WHERE NOT (name = 'Jon')
+      #
+      #    User.where.not(name: "Jon")
+      #    # SELECT * FROM users WHERE name != 'Jon'
+      #
+      #    User.where.not(name: nil)
+      #    # SELECT * FROM users WHERE name IS NOT NULL
+      #
+      #    User.where.not(name: %w(Ko1 Nobu))
+      #    # SELECT * FROM users WHERE name NOT IN ('Ko1', 'Nobu')
+      def not(opts, *rest)
+        where_value = @scope.send(:build_where, opts, rest).map do |rel|
+          case rel
+          when Arel::Nodes::In
+            Arel::Nodes::NotIn.new(rel.left, rel.right)
+          when Arel::Nodes::Equality
+            Arel::Nodes::NotEqual.new(rel.left, rel.right)
+          when String
+            Arel::Nodes::Not.new(Arel::Nodes::SqlLiteral.new(rel))
+          else
+            Arel::Nodes::Not.new(rel)
+          end
+        end
+        @scope.where_values += where_value
+        @scope
+      end
+    end
+
     Relation::MULTI_VALUE_METHODS.each do |name|
       class_eval <<-CODE, __FILE__, __LINE__ + 1
         def #{name}_values                   # def select_values
@@ -370,18 +415,41 @@ module ActiveRecord
     #    User.joins(:posts).where({ "posts.published" => true })
     #    User.joins(:posts).where({ posts: { published: true } })
     #
-    # === empty condition
+    # === no argument
     #
-    # If the condition returns true for blank?, then where is a no-op and returns the current relation.
-    def where(opts, *rest)
-      opts.blank? ? self : spawn.where!(opts, *rest)
+    # If no argument is passed, #where returns a new instance of WhereChain, that
+    # can be chained with #not to return a new relation that negates the where clause.
+    #
+    #    User.where.not(name: "Jon")
+    #    # SELECT * FROM users WHERE name != 'Jon'
+    #
+    # See WhereChain for more details on #not.
+    #
+    # === blank condition
+    #
+    # If the condition is any blank-ish object, then #where is a no-op and returns
+    # the current relation.
+    def where(opts = :chain, *rest)
+      if opts == :chain
+        WhereChain.new(spawn)
+      elsif opts.blank?
+        self
+      else
+        spawn.where!(opts, *rest)
+      end
     end
 
-    def where!(opts, *rest) # :nodoc:
-      references!(PredicateBuilder.references(opts)) if Hash === opts
+    # #where! is identical to #where, except that instead of returning a new relation, it adds
+    # the condition to the existing relation.
+    def where!(opts = :chain, *rest) # :nodoc:
+      if opts == :chain
+        WhereChain.new(self)
+      else
+        references!(PredicateBuilder.references(opts)) if Hash === opts
 
-      self.where_values += build_where(opts, rest)
-      self
+        self.where_values += build_where(opts, rest)
+        self
+      end
     end
 
     # Allows to specify a HAVING clause. Note that you can't use HAVING

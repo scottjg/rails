@@ -1,5 +1,28 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Add `ActiveModel::Validations::AbsenceValidator`, a validator to check the
+    absence of attributes.
+
+        class Person
+          include ActiveModel::Validations
+
+          attr_accessor :first_name
+          validates_absence_of :first_name
+        end
+
+        person = Person.new
+        person.first_name = "John"
+        person.valid?
+        # => false
+        person.errors.messages
+        # => {:first_name=>["must be blank"]}
+
+    *Roberto Vasquez Angel*
+
+*   `[attribute]_changed?` now returns `false` after a call to `reset_[attribute]!`
+
+    *Renato Mascarenhas*
+
 *   Observers was extracted from Active Model as `rails-observers` gem.
 
     *Rafael Mendonça França*
@@ -15,7 +38,7 @@
 
     *Yves Senn*
 
-*   Use BCrypt's MIN_COST in the test environment for speedier tests when using `has_secure_pasword`.
+*   Use BCrypt's `MIN_COST` in the test environment for speedier tests when using `has_secure_pasword`.
 
     *Brian Cardarella + Jeremy Kemper + Trevor Turk*
 

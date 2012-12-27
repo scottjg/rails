@@ -19,7 +19,7 @@ module ActiveRecord
   module ConnectionHandling
     # Establishes a connection to the database that's used by all Active Record objects
     def postgresql_connection(config) # :nodoc:
-    
+
       # The postgres drivers don't allow the creation of an unconnected PGconn object,
       # so just pass a nil connection object for the time being.
       ConnectionAdapters::PostgreSQLAdapter.new(nil, logger, config, config)
@@ -102,6 +102,9 @@ module ActiveRecord
             $1
           # JSON
           when /\A'(.*)'::json\z/
+            $1
+          # int4range, int8range
+          when /\A'(.*)'::int(4|8)range\z/
             $1
           # Object identifier types
           when /\A-?\d+\z/
@@ -201,6 +204,9 @@ module ActiveRecord
           # JSON type
           when 'json'
             :json
+          # int4range, int8range types
+          when 'int4range', 'int8range'
+            :intrange
           # Small and big integer types
           when /^(?:small|big)int$/
             :integer
@@ -229,6 +235,8 @@ module ActiveRecord
     #   <encoding></tt> call on the connection.
     # * <tt>:min_messages</tt> - An optional client min messages that is used in a
     #   <tt>SET client_min_messages TO <min_messages></tt> call on the connection.
+    # * <tt>:variables</tt> - An optional hash of additional parameters that
+    #   will be used in <tt>SET SESSION key = val</tt> calls on the connection.
     # * <tt>:insert_returning</tt> - An optional boolean to control the use or <tt>RETURNING</tt> for <tt>INSERT</tt> statements
     #   defaults to true.
     #
@@ -302,6 +310,10 @@ module ActiveRecord
           column(name, 'json', options)
         end
 
+        def intrange(name, options = {})
+          column(name, 'intrange', options)
+        end
+
         def column(name, type = nil, options = {})
           super
           column = self[name]
@@ -348,7 +360,8 @@ module ActiveRecord
         cidr:        { name: "cidr" },
         macaddr:     { name: "macaddr" },
         uuid:        { name: "uuid" },
-        json:        { name: "json" }
+        json:        { name: "json" },
+        intrange:    { name: "int4range" }
       }
 
       include Quoting
@@ -728,10 +741,23 @@ module ActiveRecord
 
           # If using Active Record's time zone support configure the connection to return
           # TIMESTAMP WITH ZONE types in UTC.
+          # (SET TIME ZONE does not use an equals sign like other SET variables)
           if ActiveRecord::Base.default_timezone == :utc
             execute("SET time zone 'UTC'", 'SCHEMA')
           elsif @local_tz
             execute("SET time zone '#{@local_tz}'", 'SCHEMA')
+          end
+
+          # SET statements from :variables config hash
+          # http://www.postgresql.org/docs/8.3/static/sql-set.html
+          variables = @config[:variables] || {}
+          variables.map do |k, v|
+            if v == ':default' || v == :default
+              # Sets the value to the global or compile default
+              execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
+            elsif !v.nil?
+              execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
+            end
           end
         end
 

@@ -1,10 +1,8 @@
 require 'mail'
-require 'action_mailer/queued_message'
 require 'action_mailer/collector'
 require 'active_support/core_ext/string/inflections'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/module/anonymous'
-require 'active_support/queueing'
 require 'action_mailer/log_subscriber'
 
 module ActionMailer
@@ -19,8 +17,6 @@ module ActionMailer
   # The generated model inherits from <tt>ActionMailer::Base</tt>. A mailer model defines methods
   # used to generate an email message. In these methods, you can setup variables to be used in
   # the mailer views, options on the mail itself such as the <tt>:from</tt> address, and attachments.
-  #
-  # Examples:
   #
   #   class Notifier < ActionMailer::Base
   #     default from: 'no-reply@example.com',
@@ -286,12 +282,12 @@ module ActionMailer
   #
   # = Callbacks
   #
-  # You can specify callbacks using before_filter and after_filter for configuring your messages.
+  # You can specify callbacks using before_action and after_action for configuring your messages.
   # This may be useful, for example, when you want to add default inline attachments for all
   # messages sent out by a certain mailer class:
   #
   #   class Notifier < ActionMailer::Base
-  #     before_filter :add_inline_attachment!
+  #     before_action :add_inline_attachment!
   #
   #     def welcome
   #       mail
@@ -308,15 +304,15 @@ module ActionMailer
   # can define and configure callbacks in the same manner that you would use callbacks in
   # classes that inherit from ActionController::Base.
   #
-  # Note that unless you have a specific reason to do so, you should prefer using before_filter
-  # rather than after_filter in your ActionMailer classes so that headers are parsed properly.
+  # Note that unless you have a specific reason to do so, you should prefer using before_action
+  # rather than after_action in your ActionMailer classes so that headers are parsed properly.
   #
   # = Configuration options
   #
   # These options are specified on the class level, like
   # <tt>ActionMailer::Base.raise_delivery_errors = true</tt>
   #
-  # * <tt>default</tt> - You can pass this in at a class level as well as within the class itself as
+  # * <tt>default_options</tt> - You can pass this in at a class level as well as within the class itself as
   #   per the above section.
   #
   # * <tt>logger</tt> - the logger is used for generating information on the mailing run if available.
@@ -363,8 +359,6 @@ module ActionMailer
   #
   # * <tt>deliveries</tt> - Keeps an array of all the emails sent out through the Action Mailer with
   #   <tt>delivery_method :test</tt>. Most useful for unit and functional testing.
-  #
-  # * <tt>queue</> - The queue that will be used to deliver the mail. The queue should expect a job that responds to <tt>run</tt>.
   class Base < AbstractController::Base
     include DeliveryMethods
     abstract!
@@ -390,9 +384,6 @@ module ActionMailer
       content_type: "text/plain",
       parts_order:  [ "text/plain", "text/enriched", "text/html" ]
     }.freeze
-
-    class_attribute :queue
-    self.queue = ActiveSupport::SynchronousQueue.new
 
     class << self
       # Register one or more Observers which will be notified when mail is delivered.
@@ -485,8 +476,8 @@ module ActionMailer
       end
 
       def method_missing(method_name, *args)
-        if action_methods.include?(method_name.to_s)
-          QueuedMessage.new(queue, self, method_name, *args)
+        if respond_to?(method_name)
+          new(method_name, *args).message
         else
           super
         end
@@ -501,6 +492,7 @@ module ActionMailer
     # method, for instance).
     def initialize(method_name=nil, *args)
       super()
+      @_mail_was_called = false
       @_message = Mail.new
       process(method_name, *args) if method_name
     end
@@ -508,7 +500,8 @@ module ActionMailer
     def process(*args) #:nodoc:
       lookup_context.skip_default_locale!
 
-      @_message = NullMail.new unless super
+      super
+      @_message = NullMail.new unless @_mail_was_called
     end
 
     class NullMail #:nodoc:
@@ -668,11 +661,11 @@ module ActionMailer
     #   end
     #
     def mail(headers={}, &block)
+      @_mail_was_called = true
       m = @_message
 
-      # At the beginning, do not consider class default for parts order neither content_type
+      # At the beginning, do not consider class default for content_type
       content_type = headers[:content_type]
-      parts_order  = headers[:parts_order]
 
       # Call all the procs (if any)
       class_default = self.class.default

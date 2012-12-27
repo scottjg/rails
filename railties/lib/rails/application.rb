@@ -1,5 +1,4 @@
 require 'fileutils'
-require 'active_support/queueing'
 # FIXME remove DummyKeyGenerator and this require in 4.1
 require 'active_support/key_generator'
 require 'rails/engine'
@@ -68,10 +67,9 @@ module Rails
       end
     end
 
-    attr_accessor :assets, :sandbox, :queue_consumer
+    attr_accessor :assets, :sandbox
     alias_method :sandbox?, :sandbox
     attr_reader :reloaders
-    attr_writer :queue
 
     delegate :default_url_options, :default_url_options=, to: :routes
 
@@ -83,7 +81,6 @@ module Rails
       @env_config       = nil
       @ordered_railties = nil
       @railties         = nil
-      @queue            = nil
     end
 
     # Returns true if the application is initialized.
@@ -123,6 +120,7 @@ module Rails
     # Currently stores:
     #
     #   * "action_dispatch.parameter_filter"             => config.filter_parameters
+    #   * "action_dispatch.redirect_filter"              => config.filter_redirect
     #   * "action_dispatch.secret_token"                 => config.secret_token,
     #   * "action_dispatch.show_exceptions"              => config.action_dispatch.show_exceptions
     #   * "action_dispatch.show_detailed_exceptions"     => config.consider_all_requests_local
@@ -133,8 +131,6 @@ module Rails
     #   * "action_dispatch.signed_cookie_salt"           => config.action_dispatch.signed_cookie_salt
     #   * "action_dispatch.encrypted_cookie_salt"        => config.action_dispatch.encrypted_cookie_salt
     #   * "action_dispatch.encrypted_signed_cookie_salt" => config.action_dispatch.encrypted_signed_cookie_salt
-    #
-    # These parameters will be used by middlewares and engines to configure themselves
     #
     def env_config
       @env_config ||= begin
@@ -149,6 +145,7 @@ module Rails
 
         super.merge({
           "action_dispatch.parameter_filter" => config.filter_parameters,
+          "action_dispatch.redirect_filter" => config.filter_redirect,
           "action_dispatch.secret_token" => config.secret_token,
           "action_dispatch.show_exceptions" => config.action_dispatch.show_exceptions,
           "action_dispatch.show_detailed_exceptions" => config.consider_all_requests_local,
@@ -224,10 +221,6 @@ module Rails
 
     def config #:nodoc:
       @config ||= Application::Configuration.new(find_root_with_flag("config.ru", Dir.pwd))
-    end
-
-    def queue #:nodoc:
-      @queue ||= config.queue || ActiveSupport::Queue.new
     end
 
     def to_app #:nodoc:

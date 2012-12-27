@@ -55,8 +55,12 @@ module Rails
 
     def app
       directory 'app'
+
       keep_file  'app/mailers'
       keep_file  'app/models'
+
+      keep_file  'app/controllers/concerns'
+      keep_file  'app/models/concerns'
     end
 
     def config
@@ -97,11 +101,6 @@ module Rails
 
     def public_directory
       directory "public", "public", recursive: false
-      if options[:skip_index_html]
-        remove_file "public/index.html"
-        remove_file 'app/assets/images/rails.png'
-        keep_file 'app/assets/images'
-      end
     end
 
     def script

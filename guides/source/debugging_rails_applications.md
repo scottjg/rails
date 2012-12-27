@@ -1,12 +1,14 @@
 Debugging Rails Applications
 ============================
 
-This guide introduces techniques for debugging Ruby on Rails applications. By referring to this guide, you will be able to:
+This guide introduces techniques for debugging Ruby on Rails applications.
 
-* Understand the purpose of debugging
-* Track down problems and issues in your application that your tests aren't identifying
-* Learn the different ways of debugging
-* Analyze the stack trace
+After reading this guide, you will know:
+
+* The purpose of debugging.
+* How to track down problems and issues in your application that your tests aren't identifying.
+* The different ways of debugging.
+* How to analyze the stack trace.
 
 --------------------------------------------------------------------------------
 
@@ -105,7 +107,7 @@ It can also be useful to save information to log files at runtime. Rails maintai
 
 ### What is the Logger?
 
-Rails makes use of the `ActiveSupport::BufferedLogger` class to write log information. You can also substitute another logger such as `Log4r` if you wish.
+Rails makes use of the `ActiveSupport::Logger` class to write log information. You can also substitute another logger such as `Log4r` if you wish.
 
 You can specify an alternative logger in your `environment.rb` or any environment file:
 

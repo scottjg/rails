@@ -591,9 +591,18 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request
     request.expects(:parameters).at_least_once.returns({ :format => :unknown })
-    assert request.formats.empty?
+    assert_instance_of Mime::NullType, request.format
   end
 
+  test "format is not nil with unknown format" do
+    request = stub_request
+    request.expects(:parameters).at_least_once.returns({ format: :hello })
+    assert_equal request.format.nil?, true
+    assert_equal request.format.html?, false
+    assert_equal request.format.xml?, false
+    assert_equal request.format.json?, false
+  end
+  
   test "formats with xhr request" do
     request = stub_request 'HTTP_X_REQUESTED_WITH' => "XMLHttpRequest"
     request.expects(:parameters).at_least_once.returns({})
@@ -648,6 +657,13 @@ class RequestTest < ActiveSupport::TestCase
                            'HTTP_X_REQUESTED_WITH' => "XMLHttpRequest"
     request.expects(:parameters).at_least_once.returns({})
     assert_equal Mime::XML, request.negotiate_mime([Mime::XML, Mime::CSV])
+  end
+
+  test "raw_post rewinds rack.input if RAW_POST_DATA is nil" do
+    request = stub_request('rack.input' => StringIO.new("foo"),
+                           'CONTENT_LENGTH' => 3)
+    assert_equal "foo", request.raw_post
+    assert_equal "foo", request.env['rack.input'].read
   end
 
   test "process parameter filter" do
