@@ -68,24 +68,24 @@ module ActiveRecord
     #
     # There are two basic forms of output:
     #
-    #   * Single aggregate value: The single value is type cast to Fixnum for COUNT, Float
-    #     for AVG, and the given column's type for everything else.
+    # * Single aggregate value: The single value is type cast to Fixnum for COUNT, Float
+    #   for AVG, and the given column's type for everything else.
     #
-    #   * Grouped values: This returns an ordered hash of the values and groups them. It
-    #     takes either a column name, or the name of a belongs_to association.
+    # * Grouped values: This returns an ordered hash of the values and groups them. It
+    #   takes either a column name, or the name of a belongs_to association.
     #
-    #       values = Person.group('last_name').maximum(:age)
-    #       puts values["Drake"]
-    #       # => 43
+    #   values = Person.group('last_name').maximum(:age)
+    #   puts values["Drake"]
+    #   # => 43
     #
-    #       drake  = Family.find_by_last_name('Drake')
-    #       values = Person.group(:family).maximum(:age) # Person belongs_to :family
-    #       puts values[drake]
-    #       # => 43
+    #   drake  = Family.find_by_last_name('Drake')
+    #   values = Person.group(:family).maximum(:age) # Person belongs_to :family
+    #   puts values[drake]
+    #   # => 43
     #
-    #       values.each do |family, max_age|
-    #       ...
-    #       end
+    #   values.each do |family, max_age|
+    #   ...
+    #   end
     #
     #   Person.calculate(:count, :all) # The same as Person.count
     #   Person.average(:age) # SELECT AVG(age) FROM people...
