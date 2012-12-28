@@ -234,4 +234,16 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     person = person.reload
     assert_equal(insures, person.insures)
   end
+  
+  def test_unserialized_with_indeifferent_hash
+    Topic.serialize(:content, Hash)
+    topic = Topic.new
+    topic.content = {people: {person: 1, person: 2}}
+    assert topic.save
+    
+    topic_1 = Topic.find(topic.id)
+    assert_equal topic_1.content[:people], {person: 1, person: 2}
+  #  assert_equal topic_1.content["people"], {person: 1, person: 2}
+    
+  end
 end
