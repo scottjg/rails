@@ -1,22 +1,24 @@
 require 'action_dispatch/http/request'
 require 'action_dispatch/middleware/exception_wrapper'
+require 'action_dispatch/routing/inspector'
+
 
 module ActionDispatch
   # This middleware is responsible for logging exceptions and
   # showing a debugging page in case the request is local.
   class DebugExceptions
-    RESCUES_TEMPLATE_PATH = File.join(File.dirname(__FILE__), 'templates')
+    RESCUES_TEMPLATE_PATH = File.expand_path('../templates', __FILE__)
 
-    def initialize(app)
-      @app = app
+    def initialize(app, routes_app = nil)
+      @app        = app
+      @routes_app = routes_app
     end
 
     def call(env)
       begin
-        response = @app.call(env)
+        response = (_, headers, body = @app.call(env))
 
-        if response[1]['X-Cascade'] == 'pass'
-          body = response[2]
+        if headers['X-Cascade'] == 'pass'
           body.close if body.respond_to?(:close)
           raise ActionController::RoutingError, "No route matches [#{env['REQUEST_METHOD']}] #{env['PATH_INFO'].inspect}"
         end
@@ -39,7 +41,8 @@ module ActionDispatch
           :exception => wrapper.exception,
           :application_trace => wrapper.application_trace,
           :framework_trace => wrapper.framework_trace,
-          :full_trace => wrapper.full_trace
+          :full_trace => wrapper.full_trace,
+          :routes => formatted_routes(exception)
         )
 
         file = "rescues/#{wrapper.rescue_template}"
@@ -77,6 +80,14 @@ module ActionDispatch
 
     def stderr_logger
       @stderr_logger ||= ActiveSupport::Logger.new($stderr)
+    end
+
+    def formatted_routes(exception)
+      return false unless @routes_app.respond_to?(:routes)
+      if exception.is_a?(ActionController::RoutingError) || exception.is_a?(ActionView::Template::Error)
+        inspector = ActionDispatch::Routing::RoutesInspector.new
+        inspector.collect_routes(@routes_app.routes.routes)
+      end
     end
   end
 end

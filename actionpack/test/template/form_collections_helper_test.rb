@@ -149,6 +149,12 @@ class FormCollectionsHelperTest < ActionView::TestCase
     assert_select 'label[for=post_category_id_2]', 'Category 2'
   end
 
+  test 'collection radio accepts checked item which has a value of false' do
+    with_collection_radio_buttons :user, :active, [[1, true], [0, false]], :last, :first, :checked => false
+    assert_no_select 'input[type=radio][value=true][checked=checked]'
+    assert_select 'input[type=radio][value=false][checked=checked]'
+  end
+
   # COLLECTION CHECK BOXES
   test 'collection check boxes accepts a collection and generate a serie of checkboxes for value method' do
     collection = [Category.new(1, 'Category 1'), Category.new(2, 'Category 2')]
@@ -189,6 +195,15 @@ class FormCollectionsHelperTest < ActionView::TestCase
   test 'collection check boxes accepts selected values as :checked option' do
     collection = (1..3).map{|i| [i, "Category #{i}"] }
     with_collection_check_boxes :user, :category_ids, collection, :first, :last, :checked => [1, 3]
+
+    assert_select 'input[type=checkbox][value=1][checked=checked]'
+    assert_select 'input[type=checkbox][value=3][checked=checked]'
+    assert_no_select 'input[type=checkbox][value=2][checked=checked]'
+  end
+
+  test 'collection check boxes accepts selected string values as :checked option' do
+    collection = (1..3).map{|i| [i, "Category #{i}"] }
+    with_collection_check_boxes :user, :category_ids, collection, :first, :last, :checked => ['1', '3']
 
     assert_select 'input[type=checkbox][value=1][checked=checked]'
     assert_select 'input[type=checkbox][value=3][checked=checked]'
