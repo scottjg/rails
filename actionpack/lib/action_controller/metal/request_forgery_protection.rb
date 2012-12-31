@@ -108,10 +108,9 @@ module ActionController #:nodoc:
           request.env['action_dispatch.cookies'] = NullCookieJar.build(request)
         end
 
-        class NullSessionHash < Rack::Session::Abstract::SessionHash #:nodoc:
-          def initialize
-            super(nil, nil)
-            @loaded = true
+        class NullSessionHash < BasicObject #:nodoc:
+          def method_missing(*args)
+            nil
           end
 
           def exists?
