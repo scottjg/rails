@@ -21,10 +21,5 @@ module ActiveSupport
     include ActiveSupport::Testing::Deprecation
     extend ActiveSupport::Testing::Declarative
 
-    # Backport from test/unit
-    def build_message(message, template = nil, *args)
-      template = template.gsub('<?>', '<%s>')
-      message || sprintf(template, *args)
-    end
   end
 end
