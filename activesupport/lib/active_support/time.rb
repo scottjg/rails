@@ -9,30 +9,10 @@ end
 require 'date'
 require 'time'
 
-<<<<<<< HEAD
-require 'active_support/core_ext/time/marshal'
-require 'active_support/core_ext/time/acts_like'
-require 'active_support/core_ext/time/calculations'
-require 'active_support/core_ext/time/conversions'
-require 'active_support/core_ext/time/zones'
-require 'active_support/core_ext/time/infinite_comparable'
 
-require 'active_support/core_ext/date/acts_like'
-require 'active_support/core_ext/date/calculations'
-require 'active_support/core_ext/date/conversions'
-require 'active_support/core_ext/date/zones'
-require 'active_support/core_ext/date/infinite_comparable'
-
-require 'active_support/core_ext/date_time/acts_like'
-require 'active_support/core_ext/date_time/calculations'
-require 'active_support/core_ext/date_time/conversions'
-require 'active_support/core_ext/date_time/zones'
-require 'active_support/core_ext/date_time/infinite_comparable'
-=======
 require 'active_support/core_ext/time'
 require 'active_support/core_ext/date'
 require 'active_support/core_ext/date_time'
->>>>>>> upstream/master
 
 require 'active_support/core_ext/integer/time'
 require 'active_support/core_ext/numeric/time'

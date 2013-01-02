@@ -28,7 +28,7 @@ module Rails
         class_option :skip_gemfile,       type: :boolean, default: false,
                                           desc: "Don't create a Gemfile"
 
-        class_option :skip_bundle,        type: :boolean, default: false,
+        class_option :skip_bundle,        type: :boolean, aliases: '-B', default: false,
                                           desc: "Don't run bundle install"
 
         class_option :skip_git,           type: :boolean, aliases: '-G', default: false,
@@ -261,14 +261,7 @@ module Rails
       end
 
       def run_bundle
-        command = "install --binstubs"
-        command << " --shebang ruby-local-exec" if detect_ruby_local_exec
-
-        bundle_command(command) unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
-      end
-
-      def detect_ruby_local_exec
-        ENV["PATH"].split(":").find { |path| File.file?(File.join(path, "ruby-local-exec")) }
+        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
       end
 
       def empty_directory_with_keep_file(destination, config = {})
