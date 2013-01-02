@@ -35,6 +35,17 @@ class UriReservedCharactersRoutingTest < Test::Unit::TestCase
     @escaped = "#{safe.join}#{hex.join}".freeze
   end
 
+  def test_match_redirect # GH 8018
+    @set = ActionDispatch::Routing::RouteSet.new
+    @set.draw do
+      match "/myresources" => redirect("/deals"), :via => :get
+    end
+
+    assert_raises ActionController::RoutingError do
+      url_for(@set, :controller => "blargh", :action => "blargh")
+    end
+  end
+
   def test_route_generation_escapes_unsafe_path_characters
     assert_equal "/content/act#{@escaped}ion/var#{@escaped}iable/add#{@escaped}itional-1/add#{@escaped}itional-2",
       url_for(@set, {
@@ -204,6 +215,16 @@ class LegacyRouteSetTests < Test::Unit::TestCase
   def test_draw_with_block_arity_one_raises
     assert_raise(RuntimeError) do
       @rs.draw { |map| map.match '/:controller(/:action(/:id))' }
+    end
+  end
+
+  def test_specific_controller_action_failure
+    @rs.draw do
+      mount lambda {} => "/foo"
+    end
+
+    assert_raises(ActionController::RoutingError) do
+      url_for(@rs, :controller => "omg", :action => "lol")
     end
   end
 
