@@ -33,7 +33,7 @@ module ActionDispatch
 
           result = build_host_url(options)
           if options[:trailing_slash] && !path.ends_with?('/')
-            result << path.sub(/(\?|\z)/) { "/" + $& }
+            result << path.sub(/\?|\z/, '/\&')
           else
             result << path
           end

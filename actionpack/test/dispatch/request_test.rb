@@ -13,6 +13,8 @@ class RequestTest < ActiveSupport::TestCase
 
     assert_equal '/books', url_for(:only_path => true, :path => '/books')
 
+    assert_equal 'http://www.example.com/books/?q=code', url_for(trailing_slash: true, path: '/books?q=code')
+
     assert_equal 'http://www.example.com',  url_for
     assert_equal 'http://api.example.com',  url_for(:subdomain => 'api')
     assert_equal 'http://example.com',      url_for(:subdomain => false)
@@ -602,7 +604,7 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal request.format.xml?, false
     assert_equal request.format.json?, false
   end
-  
+
   test "formats with xhr request" do
     request = stub_request 'HTTP_X_REQUESTED_WITH' => "XMLHttpRequest"
     request.expects(:parameters).at_least_once.returns({})
