@@ -40,13 +40,15 @@ module ActiveRecord
         end
 
         def through_scope
+          require 'debugger'
+          debugger
           through_scope = through_reflection.klass.unscoped
 
           if options[:source_type]
             through_scope.where! reflection.foreign_type => options[:source_type]
           else
             unless reflection_scope.where_values.empty?
-              through_scope.includes_values = reflection_scope.values[:includes] || options[:source]
+              through_scope.includes_values = options[:source]
               through_scope.where_values    = reflection_scope.values[:where]
             end
 
