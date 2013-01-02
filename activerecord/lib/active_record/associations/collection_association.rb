@@ -33,7 +33,6 @@ module ActiveRecord
         elsif stale_target?
           reload
         end
-
         CollectionProxy.new(klass, self)
       end
 

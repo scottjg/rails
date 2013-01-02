@@ -894,4 +894,12 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_has_many_through_with_order
+    require 'debugger'
+    post = Post.create!(:title => "TITLE", :body => "BODY")
+    post.authors_order_by_name << authors
+    order_authors = post.authors_order_by_name
+    debugger
+    assert_equal order_authors, authors.reverse!#sort_by {|a,b| a.name <=> b.name}
+  end
 end
