@@ -898,7 +898,8 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     require 'debugger'
     post = Post.create!(:title => "TITLE", :body => "BODY")
     post.authors_order_by_name << authors
-    Post.includes(:authors_order_by_name)
+    #Post.includes(:authors_order_by_name)
+    p Post.includes(:authors_order_by_name).first.authors_order_by_name.to_sql
     assert_equal post, Post.includes(:authors_order_by_name)
   end
 end
