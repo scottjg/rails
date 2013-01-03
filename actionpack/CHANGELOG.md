@@ -1,5 +1,33 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Return the last valid, non-private IP address from the X-Forwarded-For,
+    Client-IP and Remote-Addr headers, in that order. Document the rationale
+    for that decision, and describe the options that can be passed to the
+    RemoteIp middleware to change it.
+    Fix #7979
+
+    *André Arko*, *Steve Klabnik*, *Alexey Gaziev*
+
+*   Do not append second slash to `root_url` when using `trailing_slash: true`
+    Fix #8700
+
+    Example:
+        # before
+        root_url # => http://test.host//
+
+        # after
+        root_url # => http://test.host/
+
+    *Yves Senn*
+
+*   Allow to toggle dumps on error pages.
+
+    *Gosha Arinich*
+
+*   Fix a bug in `content_tag_for` that prevents it for work without a block.
+
+    *Jasl*
+
 *   Change the stylesheet of exception pages for development mode.
     Additionally display also the line of code and fragment that raised
     the exception in all exceptions pages.
