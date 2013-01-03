@@ -1,14 +1,19 @@
-## Rails 3.2.10 (unreleased)
+## Rails 3.2.11 (unreleased)
+
+*   Serialized attributes can be serialized in integer columns.
+    Fix #8575.
+
+    *Rafael Mendonça França*
 
 *   Keep index names when using `alter_table` with sqlite3.
-    Fix #3489
-    Backport #8522
+    Fix #3489.
+    Backport #8522.
 
     *Yves Senn*
 
 *   Recognize migrations placed in directories containing numbers and 'rb'.
-    Fix #8492
-    Backport of #8500
+    Fix #8492.
+    Backport of #8500.
 
     *Yves Senn*
 
@@ -167,6 +172,12 @@
     Fixes #8131.
 
     *Gabriel Sobrinho, Ricardo Henrique*
+
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   CVE-2012-5664 options hashes should only be extracted if there are extra
+    parameters
 
 
 ## Rails 3.2.9 (Nov 12, 2012) ##

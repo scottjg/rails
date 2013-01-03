@@ -1,4 +1,21 @@
-## Rails 3.2.10 (unreleased) ##
+## Rails 3.2.11 (unreleased) ##
+
+*   Do not append second slash to root_url when using `trailing_slash: true`
+    Fix #8700.
+    Backport #8701.
+
+    Example:
+        # before
+        root_url # => http://test.host//
+
+        # after
+        root_url # => http://test.host/
+
+    *Yves Senn*
+
+*   Fix a bug in `content_tag_for` that prevents it for work without a block.
+
+    *Jasl*
 
 *   Clear url helper methods when routes are reloaded by removing the methods
     explicitly rather than just clearing the module because it didn't work
@@ -71,6 +88,12 @@
     Fix #8108
 
     *Daniel Fox, Grant Hutchins & Trace Wax*
+
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   No changes.
+
 
 ## Rails 3.2.9 (Nov 12, 2012) ##
 

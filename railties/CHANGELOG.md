@@ -1,4 +1,19 @@
+## Rails 3.2.11 (unreleased) ##
+
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   No changes.
+
+
 ## Rails 3.2.9 (Nov 12, 2012) ##
+
+*   Quote column names in generates fixture files. This prevents
+    conflicts with reserved YAML keywords such as 'yes' and 'no'
+    Fix #8612.
+    Backport #8616.
+
+    *Yves Senn*
 
 *   Engines with a dummy app include the rake tasks of dependencies in the app namespace. [Backport: #8262]
     Fix #8229

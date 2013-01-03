@@ -1,4 +1,4 @@
-## Rails 3.2.10 (unreleased)
+## Rails 3.2.11 (unreleased)
 
 *   Remove surrogate unicode character encoding from ActiveSupport::JSON.encode
     The encoding scheme was broken for unicode characters outside the basic
@@ -19,6 +19,12 @@
 
     *Daniele Sluijters*
 
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   No changes.
+
+
 ## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Add logger.push_tags and .pop_tags to complement logger.tagged:
@@ -37,6 +43,7 @@
 
 *  Add %:z and %::z format string support to ActiveSupport::TimeWithZone#strftime. [fixes #6962] *kennyj*
 
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   Fix ActiveSupport integration with Mocha > 0.12.1. *Mike Gunderloy*
@@ -44,6 +51,7 @@
 *   Reverted the deprecation of ActiveSupport::JSON::Variable. *Rafael Mendonça França*
 
 *   ERB::Util.html_escape now escapes single quotes. *Santiago Pastorino*
+
 
 ## Rails 3.2.7 (Jul 26, 2012) ##
 
@@ -57,9 +65,11 @@
 
 *   bump AS deprecation_horizon to 4.0
 
+
 ## Rails 3.2.6 (Jun 12, 2012) ##
 
 *   No changes.
+
 
 ## Rails 3.2.5 (Jun 1, 2012) ##
 
