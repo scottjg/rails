@@ -419,11 +419,11 @@ module ActiveRecord #:nodoc:
     # as a Hash.
     #
     # For example, the following database.yml...
-    # 
+    #
     #   development:
     #     adapter: sqlite3
     #     database: db/development.sqlite3
-    #   
+    #
     #   production:
     #     adapter: sqlite3
     #     database: db/production.sqlite3
@@ -1291,7 +1291,7 @@ module ActiveRecord #:nodoc:
       def self_and_descendents_from_active_record#nodoc:
         klass = self
         classes = [klass]
-        while klass != klass.base_class  
+        while klass != klass.base_class
           classes << klass = klass.superclass
         end
         classes
@@ -1325,7 +1325,7 @@ module ActiveRecord #:nodoc:
       def human_name(options = {})
         defaults = self_and_descendents_from_active_record.map do |klass|
           :"#{klass.name.underscore}"
-        end 
+        end
         defaults << self.name.humanize
         I18n.translate(defaults.shift, {:scope => [:activerecord, :models], :count => 1, :default => defaults}.merge(options))
       end
@@ -2145,22 +2145,28 @@ module ActiveRecord #:nodoc:
         # And for value objects on a composed_of relationship:
         #   { :address => Address.new("123 abc st.", "chicago") }
         #     # => "address_street='123 abc st.' and address_city='chicago'"
-        def sanitize_sql_hash_for_conditions(attrs, table_name = quoted_table_name)
+        def sanitize_sql_hash_for_conditions(attrs, default_table_name = quoted_table_name, top_level = true)
           attrs = expand_hash_conditions_for_aggregates(attrs)
 
           conditions = attrs.map do |attr, value|
-            unless value.is_a?(Hash)
+            table_name = default_table_name
+
+            if not value.is_a?(Hash)
               attr = attr.to_s
 
               # Extract table name from qualified attribute names.
-              if attr.include?('.')
-                table_name, attr = attr.split('.', 2)
-                table_name = connection.quote_table_name(table_name)
+              if attr.include?('.') and top_level
+                attr_table_name, attr = attr.split('.', 2)
+                attr_table_name = connection.quote_table_name(attr_table_name)
+              else
+                attr_table_name = table_name
               end
 
               "#{table_name}.#{connection.quote_column_name(attr)} #{attribute_condition(value)}"
+            elsif top_level
+              sanitize_sql_hash_for_conditions(value, connection.quote_table_name(attr.to_s), false)
             else
-              sanitize_sql_hash_for_conditions(value, connection.quote_table_name(attr.to_s))
+              raise ActiveRecord::StatementInvalid
             end
           end.join(' AND ')
 
@@ -2320,7 +2326,7 @@ module ActiveRecord #:nodoc:
       #       name
       #     end
       #   end
-      #   
+      #
       #   user = User.find_by_name('Phusion')
       #   user_path(path)  # => "/users/Phusion"
       def to_param
@@ -2375,12 +2381,12 @@ module ActiveRecord #:nodoc:
       # If +perform_validation+ is true validations run. If any of them fail
       # the action is cancelled and +save+ returns +false+. If the flag is
       # false validations are bypassed altogether. See
-      # ActiveRecord::Validations for more information. 
+      # ActiveRecord::Validations for more information.
       #
       # There's a series of callbacks associated with +save+. If any of the
       # <tt>before_*</tt> callbacks return +false+ the action is cancelled and
       # +save+ returns +false+. See ActiveRecord::Callbacks for further
-      # details. 
+      # details.
       def save
         create_or_update
       end
@@ -2392,12 +2398,12 @@ module ActiveRecord #:nodoc:
       #
       # With <tt>save!</tt> validations always run. If any of them fail
       # ActiveRecord::RecordInvalid gets raised. See ActiveRecord::Validations
-      # for more information. 
+      # for more information.
       #
       # There's a series of callbacks associated with <tt>save!</tt>. If any of
       # the <tt>before_*</tt> callbacks return +false+ the action is cancelled
       # and <tt>save!</tt> raises ActiveRecord::RecordNotSaved. See
-      # ActiveRecord::Callbacks for further details. 
+      # ActiveRecord::Callbacks for further details.
       def save!
         create_or_update || raise(RecordNotSaved)
       end
@@ -2407,7 +2413,7 @@ module ActiveRecord #:nodoc:
       #
       # Unlike #destroy, this method doesn't run any +before_delete+ and +after_delete+
       # callbacks, nor will it enforce any association +:dependent+ rules.
-      # 
+      #
       # In addition to deleting this record, any defined +before_delete+ and +after_delete+
       # callbacks are run, and +:dependent+ rules defined on associations are run.
       def delete
@@ -2566,12 +2572,12 @@ module ActiveRecord #:nodoc:
       #   class User < ActiveRecord::Base
       #     attr_protected :is_admin
       #   end
-      #   
+      #
       #   user = User.new
       #   user.attributes = { :username => 'Phusion', :is_admin => true }
       #   user.username   # => "Phusion"
       #   user.is_admin?  # => false
-      #   
+      #
       #   user.send(:attributes=, { :username => 'Phusion', :is_admin => true }, false)
       #   user.is_admin?  # => true
       def attributes=(new_attributes, guard_protected_attributes = true)
