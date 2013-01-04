@@ -1,0 +1,27 @@
+* Rails 2.3 with Security Patches
+
+Sometimes the Rails core team will backport security patches to the 2.3 loadline, and
+sometimes they won't.  This fork contains patches for a few security issues that were
+not backported by the core team.
+
+** Currently Applied Patches:
+
+  - http://seclists.org/oss-sec/2012/q2/449
+  - http://seclists.org/oss-sec/2012/q2/503
+
+** Notes
+
+All of the changes are in the '2-3-security-patches' branch.
+
+** Usage
+
+Add this line to your Gemfile:
+
+#+begin_src ruby
+  gem "rails", :git => 'git://github.com/centro/rails.git', :branch => "2-3-security-patches"
+#+end_src
+
+** Thanks
+
+Thanks to Backstop for https://github.com/backstop/rails
+
