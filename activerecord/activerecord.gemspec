@@ -1,41 +1,32 @@
-require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
-require File.expand_path(File.dirname(__FILE__)) + "/test/config"
+# -*- encoding: utf-8 -*-
 
-pkg_build     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-pkg_name      = 'activerecord'
-pkg_version   = ActiveRecord::VERSION::STRING + pkg_build
-pkg_file_name = "#{pkg_name}-#{pkg_version}"
+Gem::Specification.new do |s|
+  s.name = "activerecord"
+  s.version = "2.3.14"
 
-
-dist_dirs = [ "lib", "test", "examples" ]
-
-spec = Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
-  s.name = pkg_name
-  s.version = pkg_version
-  s.summary = "Implements the ActiveRecord pattern for ORM."
-  s.description = %q{Implements the ActiveRecord pattern (Fowler, PoEAA) for ORM. It ties database tables and classes together for business objects, like Customer or Subscription, that can find, save, and destroy themselves without resorting to manual SQL.}
-
-  s.files = [ "Rakefile", "install.rb", "README", "RUNNING_UNIT_TESTS", "CHANGELOG" ]
-  dist_dirs.each do |dir|
-    s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
-  end
-
-  s.add_dependency('activesupport', '= 2.3.14' + pkg_build)
-
-  s.files.delete FIXTURES_ROOT + "/fixture_database.sqlite"
-  s.files.delete FIXTURES_ROOT + "/fixture_database_2.sqlite"
-  s.files.delete FIXTURES_ROOT + "/fixture_database.sqlite3"
-  s.files.delete FIXTURES_ROOT + "/fixture_database_2.sqlite3"
-  s.require_path = 'lib'
-  s.autorequire = 'active_record'
-
-  s.has_rdoc = true
-  s.extra_rdoc_files = %w( README )
-  s.rdoc_options.concat ['--main',  'README']
-
-  s.author = "David Heinemeier Hansson"
+  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.authors = ["David Heinemeier Hansson"]
+  s.date = "2011-08-16"
+  s.description = "Implements the ActiveRecord pattern (Fowler, PoEAA) for ORM. It ties database tables and classes together for business objects, like Customer or Subscription, that can find, save, and destroy themselves without resorting to manual SQL."
   s.email = "david@loudthinking.com"
+  s.extra_rdoc_files = ["README"]
+  s.files = ["README"]
   s.homepage = "http://www.rubyonrails.org"
+  s.rdoc_options = ["--main", "README"]
+  s.require_paths = ["lib"]
   s.rubyforge_project = "activerecord"
+  s.rubygems_version = "1.8.24"
+  s.summary = "Implements the ActiveRecord pattern for ORM."
+
+  if s.respond_to? :specification_version then
+    s.specification_version = 3
+
+    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+      s.add_runtime_dependency(%q<activesupport>, ["= 2.3.14"])
+    else
+      s.add_dependency(%q<activesupport>, ["= 2.3.14"])
+    end
+  else
+    s.add_dependency(%q<activesupport>, ["= 2.3.14"])
+  end
 end

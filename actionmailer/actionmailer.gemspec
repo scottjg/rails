@@ -1,30 +1,30 @@
-require File.join(File.dirname(__FILE__), 'lib', 'action_mailer', 'version')
+# -*- encoding: utf-8 -*-
 
-pkg_build     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-pkg_name      = 'actionmailer'
-pkg_version   = ActionMailer::VERSION::STRING + pkg_build
-pKG_FILE_NAME = "#{pkg_name}-#{pkg_version}"
+Gem::Specification.new do |s|
+  s.name = "actionmailer"
+  s.version = "2.3.14"
 
-spec = Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
-  s.name = pkg_name
-  s.summary = "Service layer for easy email delivery and testing."
-  s.description = %q{Makes it trivial to test and deliver emails sent from a single service layer.}
-  s.version = pkg_version
-
-  s.author = "David Heinemeier Hansson"
+  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.authors = ["David Heinemeier Hansson"]
+  s.date = "2011-08-16"
+  s.description = "Makes it trivial to test and deliver emails sent from a single service layer."
   s.email = "david@loudthinking.com"
-  s.rubyforge_project = "actionmailer"
   s.homepage = "http://www.rubyonrails.org"
+  s.require_paths = ["lib"]
+  s.requirements = ["none"]
+  s.rubyforge_project = "actionmailer"
+  s.rubygems_version = "1.8.24"
+  s.summary = "Service layer for easy email delivery and testing."
 
-  s.add_dependency('actionpack', '= 2.3.14' + pkg_build)
+  if s.respond_to? :specification_version then
+    s.specification_version = 3
 
-  s.has_rdoc = true
-  s.requirements << 'none'
-  s.require_path = 'lib'
-  s.autorequire = 'action_mailer'
-
-  s.files = [ "Rakefile", "install.rb", "README", "CHANGELOG", "MIT-LICENSE" ]
-  s.files = s.files + Dir.glob( "lib/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
-  s.files = s.files + Dir.glob( "test/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
+    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+      s.add_runtime_dependency(%q<actionpack>, ["= 2.3.14"])
+    else
+      s.add_dependency(%q<actionpack>, ["= 2.3.14"])
+    end
+  else
+    s.add_dependency(%q<actionpack>, ["= 2.3.14"])
+  end
 end

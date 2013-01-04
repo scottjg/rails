@@ -1,35 +1,33 @@
-require File.join(File.dirname(__FILE__), 'lib', 'action_pack', 'version')
+# -*- encoding: utf-8 -*-
 
-pkg_build     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-pkg_name      = 'actionpack'
-pkg_versiON   = ActionPack::VERSION::STRING + pkg_build
-pkg_file_NAME = "#{pkg_name}-#{pkg_version}"
+Gem::Specification.new do |s|
+  s.name = "actionpack"
+  s.version = "2.3.14"
 
-dist_dirs = [ "lib", "test" ]
-
-spec = Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
-  s.name = pkg_name
-  s.version = pkg_version
-  s.summary = "Web-flow and rendering framework putting the VC in MVC."
-  s.description = %q{Eases web-request routing, handling, and response as a half-way front, half-way page controller. Implemented with specific emphasis on enabling easy unit/integration testing that doesn't require a browser.} #'
-
-  s.author = "David Heinemeier Hansson"
+  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.authors = ["David Heinemeier Hansson"]
+  s.date = "2011-08-16"
+  s.description = "Eases web-request routing, handling, and response as a half-way front, half-way page controller. Implemented with specific emphasis on enabling easy unit/integration testing that doesn't require a browser."
   s.email = "david@loudthinking.com"
-  s.rubyforge_project = "actionpack"
   s.homepage = "http://www.rubyonrails.org"
+  s.require_paths = ["lib"]
+  s.requirements = ["none"]
+  s.rubyforge_project = "actionpack"
+  s.rubygems_version = "1.8.24"
+  s.summary = "Web-flow and rendering framework putting the VC in MVC."
 
-  s.has_rdoc = true
-  s.requirements << 'none'
+  if s.respond_to? :specification_version then
+    s.specification_version = 3
 
-  s.add_dependency('activesupport', '= 2.3.14' + pkg_build)
-  s.add_dependency('rack', '~> 1.1.0')
-
-  s.require_path = 'lib'
-  s.autorequire = 'action_controller'
-
-  s.files = [ "Rakefile", "install.rb", "README", "RUNNING_UNIT_TESTS", "CHANGELOG", "MIT-LICENSE" ]
-  dist_dirs.each do |dir|
-    s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
+    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+      s.add_runtime_dependency(%q<activesupport>, ["= 2.3.14"])
+      s.add_runtime_dependency(%q<rack>, ["~> 1.1.0"])
+    else
+      s.add_dependency(%q<activesupport>, ["= 2.3.14"])
+      s.add_dependency(%q<rack>, ["~> 1.1.0"])
+    end
+  else
+    s.add_dependency(%q<activesupport>, ["= 2.3.14"])
+    s.add_dependency(%q<rack>, ["~> 1.1.0"])
   end
 end

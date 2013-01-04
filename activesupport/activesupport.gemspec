@@ -1,23 +1,26 @@
-require File.join(File.dirname(__FILE__), 'lib', 'active_support', 'version')
+# -*- encoding: utf-8 -*-
 
-pkg_build     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-pkg_name      = 'activesupport'
-pkg_version   = ActiveSupport::VERSION::STRING + pkg_build
-pkg_file_name = "#{pkg_name}-#{pkg_version}"
+Gem::Specification.new do |s|
+  s.name = "activesupport"
+  s.version = "2.3.14"
 
-spec = Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
-  s.name = pkg_name
-  s.version = pkg_version
-  s.summary = "Support and utility classes used by the Rails framework."
-  s.description = %q{Utility library which carries commonly used classes and goodies from the Rails framework}
-
-  s.files = [ "CHANGELOG", "README" ] + Dir.glob( "lib/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
-  s.require_path = 'lib'
-  s.has_rdoc = true
-
-  s.author = "David Heinemeier Hansson"
+  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.authors = ["David Heinemeier Hansson"]
+  s.date = "2011-08-16"
+  s.description = "Utility library which carries commonly used classes and goodies from the Rails framework"
   s.email = "david@loudthinking.com"
   s.homepage = "http://www.rubyonrails.org"
+  s.require_paths = ["lib"]
   s.rubyforge_project = "activesupport"
+  s.rubygems_version = "1.8.24"
+  s.summary = "Support and utility classes used by the Rails framework."
+
+  if s.respond_to? :specification_version then
+    s.specification_version = 3
+
+    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+    else
+    end
+  else
+  end
 end
