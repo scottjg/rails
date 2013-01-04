@@ -355,10 +355,15 @@ class DateExtBehaviorTest < ActiveSupport::TestCase
   end
 
   def test_compare_with_infinity
+<<<<<<< HEAD
     assert_nothing_raised do
       assert_equal(-1, Date.today <=> Float::INFINITY)
       assert_equal(1, Date.today <=> -Float::INFINITY)
     end
+=======
+    assert_equal(-1, Date.today <=> Float::INFINITY)
+    assert_equal(1, Date.today <=> -Float::INFINITY)
+>>>>>>> upstream/master
   end
 end
 

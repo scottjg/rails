@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 require 'active_support/core_ext/big_decimal/conversions'
 require 'active_support/number_helper'
 
@@ -14,4 +15,14 @@ class Numeric
       infinite? || origin_compare.bind(self).call(other)
     end
   end
+=======
+require 'active_support/core_ext/infinite_comparable'
+
+class Float
+  include InfiniteComparable
+end
+
+class BigDecimal
+  include InfiniteComparable
+>>>>>>> upstream/master
 end
