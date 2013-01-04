@@ -1,3 +1,11 @@
+## Rails 3.2.11 ##
+
+*   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
+
+## Rails 3.2.10 ##
+
+*   CVE-2012-5664 options hashes should only be extracted if there are extra
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   Do not consider the numeric attribute as changed if the old value is zero and the new value
