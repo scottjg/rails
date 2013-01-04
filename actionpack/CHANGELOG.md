@@ -1,3 +1,7 @@
+## Rails 3.2.11 ##
+
+* Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   There is an XSS vulnerability in the strip_tags helper in Ruby on Rails, the
