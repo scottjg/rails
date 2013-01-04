@@ -8,6 +8,7 @@ else
   gem 'arel'
 end
 
+gem 'rack', :git => 'git://github.com/rack/rack.git', :branch => 'rack-1.4'
 gem 'bcrypt-ruby', '~> 3.0.0'
 gem 'jquery-rails'
 
