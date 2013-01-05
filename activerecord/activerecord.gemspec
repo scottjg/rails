@@ -4,6 +4,8 @@ PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 PKG_NAME      = 'activerecord'
 PKG_VERSION   = ActiveRecord::VERSION::STRING + PKG_BUILD
 
+dist_dirs = [ "lib", "test", "examples" ]
+
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = PKG_NAME
