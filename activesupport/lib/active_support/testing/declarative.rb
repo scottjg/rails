@@ -7,11 +7,11 @@ module ActiveSupport
 
           unless method_defined?(:describe)
             def self.describe(text)
-              class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
-                def self.name
-                  "#{text}"
+              class_exec do
+                define_singleton_method(name) do
+                  text
                 end
-              RUBY_EVAL
+              end
             end
           end
 
