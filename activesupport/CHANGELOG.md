@@ -1,3 +1,12 @@
+## Rails 3.2.10 (Jan 8, 2012) ##
+
+*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
+    Use Hash.from_trusted_xml to parse this XML.
+
+    CVE-2013-0156
+
+    *Jeremy Kemper*
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   Fix ActiveSupport integration with Mocha > 0.12.1. *Mike Gunderloy*
