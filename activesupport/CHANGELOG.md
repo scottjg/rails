@@ -1,3 +1,73 @@
+## Rails 3.2.10 (Jan 8, 2012) ##
+
+*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
+    Use Hash.from_trusted_xml to parse this XML.
+
+    CVE-2013-0156
+
+    *Jeremy Kemper*
+
+## Rails 3.2.9 (Nov 12, 2012) ##
+
+*   Add logger.push_tags and .pop_tags to complement logger.tagged:
+
+        class Job
+          def before
+            Rails.logger.push_tags :jobs, self.class.name
+          end
+
+          def after
+            Rails.logger.pop_tags 2
+          end
+        end
+
+    *Jeremy Kemper*
+
+*  Add %:z and %::z format string support to ActiveSupport::TimeWithZone#strftime. [fixes #6962] *kennyj*
+
+## Rails 3.2.8 (Aug 9, 2012) ##
+
+*   Fix ActiveSupport integration with Mocha > 0.12.1. *Mike Gunderloy*
+
+*   Reverted the deprecation of ActiveSupport::JSON::Variable. *Rafael Mendonça França*
+
+## Rails 3.2.7 (Jul 26, 2012) ##
+
+*   Hash#fetch(fetch) is not the same as doing hash[key]
+
+*   adds a missing require [fixes #6896]
+
+*   make sure the inflection rules are loaded when cherry-picking active_support/core_ext/string/inflections.rb [fixes #6884]
+
+*   Merge pull request #6857 from rsutphin/as_core_ext_time_missing_require
+
+*   bump AS deprecation_horizon to 4.0
+
+## Rails 3.2.6 (Jun 12, 2012) ##
+
+*   No changes.
+
+## Rails 3.2.5 (Jun 1, 2012) ##
+
+*   ActiveSupport::JSON::Variable is deprecated. Define your own #as_json and #encode_json methods
+    for custom JSON string literals. *Erich Menge*
+
+
+## Rails 3.2.4 (May 31, 2012) ##
+
+*   Added #beginning_of_hour and #end_of_hour to Time and DateTime core
+    extensions. *Mark J. Titorenko*
+
+
+## Rails 3.2.3 (March 30, 2012) ##
+
+*   No changes.
+
+
+## Rails 3.2.2 (March 1, 2012) ##
+
+*   No changes.
+
 ## Rails 3.2.1 (January 26, 2012) ##
 
 *   Documentation fixes and improvements.
