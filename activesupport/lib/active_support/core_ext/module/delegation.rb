@@ -119,6 +119,7 @@ class Module
     end
 
     prefix, allow_nil = options.values_at(:prefix, :allow_nil)
+    unguarded = !allow_nil
 
     if prefix == true && to =~ /^[^a-z_]/
       raise ArgumentError, 'Can only automatically set the delegation prefix when delegating to a method.'
@@ -131,39 +132,43 @@ class Module
         ''
       end
 
-    file, line = caller.first.split(':', 2)
-    line = line.to_i
-
-    to = to.to_s
-    to = 'self.class' if to == 'class'
+    reference, *hierarchy = to.to_s.split('.')
+    entry = resolver =
+      case reference
+      when 'self'
+        ->(_self) { _self }
+      when /^@@/
+        ->(_self) { _self.class.class_variable_get(reference) }
+      when /^@/
+        ->(_self) { _self.instance_variable_get(reference) }
+      when /^[A-Z]/
+        ->(_self) { if reference.to_s =~ /::/ then reference.constantize else _self.class.const_get(reference) end }
+      else
+        ->(_self) { _self.send(reference) }
+      end
+    resolver = ->(_self) { hierarchy.reduce(entry.call(_self)) { |obj, method| obj.public_send(method) } } unless hierarchy.empty?
 
     methods.each do |method|
-      # Attribute writer methods only accept one argument. Makes sure []=
-      # methods still accept two arguments.
-      definition = (method =~ /[^\]]=$/) ? 'arg' : '*args, &block'
-
-      if allow_nil
-        module_eval(<<-EOS, file, line - 2)
-          def #{method_prefix}#{method}(#{definition})        # def customer_name(*args, &block)
-            if #{to} || #{to}.respond_to?(:#{method})         #   if client || client.respond_to?(:name)
-              #{to}.#{method}(#{definition})                  #     client.name(*args, &block)
-            end                                               #   end
-          end                                                 # end
-        EOS
-      else
-        exception = %(raise "#{self}##{method_prefix}#{method} delegated to #{to}.#{method}, but #{to} is nil: \#{self.inspect}")
-
-        module_eval(<<-EOS, file, line - 1)
-          def #{method_prefix}#{method}(#{definition})        # def customer_name(*args, &block)
-            #{to}.#{method}(#{definition})                    #   client.name(*args, &block)
-          rescue NoMethodError                                # rescue NoMethodError
-            if #{to}.nil?                                     #   if client.nil?
-              #{exception}                                    #     # add helpful message to the exception
-            else                                              #   else
-              raise                                           #     raise
-            end                                               #   end
-          end                                                 # end
-        EOS
+      module_exec do
+        # def customer_name(*args, &block)
+        #   begin
+        #     if unguarded || client || client.respond_to?(:name)
+        #       client.name(*args, &block)
+        #     end
+        #   rescue client.nil? && NoMethodError
+        #     raise "..."
+        #   end
+        # end
+        define_method("#{method_prefix}#{method}") do |*args, &block|
+          target = resolver.call(self)
+          if unguarded || target || target.respond_to?(method)
+            begin
+              target.public_send(method, *args, &block)
+            rescue target.nil? && NoMethodError # only rescue NoMethodError when target is nil
+              raise "#{self}##{method_prefix}#{method} delegated to #{to}.#{method}, but #{to} is nil: #{self.inspect}"
+            end
+          end
+        end
       end
     end
   end
