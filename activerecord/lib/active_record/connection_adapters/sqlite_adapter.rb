@@ -205,7 +205,7 @@ module ActiveRecord
           value = super
           if column.type == :string && value.encoding == Encoding::ASCII_8BIT
             logger.error "Binary data inserted for `string` type on column `#{column.name}`" if logger
-            value.encode! 'utf-8'
+            value = value.encode Encoding::UTF_8
           end
           value
         end
@@ -359,12 +359,12 @@ module ActiveRecord
 
       # Returns an array of indexes for the given table.
       def indexes(table_name, name = nil) #:nodoc:
-        exec_query("PRAGMA index_list(#{quote_table_name(table_name)})", name).map do |row|
+        exec_query("PRAGMA index_list(#{quote_table_name(table_name)})", 'SCHEMA').map do |row|
           IndexDefinition.new(
             table_name,
             row['name'],
             row['unique'] != 0,
-            exec_query("PRAGMA index_info('#{row['name']}')").map { |col|
+            exec_query("PRAGMA index_info('#{row['name']}')", 'SCHEMA').map { |col|
               col['name']
             })
         end
@@ -407,7 +407,14 @@ module ActiveRecord
 
       def remove_column(table_name, *column_names) #:nodoc:
         raise ArgumentError.new("You must specify at least one column name. Example: remove_column(:people, :first_name)") if column_names.empty?
-        column_names.flatten.each do |column_name|
+
+        if column_names.flatten!
+          message = 'Passing array to remove_columns is deprecated, please use ' +
+                    'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
+          ActiveSupport::Deprecation.warn message, caller
+        end
+
+        column_names.each do |column_name|
           alter_table(table_name) do |definition|
             definition.columns.delete(definition[column_name])
           end
@@ -523,7 +530,7 @@ module ActiveRecord
 
             unless columns.empty?
               # index name can't be the same
-              opts = { :name => name.gsub(/_(#{from})_/, "_#{to}_") }
+              opts = { :name => name.gsub(/(^|_)(#{from})_/, "\\1#{to}_") }
               opts[:unique] = true if index.unique
               add_index(to, columns, opts)
             end

@@ -221,6 +221,14 @@ module ActionView
       setup(context, options, block)
       identifier = (@template = find_partial) ? @template.identifier : @path
 
+      @lookup_context.rendered_format ||= begin
+        if @template && @template.formats.present?
+          @template.formats.first
+        else
+          formats.first
+        end
+      end
+
       if @collection
         instrument(:collection, :identifier => identifier || "collection", :count => @collection.size) do
           render_collection
@@ -248,7 +256,7 @@ module ActionView
       object, as = @object, @variable
 
       if !block && (layout = @options[:layout])
-        layout = find_template(layout)
+        layout = find_template(layout.to_s)
       end
 
       object ||= locals[as]
@@ -272,8 +280,6 @@ module ActionView
       @locals  = options[:locals] || {}
       @block   = block
       @details = extract_details(options)
-
-      @lookup_context.rendered_format ||= formats.first
 
       if String === partial
         @object     = options[:object]
@@ -401,7 +407,7 @@ module ActionView
     end
 
     def retrieve_variable(path)
-      variable = @options[:as].try(:to_sym) || path[%r'_?(\w+)(\.\w+)*$', 1].to_sym
+      variable = @options.fetch(:as) { path[%r'_?(\w+)(\.\w+)*$', 1] }.try(:to_sym)
       variable_counter = :"#{variable}_counter" if @collection
       [variable, variable_counter]
     end

@@ -592,7 +592,6 @@ class EagerAssociationTest < ActiveRecord::TestCase
   # gets raw row hashes from the database and then instantiates them, this test ensures that
   # it only instantiates one actual object per record from the database.
   def test_has_and_belongs_to_many_should_not_instantiate_same_records_multiple_times
-    welcome    = posts(:welcome)
     categories = Category.includes(:posts)
 
     general    = categories.find { |c| c == categories(:general) }
@@ -916,6 +915,12 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_equal 3, Developer.find(:all, :include => 'projects', :conditions => 'developers_projects.access_level = 1', :limit => 5).size
   end
 
+  def test_dont_create_temporary_active_record_instances
+    Developer.instance_count = 0
+    developers = Developer.find(:all, :include => 'projects', :conditions => 'developers_projects.access_level = 1', :limit => 5).to_a
+    assert_equal developers.count, Developer.instance_count
+  end
+
   def test_order_on_join_table_with_include_and_limit
     assert_equal 5, Developer.find(:all, :include => 'projects', :order => 'developers_projects.joined_on DESC', :limit => 5).size
   end
@@ -1008,6 +1013,18 @@ class EagerAssociationTest < ActiveRecord::TestCase
     assert_no_queries do
       assert_equal expected, firm.clients_using_primary_key
     end
+  end
+
+  def test_preload_has_many_with_association_condition_and_default_scope
+    post = Post.create!(:title => 'Beaches', :body => "I like beaches!")
+    Reader.create! :person => people(:david), :post => post
+    LazyReader.create! :person => people(:susan), :post => post
+
+    assert_equal 1, post.lazy_readers.to_a.size
+    assert_equal 2, post.lazy_readers_skimmers_or_not.to_a.size
+
+    post_with_readers = Post.includes(:lazy_readers_skimmers_or_not).find(post.id)
+    assert_equal 2, post_with_readers.lazy_readers_skimmers_or_not.to_a.size
   end
 
   def test_include_has_many_using_primary_key

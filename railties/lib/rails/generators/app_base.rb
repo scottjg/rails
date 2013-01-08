@@ -138,14 +138,14 @@ module Rails
         if options.dev?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     :path => '#{Rails::Generators::RAILS_DEV_PATH}'
-            gem 'journey',   :git => 'git://github.com/rails/journey.git'
-            gem 'arel',      :git => 'git://github.com/rails/arel.git'
+            gem 'journey',   :git => 'git://github.com/rails/journey.git', :branch => '1-0-stable'
+            gem 'arel',      :git => 'git://github.com/rails/arel.git', :branch => '3-0-stable'
           GEMFILE
         elsif options.edge?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     :git => 'git://github.com/rails/rails.git', :branch => '3-2-stable'
-            gem 'journey',   :git => 'git://github.com/rails/journey.git'
-            gem 'arel',      :git => 'git://github.com/rails/arel.git'
+            gem 'journey',   :git => 'git://github.com/rails/journey.git', :branch => '1-0-stable'
+            gem 'arel',      :git => 'git://github.com/rails/arel.git', :branch => '3-0-stable'
           GEMFILE
         else
           <<-GEMFILE.strip_heredoc
@@ -188,7 +188,7 @@ module Rails
         if RUBY_VERSION < "1.9"
           "gem 'ruby-debug'"
         else
-          "gem 'ruby-debug19', :require => 'ruby-debug'"
+          "gem 'debugger'"
         end
       end
 
@@ -234,7 +234,7 @@ module Rails
         if defined?(JRUBY_VERSION)
           "gem 'therubyrhino'\n"
         else
-          "# gem 'therubyracer'\n"
+          "# gem 'therubyracer', :platforms => :ruby\n"
         end
       end
 

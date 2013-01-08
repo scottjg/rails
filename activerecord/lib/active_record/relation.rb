@@ -403,6 +403,8 @@ module ActiveRecord
     # If you need to destroy dependent associations or call your <tt>before_*</tt> or
     # +after_destroy+ callbacks, use the +destroy_all+ method instead.
     def delete_all(conditions = nil)
+      raise ActiveRecordError.new("delete_all doesn't support limit scope") if self.limit_value
+
       IdentityMap.repository[symbolized_base_class] = {} if IdentityMap.enabled?
       if conditions
         where(conditions).delete_all
@@ -462,7 +464,12 @@ module ActiveRecord
         node.left.relation.name == table_name
       }
 
-      Hash[equalities.map { |where| [where.left.name, where.right] }]
+      binds = Hash[bind_values.find_all(&:first).map { |column, v| [column.name, v] }]
+
+      Hash[equalities.map { |where|
+        name = where.left.name
+        [name, binds.fetch(name.to_s) { where.right }]
+      }]
     end
 
     def scope_for_create

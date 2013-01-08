@@ -5,6 +5,7 @@ require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/hash/except'
 require 'active_model/errors'
 require 'active_model/validations/callbacks'
+require 'active_model/validator'
 
 module ActiveModel
 
@@ -162,6 +163,21 @@ module ActiveModel
         dup = _validators.dup
         base._validators = dup.each { |k, v| dup[k] = v.dup }
         super
+      end
+    end
+
+    # Clean the +Errors+ object if instance is duped
+    def initialize_dup(other) # :nodoc:
+      @errors = nil
+      super if defined?(super)
+    end
+
+    # Backport dup from 1.9 so that #initialize_dup gets called
+    unless Object.respond_to?(:initialize_dup, true)
+      def dup # :nodoc:
+        copy = super
+        copy.initialize_dup(self)
+        copy
       end
     end
 

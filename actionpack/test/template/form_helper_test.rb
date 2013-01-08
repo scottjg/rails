@@ -393,6 +393,19 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
+  def test_check_box_with_multiple_behavior_and_index
+    @post.comment_ids = [2,3]
+    assert_dom_equal(
+      '<input name="post[foo][comment_ids][]" type="hidden" value="0" /><input id="post_foo_comment_ids_1" name="post[foo][comment_ids][]" type="checkbox" value="1" />',
+      check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+    )
+    assert_dom_equal(
+      '<input name="post[bar][comment_ids][]" type="hidden" value="0" /><input checked="checked" id="post_bar_comment_ids_3" name="post[bar][comment_ids][]" type="checkbox" value="3" />',
+      check_box("post", "comment_ids", { :multiple => true, :index => "bar" }, 3)
+    )
+
+  end
+
   def test_checkbox_disabled_disables_hidden_field
     assert_dom_equal(
       '<input name="post[secret]" type="hidden" value="0" disabled="disabled"/><input checked="checked" disabled="disabled" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
@@ -742,7 +755,6 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
-
   def test_form_for_with_format
     form_for(@post, :format => :json, :html => { :id => "edit_post_123", :class => "edit_post" }) do |f|
       concat f.label(:title)
@@ -943,6 +955,41 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_for_label_error_wrapping
+    form_for(@post) do |f|
+      concat f.label(:author_name, :class => 'label')
+      concat f.text_field(:author_name)
+      concat f.submit('Create post')
+    end
+
+    expected = whole_form("/posts/123", "edit_post_123" , "edit_post", :method => "put") do
+      "<div class='field_with_errors'><label for='post_author_name' class='label'>Author name</label></div>" +
+      "<div class='field_with_errors'><input name='post[author_name]' size='30' type='text' id='post_author_name' value='' /></div>" +
+      "<input name='commit' type='submit' value='Create post' />"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
+
+  def test_form_for_label_error_wrapping_without_conventional_instance_variable
+    post = remove_instance_variable :@post
+
+    form_for(post) do |f|
+      concat f.label(:author_name, :class => 'label')
+      concat f.text_field(:author_name)
+      concat f.submit('Create post')
+    end
+
+    expected = whole_form("/posts/123", "edit_post_123" , "edit_post", :method => "put") do
+      "<div class='field_with_errors'><label for='post_author_name' class='label'>Author name</label></div>" +
+      "<div class='field_with_errors'><input name='post[author_name]' size='30' type='text' id='post_author_name' value='' /></div>" +
+      "<input name='commit' type='submit' value='Create post' />"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_form_for_with_namespace
     form_for(@post, :namespace => 'namespace') do |f|
       concat f.text_field(:title)
@@ -958,6 +1005,14 @@ class FormHelperTest < ActionView::TestCase
     end
 
     assert_dom_equal expected, output_buffer
+  end
+
+  def test_form_for_with_namespace_with_date_select
+    form_for(@post, :namespace => 'namespace') do |f|
+      concat f.date_select(:written_on)
+    end
+
+    assert_select 'select#namespace_post_written_on_1i'
   end
 
   def test_form_for_with_namespace_with_label
@@ -1990,6 +2045,23 @@ class FormHelperTest < ActionView::TestCase
     ActionView::Base.default_form_builder = old_default_form_builder
   end
 
+  def test_lazy_loading_default_form_builder
+    old_default_form_builder, ActionView::Base.default_form_builder =
+      ActionView::Base.default_form_builder, "FormHelperTest::LabelledFormBuilder"
+
+    form_for(@post) do |f|
+      concat f.text_field(:title)
+    end
+
+    expected = whole_form('/posts/123', 'edit_post_123', 'edit_post', :method => 'put') do
+      "<label for='title'>Title:</label> <input name='post[title]' size='30' type='text' id='post_title' value='Hello World' /><br/>"
+    end
+
+    assert_dom_equal expected, output_buffer
+  ensure
+    ActionView::Base.default_form_builder = old_default_form_builder
+  end
+
   def test_fields_for_with_labelled_builder
     output_buffer = fields_for(:post, @post, :builder => LabelledFormBuilder) do |f|
       concat f.text_field(:title)
@@ -2142,6 +2214,19 @@ class FormHelperTest < ActionView::TestCase
   def test_fields_for_returns_block_result
     output = fields_for(Post.new) { |f| "fields" }
     assert_equal "fields", output
+  end
+
+  def test_form_for_only_instantiates_builder_once
+    initialization_count = 0
+    builder_class = Class.new(ActionView::Helpers::FormBuilder) do
+      define_method :initialize do |*args|
+        super(*args)
+        initialization_count += 1
+      end
+    end
+
+    form_for(@post, :builder => builder_class) { }
+    assert_equal 1, initialization_count, 'form builder instantiated more than once'
   end
 
   protected

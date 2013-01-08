@@ -236,6 +236,14 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert_equal "2", categories(:sti_test).authors_with_select.first.post_id.to_s
   end
 
+  def test_create_through_has_many_with_piggyback
+    category = categories(:sti_test)
+    ernie = category.authors_with_select.create(:name => 'Ernie')
+    assert_not_deprecated do
+      assert_equal ernie, category.authors_with_select.detect {|a| a.name == 'Ernie'}
+    end
+  end
+
   def test_include_has_many_through
     posts              = Post.find(:all, :order => 'posts.id')
     posts_with_authors = Post.find(:all, :include => :authors, :order => 'posts.id')
@@ -403,7 +411,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_polymorphic_has_one
-    assert_equal Tagging.find(1,2).sort_by { |t| t.id }, authors(:david).tagging
+    assert_equal Tagging.find(1,2).sort_by { |t| t.id }, authors(:david).tagging.order('taggings.id')
   end
 
   def test_has_many_through_polymorphic_has_many
@@ -452,7 +460,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_uses_conditions_specified_on_the_has_many_association
-    author = Author.find(:first)
+    author = Author.order(:id).first
     assert_present author.comments
     assert_blank author.nonexistant_comments
   end
@@ -649,7 +657,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_preload_polymorph_many_types
-    taggings = Tagging.find :all, :include => :taggable, :conditions => ['taggable_type != ?', 'FakeModel']
+    taggings = Tagging.find :all, :include => :taggable, :conditions => ['taggable_type != ?', 'FakeModel'], :order => 'id'
     assert_no_queries do
       taggings.first.taggable.id
       taggings[1].taggable.id

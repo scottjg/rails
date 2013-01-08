@@ -277,6 +277,8 @@ h4. Configuring Active Record
 
 * +config.active_record.auto_explain_threshold_in_seconds+ configures the threshold for automatic EXPLAINs (+nil+ disables this feature). Queries exceeding the threshold get their query plan logged. Default is 0.5 in development mode.
 
+* +config.active_record.cache_timestamp_format+ controls the format of the timestamp value in the cache key. Default is +:number+.
+
 The MySQL adapter adds one additional configuration option:
 
 * +ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans+ controls whether Active Record will consider all +tinyint(1)+ columns in a MySQL database to be booleans and is true by default.
@@ -345,7 +347,7 @@ There are only a few configuration options for Action View, starting with three 
 Proc.new { |html_tag, instance| %Q(<div class="field_with_errors">#{html_tag}</div>).html_safe }
 </ruby>
 
-* +config.action_view.default_form_builder+ tells Rails which form builder to use by default. The default is +ActionView::Helpers::FormBuilder+.
+* +config.action_view.default_form_builder+ tells Rails which form builder to use by default. The default is +ActionView::Helpers::FormBuilder+. If you want your form builder class to be loaded after initialization (so it's reloaded on each request in development), you can pass it as a +String+
 
 * +config.action_view.erb_trim_mode+ gives the trim mode to be used by ERB. It defaults to +'-'+. See the "ERB documentation":http://www.ruby-doc.org/stdlib/libdoc/erb/rdoc/ for more information.
 
@@ -374,6 +376,8 @@ And can reference in the view with the following code:
 </ruby>
 
 * +config.action_view.cache_asset_ids+ With the cache enabled, the asset tag helper methods will make fewer expensive file system calls (the default implementation checks the file system timestamp). However this prevents you from modifying any asset files while the server is running.
+
+* +config.action_view.embed_authenticity_token_in_remote_forms+ This is by default set to true. If you set it to false, authenticity_token will not be added to forms with +:remote => true+ by default. You can force +authenticity_token+ to be added to such remote form by passing +:authenticity_token => true+ option.
 
 h4. Configuring Action Mailer
 

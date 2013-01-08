@@ -14,6 +14,21 @@ class TransactionTest < ActiveRecord::TestCase
     @first, @second = Topic.find(1, 2).sort_by { |t| t.id }
   end
 
+  def test_raise_after_destroy
+    assert !@first.frozen?
+
+    assert_raises(RuntimeError) {
+      Topic.transaction do
+        @first.destroy
+        assert @first.frozen?
+        raise
+      end
+    }
+
+    assert @first.reload
+    assert !@first.frozen?
+  end
+
   def test_successful
     Topic.transaction do
       @first.approved  = true
@@ -204,6 +219,23 @@ class TransactionTest < ActiveRecord::TestCase
     end
   end
 
+  def test_callback_rollback_in_create_with_record_invalid_exception
+    begin
+      Topic.class_eval <<-eoruby, __FILE__, __LINE__ + 1
+        remove_method(:after_create_for_transaction)
+        def after_create_for_transaction
+          raise ActiveRecord::RecordInvalid.new(Author.new)
+        end
+      eoruby
+
+      new_topic = Topic.create(:title => "A new topic")
+      assert !new_topic.persisted?, "The topic should not be persisted"
+      assert_nil new_topic.id, "The topic should not have an ID"
+    ensure
+      remove_exception_raising_after_create_callback_to_topic
+    end
+  end
+
   def test_nested_explicit_transactions
     Topic.transaction do
       Topic.transaction do
@@ -360,6 +392,18 @@ class TransactionTest < ActiveRecord::TestCase
         # do nothing
       end
     end
+  end
+
+  def test_rollback_when_saving_a_frozen_record
+    expected_raise = (RUBY_VERSION < '1.9') ? TypeError : RuntimeError
+
+    topic = Topic.new(:title => 'test')
+    topic.freeze
+    e = assert_raise(expected_raise) { topic.save }
+    assert_equal "can't modify frozen hash", e.message.downcase
+    assert !topic.persisted?, 'not persisted'
+    assert_nil topic.id
+    assert topic.frozen?, 'not frozen'
   end
 
   def test_restore_active_record_state_for_all_records_in_a_transaction

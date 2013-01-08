@@ -5,7 +5,7 @@ module ActionDispatch
     def initialize(root, cache_control)
       @root          = root.chomp('/')
       @compiled_root = /^#{Regexp.escape(root)}/
-      @file_server   = ::Rack::File.new(@root, cache_control)
+      @file_server   = ::Rack::File.new(@root, 'Cache-Control' => cache_control)
     end
 
     def match?(path)
@@ -38,6 +38,7 @@ module ActionDispatch
     end
 
     def escape_glob_chars(path)
+      path.force_encoding('binary') if path.respond_to? :force_encoding
       path.gsub(/[*?{}\[\]]/, "\\\\\\&")
     end
   end

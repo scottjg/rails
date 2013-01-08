@@ -103,9 +103,13 @@ module ActionController
 
         if expected_partial = options[:partial]
           if expected_locals = options[:locals]
-            actual_locals = @locals[expected_partial.to_s.sub(/^_/,'')]
-            expected_locals.each_pair do |k,v|
-              assert_equal(v, actual_locals[k])
+            if defined?(@locals)
+              actual_locals = @locals[expected_partial.to_s.sub(/^_/,'')]
+              expected_locals.each_pair do |k,v|
+                assert_equal(v, actual_locals[k])
+              end
+            else
+              warn "the :locals option to #assert_template is only supported in a ActionView::TestCase"
             end
           elsif expected_count = options[:count]
             actual_count = @partials[expected_partial]
@@ -147,17 +151,23 @@ module ActionController
       extra_keys = routes.extra_keys(parameters)
       non_path_parameters = get? ? query_parameters : request_parameters
       parameters.each do |key, value|
-        if value.is_a? Fixnum
-          value = value.to_s
-        elsif value.is_a? Array
-          value = Result.new(value.map { |v| v.is_a?(String) ? v.dup : v })
-        elsif value.is_a? String
+        if value.is_a?(Array) && (value.frozen? || value.any?(&:frozen?))
+          value = value.map{ |v| v.duplicable? ? v.dup : v }
+        elsif value.is_a?(Hash) && (value.frozen? || value.any?{ |k,v| v.frozen? })
+          value = Hash[value.map{ |k,v| [k, v.duplicable? ? v.dup : v] }]
+        elsif value.frozen? && value.duplicable?
           value = value.dup
         end
 
         if extra_keys.include?(key.to_sym)
           non_path_parameters[key] = value
         else
+          if value.is_a?(Array)
+            value = Result.new(value.map(&:to_param))
+          else
+            value = value.to_param
+          end
+
           path_parameters[key.to_s] = value
         end
       end
@@ -416,7 +426,7 @@ module ActionController
           Hash[hash_or_array_or_value.map{|key, value| [key, paramify_values(value)] }]
         when Array
           hash_or_array_or_value.map {|i| paramify_values(i)}
-        when Rack::Test::UploadedFile
+        when Rack::Test::UploadedFile, ActionDispatch::Http::UploadedFile
           hash_or_array_or_value
         else
           hash_or_array_or_value.to_param
@@ -426,7 +436,7 @@ module ActionController
       def process(action, parameters = nil, session = nil, flash = nil, http_method = 'GET')
         # Ensure that numbers and symbols passed as params are converted to
         # proper params, as is the case when engaging rack.
-        parameters = paramify_values(parameters)
+        parameters = paramify_values(parameters) if html_format?(parameters)
 
         # Sanity check for required instance variables so we can give an
         # understandable error message.
@@ -457,7 +467,6 @@ module ActionController
         @request.session["flash"].sweep
 
         @controller.request = @request
-        @controller.params.merge!(parameters)
         build_request_uri(action, parameters)
         @controller.class.class_eval { include Testing }
         @controller.recycle!
@@ -481,11 +490,6 @@ module ActionController
           @controller.request = @request
           @controller.params = {}
         end
-      end
-
-      # Cause the action to be rescued according to the regular rules for rescue_action when the visitor is not local
-      def rescue_action_in_public!
-        @request.remote_addr = '208.77.188.166' # example.com
       end
 
       included do
@@ -512,6 +516,12 @@ module ActionController
           @request.env["PATH_INFO"] = url
           @request.env["QUERY_STRING"] = query_string || ""
         end
+      end
+
+      def html_format?(parameters)
+        return true unless parameters.is_a?(Hash)
+        format = Mime[parameters[:format]]
+        format.nil? || format.html?
       end
     end
 

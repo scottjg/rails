@@ -64,6 +64,7 @@ module ActiveRecord
           return if attribute_methods_generated?
           superclass.define_attribute_methods unless self == base_class
           super(column_names)
+          column_names.each { |name| define_external_attribute_method(name) }
           @attribute_methods_generated = true
         end
       end
@@ -180,7 +181,9 @@ module ActiveRecord
 
     # Returns a hash of all the attributes with their names as keys and the values of the attributes as values.
     def attributes
-      Hash[@attributes.map { |name, _| [name, read_attribute(name)] }]
+      attrs = {}
+      attribute_names.each { |name| attrs[name] = read_attribute(name) }
+      attrs
     end
 
     # Returns an <tt>#inspect</tt>-like string for the value of the

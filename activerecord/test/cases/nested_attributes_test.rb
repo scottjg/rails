@@ -172,6 +172,17 @@ class TestNestedAttributesInGeneral < ActiveRecord::TestCase
     man.interests_attributes = [{:id => interest.id, :topic => 'gardening'}]
     assert_equal man.interests.first.topic, man.interests[0].topic
   end
+
+  def test_accepts_nested_attributes_for_can_be_overridden_in_subclasses
+    Pirate.accepts_nested_attributes_for(:parrot)
+
+    mean_pirate_class = Class.new(Pirate) do
+      accepts_nested_attributes_for :parrot
+    end
+    mean_pirate = mean_pirate_class.new
+    mean_pirate.parrot_attributes = { :name => "James" }
+    assert_equal "James", mean_pirate.parrot.name
+  end
 end
 
 class TestNestedAttributesOnAHasOneAssociation < ActiveRecord::TestCase
@@ -772,6 +783,16 @@ module NestedAttributesOnACollectionAssociationTests
     assert_nothing_raised(NoMethodError) { @pirate.save! }
   end
 
+  def test_numeric_colum_changes_from_zero_to_no_empty_string
+    Man.accepts_nested_attributes_for(:interests)
+    Interest.validates_numericality_of(:zine_id)
+    man = Man.create(:name => 'John')
+    interest = man.interests.create(:topic=>'bar',:zine_id => 0)
+    assert  interest.save
+
+    assert  !man.update_attributes({:interests_attributes => { :id => interest.id, :zine_id => 'foo' }})
+  end
+
   private
 
   def association_setter
@@ -876,7 +897,7 @@ class TestNestedAttributesWithNonStandardPrimaryKeys < ActiveRecord::TestCase
 
   def test_should_update_existing_records_with_non_standard_primary_key
     @owner.update_attributes(@params)
-    assert_equal ['Foo', 'Bar'], @owner.pets.map(&:name)
+    assert_equal %w(Bar Foo), @owner.pets.map(&:name).sort
   end
 
   def test_attr_accessor_of_child_should_be_value_provided_during_update_attributes

@@ -157,9 +157,12 @@ module Rails
     # Rails.application.env_config stores some of the Rails initial environment parameters.
     # Currently stores:
     #
-    #   * action_dispatch.parameter_filter" => config.filter_parameters,
-    #   * action_dispatch.secret_token"     => config.secret_token,
-    #   * action_dispatch.show_exceptions"  => config.action_dispatch.show_exceptions
+    #   * "action_dispatch.parameter_filter"         => config.filter_parameters,
+    #   * "action_dispatch.secret_token"             => config.secret_token,
+    #   * "action_dispatch.show_exceptions"          => config.action_dispatch.show_exceptions,
+    #   * "action_dispatch.show_detailed_exceptions" => config.consider_all_requests_local,
+    #   * "action_dispatch.logger"                   => Rails.logger,
+    #   * "action_dispatch.backtrace_cleaner"        => Rails.backtrace_cleaner
     #
     # These parameters will be used by middlewares and engines to configure themselves.
     #
@@ -188,7 +191,7 @@ module Rails
         end
 
         all = (railties.all - order)
-        all.push(self)   unless all.include?(self)
+        all.push(self)   unless (all + order).include?(self)
         order.push(:all) unless order.include?(:all)
 
         index = order.index(:all)
@@ -229,6 +232,8 @@ module Rails
     end
 
     def default_middleware_stack
+      require 'action_controller/railtie'
+
       ActionDispatch::MiddlewareStack.new.tap do |middleware|
         if rack_cache = config.action_controller.perform_caching && config.action_dispatch.rack_cache
           require "action_dispatch/http/rack_cache"

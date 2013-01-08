@@ -42,9 +42,12 @@ class HasManyAssociationsTestForCountWithCountSql < ActiveRecord::TestCase
   end
 end
 
-class HasManyAssociationsTestForCountDistinctWithFinderSql < ActiveRecord::TestCase
+class HasManyAssociationsTestForCountWithVariousFinderSqls < ActiveRecord::TestCase
   class Invoice < ActiveRecord::Base
     has_many :custom_line_items, :class_name => 'LineItem', :finder_sql => "SELECT DISTINCT line_items.amount from line_items"
+    has_many :custom_full_line_items, :class_name => 'LineItem', :finder_sql => "SELECT line_items.invoice_id, line_items.amount from line_items"
+    has_many :custom_star_line_items, :class_name => 'LineItem', :finder_sql => "SELECT * from line_items"
+    has_many :custom_qualified_star_line_items, :class_name => 'LineItem', :finder_sql => "SELECT line_items.* from line_items"
   end
 
   def test_should_count_distinct_results
@@ -54,6 +57,33 @@ class HasManyAssociationsTestForCountDistinctWithFinderSql < ActiveRecord::TestC
     invoice.save!
 
     assert_equal 1, invoice.custom_line_items.count
+  end
+
+  def test_should_count_results_with_multiple_fields
+    invoice = Invoice.new
+    invoice.custom_full_line_items << LineItem.new(:amount => 0)
+    invoice.custom_full_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 2, invoice.custom_full_line_items.count
+  end
+
+  def test_should_count_results_with_star
+    invoice = Invoice.new
+    invoice.custom_star_line_items << LineItem.new(:amount => 0)
+    invoice.custom_star_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 2, invoice.custom_star_line_items.count
+  end
+
+  def test_should_count_results_with_qualified_star
+    invoice = Invoice.new
+    invoice.custom_qualified_star_line_items << LineItem.new(:amount => 0)
+    invoice.custom_qualified_star_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 2, invoice.custom_qualified_star_line_items.count
   end
 end
 
@@ -269,6 +299,12 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     firm = companies(:first_firm)
     assert_equal firm.limited_clients.length, firm.limited_clients.size
     assert_equal firm.limited_clients.length, firm.limited_clients.count
+  end
+
+  def test_counting_should_not_fire_sql_if_parent_is_unsaved
+    assert_no_queries do
+      assert_equal 0, Person.new.readers.count
+    end
   end
 
   def test_finding
@@ -912,7 +948,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_clearing_updates_counter_cache
-    topic = Topic.first
+    topic = Topic.order(:id).first
 
     assert_difference 'topic.reload.replies_count', -1 do
       topic.replies.clear
@@ -1001,14 +1037,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_delete_all_association_with_primary_key_deletes_correct_records
-    firm = Firm.find(:first)
+    firm = Firm.order(:id).first
     # break the vanilla firm_id foreign key
     assert_equal 2, firm.clients.count
     firm.clients.first.update_column(:firm_id, nil)
     assert_equal 1, firm.clients(true).count
     assert_equal 1, firm.clients_using_primary_key_with_delete_all.count
     old_record = firm.clients_using_primary_key_with_delete_all.first
-    firm = Firm.find(:first)
+    firm = Firm.order(:id).first
     firm.destroy
     assert_nil Client.find_by_id(old_record.id)
   end
@@ -1168,12 +1204,11 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     core = companies(:rails_core)
     assert_equal accounts(:rails_core_account), core.account
-    assert_equal companies(:leetsoft, :jadedpixel), core.companies
+    assert_equal companies(:leetsoft, :jadedpixel), core.companies.order(:id)
     core.destroy
     assert_nil accounts(:rails_core_account).reload.firm_id
     assert_nil companies(:leetsoft).reload.client_of
     assert_nil companies(:jadedpixel).reload.client_of
-
 
     assert_equal num_accounts, Account.count
   end
@@ -1188,6 +1223,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def test_included_in_collection
     assert companies(:first_firm).clients.include?(Client.find(2))
+  end
+
+  def test_included_in_collection_for_new_records
+    client = Client.create(:name => 'Persisted')
+    assert_nil client.client_of
+    assert !Firm.new.clients_of_firm.include?(client),
+           'includes a client that does not belong to any firm'
   end
 
   def test_adding_array_and_collection
@@ -1662,6 +1704,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal [tagging], post.taggings
   end
 
+  def test_build_with_polymotphic_has_many_does_not_allow_to_override_type_and_id
+    welcome = posts(:welcome)
+    tagging = welcome.taggings.build(:taggable_id => 99, :taggable_type => 'ShouldNotChange')
+
+    assert_equal welcome.id, tagging.taggable_id
+    assert_equal 'Post', tagging.taggable_type
+  end
+
   def test_dont_call_save_callbacks_twice_on_has_many
     firm = companies(:first_firm)
     contract = firm.contracts.create!
@@ -1686,5 +1736,17 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     car.bulbs.replace([bulb2])
     assert_equal [bulb2], car.bulbs
     assert_equal [bulb2], car.reload.bulbs
+  end
+
+  def test_replace_returns_target
+    car = Car.create(:name => 'honda')
+    bulb1 = car.bulbs.create
+    bulb2 = car.bulbs.create
+    bulb3 = Bulb.create
+
+    assert_equal [bulb1, bulb2], car.bulbs
+    result = car.bulbs.replace([bulb3, bulb1])
+    assert_equal [bulb1, bulb3], car.bulbs
+    assert_equal [bulb1, bulb3], result
   end
 end

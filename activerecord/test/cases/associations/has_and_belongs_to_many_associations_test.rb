@@ -379,6 +379,12 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 0, active_record.developers_by_sql(true).size
   end
 
+  def test_deleting_all_with_sql
+    project = Project.find(1)
+    project.developers_by_sql.delete_all
+    assert_equal 0, project.developers_by_sql.size
+  end
+
   def test_deleting_all
     david = Developer.find(1)
     david.projects.reload
@@ -804,6 +810,12 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     developer.save
     developer.reload
     assert_equal 1, developer.projects.count
+  end
+
+  def test_counting_should_not_fire_sql_if_parent_is_unsaved
+    assert_no_queries do
+      assert_equal 0, Developer.new.projects.count
+    end
   end
 
   unless current_adapter?(:PostgreSQLAdapter)

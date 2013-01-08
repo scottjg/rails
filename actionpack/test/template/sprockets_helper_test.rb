@@ -1,7 +1,7 @@
 require 'abstract_unit'
 require 'sprockets'
 require 'sprockets/helpers/rails_helper'
-require 'mocha'
+require 'mocha/setup'
 
 class SprocketsHelperTest < ActionView::TestCase
   include Sprockets::Helpers::RailsHelper
@@ -254,6 +254,12 @@ class SprocketsHelperTest < ActionView::TestCase
     assert_match %r{<script src="/assets/jquery.plugin.js" type="text/javascript"></script>},
       javascript_include_tag('jquery.plugin', :digest => false)
 
+    assert_match %r{\A<script src="/assets/xmlhr-[0-9a-f]+.js" type="text/javascript"></script>\Z},
+      javascript_include_tag("xmlhr", "xmlhr")
+
+    assert_match %r{\A<script src="/assets/foo.min-[0-9a-f]+.js" type="text/javascript"></script>\Z},
+      javascript_include_tag("foo.min")
+
     @config.assets.compile = true
     @config.assets.debug = true
     assert_match %r{<script src="/javascripts/application.js" type="text/javascript"></script>},
@@ -301,6 +307,15 @@ class SprocketsHelperTest < ActionView::TestCase
     assert_match %r{<link href="/assets/style-[0-9a-f]+.css\?body=1" media="screen" rel="stylesheet" type="text/css" />\n<link href="/assets/application-[0-9a-f]+.css\?body=1" media="screen" rel="stylesheet" type="text/css" />},
       stylesheet_link_tag(:application, :debug => true)
 
+    assert_match %r{\A<link href="/assets/style-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />\Z},
+      stylesheet_link_tag("style", "style")
+
+    assert_match %r{\A<link href="/assets/style-[0-9a-f]+.ext" media="screen" rel="stylesheet" type="text/css" />\Z},
+      stylesheet_link_tag("style.ext")
+
+    assert_match %r{\A<link href="/assets/style.min-[0-9a-f]+.css" media="screen" rel="stylesheet" type="text/css" />\Z},
+      stylesheet_link_tag("style.min")
+
     @config.assets.compile = true
     @config.assets.debug = true
     assert_match %r{<link href="/stylesheets/application.css" media="screen" rel="stylesheet" type="text/css" />},
@@ -341,6 +356,14 @@ class SprocketsHelperTest < ActionView::TestCase
   test "precedence of `config.digest = false` over manifest.yml asset digests" do
     Rails.application.config.assets.digests = {'logo.png' => 'logo-d1g3st.png'}
     @config.assets.digest = false
+
+    assert_equal '/assets/logo.png',
+      asset_path("logo.png")
+  end
+
+  test "`config.digest = false` works with `config.compile = false`" do
+    @config.assets.digest = false
+    @config.assets.compile = false
 
     assert_equal '/assets/logo.png',
       asset_path("logo.png")

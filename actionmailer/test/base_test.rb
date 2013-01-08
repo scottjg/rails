@@ -471,6 +471,18 @@ class BaseTest < ActiveSupport::TestCase
     assert_equal(%{<img alt="Dummy" src="http://local.com/images/dummy.png" />}, mail.body.to_s.strip)
   end
 
+  test 'the view is not rendered when mail was never called' do
+    mail = BaseMailer.without_mail_call
+    assert_equal('', mail.body.to_s.strip)
+    mail.deliver
+  end
+
+  test 'the return value of mailer methods is not relevant' do
+    mail = BaseMailer.with_nil_as_return_value
+    assert_equal('Welcome', mail.body.to_s.strip)
+    mail.deliver
+  end
+
   # Before and After hooks
 
   class MyObserver
@@ -560,6 +572,19 @@ class BaseTest < ActiveSupport::TestCase
     end
 
     assert_equal ["notify"], FooMailer.action_methods
+  end
+
+  test "mailer can be anonymous" do
+    mailer = Class.new(ActionMailer::Base) do
+      def welcome
+        mail
+      end
+    end
+
+    assert_equal "anonymous", mailer.mailer_name
+
+    assert_equal "Welcome", mailer.welcome.subject
+    assert_equal "Anonymous mailer body", mailer.welcome.body.encoded.strip
   end
 
   protected

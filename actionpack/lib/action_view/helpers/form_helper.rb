@@ -9,6 +9,7 @@ require 'active_support/core_ext/module/method_names'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/array/extract_options'
+require 'active_support/core_ext/string/inflections'
 
 module ActionView
   # = Action View Form Helpers
@@ -330,9 +331,9 @@ module ActionView
       # In many cases you will want to wrap the above in another helper, so you
       # could do something like the following:
       #
-      #   def labelled_form_for(record_or_name_or_array, *args, &proc)
+      #   def labelled_form_for(record_or_name_or_array, *args, &block)
       #     options = args.extract_options!
-      #     form_for(record_or_name_or_array, *(args << options.merge(:builder => LabellingFormBuilder)), &proc)
+      #     form_for(record_or_name_or_array, *(args << options.merge(:builder => LabellingFormBuilder)), &block)
       #   end
       #
       # If you don't need to attach a form to a model instance, then check out
@@ -354,7 +355,7 @@ module ActionView
       #   <%= form_for @invoice, :url => external_url, :authenticity_token => false do |f|
       #     ...
       #   <% end %>
-      def form_for(record, options = {}, &proc)
+      def form_for(record, options = {}, &block)
         raise ArgumentError, "Missing block" unless block_given?
 
         options[:html] ||= {}
@@ -373,12 +374,10 @@ module ActionView
         options[:html][:method] = options.delete(:method) if options.has_key?(:method)
         options[:html][:authenticity_token] = options.delete(:authenticity_token)
 
-        builder = options[:parent_builder] = instantiate_builder(object_name, object, options, &proc)
-        fields_for = fields_for(object_name, object, options, &proc)
+        builder = options[:parent_builder] = instantiate_builder(object_name, object, options, &block)
+        output  = capture(builder, &block)
         default_options = builder.multipart? ? { :multipart => true } : {}
-        output = form_tag(options.delete(:url) || {}, default_options.merge!(options.delete(:html)))
-        output << fields_for
-        output.safe_concat('</form>')
+        form_tag(options.delete(:url) || {}, default_options.merge!(options.delete(:html))) { output }
       end
 
       def apply_form_for_options!(object_or_array, options) #:nodoc:
@@ -656,15 +655,16 @@ module ActionView
       #     'Accept <a href="/terms">Terms</a>.'.html_safe
       #   end
       def label(object_name, method, content_or_options = nil, options = nil, &block)
+        options ||= {}
+
         content_is_options = content_or_options.is_a?(Hash)
         if content_is_options || block_given?
-          options = content_or_options if content_is_options
+          options.merge!(content_or_options) if content_is_options
           text = nil
         else
           text = content_or_options
         end
 
-        options ||= {}
         InstanceTag.new(object_name, method, self, options.delete(:object)).to_label_tag(text, options, &block)
       end
 
@@ -958,8 +958,13 @@ module ActionView
             object_name = ActiveModel::Naming.param_key(object)
           end
 
-          builder = options[:builder] || ActionView::Base.default_form_builder
+          builder = options[:builder] || default_form_builder
           builder.new(object_name, object, self, options, block)
+        end
+
+        def default_form_builder
+          builder = ActionView::Base.default_form_builder
+          builder.respond_to?(:constantize) ? builder.constantize : builder
         end
     end
 
@@ -1072,7 +1077,7 @@ module ActionView
           options["cols"], options["rows"] = size.split("x") if size.respond_to?(:split)
         end
 
-        content_tag("textarea", "\n#{options.delete('value') || value_before_type_cast(object)}", options)
+        content_tag("textarea", options.delete('value') || value_before_type_cast(object), options)
       end
 
       def to_check_box_tag(options = {}, checked_value = "1", unchecked_value = "0")
@@ -1198,9 +1203,11 @@ module ActionView
             options["name"] ||= tag_name_with_index(@auto_index)
             options["id"] = options.fetch("id"){ tag_id_with_index(@auto_index) }
           else
-            options["name"] ||= tag_name + (options['multiple'] ? '[]' : '')
+            options["name"] ||= tag_name
             options["id"] = options.fetch("id"){ tag_id }
           end
+
+          options["name"] += "[]" if options["multiple"]
           options["id"] = [options.delete('namespace'), options["id"]].compact.join("_").presence
         end
 

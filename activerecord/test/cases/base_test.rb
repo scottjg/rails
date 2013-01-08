@@ -23,6 +23,8 @@ require 'models/edge'
 require 'models/joke'
 require 'models/bulb'
 require 'models/bird'
+require 'models/car'
+require 'models/bulb'
 require 'rexml/document'
 require 'active_support/core_ext/exception'
 require 'bcrypt'
@@ -61,7 +63,11 @@ end
 
 class Weird < ActiveRecord::Base; end
 
-class Boolean < ActiveRecord::Base; end
+class Boolean < ActiveRecord::Base
+  def has_fun
+    super
+  end
+end
 
 class LintTest < ActiveRecord::TestCase
   include ActiveModel::Lint::Tests
@@ -201,6 +207,7 @@ class BasicsTest < ActiveRecord::TestCase
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
+      assert_equal 129346, Topic.find(3).written_on.usec
     end
   end
 
@@ -914,6 +921,18 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal Time.local(2000, 1, 1, 5, 42, 0), topic.bonus_time
   end
 
+  def test_attributes_on_dummy_time_with_invalid_time
+    # Oracle, and Sybase do not have a TIME datatype.
+    return true if current_adapter?(:OracleAdapter, :SybaseAdapter)
+
+    attributes = {
+      "bonus_time" => "not a time"
+    }
+    topic = Topic.find(1)
+    topic.attributes = attributes
+    assert_nil topic.bonus_time
+  end
+
   def test_boolean
     b_nil = Boolean.create({ "value" => nil })
     nil_id = b_nil.id
@@ -928,6 +947,16 @@ class BasicsTest < ActiveRecord::TestCase
     assert !b_false.value?
     b_true = Boolean.find(true_id)
     assert b_true.value?
+  end
+
+  def test_boolean_without_questionmark
+    b_true = Boolean.create({ "value" => true })
+    true_id = b_true.id
+
+    subclass   = Class.new(Boolean).find true_id
+    superclass = Boolean.find true_id
+
+    assert_equal superclass.read_attribute(:has_fun), subclass.read_attribute(:has_fun)
   end
 
   def test_boolean_cast_from_string
@@ -1266,6 +1295,25 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal({ :foo => :bar }, t.content_before_type_cast)
   end
 
+  def test_serialized_attributes_before_type_cast_returns_unserialized_value
+    Topic.serialize :content, Hash
+
+    t = Topic.new(:content => { :foo => :bar })
+    assert_equal({ :foo => :bar }, t.attributes_before_type_cast["content"])
+    t.save!
+    t.reload
+    assert_equal({ :foo => :bar }, t.attributes_before_type_cast["content"])
+  end
+
+  def test_serialized_attribute_calling_dup_method
+    klass = Class.new(ActiveRecord::Base)
+    klass.table_name = "topics"
+    klass.serialize :content, JSON
+
+    t = klass.new(:content => { :foo => :bar }).dup
+    assert_equal({ :foo => :bar }, t.content_before_type_cast)
+  end
+
   def test_serialized_attribute_declared_in_subclass
     hash = { 'important1' => 'value1', 'important2' => 'value2' }
     important_topic = ImportantTopic.create("important" => hash)
@@ -1392,6 +1440,29 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal(true, topic.content == password, 'password should equal')
   ensure
     Topic.serialize(:content)
+  end
+
+  def test_serialize_attribute_via_select_method_when_time_zone_available
+    ActiveRecord::Base.time_zone_aware_attributes = true
+    Topic.serialize(:content, MyObject)
+
+    myobj = MyObject.new('value1', 'value2')
+    topic = Topic.create(:content => myobj)
+
+    ActiveRecord::IdentityMap.without do
+      assert_equal(myobj, Topic.select(:content).find(topic.id).content)
+      assert_raise(ActiveModel::MissingAttributeError) { Topic.select(:id).find(topic.id).content }
+    end
+  ensure
+    ActiveRecord::Base.time_zone_aware_attributes = false
+  end
+
+  def test_serialize_attribute_can_be_serialized_in_an_integer_column
+    insures = ['life']
+    person = SerializedPerson.new(:first_name => 'David', :insures => insures)
+    assert person.save
+    person = person.reload
+    assert_equal(insures, person.insures)
   end
 
   def test_quote
@@ -1888,6 +1959,12 @@ class BasicsTest < ActiveRecord::TestCase
     assert_kind_of String, Client.find(:first).to_param
   end
 
+  def test_to_param_returns_id_even_if_not_persisted
+    client = Client.new
+    client.id = 1
+    assert_equal "1", client.to_param
+  end
+
   def test_inspect_class
     assert_equal 'ActiveRecord::Base', ActiveRecord::Base.inspect
     assert_equal 'LoosePerson(abstract)', LoosePerson.inspect
@@ -1978,9 +2055,7 @@ class BasicsTest < ActiveRecord::TestCase
     original_logger = ActiveRecord::Base.logger
     log = StringIO.new
     ActiveRecord::Base.logger = Logger.new(log)
-    assert_deprecated do
-      ActiveRecord::Base.benchmark("Logging", :level => :debug, :silence => true) { ActiveRecord::Base.logger.debug "Loud" }
-    end
+    ActiveRecord::Base.benchmark("Logging", :level => :debug, :silence => true) { ActiveRecord::Base.logger.debug "Loud" }
     ActiveRecord::Base.benchmark("Logging", :level => :debug, :silence => false)  { ActiveRecord::Base.logger.debug "Quiet" }
     assert_no_match(/Loud/, log.string)
     assert_match(/Quiet/, log.string)
@@ -2102,6 +2177,29 @@ class BasicsTest < ActiveRecord::TestCase
   def test_cache_key_format_for_existing_record_with_updated_at
     dev = Developer.first
     assert_equal "developers/#{dev.id}-#{dev.updated_at.utc.to_s(:number)}", dev.cache_key
+  end
+
+  def test_cache_key_format_for_existing_record_with_updated_at_and_custom_cache_timestamp_format
+    return skip "Only in Ruby 1.9" if RUBY_VERSION < '1.9'
+
+    dev = CachedDeveloper.first
+    assert_equal "cached_developers/#{dev.id}-#{dev.updated_at.utc.to_s(:nsec)}", dev.cache_key
+  end
+
+  def test_cache_key_changes_when_child_touched
+    return skip "Only in Ruby 1.9" if RUBY_VERSION < '1.9'
+
+    old_timestamp_format = Car.cache_timestamp_format
+    Car.cache_timestamp_format = :nsec
+    car = Car.create
+    Bulb.create(:car => car)
+
+    key = car.cache_key
+    car.bulb.touch
+    car.reload
+    assert_not_equal key, car.cache_key
+  ensure
+    Car.cache_timestamp_format = old_timestamp_format
   end
 
   def test_cache_key_format_for_existing_record_with_nil_updated_at

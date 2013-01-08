@@ -54,8 +54,11 @@ module ActiveRecord
     # your database connection configuration:
     #
     # * +pool+: number indicating size of connection pool (default 5)
-    # * +wait_timeout+: number of seconds to block and wait for a connection
-    #   before giving up and raising a timeout error (default 5 seconds).
+    # * +checkout _timeout+: number of seconds to block and wait for a 
+    #   connection before giving up and raising a timeout error 
+    #   (default 5 seconds). ('wait_timeout' supported for backwards
+    #   compatibility, but conflicts with key used for different purpose
+    #   by mysql2 adapter). 
     class ConnectionPool
       include MonitorMixin
 
@@ -77,7 +80,10 @@ module ActiveRecord
         @reserved_connections = {}
 
         @queue = new_cond
-        @timeout = spec.config[:wait_timeout] || 5
+        # 'wait_timeout', the backward-compatible key, conflicts with spec key 
+        # used by mysql2 for something entirely different, checkout_timeout
+        # preferred to avoid conflict and allow independent values. 
+        @timeout = spec.config[:checkout_timeout] || spec.config[:wait_timeout] || 5
 
         # default max pool size to 5
         @size = (spec.config[:pool] && spec.config[:pool].to_i) || 5
@@ -92,21 +98,25 @@ module ActiveRecord
       # #connection can be called any number of times; the connection is
       # held in a hash keyed by the thread id.
       def connection
-        @reserved_connections[current_connection_id] ||= checkout
+        synchronize do
+          @reserved_connections[current_connection_id] ||= checkout
+        end
       end
 
       # Is there an open connection that is being used for the current thread?
       def active_connection?
-        @reserved_connections.fetch(current_connection_id) {
-          return false
-        }.in_use?
+        synchronize do
+          @reserved_connections.fetch(current_connection_id) {
+            return false
+          }.in_use?
+        end
       end
 
       # Signal that the thread is finished with the current connection.
       # #release_connection releases the connection-thread association
       # and returns the connection to the pool.
       def release_connection(with_id = current_connection_id)
-        conn = @reserved_connections.delete(with_id)
+        conn = synchronize { @reserved_connections.delete(with_id) }
         checkin conn if conn
       end
 
@@ -286,17 +296,19 @@ connection.  For example: ActiveRecord::Base.connection.close
       private
 
       def release(conn)
-        thread_id = nil
+        synchronize do
+          thread_id = nil
 
-        if @reserved_connections[current_connection_id] == conn
-          thread_id = current_connection_id
-        else
-          thread_id = @reserved_connections.keys.find { |k|
-            @reserved_connections[k] == conn
-          }
+          if @reserved_connections[current_connection_id] == conn
+            thread_id = current_connection_id
+          else
+            thread_id = @reserved_connections.keys.find { |k|
+              @reserved_connections[k] == conn
+            }
+          end
+
+          @reserved_connections.delete thread_id if thread_id
         end
-
-        @reserved_connections.delete thread_id if thread_id
       end
 
       def new_connection

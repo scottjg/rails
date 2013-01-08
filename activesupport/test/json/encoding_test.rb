@@ -22,6 +22,15 @@ class TestJSONEncoding < Test::Unit::TestCase
     end
   end
 
+  class CustomWithOptions
+    attr_accessor :foo, :bar
+
+    def as_json(options={})
+      options[:only] = %w(foo bar)
+      super(options)
+    end
+  end
+
   TrueTests     = [[ true,  %(true)  ]]
   FalseTests    = [[ false, %(false) ]]
   NilTests      = [[ nil,   %(null)  ]]
@@ -91,11 +100,11 @@ class TestJSONEncoding < Test::Unit::TestCase
   def test_utf8_string_encoded_properly_when_kcode_is_utf8
     with_kcode 'UTF8' do
       result = ActiveSupport::JSON.encode('€2.99')
-      assert_equal '"\\u20ac2.99"', result
+      assert_equal '"€2.99"', result
       assert_equal(Encoding::UTF_8, result.encoding) if result.respond_to?(:encoding)
 
       result = ActiveSupport::JSON.encode('✎☺')
-      assert_equal '"\\u270e\\u263a"', result
+      assert_equal '"✎☺"', result
       assert_equal(Encoding::UTF_8, result.encoding) if result.respond_to?(:encoding)
     end
   end
@@ -104,9 +113,22 @@ class TestJSONEncoding < Test::Unit::TestCase
     def test_non_utf8_string_transcodes
       s = '二'.encode('Shift_JIS')
       result = ActiveSupport::JSON.encode(s)
-      assert_equal '"\\u4e8c"', result
+      assert_equal '"二"', result
       assert_equal Encoding::UTF_8, result.encoding
     end
+  end
+
+  def test_wide_utf8_chars
+    w = '𠜎'
+    result = ActiveSupport::JSON.encode(w)
+    assert_equal '"𠜎"', result
+  end
+
+  def test_wide_utf8_roundtrip
+    hash = { :string => "𐒑" }
+    json = ActiveSupport::JSON.encode(hash)
+    decoded_hash = ActiveSupport::JSON.decode(json)
+    assert_equal "𐒑", decoded_hash['string']
   end
 
   def test_exception_raised_when_encoding_circular_reference_in_array
@@ -239,6 +261,16 @@ class TestJSONEncoding < Test::Unit::TestCase
     assert_equal(%([{"address":{"city":"London"}},{"address":{"city":"Paris"}}]), json)
   end
 
+  def test_to_json_should_not_keep_options_around
+    f = CustomWithOptions.new
+    f.foo = "hello"
+    f.bar = "world"
+
+    hash = {"foo" => f, "other_hash" => {"foo" => "other_foo", "test" => "other_test"}}
+    assert_equal({ "foo" => { "foo" => "hello", "bar" => "world" }, "other_hash" => { "foo" => "other_foo", "test" => "other_test"} },
+                 JSON.parse(hash.to_json))
+  end
+
   def test_struct_encoding
     Struct.new('UserNameAndEmail', :name, :email)
     Struct.new('UserNameAndDate', :name, :date)
@@ -268,6 +300,12 @@ class TestJSONEncoding < Test::Unit::TestCase
 
     assert_equal({"name" => "David", "date" => "2010/01/01"},
                  JSON.parse(json_string_and_date))
+  end
+
+  def test_nil_true_and_false_represented_as_themselves
+    assert_equal nil,   nil.as_json
+    assert_equal true,  true.as_json
+    assert_equal false, false.as_json
   end
 
   protected

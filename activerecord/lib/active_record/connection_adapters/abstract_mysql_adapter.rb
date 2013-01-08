@@ -72,6 +72,8 @@ module ActiveRecord
           when /^mediumint/i; 3
           when /^smallint/i;  2
           when /^tinyint/i;   1
+          when /^enum\((.+)\)/i
+            $1.split(',').map{|enum| enum.strip.length - 2}.max
           else
             super
           end
@@ -325,7 +327,7 @@ module ActiveRecord
         select_all(sql).map { |table|
           table.delete('Table_type')
           sql = "SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}"
-          exec_without_stmt(sql).first['Create Table'] + ";\n\n"
+          exec_query(sql).first['Create Table'] + ";\n\n"
         }.join
       end
 
@@ -375,7 +377,7 @@ module ActiveRecord
 
       def tables(name = nil, database = nil, like = nil) #:nodoc:
         sql = "SHOW TABLES "
-        sql << "IN #{database} " if database
+        sql << "IN #{quote_table_name(database)} " if database
         sql << "LIKE #{quote(like)}" if like
 
         execute_and_free(sql, 'SCHEMA') do |result|
@@ -525,7 +527,7 @@ module ActiveRecord
       def pk_and_sequence_for(table)
         execute_and_free("SHOW CREATE TABLE #{quote_table_name(table)}", 'SCHEMA') do |result|
           create_table = each_hash(result).first[:"Create Table"]
-          if create_table.to_s =~ /PRIMARY KEY\s+\((.+)\)/
+          if create_table.to_s =~ /PRIMARY KEY\s+(?:USING\s+\w+\s+)?\((.+)\)/
             keys = $1.split(",").map { |key| key.gsub(/[`"]/, "") }
             keys.length == 1 ? [keys.first, nil] : nil
           else

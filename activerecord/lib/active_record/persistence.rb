@@ -162,7 +162,7 @@ module ActiveRecord
       became.instance_variable_set("@new_record", new_record?)
       became.instance_variable_set("@destroyed", destroyed?)
       became.instance_variable_set("@errors", errors)
-      became.type = klass.name unless self.class.descends_from_active_record?
+      became.send("#{klass.inheritance_column}=", klass.name) unless self.class.descends_from_active_record?
       became
     end
 
@@ -193,8 +193,12 @@ module ActiveRecord
       name = name.to_s
       raise ActiveRecordError, "#{name} is marked as readonly" if self.class.readonly_attributes.include?(name)
       raise ActiveRecordError, "can not update on a new record object" unless persisted?
+
+      updated_count = self.class.unscoped.update_all({ name => value }, self.class.primary_key => id)
+
       raw_write_attribute(name, value)
-      self.class.update_all({ name => value }, self.class.primary_key => id) == 1
+
+      updated_count == 1
     end
 
     # Updates the attributes of the model from the passed-in hash and saves the

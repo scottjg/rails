@@ -102,6 +102,8 @@ module ActiveRecord
         def destroy #:nodoc:
           return super unless locking_enabled?
 
+          destroy_associations
+
           if persisted?
             table = self.class.arel_table
             lock_col = self.class.locking_column
@@ -170,7 +172,7 @@ module ActiveRecord
         # start the lock version at zero. Note we can't use
         # <tt>locking_enabled?</tt> at this point as
         # <tt>@attributes</tt> may not have been initialized yet.
-        def initialize_attributes(attributes) #:nodoc:
+        def initialize_attributes(attributes, options = {}) #:nodoc:
           if attributes.key?(locking_column) && lock_optimistically
             attributes[locking_column] ||= 0
           end

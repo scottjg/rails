@@ -58,12 +58,13 @@ module ActiveRecord
           self.serialized_attributes = serialized_attributes.merge(attr_name.to_s => coder)
         end
 
-        def initialize_attributes(attributes) #:nodoc:
-          super
+        def initialize_attributes(attributes, options = {}) #:nodoc:
+          serialized = (options.delete(:serialized) { true }) ? :serialized : :unserialized
+          super(attributes, options)
 
           serialized_attributes.each do |key, coder|
             if attributes.key?(key)
-              attributes[key] = Attribute.new(coder, attributes[key], :serialized)
+              attributes[key] = Attribute.new(coder, attributes[key], serialized)
             end
           end
 
@@ -89,11 +90,29 @@ module ActiveRecord
         end
       end
 
+      def _field_changed?(attr, old, value)
+        if self.class.serialized_attributes.include?(attr)
+          old != value
+        else
+          super
+        end
+      end
+
       def read_attribute_before_type_cast(attr_name)
         if serialized_attributes.include?(attr_name)
           super.unserialized_value
         else
           super
+        end
+      end
+
+      def attributes_before_type_cast
+        super.dup.tap do |attributes|
+          self.class.serialized_attributes.each_key do |key|
+            if attributes.key?(key)
+              attributes[key] = attributes[key].unserialized_value
+            end
+          end
         end
       end
     end

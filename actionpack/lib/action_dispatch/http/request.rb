@@ -179,8 +179,9 @@ module ActionDispatch
     # work with raw requests directly.
     def raw_post
       unless @env.include? 'RAW_POST_DATA'
-        @env['RAW_POST_DATA'] = body.read(@env['CONTENT_LENGTH'].to_i)
-        body.rewind if body.respond_to?(:rewind)
+        raw_post_body = body
+        @env['RAW_POST_DATA'] = raw_post_body.read(@env['CONTENT_LENGTH'].to_i)
+        raw_post_body.rewind if raw_post_body.respond_to?(:rewind)
       end
       @env['RAW_POST_DATA']
     end
@@ -245,6 +246,28 @@ module ActionDispatch
     # True if the request came from localhost, 127.0.0.1.
     def local?
       LOCALHOST.any? { |local_ip| local_ip === remote_addr && local_ip === remote_ip }
+    end
+
+    # Remove nils from the params hash
+    def deep_munge(hash)
+      hash.each do |k, v|
+        case v
+        when Array
+          v.grep(Hash) { |x| deep_munge(x) }
+          v.compact!
+          hash[k] = nil if v.empty?
+        when Hash
+          deep_munge(v)
+        end
+      end
+
+      hash
+    end
+
+    protected
+
+    def parse_query(qs)
+      deep_munge(super)
     end
 
     private

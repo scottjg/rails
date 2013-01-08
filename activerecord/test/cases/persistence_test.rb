@@ -17,15 +17,16 @@ require 'rexml/document'
 require 'active_support/core_ext/exception'
 
 class PersistencesTest < ActiveRecord::TestCase
+  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics,
+    'warehouse-things', :authors, :categorizations, :categories, :posts, :minivans
 
-  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse-things', :authors, :categorizations, :categories, :posts, :minivans
-
-  # Oracle UPDATE does not support ORDER BY
-  unless current_adapter?(:OracleAdapter)
+  # Skip databases that don't support UPDATE + ORDER BY
+  unless current_adapter?(:OracleAdapter, :PostgreSQLAdapter)
     def test_update_all_ignores_order_without_limit_from_association
       author = authors(:david)
       assert_nothing_raised do
-        assert_equal author.posts_with_comments_and_categories.length, author.posts_with_comments_and_categories.update_all([ "body = ?", "bulk update!" ])
+        assert_equal author.posts_with_comments_and_categories.length,
+          author.posts_with_comments_and_categories.update_all([ "body = ?", "bulk update!" ])
       end
     end
 
@@ -393,7 +394,6 @@ class PersistencesTest < ActiveRecord::TestCase
 
   def test_update_attribute_with_one_updated
     t = Topic.first
-    title = t.title
     t.update_attribute(:title, 'super_title')
     assert_equal 'super_title', t.title
     assert !t.changed?, "topic should not have changed"
@@ -491,7 +491,7 @@ class PersistencesTest < ActiveRecord::TestCase
 
   def test_update_column_with_one_changed_and_one_updated
     t = Topic.order('id').limit(1).first
-    title, author_name = t.title, t.author_name
+    author_name = t.author_name
     t.author_name = 'John'
     t.update_column(:title, 'super_title')
     assert_equal 'John', t.author_name
@@ -502,6 +502,28 @@ class PersistencesTest < ActiveRecord::TestCase
     t.reload
     assert_equal author_name, t.author_name
     assert_equal 'super_title', t.title
+  end
+
+  def test_update_column_changing_id
+    topic = Topic.find(1)
+    topic.update_column("id", 123)
+    assert_equal 123, topic.id
+    topic.reload
+    assert_equal 123, topic.id
+  end
+
+  def test_update_column_should_return_correct_value
+    developer = Developer.find(1)
+    return_value = developer.update_column(:salary, 80001)
+    assert return_value
+  end
+
+  def test_update_column_with_default_scope
+    developer = DeveloperCalledDavid.first
+    developer.name = 'John'
+    developer.save!
+
+    assert developer.update_column(:name, 'Will'), 'did not update record due to default scope'
   end
 
   def test_update_attributes

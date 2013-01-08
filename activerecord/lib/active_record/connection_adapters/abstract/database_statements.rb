@@ -4,6 +4,7 @@ module ActiveRecord
       # Converts an arel AST to SQL
       def to_sql(arel, binds = [])
         if arel.respond_to?(:ast)
+          binds = binds.dup
           visitor.accept(arel.ast) do
             quote(*binds.shift.reverse)
           end
@@ -20,14 +21,14 @@ module ActiveRecord
 
       # Returns a record hash with the column names as keys and column values
       # as values.
-      def select_one(arel, name = nil)
-        result = select_all(arel, name)
+      def select_one(arel, name = nil, binds = [])
+        result = select_all(arel, name, binds)
         result.first if result
       end
 
       # Returns a single value from a record
-      def select_value(arel, name = nil)
-        if result = select_one(arel, name)
+      def select_value(arel, name = nil, binds = [])
+        if result = select_one(arel, name, binds)
           result.values.first
         end
       end
@@ -266,7 +267,7 @@ module ActiveRecord
       # Inserts the given fixture into the table. Overridden in adapters that require
       # something beyond a simple insert (eg. Oracle).
       def insert_fixture(fixture, table_name)
-        columns = Hash[columns(table_name).map { |c| [c.name, c] }]
+        columns = schema_cache.columns_hash(table_name)
 
         key_list   = []
         value_list = fixture.map do |name, value|
