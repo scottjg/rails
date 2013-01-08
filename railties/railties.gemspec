@@ -417,6 +417,8 @@ require 'date'
 require 'rbconfig'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
+PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
+PKG_VERSION   = Rails::VERSION::STRING + PKG_BUILD
 
 RELEASE_NAME  = "REL #{PKG_VERSION}"
 
