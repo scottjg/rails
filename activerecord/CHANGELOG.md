@@ -1,5 +1,10 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Trigger a save on `has_one association=(associate)` when the associate contents have changed.
+    Fix #8856.
+
+    *Chris Thompson*
+
 *   Expand `#cache_key` to consult all relevant updated timestamps.
 
     Previously only `updated_at` column was checked, now it will
