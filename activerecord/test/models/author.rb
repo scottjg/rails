@@ -181,6 +181,8 @@ class Author < ActiveRecord::Base
     def raise_exception(object)
       raise Exception.new("You can't add a post")
     end
+
+
 end
 
 class AuthorAddress < ActiveRecord::Base

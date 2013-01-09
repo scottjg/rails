@@ -8,6 +8,13 @@ class Categorization < ActiveRecord::Base
 
   belongs_to :author_using_custom_pk,  :class_name => 'Author', :foreign_key => :author_id, :primary_key => :author_address_extra_id
   has_many   :authors_using_custom_pk, :class_name => 'Author', :foreign_key => :id,        :primary_key => :category_id
+  validate :check_validation_call_count
+
+  private
+  def check_validation_call_count
+    @count ||= 0
+    @count = @count + 1
+  end
 end
 
 class SpecialCategorization < ActiveRecord::Base

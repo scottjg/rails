@@ -894,4 +894,11 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_validation_call_counter_on_join_records
+    author = Author.create(:name => "tenderlove")
+    Categorization.any_instance.expects(:check_validation_call_count).times(1)
+    category = Category.new(:name => "rails 4.0")
+    category.authors << author
+    category.save
+  end
 end
