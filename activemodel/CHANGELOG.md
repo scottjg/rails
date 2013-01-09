@@ -1,4 +1,14 @@
-## Rails 3.2.9 (unreleased)
+## Rails 3.2.11 (unreleased) ##
+
+*   Specify type of singular association during serialization *Steve Klabnik*
+
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   No changes.
+
+
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Due to a change in builder, nil values and empty strings now generates
     closed tags, so instead of this:
@@ -11,9 +21,11 @@
 
     *Carlos Antonio da Silva*
 
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   No changes.
+
 
 ## Rails 3.2.7 (Jul 26, 2012) ##
 
@@ -21,13 +33,16 @@
 
 * Fix the the backport of the object dup with the ruby 1.9.3p194.
 
+
 ## Rails 3.2.6 (Jun 12, 2012) ##
 
 *   No changes.
 
+
 ## Rails 3.2.4 (May 31, 2012) ##
 
 *   No changes.
+
 
 ## Rails 3.2.3 (March 30, 2012) ##
 

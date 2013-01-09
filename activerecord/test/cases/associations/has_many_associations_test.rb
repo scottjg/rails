@@ -1225,6 +1225,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert companies(:first_firm).clients.include?(Client.find(2))
   end
 
+  def test_included_in_collection_for_new_records
+    client = Client.create(:name => 'Persisted')
+    assert_nil client.client_of
+    assert !Firm.new.clients_of_firm.include?(client),
+           'includes a client that does not belong to any firm'
+  end
+
   def test_adding_array_and_collection
     assert_nothing_raised { Firm.find(:first).clients + Firm.find(:all).last.clients }
   end
@@ -1695,6 +1702,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     post = SubStiPost.create! :title => "fooo", :body => "baa"
     tagging = Tagging.create! :taggable => post
     assert_equal [tagging], post.taggings
+  end
+
+  def test_build_with_polymotphic_has_many_does_not_allow_to_override_type_and_id
+    welcome = posts(:welcome)
+    tagging = welcome.taggings.build(:taggable_id => 99, :taggable_type => 'ShouldNotChange')
+
+    assert_equal welcome.id, tagging.taggable_id
+    assert_equal 'Post', tagging.taggable_type
   end
 
   def test_dont_call_save_callbacks_twice_on_has_many

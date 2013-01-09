@@ -1,4 +1,229 @@
-## Rails 3.2.9 (unreleased)
+## Rails 3.2.12 (unreleased)
+
+*   Fix undefined method `to_i` when calling `new` on a scope that uses an
+    Array; Fix FloatDomainError when setting integer column to NaN.
+    Fixes #8718, #8734, #8757.
+
+    *Jason Stirk + Tristan Harward*
+
+*   Serialized attributes can be serialized in integer columns.
+    Fix #8575.
+
+    *Rafael Mendonça França*
+
+*   Keep index names when using `alter_table` with sqlite3.
+    Fix #3489.
+    Backport #8522.
+
+    *Yves Senn*
+
+*   Recognize migrations placed in directories containing numbers and 'rb'.
+    Fix #8492.
+    Backport of #8500.
+
+    *Yves Senn*
+
+*   Add `ActiveRecord::Base.cache_timestamp_format` class attribute to control
+    the format of the timestamp value in the cache key.
+    This allows users to improve the precision of the cache key.
+    Fixes #8195.
+
+    *Rafael Mendonça França*
+
+*   Add `:nsec` date format. This can be used to improve the precision of cache key.
+    Please note that this format only works with Ruby 1.9, Ruby 1.8 will ignore it completely.
+
+    *Jamie Gaskins*
+
+*   Unscope `update_column(s)` query to ignore default scope.
+
+    When applying `default_scope` to a class with a where clause, using
+    `update_column(s)` could generate a query that would not properly update
+    the record due to the where clause from the `default_scope` being applied
+    to the update query.
+
+        class User < ActiveRecord::Base
+          default_scope where(active: true)
+        end
+
+        user = User.first
+        user.active = false
+        user.save!
+
+        user.update_column(:active, true) # => false
+
+    In this situation we want to skip the default_scope clause and just
+    update the record based on the primary key. With this change:
+
+        user.update_column(:active, true) # => true
+
+    Backport of #8436 fix.
+
+    *Carlos Antonio da Silva*
+
+*   Fix performance problem with primary_key method in PostgreSQL adapter when having many schemas.
+    Uses pg_constraint table instead of pg_depend table which has many records in general.
+    Fix #8414
+
+    *kennyj*
+
+*   Do not instantiate intermediate Active Record objects when eager loading.
+    These records caused `after_find` to run more than expected.
+    Fix #3313
+    Backport of #8403
+
+    *Yves Senn*
+
+*   Fix `pluck` to work with joins. Backport of #4942.
+
+    *Carlos Antonio da Silva*
+
+*   Fix a problem with `translate_exception` method in a non English environment.
+    Backport of #6397.
+
+    *kennyj*
+
+*   Fix dirty attribute checks for TimeZoneConversion with nil and blank
+    datetime attributes. Setting a nil datetime to a blank string should not
+    result in a change being flagged.
+    Fixes #8310.
+    Backport of #8311.
+
+    *Alisdair McDiarmid*
+
+*   Prevent mass assignment to the type column of polymorphic associations when using `build`.
+    Fixes #8265.
+    Backport of #8291.
+
+    *Yves Senn*
+
+*   When running migrations on Postgresql, the `:limit` option for `binary` and `text` columns is
+    silently dropped.
+    Previously, these migrations caused sql exceptions, because Postgresql doesn't support limits
+    on these types.
+
+    *Victor Costan*
+
+*   Calling `include?` on `has_many` associations on unsaved records no longer
+    returns `true` when passed a record with a `nil` foreign key.
+    Fixes #7950.
+
+    *George Brocklehurst*
+
+*   `#pluck` can be used on a relation with `select` clause.
+    Fixes #7551.
+    Backport of #8176.
+
+    Example:
+
+        Topic.select([:approved, :id]).order(:id).pluck(:id)
+
+    *Yves Senn*
+
+*   Use `nil?` instead of `blank?` to check whether dynamic finder with a bang
+    should raise RecordNotFound.
+    Fixes #7238.
+
+    *Nikita Afanasenko*
+
+*   Fix deleting from a HABTM join table upon destroying an object of a model
+    with optimistic locking enabled.
+    Fixes #5332.
+
+    *Nick Rogers*
+
+*   Use query cache/uncache when using ENV["DATABASE_URL"].
+    Fixes #6951.
+    Backport of #8074.
+
+    *kennyj*
+
+*   Do not create useless database transaction when building `has_one` association.
+
+    Example:
+
+        User.has_one :profile
+        User.new.build_profile
+
+    Backport of #8154.
+
+    *Bogdan Gusiev*
+
+*   `AR::Base#attributes_before_type_cast` now returns unserialized values for serialized attributes.
+
+    *Nikita Afanasenko*
+
+*   Fix issue that raises `NameError` when overriding the `accepts_nested_attributes` in child classes.
+
+    Before:
+
+        class Shared::Person < ActiveRecord::Base
+          has_one :address
+
+          accepts_nested_attributes :address, :reject_if => :all_blank
+        end
+
+        class Person < Shared::Person
+          accepts_nested_attributes :address
+        end
+
+        Person
+        #=> NameError: method `address_attributes=' not defined in Person
+
+    After:
+
+        Person
+        #=> Person(id: integer, ...)
+
+    Fixes #8131.
+
+    *Gabriel Sobrinho, Ricardo Henrique*
+
+## Rails 3.2.11 ##
+
+*   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   CVE-2012-5664 options hashes should only be extracted if there are extra
+    parameters
+
+
+## Rails 3.2.9 (Nov 12, 2012) ##
+
+*   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
+
+    *Alexis Bernard*
+
+*   Fix issue with collection associations calling first(n)/last(n) and attempting
+    to set the inverse association when `:inverse_of` was used. Fixes #8087.
+
+    *Carlos Antonio da Silva*
+
+*   Fix bug when Column is trying to type cast boolean values to integer.
+    Fixes #8067.
+
+    *Rafael Mendonça França*
+
+*   Fix bug where `rake db:test:prepare` tries to load the structure.sql into development database.
+    Fixes #8032.
+
+    *Grace Liu + Rafael Mendonça França*
+
+*   Fixed support for `DATABASE_URL` environment variable for rake db tasks. *Grace Liu*
+
+*   Fix bug where `update_columns` and `update_column` would not let you update the primary key column.
+
+    *Henrik Nyh*
+
+*   Decode URI encoded attributes on database connection URLs.
+
+    *Shawn Veader*
+
+*   Fix AR#dup to nullify the validation errors in the dup'ed object. Previously the original
+    and the dup'ed object shared the same errors.
+
+    *Christian Seiler*
 
 *   Synchronize around deleting from the reserved connections hash.
     Fixes #7955
