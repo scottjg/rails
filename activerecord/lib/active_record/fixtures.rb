@@ -876,9 +876,13 @@ module ActiveRecord
       # Rollback changes if a transaction is active.
       if run_in_transaction?
         @fixture_connections.each do |connection|
-          if connection.open_transactions != 0
+          connection.decrement_open_transactions
+          if connection.open_transactions == 0
             connection.rollback_db_transaction
-            connection.decrement_open_transactions
+            connection.send(:rollback_transaction_records, true)
+          else
+            connection.rollback_to_savepoint
+            connection.send(:rollback_transaction_records, false)
           end
         end
         @fixture_connections.clear
