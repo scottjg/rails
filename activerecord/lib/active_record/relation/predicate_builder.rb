@@ -11,7 +11,11 @@ module ActiveRecord
 
         if value.is_a?(Hash)
           table = Arel::Table.new(column, :engine => @engine)
-          build_from_hash(value, table)
+          if value.empty?
+            '1 = 2'
+          else
+            build_from_hash(value, table)
+          end
         else
           column = column.to_s
 
