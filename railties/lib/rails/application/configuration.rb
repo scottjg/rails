@@ -112,7 +112,7 @@ module Rails
       # YAML::load.
       def database_configuration
         require 'erb'
-        YAML::load(ERB.new(IO.read(paths["config/database"].first)).result)
+        YAML::load(MiqERBForYAML.new(IO.read(paths["config/database"].first)).result)
       end
 
       def log_level
