@@ -12,22 +12,21 @@ module ActiveRecord
         target
       end
 
-      # Implements the writer method, e.g. foo.items= for Foo.has_many :items
+      # Implements the writer method, e.g. foo.bar= for Foo.belongs_to :bar
       def writer(record)
         replace(record)
       end
 
-      def create(attributes = {}, options = {}, &block)
-        build(attributes, options, &block).tap { |record| record.save }
+      def create(attributes = {}, &block)
+        create_record(attributes, &block)
       end
 
-      def create!(attributes = {}, options = {}, &block)
-        build(attributes, options, &block).tap { |record| record.save! }
+      def create!(attributes = {}, &block)
+        create_record(attributes, true, &block)
       end
 
-      def build(attributes = {}, options = {})
-        record = reflection.build_association(attributes, options)
-        record.assign_attributes(create_scope.except(*record.changed), :without_protection => true)
+      def build(attributes = {})
+        record = build_record(attributes)
         yield(record) if block_given?
         set_new_record(record)
         record
@@ -36,11 +35,11 @@ module ActiveRecord
       private
 
         def create_scope
-          scoped.scope_for_create.stringify_keys.except(klass.primary_key)
+          scope.scope_for_create.stringify_keys.except(klass.primary_key)
         end
 
         def find_target
-          scoped.first.tap { |record| set_inverse_instance(record) }
+          scope.first.tap { |record| set_inverse_instance(record) }
         end
 
         # Implemented by subclasses
@@ -50,6 +49,15 @@ module ActiveRecord
 
         def set_new_record(record)
           replace(record)
+        end
+
+        def create_record(attributes, raise_error = false)
+          record = build_record(attributes)
+          yield(record) if block_given?
+          saved = record.save
+          set_new_record(record)
+          raise RecordInvalid.new(record) if !saved && raise_error
+          record
         end
     end
   end

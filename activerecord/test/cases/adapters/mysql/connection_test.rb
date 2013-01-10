@@ -13,6 +13,16 @@ class MysqlConnectionTest < ActiveRecord::TestCase
     end
   end
 
+  def test_connect_with_url
+    run_without_connection do |orig|
+      ar_config = ARTest.connection_config['arunit']
+      url = "mysql://#{ar_config["username"]}@localhost/#{ar_config["database"]}"
+      klass = Class.new(ActiveRecord::Base)
+      klass.establish_connection(url)
+      assert_equal ar_config['database'], klass.connection.current_database
+    end
+  end
+
   def test_mysql_reconnect_attribute_after_connection_with_reconnect_false
     run_without_connection do |orig_connection|
       ActiveRecord::Base.establish_connection(orig_connection.merge({:reconnect => false}))
@@ -60,11 +70,14 @@ class MysqlConnectionTest < ActiveRecord::TestCase
     assert_equal %w{ id data }, result.columns
 
     @connection.exec_query('INSERT INTO ex (id, data) VALUES (1, "foo")')
+
+    # if there are no bind parameters, it will return a string (due to
+    # the libmysql api)
     result = @connection.exec_query('SELECT id, data FROM ex')
     assert_equal 1, result.rows.length
     assert_equal 2, result.columns.length
 
-    assert_equal [[1, 'foo']], result.rows
+    assert_equal [['1', 'foo']], result.rows
   end
 
   def test_exec_with_binds
@@ -107,6 +120,37 @@ class MysqlConnectionTest < ActiveRecord::TestCase
       rows = ActiveRecord::Base.connection.select_rows('CALL ten();')
       assert_equal 10, rows[0][0].to_i, "ten() did not return 10 as expected: #{rows.inspect}"
       assert @connection.active?, "Bad connection use by 'MysqlAdapter.select_rows'"
+    end
+  end
+
+  def test_mysql_default_in_strict_mode
+    result = @connection.exec_query "SELECT @@SESSION.sql_mode"
+    assert_equal [["STRICT_ALL_TABLES"]], result.rows
+  end
+
+  def test_mysql_strict_mode_disabled_dont_override_global_sql_mode
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.merge({:strict => false}))
+      global_sql_mode = ActiveRecord::Base.connection.exec_query "SELECT @@GLOBAL.sql_mode"
+      session_sql_mode = ActiveRecord::Base.connection.exec_query "SELECT @@SESSION.sql_mode"
+      assert_equal global_sql_mode.rows, session_sql_mode.rows
+    end
+  end
+
+  def test_mysql_set_session_variable
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:default_week_format => 3}}))
+      session_mode = ActiveRecord::Base.connection.exec_query "SELECT @@SESSION.DEFAULT_WEEK_FORMAT"
+      assert_equal 3, session_mode.rows.first.first.to_i
+    end
+  end
+
+  def test_mysql_set_session_variable_to_default
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:default_week_format => :default}}))
+      global_mode = ActiveRecord::Base.connection.exec_query "SELECT @@GLOBAL.DEFAULT_WEEK_FORMAT"
+      session_mode = ActiveRecord::Base.connection.exec_query "SELECT @@SESSION.DEFAULT_WEEK_FORMAT"
+      assert_equal global_mode.rows, session_mode.rows
     end
   end
 

@@ -2,6 +2,7 @@ task "load_app" do
   namespace :app do
     load APP_RAKEFILE
   end
+  task :environment => "app:environment"
 
   if !defined?(ENGINE_PATH) || !ENGINE_PATH
     ENGINE_PATH = find_engine_path(APP_RAKEFILE)
@@ -59,7 +60,7 @@ namespace :db do
 end
 
 def find_engine_path(path)
-  return if path == "/"
+  return File.expand_path(Dir.pwd) if path == "/"
 
   if Rails::Engine.find(path)
     path
@@ -67,3 +68,5 @@ def find_engine_path(path)
     find_engine_path(File.expand_path('..', path))
   end
 end
+
+Rake.application.invoke_task(:load_app)

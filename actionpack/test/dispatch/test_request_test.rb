@@ -40,6 +40,11 @@ class TestRequestTest < ActiveSupport::TestCase
     req.cookie_jar["login"] = "XJ-122"
     assert_cookies({"user_name" => "david", "login" => "XJ-122"}, req.cookie_jar)
 
+		assert_nothing_raised do
+      req.cookie_jar["login"] = nil
+      assert_cookies({"user_name" => "david", "login" => nil}, req.cookie_jar)
+		end
+
     req.cookie_jar.delete(:login)
     assert_cookies({"user_name" => "david"}, req.cookie_jar)
 
@@ -48,6 +53,13 @@ class TestRequestTest < ActiveSupport::TestCase
 
     req.cookie_jar.update(:user_name => "david")
     assert_cookies({"user_name" => "david"}, req.cookie_jar)
+  end
+
+  test "does not complain when Rails.application is nil" do
+    Rails.stubs(:application).returns(nil)
+    req = ActionDispatch::TestRequest.new
+
+    assert_equal false, req.env.empty?
   end
 
   private

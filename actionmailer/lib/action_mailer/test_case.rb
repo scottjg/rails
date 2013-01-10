@@ -1,4 +1,4 @@
-require 'active_support/core_ext/class/attribute'
+require 'active_support/test_case'
 
 module ActionMailer
   class NonInferrableMailerError < ::StandardError
@@ -13,11 +13,25 @@ module ActionMailer
     module Behavior
       extend ActiveSupport::Concern
 
+      include ActiveSupport::Testing::ConstantLookup
       include TestHelper
+
+      included do
+        class_attribute :_mailer_class
+        setup :initialize_test_deliveries
+        setup :set_expected_mail
+      end
 
       module ClassMethods
         def tests(mailer)
-          self._mailer_class = mailer
+          case mailer
+          when String, Symbol
+            self._mailer_class = mailer.to_s.camelize.constantize
+          when Module
+            self._mailer_class = mailer
+          else
+            raise NonInferrableMailerError.new(mailer)
+          end
         end
 
         def mailer_class
@@ -29,13 +43,13 @@ module ActionMailer
         end
 
         def determine_default_mailer(name)
-          name.sub(/Test$/, '').constantize
-        rescue NameError
-          raise NonInferrableMailerError.new(name)
+          mailer = determine_constant_from_test_name(name) do |constant|
+            Class === constant && constant < ActionMailer::Base
+          end
+          raise NonInferrableMailerError.new(name) if mailer.nil?
+          mailer
         end
       end
-
-      module InstanceMethods
 
       protected
 
@@ -64,16 +78,8 @@ module ActionMailer
         def read_fixture(action)
           IO.readlines(File.join(Rails.root, 'test', 'fixtures', self.class.mailer_class.name.underscore, action))
         end
-      end
-
-      included do
-        class_attribute :_mailer_class
-        setup :initialize_test_deliveries
-        setup :set_expected_mail
-      end
     end
 
     include Behavior
-
   end
 end

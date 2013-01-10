@@ -2,42 +2,58 @@ require 'active_record_unit'
 require 'fixtures/project'
 
 class Task < ActiveRecord::Base
-  set_table_name 'projects'
+  self.table_name = 'projects'
 end
 
 class Step < ActiveRecord::Base
-  set_table_name 'projects'
+  self.table_name = 'projects'
 end
 
 class Bid < ActiveRecord::Base
-  set_table_name 'projects'
+  self.table_name = 'projects'
 end
 
 class Tax < ActiveRecord::Base
-  set_table_name 'projects'
+  self.table_name = 'projects'
 end
 
 class Fax < ActiveRecord::Base
-  set_table_name 'projects'
+  self.table_name = 'projects'
 end
 
 class Series < ActiveRecord::Base
-  set_table_name 'projects'
+  self.table_name = 'projects'
+end
+
+class ModelDelegator < ActiveRecord::Base
+  self.table_name = 'projects'
+
+  def to_model
+    ModelDelegate.new
+  end
+end
+
+class ModelDelegate
+  def self.model_name
+    ActiveModel::Name.new(self)
+  end
+
+  def to_param
+    'overridden'
+  end
 end
 
 module Blog
   class Post < ActiveRecord::Base
-    set_table_name 'projects'
+    self.table_name = 'projects'
   end
 
   class Blog < ActiveRecord::Base
-    set_table_name 'projects'
+    self.table_name = 'projects'
   end
 
-  def self._railtie
-    o = Object.new
-    def o.railtie_name; "blog" end
-    o
+  def self.use_relative_model_naming?
+    true
   end
 end
 
@@ -52,6 +68,7 @@ class PolymorphicRoutesTest < ActionController::TestCase
     @bid = Bid.new
     @tax = Tax.new
     @fax = Fax.new
+    @delegator = ModelDelegator.new
     @series = Series.new
     @blog_post = Blog::Post.new
     @blog_blog = Blog::Blog.new
@@ -84,6 +101,14 @@ class PolymorphicRoutesTest < ActionController::TestCase
       @blog_post.save
       @blog_blog.save
       assert_equal "http://example.com/blogs/#{@blog_blog.id}/posts/#{@blog_post.id}", polymorphic_url([@blog_blog, @blog_post])
+    end
+  end
+
+  def test_with_nil
+    with_test_routes do
+      assert_raise ArgumentError, "Nil location provided. Can't build URI." do
+        polymorphic_url(nil)
+      end
     end
   end
 
@@ -433,6 +458,13 @@ class PolymorphicRoutesTest < ActionController::TestCase
     end
   end
 
+  def test_routing_a_to_model_delegate
+    with_test_routes do
+      @delegator.save
+      assert_equal "http://example.com/model_delegates/overridden", polymorphic_url(@delegator)
+    end
+  end
+
   def with_namespaced_routes(name)
     with_routing do |set|
       set.draw do
@@ -463,6 +495,7 @@ class PolymorphicRoutesTest < ActionController::TestCase
           resource :bid
         end
         resources :series
+        resources :model_delegates
       end
 
       self.class.send(:include, @routes.url_helpers)
@@ -510,5 +543,4 @@ class PolymorphicRoutesTest < ActionController::TestCase
       yield
     end
   end
-
 end

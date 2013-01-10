@@ -23,7 +23,7 @@ module Rails
       end
 
       def frameworks
-        %w( active_record action_pack active_resource action_mailer active_support )
+        %w( active_record action_pack action_mailer active_support )
       end
 
       def framework_version(framework)
@@ -78,8 +78,12 @@ module Rails
       Rails::VERSION::STRING
     end
 
+    property 'JavaScript Runtime' do
+      ExecJS.runtime.name
+    end
+
     # Versions of each Rails framework (Active Record, Action Pack,
-    # Active Resource, Action Mailer, and Active Support).
+    # Action Mailer, and Active Support).
     frameworks.each do |framework|
       property "#{framework.titlecase} version" do
         framework_version(framework)

@@ -26,11 +26,26 @@ module Yz
   end
 end
 
-Somewhere = Struct.new(:street, :city)
+Somewhere = Struct.new(:street, :city) do
+  attr_accessor :name
+end
 
-Someone   = Struct.new(:name, :place) do
+class Someone < Struct.new(:name, :place)
   delegate :street, :city, :to_f, :to => :place
+  delegate :name=, :to => :place, :prefix => true
   delegate :upcase, :to => "place.city"
+  delegate :table_name, :to => :class
+  delegate :table_name, :to => :class, :prefix => true
+
+  def self.table_name
+    'some_table'
+  end
+
+  FAILED_DELEGATE_LINE = __LINE__ + 1
+  delegate :foo, :to => :place
+
+  FAILED_DELEGATE_LINE_2 = __LINE__ + 1
+  delegate :bar, :to => :place, :allow_nil => true
 end
 
 Invoice   = Struct.new(:client) do
@@ -51,6 +66,14 @@ Tester = Struct.new(:client) do
   delegate :name, :to => :client, :prefix => false
 end
 
+class ParameterSet
+  delegate :[], :[]=, :to => :@params
+
+  def initialize
+    @params = {:foo => "bar"}
+  end
+end
+
 class Name
   delegate :upcase, :to => :@full_name
 
@@ -59,7 +82,7 @@ class Name
   end
 end
 
-class ModuleTest < Test::Unit::TestCase
+class ModuleTest < ActiveSupport::TestCase
   def setup
     @david = Someone.new("David", Somewhere.new("Paulina", "Chicago"))
   end
@@ -69,6 +92,22 @@ class ModuleTest < Test::Unit::TestCase
     assert_equal "Chicago", @david.city
   end
 
+  def test_delegation_to_assignment_method
+    @david.place_name = "Fred"
+    assert_equal "Fred", @david.place.name
+  end
+
+  def test_delegation_to_index_get_method
+    @params = ParameterSet.new
+    assert_equal "bar", @params[:foo]
+  end
+
+  def test_delegation_to_index_set_method
+    @params = ParameterSet.new
+    @params[:foo] = "baz"
+    assert_equal "baz", @params[:foo]
+  end
+
   def test_delegation_down_hierarchy
     assert_equal "CHICAGO", @david.upcase
   end
@@ -76,6 +115,11 @@ class ModuleTest < Test::Unit::TestCase
   def test_delegation_to_instance_variable
     david = Name.new("David", "Hansson")
     assert_equal "DAVID HANSSON", david.upcase
+  end
+
+  def test_delegation_to_class_method
+    assert_equal 'some_table', @david.table_name
+    assert_equal 'some_table', @david.class_table_name
   end
 
   def test_missing_delegation_target
@@ -164,6 +208,26 @@ class ModuleTest < Test::Unit::TestCase
     end
   end
 
+  def test_delegation_exception_backtrace
+    someone = Someone.new("foo", "bar")
+    someone.foo
+  rescue NoMethodError => e
+    file_and_line = "#{__FILE__}:#{Someone::FAILED_DELEGATE_LINE}"
+    # We can't simply check the first line of the backtrace, because JRuby reports the call to __send__ in the backtrace.
+    assert e.backtrace.any?{|a| a.include?(file_and_line)},
+           "[#{e.backtrace.inspect}] did not include [#{file_and_line}]"
+  end
+
+  def test_delegation_exception_backtrace_with_allow_nil
+    someone = Someone.new("foo", "bar")
+    someone.bar
+  rescue NoMethodError => e
+    file_and_line = "#{__FILE__}:#{Someone::FAILED_DELEGATE_LINE_2}"
+    # We can't simply check the first line of the backtrace, because JRuby reports the call to __send__ in the backtrace.
+    assert e.backtrace.any?{|a| a.include?(file_and_line)},
+           "[#{e.backtrace.inspect}] did not include [#{file_and_line}]"
+  end
+
   def test_parent
     assert_equal Yz::Zy, Yz::Zy::Cd.parent
     assert_equal Yz, Yz::Zy.parent
@@ -177,6 +241,12 @@ class ModuleTest < Test::Unit::TestCase
 
   def test_local_constants
     assert_equal %w(Constant1 Constant3), Ab.local_constants.sort.map(&:to_s)
+  end
+
+  def test_local_constant_names
+    ActiveSupport::Deprecation.silence do
+      assert_equal %w(Constant1 Constant3), Ab.local_constant_names.sort.map(&:to_s)
+    end
   end
 end
 
@@ -211,7 +281,7 @@ module BarMethods
   end
 end
 
-class MethodAliasingTest < Test::Unit::TestCase
+class MethodAliasingTest < ActiveSupport::TestCase
   def setup
     Object.const_set :FooClassWithBarMethod, Class.new { def bar() 'bar' end }
     @instance = FooClassWithBarMethod.new

@@ -13,6 +13,7 @@ require 'models/comment'
 require 'models/sponsor'
 require 'models/member'
 require 'models/essay'
+require 'models/toy'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
@@ -32,7 +33,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
   def test_belongs_to_with_primary_key_joins_on_correct_column
     sql = Client.joins(:firm_with_primary_key).to_sql
-    if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
+    if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
       assert_no_match(/`firm_with_primary_keys_companies`\.`id`/, sql)
       assert_match(/`firm_with_primary_keys_companies`\.`name`/, sql)
     elsif current_adapter?(:OracleAdapter)
@@ -62,6 +63,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal apple.id, citibank.firm_id
   end
 
+  def test_id_assignment
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+    citibank.firm_id = apple
+    assert_nil citibank.firm_id
+  end
+
   def test_natural_assignment_with_primary_key
     apple = Firm.create("name" => "Apple")
     citibank = Client.create("name" => "Primary key client")
@@ -72,14 +80,14 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_eager_loading_with_primary_key
     Firm.create("name" => "Apple")
     Client.create("name" => "Citibank", :firm_name => "Apple")
-    citibank_result = Client.find(:first, :conditions => {:name => "Citibank"}, :include => :firm_with_primary_key)
+    citibank_result = Client.all.merge!(:where => {:name => "Citibank"}, :includes => :firm_with_primary_key).first
     assert citibank_result.association_cache.key?(:firm_with_primary_key)
   end
 
   def test_eager_loading_with_primary_key_as_symbol
     Firm.create("name" => "Apple")
     Client.create("name" => "Citibank", :firm_name => "Apple")
-    citibank_result = Client.find(:first, :conditions => {:name => "Citibank"}, :include => :firm_with_primary_key_symbols)
+    citibank_result = Client.all.merge!(:where => {:name => "Citibank"}, :includes => :firm_with_primary_key_symbols).first
     assert citibank_result.association_cache.key?(:firm_with_primary_key_symbols)
   end
 
@@ -106,6 +114,34 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     apple    = citibank.build_firm("name" => "Apple")
     citibank.save
     assert_equal apple.id, citibank.firm_id
+  end
+
+  def test_building_the_belonging_object_with_implicit_sti_base_class
+    account = Account.new
+    company = account.build_firm
+    assert_kind_of Company, company, "Expected #{company.class} to be a Company"
+  end
+
+  def test_building_the_belonging_object_with_explicit_sti_base_class
+    account = Account.new
+    company = account.build_firm(:type => "Company")
+    assert_kind_of Company, company, "Expected #{company.class} to be a Company"
+  end
+
+  def test_building_the_belonging_object_with_sti_subclass
+    account = Account.new
+    company = account.build_firm(:type => "Firm")
+    assert_kind_of Firm, company, "Expected #{company.class} to be a Firm"
+  end
+
+  def test_building_the_belonging_object_with_an_invalid_type
+    account = Account.new
+    assert_raise(ActiveRecord::SubclassNotFound) { account.build_firm(:type => "InvalidType") }
+  end
+
+  def test_building_the_belonging_object_with_an_unrelated_type
+    account = Account.new
+    assert_raise(ActiveRecord::SubclassNotFound) { account.build_firm(:type => "Account") }
   end
 
   def test_building_the_belonging_object_with_primary_key
@@ -167,6 +203,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     sponsor.sponsorable = Member.new :name => "Bert"
     assert_equal Member, sponsor.association(:sponsorable).send(:klass)
+    assert_equal "members", sponsor.association(:sponsorable).aliased_table_name
   end
 
   def test_with_polymorphic_and_condition
@@ -179,8 +216,8 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_with_select
-    assert_equal Company.find(2).firm_with_select.attributes.size, 1
-    assert_equal Company.find(2, :include => :firm_with_select ).firm_with_select.attributes.size, 1
+    assert_equal 1, Company.find(2).firm_with_select.attributes.size
+    assert_equal 1, Company.all.merge!(:includes => :firm_with_select ).find(2).firm_with_select.attributes.size
   end
 
   def test_belongs_to_counter
@@ -287,21 +324,21 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, Topic.find(topic.id)[:replies_count]
   end
 
-  def test_belongs_to_counter_after_update_attributes
-    topic = Topic.create!(:title => "37s")
-    topic.replies.create!(:title => "re: 37s", :content => "rails")
+  def test_belongs_to_counter_after_update
+    topic = Topic.create!(title: "37s")
+    topic.replies.create!(title: "re: 37s", content: "rails")
     assert_equal 1, Topic.find(topic.id)[:replies_count]
 
-    topic.update_attributes(:title => "37signals")
+    topic.update(title: "37signals")
     assert_equal 1, Topic.find(topic.id)[:replies_count]
   end
 
-  def test_belongs_to_counter_when_update_column
+  def test_belongs_to_counter_when_update_columns
     topic = Topic.create!(:title => "37s")
     topic.replies.create!(:title => "re: 37s", :content => "rails")
     assert_equal 1, Topic.find(topic.id)[:replies_count]
 
-    topic.update_column(:content, "rails is wonderfull")
+    topic.update_columns(content: "rails is wonderfull")
     assert_equal 1, Topic.find(topic.id)[:replies_count]
   end
 
@@ -332,7 +369,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_new_record_with_foreign_key_but_no_object
     c = Client.new("firm_id" => 1)
     # sometimes tests on Oracle fail if ORDER BY is not provided therefore add always :order with :first
-    assert_equal Firm.find(:first, :order => "id"), c.firm_with_basic_id
+    assert_equal Firm.all.merge!(:order => "id").first, c.firm_with_basic_id
   end
 
   def test_setting_foreign_key_after_nil_target_loaded
@@ -350,6 +387,12 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     sponsor.sponsorable_type = "Member"
 
     assert_equal members(:groucho), sponsor.sponsorable
+  end
+
+  def test_dont_find_target_when_foreign_key_is_null
+    tagging = taggings(:thinking_general)
+    queries = assert_sql { tagging.super_tag }
+    assert_equal 0, queries.length
   end
 
   def test_field_name_same_as_foreign_key
@@ -386,9 +429,9 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_association_assignment_sticks
-    post = Post.find(:first)
+    post = Post.first
 
-    author1, author2 = Author.find(:all, :limit => 2)
+    author1, author2 = Author.all.merge!(:limit => 2).to_a
     assert_not_nil author1
     assert_not_nil author2
 
@@ -490,14 +533,14 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     assert_nothing_raised do
       Account.find(@account.id).save!
-      Account.find(@account.id, :include => :firm).save!
+      Account.all.merge!(:includes => :firm).find(@account.id).save!
     end
 
     @account.firm.delete
 
     assert_nothing_raised do
       Account.find(@account.id).save!
-      Account.find(@account.id, :include => :firm).save!
+      Account.all.merge!(:includes => :firm).find(@account.id).save!
     end
   end
 
@@ -510,25 +553,30 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
       authors(:david).destroy
     end
 
-    assert_equal [], AuthorAddress.find_all_by_id([author_address.id, author_address_extra.id])
+    assert_equal [], AuthorAddress.where(id: [author_address.id, author_address_extra.id])
     assert_equal [author_address.id], AuthorAddress.destroyed_author_address_ids
   end
 
   def test_invalid_belongs_to_dependent_option_nullify_raises_exception
     assert_raise ArgumentError do
-      Author.belongs_to :special_author_address, :dependent => :nullify
+      Class.new(Author).belongs_to :special_author_address, :dependent => :nullify
     end
   end
 
   def test_invalid_belongs_to_dependent_option_restrict_raises_exception
     assert_raise ArgumentError do
-      Author.belongs_to :special_author_address, :dependent => :restrict
+      Class.new(Author).belongs_to :special_author_address, :dependent => :restrict
     end
   end
 
   def test_attributes_are_being_set_when_initialized_from_belongs_to_association_with_where_clause
     new_firm = accounts(:signals37).build_firm(:name => 'Apple')
     assert_equal new_firm.name, "Apple"
+  end
+
+  def test_attributes_are_set_without_error_when_initialized_from_belongs_to_association_with_array_in_where_clause
+    new_account = Account.where(:credit_limit => [ 50, 60 ]).new
+    assert_nil new_account.credit_limit
   end
 
   def test_reassigning_the_parent_id_updates_the_object
@@ -666,5 +714,58 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     firm = client.create_firm!{ |f| f.name = 'Agency Company' }
     assert_equal 'Agency Company', firm.name
+  end
+
+  def test_should_set_foreign_key_on_create_association
+    client = Client.create! :name => "fuu"
+
+    firm = client.create_firm :name => "baa"
+    assert_equal firm.id, client.client_of
+  end
+
+  def test_should_set_foreign_key_on_create_association!
+    client = Client.create! :name => "fuu"
+
+    firm = client.create_firm! :name => "baa"
+    assert_equal firm.id, client.client_of
+  end
+
+  def test_self_referential_belongs_to_with_counter_cache_assigning_nil
+    comment = Comment.create! :post => posts(:thinking), :body => "fuu"
+    comment.parent = nil
+    comment.save!
+
+    assert_equal nil, comment.reload.parent
+    assert_equal 0, comments(:greetings).reload.children_count
+  end
+
+  def test_polymorphic_with_custom_primary_key
+    toy = Toy.create!
+    sponsor = Sponsor.create!(:sponsorable => toy)
+
+    assert_equal toy, sponsor.reload.sponsorable
+  end
+
+  test "stale tracking doesn't care about the type" do
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+
+    citibank.firm_id = apple.id
+    citibank.firm # load it
+
+    citibank.firm_id = apple.id.to_s
+
+    assert !citibank.association(:firm).stale_target?
+  end
+
+  def test_reflect_the_most_recent_change
+    author1, author2 = Author.limit(2)
+    post = Post.new(:title => "foo", :body=> "bar")
+
+    post.author    = author1
+    post.author_id = author2.id
+
+    assert post.save
+    assert_equal post.author_id, author2.id
   end
 end

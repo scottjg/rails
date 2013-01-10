@@ -1,9 +1,12 @@
 # encoding: utf-8
 require "cases/helper"
+require 'models/owner'
 
 module ActiveRecord
   module ConnectionAdapters
     class SQLite3AdapterTest < ActiveRecord::TestCase
+      self.use_transactional_fixtures = false
+
       class DualEncoding < ActiveRecord::Base
       end
 
@@ -17,6 +20,27 @@ module ActiveRecord
             number integer
           )
         eosql
+
+        @conn.extend(LogIntercepter)
+        @conn.intercepted = true
+      end
+
+      def teardown
+        @conn.intercepted = false
+        @conn.logged = []
+      end
+
+      def test_column_types
+        owner = Owner.create!(:name => "hello".encode('ascii-8bit'))
+        owner.reload
+        select = Owner.columns.map { |c| "typeof(#{c.name})" }.join ', '
+        result = Owner.connection.exec_query <<-esql
+          SELECT #{select}
+          FROM   #{Owner.table_name}
+          WHERE  #{Owner.primary_key} = #{owner.id}
+        esql
+
+        assert(!result.rows.first.include?("blob"), "should not store blobs")
       end
 
       def test_exec_insert
@@ -39,18 +63,6 @@ module ActiveRecord
       def test_connection_no_db
         assert_raises(ArgumentError) do
           Base.sqlite3_connection {}
-        end
-      end
-
-      def test_connection_no_adapter
-        assert_raises(ArgumentError) do
-          Base.sqlite3_connection :database => ':memory:'
-        end
-      end
-
-      def test_connection_wrong_adapter
-        assert_raises(ArgumentError) do
-          Base.sqlite3_connection :database => ':memory:',:adapter => 'vuvuzela'
         end
       end
 
@@ -126,8 +138,6 @@ module ActiveRecord
       end
 
       def test_quote_binary_column_escapes_it
-        return unless "<3".respond_to?(:encode)
-
         DualEncoding.connection.execute(<<-eosql)
           CREATE TABLE dual_encodings (
             id integer PRIMARY KEY AUTOINCREMENT,
@@ -139,6 +149,15 @@ module ActiveRecord
         binary = DualEncoding.new :name => 'いただきます！', :data => str
         binary.save!
         assert_equal str, binary.data
+
+      ensure
+        DualEncoding.connection.drop_table('dual_encodings')
+      end
+
+      def test_type_cast_should_not_mutate_encoding
+        name  = 'hello'.force_encoding(Encoding::ASCII_8BIT)
+        Owner.create(name: name)
+        assert_equal Encoding::ASCII_8BIT, name.encoding
       end
 
       def test_execute
@@ -222,11 +241,21 @@ module ActiveRecord
       end
 
       def test_tables_logs_name
-        name = "hello"
-        assert_logged [[name, []]] do
-          @conn.tables(name)
+        assert_logged [['SCHEMA', []]] do
+          @conn.tables('hello')
           assert_not_nil @conn.logged.first.shift
         end
+      end
+
+      def test_indexes_logs_name
+        assert_logged [["PRAGMA index_list(\"items\")", 'SCHEMA', []]] do
+          @conn.indexes('items', 'hello')
+        end
+      end
+
+      def test_table_exists_logs_name
+        assert @conn.table_exists?('items')
+        assert_equal 'SCHEMA', @conn.logged[0][1]
       end
 
       def test_columns
@@ -264,7 +293,6 @@ module ActiveRecord
       end
 
       def test_indexes_logs
-        intercept_logs_on @conn
         assert_difference('@conn.logged.length') do
           @conn.indexes('items')
         end
@@ -316,21 +344,10 @@ module ActiveRecord
       private
 
       def assert_logged logs
-        intercept_logs_on @conn
         yield
         assert_equal logs, @conn.logged
       end
 
-      def intercept_logs_on ctx
-        @conn.extend(Module.new {
-          attr_accessor :logged
-          def log sql, name, binds = []
-            @logged << [sql, name, binds]
-            yield
-          end
-        })
-        @conn.logged = []
-      end
     end
   end
 end

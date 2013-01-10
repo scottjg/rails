@@ -5,12 +5,13 @@ module ActiveRecord
     # Keeps track of table aliases for ActiveRecord::Associations::ClassMethods::JoinDependency and
     # ActiveRecord::Associations::ThroughAssociationScope
     class AliasTracker # :nodoc:
-      attr_reader :aliases, :table_joins
+      attr_reader :aliases, :table_joins, :connection
 
       # table_joins is an array of arel joins which might conflict with the aliases we assign here
-      def initialize(table_joins = [])
-        @aliases     = Hash.new
+      def initialize(connection = Base.connection, table_joins = [])
+        @aliases     = Hash.new { |h,k| h[k] = initial_count_for(k) }
         @table_joins = table_joins
+        @connection  = connection
       end
 
       def aliased_table_for(table_name, aliased_name = nil)
@@ -26,8 +27,6 @@ module ActiveRecord
       def aliased_name_for(table_name, aliased_name = nil)
         aliased_name ||= table_name
 
-        initialize_count_for(table_name) if aliases[table_name].nil?
-
         if aliases[table_name].zero?
           # If it's zero, we can have our table_name
           aliases[table_name] = 1
@@ -35,8 +34,6 @@ module ActiveRecord
         else
           # Otherwise, we need to use an alias
           aliased_name = connection.table_alias_for(aliased_name)
-
-          initialize_count_for(aliased_name) if aliases[aliased_name].nil?
 
           # Update the count
           aliases[aliased_name] += 1
@@ -49,36 +46,30 @@ module ActiveRecord
         end
       end
 
-      def pluralize(table_name, base)
-        base.pluralize_table_names ? table_name.to_s.pluralize : table_name.to_s
-      end
-
       private
 
-        def initialize_count_for(name)
-          aliases[name] = 0
+        def initial_count_for(name)
+          return 0 if Arel::Table === table_joins
 
-          unless Arel::Table === table_joins
-            # quoted_name should be downcased as some database adapters (Oracle) return quoted name in uppercase
-            quoted_name = connection.quote_table_name(name).downcase
+          # quoted_name should be downcased as some database adapters (Oracle) return quoted name in uppercase
+          quoted_name = connection.quote_table_name(name).downcase
 
-            aliases[name] += table_joins.map { |join|
+          counts = table_joins.map do |join|
+            if join.is_a?(Arel::Nodes::StringJoin)
               # Table names + table aliases
               join.left.downcase.scan(
                 /join(?:\s+\w+)?\s+(\S+\s+)?#{quoted_name}\son/
               ).size
-            }.sum
+            else
+              join.left.table_name == name ? 1 : 0
+            end
           end
 
-          aliases[name]
+          counts.sum
         end
 
         def truncate(name)
-          name[0..connection.table_alias_length-3]
-        end
-
-        def connection
-          ActiveRecord::Base.connection
+          name.slice(0, connection.table_alias_length - 2)
         end
     end
   end

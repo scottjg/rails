@@ -1,19 +1,23 @@
 module ActionDispatch
   module Http
     module URL
+      IP_HOST_REGEXP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/
+
       mattr_accessor :tld_length
       self.tld_length = 1
 
       class << self
         def extract_domain(host, tld_length = @@tld_length)
-          return nil unless named_host?(host)
-          host.split('.').last(1 + tld_length).join('.')
+          host.split('.').last(1 + tld_length).join('.') if named_host?(host)
         end
 
         def extract_subdomains(host, tld_length = @@tld_length)
-          return [] unless named_host?(host)
-          parts = host.split('.')
-          parts[0..-(tld_length+2)]
+          if named_host?(host)
+            parts = host.split('.')
+            parts[0..-(tld_length + 2)]
+          else
+            []
+          end
         end
 
         def extract_subdomain(host, tld_length = @@tld_length)
@@ -21,38 +25,47 @@ module ActionDispatch
         end
 
         def url_for(options = {})
-          unless options[:host].present? || options[:only_path].present?
-            raise ArgumentError, 'Missing host to link to! Please provide the :host parameter, set default_url_options[:host], or set :only_path to true'
+          path  = options.delete(:script_name).to_s.chomp("/")
+          path << options.delete(:path).to_s
+
+          params = options[:params].is_a?(Hash) ? options[:params] : options.slice(:params)
+          params.reject! { |_,v| v.to_param.nil? }
+
+          result = build_host_url(options)
+          if options[:trailing_slash] && !path.ends_with?('/')
+            result << path.sub(/(\?|\z)/) { "/" + $& }
+          else
+            result << path
           end
-
-          rewritten_url = ""
-
-          unless options[:only_path]
-            unless options[:protocol] == false
-              rewritten_url << (options[:protocol] || "http")
-              rewritten_url << ":" unless rewritten_url.match(%r{:|//})
-            end
-            rewritten_url << "//" unless rewritten_url.match("//")
-            rewritten_url << rewrite_authentication(options)
-            rewritten_url << host_or_subdomain_and_domain(options)
-            rewritten_url << ":#{options.delete(:port)}" if options[:port]
-          end
-
-          path = options.delete(:path) || ''
-
-          params = options[:params] || {}
-          params.reject! {|k,v| v.to_param.nil? }
-
-          rewritten_url << (options[:trailing_slash] ? path.sub(/\?|\z/) { "/" + $& } : path)
-          rewritten_url << "?#{params.to_query}" unless params.empty?
-          rewritten_url << "##{Rack::Mount::Utils.escape_uri(options[:anchor].to_param.to_s)}" if options[:anchor]
-          rewritten_url
+          result << "?#{params.to_query}" unless params.empty?
+          result << "##{Journey::Router::Utils.escape_fragment(options[:anchor].to_param.to_s)}" if options[:anchor]
+          result
         end
 
         private
 
+        def build_host_url(options)
+          if options[:host].blank? && options[:only_path].blank?
+            raise ArgumentError, 'Missing host to link to! Please provide the :host parameter, set default_url_options[:host], or set :only_path to true'
+          end
+
+          result = ""
+
+          unless options[:only_path]
+            unless options[:protocol] == false
+              result << (options[:protocol] || "http")
+              result << ":" unless result.match(%r{:|//})
+            end
+            result << "//" unless result.match("//")
+            result << rewrite_authentication(options)
+            result << host_or_subdomain_and_domain(options)
+            result << ":#{options.delete(:port)}" if options[:port]
+          end
+          result
+        end
+
         def named_host?(host)
-          !(host.nil? || /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.match(host))
+          host && IP_HOST_REGEXP !~ host
         end
 
         def rewrite_authentication(options)
@@ -64,16 +77,24 @@ module ActionDispatch
         end
 
         def host_or_subdomain_and_domain(options)
-          return options[:host] unless options[:subdomain] || options[:domain]
+          return options[:host] if !named_host?(options[:host]) || (options[:subdomain].nil? && options[:domain].nil?)
 
           tld_length = options[:tld_length] || @@tld_length
 
           host = ""
-          host << (options[:subdomain] || extract_subdomain(options[:host], tld_length))
-          host << "."
-          host << (options[:domain]    || extract_domain(options[:host], tld_length))
+          unless options[:subdomain] == false
+            host << (options[:subdomain] || extract_subdomain(options[:host], tld_length)).to_param
+            host << "."
+          end
+          host << (options[:domain] || extract_domain(options[:host], tld_length))
           host
         end
+      end
+
+      def initialize(env)
+        super
+        @protocol = nil
+        @port     = nil
       end
 
       # Returns the complete URL used for this request.
@@ -165,7 +186,7 @@ module ActionDispatch
       # such as 2 to catch <tt>"www"</tt> instead of <tt>"www.rubyonrails"</tt>
       # in "www.rubyonrails.co.uk".
       def subdomain(tld_length = @@tld_length)
-        subdomains(tld_length).join(".")
+        ActionDispatch::Http::URL.extract_subdomain(host, tld_length)
       end
     end
   end

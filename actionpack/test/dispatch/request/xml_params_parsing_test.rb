@@ -30,6 +30,23 @@ class XmlParamsParsingTest < ActionDispatch::IntegrationTest
     assert_equal "<ok>bar</ok>", resp.body
   end
 
+  def assert_parses(expected, xml)
+    with_test_routing do
+      post "/parse", xml, default_headers
+      assert_response :ok
+      assert_equal(expected, TestController.last_request_parameters)
+    end
+  end
+
+  test "nils are stripped from collections" do
+    assert_parses(
+      {"hash" => { "person" => nil} },
+      "<hash><person type=\"array\"><person nil=\"true\"/></person></hash>")
+    assert_parses(
+      {"hash" => { "person" => ['foo']} },
+      "<hash><person type=\"array\"><person>foo</person><person nil=\"true\"/></person>\n</hash>")
+  end
+
   test "parses hash params" do
     with_test_routing do
       xml = "<person><name>David</name></person>"
@@ -41,7 +58,7 @@ class XmlParamsParsingTest < ActionDispatch::IntegrationTest
 
   test "parses single file" do
     with_test_routing do
-      xml = "<person><name>David</name><avatar type='file' name='me.jpg' content_type='image/jpg'>#{ActiveSupport::Base64.encode64('ABC')}</avatar></person>"
+      xml = "<person><name>David</name><avatar type='file' name='me.jpg' content_type='image/jpg'>#{::Base64.encode64('ABC')}</avatar></person>"
       post "/parse", xml, default_headers
       assert_response :ok
 
@@ -54,13 +71,23 @@ class XmlParamsParsingTest < ActionDispatch::IntegrationTest
 
   test "logs error if parsing unsuccessful" do
     with_test_routing do
+      output = StringIO.new
+      xml = "<person><name>David</name><avatar type='file' name='me.jpg' content_type='image/jpg'>#{::Base64.encode64('ABC')}</avatar></pineapple>"
+      post "/parse", xml, default_headers.merge('action_dispatch.show_exceptions' => true, 'action_dispatch.logger' => ActiveSupport::Logger.new(output))
+      assert_response :error
+      output.rewind && err = output.read
+      assert err =~ /Error occurred while parsing request parameters/
+    end
+  end
+
+  test "occurring a parse error if parsing unsuccessful" do
+    with_test_routing do
       begin
-        $stderr = StringIO.new
-        xml = "<person><name>David</name><avatar type='file' name='me.jpg' content_type='image/jpg'>#{ActiveSupport::Base64.encode64('ABC')}</avatar></pineapple>"
-        post "/parse", xml, default_headers.merge('action_dispatch.show_exceptions' => true)
-        assert_response :error
-        $stderr.rewind && err = $stderr.read
-        assert err =~ /Error occurred while parsing request parameters/
+        $stderr = StringIO.new # suppress the log
+        xml = "<person><name>David</name></pineapple>"
+        exception = assert_raise(ActionDispatch::ParamsParser::ParseError) { post "/parse", xml, default_headers.merge('action_dispatch.show_exceptions' => false) }
+        assert_equal REXML::ParseException, exception.original_exception.class
+        assert_equal exception.original_exception.message, exception.message
       ensure
         $stderr = STDERR
       end
@@ -72,8 +99,8 @@ class XmlParamsParsingTest < ActionDispatch::IntegrationTest
       <person>
         <name>David</name>
         <avatars>
-          <avatar type='file' name='me.jpg' content_type='image/jpg'>#{ActiveSupport::Base64.encode64('ABC')}</avatar>
-          <avatar type='file' name='you.gif' content_type='image/gif'>#{ActiveSupport::Base64.encode64('DEF')}</avatar>
+          <avatar type='file' name='me.jpg' content_type='image/jpg'>#{::Base64.encode64('ABC')}</avatar>
+          <avatar type='file' name='you.gif' content_type='image/gif'>#{::Base64.encode64('DEF')}</avatar>
         </avatars>
       </person>
     end_body
@@ -98,7 +125,7 @@ class XmlParamsParsingTest < ActionDispatch::IntegrationTest
     def with_test_routing
       with_routing do |set|
         set.draw do
-          match ':action', :to => ::XmlParamsParsingTest::TestController
+          post ':action', :to => ::XmlParamsParsingTest::TestController
         end
         yield
       end
@@ -147,7 +174,7 @@ class RootLessXmlParamsParsingTest < ActionDispatch::IntegrationTest
     def with_test_routing
       with_routing do |set|
         set.draw do
-          match ':action', :to => ::RootLessXmlParamsParsingTest::TestController
+          post ':action', :to => ::RootLessXmlParamsParsingTest::TestController
         end
         yield
       end

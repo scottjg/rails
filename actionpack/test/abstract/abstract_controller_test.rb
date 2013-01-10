@@ -1,4 +1,5 @@
 require 'abstract_unit'
+require 'set'
 
 module AbstractController
   module Testing
@@ -28,7 +29,7 @@ module AbstractController
     # Test Render mixin
     # ====
     class RenderingController < AbstractController::Base
-      include ::AbstractController::Rendering
+      include AbstractController::Rendering
 
       def _prefixes
         []
@@ -50,7 +51,7 @@ module AbstractController
       end
 
       def index_to_string
-        self.response_body = render_to_string "index.erb"
+        self.response_body = render_to_string "index"
       end
 
       def action_with_ivars
@@ -63,11 +64,11 @@ module AbstractController
       end
 
       def rendering_to_body
-        self.response_body = render_to_body :template => "naked_render.erb"
+        self.response_body = render_to_body :template => "naked_render"
       end
 
       def rendering_to_string
-        self.response_body = render_to_string :template => "naked_render.erb"
+        self.response_body = render_to_string :template => "naked_render"
       end
     end
 
@@ -152,17 +153,15 @@ module AbstractController
     # ====
     # self._layout is used when defined
     class WithLayouts < PrefixedViews
-      include Layouts
+      include AbstractController::Layouts
 
       private
       def self.layout(formats)
+        find_template(name.underscore, {:formats => formats}, :_prefixes => ["layouts"])
+      rescue ActionView::MissingTemplate
         begin
-          find_template(name.underscore, {:formats => formats}, :_prefixes => ["layouts"])
+          find_template("application", {:formats => formats}, :_prefixes => ["layouts"])
         rescue ActionView::MissingTemplate
-          begin
-            find_template("application", {:formats => formats}, :_prefixes => ["layouts"])
-          rescue ActionView::MissingTemplate
-          end
         end
       end
 
@@ -254,7 +253,7 @@ module AbstractController
     class TestActionMethodsReloading < ActiveSupport::TestCase
 
       test "action_methods should be reloaded after defining a new method" do
-        assert_equal ["index"], Me6.action_methods
+        assert_equal Set.new(["index"]), Me6.action_methods
       end
     end
 

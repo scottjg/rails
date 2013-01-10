@@ -8,7 +8,7 @@ module ActionView
     module RenderingHelper
       # Returns the result of a render that's dictated by the options hash. The primary options are:
       #
-      # * <tt>:partial</tt> - See ActionView::Partials.
+      # * <tt>:partial</tt> - See <tt>ActionView::PartialRenderer</tt>.
       # * <tt>:file</tt> - Renders an explicit template file (this used to be the old default), add :locals to pass in those.
       # * <tt>:inline</tt> - Renders an inline template similar to how it's done in the controller.
       # * <tt>:text</tt> - Renders the text passed in out.
@@ -39,7 +39,7 @@ module ActionView
       # The user can override this default by passing a block to the layout:
       #
       #   # The template
-      #   <%= render :layout => "my_layout" do %>
+      #   <%= render layout: "my_layout" do %>
       #     Content
       #   <% end %>
       #
@@ -59,7 +59,7 @@ module ActionView
       # Finally, the block can take block arguments, which can be passed in by +yield+:
       #
       #   # The template
-      #   <%= render :layout => "my_layout" do |customer| %>
+      #   <%= render layout: "my_layout" do |customer| %>
       #     Hello <%= customer.name %>
       #   <% end %>
       #

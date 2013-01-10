@@ -2,7 +2,7 @@ require "cases/helper"
 
 class ActiveSchemaTest < ActiveRecord::TestCase
   def setup
-    ActiveRecord::ConnectionAdapters::MysqlAdapter.class_eval do
+    ActiveRecord::ConnectionAdapters::AbstractMysqlAdapter.class_eval do
       alias_method :execute_without_stub, :execute
       remove_method :execute
       def execute(sql, name = nil) return sql end
@@ -10,7 +10,7 @@ class ActiveSchemaTest < ActiveRecord::TestCase
   end
 
   def teardown
-    ActiveRecord::ConnectionAdapters::MysqlAdapter.class_eval do
+    ActiveRecord::ConnectionAdapters::AbstractMysqlAdapter.class_eval do
       remove_method :execute
       alias_method :execute, :execute_without_stub
     end
@@ -42,7 +42,7 @@ class ActiveSchemaTest < ActiveRecord::TestCase
     assert_equal "DROP TABLE `people`", drop_table(:people)
   end
 
-  if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
+  if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
     def test_create_mysql_database_with_encoding
       assert_equal "CREATE DATABASE `matt` DEFAULT CHARACTER SET `utf8`", create_database(:matt)
       assert_equal "CREATE DATABASE `aimonetti` DEFAULT CHARACTER SET `latin1`", create_database(:aimonetti, {:charset => 'latin1'})
@@ -99,7 +99,7 @@ class ActiveSchemaTest < ActiveRecord::TestCase
   private
     def with_real_execute
       #we need to actually modify some data, so we make execute point to the original method
-      ActiveRecord::ConnectionAdapters::MysqlAdapter.class_eval do
+      ActiveRecord::ConnectionAdapters::AbstractMysqlAdapter.class_eval do
         alias_method :execute_with_stub, :execute
         remove_method :execute
         alias_method :execute, :execute_without_stub
@@ -107,7 +107,7 @@ class ActiveSchemaTest < ActiveRecord::TestCase
       yield
     ensure
       #before finishing, we restore the alias to the mock-up method
-      ActiveRecord::ConnectionAdapters::MysqlAdapter.class_eval do
+      ActiveRecord::ConnectionAdapters::AbstractMysqlAdapter.class_eval do
         remove_method :execute
         alias_method :execute, :execute_with_stub
       end

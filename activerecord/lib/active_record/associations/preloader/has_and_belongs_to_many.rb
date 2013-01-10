@@ -6,14 +6,14 @@ module ActiveRecord
 
         def initialize(klass, records, reflection, preload_options)
           super
-          @join_table = Arel::Table.new(options[:join_table]).alias('t0')
+          @join_table = Arel::Table.new(reflection.join_table).alias('t0')
         end
 
         # Unlike the other associations, we want to get a raw array of rows so that we can
         # access the aliased column on the join table
         def records_for(ids)
           scope = super
-          klass.connection.select_all(scope.arel.to_sql, 'SQL', scope.bind_values)
+          klass.connection.select_all(scope.arel, 'SQL', scope.bind_values)
         end
 
         def owner_key_name

@@ -18,8 +18,6 @@ class WebServiceTest < ActionDispatch::IntegrationTest
         s << "#{k}#{value}"
       end
     end
-
-    def rescue_action(e) raise end
   end
 
   def setup
@@ -118,22 +116,22 @@ class WebServiceTest < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_post_xml_using_a_disallowed_type_attribute
+    $stderr = StringIO.new
+    with_test_route_set do
+      post '/', '<foo type="symbol">value</foo>', 'CONTENT_TYPE' => 'application/xml'
+      assert_response 500
+
+      post '/', '<foo type="yaml">value</foo>', 'CONTENT_TYPE' => 'application/xml'
+      assert_response 500
+    end
+  ensure
+    $stderr = STDERR
+  end
+
   def test_register_and_use_yaml
     with_test_route_set do
       with_params_parsers Mime::YAML => Proc.new { |d| YAML.load(d) } do
-        post "/", {"entry" => "loaded from yaml"}.to_yaml,
-          {'CONTENT_TYPE' => 'application/x-yaml'}
-
-        assert_equal 'entry', @controller.response.body
-        assert @controller.params.has_key?(:entry)
-        assert_equal 'loaded from yaml', @controller.params["entry"]
-      end
-    end
-  end
-
-  def test_register_and_use_yaml_as_symbol
-    with_test_route_set do
-      with_params_parsers Mime::YAML => :yaml do
         post "/", {"entry" => "loaded from yaml"}.to_yaml,
           {'CONTENT_TYPE' => 'application/x-yaml'}
 
@@ -213,36 +211,6 @@ class WebServiceTest < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_typecast_as_yaml
-    with_test_route_set do
-      with_params_parsers Mime::YAML => :yaml do
-        yaml = (<<-YAML).strip
-          ---
-          data:
-            a: 15
-            b: false
-            c: true
-            d: 2005-03-17
-            e: 2005-03-17T21:41:07Z
-            f: unparsed
-            g:
-              - 1
-              - hello
-              - 1974-07-25
-        YAML
-        post "/", yaml, {'CONTENT_TYPE' => 'application/x-yaml'}
-        params = @controller.params
-        assert_equal 15, params[:data][:a]
-        assert_equal false, params[:data][:b]
-        assert_equal true, params[:data][:c]
-        assert_equal Date.new(2005,3,17), params[:data][:d]
-        assert_equal Time.utc(2005,3,17,21,41,7), params[:data][:e]
-        assert_equal "unparsed", params[:data][:f]
-        assert_equal [1, "hello", Date.new(1974,7,25)], params[:data][:g]
-      end
-    end
-  end
-
   private
     def with_params_parsers(parsers = {})
       old_session = @integration_session
@@ -256,7 +224,7 @@ class WebServiceTest < ActionDispatch::IntegrationTest
     def with_test_route_set
       with_routing do |set|
         set.draw do
-          match '/', :to => 'web_service_test/test#assign_parameters'
+          match '/', :to => 'web_service_test/test#assign_parameters', :via => :all
         end
         yield
       end

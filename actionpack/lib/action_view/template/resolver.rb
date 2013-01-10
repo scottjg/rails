@@ -1,12 +1,15 @@
 require "pathname"
 require "active_support/core_ext/class"
+require "active_support/core_ext/class/attribute_accessors"
 require "action_view/template"
+require "thread"
+require "thread_safe"
 
 module ActionView
   # = Action View Resolver
   class Resolver
     # Keeps all information about view path and builds virtual path.
-    class Path < String
+    class Path
       attr_reader :name, :prefix, :partial, :virtual
       alias_method :partial?, :partial
 
@@ -18,8 +21,76 @@ module ActionView
       end
 
       def initialize(name, prefix, partial, virtual)
-        @name, @prefix, @partial = name, prefix, partial
-        super(virtual)
+        @name    = name
+        @prefix  = prefix
+        @partial = partial
+        @virtual = virtual
+      end
+
+      def to_str
+        @virtual
+      end
+      alias :to_s :to_str
+    end
+
+    # Threadsafe template cache
+    class Cache #:nodoc:
+      class SmallCache < ThreadSafe::Cache
+        def initialize(options = {})
+          super(options.merge(:initial_capacity => 2))
+        end
+      end
+
+      # preallocate all the default blocks for performance/memory consumption reasons
+      PARTIAL_BLOCK = lambda {|cache, partial| cache[partial] = SmallCache.new}
+      PREFIX_BLOCK  = lambda {|cache, prefix|  cache[prefix]  = SmallCache.new(&PARTIAL_BLOCK)}
+      NAME_BLOCK    = lambda {|cache, name|    cache[name]    = SmallCache.new(&PREFIX_BLOCK)}
+      KEY_BLOCK     = lambda {|cache, key|     cache[key]     = SmallCache.new(&NAME_BLOCK)}
+
+      # usually a majority of template look ups return nothing, use this canonical preallocated array to safe memory
+      NO_TEMPLATES = [].freeze
+
+      def initialize
+        @data = SmallCache.new(&KEY_BLOCK)
+      end
+
+      # Cache the templates returned by the block
+      def cache(key, name, prefix, partial, locals)
+        if Resolver.caching?
+          @data[key][name][prefix][partial][locals] ||= canonical_no_templates(yield)
+        else
+          fresh_templates  = yield
+          cached_templates = @data[key][name][prefix][partial][locals]
+
+          if templates_have_changed?(cached_templates, fresh_templates)
+            @data[key][name][prefix][partial][locals] = canonical_no_templates(fresh_templates)
+          else
+            cached_templates || NO_TEMPLATES
+          end
+        end
+      end
+
+      def clear
+        @data.clear
+      end
+
+      private
+
+      def canonical_no_templates(templates)
+        templates.empty? ? NO_TEMPLATES : templates
+      end
+
+      def templates_have_changed?(cached_templates, fresh_templates)
+        # if either the old or new template list is empty, we don't need to (and can't)
+        # compare modification times, and instead just check whether the lists are different
+        if cached_templates.blank? || fresh_templates.blank?
+          return fresh_templates.blank? != cached_templates.blank?
+        end
+
+        cached_templates_max_updated_at = cached_templates.map(&:updated_at).max
+
+        # if a template has changed, it will be now be newer than all the cached templates
+        fresh_templates.any? { |t| t.updated_at > cached_templates_max_updated_at }
       end
     end
 
@@ -31,12 +102,11 @@ module ActionView
     end
 
     def initialize
-      @cached = Hash.new { |h1,k1| h1[k1] = Hash.new { |h2,k2|
-        h2[k2] = Hash.new { |h3,k3| h3[k3] = Hash.new { |h4,k4| h4[k4] = {} } } } }
+      @cache = Cache.new
     end
 
     def clear_cache
-      @cached.clear
+      @cache.clear
     end
 
     # Normalizes the arguments and passes it on to find_template.
@@ -48,7 +118,7 @@ module ActionView
 
   private
 
-    delegate :caching?, :to => "self.class"
+    delegate :caching?, to: :class
 
     # This is what child classes implement. No defaults are needed
     # because Resolver guarantees that the arguments are present and
@@ -64,27 +134,18 @@ module ActionView
 
     # Handles templates caching. If a key is given and caching is on
     # always check the cache before hitting the resolver. Otherwise,
-    # it always hits the resolver but check if the resolver is fresher
-    # before returning it.
+    # it always hits the resolver but if the key is present, check if the
+    # resolver is fresher before returning it.
     def cached(key, path_info, details, locals) #:nodoc:
       name, prefix, partial = path_info
-      locals = sort_locals(locals)
+      locals = locals.map { |x| x.to_s }.sort!
 
-      if key && caching?
-        @cached[key][name][prefix][partial][locals] ||= decorate(yield, path_info, details, locals)
-      else
-        fresh = decorate(yield, path_info, details, locals)
-        return fresh unless key
-
-        scope = @cached[key][name][prefix][partial]
-        cache = scope[locals]
-        mtime = cache && cache.map(&:updated_at).max
-
-        if !mtime || fresh.empty?  || fresh.any? { |t| t.updated_at > mtime }
-          scope[locals] = fresh
-        else
-          cache
+      if key
+        @cache.cache(key, name, prefix, partial, locals) do
+          decorate(yield, path_info, details, locals)
         end
+      else
+        decorate(yield, path_info, details, locals)
       end
     end
 
@@ -95,18 +156,6 @@ module ActionView
         t.locals         = locals
         t.formats        = details[:formats] || [:html] if t.formats.empty?
         t.virtual_path ||= (cached ||= build_path(*path_info))
-      end
-    end
-
-    if :symbol.respond_to?("<=>")
-      def sort_locals(locals) #:nodoc:
-        locals.sort.freeze
-      end
-    else
-      def sort_locals(locals) #:nodoc:
-        locals = locals.map{ |l| l.to_s }
-        locals.sort!
-        locals.freeze
       end
     end
   end
@@ -130,27 +179,35 @@ module ActionView
 
     def query(path, details, formats)
       query = build_query(path, details)
-      templates = []
-      sanitizer = Hash.new { |h,k| h[k] = Dir["#{File.dirname(k)}/*"] }
 
-      Dir[query].each do |p|
-        next if File.directory?(p) || !sanitizer[p].include?(p)
+      # deals with case-insensitive file systems.
+      sanitizer = Hash.new { |h,dir| h[dir] = Dir["#{dir}/*"] }
 
-        handler, format = extract_handler_and_format(p, formats)
-        contents = File.open(p, "rb") { |io| io.read }
+      template_paths = Dir[query].reject { |filename|
+        File.directory?(filename) ||
+          !sanitizer[File.dirname(filename)].include?(filename)
+      }
 
-        templates << Template.new(contents, File.expand_path(p), handler,
-          :virtual_path => path.virtual, :format => format, :updated_at => mtime(p))
-      end
+      template_paths.map { |template|
+        handler, format = extract_handler_and_format(template, formats)
+        contents = File.binread template
 
-      templates
+        Template.new(contents, File.expand_path(template), handler,
+          :virtual_path => path.virtual,
+          :format       => format,
+          :updated_at   => mtime(template))
+      }
     end
 
     # Helper for building query glob string based on resolver's pattern.
     def build_query(path, details)
       query = @pattern.dup
-      query.gsub!(/\:prefix(\/)?/, path.prefix.empty? ? "" : "#{path.prefix}\\1") # prefix can be empty...
-      query.gsub!(/\:action/, path.partial? ? "_#{path.name}" : path.name)
+
+      prefix = path.prefix.empty? ? "" : "#{escape_entry(path.prefix)}\\1"
+      query.gsub!(/\:prefix(\/)?/, prefix)
+
+      partial = escape_entry(path.partial? ? "_#{path.name}" : path.name)
+      query.gsub!(/\:action/, partial)
 
       details.each do |ext, variants|
         query.gsub!(/\:#{ext}/, "{#{variants.compact.uniq.join(',')}}")
@@ -159,9 +216,13 @@ module ActionView
       File.expand_path(query, @path)
     end
 
+    def escape_entry(entry)
+      entry.gsub(/[*?{}\[\]]/, '\\\\\\&')
+    end
+
     # Returns the file mtime from the filesystem.
     def mtime(p)
-      File.stat(p).mtime
+      File.mtime(p)
     end
 
     # Extract handler and formats from path. If a format cannot be a found neither
@@ -170,13 +231,21 @@ module ActionView
     def extract_handler_and_format(path, default_formats)
       pieces = File.basename(path).split(".")
       pieces.shift
-      handler = Template.handler_for_extension(pieces.pop)
-      format  = pieces.last && Mime[pieces.last]
+
+      extension = pieces.pop
+      unless extension
+        message = "The file #{path} did not specify a template handler. The default is currently ERB, " \
+                  "but will change to RAW in the future."
+        ActiveSupport::Deprecation.warn message
+      end
+
+      handler = Template.handler_for_extension(extension)
+      format  = pieces.last && Template::Types[pieces.last]
       [handler, format]
     end
   end
 
-  # A resolver that loads files from the filesystem. It allows to set your own
+  # A resolver that loads files from the filesystem. It allows setting your own
   # resolving pattern. Such pattern can be a glob string supported by some variables.
   #
   # ==== Examples
@@ -192,7 +261,7 @@ module ActionView
   #
   #   FileSystemResolver.new("/path/to/views", ":prefix/{:formats/,}:action{.:locale,}{.:formats,}{.:handlers,}")
   #
-  # If you don't specify pattern then the default will be used.
+  # If you don't specify a pattern then the default will be used.
   #
   # In order to use any of the customized resolvers above in a Rails application, you just need
   # to configure ActionController::Base.view_paths in an initializer, for example:
@@ -204,10 +273,10 @@ module ActionView
   #
   # ==== Pattern format and variables
   #
-  # Pattern have to be a valid glob string, and it allows you to use the
+  # Pattern has to be a valid glob string, and it allows you to use the
   # following variables:
   #
-  # * <tt>:prefix</tt> - usualy the controller path
+  # * <tt>:prefix</tt> - usually the controller path
   # * <tt>:action</tt> - name of the action
   # * <tt>:locale</tt> - possible locale versions
   # * <tt>:formats</tt> - possible request formats (for example html, json, xml...)
@@ -235,15 +304,11 @@ module ActionView
   class OptimizedFileSystemResolver < FileSystemResolver #:nodoc:
     def build_query(path, details)
       exts = EXTENSIONS.map { |ext| details[ext] }
-      query = File.join(@path, path)
+      query = escape_entry(File.join(@path, path))
 
-      exts.each do |ext|
-        query << "{"
-        ext.compact.each { |e| query << ".#{e}," }
-        query << "}"
-      end
-
-      query
+      query + exts.map { |ext|
+        "{#{ext.compact.uniq.map { |e| ".#{e}," }.join}}"
+      }.join
     end
   end
 

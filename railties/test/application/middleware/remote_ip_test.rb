@@ -1,28 +1,16 @@
 require 'isolation/abstract_unit'
+# FIXME remove DummyKeyGenerator and this require in 4.1
+require 'active_support/key_generator'
 
 module ApplicationTests
-  class RemoteIpTest < Test::Unit::TestCase
+  class RemoteIpTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::Isolation
-
-    def setup
-      build_app
-      boot_rails
-      FileUtils.rm_rf "#{app_path}/config/environments"
-    end
-
-    def teardown
-      teardown_app
-    end
-
-    def app
-      @app ||= Rails.application
-    end
 
     def remote_ip(env = {})
       remote_ip = nil
       env = Rack::MockRequest.env_for("/").merge(env).merge!(
         'action_dispatch.show_exceptions' => false,
-        'action_dispatch.secret_token' => 'b3c631c314c0bbca50c1b2843150fe33'
+        'action_dispatch.key_generator'   => ActiveSupport::DummyKeyGenerator.new('b3c631c314c0bbca50c1b2843150fe33')
       )
 
       endpoint = Proc.new do |e|
@@ -52,7 +40,7 @@ module ApplicationTests
       end
 
       assert_nothing_raised(ActionDispatch::RemoteIp::IpSpoofAttackError) do
-        assert_equal "1.1.1.2", remote_ip("HTTP_X_FORWARDED_FOR" => "1.1.1.1", "HTTP_CLIENT_IP" => "1.1.1.2")
+        assert_equal "1.1.1.1", remote_ip("HTTP_X_FORWARDED_FOR" => "1.1.1.1", "HTTP_CLIENT_IP" => "1.1.1.2")
       end
     end
 

@@ -4,12 +4,15 @@ require 'active_support/core_ext/object/instance_variables'
 require 'ostruct'
 
 class Contact
-  extend ActiveModel::Naming
   include ActiveModel::Serializers::Xml
 
+  attr_accessor :address, :friends, :contact
+
+  remove_method :attributes if method_defined?(:attributes)
+
   def attributes
-    instance_values
-  end unless method_defined?(:attributes)
+    instance_values.except("address", "friends", "contact")
+  end
 end
 
 module Admin
@@ -18,6 +21,22 @@ module Admin
 end
 
 class Customer < Struct.new(:name)
+end
+
+class Address
+  include ActiveModel::Serializers::Xml
+
+  attr_accessor :street, :city, :state, :zip, :apt_number
+
+  def attributes
+    instance_values
+  end
+end
+
+class SerializableContact < Contact
+  def serializable_hash(options={})
+    super(options.merge(:only => [:name, :age]))
+  end
 end
 
 class XmlSerializationTest < ActiveModel::TestCase
@@ -30,6 +49,16 @@ class XmlSerializationTest < ActiveModel::TestCase
     customer = Customer.new
     customer.name = "John"
     @contact.preferences = customer
+    @contact.address = Address.new
+    @contact.address.street = "123 Lane"
+    @contact.address.city = "Springfield"
+    @contact.address.state = "CA"
+    @contact.address.zip = 11111
+    @contact.address.apt_number = 35
+    @contact.friends = [Contact.new, Contact.new]
+    @related_contact = SerializableContact.new
+    @related_contact.name = "related"
+    @contact.contact = @related_contact
   end
 
   test "should serialize default root" do
@@ -77,6 +106,17 @@ class XmlSerializationTest < ActiveModel::TestCase
     assert_match %r{<createdAt},     @xml
   end
 
+  test "should use serializable hash" do
+    @contact = SerializableContact.new
+    @contact.name = 'aaron stack'
+    @contact.age = 25
+
+    @xml = @contact.to_xml
+    assert_match %r{<name>aaron stack</name>}, @xml
+    assert_match %r{<age type="integer">25</age>}, @xml
+    assert_no_match %r{<awesome>}, @xml
+  end
+
   test "should allow skipped types" do
     @xml = @contact.to_xml :skip_types => true
     assert_match %r{<age>25</age>}, @xml
@@ -94,7 +134,7 @@ class XmlSerializationTest < ActiveModel::TestCase
   end
 
   test "should serialize nil" do
-    assert_match %r{<pseudonyms nil=\"true\"></pseudonyms>}, @contact.to_xml(:methods => :pseudonyms)
+    assert_match %r{<pseudonyms nil=\"true\"/>}, @contact.to_xml(:methods => :pseudonyms)
   end
 
   test "should serialize integer" do
@@ -102,7 +142,7 @@ class XmlSerializationTest < ActiveModel::TestCase
   end
 
   test "should serialize datetime" do
-    assert_match %r{<created-at type=\"datetime\">2006-08-01T00:00:00Z</created-at>}, @contact.to_xml
+    assert_match %r{<created-at type=\"dateTime\">2006-08-01T00:00:00Z</created-at>}, @contact.to_xml
   end
 
   test "should serialize boolean" do
@@ -137,5 +177,91 @@ class XmlSerializationTest < ActiveModel::TestCase
     xml = @contact.to_xml :type => 'Contact'
     assert_match %r{<contact type="Contact">}, xml
     assert_match %r{<name>aaron stack</name>}, xml
+  end
+
+  test "include option with singular association" do
+    xml = @contact.to_xml :include => :address, :indent => 0
+    assert xml.include?(@contact.address.to_xml(:indent => 0, :skip_instruct => true))
+  end
+
+  test "include option with plural association" do
+    xml = @contact.to_xml :include => :friends, :indent => 0
+    assert_match %r{<friends type="array">}, xml
+    assert_match %r{<friend type="Contact">}, xml
+  end
+
+  class FriendList
+    def initialize(friends)
+      @friends = friends
+    end
+
+    def to_ary
+      @friends
+    end
+  end
+
+  test "include option with ary" do
+    @contact.friends = FriendList.new(@contact.friends)
+    xml = @contact.to_xml :include => :friends, :indent => 0
+    assert_match %r{<friends type="array">}, xml
+    assert_match %r{<friend type="Contact">}, xml
+  end
+
+  test "multiple includes" do
+    xml = @contact.to_xml :indent => 0, :skip_instruct => true, :include => [ :address, :friends ]
+    assert xml.include?(@contact.address.to_xml(:indent => 0, :skip_instruct => true))
+    assert_match %r{<friends type="array">}, xml
+    assert_match %r{<friend type="Contact">}, xml
+  end
+
+  test "include with options" do
+    xml = @contact.to_xml :indent  => 0, :skip_instruct => true, :include => { :address => { :only => :city } }
+    assert xml.include?(%(><address><city>Springfield</city></address>))
+  end
+
+  test "propagates skip_types option to included associations" do
+    xml = @contact.to_xml :include => :friends, :indent => 0, :skip_types => true
+    assert_match %r{<friends>}, xml
+    assert_match %r{<friend>}, xml
+  end
+
+  test "propagates skip-types option to included associations and attributes" do
+    xml = @contact.to_xml :skip_types => true, :include => :address, :indent => 0
+    assert_match %r{<address>}, xml
+    assert_match %r{<apt-number>}, xml
+  end
+
+  test "propagates camelize option to included associations and attributes" do
+    xml = @contact.to_xml :camelize => true, :include => :address, :indent => 0
+    assert_match %r{<Address>}, xml
+    assert_match %r{<AptNumber type="integer">}, xml
+  end
+
+  test "propagates dasherize option to included associations and attributes" do
+    xml = @contact.to_xml :dasherize => false, :include => :address, :indent => 0
+    assert_match %r{<apt_number type="integer">}, xml
+  end
+
+  test "don't propagate skip_types if skip_types is defined at the included association level" do
+    xml = @contact.to_xml :skip_types => true, :include => { :address => { :skip_types => false } }, :indent => 0
+    assert_match %r{<address>}, xml
+    assert_match %r{<apt-number type="integer">}, xml
+  end
+
+  test "don't propagate camelize if camelize is defined at the included association level" do
+    xml = @contact.to_xml :camelize => true, :include => { :address => { :camelize => false } }, :indent => 0
+    assert_match %r{<address>}, xml
+    assert_match %r{<apt-number type="integer">}, xml
+  end
+
+  test "don't propagate dasherize if dasherize is defined at the included association level" do
+    xml = @contact.to_xml :dasherize => false, :include => { :address => { :dasherize => true } }, :indent => 0
+    assert_match %r{<address>}, xml
+    assert_match %r{<apt-number type="integer">}, xml
+  end
+
+  test "association with sti" do
+    xml = @contact.to_xml(include: :contact)
+    assert xml.include?(%(<contact type="SerializableContact">))
   end
 end

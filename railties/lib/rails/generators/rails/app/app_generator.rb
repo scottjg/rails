@@ -1,7 +1,7 @@
 require 'rails/generators/app_base'
 
 module Rails
-  module ActionMethods
+  module ActionMethods # :nodoc:
     attr_reader :options
 
     def initialize(generator)
@@ -11,7 +11,7 @@ module Rails
 
     private
       %w(template copy_file directory empty_directory inside
-         empty_directory_with_gitkeep create_file chmod shebang).each do |method|
+         empty_directory_with_keep_file create_file chmod shebang).each do |method|
         class_eval <<-RUBY, __FILE__, __LINE__ + 1
           def #{method}(*args, &block)
             @generator.send(:#{method}, *args, &block)
@@ -38,7 +38,7 @@ module Rails
     end
 
     def readme
-      copy_file "README"
+      copy_file "README.rdoc", "README.rdoc"
     end
 
     def gemfile
@@ -55,8 +55,19 @@ module Rails
 
     def app
       directory 'app'
-      git_keep  'app/mailers'
-      git_keep  'app/models'
+
+      keep_file  'app/mailers'
+      keep_file  'app/models'
+
+      keep_file  'app/controllers/concerns'
+      keep_file  'app/models/concerns'
+    end
+
+    def bin
+      directory "bin" do |content|
+        "#{shebang}\n" + content
+      end
+      chmod "bin", 0755, verbose: false
     end
 
     def config
@@ -81,55 +92,48 @@ module Rails
       directory "db"
     end
 
-    def doc
-      directory "doc"
-    end
-
     def lib
-      empty_directory "lib"
-      empty_directory_with_gitkeep "lib/tasks"
+      empty_directory 'lib'
+      empty_directory_with_keep_file 'lib/tasks'
+      empty_directory_with_keep_file 'lib/assets'
     end
 
     def log
-      empty_directory_with_gitkeep "log"
+      empty_directory_with_keep_file 'log'
     end
 
     def public_directory
-      directory "public", "public", :recursive => false
-    end
-
-    def script
-      directory "script" do |content|
-        "#{shebang}\n" + content
-      end
-      chmod "script", 0755, :verbose => false
+      directory "public", "public", recursive: false
     end
 
     def test
-      empty_directory_with_gitkeep "test/fixtures"
-      empty_directory_with_gitkeep "test/functional"
-      empty_directory_with_gitkeep "test/integration"
-      empty_directory_with_gitkeep "test/unit"
+      empty_directory_with_keep_file 'test/fixtures'
+      empty_directory_with_keep_file 'test/controllers'
+      empty_directory_with_keep_file 'test/mailers'
+      empty_directory_with_keep_file 'test/models'
+      empty_directory_with_keep_file 'test/helpers'
+      empty_directory_with_keep_file 'test/integration'
 
-      template "test/performance/browsing_test.rb"
-      template "test/test_helper.rb"
+      template 'test/performance/browsing_test.rb'
+      template 'test/test_helper.rb'
     end
 
     def tmp
-      empty_directory_with_gitkeep "tmp/cache"
+      empty_directory "tmp/cache"
+      empty_directory "tmp/cache/assets"
     end
 
     def vendor
+      vendor_javascripts
       vendor_stylesheets
-      vendor_plugins
+    end
+
+    def vendor_javascripts
+      empty_directory_with_keep_file 'vendor/assets/javascripts'
     end
 
     def vendor_stylesheets
-      empty_directory_with_gitkeep "vendor/assets/stylesheets"
-    end
-
-    def vendor_plugins
-      empty_directory_with_gitkeep "vendor/plugins"
+      empty_directory_with_keep_file 'vendor/assets/stylesheets'
     end
   end
 
@@ -137,15 +141,14 @@ module Rails
     # We need to store the RAILS_DEV_PATH in a constant, otherwise the path
     # can change in Ruby 1.8.7 when we FileUtils.cd.
     RAILS_DEV_PATH = File.expand_path("../../../../../..", File.dirname(__FILE__))
-
     RESERVED_NAMES = %w[application destroy benchmarker profiler plugin runner test]
 
-    class AppGenerator < AppBase
+    class AppGenerator < AppBase # :nodoc:
       add_shared_options_for "application"
 
       # Add bin/rails options
-      class_option :version, :type => :boolean, :aliases => "-v", :group => :rails,
-                             :desc => "Show Rails version number and quit"
+      class_option :version, type: :boolean, aliases: "-v", group: :rails,
+                             desc: "Show Rails version number and quit"
 
       def initialize(*args)
         raise Error, "Options should be given after the application name. For details run: rails --help" if args[0].blank?
@@ -171,6 +174,10 @@ module Rails
         build(:app)
       end
 
+      def create_bin_files
+        build(:bin)
+      end
+
       def create_config_files
         build(:config)
       end
@@ -188,10 +195,6 @@ module Rails
         build(:db)
       end
 
-      def create_doc_files
-        build(:doc)
-      end
-
       def create_lib_files
         build(:lib)
       end
@@ -202,10 +205,6 @@ module Rails
 
       def create_public_files
         build(:public_directory)
-      end
-
-      def create_script_files
-        build(:script)
       end
 
       def create_test_files
