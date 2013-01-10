@@ -853,6 +853,7 @@ module ActiveRecord
         @fixture_connections.each do |connection|
           connection.increment_open_transactions
           connection.transaction_joinable = false
+          connection.instance_variable_set(:@_current_transaction_records, []) unless connection.instance_variable_get(:@_current_transaction_records)
           connection.begin_db_transaction
         end
       # Load fixtures for every test.
