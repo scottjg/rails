@@ -48,6 +48,9 @@ if ActiveRecord::Base.connection.supports_migrations?
   end
 
   class MigrationTest < ActiveRecord::TestCase
+    require 'cases/miq_cases/miq_migration_test'
+    include MiqMigrationTest
+    
     self.use_transactional_fixtures = false
 
     fixtures :people
