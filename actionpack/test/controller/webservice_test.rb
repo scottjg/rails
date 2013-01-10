@@ -33,7 +33,7 @@ class WebServiceTest < Test::Unit::TestCase
 
     def rescue_action(e) raise end
   end
-  
+
   def setup
     @controller = TestController.new
     @default_param_parsers = ActionController::Base.param_parsers.dup
@@ -50,7 +50,7 @@ class WebServiceTest < Test::Unit::TestCase
 
   def test_post_xml
     process('POST', 'application/xml', '<entry attributed="true"><summary>content...</summary></entry>')
-    
+
     assert_equal 'entry', @controller.response.body
     assert @controller.params.has_key?(:entry)
     assert_equal 'content...', @controller.params["entry"]['summary']
@@ -111,6 +111,22 @@ class WebServiceTest < Test::Unit::TestCase
     assert_equal '3', @controller.params['z']
   end
 
+  def test_post_xml_using_a_disallowed_type_attribute
+    $stderr = StringIO.new
+    with_test_route_set do
+      exception = (defined? ActiveSupport::CoreExtensions::Hash::Conversions::DisallowedType) ? ActiveSupport::CoreExtensions::Hash::Conversions::DisallowedType : Exception
+      assert_raises(exception) do #ActiveSupport::CoreExtensions::Hash::Conversions::DisallowedType) do
+        process('POST', 'application/xml', '<foo type="symbol">value</foo>')
+      end
+
+      assert_raises(exception) do #ActiveSupport::CoreExtensions::Hash::Conversions::DisallowedType) do
+        process('POST', 'application/xml', '<foo type="yaml">value</foo>')
+      end
+    end
+  ensure
+    $stderr = STDERR
+  end
+
   def test_register_and_use_yaml
     ActionController::Base.param_parsers[Mime::YAML] = Proc.new { |d| YAML.load(d) }
     process('POST', 'application/x-yaml', {"entry" => "loaded from yaml"}.to_yaml)
@@ -118,7 +134,7 @@ class WebServiceTest < Test::Unit::TestCase
     assert @controller.params.has_key?(:entry)
     assert_equal 'loaded from yaml', @controller.params["entry"]
   end
-  
+
   def test_register_and_use_yaml_as_symbol
     ActionController::Base.param_parsers[Mime::YAML] = :yaml
     process('POST', 'application/x-yaml', {"entry" => "loaded from yaml"}.to_yaml)
@@ -208,11 +224,11 @@ class WebServiceTest < Test::Unit::TestCase
     assert_equal "unparsed", params[:data][:f]
     assert_equal [1, "hello", Date.new(1974,7,25)], params[:data][:g]
   end
-  
-  private  
-  
+
+  private
+
   def process(verb, content_type = 'application/x-www-form-urlencoded', data = '', full=false)
-    
+
     cgi = MockCGI.new({
       'REQUEST_METHOD' => verb,
       'CONTENT_TYPE'   => content_type,
@@ -222,8 +238,18 @@ class WebServiceTest < Test::Unit::TestCase
       "CONTENT_LENGTH" => data.size,
       "SERVER_PORT"    => "80",
       "HTTPS"          => "off"}, data)
-          
+
     @controller.send(:process, ActionController::CgiRequest.new(cgi, {}), ActionController::CgiResponse.new(cgi))
   end
-    
+
+  def with_test_route_set
+    with_routing do |set|
+      set.draw do |map|
+        map.with_options :controller => "web_service_test/test" do |c|
+          c.connect "/", :action => "assign_parameters"
+        end
+      end
+      yield
+    end
+  end
 end
