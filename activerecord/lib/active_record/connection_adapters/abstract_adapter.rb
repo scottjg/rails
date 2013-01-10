@@ -282,12 +282,13 @@ module ActiveRecord
             :binds         => binds) { yield }
         rescue Exception => e
           message = "#{e.class.name}: #{e.message}: #{sql}"
+
+          @logger.debug message if @logger
           $log.error("MIQ(abstract_adapter) Name: [#{name}], Message: [#{message}]") if $log
 
           # Return a generic message when in production to avoid exposing the contents of the SQL query to an end user
           message = MIQ_STATEMENT_INVALID_MESSAGE if Rails.env.production?
 
-          @logger.debug message if @logger
           exception = translate_exception(e, message)
           exception.set_backtrace e.backtrace
           raise exception
