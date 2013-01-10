@@ -1394,7 +1394,7 @@ module ActiveRecord
         # Configures the encoding, verbosity, schema search path, and time zone of the connection.
         # This is called by #connect and should not be called manually.
         def configure_connection
-          @spid = result_as_array(@connection.async_exec("SELECT pg_backend_pid()")).first.first
+          @spid = result_as_array(@connection.async_exec("SELECT pg_backend_pid()")).first.first.to_i
 
           if @config[:encoding]
             @connection.set_client_encoding(@config[:encoding])
