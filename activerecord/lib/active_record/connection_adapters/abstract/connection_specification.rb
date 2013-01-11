@@ -32,6 +32,7 @@ module ActiveRecord
 
         private
         def resolve_string_connection(spec) # :nodoc:
+          Rails.logger.info("CONNECTION STRING: #{spec.inspect}")
           hash = configurations.fetch(spec) do |k|
             connection_url_to_hash(k)
           end
@@ -44,6 +45,7 @@ module ActiveRecord
         def resolve_hash_connection(spec) # :nodoc:
           spec = spec.symbolize_keys
 
+          Rails.logger.info("CONNECTION: #{spec.inspect}")
           raise(AdapterNotSpecified, "database configuration does not specify adapter") unless spec.key?(:adapter)
 
           begin
@@ -126,6 +128,8 @@ module ActiveRecord
     # The exceptions AdapterNotSpecified, AdapterNotFound and ArgumentError
     # may be returned on an error.
     def self.establish_connection(spec = ENV["DATABASE_URL"])
+      Rails.logger.info("spec: #{spec.inspect}")
+      Rails.logger.info("configurations: #{configurations}")
       resolver = ConnectionSpecification::Resolver.new spec, configurations
       spec = resolver.spec
 
