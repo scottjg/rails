@@ -1617,9 +1617,16 @@ module ActiveRecord #:nodoc:
             attribute_names = extract_attribute_names_from_match(match)
             super unless all_attributes_exists?(attribute_names)
 
+            # 2013-01-10 - CMB - fixed SQL injection issue
+            # replaced this "options = args.extract_options!" with the patch applied here
+            # https://groups.google.com/forum/?fromgroups=#!topic/rubyonrails-security/DCNTNp_qjFM
             self.class_eval %{
               def self.#{method_id}(*args)
-                options = args.extract_options!
+                  options = if args.length > #{attribute_names.size}
+                              args.extract_options!
+                            else
+                              {}
+                            end
                 attributes = construct_attributes_from_arguments([:#{attribute_names.join(',:')}], args)
                 finder_options = { :conditions => attributes }
                 validate_find_options(options)
