@@ -66,6 +66,19 @@ class WebServiceTest < Test::Unit::TestCase
     assert_equal 'true', @controller.params["entry"]['attributed']
   end
 
+  def test_post_xml_using_a_disallowed_type_attribute
+    $stderr = StringIO.new
+    with_test_route_set do
+      post '/', '<foo type="symbol">value</foo>', 'CONTENT_TYPE' => 'application/xml'
+      assert_response 500
+
+      post '/', '<foo type="yaml">value</foo>', 'CONTENT_TYPE' => 'application/xml'
+      assert_response 500
+    end
+  ensure
+    $stderr = STDERR
+  end
+
   def test_register_and_use_yaml
     ActionController::Base.param_parsers[Mime::YAML] = Proc.new { |d| YAML.load(d) }
     process('POST', 'application/x-yaml', {"entry" => "loaded from yaml"}.to_yaml)
@@ -165,7 +178,18 @@ class WebServiceTest < Test::Unit::TestCase
   end
   
   private  
-  
+
+  def with_test_route_set
+    with_routing do |set|
+      set.draw do |map|
+        map.with_options :controller => "web_service_test/test" do |c|
+          c.connect "/", :action => "assign_parameters"
+        end
+      end
+      yield
+    end
+  end
+
   def process(verb, content_type = 'application/x-www-form-urlencoded', data = '', full=false)
     
     cgi = MockCGI.new({

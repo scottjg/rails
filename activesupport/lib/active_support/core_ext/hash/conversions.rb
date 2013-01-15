@@ -46,6 +46,14 @@ module ActiveSupport #:nodoc:
   module CoreExtensions #:nodoc:
     module Hash #:nodoc:
       module Conversions
+
+        DISALLOWED_XML_TYPES = %w(symbol yaml)
+        class DisallowedType < StandardError #:nodoc:
+          def initialize(type)
+            super "Disallowed type attribute: #{type.inspect}"
+          end
+        end
+
         XML_TYPE_NAMES = {
           "Symbol"     => "symbol",
           "Fixnum"     => "integer",
@@ -167,13 +175,23 @@ module ActiveSupport #:nodoc:
               'forcecontent' => true,
               'keeproot'     => true,
               'contentkey'   => '__content__')
-            ))
+            ), disallowed_types)
+          end
+
+          def from_trusted_xml(xml)
+            from_xml xml, []
           end
 
           private
-            def typecast_xml_value(value)
+            def typecast_xml_value(value, disallowed_types = nil)
+              disallowed_types ||= DISALLOWED_XML_TYPES
+
               case value.class.to_s
                 when 'Hash'
+                  if value.include?('type') && !value['type'].is_a?(Hash) && disallowed_types.include?(value['type'])
+                    raise DisallowedType, value['type']
+                  end
+
                   if value['type'] == 'array'
                     child_key, entries = value.detect { |k,v| k != 'type' }   # child_key is throwaway
                     if entries.nil? || (c = value['__content__'] && c.blank?)
@@ -181,9 +199,9 @@ module ActiveSupport #:nodoc:
                     else
                       case entries.class.to_s   # something weird with classes not matching here.  maybe singleton methods breaking is_a?
                       when "Array"
-                        entries.collect { |v| typecast_xml_value(v) }
+                        entries.collect { |v| typecast_xml_value(v, disallowed_types) }
                       when "Hash"
-                        [typecast_xml_value(entries)]
+                        [typecast_xml_value(entries, disallowed_types)]
                       else
                         raise "can't typecast #{entries.inspect}"
                       end
@@ -210,7 +228,7 @@ module ActiveSupport #:nodoc:
                     nil
                   else
                     xml_value = value.inject({}) do |h,(k,v)|
-                      h[k] = typecast_xml_value(v)
+                      h[k] = typecast_xml_value(v, disallowed_types)
                       h
                     end
                     
@@ -219,7 +237,7 @@ module ActiveSupport #:nodoc:
                     xml_value["file"].is_a?(StringIO) ? xml_value["file"] : xml_value
                   end
                 when 'Array'
-                  value.map! { |i| typecast_xml_value(i) }
+                  value.map! { |i| typecast_xml_value(i, disallowed_types) }
                   case value.length
                     when 0 then nil
                     when 1 then value.first
