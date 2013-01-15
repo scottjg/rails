@@ -1,3 +1,4 @@
+require 'thread_safe'
 require 'active_support/core_ext/module/remove_method'
 
 module ActionView
@@ -51,7 +52,7 @@ module ActionView
       alias :object_hash :hash
 
       attr_reader :hash
-      @details_keys = Hash.new
+      @details_keys = ThreadSafe::Cache.new
 
       def self.get(details)
         @details_keys[details] ||= new
@@ -149,7 +150,7 @@ module ActionView
       # as well as incorrectly putting part of the path in the template
       # name instead of the prefix.
       def normalize_name(name, prefixes) #:nodoc:
-        prefixes = nil if prefixes.blank?
+        prefixes = prefixes.presence
         parts    = name.to_s.split('/')
         parts.shift if parts.first.empty?
         name     = parts.pop

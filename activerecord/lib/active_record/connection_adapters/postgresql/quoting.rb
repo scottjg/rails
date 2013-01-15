@@ -9,7 +9,7 @@ module ActiveRecord
 
         # Unescapes bytea output from a database to the binary string it represents.
         # NOTE: This is NOT an inverse of escape_bytea! This is only to be used
-        #       on escaped binary output from database drive.
+        # on escaped binary output from database drive.
         def unescape_bytea(value)
           PGconn.unescape_bytea(value) if value
         end
@@ -19,10 +19,21 @@ module ActiveRecord
           return super unless column
 
           case value
+          when Array
+            if column.array
+              "'#{PostgreSQLColumn.array_to_string(value, column, self)}'"
+            else
+              super
+            end
           when Hash
             case column.sql_type
             when 'hstore' then super(PostgreSQLColumn.hstore_to_string(value), column)
             when 'json' then super(PostgreSQLColumn.json_to_string(value), column)
+            else super
+            end
+          when Range
+            case column.sql_type
+            when 'int4range', 'int8range' then super(PostgreSQLColumn.intrange_to_string(value), column)
             else super
             end
           when IPAddr
@@ -59,24 +70,40 @@ module ActiveRecord
           end
         end
 
-        def type_cast(value, column)
-          return super unless column
+        def type_cast(value, column, array_member = false)
+          return super(value, column) unless column
 
           case value
+          when NilClass
+            if column.array && array_member
+              'NULL'
+            elsif column.array
+              value
+            else
+              super(value, column)
+            end
+          when Array
+            return super(value, column) unless column.array
+            PostgreSQLColumn.array_to_string(value, column, self)
           when String
-            return super unless 'bytea' == column.sql_type
+            return super(value, column) unless 'bytea' == column.sql_type
             { :value => value, :format => 1 }
           when Hash
             case column.sql_type
             when 'hstore' then PostgreSQLColumn.hstore_to_string(value)
             when 'json' then PostgreSQLColumn.json_to_string(value)
-            else super
+            else super(value, column)
+            end
+          when Range
+            case column.sql_type
+            when 'int4range', 'int8range' then PostgreSQLColumn.intrange_to_string(value)
+            else super(value, column)
             end
           when IPAddr
-            return super unless ['inet','cidr'].includes? column.sql_type
+            return super(value, column) unless ['inet','cidr'].include? column.sql_type
             PostgreSQLColumn.cidr_to_string(value)
           else
-            super
+            super(value, column)
           end
         end
 
@@ -112,11 +139,15 @@ module ActiveRecord
         # Quote date/time values for use in SQL input. Includes microseconds
         # if the value is a Time responding to usec.
         def quoted_date(value) #:nodoc:
+          result = super
           if value.acts_like?(:time) && value.respond_to?(:usec)
-            "#{super}.#{sprintf("%06d", value.usec)}"
-          else
-            super
+            result = "#{result}.#{sprintf("%06d", value.usec)}"
           end
+
+          if value.year < 0
+            result = result.sub(/^-/, "") + " BC"
+          end
+          result
         end
       end
     end

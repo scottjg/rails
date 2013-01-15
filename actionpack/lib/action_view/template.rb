@@ -1,6 +1,5 @@
 require 'active_support/core_ext/object/try'
 require 'active_support/core_ext/kernel/singleton_class'
-require 'active_support/deprecation'
 require 'thread'
 
 module ActionView
@@ -149,7 +148,8 @@ module ActionView
     end
 
     def mime_type
-      ActiveSupport::Deprecation.warn 'Template#mime_type is deprecated and will be removed in Rails 4.1. Please use type method instead.'
+      message = 'Template#mime_type is deprecated and will be removed in Rails 4.1. Please use type method instead.'
+      ActiveSupport::Deprecation.warn message
       @mime_type ||= Mime::Type.lookup_by_extension(@formats.first.to_s) if @formats.first
     end
 

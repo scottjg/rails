@@ -1,7 +1,6 @@
 module ActiveRecord
   module Tasks # :nodoc:
     class MySQLDatabaseTasks # :nodoc:
-
       DEFAULT_CHARSET     = ENV['CHARSET']   || 'utf8'
       DEFAULT_COLLATION   = ENV['COLLATION'] || 'utf8_unicode_ci'
       ACCESS_DENIED_ERROR = 1045
@@ -16,18 +15,23 @@ module ActiveRecord
         establish_connection configuration_without_database
         connection.create_database configuration['database'], creation_options
         establish_connection configuration
+      rescue ActiveRecord::StatementInvalid => error
+        if /database exists/ === error.message
+          raise DatabaseAlreadyExists
+        else
+          raise
+        end
       rescue error_class => error
-        raise error unless error.errno == ACCESS_DENIED_ERROR
-
-        $stdout.print error.error
-        establish_connection root_configuration_without_database
-        connection.create_database configuration['database'], creation_options
-        connection.execute grant_statement.gsub(/\s+/, ' ').strip
-        establish_connection configuration
-      rescue error_class => error
-        $stderr.puts error.error
-        $stderr.puts "Couldn't create database for #{configuration.inspect}, #{creation_options.inspect}"
-        $stderr.puts "(If you set the charset manually, make sure you have a matching collation)" if configuration['charset']
+        if error.respond_to?(:errno) && error.errno == ACCESS_DENIED_ERROR
+          $stdout.print error.error
+          establish_connection root_configuration_without_database
+          connection.create_database configuration['database'], creation_options
+          connection.execute grant_statement.gsub(/\s+/, ' ').strip
+          establish_connection configuration
+        else
+          $stderr.puts "Couldn't create database for #{configuration.inspect}, #{creation_options.inspect}"
+          $stderr.puts "(If you set the charset manually, make sure you have a matching collation)" if configuration['encoding']
+        end
       end
 
       def drop
@@ -49,19 +53,17 @@ module ActiveRecord
       end
 
       def structure_dump(filename)
-        establish_connection configuration
-        File.open(filename, "w:utf-8") { |f| f << ActiveRecord::Base.connection.structure_dump }
+        args = prepare_command_options('mysqldump')
+        args.concat(["--result-file", "#{filename}"])
+        args.concat(["--no-data"])
+        args.concat(["#{configuration['database']}"])
+        Kernel.system(*args)
       end
 
       def structure_load(filename)
-        args = ['mysql']
-        args.concat(['--user', configuration['username']]) if configuration['username']
-        args << "--password=#{configuration['password']}" if configuration['password']
-        args.concat(['--default-character-set', configuration['charset']]) if configuration['charset']
-        configuration.slice('host', 'port', 'socket', 'database').each do |k, v|
-          args.concat([ "--#{k}", v ]) if v
-        end
+        args = prepare_command_options('mysql')
         args.concat(['--execute', %{SET FOREIGN_KEY_CHECKS = 0; SOURCE #{filename}; SET FOREIGN_KEY_CHECKS = 1}])
+        args.concat(["--database", "#{configuration['database']}"])
         Kernel.system(*args)
       end
 
@@ -76,21 +78,28 @@ module ActiveRecord
       end
 
       def creation_options
-        {
-          charset:   (configuration['charset']   || DEFAULT_CHARSET),
-          collation: (configuration['collation'] || DEFAULT_COLLATION)
-        }
+        Hash.new.tap do |options|
+          options[:charset]     = configuration['encoding']   if configuration.include? 'encoding'
+          options[:collation]   = configuration['collation']  if configuration.include? 'collation'
+
+          # Set default charset only when collation isn't set.
+          options[:charset]   ||= DEFAULT_CHARSET unless options[:collation]
+
+          # Set default collation only when charset is also default.
+          options[:collation] ||= DEFAULT_COLLATION if options[:charset] == DEFAULT_CHARSET
+        end
       end
 
       def error_class
-        case configuration['adapter']
-        when /jdbc/
+        if configuration['adapter'] =~ /jdbc/
           require 'active_record/railties/jdbcmysql_error'
           ArJdbcMySQL::Error
-        when /mysql2/
+        elsif defined?(Mysql2)
           Mysql2::Error
-        else
+        elsif defined?(Mysql)
           Mysql::Error
+        else
+          StandardError
         end
       end
 
@@ -112,6 +121,17 @@ IDENTIFIED BY '#{configuration['password']}' WITH GRANT OPTION;
       def root_password
         $stdout.print "Please provide the root password for your mysql installation\n>"
         $stdin.gets.strip
+      end
+
+      def prepare_command_options(command)
+        args = [command]
+        args.concat(['--user', configuration['username']]) if configuration['username']
+        args << "--password=#{configuration['password']}"  if configuration['password']
+        args.concat(['--default-character-set', configuration['encoding']]) if configuration['encoding']
+        configuration.slice('host', 'port', 'socket').each do |k, v|
+          args.concat([ "--#{k}", v ]) if v
+        end
+        args
       end
     end
   end

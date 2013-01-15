@@ -1,98 +1,24 @@
 
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :whitelist_attributes,      instance_accessor: false
-    mattr_accessor :mass_assignment_sanitizer, instance_accessor: false
-  end
-
   module AttributeAssignment
     extend ActiveSupport::Concern
-    include ActiveModel::MassAssignmentSecurity
+    include ActiveModel::DeprecatedMassAssignmentSecurity
+    include ActiveModel::ForbiddenAttributesProtection
 
-    included do
-      initialize_mass_assignment_sanitizer
-    end
-
-    module ClassMethods
-      def inherited(child) # :nodoc:
-        child.send :initialize_mass_assignment_sanitizer if self == Base
-        super
-      end
-
-      private
-
-      # The primary key and inheritance column can never be set by mass-assignment for security reasons.
-      def attributes_protected_by_default
-        default = [ primary_key, inheritance_column ]
-        default << 'id' unless primary_key.eql? 'id'
-        default
-      end
-
-      def initialize_mass_assignment_sanitizer
-        attr_accessible(nil) if Model.whitelist_attributes
-        self.mass_assignment_sanitizer = Model.mass_assignment_sanitizer if Model.mass_assignment_sanitizer
-      end
-    end
-
-    # Allows you to set all the attributes at once by passing in a hash with keys
-    # matching the attribute names (which again matches the column names).
+    # Allows you to set all the attributes by passing in a hash of attributes with
+    # keys matching the attribute names (which again matches the column names).
     #
-    # If any attributes are protected by either +attr_protected+ or
-    # +attr_accessible+ then only settable attributes will be assigned.
-    #
-    #   class User < ActiveRecord::Base
-    #     attr_protected :is_admin
-    #   end
-    #
-    #   user = User.new
-    #   user.attributes = { :username => 'Phusion', :is_admin => true }
-    #   user.username   # => "Phusion"
-    #   user.is_admin?  # => false
-    def attributes=(new_attributes)
-      return unless new_attributes.is_a?(Hash)
-
-      assign_attributes(new_attributes)
-    end
-
-    # Allows you to set all the attributes for a particular mass-assignment
-    # security role by passing in a hash of attributes with keys matching
-    # the attribute names (which again matches the column names) and the role
-    # name using the :as option.
-    #
-    # To bypass mass-assignment security you can use the :without_protection => true
-    # option.
-    #
-    #   class User < ActiveRecord::Base
-    #     attr_accessible :name
-    #     attr_accessible :name, :is_admin, :as => :admin
-    #   end
-    #
-    #   user = User.new
-    #   user.assign_attributes({ :name => 'Josh', :is_admin => true })
-    #   user.name       # => "Josh"
-    #   user.is_admin?  # => false
-    #
-    #   user = User.new
-    #   user.assign_attributes({ :name => 'Josh', :is_admin => true }, :as => :admin)
-    #   user.name       # => "Josh"
-    #   user.is_admin?  # => true
-    #
-    #   user = User.new
-    #   user.assign_attributes({ :name => 'Josh', :is_admin => true }, :without_protection => true)
-    #   user.name       # => "Josh"
-    #   user.is_admin?  # => true
-    def assign_attributes(new_attributes, options = {})
+    # If the passed hash responds to <tt>permitted?</tt> method and the return value
+    # of this method is +false+ an <tt>ActiveModel::ForbiddenAttributesError</tt>
+    # exception is raised.
+    def assign_attributes(new_attributes)
       return if new_attributes.blank?
 
       attributes                  = new_attributes.stringify_keys
       multi_parameter_attributes  = []
       nested_parameter_attributes = []
-      previous_options            = @mass_assignment_options
-      @mass_assignment_options    = options
 
-      unless options[:without_protection]
-        attributes = sanitize_for_mass_assignment(attributes, mass_assignment_role)
-      end
+      attributes = sanitize_for_mass_assignment(attributes)
 
       attributes.each do |k, v|
         if k.include?("(")
@@ -106,19 +32,9 @@ module ActiveRecord
 
       assign_nested_parameter_attributes(nested_parameter_attributes) unless nested_parameter_attributes.empty?
       assign_multiparameter_attributes(multi_parameter_attributes) unless multi_parameter_attributes.empty?
-    ensure
-      @mass_assignment_options = previous_options
     end
 
-    protected
-
-    def mass_assignment_options
-      @mass_assignment_options ||= {}
-    end
-
-    def mass_assignment_role
-      mass_assignment_options[:as] || :default
-    end
+    alias attributes= assign_attributes
 
     private
 
@@ -141,9 +57,8 @@ module ActiveRecord
     # by calling new on the column type or aggregation type (through composed_of) object with these parameters.
     # So having the pairs written_on(1) = "2004", written_on(2) = "6", written_on(3) = "24", will instantiate
     # written_on (a date type) with Date.new("2004", "6", "24"). You can also specify a typecast character in the
-    # parentheses to have the parameters typecasted before they're used in the constructor. Use i for Fixnum,
-    # f for Float, s for String, and a for Array. If all the values for a given attribute are empty, the
-    # attribute will be set to nil.
+    # parentheses to have the parameters typecasted before they're used in the constructor. Use i for Fixnum and
+    # f for Float. If all the values for a given attribute are empty, the attribute will be set to +nil+.
     def assign_multiparameter_attributes(pairs)
       execute_callstack_for_multiparameter_attributes(
         extract_callstack_for_multiparameter_attributes(pairs)
@@ -217,7 +132,7 @@ module ActiveRecord
         if object.class.send(:create_time_zone_conversion_attribute?, name, column)
           Time.zone.local(*set_values)
         else
-          Time.time_with_datetime_fallback(object.class.default_timezone, *set_values)
+          Time.send(object.class.default_timezone, *set_values)
         end
       end
 

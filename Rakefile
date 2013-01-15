@@ -40,10 +40,10 @@ task :install => :gem do
   version = File.read("RAILS_VERSION").strip
   (PROJECTS - ["railties"]).each do |project|
     puts "INSTALLING #{project}"
-    system("gem install #{project}/pkg/#{project}-#{version}.gem --no-ri --no-rdoc")
+    system("gem install #{project}/pkg/#{project}-#{version}.gem --local --no-ri --no-rdoc")
   end
-  system("gem install railties/pkg/railties-#{version}.gem --no-ri --no-rdoc")
-  system("gem install pkg/rails-#{version}.gem --no-ri --no-rdoc")
+  system("gem install railties/pkg/railties-#{version}.gem --local --no-ri --no-rdoc")
+  system("gem install pkg/rails-#{version}.gem --local --no-ri --no-rdoc")
 end
 
 desc "Generate documentation for the Rails framework"
@@ -75,10 +75,10 @@ RDoc::Task.new do |rdoc|
     rdoc_main.gsub!(/^(?=\S).*?\b(?=Rails)\b/) { "#$&\\" }
     rdoc_main.gsub!(%r{link:/rails/rails/blob/master/(\w+)/README\.rdoc}, "link:files/\\1/README_rdoc.html")
 
-    # Remove Travis and Gemnasium status images from API pages. Only GitHub
-    # README page gets these images. Travis' https build image is used to avoid
-    # GitHub caching: http://about.travis-ci.org/docs/user/status-images
-    rdoc_main.gsub!(%r{^== (Build|Dependency) Status.*}, '')
+    # Remove Travis and Gemnasium status images from API pages. Only the GitHub
+    # README page gets these images. Travis's HTTPS build image is used to
+    # avoid GitHub caching: http://about.travis-ci.org/docs/user/status-images
+    rdoc_main.gsub!(/^== Code Status(\n(?!==).*)*/, '')
 
     File.open(RDOC_MAIN, 'w') do |f|
       f.write(rdoc_main)
@@ -117,8 +117,7 @@ RDoc::Task.new do |rdoc|
 
   rdoc.rdoc_files.include('actionmailer/README.rdoc')
   rdoc.rdoc_files.include('actionmailer/CHANGELOG.md')
-  rdoc.rdoc_files.include('actionmailer/lib/action_mailer/base.rb')
-  rdoc.rdoc_files.include('actionmailer/lib/action_mailer/mail_helper.rb')
+  rdoc.rdoc_files.include('actionmailer/lib/action_mailer/**/*.rb')
   rdoc.rdoc_files.exclude('actionmailer/lib/action_mailer/vendor/*')
 
   rdoc.rdoc_files.include('activesupport/README.rdoc')

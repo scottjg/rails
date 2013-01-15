@@ -1,6 +1,8 @@
+require 'thread_safe'
+
 module ActionView
   class Digestor
-    EXPLICIT_DEPENDENCY = /# Template Dependency: ([^ ]+)/
+    EXPLICIT_DEPENDENCY = /# Template Dependency: (\S+)/
 
     # Matches:
     #   render partial: "comments/comment", collection: commentable.comments
@@ -19,15 +21,19 @@ module ActionView
     /x
 
     cattr_reader(:cache)
-    @@cache = Hash.new
+    @@cache = ThreadSafe::Cache.new
 
     def self.digest(name, format, finder, options = {})
-      cache["#{name}.#{format}"] ||= new(name, format, finder, options).digest
+      cache_key = [name, format] + Array.wrap(options[:dependencies])
+      @@cache[cache_key.join('.')] ||= begin
+        klass = options[:partial] || name.include?("/_") ? PartialDigestor : Digestor
+        klass.new(name, format, finder, options).digest
+      end
     end
 
     attr_reader :name, :format, :finder, :options
 
-    def initialize(name, format, finder, options = {})
+    def initialize(name, format, finder, options={})
       @name, @format, @finder, @options = name, format, finder, options
     end
 
@@ -48,7 +54,7 @@ module ActionView
 
     def nested_dependencies
       dependencies.collect do |dependency|
-        dependencies = Digestor.new(dependency, format, finder, partial: true).nested_dependencies
+        dependencies = PartialDigestor.new(dependency, format, finder).nested_dependencies
         dependencies.any? ? { dependency => dependencies } : dependency
       end
     end
@@ -64,11 +70,11 @@ module ActionView
       end
 
       def directory
-        name.split("/").first
+        name.split("/")[0..-2].join("/")
       end
 
       def partial?
-        options[:partial] || name.include?("/_")
+        false
       end
 
       def source
@@ -76,9 +82,11 @@ module ActionView
       end
 
       def dependency_digest
-        dependencies.collect do |template_name|
+        template_digests = dependencies.collect do |template_name|
           Digestor.digest(template_name, format, finder, partial: true)
-        end.join("-")
+        end
+
+        (template_digests + injected_dependencies).join("-")
       end
 
       def render_dependencies
@@ -100,5 +108,15 @@ module ActionView
       def explicit_dependencies
         source.scan(EXPLICIT_DEPENDENCY).flatten.uniq
       end
+
+      def injected_dependencies
+        Array.wrap(options[:dependencies])
+      end
+  end
+
+  class PartialDigestor < Digestor # :nodoc:
+    def partial?
+      true
+    end
   end
 end

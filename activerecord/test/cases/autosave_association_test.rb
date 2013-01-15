@@ -16,7 +16,6 @@ require 'models/ship_part'
 require 'models/tag'
 require 'models/tagging'
 require 'models/treasure'
-require 'models/company'
 require 'models/eye'
 
 class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
@@ -145,7 +144,7 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
 
     firm = Firm.first
     firm.account = Account.first
-    assert_queries(Firm.partial_updates? ? 0 : 1) { firm.save! }
+    assert_queries(Firm.partial_writes? ? 0 : 1) { firm.save! }
 
     firm = Firm.first.dup
     firm.account = Account.first
@@ -162,16 +161,16 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
   end
 
   def test_callbacks_firing_order_on_update
-    eye = Eye.create(:iris_attributes => {:color => 'honey'})
-    eye.update_attributes(:iris_attributes => {:color => 'green'})
+    eye = Eye.create(iris_attributes: {color: 'honey'})
+    eye.update(iris_attributes: {color: 'green'})
     assert_equal [true, false], eye.after_update_callbacks_stack
   end
 
   def test_callbacks_firing_order_on_save
-    eye = Eye.create(:iris_attributes => {:color => 'honey'})
+    eye = Eye.create(iris_attributes: {color: 'honey'})
     assert_equal [false, false], eye.after_save_callbacks_stack
 
-    eye.update_attributes(:iris_attributes => {:color => 'blue'})
+    eye.update(iris_attributes: {color: 'blue'})
     assert_equal [false, false, false, false], eye.after_save_callbacks_stack
   end
 end

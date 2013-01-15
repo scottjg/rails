@@ -2,7 +2,7 @@ require 'abstract_controller/collector'
 require 'active_support/core_ext/hash/reverse_merge'
 require 'active_support/core_ext/array/extract_options'
 
-module ActionMailer #:nodoc:
+module ActionMailer
   class Collector
     include AbstractController::Collector
     attr_reader :responses
@@ -20,8 +20,8 @@ module ActionMailer #:nodoc:
     end
     alias :all :any
 
-    def custom(mime, options={})
-      options.reverse_merge!(:content_type => mime.to_s)
+    def custom(mime, options = {})
+      options.reverse_merge!(content_type: mime.to_s)
       @context.formats = [mime.to_sym]
       options[:body] = block_given? ? yield : @default_render.call
       @responses << options

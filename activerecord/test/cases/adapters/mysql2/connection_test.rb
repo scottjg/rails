@@ -3,7 +3,7 @@ require "cases/helper"
 class MysqlConnectionTest < ActiveRecord::TestCase
   def setup
     super
-    @connection = ActiveRecord::Model.connection
+    @connection = ActiveRecord::Base.connection
     @connection.extend(LogIntercepter)
     @connection.intercepted = true
   end
@@ -46,10 +46,27 @@ class MysqlConnectionTest < ActiveRecord::TestCase
 
   def test_mysql_strict_mode_disabled_dont_override_global_sql_mode
     run_without_connection do |orig_connection|
-      ActiveRecord::Model.establish_connection(orig_connection.merge({:strict => false}))
-      global_sql_mode = ActiveRecord::Model.connection.exec_query "SELECT @@GLOBAL.sql_mode"
-      session_sql_mode = ActiveRecord::Model.connection.exec_query "SELECT @@SESSION.sql_mode"
+      ActiveRecord::Base.establish_connection(orig_connection.merge({:strict => false}))
+      global_sql_mode = ActiveRecord::Base.connection.exec_query "SELECT @@GLOBAL.sql_mode"
+      session_sql_mode = ActiveRecord::Base.connection.exec_query "SELECT @@SESSION.sql_mode"
       assert_equal global_sql_mode.rows, session_sql_mode.rows
+    end
+  end
+
+  def test_mysql_set_session_variable
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:default_week_format => 3}}))
+      session_mode = ActiveRecord::Base.connection.exec_query "SELECT @@SESSION.DEFAULT_WEEK_FORMAT"
+      assert_equal 3, session_mode.rows.first.first.to_i
+    end
+  end
+
+  def test_mysql_set_session_variable_to_default
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:default_week_format => :default}}))
+      global_mode = ActiveRecord::Base.connection.exec_query "SELECT @@GLOBAL.DEFAULT_WEEK_FORMAT"
+      session_mode = ActiveRecord::Base.connection.exec_query "SELECT @@SESSION.DEFAULT_WEEK_FORMAT"
+      assert_equal global_mode.rows, session_mode.rows
     end
   end
 
@@ -76,11 +93,11 @@ class MysqlConnectionTest < ActiveRecord::TestCase
   private
 
   def run_without_connection
-    original_connection = ActiveRecord::Model.remove_connection
+    original_connection = ActiveRecord::Base.remove_connection
     begin
       yield original_connection
     ensure
-      ActiveRecord::Model.establish_connection(original_connection)
+      ActiveRecord::Base.establish_connection(original_connection)
     end
   end
 end

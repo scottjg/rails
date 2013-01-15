@@ -2,13 +2,11 @@ require 'active_record/connection_adapters/abstract_mysql_adapter'
 require 'active_record/connection_adapters/statement_pool'
 require 'active_support/core_ext/hash/keys'
 
-gem 'mysql', '~> 2.8.1'
+gem 'mysql', '~> 2.9'
 require 'mysql'
 
 class Mysql
   class Time
-    ###
-    # This monkey patch is for test_additional_columns_from_join_table
     def to_date
       Date.new(year, month, day)
     end
@@ -53,7 +51,8 @@ module ActiveRecord
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
     # * <tt>:encoding</tt> - (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection.
     # * <tt>:reconnect</tt> - Defaults to false (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html).
-    # * <tt>:strict</tt> - Defaults to true. Enable STRICT_ALL_TABLES. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.5/en/server-sql-mode.html)
+    # * <tt>:strict</tt> - Defaults to true. Enable STRICT_ALL_TABLES. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html)
+    # * <tt>:variables</tt> - (Optional) A hash session variables to send as `SET @@SESSION.key = value` on each database connection. Use the value `:default` to set a variable to its DEFAULT value. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/set-statement.html).
     # * <tt>:sslca</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslkey</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslcert</tt> - Necessary to use MySQL with an SSL connection.
@@ -152,7 +151,7 @@ module ActiveRecord
       end
 
       def new_column(field, default, type, null, collation) # :nodoc:
-        Column.new(field, default, type, null, collation)
+        Column.new(field, default, type, null, collation, strict_mode?)
       end
 
       def error_number(exception) # :nodoc:
@@ -191,14 +190,15 @@ module ActiveRecord
       end
 
       def reconnect!
+        super
         disconnect!
-        clear_cache!
         connect
       end
 
       # Disconnects from the database if already connected. Otherwise, this
       # method does nothing.
       def disconnect!
+        super
         @connection.close rescue nil
       end
 
@@ -536,20 +536,10 @@ module ActiveRecord
         configure_connection
       end
 
+      # Many Rails applications monkey-patch a replacement of the configure_connection method
+      # and don't call 'super', so leave this here even though it looks superfluous.
       def configure_connection
-        encoding = @config[:encoding]
-        execute("SET NAMES '#{encoding}'", :skip_logging) if encoding
-
-        # By default, MySQL 'where id is null' selects the last inserted id.
-        # Turn this off. http://dev.rubyonrails.org/ticket/6778
-        execute("SET SQL_AUTO_IS_NULL=0", :skip_logging)
-
-        # Make MySQL reject illegal values rather than truncating or
-        # blanking them. See
-        # http://dev.mysql.com/doc/refman/5.5/en/server-sql-mode.html#sqlmode_strict_all_tables
-        if @config.fetch(:strict, true)
-          execute("SET SQL_MODE='STRICT_ALL_TABLES'", :skip_logging)
-        end
+        super
       end
 
       def select(sql, name = nil, binds = [])

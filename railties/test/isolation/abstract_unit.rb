@@ -9,7 +9,7 @@
 require 'fileutils'
 
 require 'bundler/setup' unless defined?(Bundler)
-require 'minitest/autorun'
+require 'active_support/testing/autorun'
 require 'active_support/test_case'
 
 RAILS_FRAMEWORK_ROOT = File.expand_path("#{File.dirname(__FILE__)}/../../..")
@@ -113,14 +113,14 @@ module TestHelpers
       routes = File.read("#{app_path}/config/routes.rb")
       if routes =~ /(\n\s*end\s*)\Z/
         File.open("#{app_path}/config/routes.rb", 'w') do |f|
-          f.puts $` + "\nmatch ':controller(/:action(/:id))(.:format)', :via => :all\n" + $1
+          f.puts $` + "\nmatch ':controller(/:action(/:id))(.:format)', via: :all\n" + $1
         end
       end
 
       add_to_config <<-RUBY
         config.eager_load = false
-        config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"
-        config.session_store :cookie_store, :key => "_myapp_session"
+        config.secret_key_base = "3b7cd727ee24e8444053437c36cc66c4"
+        config.session_store :cookie_store, key: "_myapp_session"
         config.active_support.deprecation = :log
         config.action_controller.allow_forgery_protection = false
       RUBY
@@ -138,8 +138,8 @@ module TestHelpers
 
       app = Class.new(Rails::Application)
       app.config.eager_load = false
-      app.config.secret_token = "3b7cd727ee24e8444053437c36cc66c4"
-      app.config.session_store :cookie_store, :key => "_myapp_session"
+      app.config.secret_key_base = "3b7cd727ee24e8444053437c36cc66c4"
+      app.config.session_store :cookie_store, key: "_myapp_session"
       app.config.active_support.deprecation = :log
 
       yield app if block_given?
@@ -157,7 +157,7 @@ module TestHelpers
       controller :foo, <<-RUBY
         class FooController < ApplicationController
           def index
-            render :text => "foo"
+            render text: "foo"
           end
         end
       RUBY
@@ -206,7 +206,7 @@ module TestHelpers
 
     def script(script)
       Dir.chdir(app_path) do
-        `#{Gem.ruby} #{app_path}/script/rails #{script}`
+        `#{Gem.ruby} #{app_path}/bin/rails #{script}`
       end
     end
 
@@ -253,9 +253,6 @@ module TestHelpers
     def use_frameworks(arr)
       to_remove =  [:actionmailer,
                     :activerecord] - arr
-      if to_remove.include? :activerecord
-        remove_from_config "config.active_record.whitelist_attributes = true"
-      end
       $:.reject! {|path| path =~ %r'/(#{to_remove.join('|')})/' }
     end
 

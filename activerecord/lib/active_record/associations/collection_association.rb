@@ -34,7 +34,7 @@ module ActiveRecord
           reload
         end
 
-        CollectionProxy.new(self)
+        CollectionProxy.new(klass, self)
       end
 
       # Implements the writer method, e.g. foo.items= for Foo.has_many :items
@@ -95,22 +95,22 @@ module ActiveRecord
         first_or_last(:last, *args)
       end
 
-      def build(attributes = {}, options = {}, &block)
+      def build(attributes = {}, &block)
         if attributes.is_a?(Array)
-          attributes.collect { |attr| build(attr, options, &block) }
+          attributes.collect { |attr| build(attr, &block) }
         else
-          add_to_target(build_record(attributes, options)) do |record|
+          add_to_target(build_record(attributes)) do |record|
             yield(record) if block_given?
           end
         end
       end
 
-      def create(attributes = {}, options = {}, &block)
-        create_record(attributes, options, &block)
+      def create(attributes = {}, &block)
+        create_record(attributes, &block)
       end
 
-      def create!(attributes = {}, options = {}, &block)
-        create_record(attributes, options, true, &block)
+      def create!(attributes = {}, &block)
+        create_record(attributes, true, &block)
       end
 
       # Add +records+ to this association. Returns +self+ so method calls may
@@ -158,15 +158,6 @@ module ActiveRecord
         destroy(load_target).tap do
           reset
           loaded!
-        end
-      end
-
-      # Calculate sum using SQL, not Enumerable.
-      def sum(*args)
-        if block_given?
-          scope.sum(*args) { |*block_args| yield(*block_args) }
-        else
-          scope.sum(*args)
         end
       end
 
@@ -364,6 +355,16 @@ module ActiveRecord
         record
       end
 
+      def scope(opts = {})
+        scope = super()
+        scope.none! if opts.fetch(:nullify, true) && null_scope?
+        scope
+      end
+
+      def null_scope?
+        owner.new_record? && !foreign_key_present?
+      end
+
       private
 
         def custom_counter_sql
@@ -373,7 +374,7 @@ module ActiveRecord
             # replace the SELECT clause with COUNT(SELECTS), preserving any hints within /* ... */
             interpolate(options[:finder_sql]).sub(/SELECT\b(\/\*.*?\*\/ )?(.*)\bFROM\b/im) do
               count_with = $2.to_s
-              count_with = '*' if count_with.blank? || count_with =~ /,/
+              count_with = '*' if count_with.blank? || count_with =~ /,/ || count_with =~ /\.\*/
               "SELECT #{$1}COUNT(#{count_with}) FROM"
             end
           end
@@ -412,7 +413,7 @@ module ActiveRecord
           persisted.map! do |record|
             if mem_record = memory.delete(record)
 
-              (record.attribute_names - mem_record.changes.keys).each do |name|
+              ((record.attribute_names & mem_record.attribute_names) - mem_record.changes.keys).each do |name|
                 mem_record[name] = record[name]
               end
 
@@ -425,16 +426,16 @@ module ActiveRecord
           persisted + memory
         end
 
-        def create_record(attributes, options, raise = false, &block)
+        def create_record(attributes, raise = false, &block)
           unless owner.persisted?
             raise ActiveRecord::RecordNotSaved, "You cannot call create unless the parent is saved"
           end
 
           if attributes.is_a?(Array)
-            attributes.collect { |attr| create_record(attr, options, raise, &block) }
+            attributes.collect { |attr| create_record(attr, raise, &block) }
           else
             transaction do
-              add_to_target(build_record(attributes, options)) do |record|
+              add_to_target(build_record(attributes)) do |record|
                 yield(record) if block_given?
                 insert_record(record, true, raise)
               end
@@ -574,7 +575,9 @@ module ActiveRecord
           args.shift if args.first.is_a?(Hash) && args.first.empty?
 
           collection = fetch_first_or_last_using_find?(args) ? scope : load_target
-          collection.send(type, *args).tap {|it| set_inverse_instance it }
+          collection.send(type, *args).tap do |record|
+            set_inverse_instance record if record.is_a? ActiveRecord::Base
+          end
         end
     end
   end

@@ -115,6 +115,7 @@ ActiveRecord::Schema.define do
     t.integer :engines_count
     t.integer :wheels_count
     t.column :lock_version, :integer, :null => false, :default => 0
+    t.timestamps
   end
 
   create_table :categories, :force => true do |t|
@@ -493,6 +494,7 @@ ActiveRecord::Schema.define do
     t.integer    :followers_count, :default => 0
     t.references :best_friend
     t.references :best_friend_of
+    t.integer    :insures, null: false, default: 0
     t.timestamps
   end
 
@@ -621,6 +623,7 @@ ActiveRecord::Schema.define do
   create_table :subscribers, :force => true, :id => false do |t|
     t.string :nick, :null => false
     t.string :name
+    t.column :books_count, :integer, :null => false, :default => 0
   end
   add_index :subscribers, :nick, :unique => true
 
@@ -645,12 +648,6 @@ ActiveRecord::Schema.define do
   create_table :tasks, :force => true do |t|
     t.datetime :starting
     t.datetime :ending
-  end
-
-  create_table :teapots, :force => true do |t|
-    t.string :name
-    t.string :type
-    t.timestamps
   end
 
   create_table :topics, :force => true do |t|
@@ -693,6 +690,7 @@ ActiveRecord::Schema.define do
 
   create_table :treasures, :force => true do |t|
     t.column :name, :string
+    t.column :type, :string
     t.column :looter_id, :integer
     t.column :looter_type, :string
   end
@@ -774,6 +772,7 @@ ActiveRecord::Schema.define do
   end
   create_table :weirds, :force => true do |t|
     t.string 'a$b'
+    t.string 'from'
   end
 
   except 'SQLite' do

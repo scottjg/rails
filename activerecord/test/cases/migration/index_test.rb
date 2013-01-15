@@ -35,7 +35,7 @@ module ActiveRecord
         connection.rename_index(table_name, 'old_idx', 'new_idx')
 
         # if the adapter doesn't support the indexes call, pick defaults that let the test pass
-        refute connection.index_name_exists?(table_name, 'old_idx', false)
+        assert_not connection.index_name_exists?(table_name, 'old_idx', false)
         assert connection.index_name_exists?(table_name, 'new_idx', true)
       end
 
@@ -63,7 +63,7 @@ module ActiveRecord
           connection.add_index(table_name, "foo", :name => too_long_index_name)
         }
 
-        refute connection.index_name_exists?(table_name, too_long_index_name, false)
+        assert_not connection.index_name_exists?(table_name, too_long_index_name, false)
         connection.add_index(table_name, "foo", :name => good_index_name)
 
         assert connection.index_name_exists?(table_name, good_index_name, false)
@@ -75,7 +75,7 @@ module ActiveRecord
         assert connection.index_exists?(table_name, :foo, :name => :symbol_index_name)
 
         connection.remove_index table_name, :name => :symbol_index_name
-        refute connection.index_exists?(table_name, :foo, :name => :symbol_index_name)
+        assert_not connection.index_exists?(table_name, :foo, :name => :symbol_index_name)
       end
 
       def test_index_exists
@@ -89,6 +89,22 @@ module ActiveRecord
         connection.add_index :testings, [:foo, :bar]
 
         assert connection.index_exists?(:testings, [:foo, :bar])
+      end
+
+      def test_valid_index_options
+        assert_raise ArgumentError do
+          connection.add_index :testings, :foo, unqiue: true
+        end
+      end
+
+      def test_deprecated_type_argument
+        message = "Passing a string as third argument of `add_index` is deprecated and will" +
+          " be removed in Rails 4.1." +
+          " Use add_index(:testings, [:foo, :bar], unique: true) instead"
+
+        assert_deprecated message do
+          connection.add_index :testings, [:foo, :bar], "UNIQUE"
+        end
       end
 
       def test_unique_index_exists

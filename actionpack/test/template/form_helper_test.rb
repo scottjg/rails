@@ -400,6 +400,12 @@ class FormHelperTest < ActionView::TestCase
       '<input name="post[secret]" type="hidden" value="0" /><input checked="checked" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
       check_box("post", "secret")
     )
+
+    @post.secret = Set.new(['1'])
+    assert_dom_equal(
+      '<input name="post[secret]" type="hidden" value="0" /><input checked="checked" id="post_secret" name="post[secret]" type="checkbox" value="1" />',
+      check_box("post", "secret")
+    )
   end
 
   def test_check_box_with_include_hidden_false
@@ -517,6 +523,19 @@ class FormHelperTest < ActionView::TestCase
       '<input name="post[comment_ids][]" type="hidden" value="0" /><input checked="checked" id="post_comment_ids_3" name="post[comment_ids][]" type="checkbox" value="3" />',
       check_box("post", "comment_ids", { :multiple => true }, 3)
     )
+  end
+
+  def test_check_box_with_multiple_behavior_and_index
+    @post.comment_ids = [2,3]
+    assert_dom_equal(
+      '<input name="post[foo][comment_ids][]" type="hidden" value="0" /><input id="post_foo_comment_ids_1" name="post[foo][comment_ids][]" type="checkbox" value="1" />',
+      check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+    )
+    assert_dom_equal(
+      '<input name="post[bar][comment_ids][]" type="hidden" value="0" /><input checked="checked" id="post_bar_comment_ids_3" name="post[bar][comment_ids][]" type="checkbox" value="3" />',
+      check_box("post", "comment_ids", { :multiple => true, :index => "bar" }, 3)
+    )
+
   end
 
   def test_checkbox_disabled_disables_hidden_field
@@ -1101,6 +1120,28 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_for_with_collection_radio_buttons_with_custom_builder_block
+    post = Post.new
+    def post.active; false; end
+    form_for(post) do |f|
+      rendered_radio_buttons = f.collection_radio_buttons(:active, [true, false], :to_s, :to_s) do |b|
+        b.label { b.radio_button + b.text }
+      end
+      concat rendered_radio_buttons
+    end
+
+    expected = whole_form("/posts", "new_post" , "new_post") do
+      "<label for='post_active_true'>"+
+      "<input id='post_active_true' name='post[active]' type='radio' value='true' />" +
+      "true</label>" +
+      "<label for='post_active_false'>"+
+      "<input checked='checked' id='post_active_false' name='post[active]' type='radio' value='false' />" +
+      "false</label>"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_form_for_with_collection_check_boxes
     post = Post.new
     def post.tag_ids; [1, 3]; end
@@ -1116,6 +1157,33 @@ class FormHelperTest < ActionView::TestCase
       "<label for='post_tag_ids_2'>Tag 2</label>" +
       "<input checked='checked' id='post_tag_ids_3' name='post[tag_ids][]' type='checkbox' value='3' />" +
       "<label for='post_tag_ids_3'>Tag 3</label>" +
+      "<input name='post[tag_ids][]' type='hidden' value='' />"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
+  def test_form_for_with_collection_check_boxes_with_custom_builder_block
+    post = Post.new
+    def post.tag_ids; [1, 3]; end
+    collection = (1..3).map{|i| [i, "Tag #{i}"] }
+    form_for(post) do |f|
+      rendered_check_boxes = f.collection_check_boxes(:tag_ids, collection, :first, :last) do |b|
+        b.label { b.check_box + b.text }
+      end
+      concat rendered_check_boxes
+    end
+
+    expected = whole_form("/posts", "new_post" , "new_post") do
+      "<label for='post_tag_ids_1'>" +
+      "<input checked='checked' id='post_tag_ids_1' name='post[tag_ids][]' type='checkbox' value='1' />" +
+      "Tag 1</label>" +
+      "<label for='post_tag_ids_2'>" +
+      "<input id='post_tag_ids_2' name='post[tag_ids][]' type='checkbox' value='2' />" +
+      "Tag 2</label>" +
+      "<label for='post_tag_ids_3'>" +
+      "<input checked='checked' id='post_tag_ids_3' name='post[tag_ids][]' type='checkbox' value='3' />" +
+      "Tag 3</label>" +
       "<input name='post[tag_ids][]' type='hidden' value='' />"
     end
 
@@ -1151,7 +1219,6 @@ class FormHelperTest < ActionView::TestCase
 
     assert_dom_equal expected, output_buffer
   end
-
 
   def test_form_for_with_format
     form_for(@post, :format => :json, :html => { :id => "edit_post_123", :class => "edit_post" }) do |f|
@@ -2145,6 +2212,29 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  class FakeAssociationProxy
+    def to_ary
+      [1, 2, 3]
+    end
+  end
+
+  def test_nested_fields_for_with_child_index_option_override_on_a_nested_attributes_collection_association_with_proxy
+    @post.comments = FakeAssociationProxy.new
+
+    form_for(@post) do |f|
+      concat f.fields_for(:comments, Comment.new(321), :child_index => 'abc') { |cf|
+        concat cf.text_field(:name)
+      }
+    end
+
+    expected = whole_form('/posts/123', 'edit_post_123', 'edit_post', :method => 'patch') do
+      '<input id="post_comments_attributes_abc_name" name="post[comments_attributes][abc][name]" type="text" value="comment #321" />' +
+      '<input id="post_comments_attributes_abc_id" name="post[comments_attributes][abc][id]" type="hidden" value="321" />'
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_nested_fields_for_index_method_with_existing_records_on_a_nested_attributes_collection_association
     @post.comments = Array.new(2) { |id| Comment.new(id + 1) }
 
@@ -2672,6 +2762,19 @@ class FormHelperTest < ActionView::TestCase
     assert_deprecated(/Giving a block to FormBuilder is deprecated and has no effect anymore/) do
       builder_class.new(:foo, nil, nil, {}, proc {})
     end
+  end
+
+  def test_form_for_only_instantiates_builder_once
+    initialization_count = 0
+    builder_class = Class.new(ActionView::Helpers::FormBuilder) do
+      define_method :initialize do |*args|
+        super(*args)
+        initialization_count += 1
+      end
+    end
+
+    form_for(@post, builder: builder_class) { }
+    assert_equal 1, initialization_count, 'form builder instantiated more than once'
   end
 
   protected

@@ -231,6 +231,14 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert_equal "2", categories(:sti_test).authors_with_select.first.post_id.to_s
   end
 
+  def test_create_through_has_many_with_piggyback
+    category = categories(:sti_test)
+    ernie = category.authors_with_select.create(:name => 'Ernie')
+    assert_nothing_raised do
+      assert_equal ernie, category.authors_with_select.detect {|a| a.name == 'Ernie'}
+    end
+  end
+
   def test_include_has_many_through
     posts              = Post.all.merge!(:order => 'posts.id').to_a
     posts_with_authors = Post.all.merge!(:includes => :authors, :order => 'posts.id').to_a
@@ -435,8 +443,8 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
 
   def test_has_many_through_uses_conditions_specified_on_the_has_many_association
     author = Author.first
-    assert_present author.comments
-    assert_blank author.nonexistant_comments
+    assert author.comments.present?
+    assert author.nonexistant_comments.blank?
   end
 
   def test_has_many_through_uses_correct_attributes

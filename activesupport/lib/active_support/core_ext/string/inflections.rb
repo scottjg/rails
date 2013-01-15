@@ -38,7 +38,7 @@ class String
   end
 
   # The reverse of +pluralize+, returns the singular form of a word in a string.
-  # 
+  #
   # If the optional parameter +locale+ is specified,
   # the word will be singularized as a word of that language.
   # By default, this paramter is set to <tt>:en</tt>.
@@ -160,7 +160,7 @@ class String
   #   @person = Person.find(1)
   #   # => #<Person id: 1, name: "Donald E. Knuth">
   #
-  #   <%= link_to(@person.name, person_path %>
+  #   <%= link_to(@person.name, person_path) %>
   #   # => <a href="/person/1-donald-e-knuth">Donald E. Knuth</a>
   def parameterize(sep = '-')
     ActiveSupport::Inflector.parameterize(self, sep)
@@ -193,8 +193,8 @@ class String
   # Capitalizes the first word, turns underscores into spaces, and strips '_id'.
   # Like +titleize+, this is meant for creating pretty output.
   #
-  #   'employee_salary' # => "Employee salary"
-  #   'author_id'       # => "Author"
+  #   'employee_salary'.humanize # => "Employee salary"
+  #   'author_id'.humanize       # => "Author"
   def humanize
     ActiveSupport::Inflector.humanize(self)
   end

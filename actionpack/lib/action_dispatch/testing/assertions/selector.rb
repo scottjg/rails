@@ -155,8 +155,6 @@ module ActionDispatch
       # If the method is called with a block, once all equality tests are
       # evaluated the block is called with an array of all matched elements.
       #
-      # ==== Examples
-      #
       #   # At least one form element
       #   assert_select "form"
       #
@@ -167,7 +165,7 @@ module ActionDispatch
       #   assert_select "title", "Welcome"
       #
       #   # Page title is "Welcome" and there is only one title element
-      #   assert_select "title", {:count => 1, :text => "Welcome"},
+      #   assert_select "title", {count: 1, text: "Welcome"},
       #       "Wrong title or more than one title element"
       #
       #   # Page contains no forms

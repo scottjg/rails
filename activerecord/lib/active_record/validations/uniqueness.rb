@@ -1,10 +1,8 @@
-require 'active_support/core_ext/array/prepend_and_append'
-
 module ActiveRecord
   module Validations
-    class UniquenessValidator < ActiveModel::EachValidator #:nodoc:
+    class UniquenessValidator < ActiveModel::EachValidator # :nodoc:
       def initialize(options)
-        super(options.reverse_merge(:case_sensitive => true))
+        super({ case_sensitive: true }.merge!(options))
       end
 
       # Unfortunately, we have to tie Uniqueness validators to a class.
@@ -15,34 +13,19 @@ module ActiveRecord
       def validate_each(record, attribute, value)
         finder_class = find_finder_class_for(record)
         table = finder_class.arel_table
-
-        coder = record.class.serialized_attributes[attribute.to_s]
-
-        if value && coder
-          value = coder.dump value
-        end
+        value = deserialize_attribute(record, attribute, value)
 
         relation = build_relation(finder_class, table, attribute, value)
-        relation = relation.and(table[finder_class.primary_key.to_sym].not_eq(record.send(:id))) if record.persisted?
-
-        Array(options[:scope]).each do |scope_item|
-          scope_value = record.read_attribute(scope_item)
-          reflection = record.class.reflect_on_association(scope_item)
-          if reflection
-            scope_value = record.send(reflection.foreign_key)
-            scope_item = reflection.foreign_key
-          end
-          relation = relation.and(table[scope_item].eq(scope_value))
-        end
-
+        relation = relation.and(table[finder_class.primary_key.to_sym].not_eq(record.id)) if record.persisted?
+        relation = scope_relation(record, table, relation)
         relation = finder_class.unscoped.where(relation)
-
-        if options[:conditions]
-          relation = relation.merge(options[:conditions])
-        end
+        relation.merge!(options[:conditions]) if options[:conditions]
 
         if relation.exists?
-          record.errors.add(attribute, :taken, options.except(:case_sensitive, :scope, :conditions).merge(:value => value))
+          error_options = options.except(:case_sensitive, :scope, :conditions)
+          error_options[:value] = value
+
+          record.errors.add(attribute, :taken, error_options)
         end
       end
 
@@ -57,32 +40,49 @@ module ActiveRecord
         class_hierarchy = [record.class]
 
         while class_hierarchy.first != @klass
-          class_hierarchy.prepend(class_hierarchy.first.superclass)
+          class_hierarchy.unshift(class_hierarchy.first.superclass)
         end
 
         class_hierarchy.detect { |klass| !klass.abstract_class? }
       end
 
       def build_relation(klass, table, attribute, value) #:nodoc:
-        reflection = klass.reflect_on_association(attribute)
-        if reflection
-          column = klass.columns_hash[reflection.foreign_key]
+        if reflection = klass.reflect_on_association(attribute)
           attribute = reflection.foreign_key
           value = value.attributes[reflection.primary_key_column.name]
-        else
-          column = klass.columns_hash[attribute.to_s]
         end
-        value = column.limit ? value.to_s[0, column.limit] : value.to_s if !value.nil? && column.text?
+
+        column = klass.columns_hash[attribute.to_s]
+        value  = klass.connection.type_cast(value, column)
+        value  = value.to_s[0, column.limit] if value && column.limit && column.text?
 
         if !options[:case_sensitive] && value && column.text?
           # will use SQL LOWER function before comparison, unless it detects a case insensitive collation
-          relation = klass.connection.case_insensitive_comparison(table, attribute, column, value)
+          klass.connection.case_insensitive_comparison(table, attribute, column, value)
         else
-          value    = klass.connection.case_sensitive_modifier(value) unless value.nil?
-          relation = table[attribute].eq(value)
+          value = klass.connection.case_sensitive_modifier(value) unless value.nil?
+          table[attribute].eq(value)
+        end
+      end
+
+      def scope_relation(record, table, relation)
+        Array(options[:scope]).each do |scope_item|
+          if reflection = record.class.reflect_on_association(scope_item)
+            scope_value = record.send(reflection.foreign_key)
+            scope_item  = reflection.foreign_key
+          else
+            scope_value = record.read_attribute(scope_item)
+          end
+          relation = relation.and(table[scope_item].eq(scope_value))
         end
 
         relation
+      end
+
+      def deserialize_attribute(record, attribute, value)
+        coder = record.class.serialized_attributes[attribute.to_s]
+        value = coder.dump value if value && coder
+        value
       end
     end
 
@@ -199,7 +199,7 @@ module ActiveRecord
       # can catch it and restart the transaction (e.g. by telling the user
       # that the title already exists, and asking him to re-enter the title).
       # This technique is also known as optimistic concurrency control:
-      # http://en.wikipedia.org/wiki/Optimistic_concurrency_control
+      # http://en.wikipedia.org/wiki/Optimistic_concurrency_control.
       #
       # The bundled ActiveRecord::ConnectionAdapters distinguish unique index
       # constraint errors from other types of database errors by throwing an
@@ -209,10 +209,10 @@ module ActiveRecord
       #
       # The following bundled adapters throw the ActiveRecord::RecordNotUnique exception:
       #
-      # * ActiveRecord::ConnectionAdapters::MysqlAdapter
-      # * ActiveRecord::ConnectionAdapters::Mysql2Adapter
-      # * ActiveRecord::ConnectionAdapters::SQLite3Adapter
-      # * ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
+      # * ActiveRecord::ConnectionAdapters::MysqlAdapter.
+      # * ActiveRecord::ConnectionAdapters::Mysql2Adapter.
+      # * ActiveRecord::ConnectionAdapters::SQLite3Adapter.
+      # * ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.
       def validates_uniqueness_of(*attr_names)
         validates_with UniquenessValidator, _merge_attributes(attr_names)
       end

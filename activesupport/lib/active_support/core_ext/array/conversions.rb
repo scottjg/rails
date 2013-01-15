@@ -1,12 +1,14 @@
 require 'active_support/xml_mini'
 require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/string/inflections'
+require 'active_support/core_ext/object/to_param'
+require 'active_support/core_ext/object/to_query'
 
 class Array
   # Converts the array to a comma-separated sentence where the last element is
   # joined by the connector word.
   #
-  # You can pass the following options to change the default behaviour. If you
+  # You can pass the following options to change the default behavior. If you
   # pass an option key that doesn't exist in the list below, it will raise an
   # <tt>ArgumentError</tt>.
   #
@@ -24,7 +26,7 @@ class Array
   #
   #   [].to_sentence                      # => ""
   #   ['one'].to_sentence                 # => "one"
-  #   ['one', 'two'].to_sentence          # => "one and two"
+  #   ['one', 'two'].to_sentence          # => "one and two"
   #   ['one', 'two', 'three'].to_sentence # => "one, two, and three"
   #
   #   ['one', 'two'].to_sentence(passing: 'invalid option')
@@ -39,7 +41,7 @@ class Array
   # Examples using <tt>:locale</tt> option:
   #
   #   # Given this locale dictionary:
-  #   # 
+  #   # 
   #   #   es:
   #   #     support:
   #   #       array:
@@ -51,7 +53,7 @@ class Array
   #   # => "uno y dos"
   #
   #   ['uno', 'dos', 'tres'].to_sentence(locale: :es)
-  #   # => "uno o dos o al menos tres"
+  #   # => "uno o dos o al menos tres"
   def to_sentence(options = {})
     options.assert_valid_keys(:words_connector, :two_words_connector, :last_word_connector, :locale)
 
@@ -142,7 +144,7 @@ class Array
   #
   # Otherwise the root element is "objects":
   #
-  #   [{:foo => 1, :bar => 2}, {:baz => 3}].to_xml
+  #   [{ foo: 1, bar: 2}, { baz: 3}].to_xml
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <objects type="array">
@@ -164,7 +166,7 @@ class Array
   #
   # To ensure a meaningful root element use the <tt>:root</tt> option:
   #
-  #   customer_with_no_projects.projects.to_xml(:root => "projects")
+  #   customer_with_no_projects.projects.to_xml(root: 'projects')
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <projects type="array"/>
@@ -174,7 +176,7 @@ class Array
   #
   # The +options+ hash is passed downwards:
   #
-  #   Message.all.to_xml(:skip_types => true)
+  #   Message.all.to_xml(skip_types: true)
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <messages>
@@ -192,7 +194,7 @@ class Array
 
     options = options.dup
     options[:indent]  ||= 2
-    options[:builder] ||= Builder::XmlMarkup.new(:indent => options[:indent])
+    options[:builder] ||= Builder::XmlMarkup.new(indent: options[:indent])
     options[:root]    ||= \
       if first.class != Hash && all? { |e| e.is_a?(first.class) }
         underscored = ActiveSupport::Inflector.underscore(first.class.name)
@@ -206,12 +208,12 @@ class Array
 
     root = ActiveSupport::XmlMini.rename_key(options[:root].to_s, options)
     children = options.delete(:children) || root.singularize
-    attributes = options[:skip_types] ? {} : {:type => 'array'}
+    attributes = options[:skip_types] ? {} : { type: 'array' }
 
     if empty?
       builder.tag!(root, attributes)
     else
-      builder.__send__(:method_missing, root, attributes) do
+      builder.tag!(root, attributes) do
         each { |value| ActiveSupport::XmlMini.to_tag(children, value, options) }
         yield builder if block_given?
       end

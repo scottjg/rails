@@ -37,6 +37,20 @@ module ActiveRecord
         super
       end
 
+      def concat_records(records)
+        ensure_not_nested
+
+        records = super
+
+        if owner.new_record? && records
+          records.flatten.each do |record|
+            build_through_record(record)
+          end
+        end
+
+        records
+      end
+
       def insert_record(record, validate = true, raise = false)
         ensure_not_nested
 
@@ -82,10 +96,10 @@ module ActiveRecord
           @through_records.delete(record.object_id)
         end
 
-        def build_record(attributes, options = {})
+        def build_record(attributes)
           ensure_not_nested
 
-          record = super(attributes, options)
+          record = super(attributes)
 
           inverse = source_reflection.inverse_of
           if inverse
@@ -100,11 +114,7 @@ module ActiveRecord
         end
 
         def target_reflection_has_associated_record?
-          if through_reflection.macro == :belongs_to && owner[through_reflection.foreign_key].blank?
-            false
-          else
-            true
-          end
+          !(through_reflection.macro == :belongs_to && owner[through_reflection.foreign_key].blank?)
         end
 
         def update_through_counter?(method)
@@ -138,6 +148,11 @@ module ActiveRecord
           end
 
           delete_through_records(records)
+
+          if source_reflection.options[:counter_cache]
+            counter = source_reflection.counter_cache_column
+            klass.decrement_counter counter, records.map(&:id)
+          end
 
           if through_reflection.macro == :has_many && update_through_counter?(method)
             update_counter(-count, through_reflection)

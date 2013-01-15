@@ -1,12 +1,12 @@
 require 'abstract_unit'
+require 'env_helpers'
 require 'rails/commands/console'
 
 class Rails::ConsoleTest < ActiveSupport::TestCase
+  include EnvHelpers
+
   class FakeConsole
     def self.start; end
-  end
-
-  def setup
   end
 
   def test_sandbox_option
@@ -58,8 +58,8 @@ class Rails::ConsoleTest < ActiveSupport::TestCase
   end
 
   def test_console_defaults_to_IRB
-    config = mock("config", :console => nil)
-    app = mock("app", :config => config)
+    config = mock("config", console: nil)
+    app = mock("app", config: config)
     app.expects(:load_console).returns(nil)
 
     assert_equal IRB, Rails::Console.new(app).console
@@ -68,40 +68,53 @@ class Rails::ConsoleTest < ActiveSupport::TestCase
   def test_default_environment_with_no_rails_env
     with_rails_env nil do
       start
-      assert_match /\sdevelopment\s/, output
+      assert_match(/\sdevelopment\s/, output)
     end
   end
 
   def test_default_environment_with_rails_env
     with_rails_env 'special-production' do
       start
-      assert_match /\sspecial-production\s/, output
+      assert_match(/\sspecial-production\s/, output)
     end
   end
-  
+
+  def test_default_environment_with_rack_env
+    with_rack_env 'production' do
+      start
+      assert_match(/\sproduction\s/, output)
+    end
+  end
+
   def test_e_option
     start ['-e', 'special-production']
-    assert_match /\sspecial-production\s/, output
+    assert_match(/\sspecial-production\s/, output)
   end
 
   def test_environment_option
     start ['--environment=special-production']
-    assert_match /\sspecial-production\s/, output
+    assert_match(/\sspecial-production\s/, output)
   end
 
   def test_rails_env_is_production_when_first_argument_is_p
     start ['p']
-    assert_match /\sproduction\s/, output
+    assert_match(/\sproduction\s/, output)
   end
 
   def test_rails_env_is_test_when_first_argument_is_t
     start ['t']
-    assert_match /\stest\s/, output
+    assert_match(/\stest\s/, output)
   end
 
   def test_rails_env_is_development_when_argument_is_d
     start ['d']
-    assert_match /\sdevelopment\s/, output
+    assert_match(/\sdevelopment\s/, output)
+  end
+
+  def test_rails_env_is_dev_when_argument_is_dev_and_dev_env_is_present
+    Rails::Console.stubs(:available_environments).returns(['dev'])
+    options = Rails::Console.parse_arguments(['dev'])
+    assert_match('dev', options[:environment])
   end
 
   private
@@ -110,13 +123,13 @@ class Rails::ConsoleTest < ActiveSupport::TestCase
 
   def start(argv = [])
     rails_console = Rails::Console.new(app, parse_arguments(argv))
-    @output = output = capture(:stdout) { rails_console.start }
+    @output = capture(:stdout) { rails_console.start }
   end
 
   def app
     @app ||= begin
-      config = mock("config", :console => FakeConsole)
-      app = mock("app", :config => config)
+      config = mock("config", console: FakeConsole)
+      app = mock("app", config: config)
       app.stubs(:sandbox=).returns(nil)
       app.expects(:load_console)
       app
@@ -125,13 +138,5 @@ class Rails::ConsoleTest < ActiveSupport::TestCase
 
   def parse_arguments(args)
     Rails::Console.parse_arguments(args)
-  end
-
-  def with_rails_env(env)
-    original_rails_env = ENV['RAILS_ENV']
-    ENV['RAILS_ENV'] = env
-    yield
-  ensure
-    ENV['RAILS_ENV'] = original_rails_env
   end
 end

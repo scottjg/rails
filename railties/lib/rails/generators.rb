@@ -23,41 +23,40 @@ module Rails
     mattr_accessor :namespace
 
     DEFAULT_ALIASES = {
-      :rails => {
-        :actions => '-a',
-        :orm => '-o',
-        :javascripts => '-j',
-        :javascript_engine => '-je',
-        :resource_controller => '-c',
-        :scaffold_controller => '-c',
-        :stylesheets => '-y',
-        :stylesheet_engine => '-se',
-        :template_engine => '-e',
-        :test_framework => '-t'
+      rails: {
+        actions: '-a',
+        orm: '-o',
+        javascripts: '-j',
+        javascript_engine: '-je',
+        resource_controller: '-c',
+        scaffold_controller: '-c',
+        stylesheets: '-y',
+        stylesheet_engine: '-se',
+        template_engine: '-e',
+        test_framework: '-t'
       },
 
-      :test_unit => {
-        :fixture_replacement => '-r',
+      test_unit: {
+        fixture_replacement: '-r',
       }
     }
 
     DEFAULT_OPTIONS = {
-      :rails => {
-        :assets => true,
-        :force_plural => false,
-        :helper => true,
-        :integration_tool => nil,
-        :javascripts => true,
-        :javascript_engine => :js,
-        :orm => false,
-        :performance_tool => nil,
-        :resource_controller => :controller,
-        :resource_route => true,
-        :scaffold_controller => :scaffold_controller,
-        :stylesheets => true,
-        :stylesheet_engine => :css,
-        :test_framework => false,
-        :template_engine => :erb
+      rails: {
+        assets: true,
+        force_plural: false,
+        helper: true,
+        integration_tool: nil,
+        javascripts: true,
+        javascript_engine: :js,
+        orm: false,
+        resource_controller: :controller,
+        resource_route: true,
+        scaffold_controller: :scaffold_controller,
+        stylesheets: true,
+        stylesheet_engine: :css,
+        test_framework: false,
+        template_engine: :erb
       }
     }
 
@@ -172,16 +171,13 @@ module Rails
           "resource_route",
           "#{orm}:migration",
           "#{orm}:model",
-          "#{orm}:observer",
           "#{test}:controller",
           "#{test}:helper",
           "#{test}:integration",
           "#{test}:mailer",
           "#{test}:model",
-          "#{test}:observer",
           "#{test}:scaffold",
           "#{test}:view",
-          "#{test}:performance",
           "#{template}:controller",
           "#{template}:scaffold",
           "#{template}:mailer",

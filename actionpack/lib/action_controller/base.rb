@@ -1,4 +1,5 @@
 require "action_controller/log_subscriber"
+require "action_controller/metal/params_wrapper"
 
 module ActionController
   # Action Controllers are the core of a web request in \Rails. They are made up of one or more actions that are executed
@@ -43,7 +44,7 @@ module ActionController
   #
   #   def server_ip
   #     location = request.env["SERVER_ADDR"]
-  #     render :text => "This server hosted at #{location}"
+  #     render text: "This server hosted at #{location}"
   #   end
   #
   # == Parameters
@@ -113,9 +114,9 @@ module ActionController
   #   def search
   #     @results = Search.find(params[:query])
   #     case @results.count
-  #       when 0 then render :action => "no_results"
-  #       when 1 then render :action => "show"
-  #       when 2..10 then render :action => "show_many"
+  #       when 0 then render action: "no_results"
+  #       when 1 then render action: "show"
+  #       when 2..10 then render action: "show_many"
   #     end
   #   end
   #
@@ -131,7 +132,7 @@ module ActionController
   #     @entry = Entry.new(params[:entry])
   #     if @entry.save
   #       # The entry was saved correctly, redirect to show
-  #       redirect_to :action => 'show', :id => @entry.id
+  #       redirect_to action: 'show', id: @entry.id
   #     else
   #       # things didn't go so well, do something else
   #     end
@@ -148,21 +149,38 @@ module ActionController
   # An action may contain only a single render or a single redirect. Attempting to try to do either again will result in a DoubleRenderError:
   #
   #   def do_something
-  #     redirect_to :action => "elsewhere"
-  #     render :action => "overthere" # raises DoubleRenderError
+  #     redirect_to action: "elsewhere"
+  #     render action: "overthere" # raises DoubleRenderError
   #   end
   #
   # If you need to redirect on the condition of something, then be sure to add "and return" to halt execution.
   #
   #   def do_something
-  #     redirect_to(:action => "elsewhere") and return if monkeys.nil?
-  #     render :action => "overthere" # won't be called if monkeys is nil
+  #     redirect_to(action: "elsewhere") and return if monkeys.nil?
+  #     render action: "overthere" # won't be called if monkeys is nil
   #   end
   #
   class Base < Metal
     abstract!
 
-    # Shortcut helper that returns all the ActionController::Base modules except the ones passed in the argument:
+    # We document the request and response methods here because albeit they are
+    # implemented in ActionController::Metal, the type of the returned objects
+    # is unknown at that level.
+
+    ##
+    # :method: request
+    #
+    # Returns an ActionDispatch::Request instance that represents the
+    # current request.
+
+    ##
+    # :method: response
+    #
+    # Returns an ActionDispatch::Response that represents the current
+    # response.
+
+    # Shortcut helper that returns all the modules included in
+    # ActionController::Base except the ones passed as arguments:
     #
     #   class MetalController
     #     ActionController::Base.without_modules(:ParamsWrapper, :Streaming).each do |left|
@@ -170,8 +188,9 @@ module ActionController
     #     end
     #   end
     #
-    # This gives better control over what you want to exclude and makes it easier
-    # to create a bare controller class, instead of listing the modules required manually.
+    # This gives better control over what you want to exclude and makes it
+    # easier to create a bare controller class, instead of listing the modules
+    # required manually.
     def self.without_modules(*modules)
       modules = modules.map do |m|
         m.is_a?(Symbol) ? ActionController.const_get(m) : m
@@ -196,6 +215,7 @@ module ActionController
       Caching,
       MimeResponds,
       ImplicitRender,
+      StrongParameters,
 
       Cookies,
       Flash,

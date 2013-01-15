@@ -20,24 +20,46 @@ module ActiveRecord
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
     end
 
-    def test_creates_database_with_default_options
+    def test_creates_database_with_default_encoding_and_collation
       @connection.expects(:create_database).
-        with('my-app-db', {:charset => 'utf8', :collation => 'utf8_unicode_ci'})
+        with('my-app-db', charset: 'utf8', collation: 'utf8_unicode_ci')
 
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
     end
 
-    def test_creates_database_with_given_options
+    def test_creates_database_with_given_encoding_and_default_collation
       @connection.expects(:create_database).
-        with('my-app-db', {:charset => 'latin', :collation => 'latin_ci'})
+        with('my-app-db', charset: 'utf8', collation: 'utf8_unicode_ci')
 
-      ActiveRecord::Tasks::DatabaseTasks.create @configuration.merge(
-        'charset' => 'latin', 'collation' => 'latin_ci'
-      )
+      ActiveRecord::Tasks::DatabaseTasks.create @configuration.merge('encoding' => 'utf8')
+    end
+
+    def test_creates_database_with_given_encoding_and_no_collation
+      @connection.expects(:create_database).
+        with('my-app-db', charset: 'latin1')
+
+      ActiveRecord::Tasks::DatabaseTasks.create @configuration.merge('encoding' => 'latin1')
+    end
+
+    def test_creates_database_with_given_collation_and_no_encoding
+      @connection.expects(:create_database).
+        with('my-app-db', collation: 'latin1_swedish_ci')
+
+      ActiveRecord::Tasks::DatabaseTasks.create @configuration.merge('collation' => 'latin1_swedish_ci')
     end
 
     def test_establishes_connection_to_database
       ActiveRecord::Base.expects(:establish_connection).with(@configuration)
+
+      ActiveRecord::Tasks::DatabaseTasks.create @configuration
+    end
+
+    def test_create_when_database_exists_outputs_info_to_stderr
+      $stderr.expects(:puts).with("my-app-db already exists").once
+
+      ActiveRecord::Base.connection.stubs(:create_database).raises(
+        ActiveRecord::StatementInvalid.new("Can't create database 'dev'; database exists:")
+      )
 
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
     end
@@ -62,8 +84,9 @@ module ActiveRecord
       $stdout.stubs(:print).returns(nil)
       @error.stubs(:errno).returns(1045)
       ActiveRecord::Base.stubs(:connection).returns(@connection)
-      ActiveRecord::Base.stubs(:establish_connection).raises(@error).then.
-        returns(true)
+      ActiveRecord::Base.stubs(:establish_connection).
+        raises(@error).
+        then.returns(true)
     end
 
     def test_root_password_is_requested
@@ -74,12 +97,12 @@ module ActiveRecord
     end
 
     def test_connection_established_as_root
-      ActiveRecord::Base.expects(:establish_connection).with({
+      ActiveRecord::Base.expects(:establish_connection).with(
         'adapter'  => 'mysql',
         'database' => nil,
         'username' => 'root',
         'password' => 'secret'
-      })
+      )
 
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
     end
@@ -99,12 +122,12 @@ module ActiveRecord
 
     def test_connection_established_as_normal_user
       ActiveRecord::Base.expects(:establish_connection).returns do
-        ActiveRecord::Base.expects(:establish_connection).with({
+        ActiveRecord::Base.expects(:establish_connection).with(
           'adapter'  => 'mysql',
           'database' => 'my-app-db',
           'username' => 'pat',
           'password' => 'secret'
-        })
+        )
 
         raise @error
       end
@@ -166,18 +189,17 @@ module ActiveRecord
 
     def test_recreates_database_with_the_default_options
       @connection.expects(:recreate_database).
-        with('test-db', {:charset => 'utf8', :collation => 'utf8_unicode_ci'})
+        with('test-db', charset: 'utf8', collation: 'utf8_unicode_ci')
 
       ActiveRecord::Tasks::DatabaseTasks.purge @configuration
     end
 
     def test_recreates_database_with_the_given_options
       @connection.expects(:recreate_database).
-        with('test-db', {:charset => 'latin', :collation => 'latin_ci'})
+        with('test-db', charset: 'latin', collation: 'latin1_swedish_ci')
 
       ActiveRecord::Tasks::DatabaseTasks.purge @configuration.merge(
-        'charset' => 'latin', 'collation' => 'latin_ci'
-      )
+        'encoding' => 'latin', 'collation' => 'latin1_swedish_ci')
     end
   end
 
@@ -219,44 +241,31 @@ module ActiveRecord
 
   class MySQLStructureDumpTest < ActiveRecord::TestCase
     def setup
-      @connection    = stub(:structure_dump => true)
       @configuration = {
         'adapter'  => 'mysql',
         'database' => 'test-db'
       }
-
-      ActiveRecord::Base.stubs(:connection).returns(@connection)
-      ActiveRecord::Base.stubs(:establish_connection).returns(true)
     end
 
     def test_structure_dump
       filename = "awesome-file.sql"
-      ActiveRecord::Base.expects(:establish_connection).with(@configuration)
-      @connection.expects(:structure_dump)
+      Kernel.expects(:system).with("mysqldump", "--result-file", filename, "--no-data", "test-db")
 
       ActiveRecord::Tasks::DatabaseTasks.structure_dump(@configuration, filename)
-      assert File.exists?(filename)
-    ensure
-      FileUtils.rm(filename)
     end
   end
 
   class MySQLStructureLoadTest < ActiveRecord::TestCase
     def setup
-      @connection    = stub
       @configuration = {
         'adapter'  => 'mysql',
         'database' => 'test-db'
       }
-
-      ActiveRecord::Base.stubs(:connection).returns(@connection)
-      ActiveRecord::Base.stubs(:establish_connection).returns(true)
-      Kernel.stubs(:system)
     end
 
     def test_structure_load
       filename = "awesome-file.sql"
-      Kernel.expects(:system).with('mysql', '--database', 'test-db', '--execute', %{SET FOREIGN_KEY_CHECKS = 0; SOURCE #{filename}; SET FOREIGN_KEY_CHECKS = 1})
+      Kernel.expects(:system).with('mysql', '--execute', %{SET FOREIGN_KEY_CHECKS = 0; SOURCE #{filename}; SET FOREIGN_KEY_CHECKS = 1}, "--database", "test-db")
 
       ActiveRecord::Tasks::DatabaseTasks.structure_load(@configuration, filename)
     end

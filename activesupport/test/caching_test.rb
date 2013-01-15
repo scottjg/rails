@@ -1,8 +1,23 @@
 require 'logger'
 require 'abstract_unit'
 require 'active_support/cache'
+require 'dependecies_test_helpers'
 
 class CacheKeyTest < ActiveSupport::TestCase
+  def test_entry_legacy_optional_ivars
+    legacy = Class.new(ActiveSupport::Cache::Entry) do
+      def initialize(value, options = {})
+        @value = value
+        @expires_in = nil
+        @created_at = nil
+        super
+      end
+    end
+
+    entry = legacy.new 'foo'
+    assert_equal 'foo', entry.value
+  end
+
   def test_expand_cache_key
     assert_equal '1/2/true', ActiveSupport::Cache.expand_cache_key([1, '2', true])
     assert_equal 'name/1/2/true', ActiveSupport::Cache.expand_cache_key([1, '2', true], :name)
@@ -69,7 +84,7 @@ class CacheKeyTest < ActiveSupport::TestCase
   def test_expand_cache_key_of_true
     assert_equal 'true', ActiveSupport::Cache.expand_cache_key(true)
   end
-  
+
   def test_expand_cache_key_of_array_like_object
     assert_equal 'foo/bar/baz', ActiveSupport::Cache.expand_cache_key(%w{foo bar baz}.to_enum)
   end
@@ -183,6 +198,16 @@ module CacheStoreBehavior
     assert_equal 'baz', @cache.fetch('foo') { 'baz' }
   end
 
+  def test_fetch_with_cache_miss_passes_key_to_block
+    cache_miss = false
+    assert_equal 3, @cache.fetch('foo') { |key| cache_miss = true; key.length }
+    assert cache_miss
+
+    cache_miss = false
+    assert_equal 3, @cache.fetch('foo') { |key| cache_miss = true; key.length }
+    assert !cache_miss
+  end
+
   def test_fetch_with_forced_cache_miss
     @cache.write('foo', 'bar')
     @cache.expects(:read).never
@@ -224,25 +249,22 @@ module CacheStoreBehavior
   end
 
   def test_read_multi_with_expires
-    @cache.write('foo', 'bar', :expires_in => 0.001)
+    time = Time.now
+    @cache.write('foo', 'bar', :expires_in => 10)
     @cache.write('fu', 'baz')
     @cache.write('fud', 'biz')
-    sleep(0.002)
+    Time.stubs(:now).returns(time + 11)
     assert_equal({"fu" => "baz"}, @cache.read_multi('foo', 'fu'))
   end
 
   def test_read_and_write_compressed_small_data
     @cache.write('foo', 'bar', :compress => true)
-    raw_value = @cache.send(:read_entry, 'foo', {}).raw_value
     assert_equal 'bar', @cache.read('foo')
-    assert_equal 'bar', Marshal.load(raw_value)
   end
 
   def test_read_and_write_compressed_large_data
     @cache.write('foo', 'bar', :compress => true, :compress_threshold => 2)
-    raw_value = @cache.send(:read_entry, 'foo', {}).raw_value
     assert_equal 'bar', @cache.read('foo')
-    assert_equal 'bar', Marshal.load(Zlib::Inflate.inflate(raw_value))
   end
 
   def test_read_and_write_compressed_nil
@@ -301,14 +323,6 @@ module CacheStoreBehavior
     assert !@cache.exist?('foo')
   end
 
-  def test_read_should_return_a_different_object_id_each_time_it_is_called
-    @cache.write('foo', 'bar')
-    assert_not_equal @cache.read('foo').object_id, @cache.read('foo').object_id
-    value = @cache.read('foo')
-    value << 'bingo'
-    assert_not_equal value, @cache.read('foo')
-  end
-
   def test_original_store_objects_should_not_be_immutable
     bar = 'bar'
     @cache.write('foo', bar)
@@ -363,7 +377,7 @@ module CacheStoreBehavior
     rescue ArgumentError
     end
     assert_equal "bar", @cache.read('foo')
-    Time.stubs(:now).returns(time + 71)
+    Time.stubs(:now).returns(time + 91)
     assert_nil @cache.read('foo')
   end
 
@@ -549,6 +563,45 @@ module LocalCacheBehavior
   end
 end
 
+module AutoloadingCacheBehavior
+  include DependeciesTestHelpers
+  def test_simple_autoloading
+    with_autoloading_fixtures do
+      @cache.write('foo', E.new)
+    end
+
+    remove_constants(:E)
+    ActiveSupport::Dependencies.clear
+
+    with_autoloading_fixtures do
+      assert_kind_of E, @cache.read('foo')
+    end
+
+    remove_constants(:E)
+    ActiveSupport::Dependencies.clear
+  end
+
+  def test_two_classes_autoloading
+    with_autoloading_fixtures do
+      @cache.write('foo', [E.new, ClassFolder.new])
+    end
+
+    remove_constants(:E, :ClassFolder)
+    ActiveSupport::Dependencies.clear
+
+    with_autoloading_fixtures do
+      loaded = @cache.read('foo')
+      assert_kind_of Array, loaded
+      assert_equal 2, loaded.size
+      assert_kind_of E, loaded[0]
+      assert_kind_of ClassFolder, loaded[1]
+    end
+
+    remove_constants(:E, :ClassFolder)
+    ActiveSupport::Dependencies.clear
+  end
+end
+
 class FileStoreTest < ActiveSupport::TestCase
   def setup
     Dir.mkdir(cache_dir) unless File.exist?(cache_dir)
@@ -572,6 +625,7 @@ class FileStoreTest < ActiveSupport::TestCase
   include LocalCacheBehavior
   include CacheDeleteMatchedBehavior
   include CacheIncrementDecrementBehavior
+  include AutoloadingCacheBehavior
 
   def test_clear
     filepath = File.join(cache_dir, ".gitkeep")
@@ -591,7 +645,7 @@ class FileStoreTest < ActiveSupport::TestCase
     assert_equal "views/index?id=1", @cache_with_pathname.send(:file_path_key, key)
   end
 
-  # Test that generated cache keys are short enough to have Tempfile stuff added to them and 
+  # Test that generated cache keys are short enough to have Tempfile stuff added to them and
   # remain valid
   def test_filename_max_size
     key = "#{'A' * ActiveSupport::Cache::FileStore::FILENAME_MAX_SIZE}"
@@ -621,13 +675,13 @@ class FileStoreTest < ActiveSupport::TestCase
   def test_log_exception_when_cache_read_fails
     File.expects(:exist?).raises(StandardError, "failed")
     @cache.send(:read_entry, "winston", {})
-    assert_present @buffer.string
+    assert @buffer.string.present?
   end
 end
 
 class MemoryStoreTest < ActiveSupport::TestCase
   def setup
-    @record_size = Marshal.dump("aaaaaaaaaa").bytesize
+    @record_size = ActiveSupport::Cache::Entry.new("aaaaaaaaaa").size
     @cache = ActiveSupport::Cache.lookup_store(:memory_store, :expires_in => 60, :size => @record_size * 10)
   end
 
@@ -646,9 +700,9 @@ class MemoryStoreTest < ActiveSupport::TestCase
     @cache.prune(@record_size * 3)
     assert @cache.exist?(5)
     assert @cache.exist?(4)
-    assert !@cache.exist?(3)
+    assert !@cache.exist?(3), "no entry"
     assert @cache.exist?(2)
-    assert !@cache.exist?(1)
+    assert !@cache.exist?(1), "no entry"
   end
 
   def test_prune_size_on_write
@@ -670,12 +724,12 @@ class MemoryStoreTest < ActiveSupport::TestCase
     assert @cache.exist?(9)
     assert @cache.exist?(8)
     assert @cache.exist?(7)
-    assert !@cache.exist?(6)
-    assert !@cache.exist?(5)
+    assert !@cache.exist?(6), "no entry"
+    assert !@cache.exist?(5), "no entry"
     assert @cache.exist?(4)
-    assert !@cache.exist?(3)
+    assert !@cache.exist?(3), "no entry"
     assert @cache.exist?(2)
-    assert !@cache.exist?(1)
+    assert !@cache.exist?(1), "no entry"
   end
 
   def test_pruning_is_capped_at_a_max_time
@@ -732,6 +786,7 @@ class MemCacheStoreTest < ActiveSupport::TestCase
   include LocalCacheBehavior
   include CacheIncrementDecrementBehavior
   include EncodedKeyCacheBehavior
+  include AutoloadingCacheBehavior
 
   def test_raw_values
     cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
@@ -763,6 +818,14 @@ class MemCacheStoreTest < ActiveSupport::TestCase
       cache.write("foo", Marshal.dump([]))
       assert_equal [], cache.read("foo")
     end
+  end
+
+  def test_read_should_return_a_different_object_id_each_time_it_is_called
+    @cache.write('foo', 'bar')
+    assert_not_equal @cache.read('foo').object_id, @cache.read('foo').object_id
+    value = @cache.read('foo')
+    value << 'bingo'
+    assert_not_equal value, @cache.read('foo')
   end
 end
 
@@ -834,25 +897,16 @@ class CacheStoreLoggerTest < ActiveSupport::TestCase
 
   def test_logging
     @cache.fetch('foo') { 'bar' }
-    assert_present @buffer.string
+    assert @buffer.string.present?
   end
 
   def test_mute_logging
     @cache.mute { @cache.fetch('foo') { 'bar' } }
-    assert_blank @buffer.string
+    assert @buffer.string.blank?
   end
 end
 
 class CacheEntryTest < ActiveSupport::TestCase
-  def test_create_raw_entry
-    time = Time.now
-    entry = ActiveSupport::Cache::Entry.create("raw", time, :compress => false, :expires_in => 300)
-    assert_equal "raw", entry.raw_value
-    assert_equal time.to_f, entry.created_at
-    assert !entry.compressed?
-    assert_equal 300, entry.expires_in
-  end
-
   def test_expired
     entry = ActiveSupport::Cache::Entry.new("value")
     assert !entry.expired?, 'entry not expired'
@@ -864,16 +918,43 @@ class CacheEntryTest < ActiveSupport::TestCase
   end
 
   def test_compress_values
-    entry = ActiveSupport::Cache::Entry.new("value", :compress => true, :compress_threshold => 1)
-    assert_equal "value", entry.value
-    assert entry.compressed?
-    assert_equal "value", Marshal.load(Zlib::Inflate.inflate(entry.raw_value))
+    value = "value" * 100
+    entry = ActiveSupport::Cache::Entry.new(value, :compress => true, :compress_threshold => 1)
+    assert_equal value, entry.value
+    assert(value.bytesize > entry.size, "value is compressed")
   end
 
   def test_non_compress_values
-    entry = ActiveSupport::Cache::Entry.new("value")
-    assert_equal "value", entry.value
-    assert_equal "value", Marshal.load(entry.raw_value)
-    assert !entry.compressed?
+    value = "value" * 100
+    entry = ActiveSupport::Cache::Entry.new(value)
+    assert_equal value, entry.value
+    assert_equal value.bytesize, entry.size
+  end
+
+  def test_restoring_version_3_entries
+    version_3_entry = ActiveSupport::Cache::Entry.allocate
+    version_3_entry.instance_variable_set(:@value, "hello")
+    version_3_entry.instance_variable_set(:@created_at, Time.now - 60)
+    entry = Marshal.load(Marshal.dump(version_3_entry))
+    assert_equal "hello", entry.value
+    assert_equal false, entry.expired?
+  end
+
+  def test_restoring_compressed_version_3_entries
+    version_3_entry = ActiveSupport::Cache::Entry.allocate
+    version_3_entry.instance_variable_set(:@value, Zlib::Deflate.deflate(Marshal.dump("hello")))
+    version_3_entry.instance_variable_set(:@compressed, true)
+    entry = Marshal.load(Marshal.dump(version_3_entry))
+    assert_equal "hello", entry.value
+  end
+
+  def test_restoring_expired_version_3_entries
+    version_3_entry = ActiveSupport::Cache::Entry.allocate
+    version_3_entry.instance_variable_set(:@value, "hello")
+    version_3_entry.instance_variable_set(:@created_at, Time.now - 60)
+    version_3_entry.instance_variable_set(:@expires_in, 58.9)
+    entry = Marshal.load(Marshal.dump(version_3_entry))
+    assert_equal "hello", entry.value
+    assert_equal true, entry.expired?
   end
 end

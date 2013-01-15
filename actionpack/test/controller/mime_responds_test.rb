@@ -240,7 +240,7 @@ class RespondToControllerTest < ActionController::TestCase
     assert_equal 'HTML', @response.body
 
     @request.accept = "text/javascript, text/html"
-    
+
     assert_raises(ActionController::UnknownFormat) do
       xhr :get, :just_xml
     end
@@ -1139,7 +1139,7 @@ end
 
 # For testing layouts which are set automatically
 class PostController < AbstractPostController
-  around_filter :with_iphone
+  around_action :with_iphone
 
   def index
     respond_to(:html, :iphone, :js)

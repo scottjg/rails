@@ -3,7 +3,7 @@ require 'active_support/core_ext/kernel/singleton_class'
 
 class ERB
   module Util
-    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#x27;' }
+    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#39;' }
     JSON_ESCAPE = { '&' => '\u0026', '>' => '\u003E', '<' => '\u003C' }
     HTML_ESCAPE_ONCE_REGEXP = /["><']|&(?!([a-zA-Z]+|(#\d+));)/
     JSON_ESCAPE_REGEXP = /[&"><]/
@@ -59,7 +59,6 @@ class ERB
     #
     #   json_escape('{"name":"john","created_at":"2010-04-28T01:39:31Z","id":1}')
     #   # => {name:john,created_at:2010-04-28T01:39:31Z,id:1}
-    #
     def json_escape(s)
       result = s.to_s.gsub(JSON_ESCAPE_REGEXP) { |special| JSON_ESCAPE[special] }
       s.html_safe? ? result.html_safe : result

@@ -23,9 +23,9 @@ require 'models/edge'
 require 'models/joke'
 require 'models/bulb'
 require 'models/bird'
-require 'models/teapot'
+require 'models/car'
+require 'models/bulb'
 require 'rexml/document'
-require 'active_support/core_ext/exception'
 
 class FirstAbstractClass < ActiveRecord::Base
   self.abstract_class = true
@@ -53,10 +53,6 @@ class TestOracleDefault < ActiveRecord::Base; end
 
 class ReadonlyTitlePost < Post
   attr_readonly :title
-end
-
-class ProtectedTitlePost < Post
-  attr_protected :title
 end
 
 class Weird < ActiveRecord::Base; end
@@ -128,7 +124,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_nil Edge.primary_key
   end
 
-  unless current_adapter?(:PostgreSQLAdapter,:OracleAdapter,:SQLServerAdapter)
+  unless current_adapter?(:PostgreSQLAdapter, :OracleAdapter, :SQLServerAdapter)
     def test_limit_with_comma
       assert Topic.limit("1,2").to_a
     end
@@ -157,7 +153,7 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
-  unless current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter)
+  unless current_adapter?(:MysqlAdapter, :Mysql2Adapter)
     def test_limit_should_allow_sql_literal
       assert_equal 1, Topic.limit(Arel.sql('2-1')).to_a.length
     end
@@ -226,7 +222,7 @@ class BasicsTest < ActiveRecord::TestCase
     )
 
     # For adapters which support microsecond resolution.
-    if current_adapter?(:PostgreSQLAdapter) || current_adapter?(:SQLite3Adapter)
+    if current_adapter?(:PostgreSQLAdapter, :SQLite3Adapter)
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
@@ -304,13 +300,11 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_initialize_with_invalid_attribute
-    begin
-      Topic.new({ "title" => "test",
-        "last_read(1i)" => "2005", "last_read(2i)" => "2", "last_read(3i)" => "31"})
-    rescue ActiveRecord::MultiparameterAssignmentErrors => ex
-      assert_equal(1, ex.errors.size)
-      assert_equal("last_read", ex.errors[0].attribute)
-    end
+    Topic.new({ "title" => "test",
+      "last_read(1i)" => "2005", "last_read(2i)" => "2", "last_read(3i)" => "31"})
+  rescue ActiveRecord::MultiparameterAssignmentErrors => ex
+    assert_equal(1, ex.errors.size)
+    assert_equal("last_read", ex.errors[0].attribute)
   end
 
   def test_create_after_initialize_without_block
@@ -475,7 +469,7 @@ class BasicsTest < ActiveRecord::TestCase
     Post.reset_table_name
   end
 
-  if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
+  if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
     def test_update_all_with_order_and_limit
       assert_equal 1, Topic.limit(1).order('id DESC').update_all(:content => 'bulk updated!')
     end
@@ -597,7 +591,7 @@ class BasicsTest < ActiveRecord::TestCase
     post.reload
     assert_equal "cannot change this", post.title
 
-    post.update_attributes(:title => "try to change", :body => "changed")
+    post.update(title: "try to change", body: "changed")
     post.reload
     assert_equal "cannot change this", post.title
     assert_equal "changed", post.body
@@ -621,341 +615,10 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal 'value2', weird.read_attribute('a$b')
   end
 
-  def test_multiparameter_attributes_on_date
-    attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "6", "last_read(3i)" => "24" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_date_from_db Date.new(2004, 6, 24), topic.last_read.to_date
-  end
-
-  def test_multiparameter_attributes_on_date_with_empty_year
-    attributes = { "last_read(1i)" => "", "last_read(2i)" => "6", "last_read(3i)" => "24" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_date_with_empty_month
-    attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "", "last_read(3i)" => "24" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_date_with_empty_day
-    attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "6", "last_read(3i)" => "" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_date_with_empty_day_and_year
-    attributes = { "last_read(1i)" => "", "last_read(2i)" => "6", "last_read(3i)" => "" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_date_with_empty_day_and_month
-    attributes = { "last_read(1i)" => "2004", "last_read(2i)" => "", "last_read(3i)" => "" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_date_with_empty_year_and_month
-    attributes = { "last_read(1i)" => "", "last_read(2i)" => "", "last_read(3i)" => "24" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # note that extra #to_date call allows test to pass for Oracle, which
-    # treats dates/times the same
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_date_with_all_empty
-    attributes = { "last_read(1i)" => "", "last_read(2i)" => "", "last_read(3i)" => "" }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_nil topic.last_read
-  end
-
-  def test_multiparameter_attributes_on_time
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.local(2004, 6, 24, 16, 24, 0), topic.written_on
-  end
-
-  def test_multiparameter_attributes_on_time_with_no_date
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
-      attributes = {
-        "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-      }
-      topic = Topic.find(1)
-      topic.attributes = attributes
-    end
-    assert_equal("written_on", ex.errors[0].attribute)
-  end
-
-  def test_multiparameter_attributes_on_time_with_invalid_time_params
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
-      attributes = {
-        "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-        "written_on(4i)" => "2004", "written_on(5i)" => "36", "written_on(6i)" => "64",
-      }
-      topic = Topic.find(1)
-      topic.attributes = attributes
-    end
-    assert_equal("written_on", ex.errors[0].attribute)
-  end
-
-  def test_multiparameter_attributes_on_time_with_old_date
-    attributes = {
-      "written_on(1i)" => "1850", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    # testing against to_s(:db) representation because either a Time or a DateTime might be returned, depending on platform
-    assert_equal "1850-06-24 16:24:00", topic.written_on.to_s(:db)
-  end
-
-  def test_multiparameter_attributes_on_time_will_raise_on_big_time_if_missing_date_parts
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
-      attributes = {
-        "written_on(4i)" => "16", "written_on(5i)" => "24"
-      }
-      topic = Topic.find(1)
-      topic.attributes = attributes
-    end
-    assert_equal("written_on", ex.errors[0].attribute)
-  end
-
-  def test_multiparameter_attributes_on_time_with_raise_on_small_time_if_missing_date_parts
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
-      attributes = {
-        "written_on(4i)" => "16", "written_on(5i)" => "12", "written_on(6i)" => "02"
-      }
-      topic = Topic.find(1)
-      topic.attributes = attributes
-    end
-    assert_equal("written_on", ex.errors[0].attribute)
-  end
-
-  def test_multiparameter_attributes_on_time_will_ignore_hour_if_missing
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "12", "written_on(3i)" => "12",
-      "written_on(5i)" => "12", "written_on(6i)" => "02"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.local(2004, 12, 12, 0, 12, 2), topic.written_on
-  end
-
-  def test_multiparameter_attributes_on_time_will_ignore_hour_if_blank
-    attributes = {
-      "written_on(1i)" => "", "written_on(2i)" => "", "written_on(3i)" => "",
-      "written_on(4i)" => "", "written_on(5i)" => "12", "written_on(6i)" => "02"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_nil topic.written_on
-  end
-
-  def test_multiparameter_attributes_on_time_will_ignore_date_if_empty
-    attributes = {
-      "written_on(1i)" => "", "written_on(2i)" => "", "written_on(3i)" => "",
-      "written_on(4i)" => "16", "written_on(5i)" => "24"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_nil topic.written_on
-  end
-  def test_multiparameter_attributes_on_time_with_seconds_will_ignore_date_if_empty
-    attributes = {
-      "written_on(1i)" => "", "written_on(2i)" => "", "written_on(3i)" => "",
-      "written_on(4i)" => "16", "written_on(5i)" => "12", "written_on(6i)" => "02"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_nil topic.written_on
-  end
-
-  def test_multiparameter_attributes_on_time_with_utc
-    ActiveRecord::Base.default_timezone = :utc
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.utc(2004, 6, 24, 16, 24, 0), topic.written_on
-  end
-
-  def test_multiparameter_attributes_on_time_with_time_zone_aware_attributes
-    ActiveRecord::Base.time_zone_aware_attributes = true
-    ActiveRecord::Base.default_timezone = :utc
-    Time.zone = ActiveSupport::TimeZone[-28800]
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.utc(2004, 6, 24, 23, 24, 0), topic.written_on
-    assert_equal Time.utc(2004, 6, 24, 16, 24, 0), topic.written_on.time
-    assert_equal Time.zone, topic.written_on.time_zone
-  end
-
-  def test_multiparameter_attributes_on_time_with_time_zone_aware_attributes_false
-    Time.zone = ActiveSupport::TimeZone[-28800]
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.local(2004, 6, 24, 16, 24, 0), topic.written_on
-    assert_equal false, topic.written_on.respond_to?(:time_zone)
-  end
-
-  def test_multiparameter_attributes_on_time_with_skip_time_zone_conversion_for_attributes
-    ActiveRecord::Base.time_zone_aware_attributes = true
-    ActiveRecord::Base.default_timezone = :utc
-    Time.zone = ActiveSupport::TimeZone[-28800]
-    Topic.skip_time_zone_conversion_for_attributes = [:written_on]
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => "00"
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.utc(2004, 6, 24, 16, 24, 0), topic.written_on
-    assert_equal false, topic.written_on.respond_to?(:time_zone)
-  ensure
-    Topic.skip_time_zone_conversion_for_attributes = []
-  end
-
-  # Oracle, and Sybase do not have a TIME datatype.
-  unless current_adapter?(:OracleAdapter, :SybaseAdapter)
-    def test_multiparameter_attributes_on_time_only_column_with_time_zone_aware_attributes_does_not_do_time_zone_conversion
-      ActiveRecord::Base.time_zone_aware_attributes = true
-      ActiveRecord::Base.default_timezone = :utc
-      Time.zone = ActiveSupport::TimeZone[-28800]
-      attributes = {
-        "bonus_time(1i)" => "2000", "bonus_time(2i)" => "1", "bonus_time(3i)" => "1",
-        "bonus_time(4i)" => "16", "bonus_time(5i)" => "24"
-      }
-      topic = Topic.find(1)
-      topic.attributes = attributes
-      assert_equal Time.utc(2000, 1, 1, 16, 24, 0), topic.bonus_time
-      assert topic.bonus_time.utc?
-    end
-  end
-
-  def test_multiparameter_attributes_on_time_with_empty_seconds
-    attributes = {
-      "written_on(1i)" => "2004", "written_on(2i)" => "6", "written_on(3i)" => "24",
-      "written_on(4i)" => "16", "written_on(5i)" => "24", "written_on(6i)" => ""
-    }
-    topic = Topic.find(1)
-    topic.attributes = attributes
-    assert_equal Time.local(2004, 6, 24, 16, 24, 0), topic.written_on
-  end
-
-  def test_multiparameter_attributes_setting_time_attribute
-    return skip "Oracle does not have TIME data type" if current_adapter? :OracleAdapter
-
-    topic = Topic.new( "bonus_time(4i)"=> "01", "bonus_time(5i)" => "05" )
-    assert_equal 1, topic.bonus_time.hour
-    assert_equal 5, topic.bonus_time.min
-  end
-
-  def test_multiparameter_attributes_setting_date_attribute
-    topic = Topic.new( "written_on(1i)" => "1952", "written_on(2i)" => "3", "written_on(3i)" => "11" )
-    assert_equal 1952, topic.written_on.year
-    assert_equal 3, topic.written_on.month
-    assert_equal 11, topic.written_on.day
-  end
-
-  def test_multiparameter_attributes_setting_date_and_time_attribute
-    topic = Topic.new(
-        "written_on(1i)" => "1952",
-        "written_on(2i)" => "3",
-        "written_on(3i)" => "11",
-        "written_on(4i)" => "13",
-        "written_on(5i)" => "55")
-    assert_equal 1952, topic.written_on.year
-    assert_equal 3, topic.written_on.month
-    assert_equal 11, topic.written_on.day
-    assert_equal 13, topic.written_on.hour
-    assert_equal 55, topic.written_on.min
-  end
-
-  def test_multiparameter_attributes_setting_time_but_not_date_on_date_field
-    assert_raise( ActiveRecord::MultiparameterAssignmentErrors ) do
-      Topic.new( "written_on(4i)" => "13", "written_on(5i)" => "55" )
-    end
-  end
-
-  def test_multiparameter_assignment_of_aggregation
-    customer = Customer.new
-    address = Address.new("The Street", "The City", "The Country")
-    attributes = { "address(1)" => address.street, "address(2)" => address.city, "address(3)" => address.country }
-    customer.attributes = attributes
-    assert_equal address, customer.address
-  end
-
-  def test_multiparameter_assignment_of_aggregation_out_of_order
-    customer = Customer.new
-    address = Address.new("The Street", "The City", "The Country")
-    attributes = { "address(3)" => address.country, "address(2)" => address.city, "address(1)" => address.street }
-    customer.attributes = attributes
-    assert_equal address, customer.address
-  end
-
-  def test_multiparameter_assignment_of_aggregation_with_missing_values
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
-      customer = Customer.new
-      address = Address.new("The Street", "The City", "The Country")
-      attributes = { "address(2)" => address.city, "address(3)" => address.country }
-      customer.attributes = attributes
-    end
-    assert_equal("address", ex.errors[0].attribute)
-  end
-
-  def test_multiparameter_assignment_of_aggregation_with_blank_values
-    customer = Customer.new
-    address = Address.new("The Street", "The City", "The Country")
-    attributes = { "address(1)" => "", "address(2)" => address.city, "address(3)" => address.country }
-    customer.attributes = attributes
-    assert_equal Address.new(nil, "The City", "The Country"), customer.address
-  end
-
-  def test_multiparameter_assignment_of_aggregation_with_large_index
-    ex = assert_raise(ActiveRecord::MultiparameterAssignmentErrors) do
-      customer = Customer.new
-      address = Address.new("The Street", "The City", "The Country")
-      attributes = { "address(1)" => "The Street", "address(2)" => address.city, "address(3000)" => address.country }
-      customer.attributes = attributes
-    end
-
-    assert_equal("address", ex.errors[0].attribute)
+  def test_group_weirds_by_from
+    Weird.create('a$b' => 'value', :from => 'aaron')
+    count = Weird.group(Weird.arel_table[:from]).count
+    assert_equal 1, count['aaron']
   end
 
   def test_attributes_on_dummy_time
@@ -1336,7 +999,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_reload_with_exclusive_scope
     dev = DeveloperCalledDavid.first
-    dev.update_attributes!( :name => "NotDavid" )
+    dev.update!(name: "NotDavid" )
     assert_equal dev, dev.reload
   end
 
@@ -1537,10 +1200,6 @@ class BasicsTest < ActiveRecord::TestCase
 
     # Concrete subclasses an abstract class which has a type column.
     assert !SubStiPost.descends_from_active_record?
-
-    assert Teapot.descends_from_active_record?
-    assert !OtherTeapot.descends_from_active_record?
-    assert CoolTeapot.descends_from_active_record?
   end
 
   def test_find_on_abstract_base_class_doesnt_use_type_condition
@@ -1619,26 +1278,32 @@ class BasicsTest < ActiveRecord::TestCase
 
   def test_silence_sets_log_level_to_error_in_block
     original_logger = ActiveRecord::Base.logger
-    log = StringIO.new
-    ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
-    ActiveRecord::Base.logger.level = Logger::DEBUG
-    ActiveRecord::Base.silence do
-      ActiveRecord::Base.logger.warn "warn"
-      ActiveRecord::Base.logger.error "error"
+
+    assert_deprecated do
+      log = StringIO.new
+      ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+      ActiveRecord::Base.logger.level = Logger::DEBUG
+      ActiveRecord::Base.silence do
+        ActiveRecord::Base.logger.warn "warn"
+        ActiveRecord::Base.logger.error "error"
+      end
+      assert_equal "error\n", log.string
     end
-    assert_equal "error\n", log.string
   ensure
     ActiveRecord::Base.logger = original_logger
   end
 
   def test_silence_sets_log_level_back_to_level_before_yield
     original_logger = ActiveRecord::Base.logger
-    log = StringIO.new
-    ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
-    ActiveRecord::Base.logger.level = Logger::WARN
-    ActiveRecord::Base.silence do
+
+    assert_deprecated do
+      log = StringIO.new
+      ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+      ActiveRecord::Base.logger.level = Logger::WARN
+      ActiveRecord::Base.silence do
+      end
+      assert_equal Logger::WARN, ActiveRecord::Base.logger.level
     end
-    assert_equal Logger::WARN, ActiveRecord::Base.logger.level
   ensure
     ActiveRecord::Base.logger = original_logger
   end
@@ -1776,10 +1441,32 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal "developers/#{dev.id}-#{dev.updated_at.utc.to_s(:nsec)}", dev.cache_key
   end
 
+  def test_cache_key_format_for_existing_record_with_updated_at_and_custom_cache_timestamp_format
+    dev = CachedDeveloper.first
+    assert_equal "cached_developers/#{dev.id}-#{dev.updated_at.utc.to_s(:number)}", dev.cache_key
+  end
+
+  def test_cache_key_changes_when_child_touched
+    car = Car.create
+    Bulb.create(car: car)
+
+    key = car.cache_key
+    car.bulb.touch
+    car.reload
+    assert_not_equal key, car.cache_key
+  end
+
   def test_cache_key_format_for_existing_record_with_nil_updated_at
     dev = Developer.first
     dev.update_columns(updated_at: nil)
     assert_match(/\/#{dev.id}$/, dev.cache_key)
+  end
+
+  def test_cache_key_format_is_precise_enough
+    dev = Developer.first
+    key = dev.cache_key
+    dev.touch
+    assert_not_equal key, dev.cache_key
   end
 
   def test_uniq_delegates_to_scoped
@@ -1788,22 +1475,13 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal scope, Bird.uniq
   end
 
-  def test_active_record_super
-    assert_equal ActiveRecord::Model, ActiveRecord::Base.active_record_super
-    assert_equal ActiveRecord::Base,  Topic.active_record_super
-    assert_equal Topic,               ImportantTopic.active_record_super
-    assert_equal ActiveRecord::Model, Teapot.active_record_super
-    assert_equal Teapot,              OtherTeapot.active_record_super
-    assert_equal ActiveRecord::Model, CoolTeapot.active_record_super
-  end
-
   def test_table_name_with_2_abstract_subclasses
     assert_equal "photos", Photo.table_name
   end
 
   def test_column_types_typecast
     topic = Topic.first
-    refute_equal 't.lo', topic.author_name
+    assert_not_equal 't.lo', topic.author_name
 
     attrs = topic.attributes.dup
     attrs.delete 'id'

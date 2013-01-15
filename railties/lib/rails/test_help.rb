@@ -2,20 +2,14 @@
 # so fixtures aren't loaded into that environment
 abort("Abort testing: Your Rails environment is running in production mode!") if Rails.env.production?
 
-require 'minitest/autorun'
+require 'active_support/testing/autorun'
 require 'active_support/test_case'
 require 'action_controller/test_case'
 require 'action_dispatch/testing/integration'
 
-# Enable turn if it is available
-begin
-  require 'turn'
-
-  Turn.config do |c|
-    c.natural = true
-  end
-rescue LoadError
-end
+# Config Rails backtrace in tests.
+require 'rails/backtrace_cleaner'
+MiniTest.backtrace_filter = Rails.backtrace_cleaner
 
 if defined?(ActiveRecord::Base)
   class ActiveSupport::TestCase
@@ -25,8 +19,8 @@ if defined?(ActiveRecord::Base)
 
   ActionDispatch::IntegrationTest.fixture_path = ActiveSupport::TestCase.fixture_path
 
-  def create_fixtures(*table_names, &block)
-    Fixtures.create_fixtures(ActiveSupport::TestCase.fixture_path, table_names, {}, &block)
+  def create_fixtures(*fixture_set_names, &block)
+    FixtureSet.create_fixtures(ActiveSupport::TestCase.fixture_path, fixture_set_names, {}, &block)
   end
 end
 

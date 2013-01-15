@@ -1,5 +1,5 @@
 #--
-# Copyright (c) 2004-2012 David Heinemeier Hansson
+# Copyright (c) 2004-2013 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -34,13 +34,12 @@ module ActiveModel
   autoload :Conversion
   autoload :Dirty
   autoload :EachValidator, 'active_model/validator'
+  autoload :ForbiddenAttributesProtection
   autoload :Lint
-  autoload :MassAssignmentSecurity
   autoload :Model
+  autoload :DeprecatedMassAssignmentSecurity
   autoload :Name, 'active_model/naming'
   autoload :Naming
-  autoload :Observer, 'active_model/observing'
-  autoload :Observing
   autoload :SecurePassword
   autoload :Serialization
   autoload :TestCase

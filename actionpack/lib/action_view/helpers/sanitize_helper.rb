@@ -3,7 +3,7 @@ require 'action_view/vendor/html-scanner'
 
 module ActionView
   # = Action View Sanitize Helpers
-  module Helpers #:nodoc:
+  module Helpers
     # The SanitizeHelper module provides a set of methods for scrubbing text of undesired HTML elements.
     # These helper methods extend Action View making them callable within your template files.
     module SanitizeHelper
@@ -29,7 +29,7 @@ module ActionView
       #
       # Custom Use (only the mentioned tags and attributes are allowed, nothing else)
       #
-      #   <%= sanitize @article.body, :tags => %w(table tr td), :attributes => %w(id class style) %>
+      #   <%= sanitize @article.body, tags: %w(table tr td), attributes: %w(id class style) %>
       #
       # Add table tags to the default allowed tags
       #

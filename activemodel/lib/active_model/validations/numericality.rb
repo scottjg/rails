@@ -1,8 +1,7 @@
 module ActiveModel
 
-  # == Active Model Numericality Validator
   module Validations
-    class NumericalityValidator < EachValidator #:nodoc:
+    class NumericalityValidator < EachValidator # :nodoc:
       CHECKS = { :greater_than => :>, :greater_than_or_equal_to => :>=,
                  :equal_to => :==, :less_than => :<, :less_than_or_equal_to => :<=,
                  :odd => :odd?, :even => :even?, :other_than => :!= }.freeze
@@ -18,9 +17,9 @@ module ActiveModel
       end
 
       def validate_each(record, attr_name, value)
-        before_type_cast = "#{attr_name}_before_type_cast"
+        before_type_cast = :"#{attr_name}_before_type_cast"
 
-        raw_value = record.send(before_type_cast) if record.respond_to?(before_type_cast.to_sym)
+        raw_value = record.send(before_type_cast) if record.respond_to?(before_type_cast)
         raw_value ||= value
 
         return if options[:allow_nil] && raw_value.nil?
@@ -126,7 +125,7 @@ module ActiveModel
       # For example:
       #
       #   class Person < ActiveRecord::Base
-      #     validates_numericality_of :width, less_than: Proc.new { |person| person.height }
+      #     validates_numericality_of :width, less_than: ->(person) { person.height }
       #     validates_numericality_of :width, greater_than: :minimum_weight
       #   end
       def validates_numericality_of(*attr_names)

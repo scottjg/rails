@@ -4,17 +4,19 @@ module ActiveRecord
   module ConnectionAdapters
     class AbstractMysqlAdapter < AbstractAdapter
       class Column < ConnectionAdapters::Column # :nodoc:
-        attr_reader :collation
+        attr_reader :collation, :strict
 
-        def initialize(name, default, sql_type = nil, null = true, collation = nil)
-          super(name, default, sql_type, null)
+        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false)
+          @strict    = strict
           @collation = collation
+
+          super(name, default, sql_type, null)
         end
 
         def extract_default(default)
-          if sql_type =~ /blob/i || type == :text
+          if blob_or_text_column?
             if default.blank?
-              return null ? nil : ''
+              null || strict ? nil : ''
             else
               raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
             end
@@ -26,8 +28,12 @@ module ActiveRecord
         end
 
         def has_default?
-          return false if sql_type =~ /blob/i || type == :text #mysql forbids defaults on blob and text columns
+          return false if blob_or_text_column? #mysql forbids defaults on blob and text columns
           super
+        end
+        
+        def blob_or_text_column?
+          sql_type =~ /blob/i || type == :text
         end
 
         # Must return the relevant concrete adapter
@@ -169,6 +175,14 @@ module ActiveRecord
         true
       end
 
+      # MySQL 4 technically support transaction isolation, but it is affected by a bug
+      # where the transaction level gets persisted for the whole session:
+      #
+      # http://bugs.mysql.com/bug.php?id=39170
+      def supports_transaction_isolation?
+        version[0] >= 5
+      end
+
       def native_database_types
         NATIVE_DATABASE_TYPES
       end
@@ -269,6 +283,13 @@ module ActiveRecord
         # Transactions aren't supported
       end
 
+      def begin_isolated_db_transaction(isolation)
+        execute "SET TRANSACTION ISOLATION LEVEL #{transaction_isolation_levels.fetch(isolation)}"
+        begin_db_transaction
+      rescue
+        # Transactions aren't supported
+      end
+
       def commit_db_transaction #:nodoc:
         execute "COMMIT"
       rescue
@@ -305,6 +326,10 @@ module ActiveRecord
         end
       end
 
+      def empty_insert_statement_value
+        "VALUES ()"
+      end
+
       # SCHEMA STATEMENTS ========================================
 
       def structure_dump #:nodoc:
@@ -332,9 +357,9 @@ module ActiveRecord
       # Charset defaults to utf8.
       #
       # Example:
-      #   create_database 'charset_test', :charset => 'latin1', :collation => 'latin1_bin'
+      #   create_database 'charset_test', charset: 'latin1', collation: 'latin1_bin'
       #   create_database 'matt_development'
-      #   create_database 'matt_development', :charset => :big5
+      #   create_database 'matt_development', charset: :big5
       def create_database(name, options = {})
         if options[:collation]
           execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
@@ -477,6 +502,13 @@ module ActiveRecord
       # Maps logical Rails types to MySQL-specific data types.
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
         case type.to_s
+        when 'binary'
+          case limit
+          when 0..0xfff;           "varbinary(#{limit})"
+          when nil;                "blob"
+          when 0x1000..0xffffffff; "blob(#{limit})"
+          else raise(ActiveRecordError, "No binary type has character length #{limit}")
+          end
         when 'integer'
           case limit
           when 1; 'tinyint'
@@ -546,6 +578,10 @@ module ActiveRecord
 
       def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
         where_sql
+      end
+
+      def strict_mode?
+        @config.fetch(:strict, true)
       end
 
       protected
@@ -637,10 +673,13 @@ module ActiveRecord
         rename_column_sql
       end
 
-      def remove_column_sql(table_name, *column_names)
-        columns_for_remove(table_name, *column_names).map {|column_name| "DROP #{column_name}" }
+      def remove_column_sql(table_name, column_name, type = nil, options = {})
+        "DROP #{quote_column_name(column_name)}"
       end
-      alias :remove_columns_sql :remove_column
+
+      def remove_columns_sql(table_name, *column_names)
+        column_names.map {|column_name| remove_column_sql(table_name, column_name) }
+      end
 
       def add_index_sql(table_name, column_name, options = {})
         index_name, index_type, index_columns = add_index_options(table_name, column_name, options)
@@ -672,6 +711,45 @@ module ActiveRecord
         end
         column
       end
+
+      def configure_connection
+        variables = @config[:variables] || {}
+
+        # By default, MySQL 'where id is null' selects the last inserted id.
+        # Turn this off. http://dev.rubyonrails.org/ticket/6778
+        variables[:sql_auto_is_null] = 0
+
+        # Increase timeout so the server doesn't disconnect us.
+        wait_timeout = @config[:wait_timeout]
+        wait_timeout = 2147483 unless wait_timeout.is_a?(Fixnum)
+        variables[:wait_timeout] = wait_timeout
+
+        # Make MySQL reject illegal values rather than truncating or blanking them, see
+        # http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_strict_all_tables
+        # If the user has provided another value for sql_mode, don't replace it.
+        if strict_mode? && !variables.has_key?(:sql_mode)
+          variables[:sql_mode] = 'STRICT_ALL_TABLES'
+        end
+
+        # NAMES does not have an equals sign, see
+        # http://dev.mysql.com/doc/refman/5.0/en/set-statement.html#id944430
+        # (trailing comma because variable_assignments will always have content)
+        encoding = "NAMES #{@config[:encoding]}, " if @config[:encoding]
+
+        # Gather up all of the SET variables...
+        variable_assignments = variables.map do |k, v|
+          if v == ':default' || v == :default
+            "@@SESSION.#{k.to_s} = DEFAULT" # Sets the value to the global or compile default
+          elsif !v.nil?
+            "@@SESSION.#{k.to_s} = #{quote(v)}"
+          end
+          # or else nil; compact to clear nils out
+        end.compact.join(', ')
+
+        # ...and send them all in one query
+        execute("SET #{encoding} #{variable_assignments}", :skip_logging)
+      end
+
     end
   end
 end

@@ -14,6 +14,21 @@ class TransactionTest < ActiveRecord::TestCase
     @first, @second = Topic.find(1, 2).sort_by { |t| t.id }
   end
 
+  def test_raise_after_destroy
+    assert_not @first.frozen?
+
+    assert_raises(RuntimeError) {
+      Topic.transaction do
+        @first.destroy
+        assert @first.frozen?
+        raise
+      end
+    }
+
+    assert @first.reload
+    assert_not @first.frozen?
+  end
+
   def test_successful
     Topic.transaction do
       @first.approved  = true
@@ -37,22 +52,23 @@ class TransactionTest < ActiveRecord::TestCase
   end
 
   def test_successful_with_return
-    class << Topic.connection
+    committed = false
+
+    Topic.connection.class_eval do
       alias :real_commit_db_transaction :commit_db_transaction
-      def commit_db_transaction
-        $committed = true
+      define_method(:commit_db_transaction) do
+        committed = true
         real_commit_db_transaction
       end
     end
 
-    $committed = false
     transaction_with_return
-    assert $committed
+    assert committed
 
     assert Topic.find(1).approved?, "First should have been approved"
     assert !Topic.find(2).approved?, "Second should have been unapproved"
   ensure
-    class << Topic.connection
+    Topic.connection.class_eval do
       remove_method :commit_db_transaction
       alias :commit_db_transaction :real_commit_db_transaction rescue nil
     end
@@ -101,21 +117,21 @@ class TransactionTest < ActiveRecord::TestCase
     assert !Topic.find(1).approved?
   end
 
-  def test_update_attributes_should_rollback_on_failure
+  def test_update_should_rollback_on_failure
     author = Author.find(1)
     posts_count = author.posts.size
     assert posts_count > 0
-    status = author.update_attributes(:name => nil, :post_ids => [])
+    status = author.update(name: nil, post_ids: [])
     assert !status
     assert_equal posts_count, author.posts(true).size
   end
 
-  def test_update_attributes_should_rollback_on_failure!
+  def test_update_should_rollback_on_failure!
     author = Author.find(1)
     posts_count = author.posts.size
     assert posts_count > 0
     assert_raise(ActiveRecord::RecordInvalid) do
-      author.update_attributes!(:name => nil, :post_ids => [])
+      author.update!(name: nil, post_ids: [])
     end
     assert_equal posts_count, author.posts(true).size
   end
@@ -348,7 +364,6 @@ class TransactionTest < ActiveRecord::TestCase
   def test_rollback_when_commit_raises
     Topic.connection.expects(:begin_db_transaction)
     Topic.connection.expects(:commit_db_transaction).raises('OH NOES')
-    Topic.connection.expects(:outside_transaction?).returns(false)
     Topic.connection.expects(:rollback_db_transaction)
 
     assert_raise RuntimeError do
@@ -397,31 +412,11 @@ class TransactionTest < ActiveRecord::TestCase
 
   if current_adapter?(:PostgreSQLAdapter) && defined?(PGconn::PQTRANS_IDLE)
     def test_outside_transaction_works
-      assert Topic.connection.outside_transaction?
+      assert assert_deprecated { Topic.connection.outside_transaction? }
       Topic.connection.begin_db_transaction
-      assert !Topic.connection.outside_transaction?
+      assert assert_deprecated { !Topic.connection.outside_transaction? }
       Topic.connection.rollback_db_transaction
-      assert Topic.connection.outside_transaction?
-    end
-
-    def test_rollback_wont_be_executed_if_no_transaction_active
-      assert_raise RuntimeError do
-        Topic.transaction do
-          Topic.connection.rollback_db_transaction
-          Topic.connection.expects(:rollback_db_transaction).never
-          raise "Rails doesn't scale!"
-        end
-      end
-    end
-
-    def test_open_transactions_count_is_reset_to_zero_if_no_transaction_active
-      Topic.transaction do
-        Topic.transaction do
-          Topic.connection.rollback_db_transaction
-        end
-        assert_equal 0, Topic.connection.open_transactions
-      end
-      assert_equal 0, Topic.connection.open_transactions
+      assert assert_deprecated { Topic.connection.outside_transaction? }
     end
   end
 
@@ -579,6 +574,15 @@ if current_adapter?(:PostgreSQLAdapter)
       end
 
       assert_equal original_salary, Developer.find(1).salary
+    end
+
+    test "#transaction_joinable= is deprecated" do
+      Developer.transaction do
+        conn = Developer.connection
+        assert conn.current_transaction.joinable?
+        assert_deprecated { conn.transaction_joinable = false }
+        assert !conn.current_transaction.joinable?
+      end
     end
   end
 end

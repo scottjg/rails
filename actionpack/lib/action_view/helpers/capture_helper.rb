@@ -42,13 +42,11 @@ module ActionView
       end
 
       # Calling content_for stores a block of markup in an identifier for later use.
-      # You can make subsequent calls to the stored content in other templates, helper modules
-      # or the layout by passing the identifier as an argument to <tt>content_for</tt>.
+      # In order to access this stored content in other templates, helper modules
+      # or the layout, you would pass the identifier as an argument to <tt>content_for</tt>.
       #
       # Note: <tt>yield</tt> can still be used to retrieve the stored content, but calling
       # <tt>yield</tt> doesn't work in helper modules, while <tt>content_for</tt> does.
-      #
-      # ==== Examples
       #
       #   <% content_for :not_authorized do %>
       #     alert('You are not authorized to do that!')
@@ -74,7 +72,8 @@ module ActionView
       #
       #   <%= stored_content %>
       #
-      # You can use the <tt>yield</tt> syntax alongside an existing call to <tt>yield</tt> in a layout. For example:
+      # You can also use the <tt>yield</tt> syntax alongside an existing call to
+      # <tt>yield</tt> in a layout. For example:
       #
       #   <%# This is the layout %>
       #   <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -99,7 +98,7 @@ module ActionView
       #
       # Then, in another view, you could to do something like this:
       #
-      #   <%= link_to 'Logout', :action => 'logout', :remote => true %>
+      #   <%= link_to 'Logout', action: 'logout', remote: true %>
       #
       #   <% content_for :script do %>
       #     <%= javascript_include_tag :defaults %>
@@ -112,13 +111,13 @@ module ActionView
       # identifier in order. For example:
       #
       #   <% content_for :navigation do %>
-      #     <li><%= link_to 'Home', :action => 'index' %></li>
+      #     <li><%= link_to 'Home', action: 'index' %></li>
       #   <% end %>
       #
-      #   <%#  Add some other content, or use a different template: %>
+      #  And in other place:
       #
       #   <% content_for :navigation do %>
-      #     <li><%= link_to 'Login', :action => 'login' %></li>
+      #     <li><%= link_to 'Login', action: 'login' %></li>
       #   <% end %>
       #
       # Then, in another template or layout, this code would render both links in order:
@@ -128,13 +127,13 @@ module ActionView
       # If the flush parameter is true content_for replaces the blocks it is given. For example:
       #
       #   <% content_for :navigation do %>
-      #     <li><%= link_to 'Home', :action => 'index' %></li>
+      #     <li><%= link_to 'Home', action: 'index' %></li>
       #   <% end %>
       #
       #   <%#  Add some other content, or use a different template: %>
       #
       #   <% content_for :navigation, flush: true do %>
-      #     <li><%= link_to 'Login', :action => 'login' %></li>
+      #     <li><%= link_to 'Login', action: 'login' %></li>
       #   <% end %>
       #
       # Then, in another template or layout, this code would render only the last link:
@@ -145,8 +144,7 @@ module ActionView
       #
       #   <% content_for :script, javascript_include_tag(:defaults) %>
       #
-      # WARNING: content_for is ignored in caches. So you shouldn't use it
-      # for elements that will be fragment cached.
+      # WARNING: content_for is ignored in caches. So you shouldn't use it for elements that will be fragment cached.
       def content_for(name, content = nil, options = {}, &block)
         if content || block_given?
           if block_given?
@@ -173,12 +171,8 @@ module ActionView
         result unless content
       end
 
-      # content_for? simply checks whether any content has been captured yet using content_for
+      # content_for? checks whether any content has been captured yet using `content_for`.
       # Useful to render parts of your layout differently based on what is in your views.
-      #
-      # ==== Examples
-      #
-      # Perhaps you will use different css in you layout if no content_for :right_column
       #
       #   <%# This is the layout %>
       #   <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">

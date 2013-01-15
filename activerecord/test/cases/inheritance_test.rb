@@ -4,7 +4,6 @@ require 'models/person'
 require 'models/post'
 require 'models/project'
 require 'models/subscriber'
-require 'models/teapot'
 require 'models/vegetables'
 
 class InheritanceTest < ActiveRecord::TestCase
@@ -81,10 +80,6 @@ class InheritanceTest < ActiveRecord::TestCase
     assert_equal SubStiPost, SubStiPost.base_class
   end
 
-  def test_active_record_model_included_base_class
-    assert_equal Teapot, Teapot.base_class
-  end
-
   def test_abstract_inheritance_base_class
     assert_equal LoosePerson, LoosePerson.base_class
     assert_equal LooseDescendant, LooseDescendant.base_class
@@ -93,11 +88,7 @@ class InheritanceTest < ActiveRecord::TestCase
   end
 
   def test_base_class_activerecord_error
-    klass = Class.new {
-      extend ActiveRecord::Configuration
-      include ActiveRecord::Inheritance
-    }
-
+    klass = Class.new { include ActiveRecord::Inheritance }
     assert_raise(ActiveRecord::ActiveRecordError) { klass.base_class }
   end
 
@@ -163,6 +154,29 @@ class InheritanceTest < ActiveRecord::TestCase
 
     savoy = Vegetable.find(cabbage.id)
     assert_kind_of Cabbage, savoy
+  end
+
+  def test_inheritance_new_with_default_class
+    company = Company.new
+    assert_equal Company, company.class
+  end
+
+  def test_inheritance_new_with_base_class
+    company = Company.new(:type => 'Company')
+    assert_equal Company, company.class
+  end
+
+  def test_inheritance_new_with_subclass
+    firm = Company.new(:type => 'Firm')
+    assert_equal Firm, firm.class
+  end
+
+  def test_new_with_invalid_type
+    assert_raise(ActiveRecord::SubclassNotFound) { Company.new(:type => 'InvalidType') }
+  end
+
+  def test_new_with_unrelated_type
+    assert_raise(ActiveRecord::SubclassNotFound) { Company.new(:type => 'Account') }
   end
 
   def test_inheritance_condition

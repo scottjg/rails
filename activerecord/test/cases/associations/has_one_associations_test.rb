@@ -6,6 +6,8 @@ require 'models/ship'
 require 'models/pirate'
 require 'models/car'
 require 'models/bulb'
+require 'models/author'
+require 'models/post'
 
 class HasOneAssociationsTest < ActiveRecord::TestCase
   self.use_transactional_fixtures = false unless supports_savepoints?
@@ -204,6 +206,40 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
     account = firm.build_account("credit_limit" => 1000)
     assert account.save
     assert_equal account, firm.account
+  end
+
+  def test_build_association_dont_create_transaction
+    assert_no_queries {
+      Firm.new.build_account
+    }
+  end
+
+  def test_building_the_associated_object_with_implicit_sti_base_class
+    firm = DependentFirm.new
+    company = firm.build_company
+    assert_kind_of Company, company, "Expected #{company.class} to be a Company"
+  end
+
+  def test_building_the_associated_object_with_explicit_sti_base_class
+    firm = DependentFirm.new
+    company = firm.build_company(:type => "Company")
+    assert_kind_of Company, company, "Expected #{company.class} to be a Company"
+  end
+
+  def test_building_the_associated_object_with_sti_subclass
+    firm = DependentFirm.new
+    company = firm.build_company(:type => "Client")
+    assert_kind_of Client, company, "Expected #{company.class} to be a Client"
+  end
+
+  def test_building_the_associated_object_with_an_invalid_type
+    firm = DependentFirm.new
+    assert_raise(ActiveRecord::SubclassNotFound) { firm.build_company(:type => "Invalid") }
+  end
+
+  def test_building_the_associated_object_with_an_unrelated_type
+    firm = DependentFirm.new
+    assert_raise(ActiveRecord::SubclassNotFound) { firm.build_company(:type => "Account") }
   end
 
   def test_build_and_create_should_not_happen_within_scope
@@ -444,38 +480,6 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
 
     ship = pirate.create_ship :pirate_id => pirate.id + 1
     assert_equal pirate.id, ship.pirate_id
-  end
-
-  def test_association_conditions_bypass_attribute_protection
-    car = Car.create(:name => 'honda')
-
-    bulb = car.build_frickinawesome_bulb
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.build_frickinawesome_bulb(:frickinawesome => false)
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.create_frickinawesome_bulb
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.create_frickinawesome_bulb(:frickinawesome => false)
-    assert_equal true, bulb.frickinawesome?
-  end
-
-  def test_new_is_called_with_attributes_and_options
-    car = Car.create(:name => 'honda')
-
-    bulb = car.build_bulb
-    assert_equal Bulb, bulb.class
-
-    bulb = car.build_bulb
-    assert_equal Bulb, bulb.class
-
-    bulb = car.build_bulb(:bulb_type => :custom)
-    assert_equal Bulb, bulb.class
-
-    bulb = car.build_bulb({ :bulb_type => :custom }, :as => :admin)
-    assert_equal CustomBulb, bulb.class
   end
 
   def test_build_with_block

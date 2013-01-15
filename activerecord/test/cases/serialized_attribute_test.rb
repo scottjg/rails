@@ -1,5 +1,6 @@
-require "cases/helper"
+require 'cases/helper'
 require 'models/topic'
+require 'models/person'
 require 'bcrypt'
 
 class SerializedAttributeTest < ActiveRecord::TestCase
@@ -56,11 +57,21 @@ class SerializedAttributeTest < ActiveRecord::TestCase
   def test_serialized_attribute_before_type_cast_returns_unserialized_value
     Topic.serialize :content, Hash
 
-    t = Topic.new(:content => { :foo => :bar })
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
+    t = Topic.new(content: { foo: :bar })
+    assert_equal({ foo: :bar }, t.content_before_type_cast)
     t.save!
     t.reload
-    assert_equal({ :foo => :bar }, t.content_before_type_cast)
+    assert_equal({ foo: :bar }, t.content_before_type_cast)
+  end
+
+  def test_serialized_attributes_before_type_cast_returns_unserialized_value
+    Topic.serialize :content, Hash
+
+    t = Topic.new(content: { foo: :bar })
+    assert_equal({ foo: :bar }, t.attributes_before_type_cast["content"])
+    t.save!
+    t.reload
+    assert_equal({ foo: :bar }, t.attributes_before_type_cast["content"])
   end
 
   def test_serialized_attribute_calling_dup_method
@@ -201,5 +212,26 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     topic = topic.reload
     assert_kind_of BCrypt::Password, topic.content
     assert_equal(true, topic.content == password, 'password should equal')
+  end
+
+  def test_serialize_attribute_via_select_method_when_time_zone_available
+    ActiveRecord::Base.time_zone_aware_attributes = true
+    Topic.serialize(:content, MyObject)
+
+    myobj = MyObject.new('value1', 'value2')
+    topic = Topic.create(content: myobj)
+
+    assert_equal(myobj, Topic.select(:content).find(topic.id).content)
+    assert_raise(ActiveModel::MissingAttributeError) { Topic.select(:id).find(topic.id).content }
+  ensure
+    ActiveRecord::Base.time_zone_aware_attributes = false
+  end
+
+  def test_serialize_attribute_can_be_serialized_in_an_integer_column
+    insures = ['life']
+    person = SerializedPerson.new(first_name: 'David', insures: insures)
+    assert person.save
+    person = person.reload
+    assert_equal(insures, person.insures)
   end
 end

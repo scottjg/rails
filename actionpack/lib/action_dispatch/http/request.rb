@@ -1,12 +1,16 @@
-require 'tempfile'
 require 'stringio'
-require 'strscan'
 
-require 'active_support/core_ext/hash/indifferent_access'
-require 'active_support/core_ext/string/access'
 require 'active_support/inflector'
 require 'action_dispatch/http/headers'
 require 'action_controller/metal/exceptions'
+require 'rack/request'
+require 'action_dispatch/http/cache'
+require 'action_dispatch/http/mime_negotiation'
+require 'action_dispatch/http/parameters'
+require 'action_dispatch/http/filter_parameters'
+require 'action_dispatch/http/upload'
+require 'action_dispatch/http/url'
+require 'active_support/core_ext/array/conversions'
 
 module ActionDispatch
   class Request < Rack::Request
@@ -70,7 +74,13 @@ module ActionDispatch
     RFC5789 = %w(PATCH)
 
     HTTP_METHODS = RFC2616 + RFC2518 + RFC3253 + RFC3648 + RFC3744 + RFC5323 + RFC5789
-    HTTP_METHOD_LOOKUP = Hash.new { |h, m| h[m] = m.underscore.to_sym if HTTP_METHODS.include?(m) }
+
+    HTTP_METHOD_LOOKUP = {}
+
+    # Populate the HTTP method lookup cache
+    HTTP_METHODS.each { |method|
+      HTTP_METHOD_LOOKUP[method] = method.underscore.to_sym
+    }
 
     # Returns the HTTP \method that the application should see.
     # In the case where the \method was overridden by a middleware
@@ -199,8 +209,9 @@ module ActionDispatch
     # work with raw requests directly.
     def raw_post
       unless @env.include? 'RAW_POST_DATA'
-        @env['RAW_POST_DATA'] = body.read(@env['CONTENT_LENGTH'].to_i)
-        body.rewind if body.respond_to?(:rewind)
+        raw_post_body = body
+        @env['RAW_POST_DATA'] = raw_post_body.read(@env['CONTENT_LENGTH'].to_i)
+        raw_post_body.rewind if raw_post_body.respond_to?(:rewind)
       end
       @env['RAW_POST_DATA']
     end
@@ -245,21 +256,17 @@ module ActionDispatch
 
     # Override Rack's GET method to support indifferent access
     def GET
-      begin
-        @env["action_dispatch.request.query_parameters"] ||= (normalize_parameters(super) || {})
-      rescue TypeError => e
-        raise ActionController::BadRequest, "Invalid query parameters: #{e.message}"
-      end
+      @env["action_dispatch.request.query_parameters"] ||= (normalize_parameters(super) || {})
+    rescue TypeError => e
+      raise ActionController::BadRequest.new(:query, e)
     end
     alias :query_parameters :GET
 
     # Override Rack's POST method to support indifferent access
     def POST
-      begin
-        @env["action_dispatch.request.request_parameters"] ||= (normalize_parameters(super) || {})
-      rescue TypeError => e
-        raise ActionController::BadRequest, "Invalid request parameters: #{e.message}"
-      end
+      @env["action_dispatch.request.request_parameters"] ||= (normalize_parameters(super) || {})
+    rescue TypeError => e
+      raise ActionController::BadRequest.new(:request, e)
     end
     alias :request_parameters :POST
 
@@ -277,15 +284,14 @@ module ActionDispatch
       LOCALHOST =~ remote_addr && LOCALHOST =~ remote_ip
     end
 
-    protected
-
     # Remove nils from the params hash
     def deep_munge(hash)
-      hash.each_value do |v|
+      hash.each do |k, v|
         case v
         when Array
           v.grep(Hash) { |x| deep_munge(x) }
           v.compact!
+          hash[k] = nil if v.empty?
         when Hash
           deep_munge(v)
         end
@@ -293,6 +299,8 @@ module ActionDispatch
 
       hash
     end
+
+    protected
 
     def parse_query(qs)
       deep_munge(super)

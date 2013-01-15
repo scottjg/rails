@@ -1,37 +1,61 @@
 require 'active_support/core_ext/time/conversions'
 require 'active_support/core_ext/object/blank'
+require 'active_support/log_subscriber'
+require 'action_dispatch/http/request'
+require 'rack/body_proxy'
 
 module Rails
   module Rack
-    # Log the request started and flush all loggers after it.
+    # Sets log tags, logs the request, calls the app, and flushes the logs.
     class Logger < ActiveSupport::LogSubscriber
-      def initialize(app, tags=nil)
-        @app, @tags = app, tags.presence
+      def initialize(app, taggers = nil)
+        @app          = app
+        @taggers      = taggers || []
+        @instrumenter = ActiveSupport::Notifications.instrumenter
       end
 
       def call(env)
-        if @tags
-          Rails.logger.tagged(compute_tags(env)) { call_app(env) }
+        request = ActionDispatch::Request.new(env)
+
+        if logger.respond_to?(:tagged)
+          logger.tagged(compute_tags(request)) { call_app(request, env) }
         else
-          call_app(env)
+          call_app(request, env)
         end
       end
 
     protected
 
-      def call_app(env)
-        request = ActionDispatch::Request.new(env)
-        path = request.filtered_path
-        Rails.logger.info "\n\nStarted #{request.request_method} \"#{path}\" for #{request.ip} at #{Time.now.to_default_s}"
-        @app.call(env)
+      def call_app(request, env)
+        # Put some space between requests in development logs.
+        if development?
+          logger.debug ''
+          logger.debug ''
+        end
+
+        @instrumenter.start 'action_dispatch.request', request: request
+        logger.info started_request_message(request)
+        resp = @app.call(env)
+        resp[2] = ::Rack::BodyProxy.new(resp[2]) { finish(request) }
+        resp
+      rescue
+        finish(request)
+        raise
       ensure
         ActiveSupport::LogSubscriber.flush_all!
       end
 
-      def compute_tags(env)
-        request = ActionDispatch::Request.new(env)
+      # Started GET "/session/new" for 127.0.0.1 at 2012-09-26 14:51:42 -0700
+      def started_request_message(request)
+        'Started %s "%s" for %s at %s' % [
+          request.request_method,
+          request.filtered_path,
+          request.ip,
+          Time.now.to_default_s ]
+      end
 
-        @tags.collect do |tag|
+      def compute_tags(request)
+        @taggers.collect do |tag|
           case tag
           when Proc
             tag.call(request)
@@ -41,6 +65,20 @@ module Rails
             tag
           end
         end
+      end
+
+      private
+
+      def finish(request)
+        @instrumenter.finish 'action_dispatch.request', request: request
+      end
+
+      def development?
+        Rails.env.development?
+      end
+
+      def logger
+        Rails.logger
       end
     end
   end

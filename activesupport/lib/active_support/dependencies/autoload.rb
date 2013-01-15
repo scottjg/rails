@@ -22,9 +22,8 @@ module ActiveSupport
   # Then your library can be eager loaded by simply calling:
   #
   #   MyLib.eager_load!
-  #
   module Autoload
-    def self.extended(base)
+    def self.extended(base) # :nodoc:
       base.class_eval do
         @_autoloads = {}
         @_under_path = nil
@@ -35,7 +34,7 @@ module ActiveSupport
 
     def autoload(const_name, path = @_at_path)
       unless path
-        full = [name, @_under_path, const_name.to_s, path].compact.join("::")
+        full = [name, @_under_path, const_name.to_s].compact.join("::")
         path = Inflector.underscore(full)
       end
 

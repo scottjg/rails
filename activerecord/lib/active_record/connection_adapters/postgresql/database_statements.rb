@@ -203,6 +203,11 @@ module ActiveRecord
           execute "BEGIN"
         end
 
+        def begin_isolated_db_transaction(isolation)
+          begin_db_transaction
+          execute "SET TRANSACTION ISOLATION LEVEL #{transaction_isolation_levels.fetch(isolation)}"
+        end
+
         # Commits a transaction.
         def commit_db_transaction
           execute "COMMIT"
@@ -214,6 +219,9 @@ module ActiveRecord
         end
 
         def outside_transaction?
+          message = "#outside_transaction? is deprecated. This method was only really used " \
+                    "internally, but you can use #transaction_open? instead."
+          ActiveSupport::Deprecation.warn message
           @connection.transaction_status == PGconn::PQTRANS_IDLE
         end
 

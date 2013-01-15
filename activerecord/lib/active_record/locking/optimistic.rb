@@ -1,9 +1,4 @@
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :lock_optimistically, instance_accessor: false
-    self.lock_optimistically = true
-  end
-
   module Locking
     # == What is Optimistic Locking
     #
@@ -56,7 +51,8 @@ module ActiveRecord
       extend ActiveSupport::Concern
 
       included do
-        config_attribute :lock_optimistically
+        class_attribute :lock_optimistically, instance_writer: false
+        self.lock_optimistically = true
       end
 
       def locking_enabled? #:nodoc:
@@ -70,7 +66,7 @@ module ActiveRecord
           send(lock_col + '=', previous_lock_value + 1)
         end
 
-        def update(attribute_names = @attributes.keys) #:nodoc:
+        def update_record(attribute_names = @attributes.keys) #:nodoc:
           return super unless locking_enabled?
           return 0 if attribute_names.empty?
 

@@ -2,7 +2,7 @@ require "active_support/core_ext/module/anonymous"
 
 module ActiveModel
 
-  # == Active Model Validator
+  # == Active \Model \Validator
   #
   # A simple base class that can be used along with
   # ActiveModel::Validations::ClassMethods.validates_with
@@ -76,7 +76,7 @@ module ActiveModel
   #     include ActiveModel::Validations
   #     attr_accessor :title
   #
-  #     validates :title, :presence => true
+  #     validates :title, presence: true
   #   end
   #
   # Validator may also define a +setup+ instance method which will get called
@@ -103,14 +103,14 @@ module ActiveModel
     end
 
     # Accepts options that will be made available through the +options+ reader.
-    def initialize(options)
+    def initialize(options = {})
       @options = options.freeze
     end
 
     # Return the kind for this validator.
     #
-    #   PresenceValidator.new.kind   # => :presence
-    #   UniquenessValidator.new.kind # => :uniqueness 
+    #   PresenceValidator.new.kind   # => :presence
+    #   UniquenessValidator.new.kind # => :uniqueness
     def kind
       self.class.kind
     end
@@ -135,7 +135,7 @@ module ActiveModel
     # and instead be made available through the +attributes+ reader.
     def initialize(options)
       @attributes = Array(options.delete(:attributes))
-      raise ":attributes cannot be blank" if @attributes.empty?
+      raise ArgumentError, ":attributes cannot be blank" if @attributes.empty?
       super
       check_validity!
     end

@@ -57,6 +57,7 @@ module TestGenerationPrefix
             get "/polymorphic_path_for_engine", :to => "outside_engine_generating#polymorphic_path_for_engine"
             get "/polymorphic_with_url_for", :to => "outside_engine_generating#polymorphic_with_url_for"
             get "/conflicting_url", :to => "outside_engine_generating#conflicting"
+            get "/ivar_usage", :to => "outside_engine_generating#ivar_usage"
             root :to => "outside_engine_generating#index"
           end
 
@@ -124,6 +125,11 @@ module TestGenerationPrefix
 
       def conflicting
         render :text => "application"
+      end
+
+      def ivar_usage
+        @blog_engine = "Not the engine route helper"
+        render :text => blog_engine.post_path(:id => 1)
       end
     end
 
@@ -203,6 +209,11 @@ module TestGenerationPrefix
       assert_equal "http://example.org/awesome/blog/posts/1", last_response.body
     end
 
+    test "[APP] instance variable with same name as engine" do
+      get "/ivar_usage"
+      assert_equal "/awesome/blog/posts/1", last_response.body
+    end
+
     # Inside any Object
     test "[OBJECT] proxy route should override respond_to?() as expected" do
       assert_respond_to blog_engine, :named_helper_that_should_be_invoked_only_in_respond_to_test_path
@@ -228,6 +239,11 @@ module TestGenerationPrefix
     test "[OBJECT] generating application's route includes default_url_options[:script_name]" do
       RailsApplication.routes.default_url_options = {:script_name => "/something"}
       assert_equal "/something/", app_object.root_path
+    end
+
+    test "[OBJECT] generating application's route includes default_url_options[:trailing_slash]" do
+      RailsApplication.routes.default_url_options[:trailing_slash] = true
+      assert_equal "/awesome/blog/posts", engine_object.posts_path
     end
 
     test "[OBJECT] generating engine's route with url_for" do

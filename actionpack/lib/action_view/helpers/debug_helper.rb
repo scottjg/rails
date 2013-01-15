@@ -11,7 +11,7 @@ module ActionView
       # If the object cannot be converted to YAML using +to_yaml+, +inspect+ will be called instead.
       # Useful for inspecting an object at the time of rendering.
       #
-      #   @user = User.new({ :username => 'testing', :password => 'xyz', :age => 42}) %>
+      #   @user = User.new({ username: 'testing', password: 'xyz', age: 42}) %>
       #   debug(@user)
       #   # =>
       #   <pre class='debug_dump'>--- !ruby/object:User
@@ -27,14 +27,12 @@ module ActionView
       #   new_record: true
       #   </pre>
       def debug(object)
-        begin
-          Marshal::dump(object)
-          object = ERB::Util.html_escape(object.to_yaml).gsub("  ", "&nbsp; ").html_safe
-          content_tag(:pre, object, :class => "debug_dump")
-        rescue Exception  # errors from Marshal or YAML
-          # Object couldn't be dumped, perhaps because of singleton methods -- this is the fallback
-          content_tag(:code, object.to_yaml, :class => "debug_dump")
-        end
+        Marshal::dump(object)
+        object = ERB::Util.html_escape(object.to_yaml).gsub("  ", "&nbsp; ").html_safe
+        content_tag(:pre, object, :class => "debug_dump")
+      rescue Exception  # errors from Marshal or YAML
+        # Object couldn't be dumped, perhaps because of singleton methods -- this is the fallback
+        content_tag(:code, object.to_yaml, :class => "debug_dump")
       end
     end
   end

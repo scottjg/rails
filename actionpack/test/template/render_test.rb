@@ -97,6 +97,14 @@ module RenderTestCases
     assert_equal %q;Here are some characters: !@#$%^&*()-="'}{`; + "\n", @view.render(:template => "plain_text_with_characters")
   end
 
+  def test_render_ruby_template_with_handlers
+    assert_equal "Hello from Ruby code", @view.render(:template => "ruby_template")
+  end
+
+  def test_render_ruby_template_inline
+    assert_equal '4', @view.render(:inline => "(2**2).to_s", :type => :ruby)
+  end
+
   def test_render_file_with_localization_on_context_level
     old_locale, @view.locale = @view.locale, :da
     assert_equal "Hey verden", @view.render(:file => "test/hello_world")
@@ -310,6 +318,13 @@ module RenderTestCases
       @controller_view.render(customers, :greeting => "Hello")
   end
 
+  def test_render_partial_without_object_or_collection_does_not_generate_partial_name_local_variable
+    exception = assert_raises ActionView::Template::Error do
+      @controller_view.render("partial_name_local_variable")
+    end
+    assert_match "undefined local variable or method `partial_name_local_variable'", exception.message
+  end
+
   # TODO: The reason for this test is unclear, improve documentation
   def test_render_partial_and_fallback_to_layout
     assert_equal "Before (Josh)\n\nAfter", @view.render(:partial => "test/layout_for_partial", :locals => { :name => "Josh" })
@@ -429,6 +444,11 @@ module RenderTestCases
       @view.render(:partial => 'test/partial_with_layout_block_content', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
   end
 
+  def test_render_partial_with_layout_raises_descriptive_error
+    e = assert_raises(ActionView::MissingTemplate) { @view.render(partial: 'test/partial', layout: true) }
+    assert_match "Missing partial /true with", e.message
+  end
+
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout", :layout => "layouts/yield")
@@ -442,6 +462,15 @@ module RenderTestCases
   def test_render_layout_with_object
     assert_equal %(<title>David</title>),
       @view.render(:file => "test/layout_render_object")
+  end
+
+  def test_render_with_passing_couple_extensions_to_one_register_template_handler_function_call
+    ActionView::Template.register_template_handler :foo1, :foo2, CustomHandler
+    assert_equal @view.render(:inline => "Hello, World!", :type => :foo1), @view.render(:inline => "Hello, World!", :type => :foo2)
+  end
+
+  def test_render_throws_exception_when_no_extensions_passed_to_register_template_handler_function_call
+    assert_raises(ArgumentError) { ActionView::Template.register_template_handler CustomHandler }
   end
 end
 

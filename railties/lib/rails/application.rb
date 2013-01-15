@@ -1,4 +1,6 @@
 require 'fileutils'
+# FIXME remove DummyKeyGenerator and this require in 4.1
+require 'active_support/key_generator'
 require 'rails/engine'
 
 module Rails
@@ -65,12 +67,11 @@ module Rails
       end
     end
 
-    attr_accessor :assets, :sandbox, :queue_consumer
+    attr_accessor :assets, :sandbox
     alias_method :sandbox?, :sandbox
     attr_reader :reloaders
-    attr_writer :queue
 
-    delegate :default_url_options, :default_url_options=, :to => :routes
+    delegate :default_url_options, :default_url_options=, to: :routes
 
     def initialize
       super
@@ -80,7 +81,6 @@ module Rails
       @env_config       = nil
       @ordered_railties = nil
       @railties         = nil
-      @queue            = nil
     end
 
     # Returns true if the application is initialized.
@@ -88,8 +88,8 @@ module Rails
       @initialized
     end
 
-    # Implements call according to the Rack API. It simples
-    # dispatch the request to the underlying middleware stack.
+    # Implements call according to the Rack API. It simply
+    # dispatches the request to the underlying middleware stack.
     def call(env)
       env["ORIGINAL_FULLPATH"] = build_original_fullpath(env)
       super(env)
@@ -100,28 +100,65 @@ module Rails
       routes_reloader.reload!
     end
 
+
+    # Return the application's KeyGenerator
+    def key_generator
+      # number of iterations selected based on consultation with the google security
+      # team. Details at https://github.com/rails/rails/pull/6952#issuecomment-7661220
+      @caching_key_generator ||= begin
+        if config.secret_key_base
+          key_generator = ActiveSupport::KeyGenerator.new(config.secret_key_base, iterations: 1000)
+          ActiveSupport::CachingKeyGenerator.new(key_generator)
+        else
+          ActiveSupport::DummyKeyGenerator.new(config.secret_token)
+        end
+      end
+    end
+
     # Stores some of the Rails initial environment parameters which
     # will be used by middlewares and engines to configure themselves.
     # Currently stores:
     #
-    #   * "action_dispatch.parameter_filter"         => config.filter_parameters,
-    #   * "action_dispatch.secret_token"             => config.secret_token,
-    #   * "action_dispatch.show_exceptions"          => config.action_dispatch.show_exceptions,
-    #   * "action_dispatch.show_detailed_exceptions" => config.consider_all_requests_local,
-    #   * "action_dispatch.logger"                   => Rails.logger,
-    #   * "action_dispatch.backtrace_cleaner"        => Rails.backtrace_cleaner
-    #
-    # These parameters will be used by middlewares and engines to configure themselves
+    #   * "action_dispatch.parameter_filter"             => config.filter_parameters
+    #   * "action_dispatch.redirect_filter"              => config.filter_redirect
+    #   * "action_dispatch.secret_token"                 => config.secret_token,
+    #   * "action_dispatch.show_exceptions"              => config.action_dispatch.show_exceptions
+    #   * "action_dispatch.show_detailed_exceptions"     => config.consider_all_requests_local
+    #   * "action_dispatch.logger"                       => Rails.logger
+    #   * "action_dispatch.backtrace_cleaner"            => Rails.backtrace_cleaner
+    #   * "action_dispatch.key_generator"                => key_generator
+    #   * "action_dispatch.http_auth_salt"               => config.action_dispatch.http_auth_salt
+    #   * "action_dispatch.signed_cookie_salt"           => config.action_dispatch.signed_cookie_salt
+    #   * "action_dispatch.encrypted_cookie_salt"        => config.action_dispatch.encrypted_cookie_salt
+    #   * "action_dispatch.encrypted_signed_cookie_salt" => config.action_dispatch.encrypted_signed_cookie_salt
     #
     def env_config
-      @env_config ||= super.merge({
-        "action_dispatch.parameter_filter" => config.filter_parameters,
-        "action_dispatch.secret_token" => config.secret_token,
-        "action_dispatch.show_exceptions" => config.action_dispatch.show_exceptions,
-        "action_dispatch.show_detailed_exceptions" => config.consider_all_requests_local,
-        "action_dispatch.logger" => Rails.logger,
-        "action_dispatch.backtrace_cleaner" => Rails.backtrace_cleaner
-      })
+      @env_config ||= begin
+        if config.secret_key_base.nil?
+          ActiveSupport::Deprecation.warn "You didn't set config.secret_key_base in config/initializers/secret_token.rb file. " +
+            "This should be used instead of the old deprecated config.secret_token in order to use the new EncryptedCookieStore. " +
+            "To convert safely to the encrypted store (without losing existing cookies and sessions), see http://guides.rubyonrails.org/upgrading_ruby_on_rails.html#action-pack"
+
+          if config.secret_token.blank?
+            raise "You must set config.secret_key_base in your app's config"
+          end
+        end
+
+        super.merge({
+          "action_dispatch.parameter_filter" => config.filter_parameters,
+          "action_dispatch.redirect_filter" => config.filter_redirect,
+          "action_dispatch.secret_token" => config.secret_token,
+          "action_dispatch.show_exceptions" => config.action_dispatch.show_exceptions,
+          "action_dispatch.show_detailed_exceptions" => config.consider_all_requests_local,
+          "action_dispatch.logger" => Rails.logger,
+          "action_dispatch.backtrace_cleaner" => Rails.backtrace_cleaner,
+          "action_dispatch.key_generator" => key_generator,
+          "action_dispatch.http_auth_salt" => config.action_dispatch.http_auth_salt,
+          "action_dispatch.signed_cookie_salt" => config.action_dispatch.signed_cookie_salt,
+          "action_dispatch.encrypted_cookie_salt" => config.action_dispatch.encrypted_cookie_salt,
+          "action_dispatch.encrypted_signed_cookie_salt" => config.action_dispatch.encrypted_signed_cookie_salt
+        })
+      end
     end
 
     ## Rails internal API
@@ -185,14 +222,6 @@ module Rails
 
     def config #:nodoc:
       @config ||= Application::Configuration.new(find_root_with_flag("config.ru", Dir.pwd))
-    end
-
-    def queue #:nodoc:
-      @queue ||= Queueing::Container.new(build_queue)
-    end
-
-    def build_queue #:nodoc:
-      config.queue.new
     end
 
     def to_app #:nodoc:
@@ -280,7 +309,22 @@ module Rails
     def default_middleware_stack #:nodoc:
       ActionDispatch::MiddlewareStack.new.tap do |middleware|
         app = self
-        if rack_cache = config.action_controller.perform_caching && config.action_dispatch.rack_cache
+        if rack_cache = config.action_dispatch.rack_cache
+          begin
+            require 'rack/cache'
+          rescue LoadError => error
+            error.message << ' Be sure to add rack-cache to your Gemfile'
+            raise
+          end
+
+          if rack_cache == true
+            rack_cache = {
+              metastore: "rails:/",
+              entitystore: "rails:/",
+              verbose: false
+            }
+          end
+
           require "action_dispatch/http/rack_cache"
           middleware.use ::Rack::Cache, rack_cache
         end

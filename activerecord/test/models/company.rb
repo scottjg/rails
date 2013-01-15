@@ -3,7 +3,6 @@ class AbstractCompany < ActiveRecord::Base
 end
 
 class Company < AbstractCompany
-  attr_protected :rating
   self.sequence_name = :companies_nonstd_seq
 
   validates_presence_of :name
@@ -112,6 +111,7 @@ end
 class DependentFirm < Company
   has_one :account, :foreign_key => "firm_id", :dependent => :nullify
   has_many :companies, :foreign_key => 'client_of', :dependent => :nullify
+  has_one :company, :foreign_key => 'client_of', :dependent => :nullify
 end
 
 class RestrictedFirm < Company

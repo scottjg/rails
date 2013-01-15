@@ -17,10 +17,10 @@ class Date
   }
 
   # Ruby 1.9 has Date#to_time which converts to localtime only.
-  remove_possible_method :to_time
+  remove_method :to_time
 
   # Ruby 1.9 has Date#xmlschema which converts to a string without the time component.
-  remove_possible_method :xmlschema
+  remove_method :xmlschema
 
   # Convert to a formatted string. See DATE_FORMATS for predefined formats.
   #
@@ -43,7 +43,7 @@ class Date
   #
   #   # config/initializers/time_formats.rb
   #   Date::DATE_FORMATS[:month_and_year] = '%B %Y'
-  #   Date::DATE_FORMATS[:short_ordinal] = lambda { |date| date.strftime("%B #{date.day.ordinalize}") }
+  #   Date::DATE_FORMATS[:short_ordinal] = ->(date) { date.strftime("%B #{date.day.ordinalize}") }
   def to_formatted_s(format = :default)
     if formatter = DATE_FORMATS[format]
       if formatter.respond_to?(:call)
@@ -75,10 +75,10 @@ class Date
   #
   #   date.to_time(:utc)             # => Sat Nov 10 00:00:00 UTC 2007
   def to_time(form = :local)
-    ::Time.send("#{form}_time", year, month, day)
+    ::Time.send(form, year, month, day)
   end
 
   def xmlschema
-    to_time_in_current_zone.xmlschema
+    in_time_zone.xmlschema
   end
 end

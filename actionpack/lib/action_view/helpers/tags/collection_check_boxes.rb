@@ -21,15 +21,21 @@ module ActionView
             if block_given?
               yield builder
             else
-              builder.check_box + builder.label
+              render_component(builder)
             end
           end
 
           # Append a hidden field to make sure something will be sent back to the
           # server if all check boxes are unchecked.
-          hidden = @template_object.hidden_field_tag(tag_name_multiple, "", :id => nil)
+          hidden = @template_object.hidden_field_tag("#{tag_name}[]", "", :id => nil)
 
           rendered_collection + hidden
+        end
+
+        private
+
+        def render_component(builder)
+          builder.check_box + builder.label
         end
       end
     end

@@ -2,7 +2,7 @@ require 'active_support/time'
 
 module Rails
   module Generators
-    class GeneratedAttribute
+    class GeneratedAttribute # :nodoc:
       INDEX_OPTIONS = %w(index uniq)
       UNIQ_INDEX_OPTIONS = %w(uniq)
 
@@ -23,7 +23,7 @@ module Rails
           type = type.to_sym if type
 
           if type && reference?(type)
-            references_index = UNIQ_INDEX_OPTIONS.include?(has_index) ? { :unique => true } : true
+            references_index = UNIQ_INDEX_OPTIONS.include?(has_index) ? { unique: true } : true
             attr_options[:index] = references_index
           end
 
@@ -41,11 +41,11 @@ module Rails
         def parse_type_and_options(type)
           case type
           when /(string|text|binary|integer)\{(\d+)\}/
-            return $1, :limit => $2.to_i
+            return $1, limit: $2.to_i
           when /decimal\{(\d+)[,.-](\d+)\}/
-            return :decimal, :precision => $1.to_i, :scale => $2.to_i
+            return :decimal, precision: $1.to_i, scale: $2.to_i
           when /(references|belongs_to)\{polymorphic\}/
-            return $1, :polymorphic => true
+            return $1, polymorphic: true
           else
             return type, {}
           end
@@ -99,11 +99,15 @@ module Rails
       end
 
       def index_name
-        @index_name ||= if reference?
-          polymorphic? ? %w(id type).map { |t| "#{name}_#{t}" } : "#{name}_id"
+        @index_name ||= if polymorphic?
+          %w(id type).map { |t| "#{name}_#{t}" }
         else
-          name
+          column_name
         end
+      end
+
+      def column_name
+        @column_name ||= reference? ? "#{name}_id" : name
       end
 
       def foreign_key?

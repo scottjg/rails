@@ -1,5 +1,6 @@
-require 'journey'
+require 'action_dispatch/journey'
 require 'forwardable'
+require 'thread_safe'
 require 'active_support/core_ext/object/to_query'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/module/remove_method'
@@ -20,7 +21,7 @@ module ActionDispatch
         def initialize(options={})
           @defaults = options[:defaults]
           @glob_param = options.delete(:glob)
-          @controllers = {}
+          @controller_class_names = ThreadSafe::Cache.new
         end
 
         def call(env)
@@ -68,13 +69,8 @@ module ActionDispatch
       private
 
         def controller_reference(controller_param)
-          controller_name = "#{controller_param.camelize}Controller"
-
-          unless controller = @controllers[controller_param]
-            controller = @controllers[controller_param] =
-              ActiveSupport::Dependencies.reference(controller_name)
-          end
-          controller.get(controller_name)
+          const_name = @controller_class_names[controller_param] ||= "#{controller_param.camelize}Controller"
+          ActiveSupport::Dependencies.constantize(const_name)
         end
 
         def dispatch(controller, action, env)
@@ -130,6 +126,12 @@ module ActionDispatch
         end
 
         def clear!
+          @helpers.each do |helper|
+            @module.module_eval do
+              remove_possible_method helper
+            end
+          end
+
           @routes.clear
           @helpers.clear
         end
@@ -176,11 +178,11 @@ module ActionDispatch
           #
           # Instead of:
           #
-          #   foo_url(:bar => bar, :baz => baz, :bang => bang)
+          #   foo_url(bar: bar, baz: baz, bang: bang)
           #
           # Also allow options hash, so you can do:
           #
-          #   foo_url(bar, baz, bang, :sort_by => 'baz')
+          #   foo_url(bar, baz, bang, sort_by: 'baz')
           #
           def define_url_helper(route, name, options)
             @module.module_eval <<-END_EVAL, __FILE__, __LINE__ + 1
@@ -319,7 +321,7 @@ module ActionDispatch
 
         MountedHelpers.class_eval(<<-RUBY, __FILE__, __LINE__ + 1)
           def #{name}
-            @#{name} ||= _#{name}
+            @_#{name} ||= _#{name}
           end
         RUBY
       end
@@ -419,7 +421,7 @@ module ActionDispatch
         end
 
         conditions.keep_if do |k, _|
-          k == :action || k == :controller ||
+          k == :action || k == :controller || k == :required_defaults ||
             @request_class.public_method_defined?(k) || path_values.include?(k)
         end
       end
@@ -471,7 +473,7 @@ module ActionDispatch
           # If an explicit :controller was given, always make :action explicit
           # too, so that action expiry works as expected for things like
           #
-          #   generate({:controller => 'content'}, {:controller => 'content', :action => 'show'})
+          #   generate({controller: 'content'}, {controller: 'content', action: 'show'})
           #
           # (the above is from the unit tests). In the above case, because the
           # controller was explicitly given, but no action, the action is implied to
@@ -500,7 +502,7 @@ module ActionDispatch
           use_recall_for(:id)
         end
 
-        # if the current controller is "foo/bar/baz" and :controller => "baz/bat"
+        # if the current controller is "foo/bar/baz" and controller: "baz/bat"
         # is specified, the controller becomes "foo/baz/bat"
         def use_relative_controller!
           if !named_route && different_controller? && !controller.start_with?("/")
@@ -516,8 +518,8 @@ module ActionDispatch
           @options[:controller] = controller.sub(%r{^/}, '') if controller
         end
 
-        # This handles the case of :action => nil being explicitly passed.
-        # It is identical to :action => "index"
+        # This handles the case of action: nil being explicitly passed.
+        # It is identical to action: "index"
         def handle_nil_action!
           if options.has_key?(:action) && options[:action].nil?
             options[:action] = 'index'
@@ -525,12 +527,10 @@ module ActionDispatch
           recall[:action] = options.delete(:action) if options[:action] == 'index'
         end
 
-        # Generates a path from routes, returns [path, params]
-        # if no path is returned the formatter will raise Journey::Router::RoutingError
+        # Generates a path from routes, returns [path, params].
+        # If no route is generated the formatter will raise ActionController::UrlGenerationError
         def generate
           @set.formatter.generate(:path_info, named_route, options, recall, PARAMETERIZE)
-        rescue Journey::Router::RoutingError => e
-          raise ActionController::UrlGenerationError, "No route matches #{options.inspect} #{e.message}"
         end
 
         def different_controller?

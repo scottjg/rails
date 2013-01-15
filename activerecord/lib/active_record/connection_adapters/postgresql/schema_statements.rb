@@ -16,7 +16,7 @@ module ActiveRecord
         #
         # Example:
         #   create_database config[:database], config
-        #   create_database 'foo_development', :encoding => 'unicode'
+        #   create_database 'foo_development', encoding: 'unicode'
         def create_database(name, options = {})
           options = options.reverse_merge(:encoding => "utf8")
 
@@ -111,7 +111,7 @@ module ActiveRecord
             inddef = row[3]
             oid = row[4]
 
-            columns = Hash[query(<<-SQL, "Columns for index #{row[0]} on #{table_name}")]
+            columns = Hash[query(<<-SQL, "SCHEMA")]
             SELECT a.attnum, a.attname
             FROM pg_attribute a
             WHERE a.attrelid = #{oid}
@@ -250,7 +250,7 @@ module ActiveRecord
           if pk && sequence
             quoted_sequence = quote_table_name(sequence)
 
-            select_value <<-end_sql, 'Reset sequence'
+            select_value <<-end_sql, 'SCHEMA'
               SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
             end_sql
           end
@@ -260,12 +260,11 @@ module ActiveRecord
         def pk_and_sequence_for(table) #:nodoc:
           # First try looking for a sequence with a dependency on the
           # given table's primary key.
-          result = query(<<-end_sql, 'PK and serial sequence')[0]
+          result = query(<<-end_sql, 'SCHEMA')[0]
             SELECT attr.attname, seq.relname
             FROM pg_class      seq,
                  pg_attribute  attr,
                  pg_depend     dep,
-                 pg_namespace  name,
                  pg_constraint cons
             WHERE seq.oid           = dep.objid
               AND seq.relkind       = 'S'
@@ -278,16 +277,13 @@ module ActiveRecord
           end_sql
 
           if result.nil? or result.empty?
-            # If that fails, try parsing the primary key's default value.
-            # Support the 7.x and 8.0 nextval('foo'::text) as well as
-            # the 8.1+ nextval('foo'::regclass).
-            result = query(<<-end_sql, 'PK and custom sequence')[0]
+            result = query(<<-end_sql, 'SCHEMA')[0]
               SELECT attr.attname,
                 CASE
-                  WHEN split_part(def.adsrc, '''', 2) ~ '.' THEN
-                    substr(split_part(def.adsrc, '''', 2),
-                           strpos(split_part(def.adsrc, '''', 2), '.')+1)
-                  ELSE split_part(def.adsrc, '''', 2)
+                  WHEN split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2) ~ '.' THEN
+                    substr(split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2),
+                           strpos(split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2), '.')+1)
+                  ELSE split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2)
                 END
               FROM pg_class       t
               JOIN pg_attribute   attr ON (t.oid = attrelid)
@@ -295,7 +291,7 @@ module ActiveRecord
               JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
               WHERE t.oid = '#{quote_table_name(table)}'::regclass
                 AND cons.contype = 'p'
-                AND def.adsrc ~* 'nextval'
+                AND pg_get_expr(def.adbin, def.adrelid) ~* 'nextval'
             end_sql
           end
 
@@ -382,12 +378,11 @@ module ActiveRecord
         # Returns just a table's primary key
         def primary_key(table)
           row = exec_query(<<-end_sql, 'SCHEMA').rows.first
-            SELECT DISTINCT(attr.attname)
+            SELECT attr.attname
             FROM pg_attribute attr
-            INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
             INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
             WHERE cons.contype = 'p'
-              AND dep.refobjid = '#{table}'::regclass
+              AND cons.conrelid = '#{quote_table_name(table)}'::regclass
           end_sql
 
           row && row.first
@@ -472,6 +467,13 @@ module ActiveRecord
             when nil, 0..0x3fffffff; super(type)
             else raise(ActiveRecordError, "No binary type has byte size #{limit}.")
             end
+          when 'text'
+            # PostgreSQL doesn't support limits on text columns.
+            # The hard limit is 1Gb, according to section 8.3 in the manual.
+            case limit
+            when nil, 0..0x3fffffff; super(type)
+            else raise(ActiveRecordError, "The limit on text can be at most 1GB - 1byte.")
+            end
           when 'integer'
             return 'integer' unless limit
 
@@ -488,6 +490,14 @@ module ActiveRecord
               when 0..6; "timestamp(#{precision})"
               else raise(ActiveRecordError, "No timestamp type has precision of #{precision}. The allowed range of precision is from 0 to 6")
             end
+          when 'intrange'
+            return 'int4range' unless limit
+
+            case limit
+              when 1..4; 'int4range'
+              when 5..8; 'int8range'
+              else raise(ActiveRecordError, "No range type has byte size #{limit}. Use a numeric with precision 0 instead.")
+            end
           else
             super
           end
@@ -498,20 +508,17 @@ module ActiveRecord
         # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
         # requires that the ORDER BY include the distinct column.
         #
-        #   distinct("posts.id", "posts.created_at desc")
+        #   distinct("posts.id", ["posts.created_at desc"])
+        #   # => "DISTINCT posts.id, posts.created_at AS alias_0"
         def distinct(columns, orders) #:nodoc:
-          return "DISTINCT #{columns}" if orders.empty?
+          order_columns = orders.map{ |s|
+              # Convert Arel node to string
+              s = s.to_sql unless s.is_a?(String)
+              # Remove any ASC/DESC modifiers
+              s.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '')
+            }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
 
-          # Construct a clean list of column names from the ORDER BY clause, removing
-          # any ASC/DESC modifiers
-          order_columns = orders.collect do |s|
-            s = s.to_sql unless s.is_a?(String)
-            s.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '')
-          end
-          order_columns.delete_if { |c| c.blank? }
-          order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
-
-          "DISTINCT #{columns}, #{order_columns * ', '}"
+          [super].concat(order_columns).join(', ')
         end
       end
     end

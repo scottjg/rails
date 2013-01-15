@@ -40,7 +40,7 @@ module ActiveRecord
     #
     # It's not possible to set the order. That is automatically set to
     # ascending on the primary key ("id ASC") to make the batch ordering
-    # work. This also mean that this method only works with integer-based
+    # work. This also means that this method only works with integer-based
     # primary keys. You can't set the limit either, that's used to control
     # the batch sizes.
     #
@@ -62,11 +62,11 @@ module ActiveRecord
         ActiveRecord::Base.logger.warn("Scoped order and limit are ignored, it's forced to be batch order and batch size")
       end
 
-      start = options.delete(:start).to_i
+      start = options.delete(:start)
       batch_size = options.delete(:batch_size) || 1000
 
       relation = relation.reorder(batch_order).limit(batch_size)
-      records = relation.where(table[primary_key].gteq(start)).to_a
+      records = start ? relation.where(table[primary_key].gteq(start)).to_a : relation.to_a
 
       while records.any?
         records_size = records.size

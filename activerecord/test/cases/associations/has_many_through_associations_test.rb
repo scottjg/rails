@@ -19,7 +19,6 @@ require 'models/book'
 require 'models/subscription'
 require 'models/essay'
 require 'models/category'
-require 'models/owner'
 require 'models/categorization'
 require 'models/member'
 require 'models/membership'
@@ -56,21 +55,6 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
 
     assert post.reload.people(true).include?(person)
-  end
-
-  def test_associate_existing_with_strict_mass_assignment_sanitizer
-    SecureReader.mass_assignment_sanitizer = :strict
-
-    SecureReader.new
-
-    post   = posts(:thinking)
-    person = people(:david)
-
-    assert_queries(1) do
-      post.secure_people << person
-    end
-  ensure
-    SecureReader.mass_assignment_sanitizer = :logger
   end
 
   def test_associate_existing_record_twice_should_add_to_target_twice
@@ -344,6 +328,17 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
         posts(:welcome).tags_with_nullify.delete(tag)
       end
     end
+  end
+
+  def test_update_counter_caches_on_replace_association
+    post = posts(:welcome)
+    tag  = post.tags.create!(:name => 'doomed')
+    tag.tagged_posts << posts(:thinking)
+
+    tag.tagged_posts = []
+    post.reload
+
+    assert_equal(post.taggings.count, post.taggings_count)
   end
 
   def test_replace_association
@@ -711,7 +706,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
   def test_can_update_through_association
     assert_nothing_raised do
-      people(:michael).posts.first.update_attributes!(:title => "Can write")
+      people(:michael).posts.first.update!(title: "Can write")
     end
   end
 
@@ -838,6 +833,11 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_assign_array_to_new_record_builds_join_records
+    c = Category.new(:name => 'Fishing', :authors => [Author.first])
+    assert_equal 1, c.categorizations.size
+  end
+
   def test_create_bang_should_raise_exception_when_join_record_has_errors
     repair_validations(Categorization) do
       Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
@@ -881,4 +881,17 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     post = tags(:general).tagged_posts.create! :title => "foo", :body => "bar"
     assert_equal [tags(:general)], post.reload.tags
   end
+
+  test "has many through associations on new records use null relations" do
+    person = Person.new
+
+    assert_no_queries do
+      assert_equal [], person.posts
+      assert_equal [], person.posts.where(body: 'omg')
+      assert_equal [], person.posts.pluck(:body)
+      assert_equal 0,  person.posts.sum(:tags_count)
+      assert_equal 0,  person.posts.count
+    end
+  end
+
 end

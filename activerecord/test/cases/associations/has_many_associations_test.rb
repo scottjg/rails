@@ -46,10 +46,13 @@ class HasManyAssociationsTestForCountWithCountSql < ActiveRecord::TestCase
   end
 end
 
-class HasManyAssociationsTestForCountDistinctWithFinderSql < ActiveRecord::TestCase
+class HasManyAssociationsTestForCountWithVariousFinderSqls < ActiveRecord::TestCase
   class Invoice < ActiveRecord::Base
     ActiveSupport::Deprecation.silence do
       has_many :custom_line_items, :class_name => 'LineItem', :finder_sql => "SELECT DISTINCT line_items.amount from line_items"
+      has_many :custom_full_line_items, :class_name => 'LineItem', :finder_sql => "SELECT line_items.invoice_id, line_items.amount from line_items"
+      has_many :custom_star_line_items, :class_name => 'LineItem', :finder_sql => "SELECT * from line_items"
+      has_many :custom_qualified_star_line_items, :class_name => 'LineItem', :finder_sql => "SELECT line_items.* from line_items"
     end
   end
 
@@ -60,6 +63,33 @@ class HasManyAssociationsTestForCountDistinctWithFinderSql < ActiveRecord::TestC
     invoice.save!
 
     assert_equal 1, invoice.custom_line_items.count
+  end
+
+  def test_should_count_results_with_multiple_fields
+    invoice = Invoice.new
+    invoice.custom_full_line_items << LineItem.new(:amount => 0)
+    invoice.custom_full_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 2, invoice.custom_full_line_items.count
+  end
+
+  def test_should_count_results_with_star
+    invoice = Invoice.new
+    invoice.custom_star_line_items << LineItem.new(:amount => 0)
+    invoice.custom_star_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 2, invoice.custom_star_line_items.count
+  end
+
+  def test_should_count_results_with_qualified_star
+    invoice = Invoice.new
+    invoice.custom_qualified_star_line_items << LineItem.new(:amount => 0)
+    invoice.custom_qualified_star_line_items << LineItem.new(:amount => 0)
+    invoice.save!
+
+    assert_equal 2, invoice.custom_qualified_star_line_items.count
   end
 end
 
@@ -114,6 +144,34 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 'defaulty', bulb.name
   end
 
+  def test_building_the_associated_object_with_implicit_sti_base_class
+    firm = DependentFirm.new
+    company = firm.companies.build
+    assert_kind_of Company, company, "Expected #{company.class} to be a Company"
+  end
+
+  def test_building_the_associated_object_with_explicit_sti_base_class
+    firm = DependentFirm.new
+    company = firm.companies.build(:type => "Company")
+    assert_kind_of Company, company, "Expected #{company.class} to be a Company"
+  end
+
+  def test_building_the_associated_object_with_sti_subclass
+    firm = DependentFirm.new
+    company = firm.companies.build(:type => "Client")
+    assert_kind_of Client, company, "Expected #{company.class} to be a Client"
+  end
+
+  def test_building_the_associated_object_with_an_invalid_type
+    firm = DependentFirm.new
+    assert_raise(ActiveRecord::SubclassNotFound) { firm.companies.build(:type => "Invalid") }
+  end
+
+  def test_building_the_associated_object_with_an_unrelated_type
+    firm = DependentFirm.new
+    assert_raise(ActiveRecord::SubclassNotFound) { firm.companies.build(:type => "Account") }
+  end
+
   def test_association_keys_bypass_attribute_protection
     car = Car.create(:name => 'honda')
 
@@ -156,28 +214,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     line_item = invoice.line_items.create :invoice_id => invoice.id + 1
     assert_equal invoice.id, line_item.invoice_id
-  end
-
-  def test_association_conditions_bypass_attribute_protection
-    car = Car.create(:name => 'honda')
-
-    bulb = car.frickinawesome_bulbs.new
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.frickinawesome_bulbs.new(:frickinawesome => false)
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.frickinawesome_bulbs.build
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.frickinawesome_bulbs.build(:frickinawesome => false)
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.frickinawesome_bulbs.create
-    assert_equal true, bulb.frickinawesome?
-
-    bulb = car.frickinawesome_bulbs.create(:frickinawesome => false)
-    assert_equal true, bulb.frickinawesome?
   end
 
   # When creating objects on the association, we must not do it within a scope (even though it
@@ -260,12 +296,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def test_finding_array_compatibility
     assert_equal 2, Firm.order(:id).find{|f| f.id > 0}.clients.length
-  end
-
-  def test_find_with_blank_conditions
-    [[], {}, nil, ""].each do |blank|
-      assert_equal 2, Firm.all.merge!(:order => "id").first.clients.where(blank).to_a.size
-    end
   end
 
   def test_find_many_with_merged_options
@@ -740,6 +770,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_custom_named_counter_cache
+    topic = topics(:first)
+
+    assert_difference "topic.reload.replies_count", -1 do
+      topic.approved_replies.clear
+    end
+  end
+
   def test_deleting_a_collection
     force_signal37_to_load_all_clients_of_firm
     companies(:first_firm).clients_of_firm.create("name" => "Another Client")
@@ -1132,6 +1170,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def test_included_in_collection
     assert companies(:first_firm).clients.include?(Client.find(2))
+  end
+
+  def test_included_in_collection_for_new_records
+    client = Client.create(:name => 'Persisted')
+    assert_nil client.client_of
+    assert !Firm.new.clients_of_firm.include?(client),
+           'includes a client that does not belong to any firm'
   end
 
   def test_adding_array_and_collection
@@ -1550,23 +1595,18 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal "RED!", car.bulbs.to_a.first.color
   end
 
-  def test_new_is_called_with_attributes_and_options
-    car = Car.create(:name => 'honda')
-
-    bulb = car.bulbs.build
-    assert_equal Bulb, bulb.class
-
-    bulb = car.bulbs.build(:bulb_type => :custom)
-    assert_equal Bulb, bulb.class
-
-    bulb = car.bulbs.build({ :bulb_type => :custom }, :as => :admin)
-    assert_equal CustomBulb, bulb.class
-  end
-
   def test_abstract_class_with_polymorphic_has_many
     post = SubStiPost.create! :title => "fooo", :body => "baa"
     tagging = Tagging.create! :taggable => post
     assert_equal [tagging], post.taggings
+  end
+
+  def test_build_with_polymorphic_has_many_does_not_allow_to_override_type_and_id
+    welcome = posts(:welcome)
+    tagging = welcome.taggings.build(:taggable_id => 99, :taggable_type => 'ShouldNotChange')
+
+    assert_equal welcome.id, tagging.taggable_id
+    assert_equal 'Post', tagging.taggable_type
   end
 
   def test_dont_call_save_callbacks_twice_on_has_many
@@ -1646,5 +1686,23 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   test ":counter_sql is deprecated" do
     klass = Class.new(ActiveRecord::Base)
     assert_deprecated { klass.has_many :foo, :counter_sql => 'lol' }
+  end
+
+  test "sum calculation with block for array compatibility is deprecated" do
+    assert_deprecated do
+      posts(:welcome).comments.sum { |c| c.id }
+    end
+  end
+
+  test "has many associations on new records use null relations" do
+    post = Post.new
+
+    assert_no_queries do
+      assert_equal [], post.comments
+      assert_equal [], post.comments.where(body: 'omg')
+      assert_equal [], post.comments.pluck(:body)
+      assert_equal 0,  post.comments.sum(:id)
+      assert_equal 0,  post.comments.count
+    end
   end
 end

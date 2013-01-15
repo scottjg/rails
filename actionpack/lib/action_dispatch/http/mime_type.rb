@@ -1,5 +1,6 @@
 require 'set'
 require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/string/starts_ends_with'
 
 module Mime
   class Mimes < Array
@@ -26,7 +27,7 @@ module Mime
   class << self
     def [](type)
       return type if type.is_a?(Type)
-      Type.lookup_by_extension(type)
+      Type.lookup_by_extension(type) || NullType.new
     end
 
     def fetch(type)
@@ -43,8 +44,8 @@ module Mime
   #
   #       respond_to do |format|
   #         format.html
-  #         format.ics { render :text => post.to_ics, :mime_type => Mime::Type["text/calendar"]  }
-  #         format.xml { render :xml => @people }
+  #         format.ics { render text: post.to_ics, mime_type: Mime::Type["text/calendar"]  }
+  #         format.xml { render xml: @people }
   #       end
   #     end
   #   end
@@ -56,7 +57,6 @@ module Mime
     # i.e. following a link, getting an image or posting a form. CSRF protection
     # only needs to protect against these types.
     @@browser_generated_types = Set.new [:html, :url_encoded_form, :multipart_form, :text]
-    cattr_reader :browser_generated_types
     attr_reader :symbol
 
     @register_callbacks = []
@@ -275,25 +275,47 @@ module Mime
     # Returns true if Action Pack should check requests using this Mime Type for possible request forgery. See
     # ActionController::RequestForgeryProtection.
     def verify_request?
+      ActiveSupport::Deprecation.warn "Mime::Type#verify_request? is deprecated and will be removed in Rails 4.1"
       @@browser_generated_types.include?(to_sym)
+    end
+
+    def self.browser_generated_types
+      ActiveSupport::Deprecation.warn "Mime::Type.browser_generated_types is deprecated and will be removed in Rails 4.1"
+      @@browser_generated_types
     end
 
     def html?
       @@html_types.include?(to_sym) || @string =~ /html/
     end
 
-    private
-      def method_missing(method, *args)
-        if method.to_s.ends_with? '?'
-          method[0..-2].downcase.to_sym == to_sym
-        else
-          super
-        end
-      end
 
-      def respond_to_missing?(method, include_private = false) #:nodoc:
-        method.to_s.ends_with? '?'
+    private
+
+    def to_ary; end
+    def to_a; end
+
+    def method_missing(method, *args)
+      if method.to_s.ends_with? '?'
+        method[0..-2].downcase.to_sym == to_sym
+      else
+        super
       end
+    end
+
+    def respond_to_missing?(method, include_private = false) #:nodoc:
+      method.to_s.ends_with? '?'
+    end
+  end
+  
+  class NullType
+    def nil?
+      true
+    end
+
+    private
+    def method_missing(method, *args)
+      false if method.to_s.ends_with? '?'
+    end
   end
 end
 

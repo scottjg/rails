@@ -25,6 +25,7 @@ module ApplicationTests
         app_file "app/assets/stylesheets/application.css", "// TODO: note in css"
         app_file "app/assets/stylesheets/application.css.scss", "// TODO: note in scss"
         app_file "app/controllers/application_controller.rb", 1000.times.map { "" }.join("\n") << "# TODO: note in ruby"
+        app_file "lib/tasks/task.rake", "# TODO: note in rake"
 
         boot_rails
         require 'rake'
@@ -45,8 +46,9 @@ module ApplicationTests
           assert_match(/note in js/, output)
           assert_match(/note in css/, output)
           assert_match(/note in scss/, output)
+          assert_match(/note in rake/, output)
 
-          assert_equal 8, lines.size
+          assert_equal 9, lines.size
 
           lines.each do |line|
             assert_equal 4, line[0].size
@@ -58,8 +60,8 @@ module ApplicationTests
       test 'notes finds notes in default directories' do
         app_file "app/controllers/some_controller.rb", "# TODO: note in app directory"
         app_file "config/initializers/some_initializer.rb", "# TODO: note in config directory"
+        app_file "db/some_seeds.rb", "# TODO: note in db directory"
         app_file "lib/some_file.rb", "# TODO: note in lib directory"
-        app_file "script/run_something.rb", "# TODO: note in script directory"
         app_file "test/some_test.rb", 1000.times.map { "" }.join("\n") << "# TODO: note in test directory"
 
         app_file "some_other_dir/blah.rb", "# TODO: note in some_other directory"
@@ -78,8 +80,8 @@ module ApplicationTests
 
           assert_match(/note in app directory/, output)
           assert_match(/note in config directory/, output)
+          assert_match(/note in db directory/, output)
           assert_match(/note in lib directory/, output)
-          assert_match(/note in script directory/, output)
           assert_match(/note in test directory/, output)
           assert_no_match(/note in some_other directory/, output)
 
@@ -94,8 +96,8 @@ module ApplicationTests
       test 'notes finds notes in custom directories' do
         app_file "app/controllers/some_controller.rb", "# TODO: note in app directory"
         app_file "config/initializers/some_initializer.rb", "# TODO: note in config directory"
+        app_file "db/some_seeds.rb", "# TODO: note in db directory"
         app_file "lib/some_file.rb", "# TODO: note in lib directory"
-        app_file "script/run_something.rb", "# TODO: note in script directory"
         app_file "test/some_test.rb", 1000.times.map { "" }.join("\n") << "# TODO: note in test directory"
 
         app_file "some_other_dir/blah.rb", "# TODO: note in some_other directory"
@@ -114,8 +116,8 @@ module ApplicationTests
 
           assert_match(/note in app directory/, output)
           assert_match(/note in config directory/, output)
+          assert_match(/note in db directory/, output)
           assert_match(/note in lib directory/, output)
-          assert_match(/note in script directory/, output)
           assert_match(/note in test directory/, output)
 
           assert_match(/note in some_other directory/, output)

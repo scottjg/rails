@@ -6,6 +6,7 @@ rescue LoadError => e
 end
 
 require 'digest/md5'
+require 'active_support/core_ext/marshal'
 
 module ActiveSupport
   module Cache
@@ -132,6 +133,10 @@ module ActiveSupport
           method = options && options[:unless_exist] ? :add : :set
           value = options[:raw] ? entry.value.to_s : entry
           expires_in = options[:expires_in].to_i
+          if expires_in > 0 && !options[:raw]
+            # Set the memcache expire a few minutes in the future to support race condition ttls on read
+            expires_in += 5.minutes
+          end
           @data.send(method, escape_key(key), value, expires_in, options)
         rescue Dalli::DalliError => e
           logger.error("DalliError (#{e}): #{e.message}") if logger

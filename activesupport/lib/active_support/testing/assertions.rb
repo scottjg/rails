@@ -3,6 +3,22 @@ require 'active_support/core_ext/object/blank'
 module ActiveSupport
   module Testing
     module Assertions
+      # Assert that an expression is not truthy. Passes if <tt>object</tt> is
+      # +nil+ or +false+. "Truthy" means "considered true in a conditional"
+      # like <tt>if foo</tt>.
+      #
+      #   assert_not nil    # => true
+      #   assert_not false  # => true
+      #   assert_not 'foo'  # => 'foo' is not nil or false
+      #
+      # An error message can be specified.
+      #
+      #   assert_not foo, 'foo should be false'
+      def assert_not(object, message = nil)
+        message ||= "Expected #{mu_pp(object)} to be nil or false"
+        assert !object, message
+      end
+
       # Test numeric difference between the return value of an expression as a
       # result of what is evaluated in the yielded block.
       #
@@ -31,7 +47,7 @@ module ActiveSupport
       #
       # A lambda or a list of lambdas can be passed in and evaluated:
       #
-      #   assert_difference lambda { Article.count }, 2 do
+      #   assert_difference ->{ Article.count }, 2 do
       #     post :create, article: {...}
       #   end
       #
@@ -77,7 +93,8 @@ module ActiveSupport
         assert_difference expression, 0, message, &block
       end
 
-      # Test if an expression is blank. Passes if <tt>object.blank?</tt> is +true+.
+      # Test if an expression is blank. Passes if <tt>object.blank?</tt>
+      # is +true+.
       #
       #   assert_blank []   # => true
       #   assert_blank [[]] # => [[]] is not blank
@@ -86,11 +103,13 @@ module ActiveSupport
       #
       #   assert_blank [], 'this should be blank'
       def assert_blank(object, message=nil)
+        ActiveSupport::Deprecation.warn('"assert_blank" is deprecated. Please use "assert object.blank?" instead')
         message ||= "#{object.inspect} is not blank"
         assert object.blank?, message
       end
 
-      # Test if an expression is not blank. Passes if <tt>object.present?</tt> is +true+.
+      # Test if an expression is not blank. Passes if <tt>object.present?</tt>
+      # is +true+.
       #
       #   assert_present({ data: 'x' }) # => true
       #   assert_present({})            # => {} is blank
@@ -99,6 +118,7 @@ module ActiveSupport
       #
       #   assert_present({ data: 'x' }, 'this should not be blank')
       def assert_present(object, message=nil)
+        ActiveSupport::Deprecation.warn('"assert_present" is deprecated. Please use "assert object.present?" instead')
         message ||= "#{object.inspect} is blank"
         assert object.present?, message
       end

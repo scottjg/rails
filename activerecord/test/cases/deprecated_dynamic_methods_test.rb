@@ -1,7 +1,7 @@
 # This file should be deleted when activerecord-deprecated_finders is removed as
 # a dependency.
 #
-# It is kept for now as there is some fairly nuanced behaviour in the dynamic
+# It is kept for now as there is some fairly nuanced behavior in the dynamic
 # finders so it is useful to keep this around to guard against regressions if
 # we need to change the code.
 
@@ -199,23 +199,7 @@ class DeprecatedDynamicMethodsTest < ActiveRecord::TestCase
     assert !new_customer.persisted?
   end
 
-  def test_find_or_initialize_from_one_attribute_should_not_set_attribute_even_when_protected
-    c = Company.find_or_initialize_by_name({:name => "Fortune 1000", :rating => 1000})
-    assert_equal "Fortune 1000", c.name
-    assert_not_equal 1000, c.rating
-    assert c.valid?
-    assert !c.persisted?
-  end
-
-  def test_find_or_create_from_one_attribute_should_not_set_attribute_even_when_protected
-    c = Company.find_or_create_by_name({:name => "Fortune 1000", :rating => 1000})
-    assert_equal "Fortune 1000", c.name
-    assert_not_equal 1000, c.rating
-    assert c.valid?
-    assert c.persisted?
-  end
-
-  def test_find_or_initialize_from_one_attribute_should_set_attribute_even_when_protected
+  def test_find_or_initialize_from_one_attribute_should_set_attribute
     c = Company.find_or_initialize_by_name_and_rating("Fortune 1000", 1000)
     assert_equal "Fortune 1000", c.name
     assert_equal 1000, c.rating
@@ -223,7 +207,7 @@ class DeprecatedDynamicMethodsTest < ActiveRecord::TestCase
     assert !c.persisted?
   end
 
-  def test_find_or_create_from_one_attribute_should_set_attribute_even_when_protected
+  def test_find_or_create_from_one_attribute_should_set_attribute
     c = Company.find_or_create_by_name_and_rating("Fortune 1000", 1000)
     assert_equal "Fortune 1000", c.name
     assert_equal 1000, c.rating
@@ -231,7 +215,7 @@ class DeprecatedDynamicMethodsTest < ActiveRecord::TestCase
     assert c.persisted?
   end
 
-  def test_find_or_initialize_from_one_attribute_should_set_attribute_even_when_protected_and_also_set_the_hash
+  def test_find_or_initialize_from_one_attribute_should_set_attribute_even_when_set_the_hash
     c = Company.find_or_initialize_by_rating(1000, {:name => "Fortune 1000"})
     assert_equal "Fortune 1000", c.name
     assert_equal 1000, c.rating
@@ -239,7 +223,7 @@ class DeprecatedDynamicMethodsTest < ActiveRecord::TestCase
     assert !c.persisted?
   end
 
-  def test_find_or_create_from_one_attribute_should_set_attribute_even_when_protected_and_also_set_the_hash
+  def test_find_or_create_from_one_attribute_should_set_attribute_even_when_set_the_hash
     c = Company.find_or_create_by_rating(1000, {:name => "Fortune 1000"})
     assert_equal "Fortune 1000", c.name
     assert_equal 1000, c.rating
@@ -247,7 +231,7 @@ class DeprecatedDynamicMethodsTest < ActiveRecord::TestCase
     assert c.persisted?
   end
 
-  def test_find_or_initialize_should_set_protected_attributes_if_given_as_block
+  def test_find_or_initialize_should_set_attributes_if_given_as_block
     c = Company.find_or_initialize_by_name(:name => "Fortune 1000") { |f| f.rating = 1000 }
     assert_equal "Fortune 1000", c.name
     assert_equal 1000.to_f, c.rating.to_f
@@ -255,7 +239,7 @@ class DeprecatedDynamicMethodsTest < ActiveRecord::TestCase
     assert !c.persisted?
   end
 
-  def test_find_or_create_should_set_protected_attributes_if_given_as_block
+  def test_find_or_create_should_set_attributes_if_given_as_block
     c = Company.find_or_create_by_name(:name => "Fortune 1000") { |f| f.rating = 1000 }
     assert_equal "Fortune 1000", c.name
     assert_equal 1000.to_f, c.rating.to_f
@@ -584,9 +568,9 @@ class DynamicScopeTest < ActiveRecord::TestCase
   end
 
   def test_dynamic_scope_should_create_methods_after_hitting_method_missing
-    assert_blank @test_klass.methods.grep(/scoped_by_type/)
+    assert @test_klass.methods.grep(/scoped_by_type/).blank?
     @test_klass.scoped_by_type(nil)
-    assert_present @test_klass.methods.grep(/scoped_by_type/)
+    assert @test_klass.methods.grep(/scoped_by_type/).present?
   end
 
   def test_dynamic_scope_with_less_number_of_arguments
