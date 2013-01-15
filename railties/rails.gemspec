@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'rails'
-  s.version = '2.3.14'
+  s.version = '2.3.15'
   s.summary = "Customised Rails for REMS3." 
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick

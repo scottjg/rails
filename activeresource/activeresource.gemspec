@@ -1,10 +1,10 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'activeresource'
-  s.version = '2.3.14'
+  s.version = '2.3.15'
   s.summary = "Customised ActiveResource for REMS3." 
   s.files = Dir['CHANGELOG', 'README', 'lib/**/*']
-  s.add_dependency('activesupport', '= 2.3.14')
+  s.add_dependency('activesupport', '= 2.3.15')
   s.require_path = 'lib'
   s.autorequire = 'active_resource'
   s.has_rdoc = true
