@@ -1410,8 +1410,12 @@ module ActiveRecord #:nodoc:
             super unless all_attributes_exists?(attribute_names)
 
             self.class_eval %{
-              def self.#{method_id}(*args) 
-                options = args.last.is_a?(Hash) ? args.pop : {}
+              def self.#{method_id}(*args)
+                options = if args.length > #{attribute_names.size}
+                            args.last.is_a?(Hash) ? args.pop : {}
+                          else
+                            {}
+                          end
                 attributes = construct_attributes_from_arguments([:#{attribute_names.join(',:')}], args)
                 finder_options = { :conditions => attributes }
                 validate_find_options(options)
