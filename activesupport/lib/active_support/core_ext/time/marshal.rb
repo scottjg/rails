@@ -20,7 +20,7 @@ if !Marshal.load(Marshal.dump(Time.now.utc)).utc?
     def _dump(*args)
       obj = dup
       obj.instance_variable_set('@marshal_with_utc_coercion', utc?)
-      obj._dump_without_utc_flag(*args)
+      obj.send(:_dump_without_utc_flag, *args)
     end
   end
 end
