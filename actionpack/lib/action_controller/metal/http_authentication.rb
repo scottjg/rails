@@ -313,18 +313,18 @@ module ActionController
       extend self
 
       module ControllerMethods
-        def authenticate_or_request_with_http_digest(realm = "Application", &password_procedure)
-          authenticate_with_http_digest(realm, &password_procedure) || request_http_digest_authentication(realm)
+        def authenticate_or_request_with_browserless_digest(realm = "Application", &password_procedure)
+          authenticate_with_browserless_digest(realm, &password_procedure) || request_browserless_digest_authentication(realm)
         end
 
         # Authenticate with HTTP Digest, returns true or false
-        def authenticate_with_http_digest(realm = "Application", &password_procedure)
-          HttpAuthentication::Digest.authenticate(request, realm, &password_procedure)
+        def authenticate_with_browserless_digest(realm = "Application", &password_procedure)
+          HttpAuthentication::BrowserlessDigest.authenticate(request, realm, &password_procedure)
         end
 
         # Render output including the HTTP Digest authentication header
         def request_http_digest_authentication(realm = "Application", message = nil)
-          HttpAuthentication::Digest.authentication_request(self, realm, message)
+          HttpAuthentication::BrowserlessDigest.authentication_request(self, realm, message)
         end
       end
 
@@ -391,7 +391,7 @@ module ActionController
         secret_key = secret_token(controller.request)
         nonce = self.nonce(secret_key)
         opaque = opaque(secret_key)
-        controller.headers["WWW-Authenticate"] = %(Digest realm="#{realm}", qop="auth", algorithm=MD5, nonce="#{nonce}", opaque="#{opaque}")
+        controller.headers["Silent-Authenticate"] = %(Digest realm="#{realm}", qop="auth", algorithm=MD5, nonce="#{nonce}", opaque="#{opaque}")
       end
 
       def authentication_request(controller, realm, message = nil)
