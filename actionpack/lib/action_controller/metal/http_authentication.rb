@@ -313,18 +313,18 @@ module ActionController
       extend self
 
       module ControllerMethods
-        def authenticate_or_request_with_browserless_digest(realm = "Application", &password_procedure)
-          authenticate_with_browserless_digest(realm, &password_procedure) || request_browserless_digest_authentication(realm)
+        def authenticate_or_request_with_http_digest(realm = "Application", &password_procedure)
+          authenticate_with_http_digest(realm, &password_procedure) || request_http_digest_authentication(realm)
         end
 
         # Authenticate with HTTP Digest, returns true or false
-        def authenticate_with_browserless_digest(realm = "Application", &password_procedure)
-          HttpAuthentication::BrowserlessDigest.authenticate(request, realm, &password_procedure)
+        def authenticate_with_http_digest(realm = "Application", &password_procedure)
+          HttpAuthentication::Digest.authenticate(request, realm, &password_procedure)
         end
 
         # Render output including the HTTP Digest authentication header
-        def request_browserless_digest_authentication(realm = "Application", message = nil)
-          HttpAuthentication::BrowserlessDigest.authentication_request(self, realm, message)
+        def request_http_digest_authentication(realm = "Application", message = nil)
+          HttpAuthentication::Digest.authentication_request(self, realm, message)
         end
       end
 
@@ -346,7 +346,7 @@ module ActionController
           return false unless password
 
           method = request.env['rack.methodoverride.original_method'] || request.env['REQUEST_METHOD']
-          uri    = credentials[:uri]
+          uri    = credentials[:uri][0,1] == '/' ? request.original_fullpath : request.original_url
 
           [true, false].any? do |trailing_question_mark|
             [true, false].any? do |password_is_ha1|
@@ -381,7 +381,7 @@ module ActionController
       end
 
       def decode_credentials(header)
-        ActiveSupport::HashWithIndifferentAccess[header.to_s.gsub(/^Digest\s+/, '').split(',').map do |pair|
+        HashWithIndifferentAccess[header.to_s.gsub(/^Digest\s+/,'').split(',').map do |pair|
           key, value = pair.split('=', 2)
           [key.strip, value.to_s.gsub(/^"|"$/,'').delete('\'')]
         end]
@@ -402,9 +402,9 @@ module ActionController
       end
 
       def secret_token(request)
-        key_generator  = request.env["action_dispatch.key_generator"]
-        http_auth_salt = request.env["action_dispatch.http_auth_salt"]
-        key_generator.generate_key(http_auth_salt)
+        secret = request.env["action_dispatch.secret_token"]
+        raise "You must set config.secret_token in your app's config" if secret.blank?
+        secret
       end
 
       # Uses an MD5 digest based on time to generate a value to be used only once.
@@ -417,7 +417,7 @@ module ActionController
       # The quality of the implementation depends on a good choice.
       # A nonce might, for example, be constructed as the base 64 encoding of
       #
-      #   time-stamp H(time-stamp ":" ETag ":" private-key)
+      # => time-stamp H(time-stamp ":" ETag ":" private-key)
       #
       # where time-stamp is a server-generated time or other non-repeating value,
       # ETag is the value of the HTTP ETag header associated with the requested entity,
@@ -433,7 +433,7 @@ module ActionController
       #
       # An implementation might choose not to accept a previously used nonce or a previously used digest, in order to
       # protect against a replay attack. Or, an implementation might choose to use one-time nonces or digests for
-      # POST, PUT, or PATCH requests and a time-stamp for GET requests. For more details on the issues involved see Section 4
+      # POST or PUT requests and a time-stamp for GET requests. For more details on the issues involved see Section 4
       # of this document.
       #
       # The nonce is opaque to the client. Composed of Time, and hash of Time with secret
@@ -443,11 +443,11 @@ module ActionController
         t = time.to_i
         hashed = [t, secret_key]
         digest = ::Digest::MD5.hexdigest(hashed.join(":"))
-        ::Base64.strict_encode64("#{t}:#{digest}")
+        ::Base64.encode64("#{t}:#{digest}").gsub("\n", '')
       end
 
       # Might want a shorter timeout depending on whether the request
-      # is a PATCH, PUT, or POST, and if client is browser or web service.
+      # is a PUT or POST, and if client is browser or web service.
       # Can be much shorter if the Stale directive is implemented. This would
       # allow a user to use new nonce without prompting user again for their
       # username and password.
@@ -460,7 +460,6 @@ module ActionController
       def opaque(secret_key)
         ::Digest::MD5.hexdigest(secret_key)
       end
-
     end
 
     # Makes it dead easy to do HTTP Token authentication.
