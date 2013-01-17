@@ -323,7 +323,7 @@ module ActionController
         end
 
         # Render output including the HTTP Digest authentication header
-        def request_http_digest_authentication(realm = "Application", message = nil)
+        def request_browserless_digest_authentication(realm = "Application", message = nil)
           HttpAuthentication::BrowserlessDigest.authentication_request(self, realm, message)
         end
       end
