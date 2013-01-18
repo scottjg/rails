@@ -180,7 +180,7 @@ module ActiveRecord
       # Calculate sum using SQL, not Enumerable
       def sum(*args)
         if block_given?
-          scoped.sum(*args) { |*block_args| yield(*block_args) }
+          proxy.to_a.sum(*args) { |*block_args| yield(*block_args) }
         else
           scoped.sum(*args)
         end
