@@ -15,6 +15,18 @@ require 'models/toy'
 class FinderTest < ActiveRecord::TestCase
   fixtures :companies, :topics, :entrants, :developers, :developers_projects, :posts, :comments, :accounts, :authors, :customers, :categories, :categorizations
 
+  def test_find_by_id_with_hash
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Post.find_by_id(:limit => 1)
+    end
+  end
+
+  def test_find_by_title_and_id_with_hash
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Post.find_by_title_and_id('foo', :limit => 1)
+    end
+  end
+
   def test_find
     assert_equal(topics(:first).title, Topic.find(1).title)
   end
@@ -45,6 +57,12 @@ class FinderTest < ActiveRecord::TestCase
     assert_raise(NoMethodError) { Topic.exists?([1,2]) }
   end
 
+  def test_exists_does_not_select_columns_without_alias
+    assert_sql(/SELECT\W+1 AS one FROM ["`]topics["`]/i) do
+      Topic.exists?
+    end
+  end
+
   def test_exists_returns_true_with_one_record_and_no_args
     assert Topic.exists?
   end
@@ -63,7 +81,12 @@ class FinderTest < ActiveRecord::TestCase
     assert Topic.order(:id).uniq.exists?
   end
 
-  def test_does_not_exist_with_empty_table_and_no_args_given
+  def test_exists_with_includes_limit_and_empty_result
+    assert !Topic.includes(:replies).limit(0).exists?
+    assert !Topic.includes(:replies).limit(1).where('0 = 1').exists?
+  end
+
+  def test_exists_with_empty_table_and_no_args_given
     Topic.delete_all
     assert !Topic.exists?
   end
@@ -639,6 +662,11 @@ class FinderTest < ActiveRecord::TestCase
   def test_find_by_one_attribute_bang
     assert_equal topics(:first), Topic.find_by_title!("The First Topic")
     assert_raise(ActiveRecord::RecordNotFound) { Topic.find_by_title!("The First Topic!") }
+  end
+
+  def test_find_by_one_attribute_bang_with_blank_defined
+    blank_topic = BlankTopic.create(:title => "The Blank One")
+    assert_equal blank_topic, BlankTopic.find_by_title!("The Blank One")
   end
 
   def test_find_by_one_attribute_with_order_option

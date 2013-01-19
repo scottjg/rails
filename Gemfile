@@ -22,7 +22,7 @@ end
 gem 'uglifier', '>= 1.0.3', :require => false
 
 gem 'rake', '>= 0.8.7'
-gem 'mocha', '>= 0.9.8'
+gem 'mocha', '>= 0.13.0', :require => false
 
 group :doc do
   # The current sdoc cannot generate GitHub links due
@@ -47,12 +47,11 @@ instance_eval File.read '.Gemfile' if File.exists? '.Gemfile'
 
 platforms :mri do
   group :test do
-    gem 'ruby-prof', '~> 0.11.2'
+    gem 'ruby-prof', '~> 0.11.2' if RUBY_VERSION < '2.0'
   end
 end
 
 platforms :ruby do
-  gem 'json'
   gem 'yajl-ruby'
   gem 'nokogiri', '>= 1.4.5'
 
@@ -95,3 +94,5 @@ end
 
 # A gem necessary for ActiveRecord tests with IBM DB
 gem 'ibm_db' if ENV['IBM_DB']
+
+gem 'benchmark-ips'

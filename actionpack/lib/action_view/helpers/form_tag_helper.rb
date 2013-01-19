@@ -45,7 +45,7 @@ module ActionView
       #   # => <form action="/posts" method="post">
       #
       #   form_tag('/posts/1', :method => :put)
-      #   # => <form action="/posts/1" method="put">
+      #   # => <form action="/posts/1" method="post"> ... <input name="_method" type="hidden" value="put" /> ...
       #
       #   form_tag('/upload', :multipart => true)
       #   # => <form action="/upload" method="post" enctype="multipart/form-data">
@@ -53,7 +53,7 @@ module ActionView
       #   <%= form_tag('/posts') do -%>
       #     <div><%= submit_tag 'Save' %></div>
       #   <% end -%>
-      #   # => <form action="/posts" method="post"><div><input type="submit" name="submit" value="Save" /></div></form>
+      #   # => <form action="/posts" method="post"><div><input type="submit" name="commit" value="Save" /></div></form>
       #
       #   <%= form_tag('/posts', :remote => true) %>
       #   # => <form action="/posts" method="post" data-remote="true">
@@ -119,14 +119,15 @@ module ActionView
       #   # => <select disabled="disabled" id="destination" name="destination"><option>NYC</option>
       #   #    <option>Paris</option><option>Rome</option></select>
       def select_tag(name, option_tags = nil, options = {})
+        option_tags ||= ""
         html_name = (options[:multiple] == true && !name.to_s.ends_with?("[]")) ? "#{name}[]" : name
 
         if options.delete(:include_blank)
-          option_tags = "<option value=\"\"></option>".html_safe + option_tags
+          option_tags = content_tag(:option, '', :value => '').safe_concat(option_tags)
         end
 
         if prompt = options.delete(:prompt)
-          option_tags = "<option value=\"\">#{prompt}</option>".html_safe + option_tags
+          option_tags = content_tag(:option, prompt, :value => '').safe_concat(option_tags)
         end
 
         content_tag :select, option_tags, { "name" => html_name, "id" => sanitize_to_id(name) }.update(options.stringify_keys)
@@ -180,7 +181,7 @@ module ActionView
       #   # => <label for="name">Name</label>
       #
       #   label_tag 'name', 'Your name'
-      #   # => <label for="name">Your Name</label>
+      #   # => <label for="name">Your name</label>
       #
       #   label_tag 'name', nil, :class => 'small_label'
       #   # => <label for="name" class="small_label">Name</label>
@@ -417,14 +418,10 @@ module ActionView
         options = options.stringify_keys
 
         if disable_with = options.delete("disable_with")
-          ActiveSupport::Deprecation.warn ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead"
-
           options["data-disable-with"] = disable_with
         end
 
         if confirm = options.delete("confirm")
-          ActiveSupport::Deprecation.warn ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead"
-
           options["data-confirm"] = confirm
         end
 
@@ -471,14 +468,10 @@ module ActionView
         options = options.stringify_keys
 
         if disable_with = options.delete("disable_with")
-          ActiveSupport::Deprecation.warn ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead"
-
           options["data-disable-with"] = disable_with
         end
 
         if confirm = options.delete("confirm")
-          ActiveSupport::Deprecation.warn ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead"
-
           options["data-confirm"] = confirm
         end
 
@@ -514,8 +507,6 @@ module ActionView
         options = options.stringify_keys
 
         if confirm = options.delete("confirm")
-          ActiveSupport::Deprecation.warn ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead"
-
           options["data-confirm"] = confirm
         end
 

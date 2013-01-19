@@ -25,6 +25,8 @@ module ActionDispatch
     module Compatibility
       def initialize(app, options = {})
         options[:key] ||= '_session_id'
+        # FIXME Rack's secret is not being used
+        options[:secret] ||= SecureRandom.hex(30)
         super
       end
 
@@ -74,6 +76,13 @@ module ActionDispatch
     class AbstractStore < Rack::Session::Abstract::ID
       include Compatibility
       include StaleSessionCheck
+
+      private
+
+      def set_cookie(env, session_id, cookie)
+        request = ActionDispatch::Request.new(env)
+        request.cookie_jar[key] = cookie
+      end
     end
   end
 end

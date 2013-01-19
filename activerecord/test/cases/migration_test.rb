@@ -882,7 +882,7 @@ if ActiveRecord::Base.connection.supports_migrations?
         table.column :hat_style, :string, :limit => 100
       end
 
-      assert_deprecated /Passing array to remove_columns is deprecated/ do
+      assert_deprecated(/Passing array to remove_columns is deprecated/) do
         Person.connection.remove_column("hats", ["hat_name", "hat_size"])
       end
     ensure
@@ -948,6 +948,26 @@ if ActiveRecord::Base.connection.supports_migrations?
         ActiveRecord::Base.connection.drop_table :octopi rescue nil
       end
     end
+
+    if current_adapter?(:PostgreSQLAdapter)
+      def test_rename_table_for_postgresql_should_also_rename_default_sequence
+        begin
+          ActiveRecord::Base.connection.create_table :octopuses do |t|
+            t.column :url, :string
+          end
+          ActiveRecord::Base.connection.rename_table :octopuses, :octopi
+
+          pk, seq = ActiveRecord::Base.connection.pk_and_sequence_for('octopi')
+
+          assert_equal "octopi_#{pk}_seq", seq
+
+        ensure
+          ActiveRecord::Base.connection.drop_table :octopuses rescue nil
+          ActiveRecord::Base.connection.drop_table :octopi rescue nil
+        end
+      end
+    end
+
 
     def test_change_column_nullability
       Person.delete_all
@@ -1029,6 +1049,18 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert !Person.new.administrator?
     ensure
       Person.connection.remove_column("people", "administrator") rescue nil
+    end
+
+    def test_change_column_with_custom_index_name
+      Person.connection.add_column "people", "category", :string, :default => 'human'
+      Person.connection.add_index :people, :category, :name => 'people_categories_idx'
+
+      assert_equal ['people_categories_idx'], Person.connection.indexes('people').map(&:name)
+      Person.connection.change_column "people", "category", :string, :null => false, :default => 'article'
+
+      assert_equal ['people_categories_idx'], Person.connection.indexes('people').map(&:name)
+    ensure
+      Person.connection.remove_column("people", "category") rescue nil
     end
 
     def test_change_column_default
@@ -1408,6 +1440,12 @@ if ActiveRecord::Base.connection.supports_migrations?
         assert_equal pair.first, migrations[i].version
         assert_equal pair.last, migrations[i].name
       end
+    end
+
+    def test_finds_migrations_in_numbered_directory
+      migrations = ActiveRecord::Migrator.migrations [MIGRATIONS_ROOT + '/10_urban']
+      assert_equal 9, migrations[0].version
+      assert_equal 'AddExpressions', migrations[0].name
     end
 
     def test_dump_schema_information_outputs_lexically_ordered_versions
@@ -1956,14 +1994,14 @@ if ActiveRecord::Base.connection.supports_migrations?
 
     def test_remove_drops_single_column
       with_change_table do |t|
-        @connection.expects(:remove_column).with(:delete_me, [:bar])
+        @connection.expects(:remove_column).with(:delete_me, :bar)
         t.remove :bar
       end
     end
 
     def test_remove_drops_multiple_columns
       with_change_table do |t|
-        @connection.expects(:remove_column).with(:delete_me, [:bar, :baz])
+        @connection.expects(:remove_column).with(:delete_me, :bar, :baz)
         t.remove :bar, :baz
       end
     end

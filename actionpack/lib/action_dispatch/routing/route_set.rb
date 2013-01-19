@@ -94,7 +94,12 @@ module ActionDispatch
         attr_reader :routes, :helpers, :module
 
         def initialize
-          clear!
+          @routes = {}
+          @helpers = []
+
+          @module = Module.new do
+            instance_methods.each { |selector| remove_method(selector) }
+          end
         end
 
         def helper_names
@@ -102,12 +107,14 @@ module ActionDispatch
         end
 
         def clear!
+          @helpers.each do |helper|
+            @module.module_eval do
+              remove_possible_method helper
+            end
+          end
+
           @routes = {}
           @helpers = []
-
-          @module ||= Module.new do
-            instance_methods.each { |selector| remove_method(selector) }
-          end
         end
 
         def add(name, route)
@@ -441,12 +448,12 @@ module ActionDispatch
           normalize_options!
           normalize_controller_action_id!
           use_relative_controller!
-          controller.sub!(%r{^/}, '') if controller
+          normalize_controller!
           handle_nil_action!
         end
 
         def controller
-          @controller ||= @options[:controller]
+          @options[:controller]
         end
 
         def current_controller
@@ -503,8 +510,13 @@ module ActionDispatch
             old_parts = current_controller.split('/')
             size = controller.count("/") + 1
             parts = old_parts[0...-size] << controller
-            @controller = @options[:controller] = parts.join("/")
+            @options[:controller] = parts.join("/")
           end
+        end
+
+        # Remove leading slashes from controllers
+        def normalize_controller!
+          @options[:controller] = controller.sub(%r{^/}, '') if controller
         end
 
         # This handles the case of :action => nil being explicitly passed.

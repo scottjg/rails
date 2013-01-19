@@ -64,7 +64,16 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_should_group_by_field
     c = Account.sum(:credit_limit, :group => :firm_id)
-    [1,6,2].each { |firm_id| assert c.keys.include?(firm_id) }
+    [1,6,2].each do |firm_id|
+      assert c.keys.include?(firm_id), "Group #{c.inspect} does not contain firm_id #{firm_id}"
+    end
+  end
+
+  def test_should_group_by_arel_attribute
+    c = Account.sum(:credit_limit, :group => Account.arel_table[:firm_id])
+    [1,6,2].each do |firm_id|
+      assert c.keys.include?(firm_id), "Group #{c.inspect} does not contain firm_id #{firm_id}"
+    end
   end
 
   def test_should_group_by_multiple_fields
@@ -477,5 +486,21 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_pluck_with_qualified_column_name
     assert_equal [1,2,3,4], Topic.order(:id).pluck("topics.id")
+  end
+
+  def test_pluck_replaces_select_clause
+    taks_relation = Topic.select([:approved, :id]).order(:id)
+    assert_equal [1,2,3,4], taks_relation.pluck(:id)
+    assert_equal [false, true, true, true], taks_relation.pluck(:approved)
+  end
+
+  def test_pluck_auto_table_name_prefix
+    c = Company.create!(:name => "test", :contracts => [Contract.new])
+    assert_equal [c.id], Company.joins(:contracts).pluck(:id)
+  end
+
+  def test_pluck_not_auto_table_name_prefix_if_column_joined
+    Company.create!(:name => "test", :contracts => [Contract.new(:developer_id => 7)])
+    assert_equal [7], Company.joins(:contracts).pluck(:developer_id).map(&:to_i)
   end
 end

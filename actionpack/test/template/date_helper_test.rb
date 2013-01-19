@@ -128,10 +128,37 @@ class DateHelperTest < ActionView::TestCase
   end
 
   def test_distance_in_words_with_integers
-    assert_equal "less than a minute", distance_of_time_in_words(59)
+    assert_equal "1 minute", distance_of_time_in_words(59)
     assert_equal "about 1 hour", distance_of_time_in_words(60*60)
-    assert_equal "less than a minute", distance_of_time_in_words(0, 59)
+    assert_equal "1 minute", distance_of_time_in_words(0, 59)
     assert_equal "about 1 hour", distance_of_time_in_words(60*60, 0)
+  end
+
+  def test_distance_in_words_with_times
+    assert_equal "1 minute", distance_of_time_in_words(30.seconds)
+    assert_equal "1 minute", distance_of_time_in_words(59.seconds)
+    assert_equal "2 minutes", distance_of_time_in_words(119.seconds)
+    assert_equal "2 minutes", distance_of_time_in_words(1.minute + 59.seconds)
+    assert_equal "3 minutes", distance_of_time_in_words(2.minute + 30.seconds)
+    assert_equal "44 minutes", distance_of_time_in_words(44.minutes + 29.seconds)
+    assert_equal "about 1 hour", distance_of_time_in_words(44.minutes + 30.seconds)
+    assert_equal "about 1 hour", distance_of_time_in_words(60.minutes)
+
+    # include seconds
+    assert_equal "half a minute", distance_of_time_in_words(39.seconds, 0, true)
+    assert_equal "less than a minute", distance_of_time_in_words(40.seconds, 0, true)
+    assert_equal "less than a minute", distance_of_time_in_words(59.seconds, 0, true)
+    assert_equal "1 minute", distance_of_time_in_words(60.seconds, 0, true)
+  end
+
+  def test_distance_in_words_with_offset_datetimes
+    start_date = DateTime.new 1975, 1, 31, 0, 0, 0, '+6'
+    end_date = DateTime.new 1977, 1, 31, 0, 0, 0, '+6'
+    assert_equal("about 2 years", distance_of_time_in_words(start_date, end_date))
+
+    start_date = DateTime.new 1982, 12, 3, 0, 0, 0, '+6'
+    end_date = DateTime.new 2010, 11, 30, 0, 0, 0, '+6'
+    assert_equal("almost 28 years", distance_of_time_in_words(start_date, end_date))
   end
 
   def test_time_ago_in_words
@@ -2531,6 +2558,30 @@ class DateHelperTest < ActionView::TestCase
     expected << %{<input type="hidden" id="post_updated_at_5i" name="post[updated_at(5i)]" value="16" />\n}
 
     assert_dom_equal expected, datetime_select("post", "updated_at", :discard_minute => true)
+  end
+
+  def test_datetime_select_disabled_and_discard_minute
+    @post = Post.new
+    @post.updated_at = Time.local(2004, 6, 15, 15, 16, 35)
+
+    expected = %{<select id="post_updated_at_1i" disabled="disabled" name="post[updated_at(1i)]">\n}
+    1999.upto(2009) { |i| expected << %(<option value="#{i}"#{' selected="selected"' if i == 2004}>#{i}</option>\n) }
+    expected << "</select>\n"
+    expected << %{<select id="post_updated_at_2i" disabled="disabled" name="post[updated_at(2i)]">\n}
+    1.upto(12) { |i| expected << %(<option value="#{i}"#{' selected="selected"' if i == 6}>#{Date::MONTHNAMES[i]}</option>\n) }
+    expected << "</select>\n"
+    expected << %{<select id="post_updated_at_3i" disabled="disabled" name="post[updated_at(3i)]">\n}
+    1.upto(31) { |i| expected << %(<option value="#{i}"#{' selected="selected"' if i == 15}>#{i}</option>\n) }
+    expected << "</select>\n"
+
+    expected << " &mdash; "
+
+    expected << %{<select id="post_updated_at_4i" disabled="disabled" name="post[updated_at(4i)]">\n}
+    0.upto(23) { |i| expected << %(<option value="#{sprintf("%02d", i)}"#{' selected="selected"' if i == 15}>#{sprintf("%02d", i)}</option>\n) }
+    expected << "</select>\n"
+    expected << %{<input type="hidden" id="post_updated_at_5i" disabled="disabled" name="post[updated_at(5i)]" value="16" />\n}
+
+    assert_dom_equal expected, datetime_select("post", "updated_at", :discard_minute => true, :disabled => true)
   end
 
   def test_datetime_select_invalid_order

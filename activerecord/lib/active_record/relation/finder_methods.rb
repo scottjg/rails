@@ -190,7 +190,7 @@ module ActiveRecord
 
       join_dependency = construct_join_dependency_for_association_find
       relation = construct_relation_for_association_find(join_dependency)
-      relation = relation.except(:select, :order).select("1").limit(1)
+      relation = relation.except(:select, :order).select("1 AS one").limit(1)
 
       case id
       when Array, Hash
@@ -200,6 +200,8 @@ module ActiveRecord
       end
 
       connection.select_value(relation, "#{name} Exists") ? true : false
+    rescue ThrowResult
+      false
     end
 
     protected
@@ -251,9 +253,11 @@ module ActiveRecord
       orders = relation.order_values.map { |val| val.presence }.compact
       values = @klass.connection.distinct("#{@klass.connection.quote_table_name table_name}.#{primary_key}", orders)
 
-      relation = relation.dup
+      relation = relation.dup.select(values)
 
-      ids_array = relation.select(values).collect {|row| row[primary_key]}
+      id_rows = @klass.connection.select_all(relation.arel, 'SQL', relation.bind_values)
+      ids_array = id_rows.map {|row| row[primary_key]}
+
       ids_array.empty? ? raise(ThrowResult) : table[primary_key].in(ids_array)
     end
 
@@ -261,7 +265,7 @@ module ActiveRecord
       conditions = Hash[attributes.map {|a| [a, args[attributes.index(a)]]}]
       result = where(conditions).send(match.finder)
 
-      if match.bang? && result.blank?
+      if match.bang? && result.nil?
         raise RecordNotFound, "Couldn't find #{@klass.name} with #{conditions.to_a.collect {|p| p.join(' = ')}.join(', ')}"
       else
         yield(result) if block_given?

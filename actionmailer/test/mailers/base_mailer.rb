@@ -115,4 +115,12 @@ class BaseMailer < ActionMailer::Base
   def email_with_translations
     mail :body => render("email_with_translations", :formats => [:html])
   end
+
+  def without_mail_call
+  end
+
+  def with_nil_as_return_value(hash = {})
+    mail(:template_name => "welcome")
+    nil
+  end
 end

@@ -3,7 +3,7 @@ require 'abstract_unit'
 require 'active_support/core_ext/string/inflections'
 require 'active_support/json'
 
-class TestJSONEncoding < ActiveSupport::TestCase
+class TestJSONEncoding < Test::Unit::TestCase
   class Foo
     def initialize(a, b)
       @a, @b = a, b
@@ -19,6 +19,15 @@ class TestJSONEncoding < ActiveSupport::TestCase
   class Custom
     def as_json(options)
       'custom'
+    end
+  end
+
+  class CustomWithOptions
+    attr_accessor :foo, :bar
+
+    def as_json(options={})
+      options[:only] = %w(foo bar)
+      super(options)
     end
   end
 
@@ -46,6 +55,8 @@ class TestJSONEncoding < ActiveSupport::TestCase
   HashlikeTests = [[ Hashlike.new, %({\"a\":1}) ]]
   CustomTests   = [[ Custom.new, '"custom"' ]]
 
+  VariableTests = [[ ActiveSupport::JSON::Variable.new('foo'), 'foo'],
+                   [ ActiveSupport::JSON::Variable.new('alert("foo")'), 'alert("foo")']]
   RegexpTests   = [[ /^a/, '"(?-mix:^a)"' ], [/^\w{1,2}[a-z]+/ix, '"(?ix-m:^\\\\w{1,2}[a-z]+)"']]
 
   DateTests     = [[ Date.new(2005,2,1), %("2005/02/01") ]]
@@ -77,13 +88,6 @@ class TestJSONEncoding < ActiveSupport::TestCase
     end
   end
 
-  def test_json_variable
-    assert_deprecated do
-      assert_equal ActiveSupport::JSON::Variable.new('foo'), 'foo'
-      assert_equal ActiveSupport::JSON::Variable.new('alert("foo")'), 'alert("foo")'
-    end
-  end
-
   def test_hash_encoding
     assert_equal %({\"a\":\"b\"}), ActiveSupport::JSON.encode(:a => :b)
     assert_equal %({\"a\":1}), ActiveSupport::JSON.encode('a' => 1)
@@ -96,11 +100,11 @@ class TestJSONEncoding < ActiveSupport::TestCase
   def test_utf8_string_encoded_properly_when_kcode_is_utf8
     with_kcode 'UTF8' do
       result = ActiveSupport::JSON.encode('€2.99')
-      assert_equal '"\\u20ac2.99"', result
+      assert_equal '"€2.99"', result
       assert_equal(Encoding::UTF_8, result.encoding) if result.respond_to?(:encoding)
 
       result = ActiveSupport::JSON.encode('✎☺')
-      assert_equal '"\\u270e\\u263a"', result
+      assert_equal '"✎☺"', result
       assert_equal(Encoding::UTF_8, result.encoding) if result.respond_to?(:encoding)
     end
   end
@@ -109,9 +113,22 @@ class TestJSONEncoding < ActiveSupport::TestCase
     def test_non_utf8_string_transcodes
       s = '二'.encode('Shift_JIS')
       result = ActiveSupport::JSON.encode(s)
-      assert_equal '"\\u4e8c"', result
+      assert_equal '"二"', result
       assert_equal Encoding::UTF_8, result.encoding
     end
+  end
+
+  def test_wide_utf8_chars
+    w = '𠜎'
+    result = ActiveSupport::JSON.encode(w)
+    assert_equal '"𠜎"', result
+  end
+
+  def test_wide_utf8_roundtrip
+    hash = { :string => "𐒑" }
+    json = ActiveSupport::JSON.encode(hash)
+    decoded_hash = ActiveSupport::JSON.decode(json)
+    assert_equal "𐒑", decoded_hash['string']
   end
 
   def test_exception_raised_when_encoding_circular_reference_in_array
@@ -242,6 +259,16 @@ class TestJSONEncoding < ActiveSupport::TestCase
     json = people.each.to_json :only => [:address, :city]
 
     assert_equal(%([{"address":{"city":"London"}},{"address":{"city":"Paris"}}]), json)
+  end
+
+  def test_to_json_should_not_keep_options_around
+    f = CustomWithOptions.new
+    f.foo = "hello"
+    f.bar = "world"
+
+    hash = {"foo" => f, "other_hash" => {"foo" => "other_foo", "test" => "other_test"}}
+    assert_equal({ "foo" => { "foo" => "hello", "bar" => "world" }, "other_hash" => { "foo" => "other_foo", "test" => "other_test"} },
+                 JSON.parse(hash.to_json))
   end
 
   def test_struct_encoding
