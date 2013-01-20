@@ -1,4 +1,10 @@
-## Rails 3.2.12 (unreleased)
+## Rails 3.2.12 (unreleased) ##
+
+*   Revert creation of through association models when using `collection=[]`
+    on a `has_many :through` association from an unsaved model.
+    Fix #7661, #8269.
+
+    *Ernie Miller*
 
 *   Fix undefined method `to_i` when calling `new` on a scope that uses an
     Array; Fix FloatDomainError when setting integer column to NaN.
@@ -104,12 +110,6 @@
 
     *Victor Costan*
 
-*   Calling `include?` on `has_many` associations on unsaved records no longer
-    returns `true` when passed a record with a `nil` foreign key.
-    Fixes #7950.
-
-    *George Brocklehurst*
-
 *   `#pluck` can be used on a relation with `select` clause.
     Fixes #7551.
     Backport of #8176.
@@ -179,9 +179,10 @@
 
     *Gabriel Sobrinho, Ricardo Henrique*
 
-## Rails 3.2.11 ##
+## Rails 3.2.11 (Jan 8, 2013) ##
 
 *   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
+
 
 ## Rails 3.2.10 (Jan 2, 2013) ##
 

@@ -1,10 +1,40 @@
 ## Rails 3.2.12 (unreleased) ##
 
+*   Fix `assert_template` with `render :stream => true`.
+    Fix #1743.
+    Backport #5288.
+
+    *Sergey Nartimov*
+
+*   Eagerly populate the http method loookup cache so local project inflections do
+    not interfere with use of underscore method ( and we don't need locks )
+
+    *Aditya Sanghi*
+
+*   `BestStandardsSupport` no longer duplicates `X-UA-Compatible` values on
+    each request to prevent header size from blowing up.
+
+    *Edward Anderson*
+
+*   Fixed JSON params parsing regression for non-object JSON content.
+
+    *Dylan Smith*
+
+*   Prevent unnecessary asset compilation when using `javascript_include_tag` on
+    files with non-standard extensions.
+
+    *Noah Silas*
+
+*   Fixes issue where duplicate assets can be required with sprockets.
+
+    *Jeremy Jackson*
+
 *   Bump `rack` dependency to 1.4.3, eliminate `Rack::File` headers deprecation warning.
 
     *Sam Ruby + Carlos Antonio da Silva*
 
 *   Do not append second slash to `root_url` when using `trailing_slash: true`
+
     Fix #8700.
     Backport #8701.
 
@@ -93,13 +123,15 @@
     *Daniel Fox, Grant Hutchins & Trace Wax*
 
 
-## Rails 3.2.11 ##
+## Rails 3.2.11 (Jan 8, 2013) ##
 
-* Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
+*   Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
+
 
 ## Rails 3.2.10 (Jan 2, 2013) ##
 
 *   No changes.
+
 
 ## Rails 3.2.9 (Nov 12, 2012) ##
 
