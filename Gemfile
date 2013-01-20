@@ -71,7 +71,7 @@ platforms :jruby do
   gem 'jruby-openssl'
 
   group :db do
-    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.0'
+    #gem 'activerecord-jdbcmysql-adapter', '>= 1.2.0'
     gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.0'
   end
 end
