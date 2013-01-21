@@ -1,4 +1,100 @@
-## Rails 3.2.10 (unreleased) ##
+## Rails 3.2.12 (unreleased) ##
+
+*   Fix `assert_template` with `render :stream => true`.
+    Fix #1743.
+    Backport #5288.
+
+    *Sergey Nartimov*
+
+*   Eagerly populate the http method loookup cache so local project inflections do
+    not interfere with use of underscore method ( and we don't need locks )
+
+    *Aditya Sanghi*
+
+*   `BestStandardsSupport` no longer duplicates `X-UA-Compatible` values on
+    each request to prevent header size from blowing up.
+
+    *Edward Anderson*
+
+*   Fixed JSON params parsing regression for non-object JSON content.
+
+    *Dylan Smith*
+
+*   Prevent unnecessary asset compilation when using `javascript_include_tag` on
+    files with non-standard extensions.
+
+    *Noah Silas*
+
+*   Fixes issue where duplicate assets can be required with sprockets.
+
+    *Jeremy Jackson*
+
+*   Bump `rack` dependency to 1.4.3, eliminate `Rack::File` headers deprecation warning.
+
+    *Sam Ruby + Carlos Antonio da Silva*
+
+*   Do not append second slash to `root_url` when using `trailing_slash: true`
+
+    Fix #8700.
+    Backport #8701.
+
+    Example:
+        # before
+        root_url # => http://test.host//
+
+        # after
+        root_url # => http://test.host/
+
+    *Yves Senn*
+
+*   Fix a bug in `content_tag_for` that prevents it for work without a block.
+
+    *Jasl*
+
+*   Clear url helper methods when routes are reloaded by removing the methods
+    explicitly rather than just clearing the module because it didn't work
+    properly and could be the source of a memory leak.
+
+    *Andrew White*
+
+*   Fix a bug in `ActionDispatch::Request#raw_post` that caused `env['rack.input']`
+    to be read but not rewound.
+
+    *Matt Venables*
+
+*   More descriptive error messages when calling `render :partial` with
+    an invalid `:layout` argument.
+    #8376
+
+        render :partial => 'partial', :layout => true
+        # results in ActionView::MissingTemplate: Missing partial /true
+
+    *Yves Senn*
+
+*   Accept symbols as `#send_data` :disposition value. [Backport #8329] *Elia Schito*
+
+*   Add i18n scope to `distance_of_time_in_words`. [Backport #7997] *Steve Klabnik*
+
+*   Fix side effect of `url_for` changing the `:controller` string option. [Backport #6003]
+    Before:
+
+        controller = '/projects'
+        url_for :controller => controller, :action => 'status'
+
+        puts controller #=> 'projects'
+
+    After
+
+        puts controller #=> '/projects'
+
+    *Nikita Beloglazov + Andrew White*
+
+*   Introduce `ActionView::Template::Handlers::ERB.escape_whitelist`. This is a list
+    of mime types where template text is not html escaped by default. It prevents `Jack & Joe`
+    from rendering as `Jack &amp; Joe` for the whitelisted mime types. The default whitelist
+    contains text/plain. Fix #7976 [Backport #8235]
+
+    *Joost Baaij*
 
 *   `BestStandardsSupport` middleware now appends it's `X-UA-Compatible` value to app's
     returned value if any. Fix #8086 [Backport #8093]
@@ -25,6 +121,17 @@
     Fix #8108
 
     *Daniel Fox, Grant Hutchins & Trace Wax*
+
+
+## Rails 3.2.11 (Jan 8, 2013) ##
+
+*   Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
+
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   No changes.
+
 
 ## Rails 3.2.9 (Nov 12, 2012) ##
 

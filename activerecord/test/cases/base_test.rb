@@ -23,6 +23,8 @@ require 'models/edge'
 require 'models/joke'
 require 'models/bulb'
 require 'models/bird'
+require 'models/car'
+require 'models/bulb'
 require 'rexml/document'
 require 'active_support/core_ext/exception'
 require 'bcrypt'
@@ -1440,6 +1442,29 @@ class BasicsTest < ActiveRecord::TestCase
     Topic.serialize(:content)
   end
 
+  def test_serialize_attribute_via_select_method_when_time_zone_available
+    ActiveRecord::Base.time_zone_aware_attributes = true
+    Topic.serialize(:content, MyObject)
+
+    myobj = MyObject.new('value1', 'value2')
+    topic = Topic.create(:content => myobj)
+
+    ActiveRecord::IdentityMap.without do
+      assert_equal(myobj, Topic.select(:content).find(topic.id).content)
+      assert_raise(ActiveModel::MissingAttributeError) { Topic.select(:id).find(topic.id).content }
+    end
+  ensure
+    ActiveRecord::Base.time_zone_aware_attributes = false
+  end
+
+  def test_serialize_attribute_can_be_serialized_in_an_integer_column
+    insures = ['life']
+    person = SerializedPerson.new(:first_name => 'David', :insures => insures)
+    assert person.save
+    person = person.reload
+    assert_equal(insures, person.insures)
+  end
+
   def test_quote
     author_name = "\\ \001 ' \n \\n \""
     topic = Topic.create('author_name' => author_name)
@@ -2152,6 +2177,29 @@ class BasicsTest < ActiveRecord::TestCase
   def test_cache_key_format_for_existing_record_with_updated_at
     dev = Developer.first
     assert_equal "developers/#{dev.id}-#{dev.updated_at.utc.to_s(:number)}", dev.cache_key
+  end
+
+  def test_cache_key_format_for_existing_record_with_updated_at_and_custom_cache_timestamp_format
+    return skip "Only in Ruby 1.9" if RUBY_VERSION < '1.9'
+
+    dev = CachedDeveloper.first
+    assert_equal "cached_developers/#{dev.id}-#{dev.updated_at.utc.to_s(:nsec)}", dev.cache_key
+  end
+
+  def test_cache_key_changes_when_child_touched
+    return skip "Only in Ruby 1.9" if RUBY_VERSION < '1.9'
+
+    old_timestamp_format = Car.cache_timestamp_format
+    Car.cache_timestamp_format = :nsec
+    car = Car.create
+    Bulb.create(:car => car)
+
+    key = car.cache_key
+    car.bulb.touch
+    car.reload
+    assert_not_equal key, car.cache_key
+  ensure
+    Car.cache_timestamp_format = old_timestamp_format
   end
 
   def test_cache_key_format_for_existing_record_with_nil_updated_at

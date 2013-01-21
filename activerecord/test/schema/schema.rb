@@ -112,6 +112,7 @@ ActiveRecord::Schema.define do
     t.string  :name
     t.integer :engines_count
     t.integer :wheels_count
+    t.timestamps
   end
 
   create_table :categories, :force => true do |t|
@@ -478,7 +479,13 @@ ActiveRecord::Schema.define do
     t.integer    :followers_count, :default => 0
     t.references :best_friend
     t.references :best_friend_of
+    t.integer    :insures, :null => false, :default => 0
     t.timestamps
+  end
+
+  create_table :peoples_treasures, :id => false, :force => true do |t|
+    t.column :rich_person_id, :integer
+    t.column :treasure_id, :integer
   end
 
   create_table :pets, :primary_key => :pet_id ,:force => true do |t|

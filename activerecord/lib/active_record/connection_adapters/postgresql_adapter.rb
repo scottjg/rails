@@ -367,8 +367,6 @@ module ActiveRecord
           @visitor = BindSubstitution.new self
         end
 
-        connection_parameters.delete :prepared_statements
-
         @connection_parameters, @config = connection_parameters, config
 
         # @local_tz is initialized as nil to avoid warnings when connect tries to use it
@@ -1048,12 +1046,11 @@ module ActiveRecord
       # Returns just a table's primary key
       def primary_key(table)
         row = exec_query(<<-end_sql, 'SCHEMA').rows.first
-          SELECT DISTINCT(attr.attname)
+          SELECT attr.attname
           FROM pg_attribute attr
-          INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
           INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
           WHERE cons.contype = 'p'
-            AND dep.refobjid = '#{quote_table_name(table)}'::regclass
+            AND cons.conrelid = '#{quote_table_name(table)}'::regclass
         end_sql
 
         row && row.first
@@ -1138,6 +1135,13 @@ module ActiveRecord
           when nil, 0..0x3fffffff; super(type)
           else raise(ActiveRecordError, "No binary type has byte size #{limit}.")
           end
+        when 'text'
+          # PostgreSQL doesn't support limits on text columns.
+          # The hard limit is 1Gb, according to section 8.3 in the manual.
+          case limit
+          when nil, 0..0x3fffffff; super(type)
+          else raise(ActiveRecordError, "The limit on text can be at most 1GB - 1byte.")
+          end
         when 'integer'
           return 'integer' unless limit
 
@@ -1195,11 +1199,15 @@ module ActiveRecord
           @connection.server_version
         end
 
+        # See http://www.postgresql.org/docs/9.1/static/errcodes-appendix.html
+        FOREIGN_KEY_VIOLATION = "23503"
+        UNIQUE_VIOLATION      = "23505"
+
         def translate_exception(exception, message)
-          case exception.message
-          when /duplicate key value violates unique constraint/
+          case exception.result.error_field(PGresult::PG_DIAG_SQLSTATE)
+          when UNIQUE_VIOLATION
             RecordNotUnique.new(message, exception)
-          when /violates foreign key constraint/
+          when FOREIGN_KEY_VIOLATION
             InvalidForeignKey.new(message, exception)
           else
             super

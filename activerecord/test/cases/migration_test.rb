@@ -1051,6 +1051,18 @@ if ActiveRecord::Base.connection.supports_migrations?
       Person.connection.remove_column("people", "administrator") rescue nil
     end
 
+    def test_change_column_with_custom_index_name
+      Person.connection.add_column "people", "category", :string, :default => 'human'
+      Person.connection.add_index :people, :category, :name => 'people_categories_idx'
+
+      assert_equal ['people_categories_idx'], Person.connection.indexes('people').map(&:name)
+      Person.connection.change_column "people", "category", :string, :null => false, :default => 'article'
+
+      assert_equal ['people_categories_idx'], Person.connection.indexes('people').map(&:name)
+    ensure
+      Person.connection.remove_column("people", "category") rescue nil
+    end
+
     def test_change_column_default
       Person.connection.change_column_default "people", "first_name", "Tester"
       Person.reset_column_information
@@ -1428,6 +1440,12 @@ if ActiveRecord::Base.connection.supports_migrations?
         assert_equal pair.first, migrations[i].version
         assert_equal pair.last, migrations[i].name
       end
+    end
+
+    def test_finds_migrations_in_numbered_directory
+      migrations = ActiveRecord::Migrator.migrations [MIGRATIONS_ROOT + '/10_urban']
+      assert_equal 9, migrations[0].version
+      assert_equal 'AddExpressions', migrations[0].name
     end
 
     def test_dump_schema_information_outputs_lexically_ordered_versions

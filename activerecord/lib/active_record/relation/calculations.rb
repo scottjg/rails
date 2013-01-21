@@ -177,8 +177,15 @@ module ActiveRecord
     #   Person.where(:confirmed => true).limit(5).pluck(:id)
     #
     def pluck(column_name)
-      column_name = column_name.to_s
-      klass.connection.select_all(select(column_name).arel).map! do |attributes|
+      if column_name.is_a?(Symbol) && column_names.include?(column_name.to_s)
+        column_name = "#{table_name}.#{column_name}"
+      else
+        column_name = column_name.to_s
+      end
+
+      relation = clone
+      relation.select_values = [column_name]
+      klass.connection.select_all(relation.arel).map! do |attributes|
         klass.type_cast_attribute(attributes.keys.first, klass.initialize_attributes(attributes))
       end
     end

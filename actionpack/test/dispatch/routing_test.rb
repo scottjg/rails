@@ -887,6 +887,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal original_options, options
   end
 
+  def test_url_for_does_not_modify_controller
+    controller = '/projects'
+    options = {:controller => controller, :action => 'status', :only_path => true}
+    url = url_for(options)
+
+    assert_equal '/projects/status', url
+    assert_equal '/projects', controller
+  end
+
   # tests the arguments modification free version of define_hash_access
   def test_named_route_with_no_side_effects
     original_options = { :host => 'test.host' }
