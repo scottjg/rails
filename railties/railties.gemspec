@@ -40,6 +40,7 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '> 0.8.7')
+  s.add_dependency('rdoc', '>= 2.4.2')  # bug: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=649984
   s.add_dependency('activesupport',    '= 2.3.2' + PKG_BUILD)
   s.add_dependency('activerecord',     '= 2.3.2' + PKG_BUILD)
   s.add_dependency('actionpack',       '= 2.3.2' + PKG_BUILD)
