@@ -21,7 +21,7 @@ spec = Gem::Specification.new do |s|
     s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   end
 
-  s.add_dependency('activesupport', '= 2.3.10' + PKG_BUILD)
+  s.add_dependency('activesupport', '= 2.3.2' + PKG_BUILD)
 
   s.files.delete FIXTURES_ROOT + "/fixture_database.sqlite"
   s.files.delete FIXTURES_ROOT + "/fixture_database_2.sqlite"
@@ -32,7 +32,7 @@ spec = Gem::Specification.new do |s|
 
   s.has_rdoc = true
   s.extra_rdoc_files = %w( README )
-  s.rdoc_options.concat ['--main', 'README']
+  s.rdoc_options.concat ['--main',  'README']
 
   s.author = "David Heinemeier Hansson"
   s.email = "david@loudthinking.com"
