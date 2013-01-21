@@ -1,6 +1,5 @@
 require 'rake'
 require 'rake/testtask'
-require 'rake/rdoc_task'
 require 'rubygems/package_task'
 
 require 'date'
