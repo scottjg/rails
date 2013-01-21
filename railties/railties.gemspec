@@ -1,3 +1,8 @@
+require 'rake'
+require 'rake/testtask'
+require 'rdoc/task'
+require 'rubygems/package_task'
+
 require 'date'
 require 'rbconfig'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
