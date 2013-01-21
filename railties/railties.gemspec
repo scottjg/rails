@@ -1,6 +1,6 @@
 require 'rake'
 require 'rake/testtask'
-require 'rdoc/task'
+require 'rake/rdoc_task'
 require 'rubygems/package_task'
 
 require 'date'
@@ -39,8 +39,7 @@ spec = Gem::Specification.new do |s|
     on top of either MySQL, PostgreSQL, SQLite, DB2, SQL Server, or Oracle with eRuby- or Builder-based templates.
   EOF
 
-  s.add_dependency('rake', '> 0.8.7')
-  s.add_dependency('rdoc', '>= 2.4.2')  # bug: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=649984
+  s.add_dependency('rake', '>= 0.8.3')
   s.add_dependency('activesupport',    '= 2.3.2' + PKG_BUILD)
   s.add_dependency('activerecord',     '= 2.3.2' + PKG_BUILD)
   s.add_dependency('actionpack',       '= 2.3.2' + PKG_BUILD)
