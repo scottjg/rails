@@ -161,7 +161,7 @@ module ActionController
       super
 
       self.session = TestSession.new
-      self.session_options = TestSession::DEFAULT_OPTIONS.merge(:id => SecureRandom.hex(16))
+      self.session_options = TestSession::DEFAULT_OPTIONS
     end
 
     def assign_parameters(routes, controller_path, action, parameters = {})
