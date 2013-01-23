@@ -131,13 +131,11 @@ module ActionView
         if source[0] != ?/
           source = compute_asset_path(source, options)
         end
-        
-        #FIXME Assets 
-        #relative_url_root = (defined?(config.relative_url_root) && config.relative_url_root) ||
-        #  (respond_to?(:request) && request.try(:script_name))
-        #if relative_url_root
-        #  source = "#{relative_url_root}#{source}" unless source.starts_with?("#{relative_url_root}/")
-        #end
+
+        relative_url_root = defined?(config.relative_url_root) && config.relative_url_root
+        if relative_url_root
+          source = "#{relative_url_root}#{source}" unless source.starts_with?("#{relative_url_root}/")
+        end
 
         if host = compute_asset_host(source, options)
           source = "#{host}#{source}"

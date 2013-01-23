@@ -161,6 +161,28 @@ class RelationScopingTest < ActiveRecord::TestCase
 
     assert !Developer.all.where_values.include?("name = 'Jamis'")
   end
+
+  def test_default_scope_filters_on_joins
+    assert_equal 1, DeveloperFilteredOnJoins.all.count
+    assert_equal DeveloperFilteredOnJoins.all.first, developers(:david).becomes(DeveloperFilteredOnJoins)
+  end
+
+  def test_update_all_default_scope_filters_on_joins
+    DeveloperFilteredOnJoins.update_all(:salary => 65000)
+    assert_equal 65000, Developer.find(developers(:david).id).salary
+
+    # has not changed jamis
+    assert_not_equal 65000, Developer.find(developers(:jamis).id).salary
+  end
+
+  def test_delete_all_default_scope_filters_on_joins
+    assert_not_equal [], DeveloperFilteredOnJoins.all
+
+    DeveloperFilteredOnJoins.delete_all()
+
+    assert_equal [], DeveloperFilteredOnJoins.all
+    assert_not_equal [], Developer.all
+  end
 end
 
 class NestedRelationScopingTest < ActiveRecord::TestCase
@@ -227,7 +249,7 @@ class NestedRelationScopingTest < ActiveRecord::TestCase
   def test_nested_exclusive_scope_for_create
     comment = Comment.create_with(:body => "Hey guys, nested scopes are broken. Please fix!").scoping do
       Comment.unscoped.create_with(:post_id => 1).scoping do
-        assert_blank Comment.new.body
+        assert Comment.new.body.blank?
         Comment.create :body => "Hey guys"
       end
     end

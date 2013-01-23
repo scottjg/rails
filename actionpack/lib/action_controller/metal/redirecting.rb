@@ -32,7 +32,7 @@ module ActionController
     #   redirect_to :back
     #   redirect_to proc { edit_post_url(@post) }
     #
-    # The redirection happens as a "302 Moved" header unless otherwise specified.
+    # The redirection happens as a "302 Found" header unless otherwise specified.
     #
     #   redirect_to post_url(@post), status: :found
     #   redirect_to action: 'atom', status: :moved_permanently
@@ -65,7 +65,6 @@ module ActionController
     def redirect_to(options = {}, response_status = {}) #:doc:
       raise ActionControllerError.new("Cannot redirect to nil!") unless options
       raise AbstractController::DoubleRenderError if response_body
-      logger.debug { "Redirected by #{caller(1).first rescue "unknown"}" } if logger
 
       self.status        = _extract_redirect_to_status(options, response_status)
       self.location      = _compute_redirect_to_location(options)

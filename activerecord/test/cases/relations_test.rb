@@ -404,6 +404,13 @@ class RelationTest < ActiveRecord::TestCase
     end
   end
 
+  def test_preload_applies_to_all_chained_preloaded_scopes
+    assert_queries(3) do
+      post = Post.with_comments.with_tags.first
+      assert post
+    end
+  end
+
   def test_find_with_included_associations
     assert_queries(2) do
       posts = Post.includes(:comments).order('posts.id')
@@ -509,7 +516,7 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_find_in_empty_array
     authors = Author.all.where(:id => [])
-    assert_blank authors.to_a
+    assert authors.to_a.blank?
   end
 
   def test_where_with_ar_object
@@ -723,7 +730,7 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_relation_merging_with_locks
     devs = Developer.lock.where("salary >= 80000").order("id DESC").merge(Developer.limit(2))
-    assert_present devs.locked
+    assert devs.locked.present?
   end
 
   def test_relation_merging_with_preload

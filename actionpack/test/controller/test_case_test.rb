@@ -692,7 +692,7 @@ XML
     assert_equal "bar", @request.params[:foo]
     @request.recycle!
     post :no_op
-    assert_blank @request.params[:foo]
+    assert @request.params[:foo].blank?
   end
 
   def test_symbolized_path_params_reset_after_request
@@ -929,5 +929,36 @@ class AnonymousControllerTest < ActionController::TestCase
   def test_controller_name
     get :index
     assert_equal 'anonymous', @response.body
+  end
+end
+
+class RoutingDefaultsTest < ActionController::TestCase
+  def setup
+    @controller = Class.new(ActionController::Base) do
+      def post
+        render :text => request.fullpath
+      end
+
+      def project
+        render :text => request.fullpath
+      end
+    end.new
+
+    @routes = ActionDispatch::Routing::RouteSet.new.tap do |r|
+      r.draw do
+        get '/posts/:id', :to => 'anonymous#post', :bucket_type => 'post'
+        get '/projects/:id', :to => 'anonymous#project', :defaults => { :bucket_type => 'project' }
+      end
+    end
+  end
+
+  def test_route_option_can_be_passed_via_process
+    get :post, :id => 1, :bucket_type => 'post'
+    assert_equal '/posts/1', @response.body
+  end
+
+  def test_route_default_is_not_required_for_building_request_uri
+    get :project, :id => 2
+    assert_equal '/projects/2', @response.body
   end
 end

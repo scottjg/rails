@@ -1,7 +1,39 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   It's now possible to compare Date, DateTime, Time and TimeWithZone with Infinity
-    This allows to create date/time ranges with one infinite bound.
+*   Standardise on `to_time` returning an instance of `Time` in the local system timezone
+    across `String`, `Time`, `Date`, `DateTime` and `ActiveSupport::TimeWithZone`.
+
+    *Andrew White*
+
+*   Extract `ActiveSupport::Testing::Performance` into https://github.com/rails/rails-perftest
+    You can add the gem to your Gemfile to keep using performance tests.
+
+        gem 'rails-perftest'
+
+    *Yves Senn*
+
+*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
+    Use Hash.from_trusted_xml to parse this XML.
+
+    CVE-2013-0156
+
+    *Jeremy Kemper*
+
+*   Deprecate `assert_present` and `assert_blank` in favor of
+    `assert object.blank?` and `assert object.present?`
+
+    *Yves Senn*
+
+*   Change `String#to_date` to use `Date.parse`. This gives more consistent error
+    messages and allows the use of partial dates.
+
+        "gibberish".to_date => Argument Error: invalid date
+        "3rd Feb".to_date => Sun, 03 Feb 2013
+
+    *Kelly Stannard*
+
+*   It's now possible to compare `Date`, `DateTime`, `Time` and `TimeWithZone`
+    with `Infinity`. This allows to create date/time ranges with one infinite bound.
     Example:
 
         range = Range.new(Date.today, Float::INFINITY)

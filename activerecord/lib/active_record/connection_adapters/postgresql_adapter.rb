@@ -17,12 +17,28 @@ require 'ipaddr'
 
 module ActiveRecord
   module ConnectionHandling
+    VALID_CONN_PARAMS = [:host, :hostaddr, :port, :dbname, :user, :password, :connect_timeout,
+                         :client_encoding, :options, :application_name, :fallback_application_name,
+                         :keepalives, :keepalives_idle, :keepalives_interval, :keepalives_count,
+                         :tty, :sslmode, :requiressl, :sslcert, :sslkey, :sslrootcert, :sslcrl,
+                         :requirepeer, :krbsrvname, :gsslib, :service]
+
     # Establishes a connection to the database that's used by all Active Record objects
     def postgresql_connection(config) # :nodoc:
+      conn_params = config.symbolize_keys
+
+      conn_params.delete_if { |_, v| v.nil? }
+
+      # Map ActiveRecords param names to PGs.
+      conn_params[:user] = conn_params.delete(:username) if conn_params[:username]
+      conn_params[:dbname] = conn_params.delete(:database) if conn_params[:database]
+
+      # Forward only valid config params to PGconn.connect.
+      conn_params.keep_if { |k, _| VALID_CONN_PARAMS.include?(k) }
 
       # The postgres drivers don't allow the creation of an unconnected PGconn object,
       # so just pass a nil connection object for the time being.
-      ConnectionAdapters::PostgreSQLAdapter.new(nil, logger, config, config)
+      ConnectionAdapters::PostgreSQLAdapter.new(nil, logger, conn_params, config)
     end
   end
 
@@ -61,8 +77,6 @@ module ActiveRecord
         return default unless default
 
         case default
-          when /\A'(.*)'::(num|date|tstz|ts|int4|int8)range\z/m
-            $1
           # Numeric types
           when /\A\(?(-?\d+(\.\d*)?\)?)\z/
             $1
@@ -162,6 +176,8 @@ module ActiveRecord
             :decimal
           when 'hstore'
             :hstore
+          when 'ltree'
+            :ltree
           # Network address types
           when 'inet'
             :inet
@@ -210,8 +226,6 @@ module ActiveRecord
           # Small and big integer types
           when /^(?:small|big)int$/
             :integer
-          when /(num|date|tstz|ts|int4|int8)range$/
-            field_type.to_sym
           # Pass through all types that are not specific to PostgreSQL.
           else
             super
@@ -262,32 +276,12 @@ module ActiveRecord
           column(args[0], 'tsvector', options)
         end
 
-        def int4range(name, options = {})
-          column(name, 'int4range', options)
-        end
-
-        def int8range(name, options = {})
-          column(name, 'int8range', options)
-        end
-
-        def tsrange(name, options = {})
-          column(name, 'tsrange', options)
-        end
-
-        def tstzrange(name, options = {})
-          column(name, 'tstzrange', options)
-        end
-
-        def numrange(name, options = {})
-          column(name, 'numrange', options)
-        end
-
-        def daterange(name, options = {})
-          column(name, 'daterange', options)
-        end
-
         def hstore(name, options = {})
           column(name, 'hstore', options)
+        end
+
+        def ltree(name, options = {})
+          column(name, 'ltree', options)
         end
 
         def inet(name, options = {})
@@ -345,12 +339,6 @@ module ActiveRecord
         timestamp:   { name: "timestamp" },
         time:        { name: "time" },
         date:        { name: "date" },
-        daterange:   { name: "daterange" },
-        numrange:    { name: "numrange" },
-        tsrange:     { name: "tsrange" },
-        tstzrange:   { name: "tstzrange" },
-        int4range:   { name: "int4range" },
-        int8range:   { name: "int8range" },
         binary:      { name: "bytea" },
         boolean:     { name: "boolean" },
         xml:         { name: "xml" },
@@ -361,7 +349,8 @@ module ActiveRecord
         macaddr:     { name: "macaddr" },
         uuid:        { name: "uuid" },
         json:        { name: "json" },
-        intrange:    { name: "int4range" }
+        intrange:    { name: "int4range" },
+        ltree:       { name: "ltree" }
       }
 
       include Quoting
@@ -471,9 +460,7 @@ module ActiveRecord
         else
           @visitor = BindSubstitution.new self
         end
-        
-        connection_parameters.delete :prepared_statements
-        
+
         @connection_parameters, @config = connection_parameters, config
 
         # @local_tz is initialized as nil to avoid warnings when connect tries to use it
@@ -661,32 +648,30 @@ module ActiveRecord
         end
 
         def exec_cache(sql, binds)
-          begin
-            stmt_key = prepare_statement sql
+          stmt_key = prepare_statement sql
 
-            # Clear the queue
-            @connection.get_last_result
-            @connection.send_query_prepared(stmt_key, binds.map { |col, val|
-              type_cast(val, col)
-            })
-            @connection.block
-            @connection.get_last_result
-          rescue PGError => e
-            # Get the PG code for the failure.  Annoyingly, the code for
-            # prepared statements whose return value may have changed is
-            # FEATURE_NOT_SUPPORTED.  Check here for more details:
-            # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
-            begin
-              code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
-            rescue
-              raise e
-            end
-            if FEATURE_NOT_SUPPORTED == code
-              @statements.delete sql_key(sql)
-              retry
-            else
-              raise e
-            end
+          # Clear the queue
+          @connection.get_last_result
+          @connection.send_query_prepared(stmt_key, binds.map { |col, val|
+            type_cast(val, col)
+          })
+          @connection.block
+          @connection.get_last_result
+        rescue PGError => e
+          # Get the PG code for the failure.  Annoyingly, the code for
+          # prepared statements whose return value may have changed is
+          # FEATURE_NOT_SUPPORTED.  Check here for more details:
+          # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
+          begin
+            code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
+          rescue
+            raise e
+          end
+          if FEATURE_NOT_SUPPORTED == code
+            @statements.delete sql_key(sql)
+            retry
+          else
+            raise e
           end
         end
 
@@ -716,7 +701,6 @@ module ActiveRecord
         # Connects to a PostgreSQL server and sets up the adapter depending on the
         # connected server's characteristics.
         def connect
-          @connection_parameters = filter_unused_params(@connection_parameters)
           @connection = PGconn.connect(@connection_parameters)
 
           # Money type has a fixed precision of 10 in PostgreSQL 8.2 and below, and as of
@@ -835,20 +819,6 @@ module ActiveRecord
 
         def table_definition
           TableDefinition.new(self)
-        end
-        
-        def filter_unused_params(config)
-          conn_params = config.symbolize_keys
-  
-          #Delete empty and unused params before sending them to PGconn.connect
-          white_listed_params = [:host, :port, :database, :dbname, :username, :user, :password, :connect_timeout,
-            :sslmode, :krbsrvname, :gsslib, :service, :options]
-          conn_params.delete_if { |k, v| !white_listed_params.include?(k) || v.nil? }
-  
-          # Map ActiveRecords param names to PGs.
-          conn_params[:user] = conn_params.delete(:username) if conn_params[:username]
-          conn_params[:dbname] = conn_params.delete(:database) if conn_params[:database]
-          conn_params
         end
     end
   end

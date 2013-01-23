@@ -225,7 +225,8 @@ $ rails generate scaffold HighScore game:string score:integer
     invoke    test_unit
     create      test/models/high_score_test.rb
     create      test/fixtures/high_scores.yml
-     route  resources :high_scores
+    invoke  resource_route
+     route    resources :high_scores
     invoke  scaffold_controller
     create    app/controllers/high_scores_controller.rb
     invoke    erb
@@ -354,7 +355,7 @@ rake assets:clean       # Remove compiled assets
 rake assets:precompile  # Compile all the assets named in config.assets.precompile
 rake db:create          # Create the database from config/database.yml for the current Rails.env
 ...
-rake log:clear          # Truncates all *.log files in log/ to zero bytes
+rake log:clear          # Truncates all *.log files in log/ to zero bytes (specify which logs with LOGS=test,development)
 rake middleware         # Prints out your Rack middleware stack
 ...
 rake tmp:clear          # Clear session, cache, and socket files from tmp/ (narrow w/ tmp:sessions:clear, tmp:cache:clear, tmp:sockets:clear)
@@ -441,7 +442,7 @@ app/model/post.rb:
 
 NOTE. When using specific annotations and custom annotations, the annotation name (FIXME, BUG etc) is not displayed in the output lines.
 
-By default, `rake notes` will look in the `app`, `config`, `lib`, `script` and `test` directories. If you would like to search other directories, you can provide them as a comma separated list in an environment variable `SOURCE_ANNOTATION_DIRECTORIES`.
+By default, `rake notes` will look in the `app`, `config`, `lib`, `bin` and `test` directories. If you would like to search other directories, you can provide them as a comma separated list in an environment variable `SOURCE_ANNOTATION_DIRECTORIES`.
 
 ```bash
 $ export SOURCE_ANNOTATION_DIRECTORIES='rspec,vendor'
@@ -563,14 +564,20 @@ We had to create the **gitapp** directory and initialize an empty git repository
 $ cat config/database.yml
 # PostgreSQL. Versions 8.2 and up are supported.
 #
-# Install the ruby-postgres driver:
-#   gem install ruby-postgres
-# On Mac OS X:
-#   gem install ruby-postgres -- --include=/usr/local/pgsql
+# Install the pg driver:
+#   gem install pg
+# On OS X with Homebrew:
+#   gem install pg -- --with-pg-config=/usr/local/bin/pg_config
+# On OS X with MacPorts:
+#   gem install pg -- --with-pg-config=/opt/local/lib/postgresql84/bin/pg_config
 # On Windows:
-#   gem install ruby-postgres
+#   gem install pg
 #       Choose the win32 build.
 #       Install PostgreSQL and put its /bin directory on your path.
+#
+# Configure Using Gemfile
+# gem 'pg'
+#
 development:
   adapter: postgresql
   encoding: unicode
@@ -585,28 +592,3 @@ development:
 It also generated some lines in our database.yml configuration corresponding to our choice of PostgreSQL for database.
 
 NOTE. The only catch with using the SCM options is that you have to make your application's directory first, then initialize your SCM, then you can run the `rails new` command to generate the basis of your app.
-
-### `server` with Different Backends
-
-Many people have created a large number of different web servers in Ruby, and many of them can be used to run Rails. Since version 2.3, Rails uses Rack to serve its webpages, which means that any webserver that implements a Rack handler can be used. This includes WEBrick, Mongrel, Thin, and Phusion Passenger (to name a few!).
-
-NOTE: For more details on the Rack integration, see [Rails on Rack](rails_on_rack.html).
-
-To use a different server, just install its gem, then use its name for the first parameter to `rails server`:
-
-```bash
-$ sudo gem install mongrel
-Building native extensions.  This could take a while...
-Building native extensions.  This could take a while...
-Successfully installed gem_plugin-0.2.3
-Successfully installed fastthread-1.0.1
-Successfully installed cgi_multipart_eof_fix-2.5.0
-Successfully installed mongrel-1.1.5
-...
-...
-Installing RDoc documentation for mongrel-1.1.5...
-$ rails server mongrel
-=> Booting Mongrel (use 'rails server webrick' to force WEBrick)
-=> Rails 3.1.0 application starting on http://0.0.0.0:3000
-...
-```

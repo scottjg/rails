@@ -45,7 +45,7 @@ code while accomplishing more than many other languages and frameworks.
 Experienced Rails developers also report that it makes web application
 development more fun.
 
-Rails is opinionated software. It makes the assumption that there is a "best"
+Rails is opinionated software. It makes the assumption that there is the "best"
 way to do things, and it's designed to encourage that way - and in some cases to
 discourage alternatives. If you learn "The Rails Way" you'll probably discover a
 tremendous increase in productivity. If you persist in bringing old habits from
@@ -71,7 +71,9 @@ By following along with this guide, you'll create a Rails project called
 (very) simple weblog. Before you can start building the application, you need to
 make sure that you have Rails itself installed.
 
-TIP: The examples below use # and $ to denote superuser and regular user terminal prompts respectively in a UNIX-like OS. If you are using Windows, your prompt will look something like c:\source_code>
+TIP: The examples below use `#` and `$` to denote superuser and regular
+user terminal prompts respectively in a UNIX-like OS. If you are using
+Windows, your prompt will look something like `c:\source_code>`
 
 ### Installing Rails
 
@@ -132,17 +134,16 @@ application. Most of the work in this tutorial will happen in the `app/` folder,
 | File/Folder | Purpose |
 | ----------- | ------- |
 |app/|Contains the controllers, models, views, helpers, mailers and assets for your application. You'll focus on this folder for the remainder of this guide.|
+|bin/|Contains the rails script that starts your app and can contain other scripts you use to deploy or run your application.|
 |config/|Configure your application's runtime rules, routes, database, and more.  This is covered in more detail in [Configuring Rails Applications](configuring.html)|
 |config.ru|Rack configuration for Rack based servers used to start the application.|
 |db/|Contains your current database schema, as well as the database migrations.|
-|doc/|In-depth documentation for your application.|
 |Gemfile<br />Gemfile.lock|These files allow you to specify what gem dependencies are needed for your Rails application. These files are used by the Bundler gem. For more information about Bundler, see [the Bundler website](http://gembundler.com) |
 |lib/|Extended modules for your application.|
 |log/|Application log files.|
 |public/|The only folder seen to the world as-is. Contains the static files and compiled assets.|
 |Rakefile|This file locates and loads tasks that can be run from the command line. The task definitions are defined throughout the components of Rails. Rather than changing Rakefile, you should add your own tasks by adding files to the lib/tasks directory of your application.|
 |README.rdoc|This is a brief instruction manual for your application. You should edit this file to tell others what your application does, how to set it up, and so on.|
-|script/|Contains the rails script that starts your app and can contain other scripts you use to deploy or run your application.|
 |test/|Unit tests, fixtures, and other test apparatus. These are covered in [Testing Rails Applications](testing.html)|
 |tmp/|Temporary files (like cache, pid and session files)|
 |vendor/|A place for all third-party code. In a typical Rails application, this includes Ruby Gems and the Rails source code (if you optionally install it into your project).|
@@ -417,7 +418,7 @@ def create
 end
 ```
 
-The `render` method here is taking a very simple hash with a key of `text` and value of `params[:post].inspect`. The `params` method is the object which represents the parameters (or fields) coming in from the form. The `params` method returns a `HashWithIndifferentAccess` object, which allows you to access the keys of the hash using either strings or symbols. In this situation, the only parameters that matter are the ones from the form.
+The `render` method here is taking a very simple hash with a key of `text` and value of `params[:post].inspect`. The `params` method is the object which represents the parameters (or fields) coming in from the form. The `params` method returns an `ActiveSupport::HashWithIndifferentAccess` object, which allows you to access the keys of the hash using either strings or symbols. In this situation, the only parameters that matter are the ones from the form.
 
 If you re-submit the form one more time you'll now no longer get the missing template error. Instead, you'll see something that looks like the following:
 
@@ -582,9 +583,31 @@ content:
 </p>
 ```
 
-Finally, if you now go to
-<http://localhost:3000/posts/new> you'll
-be able to create a post. Try it!
+If you now go to
+<http://localhost:3000/posts/new> you'll *almost* be able to create a post. Try
+it! You should get an error that looks like this:
+
+![Forbidden attributes for new post](images/getting_started/forbidden_attributes_for_new_post.png)
+
+Rails has several security features that help you write secure applications,
+and you're running into one of them now. This one is called
+'strong_parameters,' which requires us to tell Rails exactly which parameters
+we want to accept in our controllers. In this case, we want to allow the
+'title' and 'text' parameters, so change your `create` controller action to
+look like this:
+
+```
+  def create
+    @post = Post.new(params[:post].permit(:title, :text))
+
+    @post.save
+    redirect_to action: :show, id: @post.id
+  end
+```
+
+See the `permit`? It allows us to accept both `title` and `text` in this
+action. With this change, you should finally be able to create new `Post`s.
+Visit <http://localhost:3000/posts/new> and give it a try!
 
 ![Show action for posts](images/getting_started/show_action_for_posts.png)
 
@@ -710,10 +733,11 @@ class Post < ActiveRecord::Base
 end
 ```
 
-These changes will ensure that all posts have a title that is at least five characters long.
-Rails can validate a variety of conditions in a model, including the presence or uniqueness of columns, their
-format, and the existence of associated objects. Validations are covered in detail
-in [Active Record Validations and Callbacks](active_record_validations_callbacks.html#validations-overview)
+These changes will ensure that all posts have a title that is at least five
+characters long.  Rails can validate a variety of conditions in a model,
+including the presence or uniqueness of columns, their format, and the
+existence of associated objects. Validations are covered in detail in [Active
+Record Validations](active_record_validations.html)
 
 With the validation now in place, when you call `@post.save` on an invalid
 post, it will return `false`. If you open `app/controllers/posts_controller.rb`
@@ -728,7 +752,7 @@ def new
 end
 
 def create
-  @post = Post.new(params[:post])
+  @post = Post.new(params[:post].permit(:title, :text))
 
   if @post.save
     redirect_to action: :show, id: @post.id
@@ -830,7 +854,7 @@ it look as follows:
 <h1>Editing post</h1>
 
 <%= form_for :post, url: { action: :update, id: @post.id },
-method: :put do |f| %>
+method: :patch do |f| %>
   <% if @post.errors.any? %>
   <div id="errorExplanation">
     <h2><%= pluralize(@post.errors.count, "error") %> prohibited
@@ -863,8 +887,8 @@ method: :put do |f| %>
 This time we point the form to the `update` action, which is not defined yet
 but will be very soon.
 
-The `method: :put` option tells Rails that we want this form to be
-submitted via the `PUT` HTTP method which is the HTTP method you're expected to use to
+The `method: :patch` option tells Rails that we want this form to be submitted
+via the `PATCH` HTTP method which is the HTTP method you're expected to use to
 **update** resources according to the REST protocol.
 
 TIP: By default forms built with the _form_for_ helper are sent via `POST`.
@@ -873,7 +897,7 @@ Next, we need to add the `update` action. The file
 `config/routes.rb` will need just one more line:
 
 ```ruby
-put "posts/:id" => "posts#update"
+patch "posts/:id" => "posts#update"
 ```
 
 And then create the `update` action in `app/controllers/posts_controller.rb`:
@@ -882,7 +906,7 @@ And then create the `update` action in `app/controllers/posts_controller.rb`:
 def update
   @post = Post.find(params[:id])
 
-  if @post.update(params[:post])
+  if @post.update(params[:post].permit(:title, :text))
     redirect_to action: :show, id: @post.id
   else
     render 'edit'
@@ -1051,7 +1075,7 @@ called `post_url` and `post_path` available to our application. These are
 precisely the methods that the `form_for` needs when editing a post, and so now
 you'll be able to update posts again.
 
-NOTE: The `:as` option is available on the `post`, `put`, `delete` and `match`
+NOTE: The `:as` option is available on the `post`, `patch`, `put`, `delete` and `match`
 routing methods also.
 
 ### Deleting Posts
@@ -1145,7 +1169,7 @@ get "posts/new"
 post "posts" => "posts#create"
 get "posts/:id" => "posts#show", as: :post
 get "posts/:id/edit" => "posts#edit"
-put "posts/:id" => "posts#update"
+patch "posts/:id" => "posts#update"
 delete "posts/:id" => "posts#destroy"
 ```
 
@@ -1387,7 +1411,7 @@ Let's wire up the `create` in `app/controllers/comments_controller.rb`:
 class CommentsController < ApplicationController
   def create
     @post = Post.find(params[:post_id])
-    @comment = @post.comments.create(params[:comment])
+    @comment = @post.comments.create(params[:comment].permit(:commenter, :body))
     redirect_to post_path(@post)
   end
 end
@@ -1557,6 +1581,9 @@ Then you make the `app/views/posts/show.html.erb` look like the following:
   <strong>Text:</strong>
   <%= @post.text %>
 </p>
+
+<h2>Comments</h2>
+<%= render @post.comments %>
 
 <h2>Add a comment:</h2>
 <%= render "comments/form" %>

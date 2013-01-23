@@ -33,6 +33,7 @@ module ActiveRecord
       def initialize(klass, association) #:nodoc:
         @association = association
         super klass, klass.arel_table
+        self.default_scoped = true
         merge! association.scope(nullify: false)
       end
 
@@ -758,7 +759,7 @@ module ActiveRecord
       #   person.pets.count # => 0
       #   person.pets.any?  # => true
       #
-      # You can also pass a block to define criteria. The behaviour
+      # You can also pass a block to define criteria. The behavior
       # is the same, it returns true if the collection based on the
       # criteria is not empty.
       #
@@ -793,7 +794,7 @@ module ActiveRecord
       #   person.pets.many? #=> true
       #
       # You can also pass a block to define criteria. The
-      # behaviour is the same, it returns true if the collection
+      # behavior is the same, it returns true if the collection
       # based on the criteria has more than one record.
       #
       #   person.pets

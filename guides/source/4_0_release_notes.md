@@ -68,6 +68,7 @@ In Rails 4.0, several features have been extracted into gems. You can simply add
 * Action Caching ([Github](https://github.com/rails/actionpack-action_caching), [Pull Request](https://github.com/rails/rails/pull/7833))
 * Page Caching ([Github](https://github.com/rails/actionpack-page_caching), [Pull Request](https://github.com/rails/rails/pull/7833))
 * Sprockets ([Github](https://github.com/rails/sprockets-rails))
+* Performance tests ([Github](https://github.com/rails/rails-perftest), [Pull Request](https://github.com/rails/rails/pull/8876))
 
 Documentation
 -------------
@@ -84,6 +85,8 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railt
 ### Notable changes
 
 *   New test locations `test/models`, `test/helpers`, `test/controllers`, and `test/mailers`. Corresponding rake tasks added as well. ([Pull Request](https://github.com/rails/rails/pull/7878))
+
+* Your app's executables now live in the `bin/` dir. Run `rake rails:update:bin` to get `bin/bundle`, `bin/rails`, and `bin/rake`.
 
 * Threadsafe on by default
 
@@ -142,6 +145,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
 
 *   BufferedLogger is deprecated.  Use ActiveSupport::Logger, or the logger from Ruby stdlib.
 
+*   Deprecate `assert_present` and `assert_blank` in favor of `assert object.blank?` and `assert object.present?`
 
 Action Pack
 -----------

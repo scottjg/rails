@@ -2,7 +2,6 @@ require 'thread'
 require 'thread_safe'
 require 'monitor'
 require 'set'
-require 'active_support/deprecation'
 
 module ActiveRecord
   # Raised when a connection could not be obtained within the connection
@@ -518,6 +517,7 @@ module ActiveRecord
 
       def establish_connection(owner, spec)
         @class_to_pool.clear
+        raise RuntimeError, "Anonymous class is not allowed." unless owner.name
         owner_to_pool[owner.name] = ConnectionAdapters::ConnectionPool.new(spec)
       end
 

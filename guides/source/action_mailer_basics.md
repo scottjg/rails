@@ -419,7 +419,7 @@ Receiving and parsing emails with Action Mailer can be a rather complex endeavor
 
 * Implement a `receive` method in your mailer.
 
-* Configure your email server to forward emails from the address(es) you would like your app to receive to `/path/to/app/script/rails runner 'UserMailer.receive(STDIN.read)'`.
+* Configure your email server to forward emails from the address(es) you would like your app to receive to `/path/to/app/bin/rails runner 'UserMailer.receive(STDIN.read)'`.
 
 Once a method called `receive` is defined in any mailer, Action Mailer will parse the raw incoming email into an email object, decode it, instantiate a new mailer, and pass the email object to the mailer `receive` instance method. Here's an example:
 
@@ -575,3 +575,23 @@ end
 ```
 
 In the test we send the email and store the returned object in the `email` variable. We then ensure that it was sent (the first assert), then, in the second batch of assertions, we ensure that the email does indeed contain what we expect.
+
+Intercepting Emails
+-------------------
+There are situations where you need to edit an email before it's delivered. Fortunately Action Mailer provides hooks to intercept every email. You can register an interceptor to make modifications to mail messages right before they are handed to the delivery agents.
+
+```ruby
+class SandboxEmailInterceptor
+  def self.delivering_email(message)
+    message.to = ['sandbox@example.com']
+  end
+end
+```
+
+Before the interceptor can do its job you need to register it with the Action Mailer framework. You can do this in an initializer file `config/initializers/sandbox_email_interceptor.rb`
+
+```ruby
+ActionMailer::Base.register_interceptor(SandboxEmailInterceptor) if Rails.env.staging?
+```
+
+NOTE: The example above uses a custom environment called "staging" for a production like server but for testing purposes. You can read [Creating Rails environments](./configuring.html#creating-rails-environments) for more information about custom Rails environments.

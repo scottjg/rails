@@ -8,11 +8,12 @@ gem 'mocha', '~> 0.13.0', require: false
 gem 'rack-test', github: 'brynary/rack-test'
 gem 'rack-cache', '~> 1.2'
 gem 'bcrypt-ruby', '~> 3.0.0'
-gem 'jquery-rails', '~> 2.1.4', github: 'rails/jquery-rails'
+gem 'jquery-rails', '~> 2.2.0', github: 'rails/jquery-rails'
 gem 'turbolinks'
 gem 'coffee-rails', github: 'rails/coffee-rails'
 
-gem 'thread_safe', '~> 0.1'
+# TODO: Release thor
+gem 'thor', github: 'wycats/thor', branch: 'master'
 
 gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
 
