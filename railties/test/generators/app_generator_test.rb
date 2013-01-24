@@ -11,27 +11,29 @@ DEFAULT_APP_FILES = %w(
   app/assets/stylesheets
   app/assets/images
   app/controllers
+  app/controllers/concerns
   app/helpers
   app/mailers
   app/models
+  app/models/concerns
   app/views/layouts
+  bin/bundle
+  bin/rails
+  bin/rake
   config/environments
   config/initializers
   config/locales
   db
-  doc
   lib
   lib/tasks
   lib/assets
   log
-  script/rails
   test/fixtures
   test/controllers
   test/models
   test/helpers
   test/mailers
   test/integration
-  test/performance
   vendor
   vendor/assets
   tmp/cache
@@ -54,8 +56,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "app/views/layouts/application.html.erb", /stylesheet_link_tag\s+"application"/
     assert_file "app/views/layouts/application.html.erb", /javascript_include_tag\s+"application"/
     assert_file "app/assets/stylesheets/application.css"
-    assert_file "config/application.rb", /config\.assets\.enabled = true/
-    assert_file "public/index.html", /url\("assets\/rails.png"\);/
   end
 
   def test_invalid_application_name_raises_an_error
@@ -217,14 +217,13 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "test/test_helper.rb" do |helper_content|
       assert_no_match(/fixtures :all/, helper_content)
     end
-    assert_file "test/performance/browsing_test.rb"
   end
 
   def test_generator_if_skip_sprockets_is_given
     run_generator [destination_root, "--skip-sprockets"]
     assert_file "config/application.rb" do |content|
       assert_match(/#\s+require\s+["']sprockets\/railtie["']/, content)
-      assert_no_match(/config\.assets\.enabled = true/, content)
+      assert_match(/config\.assets\.enabled = false/, content)
     end
     assert_file "Gemfile" do |content|
       assert_no_match(/sass-rails/, content)
@@ -238,8 +237,8 @@ class AppGeneratorTest < Rails::Generators::TestCase
       assert_no_match(/config\.assets\.digest = true/, content)
       assert_no_match(/config\.assets\.js_compressor = :uglifier/, content)
       assert_no_match(/config\.assets\.css_compressor = :sass/, content)
+      assert_no_match(/config\.assets\.version = '1\.0'/, content)
     end
-    assert_file "test/performance/browsing_test.rb"
   end
 
   def test_inclusion_of_javascript_runtime
@@ -249,13 +248,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
     else
       assert_file "Gemfile", /# gem\s+["']therubyracer["']+, platforms: :ruby$/
     end
-  end
-
-  def test_generator_if_skip_index_html_is_given
-    run_generator [destination_root, '--skip-index-html']
-    assert_no_file 'public/index.html'
-    assert_no_file 'app/assets/images/rails.png'
-    assert_file 'app/assets/images/.keep'
   end
 
   def test_creation_of_a_test_directory
@@ -341,7 +333,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_new_hash_style
     run_generator [destination_root]
     assert_file "config/initializers/session_store.rb" do |file|
-      assert_match(/config.session_store :cookie_store, key: '_.+_session'/, file)
+      assert_match(/config.session_store :encrypted_cookie_store, key: '_.+_session'/, file)
     end
   end
 

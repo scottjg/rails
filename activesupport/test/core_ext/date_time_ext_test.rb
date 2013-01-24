@@ -41,11 +41,14 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
   end
 
   def test_to_time
-    assert_equal Time.utc(2005, 2, 21, 10, 11, 12), DateTime.new(2005, 2, 21, 10, 11, 12, 0).to_time
-    assert_equal Time.utc_time(2039, 2, 21, 10, 11, 12), DateTime.new(2039, 2, 21, 10, 11, 12, 0).to_time
-    # DateTimes with offsets other than 0 are returned unaltered
-    assert_equal DateTime.new(2005, 2, 21, 10, 11, 12, Rational(-5, 24)), DateTime.new(2005, 2, 21, 10, 11, 12, Rational(-5, 24)).to_time
-    # Fractional seconds are preserved
+    with_env_tz 'US/Eastern' do
+      assert_equal Time, DateTime.new(2005, 2, 21, 10, 11, 12, 0).to_time.class
+      assert_equal Time.local(2005, 2, 21, 5, 11, 12), DateTime.new(2005, 2, 21, 10, 11, 12, 0).to_time
+      assert_equal Time.local(2005, 2, 21, 5, 11, 12).utc_offset, DateTime.new(2005, 2, 21, 10, 11, 12, 0).to_time.utc_offset
+    end
+  end
+
+  def test_to_time_preserves_fractional_seconds
     assert_equal Time.utc(2005, 2, 21, 10, 11, 12, 256), DateTime.new(2005, 2, 21, 10, 11, 12 + Rational(256, 1000000), 0).to_time
   end
 
@@ -59,6 +62,14 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal 60,DateTime.civil(2005,1,1,0,1,0).seconds_since_midnight
     assert_equal 3660,DateTime.civil(2005,1,1,1,1,0).seconds_since_midnight
     assert_equal 86399,DateTime.civil(2005,1,1,23,59,59).seconds_since_midnight
+  end
+
+  def test_seconds_until_end_of_day
+    assert_equal 0, DateTime.civil(2005,1,1,23,59,59).seconds_until_end_of_day
+    assert_equal 1, DateTime.civil(2005,1,1,23,59,58).seconds_until_end_of_day
+    assert_equal 60, DateTime.civil(2005,1,1,23,58,59).seconds_until_end_of_day
+    assert_equal 3660, DateTime.civil(2005,1,1,22,58,59).seconds_until_end_of_day
+    assert_equal 86399, DateTime.civil(2005,1,1,0,0,0).seconds_until_end_of_day
   end
 
   def test_beginning_of_day
@@ -234,6 +245,10 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_acts_like_date
+    assert DateTime.new.acts_like_date?
+  end
+
   def test_acts_like_time
     assert DateTime.new.acts_like_time?
   end
@@ -308,4 +323,11 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
     ensure
       old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
     end
+end
+
+class DateTimeExtBehaviorTest < ActiveSupport::TestCase
+  def test_compare_with_infinity
+    assert_equal(-1, DateTime.now <=> Float::INFINITY)
+    assert_equal(1, DateTime.now <=> -Float::INFINITY)
+  end
 end

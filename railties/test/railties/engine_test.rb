@@ -568,7 +568,7 @@ YAML
       @plugin.write "lib/bukkits.rb", <<-RUBY
         module Bukkits
           class Engine < ::Rails::Engine
-            endpoint lambda { |env| [200, {'Content-Type' => 'text/html'}, 'hello'] }
+            endpoint lambda { |env| [200, {'Content-Type' => 'text/html'}, ['hello']] }
           end
         end
       RUBY
@@ -1239,6 +1239,12 @@ YAML
 
       get("/bar", {}, {'SCRIPT_NAME' => '/foo'})
       assert_equal '/foo/bukkits/bukkit', last_response.body
+    end
+
+    test "engines method is properly deprecated" do
+      boot_rails
+
+      assert_deprecated { app.railties.engines }
     end
 
   private

@@ -54,6 +54,59 @@ class ErrorsTest < ActiveModel::TestCase
     assert errors.has_key?(:foo), 'errors should have key :foo'
   end
 
+  test "should be able to clear the errors" do
+    person = Person.new
+    person.validate!
+
+    assert_equal 1, person.errors.count
+    person.errors.clear
+    assert person.errors.empty?
+  end
+
+  test "get returns the error by the provided key" do
+    errors = ActiveModel::Errors.new(self)
+    errors[:foo] = "omg"
+
+    assert_equal ["omg"], errors.get(:foo)
+  end
+
+  test "sets the error with the provided key" do
+    errors = ActiveModel::Errors.new(self)
+    errors.set(:foo, "omg")
+
+    assert_equal({ foo: "omg" }, errors.messages)
+  end
+
+  test "values returns an array of messages" do
+    errors = ActiveModel::Errors.new(self)
+    errors.set(:foo, "omg")
+    errors.set(:baz, "zomg")
+
+    assert_equal ["omg", "zomg"], errors.values
+  end
+
+  test "keys returns the error keys" do
+    errors = ActiveModel::Errors.new(self)
+    errors.set(:foo, "omg")
+    errors.set(:baz, "zomg")
+
+    assert_equal [:foo, :baz], errors.keys
+  end
+
+  test "as_json returns a json formatted representation of the errors hash" do
+    person = Person.new
+    person.validate!
+
+    assert_equal({ name: ["can not be nil"] }, person.errors.as_json)
+  end
+
+  test "as_json with :full_messages option" do
+    person = Person.new
+    person.validate!
+
+    assert_equal({ name: ["name can not be nil"] }, person.errors.as_json(full_messages: true))
+  end
+
   test "should return true if no errors" do
     person = Person.new
     person.errors[:foo]
@@ -116,7 +169,7 @@ class ErrorsTest < ActiveModel::TestCase
 
   test "added? should default message to :invalid" do
     person = Person.new
-    person.errors.add(:name, :invalid)
+    person.errors.add(:name)
     assert person.errors.added?(:name)
   end
 
@@ -161,7 +214,7 @@ class ErrorsTest < ActiveModel::TestCase
     person = Person.new
     person.errors.add(:name, "can not be blank")
     person.errors.add(:name, "can not be nil")
-    assert_equal ["name can not be blank", "name can not be nil"], person.errors.to_a
+    assert_equal ["name can not be blank", "name can not be nil"], person.errors.full_messages
   end
 
   test 'full_message should return the given message if attribute equals :base' do
@@ -240,4 +293,3 @@ class ErrorsTest < ActiveModel::TestCase
     person.errors.add_on_blank :name, :message => 'custom'
   end
 end
-

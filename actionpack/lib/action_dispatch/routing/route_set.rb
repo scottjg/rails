@@ -1,5 +1,6 @@
-require 'journey'
+require 'action_dispatch/journey'
 require 'forwardable'
+require 'thread_safe'
 require 'active_support/core_ext/object/to_query'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/module/remove_method'
@@ -20,7 +21,7 @@ module ActionDispatch
         def initialize(options={})
           @defaults = options[:defaults]
           @glob_param = options.delete(:glob)
-          @controllers = {}
+          @controller_class_names = ThreadSafe::Cache.new
         end
 
         def call(env)
@@ -68,13 +69,8 @@ module ActionDispatch
       private
 
         def controller_reference(controller_param)
-          controller_name = "#{controller_param.camelize}Controller"
-
-          unless controller = @controllers[controller_param]
-            controller = @controllers[controller_param] =
-              ActiveSupport::Dependencies.reference(controller_name)
-          end
-          controller.get(controller_name)
+          const_name = @controller_class_names[controller_param] ||= "#{controller_param.camelize}Controller"
+          ActiveSupport::Dependencies.constantize(const_name)
         end
 
         def dispatch(controller, action, env)
@@ -130,6 +126,12 @@ module ActionDispatch
         end
 
         def clear!
+          @helpers.each do |helper|
+            @module.module_eval do
+              remove_possible_method helper
+            end
+          end
+
           @routes.clear
           @helpers.clear
         end
@@ -288,7 +290,6 @@ module ActionDispatch
 
       def clear!
         @finalized = false
-        @url_helpers = nil
         named_routes.clear
         set.clear
         formatter.clear
@@ -420,7 +421,7 @@ module ActionDispatch
         end
 
         conditions.keep_if do |k, _|
-          k == :action || k == :controller ||
+          k == :action || k == :controller || k == :required_defaults ||
             @request_class.public_method_defined?(k) || path_values.include?(k)
         end
       end
@@ -526,12 +527,10 @@ module ActionDispatch
           recall[:action] = options.delete(:action) if options[:action] == 'index'
         end
 
-        # Generates a path from routes, returns [path, params]
-        # if no path is returned the formatter will raise Journey::Router::RoutingError
+        # Generates a path from routes, returns [path, params].
+        # If no route is generated the formatter will raise ActionController::UrlGenerationError
         def generate
           @set.formatter.generate(:path_info, named_route, options, recall, PARAMETERIZE)
-        rescue Journey::Router::RoutingError => e
-          raise ActionController::UrlGenerationError, "No route matches #{options.inspect} #{e.message}"
         end
 
         def different_controller?

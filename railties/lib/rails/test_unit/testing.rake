@@ -45,7 +45,7 @@ end
 
 task default: :test
 
-desc 'Runs test:units, test:functionals, test:integration together (also available: test:benchmark, test:profile)'
+desc 'Runs test:units, test:functionals, test:integration together'
 task :test do
   Rake::Task[ENV['TEST'] ? 'test:single' : 'test:run'].invoke
 end
@@ -88,7 +88,7 @@ namespace :test do
     def t.file_list
       if File.directory?(".svn")
         changed_since_checkin = silence_stderr { `svn status` }.split.map { |path| path.chomp[7 .. -1] }
-      elsif File.directory?(".git")
+      elsif system "git rev-parse --git-dir 2>&1 >/dev/null"
         changed_since_checkin = silence_stderr { `git ls-files --modified --others --exclude-standard` }.split.map { |path| path.chomp }
       else
         abort "Not a Subversion or Git checkout."
@@ -145,16 +145,5 @@ namespace :test do
   Rails::SubTestTask.new(integration: "test:prepare") do |t|
     t.libs << "test"
     t.pattern = 'test/integration/**/*_test.rb'
-  end
-
-  Rails::SubTestTask.new(benchmark: 'test:prepare') do |t|
-    t.libs << 'test'
-    t.pattern = 'test/performance/**/*_test.rb'
-    t.options = '-- --benchmark'
-  end
-
-  Rails::SubTestTask.new(profile: 'test:prepare') do |t|
-    t.libs << 'test'
-    t.pattern = 'test/performance/**/*_test.rb'
   end
 end

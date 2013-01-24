@@ -273,7 +273,7 @@ module ActionDispatch
           if path =~ %r{://}
             location = URI.parse(path)
             https! URI::HTTPS === location if location.scheme
-            host! location.host if location.host
+            host! "#{location.host}:#{location.port}" if location.host
             path = location.query ? "#{location.path}?#{location.query}" : location.path
           end
 
@@ -490,9 +490,6 @@ module ActionDispatch
     include Integration::Runner
     include ActionController::TemplateAssertions
     include ActionDispatch::Routing::UrlFor
-
-    # Use AD::IntegrationTest for acceptance tests
-    register_spec_type(/(Acceptance|Integration) ?Test\z/i, self)
 
     @@app = nil
 

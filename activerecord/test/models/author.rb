@@ -1,5 +1,6 @@
 class Author < ActiveRecord::Base
   has_many :posts
+  has_one :post
   has_many :very_special_comments, :through => :posts
   has_many :posts_with_comments, -> { includes(:comments) }, :class_name => "Post"
   has_many :popular_grouped_posts, -> { includes(:comments).group("type").having("SUM(comments_count) > 1").select("type") }, :class_name => "Post"
@@ -8,17 +9,7 @@ class Author < ActiveRecord::Base
   has_many :posts_with_categories, -> { includes(:categories) }, :class_name => "Post"
   has_many :posts_with_comments_and_categories, -> { includes(:comments, :categories).order("posts.id") }, :class_name => "Post"
   has_many :posts_containing_the_letter_a, :class_name => "Post"
-  has_many :posts_with_extension, :class_name => "Post" do #, :extend => ProxyTestExtension
-    def testing_proxy_owner
-      proxy_owner
-    end
-    def testing_proxy_reflection
-      proxy_reflection
-    end
-    def testing_proxy_target
-      proxy_target
-    end
-  end
+  has_many :posts_with_extension, :class_name => "Post"
   has_one  :post_about_thinking, -> { where("posts.title like '%thinking%'") }, :class_name => 'Post'
   has_one  :post_about_thinking_with_last_comment, -> { where("posts.title like '%thinking%'").includes(:last_comment) }, :class_name => 'Post'
   has_many :comments, :through => :posts

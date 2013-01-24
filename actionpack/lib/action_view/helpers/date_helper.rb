@@ -45,7 +45,6 @@ module ActionView
       #   40-59 secs      # => less than a minute
       #   60-89 secs      # => 1 minute
       #
-      # ==== Examples
       #   from_time = Time.now
       #   distance_of_time_in_words(from_time, from_time + 50.minutes)                                # => about 1 hour
       #   distance_of_time_in_words(from_time, 50.minutes.from_now)                                   # => about 1 hour
@@ -129,7 +128,7 @@ module ActionView
                 minutes_with_offset = distance_in_minutes
               end
               remainder                   = (minutes_with_offset % 525600)
-              distance_in_years           = (minutes_with_offset / 525600)
+              distance_in_years           = (minutes_with_offset.div 525600)
               if remainder < 131400
                 locale.t(:about_x_years,  :count => distance_in_years)
               elsif remainder < 394200
@@ -166,7 +165,6 @@ module ActionView
       # Returns a set of select tags (one for year, month, and day) pre-selected for accessing a specified date-based
       # attribute (identified by +method+) on an object assigned to the template (identified by +object+).
       #
-      #
       # ==== Options
       # * <tt>:use_month_numbers</tt> - Set to true if you want to use month numbers rather than month names (e.g.
       #   "2" instead of "February").
@@ -195,6 +193,7 @@ module ActionView
       # * <tt>:include_blank</tt>     - Include a blank option in every select field so it's possible to set empty
       #   dates.
       # * <tt>:default</tt>           - Set a default date if the affected date isn't set or is nil.
+      # * <tt>:selected</tt>          - Set a date that overrides the actual value.
       # * <tt>:disabled</tt>          - Set to true if you want show the select fields as disabled.
       # * <tt>:prompt</tt>            - Set to true (for a generic prompt), a prompt string or a hash of prompt strings
       #   for <tt>:year</tt>, <tt>:month</tt>, <tt>:day</tt>, <tt>:hour</tt>, <tt>:minute</tt> and <tt>:second</tt>.
@@ -235,6 +234,10 @@ module ActionView
       #   # Generates a date select that when POSTed is stored in the article variable, in the written_on attribute
       #   # which is initially set to the date 3 days from the current date
       #   date_select("article", "written_on", default: 3.days.from_now)
+      #
+      #   # Generates a date select that when POSTed is stored in the article variable, in the written_on attribute
+      #   # which is set in the form with todays date, regardless of the value in the Active Record object.
+      #   date_select("article", "written_on", selected: Date.today)
       #
       #   # Generates a date select that when POSTed is stored in the credit_card variable, in the bill_due attribute
       #   # that will have a default day of 20.
@@ -877,6 +880,7 @@ module ActionView
 
         def translated_date_order
           date_order = I18n.translate(:'date.order', :locale => @options[:locale], :default => [])
+          date_order = date_order.map { |element| element.to_sym }
 
           forbidden_elements = date_order - [:year, :month, :day]
           if forbidden_elements.any?

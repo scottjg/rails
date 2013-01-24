@@ -103,14 +103,14 @@ module ActiveModel
     end
 
     # Accepts options that will be made available through the +options+ reader.
-    def initialize(options)
+    def initialize(options = {})
       @options = options.freeze
     end
 
     # Return the kind for this validator.
     #
-    #   PresenceValidator.new.kind   # => :presence
-    #   UniquenessValidator.new.kind # => :uniqueness 
+    #   PresenceValidator.new.kind   # => :presence
+    #   UniquenessValidator.new.kind # => :uniqueness
     def kind
       self.class.kind
     end

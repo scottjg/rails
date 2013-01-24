@@ -34,7 +34,7 @@ module ActiveRecord
           reload
         end
 
-        CollectionProxy.new(self)
+        CollectionProxy.new(klass, self)
       end
 
       # Implements the writer method, e.g. foo.items= for Foo.has_many :items
@@ -161,15 +161,6 @@ module ActiveRecord
         end
       end
 
-      # Calculate sum using SQL, not Enumerable.
-      def sum(*args)
-        if block_given?
-          scope.sum(*args) { |*block_args| yield(*block_args) }
-        else
-          scope.sum(*args)
-        end
-      end
-
       # Count all records using SQL. If the +:counter_sql+ or +:finder_sql+ option is set for the
       # association, it will be used for the query. Otherwise, construct options and pass them with
       # scope to the target class's +count+.
@@ -282,7 +273,7 @@ module ActiveRecord
         if loaded? || options[:counter_sql]
           size.zero?
         else
-          !scope.exists?
+          @target.blank? && !scope.exists?
         end
       end
 

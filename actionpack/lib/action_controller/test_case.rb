@@ -81,8 +81,7 @@ module ActionController
     #   # assert that the "_customer" partial was rendered with a specific object
     #   assert_template partial: '_customer', locals: { customer: @customer }
     def assert_template(options = {}, message = nil)
-      # Force body to be read in case the
-      # template is being streamed
+      # Force body to be read in case the template is being streamed.
       response.body
 
       case options
@@ -94,7 +93,7 @@ module ActionController
         matches_template =
           case options
           when String
-            rendered.any? do |t, num|
+            !options.empty? && rendered.any? do |t, num|
               options_splited = options.split(File::SEPARATOR)
               t_splited = t.split(File::SEPARATOR)
               t_splited.last(options_splited.size) == options_splited
@@ -106,6 +105,8 @@ module ActionController
           end
         assert matches_template, msg
       when Hash
+        options.assert_valid_keys(:layout, :partial, :locals, :count)
+
         if options.key?(:layout)
           expected_layout = options[:layout]
           msg = message || sprintf("expecting layout <%s> but action rendered <%s>",
@@ -358,13 +359,6 @@ module ActionController
   #
   #  assert_redirected_to page_url(title: 'foo')
   class TestCase < ActiveSupport::TestCase
-
-    # Use AC::TestCase for the base class when describing a controller
-    register_spec_type(self) do |desc|
-      Class === desc && desc < ActionController::Metal
-    end
-    register_spec_type(/Controller( ?Test)?\z/i, self)
-
     module Behavior
       extend ActiveSupport::Concern
       include ActionDispatch::TestProcess
@@ -509,7 +503,7 @@ module ActionController
         @request.assign_parameters(@routes, controller_class_name, action.to_s, parameters)
 
         @request.session.update(session) if session
-        @request.session["flash"] = @request.flash.update(flash || {})
+        @request.flash.update(flash || {})
 
         @controller.request  = @request
         @controller.response = @response
@@ -526,6 +520,7 @@ module ActionController
         @response.prepare!
 
         @assigns = @controller.respond_to?(:view_assigns) ? @controller.view_assigns : {}
+        @request.session['flash'] = @request.flash.to_session_value
         @request.session.delete('flash') if @request.session['flash'].blank?
         @response
       end

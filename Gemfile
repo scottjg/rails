@@ -4,17 +4,18 @@ gemspec
 
 gem 'arel', github: 'rails/arel', branch: 'master'
 
-gem 'mocha', github: 'freerange/mocha', require: false
+gem 'mocha', '~> 0.13.0', require: false
 gem 'rack-test', github: 'brynary/rack-test'
 gem 'rack-cache', '~> 1.2'
 gem 'bcrypt-ruby', '~> 3.0.0'
-gem 'jquery-rails', '~> 2.1.4', github: 'rails/jquery-rails'
+gem 'jquery-rails', '~> 2.2.0', github: 'rails/jquery-rails'
 gem 'turbolinks'
 gem 'coffee-rails', github: 'rails/coffee-rails'
 
-gem 'journey', github: 'rails/journey', branch: 'master'
-
 gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
+
+# Needed for compiling the ActionDispatch::Journey parser
+gem 'racc', '>=1.4.6', require: false
 
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
@@ -23,13 +24,10 @@ gem 'uglifier', require: false
 gem 'sprockets-rails', github: 'rails/sprockets-rails', branch: 'master'
 
 group :doc do
-  # The current sdoc cannot generate GitHub links due
-  # to a bug, but the PR that fixes it has been there
-  # for some weeks unapplied. As a temporary solution
-  # this is our own fork with the fix.
-  gem 'sdoc',  github: 'fxn/sdoc'
+  gem 'sdoc',  github: 'voloko/sdoc'
   gem 'redcarpet', '~> 2.2.2', platforms: :ruby
   gem 'w3c_validators'
+  gem 'kindlerb'
 end
 
 # AS
@@ -55,7 +53,7 @@ platforms :ruby do
 
   group :db do
     gem 'pg', '>= 0.11.0'
-    gem 'mysql', '>= 2.8.1' if RUBY_VERSION < '2.0.0'
+    gem 'mysql', '>= 2.9.0'
     gem 'mysql2', '>= 0.3.10'
   end
 end
