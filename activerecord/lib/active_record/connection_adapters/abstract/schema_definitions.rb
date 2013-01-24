@@ -15,14 +15,14 @@ module ActiveRecord
     # are typically created by methods in TableDefinition, and added to the
     # +columns+ attribute of said TableDefinition object, in order to be used
     # for generating a number of table creation or table changing SQL statements.
-    class ColumnDefinition < Struct.new(:base, :name, :type, :limit, :precision, :scale, :default, :null) #:nodoc:
+    class ColumnDefinition < Struct.new(:base, :name, :type, :limit, :precision, :scale, :default, :null, :auto_increment) #:nodoc:
 
       def string_to_binary(value)
         value
       end
 
       def sql_type
-        base.type_to_sql(type.to_sym, limit, precision, scale)
+        base.type_to_sql(type.to_sym, limit, precision, scale, auto_increment)
       end
 
       def to_sql
@@ -249,6 +249,7 @@ module ActiveRecord
         column.scale     = options[:scale]
         column.default   = options[:default]
         column.null      = options[:null]
+        column.auto_increment = options[:auto_increment] if !primary_key_defined?
         self
       end
 
@@ -309,6 +310,10 @@ module ActiveRecord
       def primary_key_column_name
         primary_key_column = columns.detect { |c| c.type == :primary_key }
         primary_key_column && primary_key_column.name
+      end
+
+      def primary_key_defined?
+        columns.detect { |c| c.type == :primary_key }
       end
 
       def native

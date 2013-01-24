@@ -12,6 +12,10 @@ module ActiveRecord
         {}
       end
 
+      def native_auto_increment
+        ""
+      end
+
       # Truncates a table alias according to the limits of the current adapter.
       def table_alias_for(table_name)
         table_name[0...table_alias_length].tr('.', '_')
@@ -553,7 +557,7 @@ module ActiveRecord
         end
       end
 
-      def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+      def type_to_sql(type, limit = nil, precision = nil, scale = nil, auto_increment = nil) #:nodoc:
         if native = native_database_types[type.to_sym]
           column_type_sql = (native.is_a?(Hash) ? native[:name] : native).dup
 
@@ -573,7 +577,7 @@ module ActiveRecord
           elsif (type != :primary_key) && (limit ||= native.is_a?(Hash) && native[:limit])
             column_type_sql << "(#{limit})"
           end
-
+          column_type_sql <<  native_auto_increment if auto_increment && type.to_sym == :integer
           column_type_sql
         else
           type

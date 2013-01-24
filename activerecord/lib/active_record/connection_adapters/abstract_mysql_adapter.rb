@@ -187,6 +187,10 @@ module ActiveRecord
         NATIVE_DATABASE_TYPES
       end
 
+      def native_auto_increment
+        " auto_increment UNIQUE" #Need to specify key
+      end
+
       # HELPER METHODS ===========================================
 
       # The two drivers have slightly different ways of yielding hashes of results, so
@@ -500,7 +504,7 @@ module ActiveRecord
       end
 
       # Maps logical Rails types to MySQL-specific data types.
-      def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      def type_to_sql(type, limit = nil, precision = nil, scale = nil, auto_increment = nil)
         case type.to_s
         when 'binary'
           case limit
@@ -510,7 +514,7 @@ module ActiveRecord
           else raise(ActiveRecordError, "No binary type has character length #{limit}")
           end
         when 'integer'
-          case limit
+          integer_type = case limit
           when 1; 'tinyint'
           when 2; 'smallint'
           when 3; 'mediumint'
@@ -518,6 +522,8 @@ module ActiveRecord
           when 5..8; 'bigint'
           else raise(ActiveRecordError, "No integer type has byte size #{limit}")
           end
+          integer_type << native_auto_increment if auto_increment
+          integer_type
         when 'text'
           case limit
           when 0..0xff;               'tinytext'

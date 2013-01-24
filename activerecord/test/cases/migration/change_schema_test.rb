@@ -7,6 +7,7 @@ module ActiveRecord
 
       def setup
         super
+        ActiveRecord::Base.logger = Logger.new(STDOUT)
         @connection = ActiveRecord::Base.connection
         @table_name = :testings
       end
@@ -335,6 +336,20 @@ module ActiveRecord
           assert t.column_exists?(:foo)
           assert !(t.column_exists?(:bar))
         end
+      end
+
+      test "autoincrement works without primary key" do
+        connection.create_table :testing_autoincrement, :id => false, :force => true do |t|
+          t.column :foo, :integer, :auto_increment => true
+        end
+
+      end
+
+      test "autoincrement works with primary key" do
+        connection.create_table :testing_autoincrement, :force => true do |t|
+          t.column :foo, :integer, :auto_increment => true
+        end
+
       end
 
       private
