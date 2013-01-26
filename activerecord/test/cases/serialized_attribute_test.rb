@@ -234,4 +234,37 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     person = person.reload
     assert_equal(insures, person.insures)
   end
+
+  def test_serialize_autoloading
+    with_autoloaded_models do
+      Topic.serialize(:content, Array)
+      topic = topics(:third)
+      assert_equal(Array, topic.content.class)
+    end
+  end
+
+  def test_serialize_autoloading_with_missing_class
+    with_autoloaded_models do
+      Topic.serialize(:content, Array)
+      topic = topics(:fourth)
+      assert_equal(String, topic.content.class)
+    end
+  end
+
+  private
+
+  def with_autoloaded_models
+    path = File.join(File.dirname(__FILE__), "../models")
+    if ActiveSupport::Dependencies.autoload_paths.include?(path)
+      yield
+    else
+      begin
+        ActiveSupport::Dependencies.autoload_paths << path
+        yield
+      ensure
+        ActiveSupport::Dependencies.autoload_paths.reject! {|p| p == path}
+        ActiveSupport::Dependencies.clear
+      end
+    end
+  end
 end

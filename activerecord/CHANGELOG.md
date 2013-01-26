@@ -1,5 +1,10 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Attempt to autoload missing classes when loading a YAML serialized
+    column. Fix #1585.
+
+    *Alisdair McDiarmid*
+
 *   Fix handling of dirty time zone aware attributes
 
     Previously, when `time_zone_aware_attributes` were enabled, after

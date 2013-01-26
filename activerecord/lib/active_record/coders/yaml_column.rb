@@ -34,6 +34,12 @@ module ActiveRecord
           obj ||= object_class.new if object_class != Object
 
           obj
+        rescue ArgumentError => e
+          # Invoke the autoloader and try again if object's class is undefined
+          if e.message =~ /undefined class\/module (.*)$/
+            $1.constantize rescue return yaml
+          end
+          return load(yaml)
         rescue *RESCUE_ERRORS
           yaml
         end
