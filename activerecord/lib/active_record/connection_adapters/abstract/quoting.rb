@@ -18,7 +18,10 @@ module ActiveRecord
           when :binary then "'#{quote_string(column.string_to_binary(value))}'"
           when :integer then value.to_i.to_s
           when :float then value.to_f.to_s
-          else
+            else
+              if value == '?'
+                return value
+              end
             "'#{quote_string(value)}'"
           end
 

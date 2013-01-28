@@ -417,22 +417,37 @@ module ActiveRecord
     # Updates the associated record with values matching those of the instance attributes.
     # Returns the number of affected rows.
     def update_record(attribute_names = @attributes.keys)
+      puts arel_attributes_with_values_for_update(attribute_names)
       attributes_with_values = arel_attributes_with_values_for_update(attribute_names)
-
       if attributes_with_values.empty?
         0
       else
         klass = self.class
-        stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(attributes_with_values)
-        klass.connection.update stmt
+        column_hash = klass.connection.schema_cache.columns_hash klass.table_name
+         # Figure out the Real Columns first
+        db_columns_with_values = attributes_with_values.map { |attr,value|
+        real_column = column_hash[attr.name]
+        [real_column, value]
+        }
+        # Pass these to ARel
+        bind_attrs = attributes_with_values.dup
+        bind_attrs.keys.each_with_index do |column, i|
+        # use the real column to calculate the bind param
+        real_column = db_columns_with_values[i].first
+        bind_attrs[column] = klass.connection.substitute_at(real_column, i)
       end
+        #bind_attrs.inspect {#<struct Arel::Attributes::Attribute relation=#<Arel::Table:0x00000004337238 @name="books", @engine=Book(id: integer, author_id: integer, name: string), @columns=nil, @aliases=[], @table_alias=nil, @primary_key=nil>, name="name">=>"?"}
+      stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(bind_attrs)
+        # AREL HAS BIND VALUES AT THIS POINT
+      klass.connection.update stmt, 'SQL', db_columns_with_values
     end
+    end
+
 
     # Creates a record with values matching those of the instance attributes
     # and returns its id.
     def create_record(attribute_names = @attributes.keys)
       attributes_values = arel_attributes_with_values_for_create(attribute_names)
-
       new_id = self.class.unscoped.insert attributes_values
       self.id ||= new_id if self.class.primary_key
 
