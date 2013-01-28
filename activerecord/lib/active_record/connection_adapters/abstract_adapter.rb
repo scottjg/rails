@@ -318,6 +318,7 @@ module ActiveRecord
       def valid_type?(type)
         true
       end
+
     end
   end
 end
