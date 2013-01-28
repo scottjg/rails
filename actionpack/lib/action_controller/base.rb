@@ -254,6 +254,15 @@ module ActionController
       :@_view_runtime, :@_stream, :@_url_options, :@_action_has_layout
     ]
 
+    # Define methods that should not be overwritten by descendants
+    def self.method_added(method)
+      do_not_overwrite = (ActionController::Base.instance_methods - BasicObject.instance_methods - Kernel.instance_methods).reject { |x| x.to_s.match(/\W|_/) }
+      if do_not_overwrite.include?(method)
+        ActiveSupport::Deprecation.warn "You should not overwrite ActionController::Base##{method}."
+      else super
+      end
+    end
+
     ActiveSupport.run_load_hooks(:action_controller, self)
   end
 end
