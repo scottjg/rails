@@ -417,7 +417,6 @@ module ActiveRecord
     # Updates the associated record with values matching those of the instance attributes.
     # Returns the number of affected rows.
     def update_record(attribute_names = @attributes.keys)
-      puts arel_attributes_with_values_for_update(attribute_names)
       attributes_with_values = arel_attributes_with_values_for_update(attribute_names)
       if attributes_with_values.empty?
         0
