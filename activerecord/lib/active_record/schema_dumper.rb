@@ -107,6 +107,7 @@ HEADER
           column_specs = columns.map do |column|
             raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" if @types[column.type].nil?
             next if column.name == pk
+            @connection.valid_type
             @connection.column_spec(column, @types)
           end.compact
 
