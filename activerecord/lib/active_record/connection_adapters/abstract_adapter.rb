@@ -314,6 +314,10 @@ module ActiveRecord
         # override in derived class
         ActiveRecord::StatementInvalid.new(message)
       end
+
+      def valid_type
+        puts "JERAN ROCKS"
+      end
     end
   end
 end
