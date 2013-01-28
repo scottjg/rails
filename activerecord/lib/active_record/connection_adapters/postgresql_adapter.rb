@@ -516,6 +516,10 @@ module ActiveRecord
         NATIVE_DATABASE_TYPES
       end
 
+      def valid_type?(type)
+        native_database_types[type].nil?
+      end
+
       # Returns true, since this connection adapter supports migrations.
       def supports_migrations?
         true

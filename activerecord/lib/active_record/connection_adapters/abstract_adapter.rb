@@ -315,8 +315,8 @@ module ActiveRecord
         ActiveRecord::StatementInvalid.new(message)
       end
 
-      def valid_type
-        puts "JERAN ROCKS"
+      def valid_type?(type)
+        true
       end
     end
   end

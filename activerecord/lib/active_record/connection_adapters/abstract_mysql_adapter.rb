@@ -187,6 +187,10 @@ module ActiveRecord
         NATIVE_DATABASE_TYPES
       end
 
+      def valid_type?(type)
+        native_database_types[type].nil?
+      end
+
       # HELPER METHODS ===========================================
 
       # The two drivers have slightly different ways of yielding hashes of results, so

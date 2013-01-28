@@ -204,6 +204,10 @@ module ActiveRecord
         }
       end
 
+      def valid_type?(type)
+        true
+      end
+
       # Returns the current database encoding format as a string, eg: 'UTF-8'
       def encoding
         @connection.encoding.to_s
