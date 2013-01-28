@@ -424,23 +424,18 @@ module ActiveRecord
       else
         klass = self.class
         column_hash = klass.connection.schema_cache.columns_hash klass.table_name
-         # Figure out the Real Columns first
         db_columns_with_values = attributes_with_values.map { |attr,value|
         real_column = column_hash[attr.name]
         [real_column, value]
         }
-        # Pass these to ARel
         bind_attrs = attributes_with_values.dup
         bind_attrs.keys.each_with_index do |column, i|
-        # use the real column to calculate the bind param
         real_column = db_columns_with_values[i].first
         bind_attrs[column] = klass.connection.substitute_at(real_column, i)
       end
-        #bind_attrs.inspect {#<struct Arel::Attributes::Attribute relation=#<Arel::Table:0x00000004337238 @name="books", @engine=Book(id: integer, author_id: integer, name: string), @columns=nil, @aliases=[], @table_alias=nil, @primary_key=nil>, name="name">=>"?"}
       stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(bind_attrs)
-        # AREL HAS BIND VALUES AT THIS POINT
       klass.connection.update stmt, 'SQL', db_columns_with_values
-    end
+      end
     end
 
 
