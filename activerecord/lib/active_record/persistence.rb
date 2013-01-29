@@ -429,11 +429,11 @@ module ActiveRecord
         }
         bind_attrs = attributes_with_values.dup
         bind_attrs.keys.each_with_index do |column, i|
-        real_column = db_columns_with_values[i].first
-        bind_attrs[column] = klass.connection.substitute_at(real_column, i)
-      end
-      stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(bind_attrs)
-      klass.connection.update stmt, 'SQL', db_columns_with_values
+          real_column = db_columns_with_values[i].first
+          bind_attrs[column] = klass.connection.substitute_at(real_column, i)
+        end
+        stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(bind_attrs)
+        klass.connection.update stmt, 'SQL', db_columns_with_values
       end
     end
 
