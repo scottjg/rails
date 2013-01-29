@@ -5,6 +5,8 @@ PKG_NAME      = 'actionpack'
 PKG_VERSION   = ActionPack::VERSION::STRING + PKG_BUILD
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
+dist_dirs = [ "lib", "test" ]
+
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = PKG_NAME
