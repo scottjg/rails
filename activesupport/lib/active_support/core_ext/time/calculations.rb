@@ -115,15 +115,8 @@ class Time
   # <tt>:months</tt>, <tt>:weeks</tt>, <tt>:days</tt>, <tt>:hours</tt>,
   # <tt>:minutes</tt>, <tt>:seconds</tt>.
   def advance(options)
-    unless options[:weeks].nil?
-      options[:weeks], partial_weeks = options[:weeks].divmod(1)
-      options[:days] = options.fetch(:days, 0) + 7 * partial_weeks
-    end
-
-    unless options[:days].nil?
-      options[:days], partial_days = options[:days].divmod(1)
-      options[:hours] = options.fetch(:hours, 0) + 24 * partial_days
-    end
+    unless_option_null("weeks", partial_weeks)
+    unless_option_null("days", partial_days)
 
     d = to_date.advance(options)
     time_advanced_by_date = change(:year => d.year, :month => d.month, :day => d.day)
@@ -267,4 +260,11 @@ class Time
   alias_method :eql_without_coercion, :eql?
   alias_method :eql?, :eql_with_coercion
 
+  private
+  def unless_option_null(interval, partial_interval)
+    unless options[:"#{interval}"].nil?
+      options[:weeks], partial_weeks = options[:weeks].divmod(1)
+      options[:days] = options.fetch(:days, 0) + 7 * partial_interval
+    end
+  end
 end
