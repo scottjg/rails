@@ -19,9 +19,6 @@ module ActiveRecord
           when :integer then value.to_i.to_s
           when :float then value.to_f.to_s
             else
-              if value == '?'
-                return value
-              end
             "'#{quote_string(value)}'"
           end
 
