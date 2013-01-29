@@ -3,7 +3,7 @@ require 'erb'
 
 class ERB
   module Util
-    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#x27;' }
+    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#39;' }
     JSON_ESCAPE = { '&' => '\u0026', '>' => '\u003E', '<' => '\u003C' }
 
     # A utility method for escaping HTML tag characters.
@@ -20,7 +20,7 @@ class ERB
       if s.html_safe?
         s
       else
-        s.gsub(/[&"'><]/n) { |special| HTML_ESCAPE[special] }.html_safe
+        s.gsub(/[&"'><]/, HTML_ESCAPE).html_safe
       end
     end
 
