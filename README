@@ -1,0 +1,10 @@
+Guidelines for testing:
+CREATE USER rails_tests WITH SUPERUSER PASSWORD 'rails_tests';
+
+Before running tests:
+DROP DATABASE activerecord_unittest; DROP DATABASE activerecord_unittest2; CREATE DATABASE activerecord_unittest; CREATE DATABASE activerecord_unittest2;
+
+Run tests:
+cat Gemfile  # Check rails version
+bundle install
+bundle exec rake test [TEST=./path]
