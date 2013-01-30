@@ -1863,7 +1863,11 @@ module ActiveRecord #:nodoc:
               # end
               self.class_eval %{
                 def self.#{method_id}(*args)
-                  options = args.extract_options!
+                  options = if args.length > #{attribute_names.size}
+                              args.extract_options!
+                            else
+                              {}
+                            end
                   attributes = construct_attributes_from_arguments(
                     [:#{attribute_names.join(',:')}],
                     args
