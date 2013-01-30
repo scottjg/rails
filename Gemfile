@@ -5,9 +5,7 @@ gem "rails", "2.3.5", :git => "git://github.com/csinitiative/rails.git", :branch
 gem "rake", "= 0.8.7"
 gem "mocha", "= 0.9.8"
 
-gem "sqlite3-ruby", ">= 1.2.5"
 gem "pg", ">= 0.8.0"
-gem "mysql", ">= 2.8.1"
 
 # AP
 gem "rack", "1.0.1"
