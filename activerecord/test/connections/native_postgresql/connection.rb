@@ -8,12 +8,16 @@ ActiveRecord::Base.configurations = {
   'arunit' => {
     :adapter  => 'postgresql',
     :database => 'activerecord_unittest',
-    :min_messages => 'warning'
+    :min_messages => 'warning',
+    :username => 'rails_tests',
+    :password => 'rails_tests'
   },
   'arunit2' => {
     :adapter  => 'postgresql',
     :database => 'activerecord_unittest2',
-    :min_messages => 'warning'
+    :min_messages => 'warning',
+    :username => 'rails_tests',
+    :password => 'rails_tests'
   }
 }
 
