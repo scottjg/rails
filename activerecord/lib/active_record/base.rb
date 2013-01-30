@@ -2294,8 +2294,10 @@ module ActiveRecord #:nodoc:
         # And for value objects on a composed_of relationship:
         #   { :address => Address.new("123 abc st.", "chicago") }
         #     # => "address_street='123 abc st.' and address_city='chicago'"
-        def sanitize_sql_hash_for_conditions(attrs, default_table_name = quoted_table_name)
+        def sanitize_sql_hash_for_conditions(attrs, default_table_name = quoted_table_name, top_level = true)
           attrs = expand_hash_conditions_for_aggregates(attrs)
+
+	  return '1 = 2' if !top_level && attrs.is_a?(Hash) && attrs.empty?
 
           conditions = attrs.map do |attr, value|
             table_name = default_table_name
