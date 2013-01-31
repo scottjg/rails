@@ -26,7 +26,7 @@ module ActiveRecord
       end
 
       def test_valid_column
-        column = @conn.columns('ex').find { |col| col.name == 'id' }
+        column = @conn.columns('items').find { |col| col.name == 'id' }
         assert @conn.valid_type?(column.type)
       end
 
