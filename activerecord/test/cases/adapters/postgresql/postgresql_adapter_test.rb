@@ -16,7 +16,7 @@ module ActiveRecord
       end
 
       def test_invalid_column
-        assert @connection.valid_type?(:foobar)
+        assert !@connection.valid_type?(:foobar)
       end
 
       def test_primary_key
