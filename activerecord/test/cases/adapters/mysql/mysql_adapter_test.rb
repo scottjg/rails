@@ -22,7 +22,7 @@ module ActiveRecord
       end
 
       def test_invalid_column
-        assert @conn.valid_type?(:foobar)
+        assert !@conn.valid_type?(:foobar)
       end
 
       def test_client_encoding
