@@ -1,12 +1,18 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Improve `String#squish` to handle Unicode whitespace. *Antoine Lyset*
+
+*   Standardise on `to_time` returning an instance of `Time` in the local system timezone
+    across `String`, `Time`, `Date`, `DateTime` and `ActiveSupport::TimeWithZone`.
+
+    *Andrew White*
+
 *   Extract `ActiveSupport::Testing::Performance` into https://github.com/rails/rails-perftest
     You can add the gem to your Gemfile to keep using performance tests.
 
         gem 'rails-perftest'
 
     *Yves Senn*
-
 
 *   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
     Use Hash.from_trusted_xml to parse this XML.

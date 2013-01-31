@@ -1,14 +1,53 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fix `content_tag_for` with array html option.
+    It would embed array as string instead of joining it like `content_tag` does:
+
+        content_tag(:td, class: ["foo", "bar"]){}
+        #=> '<td class="foo bar"></td>'
+
+    Before:
+
+        content_tag_for(:td, item, class: ["foo", "bar"])
+        #=> '<td class="item [&quot;foo&quot;, &quot;bar&quot;]" id="item_1"></td>'
+
+    After:
+
+        content_tag_for(:td, item, class: ["foo", "bar"])
+        #=> '<td class="item foo bar" id="item_1"></td>'
+
+    *Semyon Perepelitsa*
+
+*   Remove `BestStandardsSupport` middleware, !DOCTYPE html already triggers
+    standards mode per http://msdn.microsoft.com/en-us/library/jj676915(v=vs.85).aspx
+    and ChromeFrame header has been moved to `config.action_dispatch.default_headers`
+
+    *Guillermo Iguaran*
+
+*   Fix CSRF protection and `current_url?` helper to work with HEAD requests
+    now that `ActionDispatch::Head` has been removed in favor of `Rack::Head`.
+
+    *Michiel Sikkes*
+
+*   Change `asset_path` to not include `SCRIPT_NAME` when it's used
+    from a mounted engine. Fixes #8119.
+
+    *Piotr Sarnacki*
+
+*   Add javascript based routing path matcher to `/rails/info/routes`.
+    Routes can now be filtered by whether or not they match a path.
+
+    *Richard Schneeman*
+
 *   Given
 
-      params.permit(:name)
+        params.permit(:name)
 
     `:name` passes if it is a key of `params` whose value is a permitted scalar.
 
     Similarly, given
 
-      params.permit(tags: [])
+        params.permit(tags: [])
 
     `:tags` passes if it is a key of `params` whose value is an array of
     permitted scalars.
@@ -16,11 +55,6 @@
     Permitted scalars filtering happens at any level of nesting.
 
     *Xavier Noria*
-
-*   `BestStandardsSupport` no longer duplicates `X-UA-Compatible` values on
-    each request to prevent header size from blowing up.
-
-    *Edward Anderson*
 
 *   Change the behavior of route defaults so that explicit defaults are no longer
     required where the key is not part of the path. For example:
@@ -746,7 +780,7 @@
 *   Removed old text helper apis from `highlight`, `excerpt` and `word_wrap`. *Jeremy Walker*
 
 *   Templates without a handler extension now raises a deprecation warning but still
-    defaults to ERb. In future releases, it will simply return the template contents. *Steve Klabnik*
+    defaults to ERB. In future releases, it will simply return the template contents. *Steve Klabnik*
 
 *   Deprecate `:disable_with` in favor of `data: { disable_with: "Text" }` option from `submit_tag`, `button_tag` and `button_to` helpers.
 

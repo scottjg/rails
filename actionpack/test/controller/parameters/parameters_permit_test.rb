@@ -1,4 +1,5 @@
 require 'abstract_unit'
+require 'action_dispatch/http/upload'
 require 'action_controller/metal/strong_parameters'
 
 class ParametersPermitTest < ActiveSupport::TestCase
@@ -20,10 +21,10 @@ class ParametersPermitTest < ActiveSupport::TestCase
   end
 
   test 'if nothing is permitted, the hash becomes empty' do
-    params = ActionController::Parameters.new(:id => '1234')
+    params = ActionController::Parameters.new(id: '1234')
     permitted = params.permit
-    permitted.permitted?
-    permitted.empty?
+    assert permitted.permitted?
+    assert permitted.empty?
   end
 
   test 'key: permitted scalar values' do
@@ -31,10 +32,10 @@ class ParametersPermitTest < ActiveSupport::TestCase
     values += [0, 1.0, 2**128, BigDecimal.new(1)]
     values += [true, false]
     values += [Date.today, Time.now, DateTime.now]
-    values += [StringIO.new]
+    values += [STDOUT, StringIO.new, ActionDispatch::Http::UploadedFile.new(tempfile: __FILE__)]
 
     values.each do |value|
-      params = ActionController::Parameters.new(:id => value)
+      params = ActionController::Parameters.new(id: value)
       permitted = params.permit(:id)
       assert_equal value, permitted[:id]
 
@@ -47,7 +48,7 @@ class ParametersPermitTest < ActiveSupport::TestCase
   end
 
   test 'key: unknown keys are filtered out' do
-    params = ActionController::Parameters.new(:id => '1234', :injected => 'injected')
+    params = ActionController::Parameters.new(id: '1234', injected: 'injected')
     permitted = params.permit(:id)
     assert_equal '1234', permitted[:id]
     assert_filtered_out permitted, :injected
@@ -55,7 +56,7 @@ class ParametersPermitTest < ActiveSupport::TestCase
 
   test 'key: arrays are filtered out' do
     [[], [1], ['1']].each do |array|
-      params = ActionController::Parameters.new(:id => array)
+      params = ActionController::Parameters.new(id: array)
       permitted = params.permit(:id)
       assert_filtered_out permitted, :id
 
@@ -68,8 +69,8 @@ class ParametersPermitTest < ActiveSupport::TestCase
   end
 
   test 'key: hashes are filtered out' do
-    [{}, {:foo => 1}, {:foo => 'bar'}].each do |hash|
-      params = ActionController::Parameters.new(:id => hash)
+    [{}, {foo: 1}, {foo: 'bar'}].each do |hash|
+      params = ActionController::Parameters.new(id: hash)
       permitted = params.permit(:id)
       assert_filtered_out permitted, :id
 
@@ -82,7 +83,7 @@ class ParametersPermitTest < ActiveSupport::TestCase
   end
 
   test 'key: non-permitted scalar values are filtered out' do
-    params = ActionController::Parameters.new(:id => Object.new)
+    params = ActionController::Parameters.new(id: Object.new)
     permitted = params.permit(:id)
     assert_filtered_out permitted, :id
 
@@ -94,37 +95,37 @@ class ParametersPermitTest < ActiveSupport::TestCase
   end
 
   test 'key: it is not assigned if not present in params' do
-    params = ActionController::Parameters.new(:name => 'Joe')
+    params = ActionController::Parameters.new(name: 'Joe')
     permitted = params.permit(:id)
     assert !permitted.has_key?(:id)
   end
 
   test 'key to empty array: empty arrays pass' do
-    params = ActionController::Parameters.new(:id => [])
-    permitted = params.permit(:id => [])
+    params = ActionController::Parameters.new(id: [])
+    permitted = params.permit(id: [])
     assert_equal [], permitted[:id]
   end
 
   test 'key to empty array: arrays of permitted scalars pass' do
     [['foo'], [1], ['foo', 'bar'], [1, 2, 3]].each do |array|
-      params = ActionController::Parameters.new(:id => array)
-      permitted = params.permit(:id => [])
+      params = ActionController::Parameters.new(id: array)
+      permitted = params.permit(id: [])
       assert_equal array, permitted[:id]
     end
   end
 
   test 'key to empty array: permitted scalar values do not pass' do
     ['foo', 1].each do |permitted_scalar|
-      params = ActionController::Parameters.new(:id => permitted_scalar)
-      permitted = params.permit(:id => [])
+      params = ActionController::Parameters.new(id: permitted_scalar)
+      permitted = params.permit(id: [])
       assert_filtered_out permitted, :id
     end
   end
 
   test 'key to empty array: arrays of non-permitted scalar do not pass' do
-    [[Object.new], [[]], [[1]], [{}], [{:id => '1'}]].each do |non_permitted_scalar|
-      params = ActionController::Parameters.new(:id => non_permitted_scalar)
-      permitted = params.permit(:id => [])
+    [[Object.new], [[]], [[1]], [{}], [{id: '1'}]].each do |non_permitted_scalar|
+      params = ActionController::Parameters.new(id: non_permitted_scalar)
+      permitted = params.permit(id: [])
       assert_filtered_out permitted, :id
     end
   end

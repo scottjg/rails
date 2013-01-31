@@ -55,6 +55,7 @@ module Rails
     autoload :Bootstrap,      'rails/application/bootstrap'
     autoload :Configuration,  'rails/application/configuration'
     autoload :Finisher,       'rails/application/finisher'
+    autoload :Railties,       'rails/engine/railties'
     autoload :RoutesReloader, 'rails/application/routes_reloader'
 
     class << self
@@ -232,11 +233,6 @@ module Rails
       config.helpers_paths
     end
 
-    def railties #:nodoc:
-      @railties ||= Rails::Railtie.subclasses.map(&:instance) +
-        Rails::Engine.subclasses.map(&:instance)
-    end
-
   protected
 
     alias :build_middleware_stack :app
@@ -369,10 +365,6 @@ module Rails
         middleware.use ::Rack::Head
         middleware.use ::Rack::ConditionalGet
         middleware.use ::Rack::ETag, "no-cache"
-
-        if config.action_dispatch.best_standards_support
-          middleware.use ::ActionDispatch::BestStandardsSupport, config.action_dispatch.best_standards_support
-        end
       end
     end
 
