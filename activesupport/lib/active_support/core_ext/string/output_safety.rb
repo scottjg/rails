@@ -3,7 +3,7 @@ require 'active_support/core_ext/kernel/singleton_class'
 
 class ERB
   module Util
-    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#x27;' }
+    HTML_ESCAPE = { '&' => '&amp;',  '>' => '&gt;',   '<' => '&lt;', '"' => '&quot;', "'" => '&#39;' }
     JSON_ESCAPE = { '&' => '\u0026', '>' => '\u003E', '<' => '\u003C' }
 
     if RUBY_VERSION >= '1.9'
