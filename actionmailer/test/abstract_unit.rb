@@ -1,16 +1,3 @@
-# Pathname has a warning, so require it first while silencing
-# warnings to shut it up.
-#
-# Also, in 1.9, Bundler creates warnings due to overriding
-# Rubygems methods
-begin
-  old, $VERBOSE = $VERBOSE, nil
-  require 'pathname'
-  require File.expand_path('../../../load_paths', __FILE__)
-ensure
-  $VERBOSE = old
-end
-
 require 'active_support/core_ext/kernel/reporting'
 
 require 'active_support/core_ext/string/encoding'
