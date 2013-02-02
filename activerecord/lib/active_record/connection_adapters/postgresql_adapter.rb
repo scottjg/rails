@@ -113,6 +113,9 @@ module ActiveRecord
           # Arrays
           when /\A'(.*)'::"?\D+"?\[\]\z/
             $1
+          when /\AARRAY.+\z/
+            # Convert ARRAY constructor syntax into curly braces notation reliable.
+            ActiveRecord::Base.connection.execute("SELECT #{default};").getvalue(0,0)
           # Hstore
           when /\A'(.*)'::hstore\z/
             $1
