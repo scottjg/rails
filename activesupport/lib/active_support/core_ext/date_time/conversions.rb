@@ -29,6 +29,7 @@ class DateTime
   #   Time::DATE_FORMATS[:short_ordinal] = lambda { |time| time.strftime("%B #{time.day.ordinalize}") }
   DATE_FORMATS = ::Time::DATE_FORMATS
 
+  # Returns the utc_offset as an +HH:MM formatted string.
   #
   #   datetime = DateTime.civil(2000, 1, 1, 0, 0, 0, Rational(-6, 24))
   #   datetime.formatted_offset         # => "-06:00"
