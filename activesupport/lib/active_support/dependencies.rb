@@ -11,7 +11,7 @@ require 'active_support/core_ext/load_error'
 require 'active_support/core_ext/name_error'
 require 'active_support/core_ext/string/starts_ends_with'
 require 'active_support/inflector'
-require 'thread_safe'
+require 'monitor'
 
 module ActiveSupport #:nodoc:
   module Dependencies #:nodoc:
@@ -23,7 +23,11 @@ module ActiveSupport #:nodoc:
 
     # All files ever loaded.
     mattr_accessor :history
-    self.history = ThreadSafe::Set.new
+    self.history = Set.new
+
+    # All files currently loaded.
+    mattr_accessor :loaded
+    self.loaded = Set.new
 
     # Should we load files or require them?
     mattr_accessor :mechanism
@@ -33,22 +37,22 @@ module ActiveSupport #:nodoc:
     # under these directories will be reloaded on each request in development mode,
     # unless the directory also appears in autoload_once_paths.
     mattr_accessor :autoload_paths
-    self.autoload_paths = ThreadSafe::Array.new
+    self.autoload_paths = []
 
     # The set of directories from which automatically loaded constants are loaded
     # only once. All directories in this set must also be present in +autoload_paths+.
     mattr_accessor :autoload_once_paths
-    self.autoload_once_paths = ThreadSafe::Array.new
+    self.autoload_once_paths = []
 
     # An array of qualified constant names that have been loaded. Adding a name to
     # this array will cause it to be unloaded the next time Dependencies are cleared.
     mattr_accessor :autoloaded_constants
-    self.autoloaded_constants = ThreadSafe::Array.new
+    self.autoloaded_constants = []
 
     # An array of constant names that need to be unloaded on every request. Used
     # to allow arbitrary constants to be marked for unloading.
     mattr_accessor :explicitly_unloadable_constants
-    self.explicitly_unloadable_constants = ThreadSafe::Array.new
+    self.explicitly_unloadable_constants = []
 
     # The logger is used for generating information on the action run-time (including benchmarking) if available.
     # Can be set to nil for no logging. Compatible with both Ruby's own Logger and Log4r loggers.
@@ -57,6 +61,10 @@ module ActiveSupport #:nodoc:
     # Set to true to enable logging of const_missing and file loads
     mattr_accessor :log_activity
     self.log_activity = false
+
+    # A monitor for thread safety (We require reentrancy)
+    mattr_accessor :lock
+    self.lock = Monitor.new
 
     # The WatchStack keeps a stack of the modules being watched as files are loaded.
     # If a file in the process of being loaded (parent.rb) triggers the load of
@@ -159,33 +167,36 @@ module ActiveSupport #:nodoc:
       # Use const_missing to autoload associations so we don't have to
       # require_association when using single-table inheritance.
       def const_missing(const_name, nesting = nil)
-        klass_name = name.presence || "Object"
+        Dependencies.lock.synchronize do
+          return const_get(const_name) if const_defined?(const_name)
+          klass_name = name.presence || "Object"
 
-        unless nesting
-          # We'll assume that the nesting of Foo::Bar is ["Foo::Bar", "Foo"]
-          # even though it might not be, such as in the case of
-          # class Foo::Bar; Baz; end
-          nesting = []
-          klass_name.to_s.scan(/::|$/) { nesting.unshift $` }
-        end
-
-        # If there are multiple levels of nesting to search under, the top
-        # level is the one we want to report as the lookup fail.
-        error = nil
-
-        nesting.each do |namespace|
-          begin
-            return Dependencies.load_missing_constant Inflector.constantize(namespace), const_name
-          rescue NoMethodError then raise
-          rescue NameError => e
-            error ||= e
+          unless nesting
+            # We'll assume that the nesting of Foo::Bar is ["Foo::Bar", "Foo"]
+            # even though it might not be, such as in the case of
+            # class Foo::Bar; Baz; end
+            nesting = []
+            klass_name.to_s.scan(/::|$/) { nesting.unshift $` }
           end
-        end
 
-        # Raise the first error for this set. If this const_missing came from an
-        # earlier const_missing, this will result in the real error bubbling
-        # all the way up
-        raise error
+          # If there are multiple levels of nesting to search under, the top
+          # level is the one we want to report as the lookup fail.
+          error = nil
+
+          nesting.each do |namespace|
+            begin
+              return Dependencies.load_missing_constant Inflector.constantize(namespace), const_name
+            rescue NoMethodError then raise
+            rescue NameError => e
+              error ||= e
+            end
+          end
+
+          # Raise the first error for this set. If this const_missing came from an
+          # earlier const_missing, this will result in the real error bubbling
+          # all the way up
+          raise error
+        end
       end
 
       def unloadable(const_desc = self)
@@ -308,10 +319,6 @@ module ActiveSupport #:nodoc:
 
     def associate_with(file_name)
       depend_on(file_name, true)
-    end
-
-    def loaded
-      Thread.current[:loaded] ||= Set.new
     end
 
     def clear
@@ -526,7 +533,7 @@ module ActiveSupport #:nodoc:
 
     class ClassCache
       def initialize
-        @store = ThreadSafe::Hash.new { |h, k| h[k] = Inflector.constantize(k) }
+        @store = Hash.new { |h, k| h[k] = Inflector.constantize(k) }
       end
 
       def empty?
