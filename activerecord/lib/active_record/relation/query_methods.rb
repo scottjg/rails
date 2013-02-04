@@ -8,7 +8,7 @@ module ActiveRecord
     # In this case, #where must be chained with either #not, #like, or #not_like to return a new relation.
     class WhereChain
       def initialize(scope)
-        @scope = scope
+        # @scope = scope
       end
 
       # Returns a new relation expressing WHERE + NOT condition
