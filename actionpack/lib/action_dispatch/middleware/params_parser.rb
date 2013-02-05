@@ -52,7 +52,13 @@ module ActionDispatch
           false
         end
       rescue Exception => e # YAML, XML or Ruby code block errors
-        logger(env).debug "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
+        # We want to see this appear in the logs every time it happens as a result of
+        # https://www.pivotaltracker.com/story/show/41293837
+        # so I'm just going to hack in a puts.
+
+        #logger(env).debug "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
+        puts "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
+        puts "env for previous error: #{env}"
 
         raise e
       end
