@@ -44,7 +44,8 @@ module ActionDispatch
         when :yaml
           YAML.load(request.raw_post)
         when :json
-          data = request.deep_munge ActiveSupport::JSON.decode(request.body)
+          request_body = request.body.read
+          data = request.deep_munge ActiveSupport::JSON.decode(request_body)
           request.body.rewind if request.body.respond_to?(:rewind)
           data = {:_json => data} unless data.is_a?(Hash)
           data.with_indifferent_access
@@ -57,7 +58,7 @@ module ActionDispatch
         # so I'm just going to hack in a puts.
 
         #logger(env).debug "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
-        puts "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
+        puts "Error occurred while parsing request parameters.\nContents of request_body (next line):\n#{request_body}"
         puts "env for previous error: #{env}"
 
         raise e
