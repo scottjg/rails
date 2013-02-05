@@ -100,26 +100,26 @@ module ActionController
     end
 
     def process(name)
-      t1 = Thread.current
-      locals = t1.keys.map { |key| [key, t1[key]] }
+      #t1 = Thread.current
+      #locals = t1.keys.map { |key| [key, t1[key]] }
 
       # This processes the action in a child thread. It lets us return the
       # response code and headers back up the rack stack, and still process
       # the body in parallel with sending data to the client
-      Thread.new {
-        t2 = Thread.current
-        t2.abort_on_exception = true
+      # Thread.new {
+        #t2 = Thread.current
+        #t2.abort_on_exception = true
 
         # Since we're processing the view in a different thread, copy the
         # thread locals from the main thread to the child thread. :'(
-        locals.each { |k,v| t2[k] = v }
+        #locals.each { |k,v| t2[k] = v }
 
         begin
           super(name)
         ensure
           @_response.commit!
         end
-      }
+      # }
 
       @_response.await_commit
     end
