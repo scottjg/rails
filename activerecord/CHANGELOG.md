@@ -1,4 +1,13 @@
-## Rails 3.2.9 (unreleased)
+## Rails 3.2.11 ##
+
+*   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
+
+## Rails 3.2.10 ##
+
+*   CVE-2012-5664 options hashes should only be extracted if there are extra
+    parameters
+
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Fix issue with collection associations calling first(n)/last(n) and attempting
     to set the inverse association when `:inverse_of` was used. Fixes #8087.
