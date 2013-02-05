@@ -1,4 +1,8 @@
-## Rails 3.2.12 (unreleased)
+## Rails 3.2.12 (unreleased) ##
+
+*   Fix DateTime comparison with DateTime::Infinity object.
+
+    *Dan Kubb*
 
 *   Remove surrogate unicode character encoding from ActiveSupport::JSON.encode
     The encoding scheme was broken for unicode characters outside the basic
@@ -29,9 +33,11 @@
 
     *Jeremy Kemper*
 
+
 ## Rails 3.2.10 (Jan 2, 2013) ##
 
 *   No changes.
+
 
 ## Rails 3.2.9 (Nov 12, 2012) ##
 

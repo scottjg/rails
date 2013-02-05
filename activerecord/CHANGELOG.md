@@ -1,4 +1,41 @@
-## Rails 3.2.12 (unreleased)
+## Rails 3.2.12 (unreleased) ##
+
+*   Don't update `column_defaults` when calling destructive methods on column with default value.
+    Backport c517602.
+    Fix #6115.
+
+    *Piotr Sarnacki + Aleksey Magusev + Alan Daud*
+
+*   When `#count` is used in conjunction with `#uniq` we perform `count(:distinct => true)`.
+    Fix #6865.
+
+    Example:
+
+      relation.uniq.count # => SELECT COUNT(DISTINCT *)
+
+    *Yves Senn + Kaspar Schiess*
+
+*   Fix `ActiveRecord::Relation#pluck` when columns or tables are reserved words.
+    Backport #7536.
+    Fix #8968.
+
+    *Ian Lesperance + Yves Senn + Kaspar Schiess*
+
+*   Don't run explain on slow queries for database adapters that don't support it.
+    Backport #6197.
+
+    *Blake Smith*
+
+*   Revert round usec when comparing timestamp attributes in the dirty tracking.
+    Fixes #8460.
+
+    *Andrew White*
+
+*   Revert creation of through association models when using `collection=[]`
+    on a `has_many :through` association from an unsaved model.
+    Fix #7661, #8269.
+
+    *Ernie Miller*
 
 *   Fix undefined method `to_i` when calling `new` on a scope that uses an
     Array; Fix FloatDomainError when setting integer column to NaN.
@@ -104,12 +141,6 @@
 
     *Victor Costan*
 
-*   Calling `include?` on `has_many` associations on unsaved records no longer
-    returns `true` when passed a record with a `nil` foreign key.
-    Fixes #7950.
-
-    *George Brocklehurst*
-
 *   `#pluck` can be used on a relation with `select` clause.
     Fixes #7551.
     Backport of #8176.
@@ -179,9 +210,10 @@
 
     *Gabriel Sobrinho, Ricardo Henrique*
 
-## Rails 3.2.11 ##
+## Rails 3.2.11 (Jan 8, 2013) ##
 
 *   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
+
 
 ## Rails 3.2.10 (Jan 2, 2013) ##
 
