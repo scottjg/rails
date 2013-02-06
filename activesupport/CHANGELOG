@@ -1,3 +1,12 @@
+## Security Fix CVE-2013-0156.patch from Rails 3.0.19 (Jan 8, 2012) ##
+
+*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
+    Use Hash.from_trusted_xml to parse this XML.
+
+    CVE-2013-0156
+
+    *Jeremy Kemper*
+
 *Rails 3.0.7 (April 18, 2011)*
 
 * Hash.from_xml no longer loses attributes on tags containing only whitespace [André Arko]
