@@ -1,9 +1,3 @@
-require 'rubygems'
-require 'rake'
-require 'rake/testtask'
-require 'rake/rdoctask'
-require 'rake/gempackagetask'
-
 require 'date'
 require 'rbconfig'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
