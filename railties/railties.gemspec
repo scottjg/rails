@@ -1,7 +1,7 @@
 require 'rake'
 require 'rake/testtask'
 require 'rdoc/task'
-require 'rake/gempackagetask'
+require 'rubygems/package_task'
 
 require 'date'
 require 'rbconfig'
