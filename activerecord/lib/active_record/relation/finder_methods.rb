@@ -262,7 +262,10 @@ module ActiveRecord
     end
 
     def find_by_attributes(match, attributes, *args)
-      conditions = Hash[attributes.map {|a| [a, args[attributes.index(a)]]}]
+      conditions = Hash[attributes.map {|a| 
+        column = columns_hash[a]
+        [a, args[attributes.index(a)].class.name.downcase.to_sym == column.type ? args[attributes.index(a)] : connection.quote(args[attributes.index(a)], column)]
+      }]
       result = where(conditions).send(match.finder)
 
       if match.bang? && result.nil?
