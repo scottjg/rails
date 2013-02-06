@@ -1,5 +1,4 @@
 require 'rake'
-require 'rake/testtask'
 require 'rubygems/package_task'
 
 require 'date'
