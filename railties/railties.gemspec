@@ -1,5 +1,4 @@
 require 'rake'
-require 'rubygems/package_task'
 
 require 'date'
 require 'rbconfig'
