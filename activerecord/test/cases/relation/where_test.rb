@@ -92,7 +92,9 @@ module ActiveRecord
     end
 
     def test_where_with_table_name_and_empty_hash
-      assert_equal 0, Post.where(:posts => {}).count
+      assert_raises(ArgumentError) do
+        Post.where(:posts => {})
+      end
     end
 
     def test_where_with_table_name_and_empty_array
@@ -100,13 +102,40 @@ module ActiveRecord
     end
 
     def test_where_with_empty_hash_and_no_foreign_key
-      assert_equal 0, Edge.where(:sink => {}).count
+      assert_raises(ArgumentError) do
+        Edge.where(:sink => {}).count
+      end
     end
 
     def test_where_with_blank_conditions
       [[], {}, nil, ""].each do |blank|
         assert_equal 4, Edge.where(blank).order("sink_id").to_a.size
       end
+    end
+
+    def test_where_with_integer_for_string_column
+      count = Post.where(:title => 0).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_float_for_string_column
+      count = Post.where(:title => 0.0).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_boolean_for_string_column
+      count = Post.where(:title => false).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_decimal_for_string_column
+      count = Post.where(:title => BigDecimal.new(0)).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_duration_for_string_column
+      count = Post.where(:title => 0.seconds).count
+      assert_equal 0, count
     end
   end
 end

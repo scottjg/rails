@@ -1,5 +1,13 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Add --rc option to support the load of a custom rc file during the generation of a new app.
+
+    *Amparo Luna*
+
+*   Add --no-rc option to skip the loading of railsrc file during the generation of a new app.
+    
+    *Amparo Luna*
+
 *   Fixes database.yml when creating a new rails application with '.'
     Fix #8304
 

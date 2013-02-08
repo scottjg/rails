@@ -2,6 +2,7 @@ require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/hash/reverse_merge'
 require 'active_support/core_ext/hash/slice'
 require 'active_support/core_ext/enumerable'
+require 'active_support/core_ext/array/extract_options'
 require 'active_support/inflector'
 require 'action_dispatch/routing/redirection'
 
@@ -243,6 +244,12 @@ module ActionDispatch
 
               if action.blank? && segment_keys.exclude?(:action)
                 raise ArgumentError, "missing :action"
+              end
+
+              if controller.is_a?(String) && controller !~ /\A[a-z_\/]+\z/
+                message = "'#{controller}' is not a supported controller name. This can lead to potential routing problems."
+                message << " See http://guides.rubyonrails.org/routing.html#specifying-a-controller-to-use"
+                raise ArgumentError, message
               end
 
               hash = {}
