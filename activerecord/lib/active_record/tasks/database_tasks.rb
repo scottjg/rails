@@ -15,11 +15,11 @@ module ActiveRecord
         @tasks[pattern] = task
       end
       
-      require "#{Rails.root.to_s}/vendor/activerecord-postgis-adapter/lib/active_record/connection_adapters/postgis_adapter/tasks/postgis_database_tasks.rb"
+      #require "#{Rails.root.to_s}/vendor/activerecord-postgis-adapter/lib/active_record/connection_adapters/postgis_adapter/tasks/postgis_database_tasks.rb"
       register_task(/mysql/, ActiveRecord::Tasks::MySQLDatabaseTasks)
       register_task(/postgresql/, ActiveRecord::Tasks::PostgreSQLDatabaseTasks)
       register_task(/sqlite/, ActiveRecord::Tasks::SQLiteDatabaseTasks)
-      register_task(/postgis/, ActiveRecord::Tasks::PostGISDatabaseTasks) 
+      #register_task(/postgis/, ActiveRecord::Tasks::PostGISDatabaseTasks) 
 
       def current_config(options = {})
         options.reverse_merge! :env => Rails.env
