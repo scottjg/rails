@@ -1,6 +1,7 @@
 require 'rack/session/abstract/id'
 require 'active_support/core_ext/object/to_query'
 require 'active_support/core_ext/module/anonymous'
+require 'active_support/core_ext/hash/keys'
 
 module ActionController
   module TemplateAssertions
@@ -125,7 +126,11 @@ module ActionController
         if expected_partial = options[:partial]
           if expected_locals = options[:locals]
             if defined?(@_rendered_views)
-              view = expected_partial.to_s.sub(/^_/,'')
+              view = expected_partial.to_s.sub(/^_/, '').sub(/\/_(?=[^\/]+\z)/, '/')
+
+              partial_was_not_rendered_msg = "expected %s to be rendered but it was not." % view
+              assert_includes @_rendered_views.rendered_views, view, partial_was_not_rendered_msg
+
               msg = 'expecting %s to be rendered with %s but was with %s' % [expected_partial,
                                                                              expected_locals,
                                                                              @_rendered_views.locals_for(view)]
@@ -235,18 +240,39 @@ module ActionController
     end
   end
 
+  # Methods #destroy and #load! are overridden to avoid calling methods on the
+  # @store object, which does not exist for the TestSession class.
   class TestSession < Rack::Session::Abstract::SessionHash #:nodoc:
     DEFAULT_OPTIONS = Rack::Session::Abstract::ID::DEFAULT_OPTIONS
 
     def initialize(session = {})
       super(nil, nil)
-      replace(session.stringify_keys)
+      @id = SecureRandom.hex(16)
+      @data = stringify_keys(session)
       @loaded = true
     end
 
     def exists?
       true
     end
+
+    def keys
+      @data.keys
+    end
+
+    def values
+      @data.values
+    end
+
+    def destroy
+      clear
+    end
+
+    private
+
+      def load!
+        @id
+      end
   end
 
   # Superclass for ActionController functional tests. Functional tests allow you to

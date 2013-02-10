@@ -25,13 +25,19 @@ module ActiveRecord
         when true, false
           if column && column.type == :integer
             value ? '1' : '0'
+          elsif column && [:text, :string, :binary].include?(column.type)
+            value ? "'1'" : "'0'"
           else
             value ? quoted_true : quoted_false
           end
           # BigDecimals need to be put in a non-normalized form and quoted.
         when nil        then "NULL"
-        when BigDecimal then value.to_s('F')
-        when Numeric, ActiveSupport::Duration then value.to_s
+        when Numeric, ActiveSupport::Duration
+          value = BigDecimal === value ? value.to_s('F') : value.to_s
+          if column && ![:integer, :float, :decimal].include?(column.type)
+            value = "'#{value}'"
+          end
+          value
         when Date, Time then "'#{quoted_date(value)}'"
         when Symbol     then "'#{quote_string(value.to_s)}'"
         when Class      then "'#{value.to_s}'"
@@ -91,6 +97,18 @@ module ActiveRecord
       # Quotes the table name. Defaults to column name quoting.
       def quote_table_name(table_name)
         quote_column_name(table_name)
+      end
+
+      # Override to return the quoted table name for assignment. Defaults to
+      # table quoting.
+      #
+      # This works for mysql and mysql2 where table.column can be used to
+      # resolve ambiguity.
+      #
+      # We override this in the sqlite and postgresql adapters to use only
+      # the column name (as per syntax requirements).
+      def quote_table_name_for_assignment(table, attr)
+        quote_table_name("#{table}.#{attr}")
       end
 
       def quoted_true

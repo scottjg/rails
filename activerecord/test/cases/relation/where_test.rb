@@ -8,7 +8,20 @@ require 'models/edge'
 
 module ActiveRecord
   class WhereTest < ActiveRecord::TestCase
-    fixtures :posts, :edges
+    fixtures :posts, :edges, :authors
+
+    def test_where_copies_bind_params
+      author = authors(:david)
+      posts  = author.posts.where('posts.id != 1')
+      joined = Post.where(id: posts)
+
+      assert_operator joined.length, :>, 0
+
+      joined.each { |post|
+        assert_equal author, post.author
+        assert_not_equal 1, post.id
+      }
+    end
 
     def test_belongs_to_shallow_where
       author = Author.new
@@ -94,6 +107,31 @@ module ActiveRecord
       [[], {}, nil, ""].each do |blank|
         assert_equal 4, Edge.where(blank).order("sink_id").to_a.size
       end
+    end
+
+    def test_where_with_integer_for_string_column
+      count = Post.where(:title => 0).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_float_for_string_column
+      count = Post.where(:title => 0.0).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_boolean_for_string_column
+      count = Post.where(:title => false).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_decimal_for_string_column
+      count = Post.where(:title => BigDecimal.new(0)).count
+      assert_equal 0, count
+    end
+
+    def test_where_with_duration_for_string_column
+      count = Post.where(:title => 0.seconds).count
+      assert_equal 0, count
     end
   end
 end
