@@ -1182,6 +1182,33 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
+  def test_form_for
+    form_for(:post, html: { id: 'create-post' }) do |f|
+      concat f.label(:title) { "The Title" }
+      concat f.text_field(:title)
+      concat f.text_area(:body)
+      concat f.check_box(:secret)
+      concat f.submit('Create post')
+      concat f.button('Create post')
+      concat f.button {
+        concat content_tag(:span, 'Create post')
+      }
+    end
+
+    expected = whole_form("/posts/123", "create-post", "edit_post", method: "patch") do
+      "<label for='post_title'>The Title</label>" +
+      "<input name='post[title]' type='text' id='post_title' value='Hello World' />" +
+      "<textarea name='post[body]' id='post_body'>\nBack to the hill and over it again!</textarea>" +
+      "<input name='post[secret]' type='hidden' value='0' />" +
+      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />" +
+      "<input name='commit' type='submit' value='Create post' />" +
+      "<button name='button' type='submit'>Create post</button>" +
+      "<button name='button' type='submit'><span>Create post</span></button>"
+    end
+
+    assert_dom_equal expected, output_buffer
+  end
+
   def test_form_for_with_collection_radio_buttons
     post = Post.new
     def post.active; false; end
@@ -1507,21 +1534,25 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, output_buffer
   end
 
-  def test_form_for_without_object
+  def test_form_for_symbol_without_object
+    post, @post = @post, nil
+
     form_for(:post, html: { id: 'create-post' }) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
     end
 
-    expected = whole_form("/", "create-post") do
-      "<input name='post[title]' type='text' id='post_title' value='Hello World' />" +
-      "<textarea name='post[body]' id='post_body'>\nBack to the hill and over it again!</textarea>" +
+    expected = whole_form("/posts", "create-post", "new_post") do
+      "<input id='post_title' name='post[title]' type='text' />" +
+      "<textarea id='post_body' name='post[body]'>\n</textarea>" +
       "<input name='post[secret]' type='hidden' value='0' />" +
-      "<input name='post[secret]' checked='checked' type='checkbox' id='post_secret' value='1' />"
+      "<input id='post_secret' name='post[secret]' type='checkbox' value='1' />"
     end
 
     assert_dom_equal expected, output_buffer
+  ensure
+    @post = post
   end
 
   def test_form_for_with_index
@@ -1728,18 +1759,19 @@ class FormHelperTest < ActionView::TestCase
 
   def test_submit_without_object_and_locale_strings
     old_locale, I18n.locale = I18n.locale, :submit
-
+    post, @post = @post, nil
     form_for(:post) do |f|
       concat f.submit class: "extra"
     end
 
-    expected = whole_form do
+    expected = whole_form('/posts', 'new_post', 'new_post') do
       "<input name='commit' class='extra' type='submit' value='Save changes' />"
     end
 
     assert_dom_equal expected, output_buffer
   ensure
     I18n.locale = old_locale
+    @post = post
   end
 
   def test_submit_with_object_and_nested_lookup

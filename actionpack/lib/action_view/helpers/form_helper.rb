@@ -415,13 +415,27 @@ module ActionView
         raise ArgumentError, "Missing block" unless block_given?
         html_options = options[:html] ||= {}
 
-        case record
+        object = record.is_a?(Array) ? record.last : record
+        raise ArgumentError, "First argument in form cannot contain nil or be empty" unless object
+
+        case object
         when String, Symbol
-          object_name = record
-          object      = nil
+          object_name = object.to_s
+
+          object = try_to_get_object_from_instance(object)
+          record = update_record_with_object(record, object)
+        end
+
+        case object
+        when String, Symbol, nil
+          options[:as] ||= object_name
+          constant = object_name.to_s.camelize.safe_constantize
+          
+          unless constant.nil?
+            options[:url] ||= polymorphic_path(constant, :format => options.delete(:format))
+            apply_form_for_options!(record, object, options)
+          end
         else
-          object      = record.is_a?(Array) ? record.last : record
-          raise ArgumentError, "First argument in form cannot contain nil or be empty" unless object
           object_name = options[:as] || model_name_from_record_or_class(object).param_key
           apply_form_for_options!(record, object, options)
         end
@@ -437,6 +451,22 @@ module ActionView
 
         form_tag(options[:url] || {}, html_options) { output }
       end
+
+      def try_to_get_object_from_instance(object)
+        instance_variable_name = "@#{object.to_s}"
+        instance_variable_get(instance_variable_name) if instance_variable_defined?(instance_variable_name)
+      end
+      private :try_to_get_object_from_instance
+
+      def update_record_with_object(record, object)
+        if record.is_a?(Array)
+          record[-1] = object 
+        else
+          record = object
+        end
+        record
+      end
+      private :update_record_with_object
 
       def apply_form_for_options!(record, object, options) #:nodoc:
         object = convert_to_model(object)
