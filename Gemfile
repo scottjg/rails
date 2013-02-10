@@ -70,6 +70,10 @@ platforms :jruby do
   group :db do
     gem 'activerecord-jdbcmysql-adapter', '>= 1.2.0'
     gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.0'
+    # A gem necessary for ActiveRecord tests with Sqlanywhere database
+    if ENV['SQLANYWHERE']
+      gem 'activerecord-sqlanywhere-jdbc-adapter', git: 'git://github.com/ccouzens/activerecord-sqlanywhere-adapter.git'
+    end
   end
 end
 
@@ -83,10 +87,5 @@ end
 
 # A gem necessary for ActiveRecord tests with IBM DB
 gem 'ibm_db' if ENV['IBM_DB']
-
-# A gem necessary for ActiveRecord tests with Sqlanywhere database
-if ENV['SQLANYWHERE']
-  gem 'activerecord-sqlanywhere-adapter', git: 'git://github.com/ccouzens/activerecord-sqlanywhere-adapter.git'
-end
 
 gem 'benchmark-ips'
