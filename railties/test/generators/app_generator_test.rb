@@ -70,7 +70,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   end
 
   def test_application_new_exits_with_non_zero_code_on_invalid_application_name
-    quietly { system 'rails new test' }
+    quietly { system 'rails new test --no-rc' }
     assert_equal false, $?.success?
   end
 
@@ -162,6 +162,11 @@ class AppGeneratorTest < Rails::Generators::TestCase
     else
       assert_gem "activerecord-jdbcmysql-adapter"
     end
+  end
+
+  def test_config_database_app_name_with_period
+    run_generator [File.join(destination_root, "common.usage.com"), "-d", "postgresql"]
+    assert_file "common.usage.com/config/database.yml", /common_usage_com/
   end
 
   def test_config_postgresql_database
