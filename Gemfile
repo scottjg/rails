@@ -15,7 +15,8 @@ gem 'coffee-rails', github: 'rails/coffee-rails'
 gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
 
 # Needed for compiling the ActionDispatch::Journey parser
-gem 'racc', '>=1.4.6', require: false
+# Breaks bundling with jRuby
+# gem 'racc', '>=1.4.6', require: false
 
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
