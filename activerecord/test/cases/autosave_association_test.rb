@@ -4,7 +4,9 @@ require 'models/company'
 require 'models/customer'
 require 'models/developer'
 require 'models/invoice'
+require 'models/interest'
 require 'models/line_item'
+require 'models/man'
 require 'models/order'
 require 'models/parrot'
 require 'models/person'
@@ -16,6 +18,7 @@ require 'models/ship_part'
 require 'models/tag'
 require 'models/tagging'
 require 'models/treasure'
+require 'models/topic'
 require 'models/company'
 require 'models/eye'
 
@@ -362,6 +365,17 @@ end
 
 class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCase
   fixtures :companies, :people
+
+  def test_should_save_only_valid_association
+    man = Man.new
+    interest_1 = Interest.new
+    interest_2 = Interest.new(:topic => Topic.new)
+    man.interests = [interest_1, interest_2]
+    man.save
+    
+    assert !man.interests[0].persisted?
+    assert man.interests[1].persisted?
+  end
 
   def test_invalid_adding
     firm = Firm.find(1)
