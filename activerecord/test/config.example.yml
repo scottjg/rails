@@ -139,7 +139,7 @@ connections:
       host: database_ASE
       username: sa
 
-  sqlanywhere:
+  jdbcsqlanywhere:
     arunit:
       database: arunit
       server: arunit
