@@ -139,14 +139,16 @@ connections:
       host: database_ASE
       username: sa
 
-  sqlanywhere-jdbc:
+  jdbcsqlanywhere:
     arunit:
+      adapter: jdbcsqlanywhere
       database: arunit
       server: arunit
       username: dba
       password: sql
       encoding: UTF-8
     arunit2:
+      adapter: jdbcsqlanywhere
       database: arunit2
       server: arunit
       username: dba
