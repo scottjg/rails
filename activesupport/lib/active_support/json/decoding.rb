@@ -12,10 +12,10 @@ module ActiveSupport
         # Can't reliably detect whether MultiJson responds to load, since it's
         # a reserved word. Use adapter as a proxy for new features.
         data = if MultiJson.respond_to?(:adapter)
-                 MultiJson.load(json, options)
-               else
-                 MultiJson.decode(json, options)
-               end
+          MultiJson.load(json, options)
+        else
+          MultiJson.decode(json, options)
+        end
         if ActiveSupport.parse_json_times
           convert_dates_from(data)
         else
