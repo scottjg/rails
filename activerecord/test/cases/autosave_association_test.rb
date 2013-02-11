@@ -373,8 +373,9 @@ class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCa
     man.interests = [interest_1, interest_2]
     man.save
     
-    assert !man.interests[0].persisted?
-    assert man.interests[1].persisted?
+    assert man.persisted?
+    assert !interest_1.persisted?
+    assert interest_2.persisted?
   end
 
   def test_invalid_adding
