@@ -1,4 +1,23 @@
-## Rails 3.2.12 (unreleased) ##
+*   Don't update `column_defaults` when calling destructive methods on column with default value.
+    Backport c517602.
+    Fix #6115.
+
+    *Piotr Sarnacki + Aleksey Magusev + Alan Daud*
+
+*   When `#count` is used in conjunction with `#uniq` we perform `count(:distinct => true)`.
+    Fix #6865.
+
+    Example:
+
+      relation.uniq.count # => SELECT COUNT(DISTINCT *)
+
+    *Yves Senn + Kaspar Schiess*
+
+*   Fix `ActiveRecord::Relation#pluck` when columns or tables are reserved words.
+    Backport #7536.
+    Fix #8968.
+
+    *Ian Lesperance + Yves Senn + Kaspar Schiess*
 
 *   Don't run explain on slow queries for database adapters that don't support it.
     Backport #6197.
@@ -188,6 +207,18 @@
     Fixes #8131.
 
     *Gabriel Sobrinho, Ricardo Henrique*
+
+## Rails 3.2.12 ##
+
+*   Quote numeric values being compared to non-numeric columns. Otherwise,
+    in some database, the string column values will be coerced to a numeric
+    allowing 0, 0.0 or false to match any string starting with a non-digit.
+
+    Example:
+
+        App.where(apikey: 0) # => SELECT * FROM users WHERE apikey = '0'
+
+    *Dylan Smith*
 
 ## Rails 3.2.11 (Jan 8, 2013) ##
 
