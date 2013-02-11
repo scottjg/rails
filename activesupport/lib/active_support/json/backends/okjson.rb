@@ -1,6 +1,6 @@
+# encoding: UTF-8
 module ActiveSupport
   # Include OkJson as a replacement for the Yaml backend
-  # encoding: UTF-8
   #
   # Copyright 2011, 2012 Keith Rarick
   #
@@ -63,6 +63,7 @@ module ActiveSupport
 
       typ, _, val = ts[0]
       case typ
+      when :str, :val then valparse(ts)
       when '{' then objparse(ts)
       when '[' then arrparse(ts)
       else
