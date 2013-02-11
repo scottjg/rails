@@ -14,5 +14,5 @@ Gem::Specification.new do |s|
   s.require_path = 'lib'
 
   s.add_dependency 'activesupport', version
-  s.add_dependency 'rack', '~> 1.1.3'
+  s.add_dependency 'rack', '~> 1.1.0'
 end
