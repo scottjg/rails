@@ -54,7 +54,6 @@ module ActionDispatch
     class CookieStore < Rack::Session::Abstract::ID
       include Compatibility
       include StaleSessionCheck
-      include SessionObject
 
       def initialize(app, options={})
         super(app, options.merge!(:cookie_only => true))
