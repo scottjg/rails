@@ -1,5 +1,24 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   ActiveSupport::Gzip.compress allows two optional arguments for compression
+    level and strategy.
+
+    *Beyond*
+
+*   Modify `TimeWithZone#as_json` to include 3 decimal places of sub-second accuracy
+    by default, which is optional as per the ISO8601 spec, but extremely useful. Also
+    the default behaviour of Date#toJSON() in recent versions of Chrome, Safari and
+    Firefox.
+
+    *James Harton*
+
+*   Improve `String#squish` to handle Unicode whitespace. *Antoine Lyset*
+
+*   Standardise on `to_time` returning an instance of `Time` in the local system timezone
+    across `String`, `Time`, `Date`, `DateTime` and `ActiveSupport::TimeWithZone`.
+
+    *Andrew White*
+
 *   Extract `ActiveSupport::Testing::Performance` into https://github.com/rails/rails-perftest
     You can add the gem to your Gemfile to keep using performance tests.
 
@@ -7,9 +26,8 @@
 
     *Yves Senn*
 
-
-*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
-    Use Hash.from_trusted_xml to parse this XML.
+*   `Hash.from_xml` raises when it encounters `type="symbol"` or `type="yaml"`.
+    Use `Hash.from_trusted_xml` to parse this XML.
 
     CVE-2013-0156
 

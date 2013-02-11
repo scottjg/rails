@@ -404,6 +404,13 @@ class RelationTest < ActiveRecord::TestCase
     end
   end
 
+  def test_preload_applies_to_all_chained_preloaded_scopes
+    assert_queries(3) do
+      post = Post.with_comments.with_tags.first
+      assert post
+    end
+  end
+
   def test_find_with_included_associations
     assert_queries(2) do
       posts = Post.includes(:comments).order('posts.id')
@@ -1480,5 +1487,18 @@ class RelationTest < ActiveRecord::TestCase
     ensure
       Array.send(:remove_method, :__omg__)
     end
+  end
+
+  test "merge collapses wheres from the LHS only" do
+    left  = Post.where(title: "omg").where(comments_count: 1)
+    right = Post.where(title: "wtf").where(title: "bbq")
+
+    expected = [left.where_values[1]] + right.where_values
+    merged   = left.merge(right)
+
+    assert_equal expected, merged.where_values
+    assert !merged.to_sql.include?("omg")
+    assert merged.to_sql.include?("wtf")
+    assert merged.to_sql.include?("bbq")
   end
 end

@@ -237,7 +237,7 @@ module ActiveRecord
         @spec = spec
 
         @checkout_timeout = spec.config[:checkout_timeout] || 5
-        @dead_connection_timeout = spec.config[:dead_connection_timeout]
+        @dead_connection_timeout = spec.config[:dead_connection_timeout] || 5
         @reaper  = Reaper.new self, spec.config[:reaping_frequency]
         @reaper.run
 
@@ -517,6 +517,7 @@ module ActiveRecord
 
       def establish_connection(owner, spec)
         @class_to_pool.clear
+        raise RuntimeError, "Anonymous class is not allowed." unless owner.name
         owner_to_pool[owner.name] = ConnectionAdapters::ConnectionPool.new(spec)
       end
 

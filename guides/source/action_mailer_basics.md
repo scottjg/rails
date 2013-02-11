@@ -576,6 +576,8 @@ end
 
 In the test we send the email and store the returned object in the `email` variable. We then ensure that it was sent (the first assert), then, in the second batch of assertions, we ensure that the email does indeed contain what we expect.
 
+NOTE: The `ActionMailer::Base.deliveries` array is only reset automatically in `ActionMailer::TestCase` tests. If you want to have a clean slate outside Action Mailer tests, you can reset it manually with: `ActionMailer::Base.deliveries.clear`
+
 Intercepting Emails
 -------------------
 There are situations where you need to edit an email before it's delivered. Fortunately Action Mailer provides hooks to intercept every email. You can register an interceptor to make modifications to mail messages right before they are handed to the delivery agents.
@@ -594,4 +596,4 @@ Before the interceptor can do its job you need to register it with the Action Ma
 ActionMailer::Base.register_interceptor(SandboxEmailInterceptor) if Rails.env.staging?
 ```
 
-NOTE: The example above uses a custom environment called "staging" for a production like server but for testing purposes.
+NOTE: The example above uses a custom environment called "staging" for a production like server but for testing purposes. You can read [Creating Rails environments](./configuring.html#creating-rails-environments) for more information about custom Rails environments.

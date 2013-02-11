@@ -8,7 +8,7 @@ module ActiveRecord
 
         if value.is_a?(Hash)
           if value.empty?
-            queries << '1 = 2'
+            queries << '1=0'
           else
             table       = Arel::Table.new(column, default_table.engine)
             association = klass.reflect_on_association(column.to_sym)
@@ -58,7 +58,7 @@ module ActiveRecord
           key
         else
           key = key.to_s
-          key.split('.').first.to_sym if key.include?('.')
+          key.split('.').first if key.include?('.')
         end
       end.compact
     end
@@ -66,7 +66,7 @@ module ActiveRecord
     private
       def self.build(attribute, value)
         case value
-        when Array, ActiveRecord::Associations::CollectionProxy
+        when Array
           values = value.to_a.map {|x| x.is_a?(Base) ? x.id : x}
           ranges, values = values.partition {|v| v.is_a?(Range)}
 
@@ -98,6 +98,11 @@ module ActiveRecord
         when Class
           # FIXME: I think we need to deprecate this behavior
           attribute.eq(value.name)
+        when Integer, ActiveSupport::Duration
+          # Arel treats integers as literals, but they should be quoted when compared with strings
+          table = attribute.relation
+          column = table.engine.connection.schema_cache.columns_hash(table.name)[attribute.name.to_s]
+          attribute.eq(Arel::Nodes::SqlLiteral.new(table.engine.connection.quote(value, column)))
         else
           attribute.eq(value)
         end

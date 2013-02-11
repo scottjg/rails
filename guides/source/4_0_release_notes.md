@@ -3,11 +3,10 @@ Ruby on Rails 4.0 Release Notes
 
 Highlights in Rails 4.0:
 
-* Ruby 1.9.3 only
+* Ruby 2.0 preferred; 1.9.3+ required
 * Strong Parameters
 * Turbolinks
 * Russian Doll Caching
-* Asynchronous Mailers
 
 These release notes cover only the major changes. To know about various bug fixes and changes, please refer to the change logs or check out the [list of commits](https://github.com/rails/rails/commits/master) in the main Rails repository on GitHub.
 
@@ -150,7 +149,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
 Action Pack
 -----------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railties/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/master/actionpack/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 
@@ -162,7 +161,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railt
 Active Record
 -------------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railties/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activerecord/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 

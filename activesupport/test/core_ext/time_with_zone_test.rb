@@ -75,7 +75,7 @@ class TimeWithZoneTest < ActiveSupport::TestCase
 
   def test_to_json_with_use_standard_json_time_format_config_set_to_true
     old, ActiveSupport.use_standard_json_time_format = ActiveSupport.use_standard_json_time_format, true
-    assert_equal "\"1999-12-31T19:00:00-05:00\"", ActiveSupport::JSON.encode(@twz)
+    assert_equal "\"1999-12-31T19:00:00.000-05:00\"", ActiveSupport::JSON.encode(@twz)
   ensure
     ActiveSupport.use_standard_json_time_format = old
   end
@@ -327,7 +327,11 @@ class TimeWithZoneTest < ActiveSupport::TestCase
   end
 
   def test_to_time
-    assert_equal @twz, @twz.to_time
+    with_env_tz 'US/Eastern' do
+      assert_equal Time, @twz.to_time.class
+      assert_equal Time.local(1999, 12, 31, 19), @twz.to_time
+      assert_equal Time.local(1999, 12, 31, 19).utc_offset, @twz.to_time.utc_offset
+    end
   end
 
   def test_to_date
