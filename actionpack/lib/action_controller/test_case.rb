@@ -256,14 +256,6 @@ module ActionController
       true
     end
 
-    def keys
-      @data.keys
-    end
-
-    def values
-      @data.values
-    end
-
     def destroy
       clear
     end
