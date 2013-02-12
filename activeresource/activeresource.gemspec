@@ -1,11 +1,10 @@
 Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'activeresource'
-  s.version = '2.3.16'
-  s.summary = "Customised ActiveResource for REMS3." 
+  s.version = '2.3.17'
+  s.summary = 'Think Active Record for web resources.'
   s.description = 'Wraps web resources in model classes that can be manipulated through XML over REST.'
   s.files = Dir['CHANGELOG', 'README', 'lib/**/*']
-  s.add_dependency('activesupport', '= 2.3.16')
   s.require_path = 'lib'
   s.autorequire = 'active_resource'
   s.has_rdoc = true
@@ -15,4 +14,9 @@ Gem::Specification.new do |s|
   s.email = "david@loudthinking.com"
   s.homepage = "http://www.rubyonrails.org"
   s.rubyforge_project = "activeresource"
+  s.files = ['README']
+  s.rdoc_options = ['--main', 'README']
+  s.extra_rdoc_files = ['README']
+
+  s.add_dependency 'activesupport', '= 2.3.17'
 end
