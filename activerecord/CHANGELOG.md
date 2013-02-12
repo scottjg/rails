@@ -1,14 +1,16 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   Raise `ArgumentError` instead of generating `column IN (NULL)` SQL when
-    empty array is used in where clause value.
+*   Allow store accessors to be overrided like other attribute methods, e.g.:
 
-    *Roberto Miranda*
+        class User < ActiveRecord::Base
+          store :settings, accessors: [ :color, :homepage ], coder: JSON
 
-*   Raise `ArgumentError` instead of generating invalid SQL when empty hash is
-    used in where clause value.
+          def color
+            super || 'red'
+          end
+        end
 
-    *Roberto Miranda*
+    *Sergey Nartimov*
 
 *   Quote numeric values being compared to non-numeric columns. Otherwise,
     in some database, the string column values will be coerced to a numeric
@@ -635,7 +637,7 @@
 
     After:
 
-        #=> SELECT * FROM users WHERE 1 = 2;
+        #=> SELECT * FROM users WHERE 1=0;
 
     *Damien Mathieu*
 
