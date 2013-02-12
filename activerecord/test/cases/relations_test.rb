@@ -297,6 +297,10 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal 1, firms.size
     assert_equal companies(:rails_core), firms.first
   end
+  
+  def test_finding_with_integer_where_condition_on_joined_table
+    comments_scope = Comment.joins("JOIN posts AS p ON p.id=comments.id").where(:"p.comments_count" => 0)
+  end
 
   def test_find_all_with_join
     developers_on_project_one = Developer.joins('LEFT JOIN developers_projects ON developers.id = developers_projects.developer_id').
