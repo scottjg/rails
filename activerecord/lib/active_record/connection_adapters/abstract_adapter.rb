@@ -171,10 +171,22 @@ module ActiveRecord
         false
       end
 
+      # Does this adapter support database extensions?  As of this writing
+      # only postgresql does.
+      def supports_extensions?
+        false
+      end
+
+      # A list of extensions, to be filled in by databases that
+      # support them (at the moment, postgresql).
+      def extensions
+        []
+      end
+
       # QUOTING ==================================================
 
       # Returns a bind substitution value given a +column+ and list of current
-      # +binds+
+      # +binds+.
       def substitute_at(column, index)
         Arel::Nodes::BindParam.new '?'
       end
@@ -291,6 +303,10 @@ module ActiveRecord
       # Check the connection back in to the connection pool
       def close
         pool.checkin self
+      end
+
+      def valid_type?(type)
+        true
       end
 
       protected

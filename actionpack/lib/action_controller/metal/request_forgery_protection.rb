@@ -102,15 +102,16 @@ module ActionController #:nodoc:
 
         # This is the method that defines the application behavior when a request is found to be unverified.
         def handle_unverified_request
-          request.session = NullSessionHash.new
+          request.session = NullSessionHash.new(request.env)
           request.env['action_dispatch.request.flash_hash'] = nil
           request.env['rack.session.options'] = { skip: true }
           request.env['action_dispatch.cookies'] = NullCookieJar.build(request)
         end
 
         class NullSessionHash < Rack::Session::Abstract::SessionHash #:nodoc:
-          def initialize
-            super(nil, nil)
+          def initialize(env)
+            super(nil, env)
+            @data = {}
             @loaded = true
           end
 
@@ -125,7 +126,7 @@ module ActionController #:nodoc:
             host          = request.host
             secure        = request.ssl?
 
-            new(key_generator, host, secure)
+            new(key_generator, host, secure, options_for_env({}))
           end
 
           def write(*)
@@ -162,11 +163,11 @@ module ActionController #:nodoc:
 
       # Returns true or false if a request is verified. Checks:
       #
-      # * is it a GET request?  Gets should be safe and idempotent
+      # * is it a GET or HEAD request?  Gets should be safe and idempotent
       # * Does the form_authenticity_token match the given token value from the params?
       # * Does the X-CSRF-Token header match the form_authenticity_token
       def verified_request?
-        !protect_against_forgery? || request.get? ||
+        !protect_against_forgery? || request.get? || request.head? ||
           form_authenticity_token == params[request_forgery_protection_token] ||
           form_authenticity_token == request.headers['X-CSRF-Token']
       end

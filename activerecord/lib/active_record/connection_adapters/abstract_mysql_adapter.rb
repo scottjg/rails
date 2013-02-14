@@ -212,8 +212,6 @@ module ActiveRecord
         if value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
           s = column.class.string_to_binary(value).unpack("H*")[0]
           "x'#{s}'"
-        elsif value.kind_of?(BigDecimal)
-          value.to_s("F")
         else
           super
         end
@@ -584,6 +582,10 @@ module ActiveRecord
         @config.fetch(:strict, true)
       end
 
+      def valid_type?(type)
+        !native_database_types[type].nil?
+      end  
+
       protected
 
       # MySQL is too stupid to create a temporary table for use subquery, so we have
@@ -749,7 +751,6 @@ module ActiveRecord
         # ...and send them all in one query
         execute("SET #{encoding} #{variable_assignments}", :skip_logging)
       end
-
     end
   end
 end

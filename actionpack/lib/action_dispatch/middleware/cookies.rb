@@ -1,5 +1,6 @@
 require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/module/attribute_accessors'
+require 'active_support/key_generator'
 require 'active_support/message_verifier'
 
 module ActionDispatch
@@ -110,13 +111,17 @@ module ActionDispatch
       # $& => example.local
       DOMAIN_REGEXP = /[^.]*\.([^.]*|..\...|...\...)$/
 
+      def self.options_for_env(env) #:nodoc:
+        { signed_cookie_salt: env[SIGNED_COOKIE_SALT] || '',
+          encrypted_cookie_salt: env[ENCRYPTED_COOKIE_SALT] || '',
+          encrypted_signed_cookie_salt: env[ENCRYPTED_SIGNED_COOKIE_SALT] || '',
+          token_key: env[TOKEN_KEY] }
+      end
+
       def self.build(request)
         env = request.env
         key_generator = env[GENERATOR_KEY]
-        options = { signed_cookie_salt: env[SIGNED_COOKIE_SALT],
-                    encrypted_cookie_salt: env[ENCRYPTED_COOKIE_SALT],
-                    encrypted_signed_cookie_salt: env[ENCRYPTED_SIGNED_COOKIE_SALT],
-                    token_key: env[TOKEN_KEY] }
+        options = options_for_env env
 
         host = request.host
         secure = request.ssl?
@@ -143,6 +148,10 @@ module ActionDispatch
       # Returns the value of the cookie by +name+, or +nil+ if no such cookie exists.
       def [](name)
         @cookies[name.to_s]
+      end
+
+      def fetch(name, *args, &block)
+        @cookies.fetch(name.to_s, *args, &block)
       end
 
       def key?(name)

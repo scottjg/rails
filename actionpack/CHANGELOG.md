@@ -1,7 +1,80 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   Change asset_path to not include `SCRIPT_NAME` when it's used
-    from a mounted engine (fixes #8119).
+*   Change `image_alt` method to replace underscores/hyphens to spaces in filenames.
+
+    Previously, underscored filenames became `alt="A_long_file_name_with_underscores"`
+    in HTML, which is poor for accessibility. For instance, Apple's VoiceOver Utility
+    pronounces each underscore. `A_long_file_name` thus would be read as `A underscore
+    long underscore file underscore name.` Now underscored or hyphenated filenames
+    (both of which are very popular naming conventions) read more naturally in
+    screen readers by converting both hyphens and underscores to spaces.
+
+    Before:
+        image_tag('underscored_file_name.png')
+        # => <img alt="Underscored_file_name" src="/assets/underscored_file_name.png" />
+
+    After:
+        image_tag('underscored_file_name.png')
+        # => <img alt="Underscored file name" src="/assets/underscored_file_name.png" />
+
+    *Nick Cox*
+
+*   We don't support the `:controller` option for route definitions
+    with the ruby constant notation. This will now result in an
+    `ArgumentError`.
+
+    Example:
+        # This raises an ArgumentError:
+        resources :posts, :controller => "Admin::Posts"
+
+        # Use directory notation instead:
+        resources :posts, :controller => "admin/posts"
+
+    *Yves Senn*
+
+*   `assert_template` can be used to verify the locals of partials,
+    which live inside a directory.
+    Fixes #8516.
+
+        # Prefixed partials inside directories worked and still work.
+        assert_template partial: 'directory/_partial', locals: {name: 'John'}
+
+        # This did not work but does now.
+        assert_template partial: 'directory/partial', locals: {name: 'John'}
+
+    *Yves Senn*
+
+*   Fix `content_tag_for` with array html option.
+    It would embed array as string instead of joining it like `content_tag` does:
+
+        content_tag(:td, class: ["foo", "bar"]){}
+        #=> '<td class="foo bar"></td>'
+
+    Before:
+
+        content_tag_for(:td, item, class: ["foo", "bar"])
+        #=> '<td class="item [&quot;foo&quot;, &quot;bar&quot;]" id="item_1"></td>'
+
+    After:
+
+        content_tag_for(:td, item, class: ["foo", "bar"])
+        #=> '<td class="item foo bar" id="item_1"></td>'
+
+    *Semyon Perepelitsa*
+
+*   Remove `BestStandardsSupport` middleware, !DOCTYPE html already triggers
+    standards mode per http://msdn.microsoft.com/en-us/library/jj676915(v=vs.85).aspx
+    and ChromeFrame header has been moved to `config.action_dispatch.default_headers`
+
+    *Guillermo Iguaran*
+
+*   Fix CSRF protection and `current_url?` helper to work with HEAD requests
+    now that `ActionDispatch::Head` has been removed in favor of `Rack::Head`.
+
+    *Michiel Sikkes*
+
+*   Change `asset_path` to not include `SCRIPT_NAME` when it's used
+    from a mounted engine. Fixes #8119.
 
     *Piotr Sarnacki*
 
@@ -26,11 +99,6 @@
     Permitted scalars filtering happens at any level of nesting.
 
     *Xavier Noria*
-
-*   `BestStandardsSupport` no longer duplicates `X-UA-Compatible` values on
-    each request to prevent header size from blowing up.
-
-    *Edward Anderson*
 
 *   Change the behavior of route defaults so that explicit defaults are no longer
     required where the key is not part of the path. For example:
@@ -224,7 +292,8 @@
 
 *   More descriptive error messages when calling `render :partial` with
     an invalid `:layout` argument.
-    #8376
+
+    Fixes #8376.
 
         render partial: 'partial', layout: true
 
@@ -756,7 +825,7 @@
 *   Removed old text helper apis from `highlight`, `excerpt` and `word_wrap`. *Jeremy Walker*
 
 *   Templates without a handler extension now raises a deprecation warning but still
-    defaults to ERb. In future releases, it will simply return the template contents. *Steve Klabnik*
+    defaults to ERB. In future releases, it will simply return the template contents. *Steve Klabnik*
 
 *   Deprecate `:disable_with` in favor of `data: { disable_with: "Text" }` option from `submit_tag`, `button_tag` and `button_to` helpers.
 

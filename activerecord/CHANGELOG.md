@@ -1,5 +1,134 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Preloading `has_many :through` associations with conditions won't
+    cache the `:through` association. This will prevent invalid
+    subsets to be cached.
+    Fixes #8423.
+
+    Example:
+
+        class User
+          has_many :posts
+          has_many :recent_comments, -> { where('created_at > ?', 1.week.ago) }, :through => :posts
+        end
+
+        a_user = User.includes(:recent_comments).first
+
+        # this is preloaded
+        a_user.recent_comments
+
+        # fetching the recent_comments through the posts association won't preload it.
+        a_user.posts
+
+    *Yves Senn*
+
+*   Don't run after_commit callback when creating through an association
+    if saving the record fails.
+
+    *James Miller *
+
+*   Allow store accessors to be overrided like other attribute methods, e.g.:
+
+        class User < ActiveRecord::Base
+          store :settings, accessors: [ :color, :homepage ], coder: JSON
+
+          def color
+            super || 'red'
+          end
+        end
+
+    *Sergey Nartimov*
+
+*   Quote numeric values being compared to non-numeric columns. Otherwise,
+    in some database, the string column values will be coerced to a numeric
+    allowing 0, 0.0 or false to match any string starting with a non-digit.
+
+    Example:
+
+        App.where(apikey: 0) # => SELECT * FROM users WHERE apikey = '0'
+
+    *Dylan Smith*
+
+*   Schema dumper supports dumping the enabled database extensions to `schema.rb`
+    (currently only supported by postgresql).
+
+    *Justin George*
+
+*   The `DATABASE_URL` environment variable now converts ints, floats, and
+    the strings true and false to Ruby types. For example, SQLite requires
+    that the timeout value is an integer, and PostgreSQL requires that the
+    prepared_statements option is a boolean. These now work as expected:
+
+    Example:
+
+        DATABASE_URL=sqlite3://localhost/test_db?timeout=500
+        DATABASE_URL=postgresql://localhost/test_db?prepared_statements=false
+
+    *Aaron Stone*
+
+*   `Relation#merge` now only overwrites where values on the LHS of the
+    merge. Consider:
+
+        left  = Person.where(age: [13, 14, 15])
+        right = Person.where(age: [13, 14]).where(age: [14, 15])
+
+    `left` results in the following SQL:
+
+        WHERE age IN (13, 14, 15)
+
+    `right` results in the following SQL:
+
+        WHERE age IN (13, 14) AND age IN (14, 15)
+
+    Previously, `left.merge(right)` would result in all but the last
+    condition being removed:
+
+        WHERE age IN (14, 15)
+
+    Now it results in the LHS condition(s) for `age` being removed, but
+    the RHS remains as it is:
+
+        WHERE age IN (13, 14) AND age IN (14, 15)
+
+    *Jon Leighton*
+
+*   Fix handling of dirty time zone aware attributes
+
+    Previously, when `time_zone_aware_attributes` were enabled, after
+    changing a datetime or timestamp attribute and then changing it back
+    to the original value, `changed_attributes` still tracked the
+    attribute as changed. This caused `[attribute]_changed?` and
+    `changed?` methods to return true incorrectly.
+
+    Example:
+
+        in_time_zone 'Paris' do
+          order = Order.new
+          original_time = Time.local(2012, 10, 10)
+          order.shipped_at = original_time
+          order.save
+          order.changed? # => false
+
+          # changing value
+          order.shipped_at = Time.local(2013, 1, 1)
+          order.changed? # => true
+
+          # reverting to original value
+          order.shipped_at = original_time
+          order.changed? # => false, used to return true
+        end
+
+    *Lilibeth De La Cruz*
+
+*   When `#count` is used in conjunction with `#uniq` we perform `count(:distinct => true)`.
+    Fix #6865.
+
+    Example:
+
+        relation.uniq.count # => SELECT COUNT(DISTINCT *)
+
+    *Yves Senn + Kaspar Schiess*
+
 *   PostgreSQL ranges type support. Includes: int4range, int8range,
     numrange, tsrange, tstzrange, daterange
 
@@ -516,7 +645,7 @@
 
     After:
 
-        #=> SELECT * FROM users WHERE 1 = 2;
+        #=> SELECT * FROM users WHERE 1=0;
 
     *Damien Mathieu*
 
@@ -538,7 +667,7 @@
 
     *Matt Jones*
 
-*   Accept belongs_to (including polymorphic) association keys in queries.
+*   Accept `belongs_to` (including polymorphic) association keys in queries.
 
     The following queries are now equivalent:
 

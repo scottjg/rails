@@ -20,10 +20,10 @@ module Rails
 
       def self.add_shared_options_for(name)
         class_option :builder,            type: :string, aliases: '-b',
-                                          desc: "Path to a #{name} builder (can be a filesystem path or URL)"
+                                          desc: "Path to some #{name} builder (can be a filesystem path or URL)"
 
         class_option :template,           type: :string, aliases: '-m',
-                                          desc: "Path to an #{name} template (can be a filesystem path or URL)"
+                                          desc: "Path to some #{name} template (can be a filesystem path or URL)"
 
         class_option :skip_gemfile,       type: :boolean, default: false,
                                           desc: "Don't create a Gemfile"
@@ -60,6 +60,12 @@ module Rails
 
         class_option :skip_test_unit,     type: :boolean, aliases: '-T', default: false,
                                           desc: 'Skip Test::Unit files'
+
+        class_option :rc,                 type: :string, default: false,
+                                          desc: "Path to file containing extra configuration options for rails command"
+
+        class_option :no_rc,              type: :boolean, default: false,
+                                          desc: 'Skip loading of extra configuration options from .railsrc file'
 
         class_option :help,               type: :boolean, aliases: '-h', group: :rails,
                                           desc: 'Show this help message and quit'
