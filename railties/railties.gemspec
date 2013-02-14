@@ -1,6 +1,4 @@
 require 'rubygems'
-require 'rake'
-require 'rake/gempackagetask'
 
 require 'date'
 require 'rbconfig'
@@ -14,7 +12,7 @@ PKG_DESTINATION = ENV["RAILS_PKG_DESTINATION"] || "../#{PKG_NAME}"
 
 RELEASE_NAME = "REL #{PKG_VERSION}"
 
-PKG_FILES = FileList[
+FILE_LIST = [
   '[a-zA-Z]*',
   'bin/**/*',
   'builtin/**/*',
@@ -26,7 +24,8 @@ PKG_FILES = FileList[
   'generators/**/*',
   'html/**/*',
   'lib/**/*'
-] - [ 'test' ]
+]
+NOT_FILES = [ 'test' ]
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
@@ -48,7 +47,11 @@ spec = Gem::Specification.new do |s|
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
 
-  s.files = PKG_FILES.to_a.delete_if {|f| f.include?('.svn')}
+  pkg_files = []
+  FILE_LIST.each {|pkg| pkg_files += Dir[pkg] }
+  NOT_FILES.each {|f| pkg_files.reject! {|pkg| pkg.match f } }
+  pkg_files.reject!  { |fn| fn.include? ".svn" }
+  s.files = pkg_files
   s.require_path = 'lib'
   s.bindir = "bin"                               # Use these for applications.
   s.executables = ["rails"]
