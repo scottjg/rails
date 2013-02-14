@@ -1,5 +1,37 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Change `image_alt` method to replace underscores/hyphens to spaces in filenames.
+
+    Previously, underscored filenames became `alt="A_long_file_name_with_underscores"`
+    in HTML, which is poor for accessibility. For instance, Apple's VoiceOver Utility
+    pronounces each underscore. `A_long_file_name` thus would be read as `A underscore
+    long underscore file underscore name.` Now underscored or hyphenated filenames
+    (both of which are very popular naming conventions) read more naturally in
+    screen readers by converting both hyphens and underscores to spaces.
+
+    Before:
+        image_tag('underscored_file_name.png')
+        # => <img alt="Underscored_file_name" src="/assets/underscored_file_name.png" />
+
+    After:
+        image_tag('underscored_file_name.png')
+        # => <img alt="Underscored file name" src="/assets/underscored_file_name.png" />
+
+    *Nick Cox*
+
+*   We don't support the `:controller` option for route definitions
+    with the ruby constant notation. This will now result in an
+    `ArgumentError`.
+
+    Example:
+        # This raises an ArgumentError:
+        resources :posts, :controller => "Admin::Posts"
+
+        # Use directory notation instead:
+        resources :posts, :controller => "admin/posts"
+
+    *Yves Senn*
+
 *   `assert_template` can be used to verify the locals of partials,
     which live inside a directory.
     Fixes #8516.

@@ -177,10 +177,16 @@ module ActiveRecord
         false
       end
 
+      # A list of extensions, to be filled in by databases that
+      # support them (at the moment, postgresql).
+      def extensions
+        []
+      end
+
       # QUOTING ==================================================
 
       # Returns a bind substitution value given a +column+ and list of current
-      # +binds+
+      # +binds+.
       def substitute_at(column, index)
         Arel::Nodes::BindParam.new '?'
       end
@@ -319,6 +325,10 @@ module ActiveRecord
       def translate_exception(exception, message)
         # override in derived class
         ActiveRecord::StatementInvalid.new(message)
+      end
+
+      def valid_types?(type)
+        true
       end
     end
   end

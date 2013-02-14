@@ -1,5 +1,37 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Don't run after_commit callback when creating through an association
+    if saving the record fails.
+
+    *James Miller *
+
+*   Allow store accessors to be overrided like other attribute methods, e.g.:
+
+        class User < ActiveRecord::Base
+          store :settings, accessors: [ :color, :homepage ], coder: JSON
+
+          def color
+            super || 'red'
+          end
+        end
+
+    *Sergey Nartimov*
+
+*   Quote numeric values being compared to non-numeric columns. Otherwise,
+    in some database, the string column values will be coerced to a numeric
+    allowing 0, 0.0 or false to match any string starting with a non-digit.
+
+    Example:
+
+        App.where(apikey: 0) # => SELECT * FROM users WHERE apikey = '0'
+
+    *Dylan Smith*
+
+*   Schema dumper supports dumping the enabled database extensions to `schema.rb`
+    (currently only supported by postgresql).
+
+    *Justin George*
+
 *   The `DATABASE_URL` environment variable now converts ints, floats, and
     the strings true and false to Ruby types. For example, SQLite requires
     that the timeout value is an integer, and PostgreSQL requires that the
@@ -591,7 +623,7 @@
 
     After:
 
-        #=> SELECT * FROM users WHERE 1 = 2;
+        #=> SELECT * FROM users WHERE 1=0;
 
     *Damien Mathieu*
 
