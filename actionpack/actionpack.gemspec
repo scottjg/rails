@@ -13,5 +13,5 @@ Gem::Specification.new do |s|
   s.add_dependency 'activesupport', '= 2.3.17'
   s.add_dependency 'rack', '~> 1'
   s.add_dependency 'activesupport', '= 2.3.17'
-  s.add_dependency 'rack', '~> 1.1.0'
+  s.add_dependency 'rack', '~> 1'
 end
