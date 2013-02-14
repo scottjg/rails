@@ -352,7 +352,7 @@ module ActiveRecord
           end
 
           unless records.blank?
-            records.uniq.each do |record|
+            records.each do |record|
               begin
                 record.rolledback!(rollback)
               rescue Exception => e

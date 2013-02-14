@@ -381,6 +381,25 @@ class TransactionTest < ActiveRecord::TestCase
     assert_equal "Three", @three
   end if Topic.connection.supports_savepoints?
 
+  def test_multiple_save_of_model_in_nested_transaction_with_rollback
+    topic = Topic.new(content: 'test')
+    Topic.transaction do
+      begin
+        Topic.transaction requires_new: true do
+          topic.content = "second"
+          topic.save!
+
+          topic.content = "third"
+          topic.save!
+          raise
+        end
+      rescue
+      end
+    end
+
+    assert !topic.persisted?, 'persisted? true even though not saved'
+  end if Topic.connection.supports_savepoints?
+
   def test_rollback_when_commit_raises
     Topic.connection.expects(:begin_db_transaction)
     Topic.connection.expects(:commit_db_transaction).raises('OH NOES')
