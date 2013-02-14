@@ -36,6 +36,10 @@ module ActiveRecord
         return count
       end
       
+      def handle_owners?
+        !@reflection.options[:source_type] && @reflection.through_reflection.macro == :has_many
+      end
+
       protected
         def target_reflection_has_associated_record?
           if @reflection.through_reflection.macro == :belongs_to && @owner[@reflection.through_reflection.primary_key_name].blank?
@@ -86,6 +90,40 @@ module ActiveRecord
             :readonly   => @reflection.options[:readonly],
             :include    => @reflection.options[:include] || @reflection.source_reflection.options[:include]
           )
+        end
+
+        def find_target_with_owners owners
+          table_name, primary_key, column_name = external_table_and_attr
+          select = "DISTINCT #{@reflection.klass.quoted_table_name}.#{@reflection.klass.primary_key}, #{construct_select}, #{table_name}.#{primary_key} AS \"#{column_name}\""
+
+          return [] unless target_reflection_has_associated_record?
+          @reflection.klass.find(:all,
+            :select     => select,
+            :conditions => construct_conditions_with_owners(owners),
+            :from       => construct_from,
+            :joins      => construct_joins,
+            :order      => @reflection.options[:order],
+            :limit      => @reflection.options[:limit],
+            :group      => @reflection.options[:group],
+            :readonly   => @reflection.options[:readonly],
+            :include    => @reflection.options[:include] || @reflection.source_reflection.options[:include]
+          )
+        end
+
+        def construct_conditions_with_owners owners = nil
+          table_name, primary_key, column_name = external_table_and_attr
+          conditions = ["#{table_name}.#{primary_key} IN (#{owners.collect(&:quoted_id).join ','})"]
+          conditions << sql_conditions if sql_conditions
+          "(" + conditions.join(') AND (') + ")"
+        end
+
+        def external_table_and_attr
+          @external_column_alias ||= ActiveSupport::SecureRandom.hex(10)
+          [
+            @reflection.through_reflection.quoted_table_name,
+            @reflection.through_reflection.primary_key_name,
+            @external_column_alias
+          ]
         end
 
         # Construct attributes for associate pointing to owner.

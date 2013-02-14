@@ -240,17 +240,24 @@ module ActiveRecord
         records.each {|record| record.send(reflection.name).loaded}
 
         if options[:through]
-          through_records = preload_through_records(records, reflection, options[:through])
-          through_reflection = reflections[options[:through]]
-          unless through_records.empty?
-            source = reflection.source_reflection.name
-            through_records.first.class.preload_associations(through_records, source, options)
-            through_records.each do |through_record|
-              through_record_id = through_record[reflection.through_reflection_primary_key].to_s
-              add_preloaded_records_to_collection(id_to_record_map[through_record_id], reflection.name, through_record.send(source))
+          association = ActiveRecord::Associations::HasManyThroughAssociation.new records.first, reflection
+          if association.handle_owners?
+            return if records.blank?
+            through_records = association.send :find_target_with_owners, records
+            key = association.send(:external_table_and_attr)[2]
+            set_association_collection_records(id_to_record_map, reflection.name, through_records, key)
+          else
+            through_records = preload_through_records(records, reflection, options[:through])
+            through_reflection = reflections[options[:through]]
+            unless through_records.empty?
+              source = reflection.source_reflection.name
+              through_records.first.class.preload_associations(through_records, source, options)
+              through_records.each do |through_record|
+                through_record_id = through_record[reflection.through_reflection_primary_key].to_s
+                add_preloaded_records_to_collection(id_to_record_map[through_record_id], reflection.name, through_record.send(source))
+              end
             end
           end
-
         else
           set_association_collection_records(id_to_record_map, reflection.name, find_associated_records(ids, reflection, preload_options),
                                              reflection.primary_key_name)
