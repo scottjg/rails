@@ -2302,8 +2302,6 @@ module ActiveRecord #:nodoc:
         def sanitize_sql_hash_for_conditions(attrs, table_name = quoted_table_name)
           attrs = expand_hash_conditions_for_aggregates(attrs)
 
-          return '1 = 2' if !top_level && attrs.is_a?(Hash) && attrs.empty?
-
           conditions = attrs.map do |attr, value|
             unless value.is_a?(Hash)
               attr = attr.to_s
