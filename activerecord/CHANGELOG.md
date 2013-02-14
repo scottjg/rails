@@ -4,6 +4,14 @@
     Fix #7630.
 
     *Matthew Robertson*
+*   Don't change STI type when calling ActiveRecord::Base#becomes, add
+    ActiveRecord::Base#becomes!
+
+    See #3023.
+
+    *Thomas Hollstegge*
+
+*   `#pluck` can be used on a relation with `select` clause. Fix #7551
 
 *   Don't update `column_defaults` when calling destructive methods on column with default value.
     Backport c517602.
