@@ -178,7 +178,7 @@ module ActiveRecord
     #
     def pluck(column_name)
       if column_name.is_a?(Symbol) && column_names.include?(column_name.to_s)
-        column_name = "#{table_name}.#{column_name}"
+        column_name = "#{connection.quote_table_name(table_name)}.#{connection.quote_column_name(column_name)}"
       else
         column_name = column_name.to_s
       end
@@ -195,7 +195,8 @@ module ActiveRecord
     def perform_calculation(operation, column_name, options = {})
       operation = operation.to_s.downcase
 
-      distinct = options[:distinct]
+      # If #count is used in conjuction with #uniq it is considered distinct. (eg. relation.uniq.count)
+      distinct = options[:distinct] || self.uniq_value
 
       if operation == "count"
         column_name ||= (select_for_count || :all)

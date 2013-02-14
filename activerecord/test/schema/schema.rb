@@ -176,6 +176,7 @@ ActiveRecord::Schema.define do
     t.integer :client_of
     t.integer :rating, :default => 1
     t.integer :account_id
+    t.string :description, :default => ""
   end
 
   add_index :companies, [:firm_id, :type, :rating, :ruby_type], :name => "company_index"
@@ -279,6 +280,10 @@ ActiveRecord::Schema.define do
   create_table :goofy_string_id, :force => true, :id => false do |t|
     t.string :id, :null => false
     t.string :info
+  end
+
+  create_table :having, :force => true do |t|
+    t.string :where
   end
 
   create_table :guids, :force => true do |t|
@@ -525,6 +530,8 @@ ActiveRecord::Schema.define do
   create_table :price_estimates, :force => true do |t|
     t.string :estimate_of_type
     t.integer :estimate_of_id
+    t.string :thing_type
+    t.integer :thing_id
     t.integer :price
   end
 
