@@ -1,4 +1,11 @@
-## Rails 3.2.12 (unreleased) ##
+## unreleased ##
+
+*   No changes.
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
+
+*   No changes.
 
 * Allow delivery method options to be set per mail instance *Aditya Sanghi*
 

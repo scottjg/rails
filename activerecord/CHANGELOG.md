@@ -1,3 +1,12 @@
+## unreleased ##
+
+*   Fix counter cache columns not updated when replacing `has_many :through`
+    associations.
+    Backport #8400.
+    Fix #7630.
+
+    *Matthew Robertson*
+
 *   Don't update `column_defaults` when calling destructive methods on column with default value.
     Backport c517602.
     Fix #6115.
@@ -208,7 +217,8 @@
 
     *Gabriel Sobrinho, Ricardo Henrique*
 
-## Rails 3.2.12 ##
+
+## Rails 3.2.12 (Feb 11, 2013) ##
 
 *   Quote numeric values being compared to non-numeric columns. Otherwise,
     in some database, the string column values will be coerced to a numeric
@@ -219,6 +229,7 @@
         App.where(apikey: 0) # => SELECT * FROM users WHERE apikey = '0'
 
     *Dylan Smith*
+
 
 ## Rails 3.2.11 (Jan 8, 2013) ##
 
