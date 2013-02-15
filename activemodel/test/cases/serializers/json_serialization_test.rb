@@ -3,6 +3,8 @@ require 'models/contact'
 require 'models/automobile'
 require 'active_support/core_ext/object/instance_variables'
 
+JsonOptions = Struct.new(:only)
+
 class Contact
   include ActiveModel::Serializers::JSON
   include ActiveModel::Validations
@@ -217,4 +219,13 @@ class JsonSerializationTest < ActiveModel::TestCase
     assert_no_match %r{"preferences":}, json
   end
 
+  test "as_json options should work with objects that implement to_h" do
+    options = JsonOptions.new([:name])
+    json = @contact.to_json(options)
+
+    assert_match %r{"name":"Konata Izumi"}, json
+    assert_no_match %r{"created_at":#{ActiveSupport::JSON.encode(Time.utc(2006, 8, 1))}}, json
+    assert_no_match %r{"awesome":}, json
+    assert_no_match %r{"preferences":}, json
+  end
 end
