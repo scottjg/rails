@@ -136,7 +136,7 @@ class CalculationsTest < ActiveRecord::TestCase
 
     queries = assert_sql { Account.limit(1).count }
     assert_equal 1, queries.length
-    assert_match(Arel::Nodes::Limit.new(1).to_sql, queries.first)
+    assert_match(/LIMIT/, queries.first)
   end
 
   def test_offset_is_kept
@@ -144,7 +144,7 @@ class CalculationsTest < ActiveRecord::TestCase
 
     queries = assert_sql { Account.offset(1).count }
     assert_equal 1, queries.length
-    assert_match(Arel::Nodes::Offset.new(1).to_sql, queries.first)
+    assert_match(/OFFSET/, queries.first)
   end
 
   def test_limit_with_offset_is_kept
@@ -152,8 +152,8 @@ class CalculationsTest < ActiveRecord::TestCase
 
     queries = assert_sql { Account.limit(1).offset(1).count }
     assert_equal 1, queries.length
-    assert_match(Arel::Nodes::Limit.new(1).to_sql, queries.first)
-    assert_match(Arel::Nodes::Offset.new(1).to_sql, queries.first)
+    assert_match(/LIMIT/, queries.first)
+    assert_match(/OFFSET/, queries.first)
   end
 
   def test_no_limit_no_offset
