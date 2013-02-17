@@ -747,7 +747,6 @@ module ActiveRecord
         # ...and send them all in one query
         execute("SET #{encoding} #{variable_assignments}", :skip_logging)
       end
-
     end
   end
 end
