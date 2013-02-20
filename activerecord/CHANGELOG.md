@@ -1,5 +1,16 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   ActiveRecord now raises an error when blank arguments are passed to query
+    methods for which blank arguments do not make sense. This also occurs for
+    nil-like objects in arguments.
+
+    Example:
+
+        Post.limit()     # => raises error
+        Post.include([]) # => raises error
+    
+    *John Wang*
+
 *   Simplified type casting code for timezone aware attributes to use the
     `in_time_zone` method if it is available. This introduces a subtle change
     of behavior when using `Date` instances as they are directly converted to
@@ -54,18 +65,18 @@
 
         a_user = User.includes(:recent_comments).first
 
-        # this is preloaded
+        # This is preloaded.
         a_user.recent_comments
 
-        # fetching the recent_comments through the posts association won't preload it.
+        # This is not preloaded, fetched now.
         a_user.posts
 
     *Yves Senn*
 
-*   Don't run after_commit callback when creating through an association
+*   Don't run `after_commit` callbacks when creating through an association
     if saving the record fails.
 
-    *James Miller *
+    *James Miller*
 
 *   Allow store accessors to be overrided like other attribute methods, e.g.:
 
@@ -204,10 +215,6 @@
 
     *Yves Senn*
 
-*   Remove support for parsing YAML parameters from request.
-
-    *Aaron Patterson*
-
 *   Support for PostgreSQL's `ltree` data type.
 
     *Rob Worley*
@@ -233,7 +240,7 @@
 *   Improve ways to write `change` migrations, making the old `up` & `down` methods no longer necessary.
 
     * The methods `drop_table` and `remove_column` are now reversible, as long as the necessary information is given.
-      The method `remove_column` used to accept multiple column names; instead use `remove_columns` (which is not revertible).
+      The method `remove_column` used to accept multiple column names; instead use `remove_columns` (which is not reversible).
       The method `change_table` is also reversible, as long as its block doesn't call `remove`, `change` or `change_default`
 
     * New method `reversible` makes it possible to specify code to be run when migrating up or down.
