@@ -143,8 +143,8 @@
 
     *Justin George*
 
-*   The `DATABASE_URL` environment variable now converts ints, floats, and
-    the strings true and false to Ruby types. For example, SQLite requires
+*   The database adpters now converts the options passed thought `DATABASE_URL`
+    environment variable to the proper Ruby types before using. For example, SQLite requires
     that the timeout value is an integer, and PostgreSQL requires that the
     prepared_statements option is a boolean. These now work as expected:
 
@@ -153,7 +153,7 @@
         DATABASE_URL=sqlite3://localhost/test_db?timeout=500
         DATABASE_URL=postgresql://localhost/test_db?prepared_statements=false
 
-    *Aaron Stone*
+    *Aaron Stone + Rafael Mendonça França*
 
 *   `Relation#merge` now only overwrites where values on the LHS of the
     merge. Consider:
