@@ -1,0 +1,154 @@
+************* result 1 *************
+% bundle exec ruby -Itest benchmark_suite_test.rb                                                                                                                      <U>[benchmark:url_for_optimization]
+Run options: --seed 5990
+
+# Running tests:
+
+.....Calculating -------------------------------------
+         test_anchor       534 i/100ms
+test_exception_is_thrown_without_host
+                           360 i/100ms
+test_anchor_should_call_to_param
+                           420 i/100ms
+test_anchor_should_escape_unsafe_pchar
+                           388 i/100ms
+test_anchor_should_not_escape_safe_pchar
+                           402 i/100ms
+   test_default_host       482 i/100ms
+test_host_may_be_overridden
+                           483 i/100ms
+test_subdomain_may_be_changed
+                           463 i/100ms
+test_subdomain_may_be_object
+                           253 i/100ms
+test_subdomain_may_be_removed
+                           481 i/100ms
+test_multiple_subdomains_may_be_removed
+                           521 i/100ms
+test_subdomain_may_be_accepted_with_numeric_host
+                           526 i/100ms
+test_domain_may_be_changed
+                           504 i/100ms
+test_tld_length_may_be_changed
+                           487 i/100ms
+           test_port       515 i/100ms
+   test_default_port       513 i/100ms
+       test_protocol       511 i/100ms
+test_protocol_with_and_without_separators
+                           178 i/100ms
+test_without_protocol
+                           261 i/100ms
+ test_trailing_slash       521 i/100ms
+test_trailing_slash_with_protocol
+                           235 i/100ms
+test_trailing_slash_with_only_path
+                           179 i/100ms
+test_trailing_slash_with_anchor
+                           249 i/100ms
+test_trailing_slash_with_params
+                           453 i/100ms
+test_relative_url_root_is_respected
+                           543 i/100ms
+   test_named_routes        27 i/100ms
+test_relative_url_root_is_respected_for_named_routes
+                            41 i/100ms
+      test_only_path        30 i/100ms
+  test_one_parameter       544 i/100ms
+ test_two_parameters       480 i/100ms
+ test_hash_parameter       333 i/100ms
+test_array_parameter       367 i/100ms
+test_hash_recursive_parameters
+                           239 i/100ms
+test_hash_recursive_and_array_parameters
+                           175 i/100ms
+test_path_generation_for_symbol_parameter_keys
+                           631 i/100ms
+test_named_routes_with_nil_keys
+                            35 i/100ms
+test_multiple_includes_maintain_distinct_options
+                           139 i/100ms
+test_with_stringified_keys
+                           314 i/100ms
+test_with_hash_with_indifferent_access
+                           303 i/100ms
+test_url_params_with_nil_to_param_are_not_in_url
+                           418 i/100ms
+test_false_url_params_are_included_in_query
+                           530 i/100ms
+-------------------------------------------------
+         test_anchor     6837.8 (±27.6%) i/s -      32040 in   5.092981s
+test_exception_is_thrown_without_host
+                         4343.9 (±22.1%) i/s -      21240 in   5.081909s
+test_anchor_should_call_to_param
+                         5088.3 (±24.4%) i/s -      23940 in   5.013342s
+test_anchor_should_escape_unsafe_pchar
+                         4919.3 (±24.7%) i/s -      23280 in   5.054269s
+test_anchor_should_not_escape_safe_pchar
+                         5374.3 (±24.4%) i/s -      25326 in   5.031520s
+   test_default_host     6114.4 (±24.0%) i/s -      28920 in   5.023198s
+test_host_may_be_overridden
+                         6134.7 (±24.3%) i/s -      29463 in   5.104460s
+test_subdomain_may_be_changed
+                         5792.9 (±23.7%) i/s -      27780 in   5.083130s
+test_subdomain_may_be_object
+                         2729.1 (±28.5%) i/s -      12903 in   5.092246s
+test_subdomain_may_be_removed
+                         5379.8 (±35.2%) i/s -      23569 in   5.006171s
+test_multiple_subdomains_may_be_removed
+                         5066.7 (±36.0%) i/s -      22403 in   5.026762s
+test_subdomain_may_be_accepted_with_numeric_host
+                         5084.1 (±37.5%) i/s -      22618 in   5.120864s
+test_domain_may_be_changed
+                         5145.2 (±35.7%) i/s -      22680 in   5.038098s
+test_tld_length_may_be_changed
+                         5050.4 (±35.4%) i/s -      22402 in   5.037619s
+           test_port     4893.0 (±35.7%) i/s -      22145 in   5.134383s
+   test_default_port     5079.0 (±35.1%) i/s -      22572 in   5.022151s
+       test_protocol     5494.6 (±35.1%) i/s -      24528 in   5.071304s
+test_protocol_with_and_without_separators
+                         1823.2 (±35.0%) i/s -       8188 in   5.070562s
+test_without_protocol
+                         2759.2 (±35.3%) i/s -      12267 in   5.044123s
+ test_trailing_slash     5310.5 (±34.5%) i/s -      23966 in   5.078532s
+test_trailing_slash_with_protocol
+                         2490.5 (±35.5%) i/s -      11045 in   5.037374s
+test_trailing_slash_with_only_path
+                         1879.0 (±36.9%) i/s -       8413 in   5.098988s
+test_trailing_slash_with_anchor
+                         2577.0 (±36.0%) i/s -      11703 in   5.135309s
+test_trailing_slash_with_params
+                         4553.9 (±35.1%) i/s -      20385 in   5.048255s
+test_relative_url_root_is_respected
+                         5231.2 (±34.5%) i/s -      23892 in   5.119746s
+   test_named_routes      261.6 (±31.7%) i/s -       1188 in   5.050544s
+test_relative_url_root_is_respected_for_named_routes
+                          397.8 (±33.4%) i/s -       1804 in   5.041986s
+      test_only_path      292.2 (±31.8%) i/s -       1320 in   5.024699s
+  test_one_parameter     6105.4 (±35.9%) i/s -      26656 in   4.998832s
+ test_two_parameters     4305.7 (±36.7%) i/s -      19200 in   5.062474s
+ test_hash_parameter     3614.5 (±36.8%) i/s -      15651 in   5.020719s
+test_array_parameter     4282.0 (±37.6%) i/s -      18350 in   5.011092s
+test_hash_recursive_parameters
+                         2643.3 (±36.6%) i/s -      11711 in   5.137803s
+test_hash_recursive_and_array_parameters
+                         2029.6 (±36.8%) i/s -       8750 in   5.026841s
+test_path_generation_for_symbol_parameter_keys
+                         7400.3 (±40.3%) i/s -      31550 in   5.028669s
+test_named_routes_with_nil_keys
+                          350.2 (±37.7%) i/s -       1540 in   5.038729s
+test_multiple_includes_maintain_distinct_options
+                         1079.4 (±21.1%) i/s -       5143 in   5.013930s
+test_with_stringified_keys
+                         3547.3 (±37.8%) i/s -      15386 in   5.016417s
+test_with_hash_with_indifferent_access
+                         2934.5 (±38.4%) i/s -      12726 in   5.028208s
+test_url_params_with_nil_to_param_are_not_in_url
+                         4698.1 (±36.3%) i/s -      20482 in   5.055718s
+test_false_url_params_are_included_in_query
+                         6112.2 (±36.8%) i/s -      27030 in   5.096709s
+.....................................
+
+Finished tests in 293.493534s, 0.1431 tests/s, 5018.9692 assertions/s.
+
+42 tests, 1473035 assertions, 0 failures, 0 errors, 0 skips
+************* /result 1 *************

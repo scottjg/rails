@@ -1,0 +1,35 @@
+test_protocol_with_and_without_separators
+                           178 i/100ms
+test_trailing_slash_with_only_path
+                           179 i/100ms
+test_named_routes
+                           27 i/100ms
+test_relative_url_root_is_respected_for_named_routes
+                           41 i/100ms
+test_only_path
+                           30 i/100ms
+test_hash_recursive_and_array_parameters
+                           175 i/100ms
+test_named_routes_with_nil_keys
+                           35 i/100ms
+test_multiple_includes_maintain_distinct_options
+                           139 i/100ms
+
+
+
+test_protocol_with_and_without_separators
+                           1823.2 (±35.0%) i/s -       8188 in   5.070562s
+test_trailing_slash_with_only_path
+                           1879.0 (±36.9%) i/s -       8413 in   5.098988s
+test_named_routes
+                           261.6 (±31.7%) i/s -       1188 in   5.050544s
+test_relative_url_root_is_respected_for_named_routes
+                           397.8 (±33.4%) i/s -       1804 in   5.041986s
+test_only_path
+                           292.2 (±31.8%) i/s -       1320 in   5.024699s
+test_hash_recursive_and_array_parameters
+                           2029.6 (±36.8%) i/s -       8750 in   5.026841s
+test_named_routes_with_nil_keys
+                           350.2 (±37.7%) i/s -       1540 in   5.038729s
+test_multiple_includes_maintain_distinct_options
+                           1079.4 (±21.1%) i/s -       5143 in   5.013930s
