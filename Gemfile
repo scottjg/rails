@@ -85,3 +85,12 @@ end
 gem 'ibm_db' if ENV['IBM_DB']
 
 gem 'benchmark-ips'
+
+# Facebook team add for benchmarking and debugging
+gem 'perftools.rb', :git => 'git://github.com/tmm1/perftools.rb.git'
+gem 'pry'
+gem 'pry-remote'
+gem 'pry-nav'
+gem 'ruby-debug19'
+gem 'ruby-debug-completion'
+
