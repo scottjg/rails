@@ -46,6 +46,8 @@ module ActionDispatch
           result
         end
 
+        
+
         private
 
         def build_host_url(options)
