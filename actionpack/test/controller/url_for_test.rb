@@ -1,10 +1,26 @@
 require 'abstract_unit'
+require 'benchmark'
+
+
 
 module AbstractController
   module Testing
     class UrlForTest < ActionController::TestCase
       class W
         include ActionDispatch::Routing::RouteSet.new.tap { |r| r.draw { get ':controller(/:action(/:id(.:format)))' } }.url_helpers
+      end
+
+      def test_performance_unit
+          puts 'performance comparison'
+          Benchmark.bm(1000) do |x|
+            x.report('url for original: ') {
+              assert_equal('/c/a#anchor', W.new.url_for(:only_path => true, :controller => 'c', :action => 'a', :anchor => Struct.new(:to_param).new('anchor')))
+              
+            }
+            x.report('url for improved') {
+              assert_equal('/c/a#anchor', W.new.url_for(:only_path => true, :controller => 'c', :action => 'a', :anchor => Struct.new(:to_param).new('anchor')))
+            }
+          end
       end
 
       def teardown

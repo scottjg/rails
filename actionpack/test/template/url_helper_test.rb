@@ -2,6 +2,7 @@
 require 'abstract_unit'
 require 'controller/fake_controllers'
 
+
 class UrlHelperTest < ActiveSupport::TestCase
 
   # In a few cases, the helper proxies to 'controller'
