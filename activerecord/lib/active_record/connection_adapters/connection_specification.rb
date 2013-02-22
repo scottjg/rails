@@ -38,7 +38,7 @@ module ActiveRecord
         private
         def resolve_string_connection(spec) # :nodoc:
           hash = configurations.fetch(spec) do |k|
-            connection_url_to_hash(k)
+            self.class.connection_url_to_hash(k)
           end
 
           raise(AdapterNotSpecified, "#{spec} database is not configured") unless hash
@@ -51,10 +51,13 @@ module ActiveRecord
 
           raise(AdapterNotSpecified, "database configuration does not specify adapter") unless spec.key?(:adapter)
 
+          path_to_adapter = "active_record/connection_adapters/#{spec[:adapter]}_adapter"
           begin
-            require "active_record/connection_adapters/#{spec[:adapter]}_adapter"
+            require path_to_adapter
+          rescue Gem::LoadError => e
+            raise Gem::LoadError, "Specified '#{spec[:adapter]}' for database adapter, but the gem is not loaded. Add `gem '#{e.name}'` to your Gemfile."
           rescue LoadError => e
-            raise LoadError, "Please install the #{spec[:adapter]} adapter: `gem install activerecord-#{spec[:adapter]}-adapter` (#{e.message})", e.backtrace
+            raise LoadError, "Could not load '#{path_to_adapter}'. Make sure that the adapter in config/database.yml is valid. If you use an adapter other than 'mysql', 'mysql2', 'postgresql' or 'sqlite3' add the necessary adapter gem to the Gemfile.", e.backtrace
           end
 
           adapter_method = "#{spec[:adapter]}_connection"
@@ -66,7 +69,7 @@ module ActiveRecord
         SIMPLE_INT = /\A\d+\z/
         SIMPLE_FLOAT = /\A\d+\.\d+\z/
 
-        def connection_url_to_hash(url) # :nodoc:
+        def self.connection_url_to_hash(url) # :nodoc:
           config = URI.parse url
           adapter = config.scheme
           adapter = "postgresql" if adapter == "postgres"
@@ -94,7 +97,7 @@ module ActiveRecord
           spec
         end
 
-        def type_cast_value(value)
+        def self.type_cast_value(value)
           case value
           when SIMPLE_INT
             value.to_i

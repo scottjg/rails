@@ -1,14 +1,52 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   ActiveRecord now raises an error when blank arguments are passed to query
-    methods for which blank arguments do not make sense. This also occurs for
-    nil-like objects in arguments.
+*   Rename related indexes on `rename_table` and `rename_column`. This
+    does not affect indexes with custom names.
+
+    *Yves Senn*
+
+*   Prevent the creation of indices with too long names, which cause
+    internal operations to fail (sqlite3 adapter only). The method
+    `allowed_index_name_length` defines the length limit enforced by
+    rails. It's value defaults to `index_name_length` but can vary per adapter.
+    Fixes #8264.
+
+    *Yves Senn*
+
+*   Fixing issue #776.
+
+    Memory bloat in transactions is handled by having the transaction hold only
+    the AR objects which it absolutely needs to know about. These are the AR
+    objects with callbacks (they need to be updated as soon as something in the
+    transaction occurs).
+
+    All other AR objects can be updated lazily by keeping a reference to a
+    TransactionState object. If an AR object gets inside a transaction, then
+    the transaction will add its TransactionState to the AR object. When the
+    user makes a call to some attribute on an AR object (which has no
+    callbacks) associated with a transaction, the AR object will call the
+    sync_with_transaction_state method and make sure it is up to date with the
+    transaction. After it has synced with the transaction state, the AR object
+    will return the attribute that was requested.
+
+    Most of the logic in the changes are used to handle multiple transactions,
+    in which case the AR object has to recursively follow parent pointers of
+    TransactionState objects.
+
+    *John Wang*
+
+*   Descriptive error message when the necessary AR adapter gem was not found.
+    Fixes #7313.
+
+    *Yves Senn*
+
+*   Active Record now raises an error when blank arguments are passed to query
+    methods for which blank arguments do not make sense.
 
     Example:
 
-        Post.limit()     # => raises error
-        Post.include([]) # => raises error
-    
+        Post.includes()     # => raises error
+
     *John Wang*
 
 *   Simplified type casting code for timezone aware attributes to use the
@@ -172,7 +210,7 @@
     *Lilibeth De La Cruz*
 
 *   When `#count` is used in conjunction with `#uniq` we perform `count(:distinct => true)`.
-    Fix #6865.
+    Fixes #6865.
 
     Example:
 
@@ -205,7 +243,7 @@
     *John Wang*
 
 *   Collection associations `#empty?` always respects builded records.
-    Fix #8879.
+    Fixes #8879.
 
     Example:
 
@@ -294,18 +332,13 @@
     *Yves Senn*
 
 *   Add `ActiveRecord::Base.cache_timestamp_format` class attribute to control
-    the format of the timestamp value in the cache key.
-    This allows users to improve the precision of the cache key.
+    the format of the timestamp value in the cache key. Defaults to `:nsec`.
     Fixes #8195.
 
     *Rafael Mendonça França*
 
-*   Add `:nsec` date format. This can be used to improve the precision of cache key.
-
-    *Jamie Gaskins*
-
 *   Session variables can be set for the `mysql`, `mysql2`, and `postgresql` adapters
-    in the `variables: <hash>` parameter in `database.yml`. The key-value pairs of this
+    in the `variables: <hash>` parameter in `config/database.yml`. The key-value pairs of this
     hash will be sent in a `SET key = value` query on new database connections. See also:
     http://dev.mysql.com/doc/refman/5.0/en/set-statement.html
     http://www.postgresql.org/docs/8.3/static/sql-set.html
@@ -328,7 +361,7 @@
     to the update query.
 
         class User < ActiveRecord::Base
-          default_scope where(active: true)
+          default_scope -> { where(active: true) }
         end
 
         user = User.first
@@ -464,11 +497,6 @@
     Fix #6951.
 
     *kennyj*
-
-*   Added `#none!` method for mutating `ActiveRecord::Relation` objects to a NullRelation.
-    It acts like `#none` but modifies relation in place.
-
-    *Juanjo Bazán*
 
 *   Fix bug where `update_columns` and `update_column` would not let you update the primary key column.
 
@@ -1246,13 +1274,6 @@
     Generators have also been updated to use the new syntax.
 
     *Joshua Wood*
-
-*   Added bang methods for mutating `ActiveRecord::Relation` objects.
-    For example, while `foo.where(:bar)` will return a new object
-    leaving `foo` unchanged, `foo.where!(:bar)` will mutate the foo
-    object
-
-    *Jon Leighton*
 
 *   Added `#find_by` and `#find_by!` to mirror the functionality
     provided by dynamic finders in a way that allows dynamic input more
