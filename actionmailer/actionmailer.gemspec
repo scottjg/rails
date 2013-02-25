@@ -1,23 +1,23 @@
 require File.join(File.dirname(__FILE__), 'lib', 'action_mailer', 'version')
 
-PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME = 'actionmailer'
-PKG_VERSION = ActionMailer::VERSION::STRING + PKG_BUILD
-PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
+AM_PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
+AM_PKG_NAME = 'actionmailer'
+AM_PKG_VERSION = ActionMailer::VERSION::STRING + PAM_KG_BUILD
+AM_PKG_FILE_NAME = "#{AM_PKG_NAME}-#{AM_PKG_VERSION}"
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = PKG_NAME
+  s.name = AM_PKG_NAME
   s.summary = "Service layer for easy email delivery and testing."
   s.description = %q{Makes it trivial to test and deliver emails sent from a single service layer.}
-  s.version = PKG_VERSION
+  s.version = AM_PKG_VERSION
 
   s.author = "David Heinemeier Hansson"
   s.email = "david@loudthinking.com"
   s.rubyforge_project = "actionmailer"
   s.homepage = "http://www.rubyonrails.org"
 
-  s.add_dependency('actionpack', '= 2.3.2' + PKG_BUILD)
+  s.add_dependency('actionpack', '= 2.3.2' + AM_PKG_BUILD)
 
   s.has_rdoc = true
   s.requirements << 'none'

@@ -1,16 +1,16 @@
 require File.join(File.dirname(__FILE__), 'lib', 'active_resource', 'version')
 
-PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME = 'activeresource'
-PKG_VERSION = ActiveResource::VERSION::STRING + PKG_BUILD
-PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
+ARES_PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
+ARES_PKG_NAME = 'activeresource'
+ARES_PKG_VERSION = ActiveResource::VERSION::STRING + ARES_PKG_BUILD
+ARES_PKG_FILE_NAME = "#{ARES_PKG_NAME}-#{ARES_PKG_VERSION}"
 
 dist_dirs = [ "lib", "test", "examples", "dev-utils" ]
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = PKG_NAME
-  s.version = PKG_VERSION
+  s.name = ARES_PKG_NAME
+  s.version = ARES_PKG_VERSION
   s.summary = "Think Active Record for web resources."
   s.description = %q{Wraps web resources in model classes that can be manipulated through XML over REST.}
 
@@ -19,7 +19,7 @@ spec = Gem::Specification.new do |s|
     s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   end
   
-  s.add_dependency('activesupport', '= 2.3.2' + PKG_BUILD)
+  s.add_dependency('activesupport', '= 2.3.2' + ARES_PKG_BUILD)
 
   s.require_path = 'lib'
   s.autorequire = 'active_resource'

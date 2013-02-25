@@ -4,13 +4,13 @@ require 'date'
 require 'rbconfig'
 require File.join(File.dirname(__FILE__), 'lib/rails', 'version')
 
-PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME = 'rails'
-PKG_VERSION = Rails::VERSION::STRING + PKG_BUILD
-PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
-PKG_DESTINATION = ENV["RAILS_PKG_DESTINATION"] || "../#{PKG_NAME}"
+RT_PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
+RT_PKG_NAME = 'rails'
+RT_PKG_VERSION = Rails::VERSION::STRING + RT_PKG_BUILD
+RT_PKG_FILE_NAME = "#{RT_PKG_NAME}-#{RT_PKG_VERSION}"
+RT_PKG_DESTINATION = ENV["RAILS_PKG_DESTINATION"] || "../#{RT_PKG_NAME}"
 
-RELEASE_NAME = "REL #{PKG_VERSION}"
+RELEASE_NAME = "REL #{RT_PKG_VERSION}"
 
 FILE_LIST = [
   '[a-zA-Z]*',
@@ -30,7 +30,7 @@ NOT_FILES = [ 'test' ]
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.name = 'rails'
-  s.version = PKG_VERSION
+  s.version = RT_PKG_VERSION
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
   s.description = <<-EOF
     Rails is a framework for building web-application using CGI, FCGI, mod_ruby, or WEBrick
@@ -38,11 +38,11 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.8.3', '<= 0.9.2.2')
-  s.add_dependency('activesupport',    '= 2.3.2' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.3.2' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.3.2' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.3.2' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.3.2' + PKG_BUILD)
+  s.add_dependency('activesupport',    '= 2.3.2' + RT_PKG_BUILD)
+  s.add_dependency('activerecord',     '= 2.3.2' + RT_PKG_BUILD)
+  s.add_dependency('actionpack',       '= 2.3.2' + RT_PKG_BUILD)
+  s.add_dependency('actionmailer',     '= 2.3.2' + RT_PKG_BUILD)
+  s.add_dependency('activeresource',   '= 2.3.2' + RT_PKG_BUILD)
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false

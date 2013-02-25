@@ -1,18 +1,18 @@
 require File.join(File.dirname(__FILE__), 'lib', 'active_record', 'version')
 require File.expand_path(File.dirname(__FILE__)) + "/test/config"
 
-PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_NAME = 'activerecord'
-PKG_VERSION = ActiveRecord::VERSION::STRING + PKG_BUILD
-PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
+AR_PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
+AR_PKG_NAME = 'activerecord'
+AR_PKG_VERSION = ActiveRecord::VERSION::STRING + AR_PKG_BUILD
+AR_PKG_FILE_NAME = "#{AR_PKG_NAME}-#{AR_PKG_VERSION}"
 
 
 dist_dirs = [ "lib", "test", "examples" ]
 
 spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
-  s.name = PKG_NAME
-  s.version = PKG_VERSION
+  s.name = AR_PKG_NAME
+  s.version = AR_PKG_VERSION
   s.summary = "Implements the ActiveRecord pattern for ORM."
   s.description = %q{Implements the ActiveRecord pattern (Fowler, PoEAA) for ORM. It ties database tables and classes together for business objects, like Customer or Subscription, that can find, save, and destroy themselves without resorting to manual SQL.}
 
@@ -21,7 +21,7 @@ spec = Gem::Specification.new do |s|
     s.files = s.files + Dir.glob( "#{dir}/**/*" ).delete_if { |item| item.include?( "\.svn" ) }
   end
 
-  s.add_dependency('activesupport', '= 2.3.2' + PKG_BUILD)
+  s.add_dependency('activesupport', '= 2.3.2' + AR_PKG_BUILD)
 
   s.files.delete FIXTURES_ROOT + "/fixture_database.sqlite"
   s.files.delete FIXTURES_ROOT + "/fixture_database_2.sqlite"
