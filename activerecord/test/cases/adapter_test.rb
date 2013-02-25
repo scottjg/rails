@@ -2,9 +2,17 @@ require "cases/helper"
 require "models/book"
 
 module ActiveRecord
+
   class AdapterTest < ActiveRecord::TestCase
     def setup
       @connection = ActiveRecord::Base.connection
+    end
+
+    def test_cache_performance
+      b = Book.create(name: "my book")
+      b.update_attributes(name: "my other book")
+      Book.where(:name => "my book").limit(5).to_a
+      Book.where(:name => "my book").limit(5).to_a
     end
 
     ##
