@@ -1,3 +1,5 @@
+## unreleased ##
+
 *   Fix DateTime comparison with DateTime::Infinity object.
 
     *Dan Kubb*
@@ -22,7 +24,7 @@
     *Daniele Sluijters*
 
 
-## Rails 3.2.12 (Fev 11, 2013) ##
+## Rails 3.2.12 (Feb 11, 2013) ##
 
 *   No changes.
 
