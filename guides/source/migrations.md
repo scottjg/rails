@@ -344,6 +344,16 @@ create_join_table :products, :categories, column_options: {null: true}
 will create the `product_id` and `category_id` with the `:null` option as
 `true`.
 
+`create_join_table` also accepts a block, which you can use to add indices
+(which are not created by default) or additional columns:
+
+```ruby
+create_join_table :products, :categories do |t|
+  t.index :products
+  t.index :categories
+end
+```
+
 ### Changing Tables
 
 A close cousin of `create_table` is `change_table`, used for changing existing
@@ -444,7 +454,7 @@ class ExampleMigration < ActiveRecord::Migration
   end
 ```
 
-Using `reversible` will insure that the instructions are executed in the
+Using `reversible` will ensure that the instructions are executed in the
 right order too. If the previous example migration is reverted,
 the `down` block will be run after the `home_page_url` column is removed and
 right before the table `products` is dropped.

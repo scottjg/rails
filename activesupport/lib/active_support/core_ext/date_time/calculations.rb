@@ -124,6 +124,18 @@ class DateTime
   end
   alias :at_end_of_hour :end_of_hour
 
+  # Returns a new DateTime representing the start of the minute (hh:mm:00).
+  def beginning_of_minute
+    change(:sec => 0)
+  end
+  alias :at_beginning_of_minute :beginning_of_minute
+
+  # Returns a new DateTime representing the end of the minute (hh:mm:59).
+  def end_of_minute
+    change(:sec => 59)
+  end
+  alias :at_end_of_minute :end_of_minute
+
   # Adjusts DateTime to UTC by adding its offset value; offset is set to 0.
   #
   #   DateTime.civil(2005, 2, 21, 10, 11, 12, Rational(-6, 24))     # => Mon, 21 Feb 2005 10:11:12 -0600

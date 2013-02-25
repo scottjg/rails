@@ -69,11 +69,13 @@ module ActiveRecord
     # Returns true if this object hasn't been saved yet -- that is, a record
     # for the object doesn't exist in the data store yet; otherwise, returns false.
     def new_record?
+      sync_with_transaction_state
       @new_record
     end
 
     # Returns true if this object has been destroyed, otherwise returns false.
     def destroyed?
+      sync_with_transaction_state
       @destroyed
     end
 
@@ -220,7 +222,7 @@ module ActiveRecord
         save
       end
     end
-    
+
     alias update_attributes update
 
     # Updates its receiver just like +update+ but calls <tt>save!</tt> instead
@@ -233,7 +235,7 @@ module ActiveRecord
         save!
       end
     end
-    
+
     alias update_attributes! update!
 
     # Equivalent to <code>update_columns(name => value)</code>.
@@ -366,6 +368,8 @@ module ActiveRecord
     #   # triggers @brake.car.touch and @brake.car.corporation.touch
     #   @brake.touch
     def touch(name = nil)
+      raise ActiveRecordError, "can not touch on a new record object" unless persisted?
+
       attributes = timestamp_attributes_for_update_in_model
       attributes << name if name
 

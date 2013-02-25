@@ -207,7 +207,6 @@ Every Rails application comes with a standard set of middleware which it uses in
 * `ActionDispatch::ParamsParser` parses out parameters from the request into `params`.
 * `Rack::MethodOverride` allows the method to be overridden if `params[:_method]` is set. This is the middleware which supports the PATCH, PUT, and DELETE HTTP method types.
 * `ActionDispatch::Head` converts HEAD requests to GET requests and serves them as so.
-* `ActionDispatch::BestStandardsSupport` enables "best standards support" so that IE8 renders some elements correctly.
 
 Besides these usual middleware, you can add your own by using the `config.middleware.use` method:
 
@@ -230,13 +229,13 @@ config.middleware.insert_after ActionDispatch::Head, Magical::Unicorns
 Middlewares can also be completely swapped out and replaced with others:
 
 ```ruby
-config.middleware.swap ActionDispatch::BestStandardsSupport, Magical::Unicorns
+config.middleware.swap ActionController::Failsafe, Lifo::Failsafe
 ```
 
 They can also be removed from the stack completely:
 
 ```ruby
-config.middleware.delete ActionDispatch::BestStandardsSupport
+config.middleware.delete "Rack::MethodOverride"
 ```
 
 ### Configuring i18n
@@ -268,8 +267,6 @@ config.middleware.delete ActionDispatch::BestStandardsSupport
 * `config.active_record.timestamped_migrations` controls whether migrations are numbered with serial integers or with timestamps. The default is true, to use timestamps, which are preferred if there are multiple developers working on the same application.
 
 * `config.active_record.lock_optimistically` controls whether Active Record will use optimistic locking and is true by default.
-
-* `config.active_record.auto_explain_threshold_in_seconds` configures the threshold for automatic EXPLAINs (`nil` disables this feature). Queries exceeding the threshold get their query plan logged. Default is 0.5 in development mode.
 
 * +config.active_record.cache_timestamp_format+ controls the format of the timestamp value in the cache key. Default is +:number+.
 

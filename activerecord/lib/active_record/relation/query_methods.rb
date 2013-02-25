@@ -11,11 +11,11 @@ module ActiveRecord
         @scope = scope
       end
 
-      # Returns a new relation expressing WHERE + NOT condition
-      # according to the conditions in the arguments.
+      # Returns a new relation expressing WHERE + NOT condition according to
+      # the conditions in the arguments.
       #
-      # #not accepts conditions in one of these formats: String, Array, Hash.
-      # See #where for more details on each format.
+      # +not+ accepts conditions as a string, array, or hash. See #where for
+      # more details on each format.
       #
       #    User.where.not("name = 'Jon'")
       #    # SELECT * FROM users WHERE NOT (name = 'Jon')
@@ -31,6 +31,10 @@ module ActiveRecord
       #
       #    User.where.not(name: %w(Ko1 Nobu))
       #    # SELECT * FROM users WHERE name NOT IN ('Ko1', 'Nobu')
+      #
+      #    User.where.not(name: "Jon", role: "admin")
+      #    # SELECT * FROM users WHERE name != 'Jon' AND role != 'admin'
+      #
       def not(opts, *rest)
         where_value = @scope.send(:build_where, opts, rest).map do |rel|
           case rel
@@ -108,7 +112,8 @@ module ActiveRecord
     #
     #   User.includes(:posts).where('posts.name = ?', 'example').references(:posts)
     def includes(*args)
-      args.empty? ? self : spawn.includes!(*args)
+      check_if_method_has_arguments!("includes", args)
+      spawn.includes!(*args)
     end
 
     def includes!(*args) # :nodoc:
@@ -125,7 +130,8 @@ module ActiveRecord
     #   FROM "users" LEFT OUTER JOIN "posts" ON "posts"."user_id" =
     #   "users"."id"
     def eager_load(*args)
-      args.blank? ? self : spawn.eager_load!(*args)
+      check_if_method_has_arguments!("eager_load", args)
+      spawn.eager_load!(*args)
     end
 
     def eager_load!(*args) # :nodoc:
@@ -138,7 +144,8 @@ module ActiveRecord
     #   User.preload(:posts)
     #   => SELECT "posts".* FROM "posts" WHERE "posts"."user_id" IN (1, 2, 3)
     def preload(*args)
-      args.blank? ? self : spawn.preload!(*args)
+      check_if_method_has_arguments!("preload", args)
+      spawn.preload!(*args)
     end
 
     def preload!(*args) # :nodoc:
@@ -155,7 +162,8 @@ module ActiveRecord
     #   User.includes(:posts).where("posts.name = 'foo'").references(:posts)
     #   # => Query now knows the string references posts, so adds a JOIN
     def references(*args)
-      args.blank? ? self : spawn.references!(*args)
+      check_if_method_has_arguments!("references", args)
+      spawn.references!(*args)
     end
 
     def references!(*args) # :nodoc:
@@ -189,6 +197,16 @@ module ActiveRecord
     #   Model.select(:field, :other_field, :and_one_more)
     #   # => [#<Model field: "value", other_field: "value", and_one_more: "value">]
     #
+    # You can also use one or more strings, which will be used unchanged as SELECT fields.
+    #
+    #   Model.select('field AS field_one', 'other_field AS field_two')
+    #   # => [#<Model field: "value", other_field: "value">]
+    #
+    # If an alias was specified, it will be accessible from the resulting objects:
+    #
+    #   Model.select('field AS field_one').first.field_one
+    #   # => "value"
+    #
     # Accessing attributes of an object that do not have fields retrieved by a select
     # will throw <tt>ActiveModel::MissingAttributeError</tt>:
     #
@@ -220,8 +238,12 @@ module ActiveRecord
     #
     #   User.group(:name)
     #   => [#<User id: 3, name: "Foo", ...>, #<User id: 2, name: "Oscar", ...>]
+    #
+    #   User.group('name AS grouped_name, age')
+    #   => [#<User id: 3, name: "Foo", age: 21, ...>, #<User id: 2, name: "Oscar", age: 21, ...>, #<User id: 5, name: "Foo", age: 23, ...>]
     def group(*args)
-      args.blank? ? self : spawn.group!(*args)
+      check_if_method_has_arguments!("group", args)
+      spawn.group!(*args)
     end
 
     def group!(*args) # :nodoc:
@@ -251,7 +273,8 @@ module ActiveRecord
     #   User.order(:name, email: :desc)
     #   => SELECT "users".* FROM "users" ORDER BY "users"."name" ASC, "users"."email" DESC
     def order(*args)
-      args.blank? ? self : spawn.order!(*args)
+      check_if_method_has_arguments!("order", args)
+      spawn.order!(*args)
     end
 
     def order!(*args) # :nodoc:
@@ -276,7 +299,8 @@ module ActiveRecord
     #
     # generates a query with 'ORDER BY name ASC, id ASC'.
     def reorder(*args)
-      args.blank? ? self : spawn.reorder!(*args)
+      check_if_method_has_arguments!("reorder", args)
+      spawn.reorder!(*args)
     end
 
     def reorder!(*args) # :nodoc:
@@ -292,8 +316,14 @@ module ActiveRecord
     #
     #   User.joins(:posts)
     #   => SELECT "users".* FROM "users" INNER JOIN "posts" ON "posts"."user_id" = "users"."id"
+    #
+    # You can use strings in order to customize your joins:
+    #
+    #   User.joins("LEFT JOIN bookmarks ON bookmarks.bookmarkable_type = 'Post' AND bookmarks.user_id = users.id")
+    #   => SELECT "users".* FROM "users" LEFT JOIN bookmarks ON bookmarks.bookmarkable_type = 'Post' AND bookmarks.user_id = users.id
     def joins(*args)
-      args.compact.blank? ? self : spawn.joins!(*args.flatten)
+      check_if_method_has_arguments!("joins", args)
+      spawn.joins!(*args.compact.flatten)
     end
 
     def joins!(*args) # :nodoc:
@@ -439,8 +469,6 @@ module ActiveRecord
       end
     end
 
-    # #where! is identical to #where, except that instead of returning a new relation, it adds
-    # the condition to the existing relation.
     def where!(opts = :chain, *rest) # :nodoc:
       if opts == :chain
         WhereChain.new(self)
@@ -458,6 +486,7 @@ module ActiveRecord
     #   Order.having('SUM(price) > 30').group('user_id')
     def having(opts, *rest)
       opts.blank? ? self : spawn.having!(opts, *rest)
+      spawn.having!(opts, *rest)
     end
 
     def having!(opts, *rest) # :nodoc:
@@ -605,7 +634,6 @@ module ActiveRecord
       spawn.from!(value, subquery_name)
     end
 
-    # Like #from, but modifies relation in place.
     def from!(value, subquery_name = nil) # :nodoc:
       self.from_value = [value, subquery_name]
       self
@@ -894,5 +922,26 @@ module ActiveRecord
       end
     end
 
+    # Checks to make sure that the arguments are not blank. Note that if some
+    # blank-like object were initially passed into the query method, then this
+    # method will not raise an error.
+    #
+    # Example:
+    #
+    #    Post.references()   # => raises an error
+    #    Post.references([]) # => does not raise an error
+    #
+    # This particular method should be called with a method_name and the args
+    # passed into that method as an input. For example:
+    #
+    # def references(*args)
+    #   check_if_method_has_arguments!("references", args)
+    #   ...
+    # end
+    def check_if_method_has_arguments!(method_name, args)
+      if args.blank?
+        raise ArgumentError, "The method .#{method_name}() must contain arguments."
+      end
+    end
   end
 end
