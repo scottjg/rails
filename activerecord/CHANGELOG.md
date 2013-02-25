@@ -1,5 +1,43 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fixing issue #8345. Now throwing an error when one attempts to touch a
+    new object that has not yet been persisted. For instance:
+
+    Example:
+
+        ball = Ball.new
+        ball.touch :updated_at   # => raises error
+
+    It is not until the ball object has been persisted that it can be touched.
+    This follows the behavior of update_column.
+
+    *John Wang*
+
+*   Preloading ordered `has_many :through` associations no longer applies
+    invalid ordering to the `:through` association.
+    Fixes #8663.
+
+    *Yves Senn*
+
+*   The auto explain feature has been removed. This feature was
+    activated by configuring `config.active_record.auto_explain_threshold_in_seconds`.
+    The configuration option was deprecated and has no more effect.
+
+    You can still use `ActiveRecord::Relation#explain` to see the EXPLAIN output for
+    any given relation.
+
+    *Yves Senn*
+
+*   The `:on` option for `after_commit` and `after_rollback` now
+    accepts an Array of actions.
+    Fixes #988.
+
+    Example:
+
+        after_commit :update_cache on: [:create, :update]
+
+    *Yves Senn*
+
 *   Rename related indexes on `rename_table` and `rename_column`. This
     does not affect indexes with custom names.
 
@@ -143,8 +181,8 @@
 
     *Justin George*
 
-*   The `DATABASE_URL` environment variable now converts ints, floats, and
-    the strings true and false to Ruby types. For example, SQLite requires
+*   The database adpters now converts the options passed thought `DATABASE_URL`
+    environment variable to the proper Ruby types before using. For example, SQLite requires
     that the timeout value is an integer, and PostgreSQL requires that the
     prepared_statements option is a boolean. These now work as expected:
 
@@ -153,7 +191,7 @@
         DATABASE_URL=sqlite3://localhost/test_db?timeout=500
         DATABASE_URL=postgresql://localhost/test_db?prepared_statements=false
 
-    *Aaron Stone*
+    *Aaron Stone + Rafael Mendonça França*
 
 *   `Relation#merge` now only overwrites where values on the LHS of the
     merge. Consider:

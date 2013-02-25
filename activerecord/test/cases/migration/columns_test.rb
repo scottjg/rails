@@ -2,7 +2,7 @@ require "cases/migration/helper"
 
 module ActiveRecord
   class Migration
-    class RenameColumnTest < ActiveRecord::TestCase
+    class ColumnsTest < ActiveRecord::TestCase
       include ActiveRecord::Migration::TestHelper
 
       self.use_transactional_fixtures = false
@@ -96,10 +96,18 @@ module ActiveRecord
         add_index "test_models", ["hat_style", "hat_size"], unique: true
 
         rename_column "test_models", "hat_size", 'size'
-        assert_equal ['index_test_models_on_hat_style_and_size'], connection.indexes('test_models').map(&:name)
+        if current_adapter? :OracleAdapter
+          assert_equal ['i_test_models_hat_style_size'], connection.indexes('test_models').map(&:name)
+        else
+          assert_equal ['index_test_models_on_hat_style_and_size'], connection.indexes('test_models').map(&:name)
+        end
 
         rename_column "test_models", "hat_style", 'style'
-        assert_equal ['index_test_models_on_style_and_size'], connection.indexes('test_models').map(&:name)
+        if current_adapter? :OracleAdapter
+          assert_equal ['i_test_models_style_size'], connection.indexes('test_models').map(&:name)
+        else
+          assert_equal ['index_test_models_on_style_and_size'], connection.indexes('test_models').map(&:name)
+        end
       end
 
       def test_rename_column_does_not_rename_custom_named_index
@@ -128,7 +136,7 @@ module ActiveRecord
         assert_equal 1, connection.indexes('test_models').size
         remove_column("test_models", "hat_size")
 
-        # Every database and/or database adapter has their own behavior 
+        # Every database and/or database adapter has their own behavior
         # if it drops the multi-column index when any of the indexed columns dropped by remove_column.
         if current_adapter?(:PostgreSQLAdapter, :OracleAdapter)
           assert_equal [], connection.indexes('test_models').map(&:name)
@@ -244,6 +252,20 @@ module ActiveRecord
 
       def test_remove_column_no_second_parameter_raises_exception
         assert_raise(ArgumentError) { connection.remove_column("funny") }
+      end
+
+      def test_removing_and_renaming_column_preserves_custom_primary_key
+        connection.create_table "my_table", primary_key: "my_table_id", force: true do |t|
+          t.integer "col_one"
+          t.string "col_two", limit: 128, null: false
+        end
+
+        remove_column("my_table", "col_two")
+        rename_column("my_table", "col_one", "col_three")
+
+        assert_equal 'my_table_id', connection.primary_key('my_table')
+      ensure
+        connection.drop_table(:my_table) rescue nil
       end
     end
   end

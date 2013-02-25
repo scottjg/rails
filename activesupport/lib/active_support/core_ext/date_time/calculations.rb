@@ -59,7 +59,7 @@ class DateTime
       options.fetch(:day, day),
       options.fetch(:hour, hour),
       options.fetch(:min, options[:hour] ? 0 : min),
-      options.fetch(:sec, (options[:hour] || options[:min]) ? 0 : sec),
+      options.fetch(:sec, (options[:hour] || options[:min]) ? 0 : sec + sec_fraction),
       options.fetch(:offset, offset),
       options.fetch(:start, start)
     )
@@ -123,8 +123,8 @@ class DateTime
     change(:min => 59, :sec => 59)
   end
   alias :at_end_of_hour :end_of_hour
-  
-  # Returns a new DateTime representing the start of the hour (hh:mm:00).
+
+  # Returns a new DateTime representing the start of the minute (hh:mm:00).
   def beginning_of_minute
     change(:sec => 0)
   end

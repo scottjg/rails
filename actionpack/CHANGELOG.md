@@ -1,5 +1,11 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fix `respond_to` not using formats that have no block if all is present. *Michael Grosser*
+
+*   New applications use an encrypted session store by default.
+
+    *Santiago Pastorino*
+
 *   Determine the controller#action from only the matched path when using the
     shorthand syntax. Previously the complete path was used, which led
     to problems with nesting (scopes and namespaces).
@@ -7,7 +13,7 @@
 
     Example:
 
-        # this will route to questions#new
+        # This will route to questions#new.
         scope ':locale' do
           get 'questions/new'
         end
