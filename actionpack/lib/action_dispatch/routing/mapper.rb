@@ -124,15 +124,7 @@ module ActionDispatch
           def normalize_requirements!
             constraints.each do |key, requirement|
               next unless segment_keys.include?(key) || key == :controller
-
-              if requirement.source =~ ANCHOR_CHARACTERS_REGEX
-                raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
-              end
-
-              if requirement.multiline?
-                raise ArgumentError, "Regexp multiline option is not allowed in routing requirements: #{requirement.inspect}"
-              end
-
+              verify_regexp_requirement(requirement) if requirement.is_a?(Regexp)
               @requirements[key] = requirement
             end
 
@@ -142,6 +134,16 @@ module ActionDispatch
               @requirements[:format] = options[:format]
             elsif String === options[:format]
               @requirements[:format] = Regexp.compile(options[:format])
+            end
+          end
+
+          def verify_regexp_requirement(requirement)
+            if requirement.source =~ ANCHOR_CHARACTERS_REGEX
+              raise ArgumentError, "Regexp anchor characters are not allowed in routing requirements: #{requirement.inspect}"
+            end
+
+            if requirement.multiline?
+              raise ArgumentError, "Regexp multiline option is not allowed in routing requirements: #{requirement.inspect}"
             end
           end
 
@@ -329,7 +331,6 @@ module ActionDispatch
         # because this means it will be matched first. As this is the most popular route
         # of most Rails applications, this is beneficial.
         def root(options = {})
-          options = { :to => options } if options.is_a?(String)
           match '/', { :as => :root, :via => :get }.merge!(options)
         end
 
@@ -426,10 +427,14 @@ module ActionDispatch
         #      end
         #
         # [:constraints]
-        #   Constrains parameters with a hash of regular expressions or an
-        #   object that responds to <tt>matches?</tt>
+        #   Constrains parameters with a hash of regular expressions
+        #   or an object that responds to <tt>matches?</tt>. In addition, constraints
+        #   other than path can also be specified with any object
+        #   that responds to <tt>===</tt> (eg. String, Array, Range, etc.).
         #
         #     match 'path/:id', constraints: { id: /[A-Z]\d{5}/ }
+        #
+        #     match 'json_only', constraints: { format: 'json' }
         #
         #     class Blacklist
         #       def matches?(request) request.remote_ip == '1.2.3.4' end
@@ -1427,7 +1432,15 @@ module ActionDispatch
           @set.add_route(app, conditions, requirements, defaults, as, anchor)
         end
 
-        def root(options={})
+        def root(path, options={})
+          if path.is_a?(String)
+            options[:to] = path
+          elsif path.is_a?(Hash) and options.empty?
+            options = path
+          else
+            raise ArgumentError, "must be called with a path and/or options"
+          end
+
           if @scope[:scope_level] == :resources
             with_scope_level(:root) do
               scope(parent_resource.path) do

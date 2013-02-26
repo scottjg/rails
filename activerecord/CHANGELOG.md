@@ -1,5 +1,30 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Do not try to touch invalid (and thus not persisted) parent record
+    for a `belongs_to :parent, touch: true` association
+
+    *Olek Janiszewski*
+
+*   Fix when performing an ordered join query. The bug only
+    affected queries where the order was given with a symbol.
+    Fixes #9275.
+
+    Example:
+
+        # This will expand the order :name to "authors".name.
+        Author.joins(:books).where('books.published = 1').order(:name)
+
+
+## Rails 4.0.0.beta1 (February 25, 2013) ##
+
+*   Fix overriding of attributes by `default_scope` on `ActiveRecord::Base#dup`.
+
+    *Hiroshige UMINO*
+
+*   Update queries now use prepared statements.
+
+    *Olli Rissanen*
+
 *   Fixing issue #8345. Now throwing an error when one attempts to touch a
     new object that has not yet been persisted. For instance:
 
@@ -1252,12 +1277,11 @@
       * `:conditions` becomes `:where`.
       * `:include` becomes `:includes`.
 
-    The code to implement the deprecated features has been moved out to
-    the `activerecord-deprecated_finders` gem. This gem is a dependency
-    of Active Record in Rails 4.0. It will no longer be a dependency
-    from Rails 4.1, but if your app relies on the deprecated features
-    then you can add it to your own Gemfile. It will be maintained by
-    the Rails core team until Rails 5.0 is released.
+    The code to implement the deprecated features has been moved out to the
+    `activerecord-deprecated_finders` gem. This gem is a dependency of Active
+    Record in Rails 4.0, so the interface works out of the box. It will no
+    longer be a dependency from Rails 4.1 (you'll need to add it to the
+    `Gemfile` in 4.1), and will be maintained until Rails 5.0.
 
     *Jon Leighton*
 

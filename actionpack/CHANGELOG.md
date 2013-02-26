@@ -1,5 +1,30 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Skip valid encoding checks for non-String parameters that come
+    from the matched route's defaults.
+    Fixes #9435.
+
+    Example:
+
+        root to: 'main#posts', page: 1
+
+    *Yves Senn*
+
+*   Don't verify Regexp requirements for non-Regexp `:constraints`.
+    Fixes #9432.
+
+    Example:
+
+        get '/photos.:format' => 'feeds#photos', constraints: {format: 'xml'}
+
+    *Yves Senn*
+
+*   Make `ActionDispatch::Journey::Path::Pattern#new` raise more meaningful exception message.
+
+    *Thierry Zires*
+
+## Rails 4.0.0.beta1 (February 25, 2013) ##
+
 *   Fix `respond_to` not using formats that have no block if all is present. *Michael Grosser*
 
 *   New applications use an encrypted session store by default.

@@ -1,5 +1,11 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fix deletion of empty directories in ActiveSupport::Cache::FileStore.
+    
+    *Charles Jones*
+
+## Rails 4.0.0.beta1 (February 25, 2013) ##
+
 *   Prevent `DateTime#change` from truncating the second fraction, when seconds
     do not need to be changed.
 
