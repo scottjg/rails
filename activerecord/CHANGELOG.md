@@ -1,4 +1,77 @@
-## Rails 3.2.12 (unreleased) ##
+## unreleased ##
+
+*   Fix issue with overriding Active Record reader methods with a composed object
+    and using that attribute as the scope of a `uniqueness_of` validation.
+    Backport #7072.
+
+    *Peter Brown*
+
+*   Sqlite now preserves custom primary keys when copying or altering tables.
+    Fixes #9367.
+    Backport #2312.
+
+    *Sean Scally + Yves Senn*
+
+*   Preloading `has_many :through` associations with conditions won't
+    cache the `:through` association. This will prevent invalid
+    subsets to be cached.
+    Fixes #8423.
+    Backport #9252.
+
+    Example:
+
+        class User
+          has_many :posts
+          has_many :recent_comments, -> { where('created_at > ?', 1.week.ago) }, :through => :posts
+        end
+
+        a_user = User.includes(:recent_comments).first
+
+        # this is preloaded
+        a_user.recent_comments
+
+        # fetching the recent_comments through the posts association won't preload it.
+        a_user.posts
+
+    *Yves Senn*
+
+*   Fix handling of dirty time zone aware attributes
+
+    Previously, when `time_zone_aware_attributes` were enabled, after
+    changing a datetime or timestamp attribute and then changing it back
+    to the original value, `changed_attributes` still tracked the
+    attribute as changed. This caused `[attribute]_changed?` and
+    `changed?` methods to return true incorrectly.
+
+    Example:
+
+        in_time_zone 'Paris' do
+          order = Order.new
+          original_time = Time.local(2012, 10, 10)
+          order.shipped_at = original_time
+          order.save
+          order.changed? # => false
+
+          # changing value
+          order.shipped_at = Time.local(2013, 1, 1)
+          order.changed? # => true
+
+          # reverting to original value
+          order.shipped_at = original_time
+          order.changed? # => false, used to return true
+        end
+
+    Backport of #9073
+    Fixes #8898
+
+    *Lilibeth De La Cruz*
+
+*   Fix counter cache columns not updated when replacing `has_many :through`
+    associations.
+    Backport #8400.
+    Fix #7630.
+
+    *Matthew Robertson*
 
 *   Don't update `column_defaults` when calling destructive methods on column with default value.
     Backport c517602.
@@ -209,6 +282,20 @@
     Fixes #8131.
 
     *Gabriel Sobrinho, Ricardo Henrique*
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
+
+*   Quote numeric values being compared to non-numeric columns. Otherwise,
+    in some database, the string column values will be coerced to a numeric
+    allowing 0, 0.0 or false to match any string starting with a non-digit.
+
+    Example:
+
+        App.where(apikey: 0) # => SELECT * FROM users WHERE apikey = '0'
+
+    *Dylan Smith*
+
 
 ## Rails 3.2.11 (Jan 8, 2013) ##
 

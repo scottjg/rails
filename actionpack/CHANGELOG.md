@@ -1,4 +1,19 @@
-## Rails 3.2.12 (unreleased) ##
+## unreleased ##
+
+*   Determine the controller#action from only the matched path when using the
+    shorthand syntax. Previously the complete path was used, which led
+    to problems with nesting (scopes and namespaces).
+    Fixes #7554.
+    Backport #9361.
+
+    Example:
+
+        # this will route to questions#new
+        scope ':locale' do
+          get 'questions/new'
+        end
+
+    *Yves Senn*
 
 *   Fix `assert_template` with `render :stream => true`.
     Fix #1743.
@@ -64,7 +79,7 @@
 
 *   More descriptive error messages when calling `render :partial` with
     an invalid `:layout` argument.
-    
+
     Fixes #8376.
 
         render :partial => 'partial', :layout => true
@@ -122,6 +137,11 @@
     Fix #8108
 
     *Daniel Fox, Grant Hutchins & Trace Wax*
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
+
+*   No changes.
 
 
 ## Rails 3.2.11 (Jan 8, 2013) ##
