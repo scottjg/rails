@@ -11,18 +11,26 @@ module AbstractController
       end
 
       def test_performance_unit
-          puts 'performance comparison'
-          puts W.new.method(:url_for).source_location 
+        puts 'performance comparison'
+        puts W.new.method(:url_for).source_location 
 
-          Benchmark.bm(1000) do |x|
-            x.report('url for original: ') {
-              assert_equal('/c/a#anchor', W.new.url_for(:only_path => true, :controller => 'c', :action => 'a', :anchor => Struct.new(:to_param).new('anchor')))
+        Benchmark.bm(1000) do |x|
+          x.report('url for original: ') {
+            assert_equal('/c/a#anchor',
+                         W.new.url_for(:only_path => true,
+                                       :controller => 'c',
+                                       :action => 'a',
+                                       :anchor => Struct.new(:to_param).new('anchor')))
               
-            }
-            x.report('url for improved') {
-              assert_equal('/c/a#anchor', W.new.url_for_improved(:only_path => true, :controller => 'c', :action => 'a', :anchor => Struct.new(:to_param).new('anchor')))
-            }
-          end
+          }
+          x.report('url for improved') {
+            assert_equal('/c/a#anchor',
+                         W.new.url_for_improved(:only_path => true,
+                                                :controller => 'c',
+                                                :action => 'a',
+                                                :anchor => Struct.new(:to_param).new('anchor')))
+          }
+        end
       end
 
       def teardown

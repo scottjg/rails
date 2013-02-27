@@ -161,7 +161,8 @@ module ActionDispatch
       end
 
       def url_for_improved(options = nil)
-        puts 'this is the real url for  in action_dispatch/routing'
+        # Commenting this out to reduce clutter in the output
+        #puts 'this is the real url for  in action_dispatch/routing'
         case options
         when nil
           _routes.url_for(url_options.symbolize_keys)
