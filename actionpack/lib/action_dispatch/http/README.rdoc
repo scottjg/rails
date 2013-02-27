@@ -1,0 +1,6 @@
+= URL_FOR Optimization
+
+We are currently in the process of updating url_for to reduce bottlenecks
+in the implementation.
+
+
