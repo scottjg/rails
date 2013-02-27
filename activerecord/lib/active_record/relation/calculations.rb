@@ -15,7 +15,12 @@ module ActiveRecord
     #   # => counts the number of different age values
     def count(column_name = nil, options = {})
       column_name, options = nil, column_name if column_name.is_a?(Hash)
-      calculate(:count, column_name, options)
+      result = calculate(:count, column_name, options)
+      if group_values.any?
+        cast(GroupCaster, result)
+      else
+        cast(SimpleCaster, result)
+      end
     end
 
     # Calculates the average value on a given column. Returns +nil+ if there's
@@ -23,7 +28,12 @@ module ActiveRecord
     #
     #   Person.average('age') # => 35.8
     def average(column_name, options = {})
-      calculate(:average, column_name, options)
+      result = calculate(:average, column_name, options)
+      if group_values.any?
+        cast(GroupCaster, result)
+      else
+        cast(SimpleCaster, result)
+      end
     end
 
     # Calculates the minimum value on a given column. The value is returned
@@ -32,7 +42,12 @@ module ActiveRecord
     #
     #   Person.minimum('age') # => 7
     def minimum(column_name, options = {})
-      calculate(:minimum, column_name, options)
+      result = calculate(:minimum, column_name, options)
+      if group_values.any?
+        cast(GroupCaster, result)
+      else
+        cast(SimpleCaster, result)
+      end
     end
 
     # Calculates the maximum value on a given column. The value is returned
@@ -41,7 +56,12 @@ module ActiveRecord
     #
     #   Person.maximum('age') # => 93
     def maximum(column_name, options = {})
-      calculate(:maximum, column_name, options)
+      result = calculate(:maximum, column_name, options)
+      if group_values.any?
+        cast(GroupCaster, result)
+      else
+        cast(SimpleCaster, result)
+      end
     end
 
     # Calculates the sum of values on a given column. The value is returned
@@ -57,7 +77,12 @@ module ActiveRecord
         )
         self.to_a.sum(*args) {|*block_args| yield(*block_args)}
       else
-        calculate(:sum, *args)
+        result = calculate(:sum, *args)
+        if group_values.any?
+          cast(GroupCaster, result)
+        else
+          cast(SimpleCaster, result)
+      end
       end
     end
 
@@ -106,6 +131,44 @@ module ActiveRecord
       end
     rescue ThrowResult
       0
+    end
+
+    def cast(casting_object, result_set)
+      casting_object.cast result_set
+    end
+
+    class SimpleCaster 
+      def cast(result)
+        row    = result.first
+        value  = row && row.values.first
+        column = result.column_types.fetch(column_alias) do
+          column_for(column_name)
+        end
+
+        type_cast_calculated_value(value, column, operation)
+      end
+    end
+
+    class GroupCaster 
+      def cast(calculated_data)
+        if association
+        key_ids     = calculated_data.collect { |row| row[group_aliases.first] }
+        key_records = association.klass.base_class.find(key_ids)
+        key_records = Hash[key_records.map { |r| [r.id, r] }]
+      end
+
+      Hash[calculated_data.map do |row|
+        key = group_columns.map { |aliaz, col_name|
+          column = calculated_data.column_types.fetch(aliaz) do
+            column_for(col_name)
+          end
+          type_cast_calculated_value(row[aliaz], column)
+        }
+        key = key.first if key.size == 1
+        key = key_records[key] if associated
+        [key, type_cast_calculated_value(row[aggregate_alias], column_for(column_name), operation)]
+      end]
+      end
     end
 
     # Use <tt>pluck</tt> as a shortcut to select one or more attributes without
@@ -247,14 +310,8 @@ module ActiveRecord
         query_builder = relation.arel
       end
 
-      result = @klass.connection.select_all(query_builder, nil, relation.bind_values)
-      row    = result.first
-      value  = row && row.values.first
-      column = result.column_types.fetch(column_alias) do
-        column_for(column_name)
-      end
-
-      type_cast_calculated_value(value, column, operation)
+      @klass.connection.select_all(query_builder, nil, relation.bind_values)
+      
     end
 
     def execute_grouped_calculation(operation, column_name, distinct) #:nodoc:
@@ -303,25 +360,7 @@ module ActiveRecord
       relation.group_values  = group
       relation.select_values = select_values
 
-      calculated_data = @klass.connection.select_all(relation, nil, bind_values)
-
-      if association
-        key_ids     = calculated_data.collect { |row| row[group_aliases.first] }
-        key_records = association.klass.base_class.find(key_ids)
-        key_records = Hash[key_records.map { |r| [r.id, r] }]
-      end
-
-      Hash[calculated_data.map do |row|
-        key = group_columns.map { |aliaz, col_name|
-          column = calculated_data.column_types.fetch(aliaz) do
-            column_for(col_name)
-          end
-          type_cast_calculated_value(row[aliaz], column)
-        }
-        key = key.first if key.size == 1
-        key = key_records[key] if associated
-        [key, type_cast_calculated_value(row[aggregate_alias], column_for(column_name), operation)]
-      end]
+      @klass.connection.select_all(relation, nil, bind_values)
     end
 
     # Converts the given keys to the value that the database adapter returns as
