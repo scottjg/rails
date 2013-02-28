@@ -1,4 +1,4 @@
-## Rails 3.2.12 (unreleased) ##
+## unreleased ##
 
 *   Fix DateTime comparison with DateTime::Infinity object.
 
@@ -22,6 +22,11 @@
     its chown and chmod calls. [Backport #8027]
 
     *Daniele Sluijters*
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
+
+*   No changes.
 
 
 ## Rails 3.2.11 (Jan 8, 2012) ##
