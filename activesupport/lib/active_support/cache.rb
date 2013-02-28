@@ -652,7 +652,7 @@ module ActiveSupport
         # to ensure that cache entries created under the old version still work with the new class definition.
         def convert_version_3_entry!
           if defined?(@value)
-            @v = @value
+            @v = Marshal.load(@value)
             remove_instance_variable(:@value)
           end
           if defined?(@compressed)
