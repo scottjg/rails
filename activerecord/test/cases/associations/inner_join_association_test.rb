@@ -41,6 +41,15 @@ class InnerJoinAssociationTest < ActiveRecord::TestCase
     assert_no_match(/WHERE/i, sql)
   end
 
+  def test_join_no_duplicate
+     require 'debugger'
+     debugger
+     sql = Author.joins([:comments, :comments_containing_the_letter_e]).to_sql
+     p sql
+     assert_match(/JOIN/i, sql)
+     assert_no_match(/WHERE/i, sql)
+  end
+
   def test_join_conditions_allow_nil_associations
     authors = Author.includes(:essays).where(:essays => {:id => nil})
     assert_equal 2, authors.count

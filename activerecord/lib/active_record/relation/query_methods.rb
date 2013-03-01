@@ -332,6 +332,7 @@ module ActiveRecord
     end
 
     def joins!(*args) # :nodoc:
+      debugger
       self.joins_values += args
       self
     end
