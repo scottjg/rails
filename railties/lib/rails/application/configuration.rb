@@ -97,12 +97,16 @@ module Rails
         self
       end
 
-      # Loads and returns the contents of the #database_configuration_file. The
-      # contents of the file are processed via ERB before being sent through
-      # YAML::load.
+      # Loads and returns the configuration of the database.
+      # First, looks at If ENV['DATABASE_URL'] if it's not present it uses the #paths["config/database"]
+      # The contents of the file are processed via ERB before being sent through YAML::load. 
       def database_configuration
-        require 'erb'
-        YAML.load ERB.new(IO.read(paths["config/database"].first)).result
+        if ENV['DATABASE_URL']
+          {Rails.env => ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver.connection_url_to_hash(ENV['DATABASE_URL']).stringify_keys}
+        else
+          require 'erb'
+          YAML.load ERB.new(IO.read(paths["config/database"].first)).result
+        end
       rescue Psych::SyntaxError => e
         raise "YAML syntax error occurred while parsing #{paths["config/database"].first}. " \
               "Please note that YAML must be consistently indented using spaces. Tabs are not allowed. " \

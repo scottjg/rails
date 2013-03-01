@@ -299,7 +299,7 @@ Client.first(2)
 The SQL equivalent of the above is:
 
 ```sql
-SELECT * FROM clients LIMIT 2
+SELECT * FROM clients ORDER BY id ASC LIMIT 2
 ```
 
 #### last
@@ -315,7 +315,7 @@ Client.last(2)
 The SQL equivalent of the above is:
 
 ```sql
-SELECT * FROM clients ORDER By id DESC LIMIT 2
+SELECT * FROM clients ORDER BY id DESC LIMIT 2
 ```
 
 ### Retrieving Multiple Objects in Batches
@@ -1608,45 +1608,6 @@ EXPLAIN for: SELECT `posts`.* FROM `posts`  WHERE `posts`.`user_id` IN (1)
 ```
 
 under MySQL.
-
-### Automatic EXPLAIN
-
-Active Record is able to run EXPLAIN automatically on slow queries and log its
-output. This feature is controlled by the configuration parameter
-
-```ruby
-config.active_record.auto_explain_threshold_in_seconds
-```
-
-If set to a number, any query exceeding those many seconds will have its EXPLAIN
-automatically triggered and logged. In the case of relations, the threshold is
-compared to the total time needed to fetch records. So, a relation is seen as a
-unit of work, no matter whether the implementation of eager loading involves
-several queries under the hood.
-
-A threshold of `nil` disables automatic EXPLAINs.
-
-The default threshold in development mode is 0.5 seconds, and `nil` in test and
-production modes.
-
-INFO. Automatic EXPLAIN gets disabled if Active Record has no logger, regardless
-of the value of the threshold.
-
-#### Disabling Automatic EXPLAIN
-
-Automatic EXPLAIN can be selectively silenced with `ActiveRecord::Base.silence_auto_explain`:
-
-```ruby
-ActiveRecord::Base.silence_auto_explain do
-  # no automatic EXPLAIN is triggered here
-end
-```
-
-That may be useful for queries you know are slow but fine, like a heavyweight
-report of an admin interface.
-
-As its name suggests, `silence_auto_explain` only silences automatic EXPLAINs.
-Explicit calls to `ActiveRecord::Relation#explain` run.
 
 ### Interpreting EXPLAIN
 

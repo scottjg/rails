@@ -1,5 +1,23 @@
 ## Rails 4.0.0 (unreleased) ##
 
+
+## Rails 4.0.0.beta1 (February 25, 2013) ##
+
+*   Improve `rake stats` for JavaScript and CoffeeScript: ignore block comments
+    and calculates number of functions.
+
+    *Hendy Tanata*
+
+*   Ability to use a custom builder by passing `--builder` (or `-b`) has been removed. Consider
+    using application template instead. See this guide for more detail:
+    http://guides.rubyonrails.org/rails_application_templates.html
+
+    *Prem Sichanugrist*
+
+*   fix rake db:* tasks to work with DATABASE_URL and without config/database.yml
+
+    *Terence Lee*
+
 *   Add notice message for destroy action in scaffold generator.
 
     *Rahul P. Chaudhari*
@@ -23,15 +41,6 @@
     Fix #8304
 
     *Jeremy W. Rowe*
-
-*   Deprecate the `eager_load_paths` configuration and alias it to `autoload_paths`.
-    Since the default in Rails 4.0 is to run in 'threadsafe' mode we need to eager
-    load all of the paths in `autoload_paths`. This may have unintended consequences
-    if you have added 'lib' to `autoload_paths` such as loading unneeded code or
-    code intended only for development and/or test environments. If this applies to
-    your application you should thoroughly check what is being eager loaded.
-
-    *Andrew White*
 
 *   Restore Rails::Engine::Railties#engines with deprecation to ensure
     compatibility with gems such as Thinking Sphinx
