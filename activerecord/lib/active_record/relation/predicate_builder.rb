@@ -10,7 +10,7 @@ module ActiveRecord
           if value.empty?
             '1 = 2'
           else
-            build_from_hash(engine, value, table, false)
+            build_from_hash(engine, value, table)
           end
         else
           column = column.to_s
