@@ -1,5 +1,21 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fixed `ActionView::Helpers::CaptureHelper#content_for` regression when trying to use it in
+    a boolean statement.
+    Fixes #9360.
+
+    *Nikolay Shebanov*
+
+*   `format: true` does not override existing format constraints.
+    Fixes #9466.
+
+    Example:
+
+        # This will force the .json extension.
+        get '/json_only', to: ok, format: true, constraints: { format: /json/ }
+
+    *Yves Senn*
+
 *   Skip valid encoding checks for non-String parameters that come
     from the matched route's defaults.
     Fixes #9435.

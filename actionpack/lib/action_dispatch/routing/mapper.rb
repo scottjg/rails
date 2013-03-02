@@ -113,14 +113,6 @@ module ActionDispatch
             @options.merge!(default_controller_and_action)
           end
 
-          def normalize_format!
-            if options[:format] == true
-              options[:format] = /.+/
-            elsif options[:format] == false
-              options.delete(:format)
-            end
-          end
-
           def normalize_requirements!
             constraints.each do |key, requirement|
               next unless segment_keys.include?(key) || key == :controller
@@ -129,7 +121,7 @@ module ActionDispatch
             end
 
             if options[:format] == true
-              @requirements[:format] = /.+/
+              @requirements[:format] ||= /.+/
             elsif Regexp === options[:format]
               @requirements[:format] = options[:format]
             elsif String === options[:format]

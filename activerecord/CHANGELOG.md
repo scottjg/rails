@@ -1,5 +1,56 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Postgresql timestamp with time zone (timestamptz) datatype now returns a
+    ActiveSupport::TimeWithZone instance instead of a string
+
+    *Troy Kruthoff*
+
+*   The `#append` method for collection associations behaves like`<<`.
+    `#prepend` is not defined and `<<` or `#append` should be used.
+    Fixes #7364.
+
+    *Yves Senn*
+
+*   Added support for creating a table via Rails migration generator.
+    For example,
+
+        rails g migration create_books title:string content:text
+
+    will generate a migration that creates a table called books with
+    the listed attributes, without creating a model.
+
+    *Sammy Larbi*
+
+*   Fix bug that raises the wrong exception when the exception handled by PostgreSQL adapter
+    doesn't respond to `#result`.
+    Fixes #8617.
+
+    *kennyj*
+
+*   Support PostgreSQL specific column types when using `change_table`.
+    Fixes #9480.
+
+    Example:
+
+        change_table :authors do |t|
+          t.hstore :books
+          t.json :metadata
+        end
+
+    *Yves Senn*
+
+*   Revert 408227d9c5ed7d, 'quote numeric'. This introduced some regressions.
+
+    *Steve Klabnik*
+
+*   Fix calculation of `db_runtime` property in
+   `ActiveRecord::Railties::ControllerRuntime#cleanup_view_runtime`.
+    Previously, after raising `ActionView::MissingTemplate`, `db_runtime` was
+    not populated.
+    Fixes #9215.
+
+    *Igor Fedoronchuk*
+
 *   Do not try to touch invalid (and thus not persisted) parent record
     for a `belongs_to :parent, touch: true` association
 
@@ -1518,5 +1569,6 @@
 *   PostgreSQL hstore types are automatically deserialized from the database.
 
     *Aaron Patterson*
+
 
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activerecord/CHANGELOG.md) for previous changes.
