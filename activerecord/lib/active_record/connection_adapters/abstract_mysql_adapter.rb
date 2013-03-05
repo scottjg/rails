@@ -296,11 +296,15 @@ module ActiveRecord
 
       # In the simple case, MySQL allows us to place JOINs directly into the UPDATE
       # query. However, this does not allow for LIMIT, OFFSET and ORDER. To support
-      # these, we must use a subquery. However, MySQL is too stupid to create a
+      # the first two we must use a subquery. However, MySQL is too stupid to create a
       # temporary table for this automatically, so we have to give it some prompting
       # in the form of a subsubquery. Ugh!
+      #
+      # Note that if only ORDER is present a JOIN can be used safely.
+      # For a singe SQL command is atomic and without LIMIT or OFFSET all
+      # matched rows will be affected.
       def join_to_update(update, select) #:nodoc:
-        if select.limit || select.offset || select.orders.any?
+        if select.limit || select.offset
           subsubselect = select.clone
           subsubselect.projections = [update.key]
 
