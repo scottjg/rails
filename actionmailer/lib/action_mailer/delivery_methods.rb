@@ -54,6 +54,12 @@ module ActionMailer
         self.delivery_methods = delivery_methods.merge(symbol.to_sym => klass).freeze
       end
 
+      def normalized_settings(method)
+        settings_for_method = send(:"#{method}_settings") || {}
+        settings_for_method.symbolize_keys! if settings_for_method.keys.first.is_a?(String)
+        settings_for_method
+      end
+
       def wrap_delivery_behavior(mail, method=nil, options=nil) # :nodoc:
         method ||= self.delivery_method
         mail.delivery_handler = self
@@ -63,7 +69,7 @@ module ActionMailer
           raise "Delivery method cannot be nil"
         when Symbol
           if klass = delivery_methods[method]
-            mail.delivery_method(klass,(send(:"#{method}_settings") || {}).merge!(options || {}))
+            mail.delivery_method(klass, normalized_settings(method).merge!(options || {}))
           else
             raise "Invalid delivery method #{method.inspect}"
           end

@@ -42,6 +42,13 @@ class DefaultsDeliveryMethodsTest < ActiveSupport::TestCase
                 arguments: '-i -t'}
     assert_equal settings, ActionMailer::Base.sendmail_settings
   end
+
+  test "allow settings with no symbol keys" do
+    settings = {"location" => "#{Dir.tmpdir}/mails"}
+    normlized_settings = {location: "#{Dir.tmpdir}/mails"}
+    ActionMailer::Base.file_settings = settings
+    assert_equal normlized_settings, ActionMailer::Base.normalized_settings(:file)
+  end
 end
 
 class CustomDeliveryMethodsTest < ActiveSupport::TestCase
