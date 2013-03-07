@@ -2,8 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-#gem 'arel', github: 'rails/arel', branch: 'master'
-gem 'arel', '~> 3.0.2'
+gem 'arel', github: 'rails/arel', branch: 'master'
 
 gem 'mocha', '~> 0.13.0', require: false
 gem 'rack-test', github: 'brynary/rack-test'
@@ -16,8 +15,7 @@ gem 'coffee-rails', github: 'rails/coffee-rails'
 # TODO: Release thor
 gem 'thor', github: 'wycats/thor', branch: 'master'
 
-#gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
-gem "activerecord-deprecated_finders", "~> 0.0.1"
+gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
 
 # Needed for compiling the ActionDispatch::Journey parser
 gem 'racc', '>=1.4.6', require: false
