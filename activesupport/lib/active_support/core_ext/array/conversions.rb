@@ -1,4 +1,4 @@
-require 'active_support/xml_mini'
+require 'active_support/xml'
 require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/hash/reverse_merge'
 require 'active_support/core_ext/string/inflections'
@@ -149,14 +149,14 @@ class Array
     builder = options[:builder]
     builder.instruct! unless options.delete(:skip_instruct)
 
-    root = ActiveSupport::XmlMini.rename_key(options[:root].to_s, options)
+    root = ActiveSupport::Xml.rename_key(options[:root].to_s, options)
     children = options.delete(:children) || root.singularize
 
     attributes = options[:skip_types] ? {} : {:type => "array"}
     return builder.tag!(root, attributes) if empty?
 
     builder.__send__(:method_missing, root, attributes) do
-      each { |value| ActiveSupport::XmlMini.to_tag(children, value, options) }
+      each { |value| ActiveSupport::Xml.to_tag(children, value, options) }
       yield builder if block_given?
     end
   end

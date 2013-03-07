@@ -1,20 +1,16 @@
 require 'abstract_unit'
-require 'active_support/xml_mini'
+require 'active_support/xml'
 
 class REXMLEngineTest < Test::Unit::TestCase
   include ActiveSupport
 
-  def test_default_is_rexml
-    assert_equal XmlMini_REXML, XmlMini.backend
-  end
-
   def test_set_rexml_as_backend
-    XmlMini.backend = 'REXML'
-    assert_equal XmlMini_REXML, XmlMini.backend
+    ActiveSupport::Xml.backend = 'REXML'
+    assert_equal MultiXml::Parsers::Rexml, ActiveSupport::Xml.backend
   end
 
   def test_parse_from_io
-    XmlMini.backend = 'REXML'
+    ActiveSupport::Xml.backend = 'REXML'
     io = StringIO.new(<<-eoxml)
     <root>
       good
@@ -24,6 +20,6 @@ class REXMLEngineTest < Test::Unit::TestCase
       morning
     </root>
     eoxml
-    XmlMini.parse(io)
+    ActiveSupport::Xml.decode(io)
   end
 end

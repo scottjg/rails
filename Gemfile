@@ -97,3 +97,5 @@ end
 
 # A gem necessary for ActiveRecord tests with IBM DB
 gem "ibm_db" if ENV['IBM_DB']
+
+gem "multi_xml", :git => "git://github.com/sferik/multi_xml.git", :branch => "xml_mini_compatibility"

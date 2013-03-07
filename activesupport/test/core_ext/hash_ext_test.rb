@@ -1043,12 +1043,6 @@ class HashToXmlTest < Test::Unit::TestCase
     end
   end
 
-  def test_empty_string_works_for_typecast_xml_value
-    assert_nothing_raised do
-      Hash.__send__(:typecast_xml_value, "")
-    end
-  end
-
   def test_escaping_to_xml
     hash = {
       :bare_string        => 'First & Last Name',
@@ -1124,12 +1118,12 @@ class HashToXmlTest < Test::Unit::TestCase
 
   def test_expansion_count_is_limited
     expected =
-      case ActiveSupport::XmlMini.backend.name
-      when 'ActiveSupport::XmlMini_REXML';        RuntimeError
-      when 'ActiveSupport::XmlMini_Nokogiri';     Nokogiri::XML::SyntaxError
-      when 'ActiveSupport::XmlMini_NokogiriSAX';  RuntimeError
-      when 'ActiveSupport::XmlMini_LibXML';       LibXML::XML::Error
-      when 'ActiveSupport::XmlMini_LibXMLSAX';    LibXML::XML::Error
+      case ActiveSupport::Xml.backend.name
+      when 'MultiXml::Parsers::Rexml';              RuntimeError
+      when 'MultiXml::Parsers::Nokogiri';           Nokogiri::XML::SyntaxError
+      # when 'ActiveSupport::XmlMini_NokogiriSAX';  RuntimeError
+      when 'MultiXml::Parsers::Libxml';             LibXML::XML::Error
+      # when 'ActiveSupport::XmlMini_LibXMLSAX';    LibXML::XML::Error
       end
 
     assert_raise expected do

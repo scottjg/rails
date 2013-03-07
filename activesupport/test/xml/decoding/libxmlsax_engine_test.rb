@@ -1,5 +1,5 @@
 require 'abstract_unit'
-require 'active_support/xml_mini'
+require 'active_support/xml'
 require 'active_support/core_ext/hash/conversions'
 
 begin
@@ -8,23 +8,22 @@ rescue LoadError
   # Skip libxml tests
 else
 
-class LibxmlEngineTest < Test::Unit::TestCase
+class LibXMLSAXEngineTest < Test::Unit::TestCase
   include ActiveSupport
 
   def setup
-    @default_backend = XmlMini.backend
-    XmlMini.backend = 'LibXML'
-
-    LibXML::XML::Error.set_handler(&lambda { |error| }) #silence libxml, exceptions will do
+    @default_backend = ActiveSupport::Xml.backend
+    ActiveSupport::Xml.backend = 'LibXMLSAX'
   end
 
   def teardown
-    XmlMini.backend = @default_backend
+    ActiveSupport::Xml.backend = @default_backend
   end
 
   def test_exception_thrown_on_expansion_attack
     assert_raise LibXML::XML::Error do
-      attack_xml = %{<?xml version="1.0" encoding="UTF-8"?>
+      attack_xml = <<-EOT
+      <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE member [
         <!ENTITY a "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">
         <!ENTITY b "&c;&c;&c;&c;&c;&c;&c;&c;&c;&c;">
@@ -37,19 +36,20 @@ class LibxmlEngineTest < Test::Unit::TestCase
       <member>
       &a;
       </member>
-     }
+      EOT
+
       Hash.from_xml(attack_xml)
     end
   end
 
   def test_setting_libxml_as_backend
-    XmlMini.backend = 'LibXML'
-    assert_equal XmlMini_LibXML, XmlMini.backend
+    ActiveSupport::Xml.backend = 'LibXMLSAX'
+    assert_equal ActiveSupport::Xml_LibXMLSAX, ActiveSupport::Xml.backend
   end
 
   def test_blank_returns_empty_hash
-    assert_equal({}, XmlMini.parse(nil))
-    assert_equal({}, XmlMini.parse(''))
+    assert_equal({}, ActiveSupport::Xml.decode(nil))
+    assert_equal({}, ActiveSupport::Xml.decode(''))
   end
 
   def test_array_type_makes_an_array
@@ -142,7 +142,7 @@ class LibxmlEngineTest < Test::Unit::TestCase
       morning
     </root>
     eoxml
-    XmlMini.parse(io)
+    ActiveSupport::Xml.decode(io)
   end
 
   def test_children_with_simple_cdata
@@ -184,19 +184,10 @@ class LibxmlEngineTest < Test::Unit::TestCase
     eoxml
   end
 
-  def test_children_with_blank_text_and_attribute
-    assert_equal_rexml(<<-eoxml)
-    <root>
-      <products type="file">   </products>
-    </root>
-    eoxml
-  end
-
-
   private
   def assert_equal_rexml(xml)
-    hash = XmlMini.with_backend('REXML') { XmlMini.parse(xml) }
-    assert_equal(hash, XmlMini.parse(xml))
+    hash = ActiveSupport::Xml.with_backend('REXML') { ActiveSupport::Xml.decode(xml) }
+    assert_equal(hash, ActiveSupport::Xml.decode(xml))
   end
 end
 

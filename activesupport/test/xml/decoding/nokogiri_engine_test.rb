@@ -1,27 +1,42 @@
 require 'abstract_unit'
-require 'active_support/xml_mini'
+require 'active_support/xml'
 require 'active_support/core_ext/hash/conversions'
 
 begin
-  require 'libxml'
+  require 'nokogiri'
 rescue LoadError
-  # Skip libxml tests
+  # Skip nokogiri tests
 else
 
-class LibXMLSAXEngineTest < Test::Unit::TestCase
+class NokogiriEngineTest < Test::Unit::TestCase
   include ActiveSupport
 
   def setup
-    @default_backend = XmlMini.backend
-    XmlMini.backend = 'LibXMLSAX'
+    @default_backend = ActiveSupport::Xml.backend
+    ActiveSupport::Xml.backend = 'Nokogiri'
   end
 
   def teardown
-    XmlMini.backend = @default_backend
+    ActiveSupport::Xml.backend = @default_backend
+  end
+
+  def test_file_from_xml
+    hash = Hash.from_xml(<<-eoxml)
+      <blog>
+        <logo type="file" name="logo.png" content_type="image/png">
+        </logo>
+      </blog>
+    eoxml
+    assert hash.has_key?('blog')
+    assert hash['blog'].has_key?('logo')
+
+    file = hash['blog']['logo']
+    assert_equal 'logo.png', file.original_filename
+    assert_equal 'image/png', file.content_type
   end
 
   def test_exception_thrown_on_expansion_attack
-    assert_raise LibXML::XML::Error do
+    assert_raise Nokogiri::XML::SyntaxError do
       attack_xml = <<-EOT
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE member [
@@ -37,19 +52,18 @@ class LibXMLSAXEngineTest < Test::Unit::TestCase
       &a;
       </member>
       EOT
-
       Hash.from_xml(attack_xml)
     end
   end
 
-  def test_setting_libxml_as_backend
-    XmlMini.backend = 'LibXMLSAX'
-    assert_equal XmlMini_LibXMLSAX, XmlMini.backend
+  def test_setting_nokogiri_as_backend
+    ActiveSupport::Xml.backend = 'Nokogiri'
+    assert_equal ActiveSupport::Xml_Nokogiri, ActiveSupport::Xml.backend
   end
 
   def test_blank_returns_empty_hash
-    assert_equal({}, XmlMini.parse(nil))
-    assert_equal({}, XmlMini.parse(''))
+    assert_equal({}, ActiveSupport::Xml.decode(nil))
+    assert_equal({}, ActiveSupport::Xml.decode(''))
   end
 
   def test_array_type_makes_an_array
@@ -142,7 +156,7 @@ class LibXMLSAXEngineTest < Test::Unit::TestCase
       morning
     </root>
     eoxml
-    XmlMini.parse(io)
+    ActiveSupport::Xml.decode(io)
   end
 
   def test_children_with_simple_cdata
@@ -184,10 +198,18 @@ class LibXMLSAXEngineTest < Test::Unit::TestCase
     eoxml
   end
 
+  def test_children_with_blank_text_and_attribute
+    assert_equal_rexml(<<-eoxml)
+    <root>
+      <products type="file">   </products>
+    </root>
+    eoxml
+  end
+
   private
   def assert_equal_rexml(xml)
-    hash = XmlMini.with_backend('REXML') { XmlMini.parse(xml) }
-    assert_equal(hash, XmlMini.parse(xml))
+    hash = ActiveSupport::Xml.with_backend('REXML') { ActiveSupport::Xml.decode(xml) }
+    assert_equal(hash, ActiveSupport::Xml.decode(xml))
   end
 end
 

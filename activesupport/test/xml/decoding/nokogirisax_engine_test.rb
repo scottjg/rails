@@ -1,5 +1,5 @@
 require 'abstract_unit'
-require 'active_support/xml_mini'
+require 'active_support/xml'
 require 'active_support/core_ext/hash/conversions'
 
 begin
@@ -8,16 +8,16 @@ rescue LoadError
   # Skip nokogiri tests
 else
 
-class NokogiriEngineTest < Test::Unit::TestCase
+class NokogiriSAXEngineTest < Test::Unit::TestCase
   include ActiveSupport
 
   def setup
-    @default_backend = XmlMini.backend
-    XmlMini.backend = 'Nokogiri'
+    @default_backend = ActiveSupport::Xml.backend
+    ActiveSupport::Xml.backend = 'NokogiriSAX'
   end
 
   def teardown
-    XmlMini.backend = @default_backend
+    ActiveSupport::Xml.backend = @default_backend
   end
 
   def test_file_from_xml
@@ -36,7 +36,7 @@ class NokogiriEngineTest < Test::Unit::TestCase
   end
 
   def test_exception_thrown_on_expansion_attack
-    assert_raise Nokogiri::XML::SyntaxError do
+    assert_raise RuntimeError do
       attack_xml = <<-EOT
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE member [
@@ -52,18 +52,19 @@ class NokogiriEngineTest < Test::Unit::TestCase
       &a;
       </member>
       EOT
+
       Hash.from_xml(attack_xml)
     end
   end
 
   def test_setting_nokogiri_as_backend
-    XmlMini.backend = 'Nokogiri'
-    assert_equal XmlMini_Nokogiri, XmlMini.backend
+    ActiveSupport::Xml.backend = 'Nokogiri'
+    assert_equal ActiveSupport::Xml_Nokogiri, ActiveSupport::Xml.backend
   end
 
   def test_blank_returns_empty_hash
-    assert_equal({}, XmlMini.parse(nil))
-    assert_equal({}, XmlMini.parse(''))
+    assert_equal({}, ActiveSupport::Xml.decode(nil))
+    assert_equal({}, ActiveSupport::Xml.decode(''))
   end
 
   def test_array_type_makes_an_array
@@ -156,7 +157,7 @@ class NokogiriEngineTest < Test::Unit::TestCase
       morning
     </root>
     eoxml
-    XmlMini.parse(io)
+    ActiveSupport::Xml.decode(io)
   end
 
   def test_children_with_simple_cdata
@@ -208,8 +209,8 @@ class NokogiriEngineTest < Test::Unit::TestCase
 
   private
   def assert_equal_rexml(xml)
-    hash = XmlMini.with_backend('REXML') { XmlMini.parse(xml) }
-    assert_equal(hash, XmlMini.parse(xml))
+    hash = ActiveSupport::Xml.with_backend('REXML') { ActiveSupport::Xml.decode(xml) }
+    assert_equal(hash, ActiveSupport::Xml.decode(xml))
   end
 end
 

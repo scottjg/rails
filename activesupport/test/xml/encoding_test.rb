@@ -1,55 +1,55 @@
 require 'abstract_unit'
-require 'active_support/xml_mini'
+require 'active_support/xml'
 require 'active_support/builder'
 
-module XmlMiniTest
+module TestXmlEncoding
   class RenameKeyTest < Test::Unit::TestCase
     def test_rename_key_dasherizes_by_default
-      assert_equal "my-key", ActiveSupport::XmlMini.rename_key("my_key")
+      assert_equal "my-key", ActiveSupport::Xml.rename_key("my_key")
     end
 
     def test_rename_key_does_nothing_with_dasherize_true
-      assert_equal "my-key", ActiveSupport::XmlMini.rename_key("my_key", :dasherize => true)
+      assert_equal "my-key", ActiveSupport::Xml.rename_key("my_key", :dasherize => true)
     end
 
     def test_rename_key_does_nothing_with_dasherize_false
-      assert_equal "my_key", ActiveSupport::XmlMini.rename_key("my_key", :dasherize => false)
+      assert_equal "my_key", ActiveSupport::Xml.rename_key("my_key", :dasherize => false)
     end
 
     def test_rename_key_camelizes_with_camelize_true
-      assert_equal "MyKey", ActiveSupport::XmlMini.rename_key("my_key", :camelize => true)
+      assert_equal "MyKey", ActiveSupport::Xml.rename_key("my_key", :camelize => true)
     end
 
     def test_rename_key_lower_camelizes_with_camelize_lower
-      assert_equal "myKey", ActiveSupport::XmlMini.rename_key("my_key", :camelize => :lower)
+      assert_equal "myKey", ActiveSupport::Xml.rename_key("my_key", :camelize => :lower)
     end
 
     def test_rename_key_lower_camelizes_with_camelize_upper
-      assert_equal "MyKey", ActiveSupport::XmlMini.rename_key("my_key", :camelize => :upper)
+      assert_equal "MyKey", ActiveSupport::Xml.rename_key("my_key", :camelize => :upper)
     end
 
     def test_rename_key_does_not_dasherize_leading_underscores
-      assert_equal "_id", ActiveSupport::XmlMini.rename_key("_id")
+      assert_equal "_id", ActiveSupport::Xml.rename_key("_id")
     end
 
     def test_rename_key_with_leading_underscore_dasherizes_interior_underscores
-      assert_equal "_my-key", ActiveSupport::XmlMini.rename_key("_my_key")
+      assert_equal "_my-key", ActiveSupport::Xml.rename_key("_my_key")
     end
 
     def test_rename_key_does_not_dasherize_trailing_underscores
-      assert_equal "id_", ActiveSupport::XmlMini.rename_key("id_")
+      assert_equal "id_", ActiveSupport::Xml.rename_key("id_")
     end
 
     def test_rename_key_with_trailing_underscore_dasherizes_interior_underscores
-      assert_equal "my-key_", ActiveSupport::XmlMini.rename_key("my_key_")
+      assert_equal "my-key_", ActiveSupport::Xml.rename_key("my_key_")
     end
 
     def test_rename_key_does_not_dasherize_multiple_leading_underscores
-      assert_equal "__id", ActiveSupport::XmlMini.rename_key("__id")
+      assert_equal "__id", ActiveSupport::Xml.rename_key("__id")
     end
 
     def test_rename_key_does_not_dasherize_multiple_trailing_underscores
-      assert_equal "id__", ActiveSupport::XmlMini.rename_key("id__")
+      assert_equal "id__", ActiveSupport::Xml.rename_key("id__")
     end
   end
 
@@ -59,7 +59,7 @@ module XmlMiniTest
     end
 
     def setup
-      @xml = ActiveSupport::XmlMini
+      @xml = ActiveSupport::Xml
       @options = {:skip_instruct => true, :builder => Builder::XmlMarkup.new}
     end
 
