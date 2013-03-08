@@ -34,7 +34,7 @@ module ActiveRecord
             if current_scope
               current_scope.clone
             else
-              scope = relation.clone
+              scope = relation
               scope.default_scoped = true
               scope
             end
@@ -48,7 +48,7 @@ module ActiveRecord
           if current_scope
             current_scope.scope_for_create
           else
-            scope = relation.clone
+            scope = relation
             scope.default_scoped = true
             scope.scope_for_create
           end
@@ -161,16 +161,14 @@ module ActiveRecord
         #     end
         #
         #     def self.titles
-        #       map(&:title)
+        #       pluck(:title)
         #     end
-        #
         #   end
         #
         # We are able to call the methods like this:
         #
         #   Article.published.featured.latest_article
         #   Article.featured.titles
-
         def scope(name, scope_options = {})
           name = name.to_sym
           valid_scope_name?(name)

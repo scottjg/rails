@@ -280,6 +280,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         scope(':version', :version => /.+/) do
           resources :users, :id => /.+?/, :format => /json|xml/
         end
+
+        get "products/list"
       end
 
       match 'sprockets.js' => ::TestRoutingMapper::SprocketsApp
@@ -512,6 +514,20 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         match '/writers', :to => 'italians#writers', :constraints => ::TestRoutingMapper::IpRestrictor
         match '/sculptors', :to => 'italians#sculptors'
         match '/painters/:painter', :to => 'italians#painters', :constraints => {:painter => /michelangelo/}
+      end
+
+      get 'search' => 'search'
+
+      scope ':locale' do
+        match 'questions/new', :via => :get
+      end
+
+      namespace :api do
+        namespace :v3 do
+          scope ':locale' do
+            get "products/list"
+          end
+        end
       end
     end
   end
@@ -885,6 +901,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal original_options, options
   end
 
+  def test_url_for_does_not_modify_controller
+    controller = '/projects'
+    options = {:controller => controller, :action => 'status', :only_path => true}
+    url = url_for(options)
+
+    assert_equal '/projects/status', url
+    assert_equal '/projects', controller
+  end
+
   # tests the arguments modification free version of define_hash_access
   def test_named_route_with_no_side_effects
     original_options = { :host => 'test.host' }
@@ -1185,6 +1210,26 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
+  def test_resource_does_not_modify_passed_options
+    options = {:id => /.+?/, :format => /json|xml/}
+    self.class.stub_controllers do |routes|
+      routes.draw do
+        resource :user, options
+      end
+    end
+    assert_equal({:id => /.+?/, :format => /json|xml/}, options)
+  end
+
+  def test_resources_does_not_modify_passed_options
+    options = {:id => /.+?/, :format => /json|xml/}
+    self.class.stub_controllers do |routes|
+      routes.draw do
+        resources :users, options
+      end
+    end
+    assert_equal({:id => /.+?/, :format => /json|xml/}, options)
+  end
+
   def test_path_names
     with_test_routes do
       get '/pt/projetos'
@@ -1373,6 +1418,29 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
       assert_equal '/account/shorthand', account_shorthand_path
       get '/account/shorthand'
       assert_equal 'account#shorthand', @response.body
+    end
+  end
+
+  def test_match_shorthand_inside_namespace_with_controller
+    with_test_routes do
+      assert_equal '/api/products/list', api_products_list_path
+      get '/api/products/list'
+      assert_equal 'api/products#list', @response.body
+    end
+  end
+
+  def test_match_shorthand_inside_scope_with_variables_with_controller
+    with_test_routes do
+      get '/de/questions/new'
+      assert_equal 'questions#new', @response.body
+      assert_equal 'de', @request.params[:locale]
+    end
+  end
+
+  def test_match_shorthand_inside_nested_namespaces_and_scopes_with_controller
+    with_test_routes do
+      get '/api/v3/en/products/list'
+      assert_equal 'api/v3/products#list', @response.body
     end
   end
 
@@ -2438,6 +2506,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal "/posts/1/admin", post_admin_root_path(:post_id => '1')
   end
 
+  def test_action_from_path_is_not_frozen
+    get '/search'
+    assert !@request.params[:action].frozen?
+  end
+
 private
   def with_test_routes
     yield
@@ -2755,3 +2828,29 @@ class TestNamedRouteUrlHelpers < ActionDispatch::IntegrationTest
   end
 end
 
+class TestOptionalRootSegments < ActionDispatch::IntegrationTest
+  stub_controllers do |routes|
+    Routes = routes
+    Routes.draw do
+      get '/(page/:page)', :to => 'pages#index', :as => :root
+    end
+  end
+
+  def app
+    Routes
+  end
+
+  include Routes.url_helpers
+
+  def test_optional_root_segments
+    get '/'
+    assert_equal 'pages#index', @response.body
+    assert_equal '/', root_path
+
+    get '/page/1'
+    assert_equal 'pages#index', @response.body
+    assert_equal '1', @request.params[:page]
+    assert_equal '/page/1', root_path('1')
+    assert_equal '/page/1', root_path(:page => '1')
+  end
+end

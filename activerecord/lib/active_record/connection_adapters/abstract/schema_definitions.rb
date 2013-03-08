@@ -42,8 +42,8 @@ module ActiveRecord
     # Represents the schema of an SQL table in an abstract way. This class
     # provides methods for manipulating the schema representation.
     #
-    # Inside migration files, the +t+ object in +create_table+ and
-    # +change_table+ is actually of this type:
+    # Inside migration files, the +t+ object in +create_table+
+    # is actually of this type:
     #
     #   class SomeMigration < ActiveRecord::Migration
     #     def up
@@ -391,7 +391,7 @@ module ActiveRecord
       #  t.remove(:qualification)
       #  t.remove(:qualification, :experience)
       def remove(*column_names)
-        @base.remove_column(@table_name, column_names)
+        @base.remove_column(@table_name, *column_names)
       end
 
       # Removes the given index from the table.

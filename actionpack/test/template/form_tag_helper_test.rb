@@ -220,6 +220,18 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal expected, actual
   end
 
+  def test_select_tag_with_nil_option_tags_and_include_blank
+    actual = select_tag "places", nil, :include_blank => true
+    expected = %(<select id="places" name="places"><option value=""></option></select>)
+    assert_dom_equal expected, actual
+  end
+
+  def test_select_tag_with_nil_option_tags_and_prompt
+    actual = select_tag "places", nil, :prompt => "string"
+    expected = %(<select id="places" name="places"><option value="">string</option></select>)
+    assert_dom_equal expected, actual
+  end
+
   def test_text_area_tag_size_string
     actual = text_area_tag "body", "hello world", "size" => "20x40"
     expected = %(<textarea cols="20" id="body" name="body" rows="40">\nhello world</textarea>)
@@ -373,46 +385,31 @@ class FormTagHelperTest < ActionView::TestCase
   end
 
   def test_submit_tag
-    assert_deprecated ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead" do
-      assert_dom_equal(
-        %(<input name='commit' data-disable-with="Saving..." onclick="alert('hello!')" type="submit" value="Save" />),
-        submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
-      )
-    end
+    assert_dom_equal(
+      %(<input name='commit' data-disable-with="Saving..." onclick="alert(&#x27;hello!&#x27;)" type="submit" value="Save" />),
+      submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
+    )
   end
 
   def test_submit_tag_with_no_onclick_options
-    assert_deprecated ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead" do
-      assert_dom_equal(
-        %(<input name='commit' data-disable-with="Saving..." type="submit" value="Save" />),
-        submit_tag("Save", :disable_with => "Saving...")
-      )
-    end
+    assert_dom_equal(
+      %(<input name='commit' data-disable-with="Saving..." type="submit" value="Save" />),
+      submit_tag("Save", :disable_with => "Saving...")
+    )
   end
 
   def test_submit_tag_with_confirmation
-    assert_deprecated ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead" do
-      assert_dom_equal(
-        %(<input name='commit' type='submit' value='Save' data-confirm="Are you sure?" />),
-        submit_tag("Save", :confirm => "Are you sure?")
-      )
-    end
-  end
-
-  def test_submit_tag_with_confirmation_without_deprecation_warning
     assert_dom_equal(
       %(<input name='commit' type='submit' value='Save' data-confirm="Are you sure?" />),
-      submit_tag("Save", :data => { :confirm => "Are you sure?" })
+      submit_tag("Save", :confirm => "Are you sure?")
     )
   end
 
   def test_submit_tag_with_confirmation_and_with_disable_with
-    assert_deprecated ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead" do
-      assert_dom_equal(
-        %(<input name="commit" data-disable-with="Saving..." data-confirm="Are you sure?" type="submit" value="Save" />),
-        submit_tag("Save", :disable_with => "Saving...", :confirm => "Are you sure?")
-      )
-    end
+    assert_dom_equal(
+      %(<input name="commit" data-disable-with="Saving..." data-confirm="Are you sure?" type="submit" value="Save" />),
+      submit_tag("Save", :disable_with => "Saving...", :confirm => "Are you sure?")
+    )
   end
 
   def test_button_tag
@@ -434,31 +431,6 @@ class FormTagHelperTest < ActionView::TestCase
       %(<button name="button" type="button">Button</button>),
       button_tag("Button", :type => "button")
     )
-  end
-
-  def test_button_tag_with_confirmation
-    assert_deprecated ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead" do
-      assert_dom_equal(
-        %(<button name="button" type="submit" data-confirm="Are you sure?">Save</button>),
-        button_tag("Save", :type => "submit", :confirm => "Are you sure?")
-      )
-    end
-  end
-
-  def test_button_tag_with_confirmation_without_deprecation_warning
-    assert_dom_equal(
-      %(<button name="button" type="submit" data-confirm="Are you sure?">Save</button>),
-      button_tag("Save", :type => "submit", :data => { :confirm => "Are you sure?" })
-    )
-  end
-
-  def test_button_tag_with_disable_with
-    assert_deprecated ":disable_with option is deprecated and will be removed from Rails 4.0. Use 'data-disable-with' instead" do
-      assert_dom_equal(
-        %(<button name="button" data-disable-with="Saving..." type="submit">Save</button>),
-        button_tag("Save", :type => "submit", :disable_with => "Saving...")
-      )
-    end
   end
 
   def test_button_tag_with_reset_type
@@ -492,18 +464,9 @@ class FormTagHelperTest < ActionView::TestCase
   end
 
   def test_image_submit_tag_with_confirmation
-    assert_deprecated ":confirm option is deprecated and will be removed from Rails 4.0. Use ':data => { :confirm => \'Text\' }' instead" do
-      assert_dom_equal(
-        %(<input type="image" src="/images/save.gif" data-confirm="Are you sure?" />),
-        image_submit_tag("save.gif", :confirm => "Are you sure?")
-      )
-    end
-  end
-
-  def test_image_submit_tag_with_confirmation_without_deprecation_warning
     assert_dom_equal(
       %(<input type="image" src="/images/save.gif" data-confirm="Are you sure?" />),
-      image_submit_tag("save.gif", :data => { :confirm => "Are you sure?" })
+      image_submit_tag("save.gif", :confirm => "Are you sure?")
     )
   end
 

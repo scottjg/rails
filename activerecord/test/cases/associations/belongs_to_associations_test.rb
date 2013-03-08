@@ -14,6 +14,8 @@ require 'models/sponsor'
 require 'models/member'
 require 'models/essay'
 require 'models/toy'
+require 'models/person'
+require 'models/reader'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
@@ -61,6 +63,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     citibank = Account.create("credit_limit" => 10)
     citibank.firm = apple
     assert_equal apple.id, citibank.firm_id
+  end
+
+  def test_id_assignment
+    apple = Firm.create("name" => "Apple")
+    citibank = Account.create("credit_limit" => 10)
+    citibank.firm_id = apple
+    assert_nil citibank.firm_id
   end
 
   def test_natural_assignment_with_primary_key
@@ -538,6 +547,11 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal new_firm.name, "Apple"
   end
 
+  def test_attributes_are_set_without_error_when_initialized_from_belongs_to_association_with_array_in_where_clause
+    new_account = Account.where(:credit_limit => [ 50, 60 ]).new
+    assert_nil new_account.credit_limit
+  end
+
   def test_reassigning_the_parent_id_updates_the_object
     client = companies(:second_client)
 
@@ -703,5 +717,17 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     sponsor = Sponsor.create!(:sponsorable => toy)
 
     assert_equal toy, sponsor.reload.sponsorable
+  end
+
+  def test_saving_nested_association
+    post1, post2 = Post.limit(2)
+    person = Person.new(:first_name => 'foo')
+    reader = Reader.new(:post => post1)
+
+    reader.post_id = post2.id
+    person.readers = [reader]
+
+    assert person.save
+    assert_equal reader.post_id, post2.id
   end
 end

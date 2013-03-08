@@ -1,5 +1,6 @@
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/hash/keys'
+require 'active_support/core_ext/module/attribute_accessors'
 
 module ActionDispatch
   class Request
@@ -169,12 +170,14 @@ module ActionDispatch
           options = { :value => value }
         end
 
-        @cookies[key.to_s] = value
-
         handle_options(options)
 
-        @set_cookies[key.to_s] = options
-        @delete_cookies.delete(key.to_s)
+        if @cookies[key.to_s] != value or options[:expires]
+          @cookies[key.to_s] = value
+          @set_cookies[key.to_s] = options
+          @delete_cookies.delete(key.to_s)
+        end
+
         value
       end
 

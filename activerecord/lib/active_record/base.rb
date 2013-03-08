@@ -450,12 +450,12 @@ module ActiveRecord #:nodoc:
       private
 
       def relation #:nodoc:
-        @relation ||= Relation.new(self, arel_table)
+        relation = Relation.new(self, arel_table)
 
         if finder_needs_type_condition?
-          @relation.where(type_condition).create_with(inheritance_column.to_sym => sti_name)
+          relation.where(type_condition).create_with(inheritance_column.to_sym => sti_name)
         else
-          @relation
+          relation
         end
       end
     end
@@ -479,7 +479,8 @@ module ActiveRecord #:nodoc:
       #   # Instantiates a single new object bypassing mass-assignment security
       #   User.new({ :first_name => 'Jamie', :is_admin => true }, :without_protection => true)
       def initialize(attributes = nil, options = {})
-        @attributes = self.class.initialize_attributes(self.class.column_defaults.dup)
+        defaults = Hash[self.class.column_defaults.map { |k, v| [k, v.duplicable? ? v.dup : v] }]
+        @attributes = self.class.initialize_attributes(defaults)
         @association_cache = {}
         @aggregation_cache = {}
         @attributes_cache = {}
@@ -489,7 +490,6 @@ module ActiveRecord #:nodoc:
         @marked_for_destruction = false
         @previously_changed = {}
         @changed_attributes = {}
-        @relation = nil
 
         ensure_proper_type
 
@@ -544,7 +544,7 @@ module ActiveRecord #:nodoc:
 
         @changed_attributes = {}
         self.class.column_defaults.each do |attr, orig_value|
-          @changed_attributes[attr] = orig_value if field_changed?(attr, orig_value, @attributes[attr])
+          @changed_attributes[attr] = orig_value if _field_changed?(attr, orig_value, @attributes[attr])
         end
 
         @aggregation_cache = {}
@@ -553,12 +553,11 @@ module ActiveRecord #:nodoc:
         @new_record  = true
 
         ensure_proper_type
-        populate_with_current_scope_attributes
         super
       end
 
       # Backport dup from 1.9 so that initialize_dup() gets called
-      unless Object.respond_to?(:initialize_dup)
+      unless Object.respond_to?(:initialize_dup, true)
         def dup # :nodoc:
           copy = super
           copy.initialize_dup(self)
@@ -697,9 +696,9 @@ module ActiveRecord #:nodoc:
     include Scoping
     extend DynamicMatchers
     include Sanitization
-    include Integration
     include AttributeAssignment
     include ActiveModel::Conversion
+    include Integration
     include Validations
     extend CounterCache
     include Locking::Optimistic, Locking::Pessimistic

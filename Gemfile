@@ -22,7 +22,7 @@ end
 gem 'uglifier', '>= 1.0.3', :require => false
 
 gem 'rake', '>= 0.8.7'
-gem 'mocha', '>= 0.9.8'
+gem 'mocha', '>= 0.13.0', :require => false
 
 group :doc do
   # The current sdoc cannot generate GitHub links due
@@ -47,12 +47,11 @@ instance_eval File.read '.Gemfile' if File.exists? '.Gemfile'
 
 platforms :mri do
   group :test do
-    gem 'ruby-prof', '~> 0.11.2'
+    gem 'ruby-prof', '~> 0.11.2' if RUBY_VERSION < '2.0'
   end
 end
 
 platforms :ruby do
-  gem 'json'
   gem 'yajl-ruby'
   gem 'nokogiri', '>= 1.4.5'
 
@@ -68,7 +67,7 @@ end
 
 platforms :jruby do
   gem 'json'
-  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.0'
+  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.7'
 
   # This is needed by now to let tests work on JRuby
   # TODO: When the JRuby guys merge jruby-openssl in
@@ -76,8 +75,8 @@ platforms :jruby do
   gem 'jruby-openssl'
 
   group :db do
-    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.0'
-    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.0'
+    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.7'
+    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.7'
   end
 end
 
@@ -95,3 +94,5 @@ end
 
 # A gem necessary for ActiveRecord tests with IBM DB
 gem 'ibm_db' if ENV['IBM_DB']
+
+gem 'benchmark-ips'

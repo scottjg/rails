@@ -5,6 +5,7 @@ require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/hash/except'
 require 'active_model/errors'
 require 'active_model/validations/callbacks'
+require 'active_model/validator'
 
 module ActiveModel
 
@@ -172,7 +173,7 @@ module ActiveModel
     end
 
     # Backport dup from 1.9 so that #initialize_dup gets called
-    unless Object.respond_to?(:initialize_dup)
+    unless Object.respond_to?(:initialize_dup, true)
       def dup # :nodoc:
         copy = super
         copy.initialize_dup(self)
