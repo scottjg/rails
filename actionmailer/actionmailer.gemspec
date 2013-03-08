@@ -2,7 +2,7 @@ require File.join(File.dirname(__FILE__), 'lib', 'action_mailer', 'version')
 
 AM_PKG_BUILD = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 AM_PKG_NAME = 'actionmailer'
-AM_PKG_VERSION = ActionMailer::VERSION::STRING + PAM_KG_BUILD
+AM_PKG_VERSION = ActionMailer::VERSION::STRING + AM_PKG_BUILD
 AM_PKG_FILE_NAME = "#{AM_PKG_NAME}-#{AM_PKG_VERSION}"
 
 spec = Gem::Specification.new do |s|
