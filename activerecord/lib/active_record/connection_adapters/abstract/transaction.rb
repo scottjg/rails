@@ -45,7 +45,7 @@ module ActiveRecord
       end
 
       def begin(options = {})
-        RealTransaction.new(connection, self, options)
+        RealTransaction.new(connection, self, options).begin
       end
 
       def closed?
@@ -76,6 +76,7 @@ module ActiveRecord
         @records   = []
         @finishing = false
         @joinable  = options.fetch(:joinable, true)
+        @isolation = options.fetch(:isolation, false)
       end
 
       # This state is necesarry so that we correctly handle stuff that might
@@ -159,8 +160,11 @@ module ActiveRecord
     class RealTransaction < OpenTransaction #:nodoc:
       def initialize(connection, parent, options = {})
         super
+      end
 
-        if options[:isolation]
+      def begin
+        super
+        if @isolation
           connection.begin_isolated_db_transaction(options[:isolation])
         else
           connection.begin_db_transaction
