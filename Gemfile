@@ -9,15 +9,6 @@ gem 'jquery-rails', '~> 2.2.0'
 gem 'turbolinks'
 gem 'coffee-rails', '~> 4.0.0.beta1'
 
-# TODO: Release thor
-gem 'thor', github: 'wycats/thor', branch: 'master'
-
-#gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders', branch: 'master'
-gem "activerecord-deprecated_finders", "~> 0.0.1"
-
-# Needed for compiling the ActionDispatch::Journey parser
-gem 'racc', '>=1.4.6', require: false
-
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
 gem 'uglifier', require: false
