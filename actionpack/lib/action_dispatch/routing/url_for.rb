@@ -176,7 +176,6 @@ module ActionDispatch
        
         #puts all_routes = Rails.application.routes.routes
 
-        case options
         when nil
           _routes.url_for(url_options.symbolize_keys)
         when Hash
