@@ -12,6 +12,8 @@ module AbstractController
 
       def test_performance_unit
           puts 'performance comparison'
+
+          #outputs the source code for the url_for method
           puts W.new.method(:url_for).source_location 
 
           Benchmark.bm(1000) do |x|

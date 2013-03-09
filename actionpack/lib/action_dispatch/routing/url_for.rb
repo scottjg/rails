@@ -148,6 +148,10 @@ module ActionDispatch
       #    url_for controller: 'tasks', action: 'testing', host: 'somehost.org', script_name: "/myapp", only_path: true
       #    # => '/myapp/tasks/testing'
       def url_for(options = nil)
+
+        puts 'URL FOR IS GETTING CALLED FROM THE TEST URL_FOR'
+        puts _routes.set.named_routes
+
         case options
         when nil
           _routes.url_for(url_options.symbolize_keys)
@@ -162,10 +166,21 @@ module ActionDispatch
 
       def url_for_improved(options = nil)
         puts 'this is the real url for  in action_dispatch/routing'
+        # routes  = ActionDispatch::Routing::RouteSet::NamedRouteCollection.new.names
+        # routes.each do |x|
+        #   puts x
+        # end 
+        puts _routes.set.named_routes
+        puts '^^^^^^^^'
+
+       
+        #puts all_routes = Rails.application.routes.routes
+
         case options
         when nil
           _routes.url_for(url_options.symbolize_keys)
         when Hash
+          puts _routes.url_for(options.symbolize_keys.reverse_merge!(url_options))
           _routes.url_for(options.symbolize_keys.reverse_merge!(url_options))
         when String
           options
