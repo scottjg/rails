@@ -164,29 +164,7 @@ module ActionDispatch
         end
       end
 
-      def url_for_improved(options = nil)
-        puts 'this is the real url for  in action_dispatch/routing'
-        # routes  = ActionDispatch::Routing::RouteSet::NamedRouteCollection.new.names
-        # routes.each do |x|
-        #   puts x
-        # end 
-        puts _routes.set.named_routes
-        puts '^^^^^^^^'
 
-       
-        #puts all_routes = Rails.application.routes.routes
-
-        when nil
-          _routes.url_for(url_options.symbolize_keys)
-        when Hash
-          puts _routes.url_for(options.symbolize_keys.reverse_merge!(url_options))
-          _routes.url_for(options.symbolize_keys.reverse_merge!(url_options))
-        when String
-          options
-        else
-          polymorphic_url(options)
-        end
-      end
 
       protected
 
