@@ -11,10 +11,8 @@ module ActionView
         end
 
         def render
-          option_tags_options = {
-            :selected => @options.fetch(:selected) { value(@object) },
-            :disabled => @options[:disabled]
-          }
+          option_tags_options = @options.dup
+          option_tags_options[:selected] = @options.fetch(:selected) { value(@object) }
 
           option_tags = if grouped_choices?
             grouped_options_for_select(@choices, option_tags_options)
