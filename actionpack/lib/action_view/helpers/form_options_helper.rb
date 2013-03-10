@@ -357,45 +357,49 @@ module ActionView
         disabled = Array(disabled).map(&:to_s)
         priority = Array(priority).map(&:to_s)
 
-        if priority && priority.any?
-          priority_container, non_priority_container = [], []
-          container.each do |element|
-            _, value = option_text_and_value(element).map(&:to_s)
-            if priority.include?(value)
-              priority_container << element
-            elsif priority_unique
-              non_priority_container << element
-            end
-          end
-          if priority_container.any?
-            separator = if priority_separator.nil?
-              '-------------'
-            elsif priority_separator.is_a?(Proc)
-              priority_separator.call(container)
-            else
-              priority_separator.to_s
-            end
-            priority_options = options_for_select(priority_container, selected: selected, disabled: disabled)
-            priority_options.safe_concat "\n"
-            priority_options.safe_concat content_tag(:option, separator, value: '', disabled: true)
-            priority_options.safe_concat "\n"
-            selected = nil if priority_options =~ / selected="selected"/
-            container = non_priority_container if priority_unique
-          end
-        end
-
-        options = container.map do |element|
+        options, priority_options = [], []
+        container.each do |element|
           html_attributes = option_html_attributes(element)
           text, value = option_text_and_value(element).map(&:to_s)
+          is_priority = priority.include?(value)
+          is_selected = selected.include?(value)
 
-          html_attributes[:selected] = true if selected && selected.include?(value)
-          html_attributes[:disabled] = true if disabled && disabled.include?(value)
+          html_attributes[:selected] = true if is_selected
+          html_attributes[:disabled] = true if disabled.include?(value)
           html_attributes[:value] = value
 
-          content_tag_string(:option, text, html_attributes)
-        end.join("\n").html_safe
+          option = content_tag_string(:option, text, html_attributes)
 
-        priority_options ? priority_options.safe_concat(options) : options
+          if is_priority
+            priority_options << option
+            if is_selected && !priority_unique
+              html_attributes.delete(:selected)
+              option = content_tag_string(:option, text, html_attributes)
+            end
+          end
+
+          options << option unless is_priority && priority_unique
+        end
+
+        options = options.join("\n").html_safe
+
+        if priority_options.empty?
+          options
+        else
+          priority_separator = if priority_separator.nil?
+            '-------------'
+          elsif priority_separator.is_a?(Proc)
+            priority_separator.call(container)
+          else
+            priority_separator.to_s
+          end
+
+          priority_options = priority_options.join("\n").html_safe
+          priority_options.safe_concat "\n"
+          priority_options.safe_concat content_tag(:option, priority_separator, value: '', disabled: true)
+          priority_options.safe_concat "\n"
+          priority_options.safe_concat(options)
+        end
       end
 
       # Returns a string of option tags that have been compiled by iterating over the +collection+ and assigning

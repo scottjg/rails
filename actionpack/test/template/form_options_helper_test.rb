@@ -93,6 +93,13 @@ class FormOptionsHelperTest < ActionView::TestCase
     )
   end
 
+  def test_collection_options_with_preselected_value_array_and_priority_values
+    assert_dom_equal(
+      "<option value=\"Babe\">Babe went home</option>\n<option value=\"Cabe\" selected=\"selected\">Cabe went home</option>\n<option value=\"\" disabled=\"disabled\">-------------</option>\n<option value=\"&lt;Abe&gt;\" selected=\"selected\">&lt;Abe&gt; went home</option>\n<option value=\"Babe\">Babe went home</option>\n<option value=\"Cabe\">Cabe went home</option>",
+      options_from_collection_for_select(dummy_posts, "author_name", "title", selected: ["Cabe", "<Abe>"], priority: ["Cabe", "Babe"])
+    )
+  end
+
   def test_collection_options_with_proc_for_disabled
     assert_dom_equal(
       "<option value=\"&lt;Abe&gt;\">&lt;Abe&gt; went home</option>\n<option value=\"Babe\" disabled=\"disabled\">Babe went home</option>\n<option value=\"Cabe\" disabled=\"disabled\">Cabe went home</option>",
