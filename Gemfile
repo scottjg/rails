@@ -14,7 +14,7 @@ gem 'coffee-rails', '~> 4.0.0.beta1'
 gem 'uglifier', require: false
 
 group :doc do
-  gem 'sdoc',  github: 'voloko/sdoc'
+  gem 'sdoc',  git: 'https://github.com/voloko/sdoc.git'
   gem 'redcarpet', '~> 2.2.2', platforms: :ruby
   gem 'w3c_validators'
   gem 'kindlerb'
@@ -71,7 +71,7 @@ if ENV['ORACLE_ENHANCED']
   platforms :ruby do
     gem 'ruby-oci8', '>= 2.0.4'
   end
-  gem 'activerecord-oracle_enhanced-adapter', github: 'rsim/oracle-enhanced', branch: 'master'
+  gem 'activerecord-oracle_enhanced-adapter', git: 'https://github.com/rsim/oracle-enhanced.git', branch: 'master'
 end
 
 # A gem necessary for ActiveRecord tests with IBM DB
