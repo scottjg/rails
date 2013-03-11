@@ -152,6 +152,18 @@ module ActionDispatch
         puts 'URL FOR IS GETTING CALLED FROM THE TEST URL_FOR'
         puts _routes.set.named_routes
 
+        puts 'testing now'
+
+        _routes.set.named_routes.each do |x|
+          puts x[1].ast
+          x[1].ast.each do |you|
+            puts you
+          end
+          #puts x.app
+        end
+
+
+
         case options
         when nil
           _routes.url_for(url_options.symbolize_keys)
