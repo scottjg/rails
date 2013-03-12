@@ -313,6 +313,22 @@ module ActiveRecord
       end
     end
 
+    def replace_binds(bind_values)
+      temp_binds = []
+      bind_values.map do |column, value| 
+        case value
+        when String, Integer
+          if (@klass.column_names.include? column.to_s)  
+            temp_binds.push([@klass.columns_hash[column.to_s], value])
+          else 
+            temp_binds.push([nil, value])
+          end
+        end
+
+      end
+      self.bind_values = temp_binds
+    end
+
     # Destroys the records matching +conditions+ by instantiating each
     # record and calling its +destroy+ method. Each object's callbacks are
     # executed (including <tt>:dependent</tt> association options). Returns the

@@ -77,6 +77,7 @@ module ActiveRecord
         when Numeric    then value
         when Date, Time then quoted_date(value)
         when Symbol     then value.to_s
+        when Array      then value
         else
           to_type = column ? " to #{column.type}" : ""
           raise TypeError, "can't cast #{value.class}#{to_type}"
