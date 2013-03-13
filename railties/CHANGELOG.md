@@ -1,5 +1,54 @@
 ## Rails 4.0.0 (unreleased) ##
 
+
+## Rails 4.0.0.beta1 (February 25, 2013) ##
+*   Change Service pages(404, etc). *Stanislav Sobolev*
+
+*   Improve `rake stats` for JavaScript and CoffeeScript: ignore block comments
+    and calculates number of functions.
+
+    *Hendy Tanata*
+
+*   Ability to use a custom builder by passing `--builder` (or `-b`) has been removed. Consider
+    using application template instead. See this guide for more detail:
+    http://guides.rubyonrails.org/rails_application_templates.html
+
+    *Prem Sichanugrist*
+
+*   fix rake db:* tasks to work with DATABASE_URL and without config/database.yml
+
+    *Terence Lee*
+
+*   Add notice message for destroy action in scaffold generator.
+
+    *Rahul P. Chaudhari*
+
+*   Add two new test rake tasks to speed up full test runs.
+
+    * `test:all`: run tests quickly by merging all types and not resetting db.
+    * `test:all:db`: run tests quickly, but also reset db.
+
+    *Ryan Davis*
+
+*   Add `--rc` option to support the load of a custom rc file during the generation of a new app.
+
+    *Amparo Luna*
+
+*   Add `--no-rc` option to skip the loading of railsrc file during the generation of a new app.
+
+    *Amparo Luna*
+
+*   Fixes database.yml when creating a new rails application with '.'
+    Fix #8304
+
+    *Jeremy W. Rowe*
+
+*   Restore Rails::Engine::Railties#engines with deprecation to ensure
+    compatibility with gems such as Thinking Sphinx
+    Fix #8551
+
+    *Tim Raymond*
+
 *   Specify which logs to clear when using the `rake log:clear` task.
     (e.g. rake log:clear LOGS=test,staging)
 
