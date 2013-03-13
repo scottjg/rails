@@ -691,11 +691,23 @@ module ActiveRecord #:nodoc:
       #   Person.exists?(['name LIKE ?', "%#{query}%"])
       #   Person.exists?
       def exists?(id_or_conditions = {})
-        find_initial(
-          :select => "#{quoted_table_name}.#{primary_key}",
-          :conditions => expand_id_conditions(id_or_conditions)) ? true : false
+        options = {
+            :select     => 1,
+            :conditions => expand_id_conditions(id_or_conditions),
+            :limit      => 1
+        }
+        include_associations = merge_includes(scope(:find, :include), options[:include])
+        if include_associations.any? && references_eager_loaded_tables?(options)
+          join_dependency = JoinDependency.new(self, merge_includes(scope(:find, :include), options[:include]), options[:joins])
+          sql = construct_finder_sql_with_included_associations(options, join_dependency)
+        else
+          sql = construct_finder_sql(options)
+        end
+        connection.select_all(
+            sql,
+            "#{name} Exists"
+        ).size > 0
       end
-
       # Creates an object (or multiple objects) and saves it to the database, if validations pass.
       # The resulting object is returned whether the object was saved successfully to the database or not.
       #

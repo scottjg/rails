@@ -11,6 +11,7 @@ require 'models/developer'
 require 'models/customer'
 require 'models/job'
 require 'models/categorization'
+require 'models/project'
 
 class DynamicFinderMatchTest < ActiveRecord::TestCase
   def test_find_no_match
@@ -135,6 +136,11 @@ class FinderTest < ActiveRecord::TestCase
     Developer.with_scope(:find => { :include => :projects, :order => "projects.name" }) do
       assert Developer.exists?
     end
+  end
+
+  def test_exists_does_not_instantiate_records
+    Developer.expects(:instantiate).never
+    Developer.exists?
   end
 
   def test_find_by_array_of_one_id
