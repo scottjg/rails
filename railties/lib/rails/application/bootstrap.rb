@@ -30,27 +30,11 @@ INFO
       # Initialize the logger early in the stack in case we need to log some deprecation.
       initializer :initialize_logger, group: :all do
         Rails.logger ||= config.logger || begin
-          path = config.paths["log"].first
-          unless File.exist? File.dirname path
-            FileUtils.mkdir_p File.dirname path
-          end
-
-          f = File.open path, 'a'
-          f.binmode
-          f.sync = config.autoflush_log # if true make sure every write flushes
-
-          logger = ActiveSupport::Logger.new f
+          target = config.log_target || ActiveSupport::Logger.file_for_logging(config.paths["log"].first)
+          logger = ActiveSupport::Logger.new(target)
           logger.formatter = config.log_formatter
           logger = ActiveSupport::TaggedLogging.new(logger)
           logger.level = ActiveSupport::Logger.const_get(config.log_level.to_s.upcase)
-          logger
-        rescue StandardError
-          logger = ActiveSupport::TaggedLogging.new(ActiveSupport::Logger.new(STDERR))
-          logger.level = ActiveSupport::Logger::WARN
-          logger.warn(
-            "Rails Error: Unable to access log file. Please ensure that #{path} exists and is chmod 0666. " +
-            "The log level has been raised to WARN and the output directed to STDERR until the problem is fixed."
-          )
           logger
         end
       end
