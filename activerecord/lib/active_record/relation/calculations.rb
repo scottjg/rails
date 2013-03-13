@@ -23,9 +23,9 @@ module ActiveRecord
       column_name, options = nil, column_name if column_name.is_a?(Hash)
       result = calculate(:count, column_name, options)
       if group_values.any?
-        cast(GroupCaster, result)
+        cast(GroupCaste.new, result)
       else
-        cast(SimpleCaster, result)
+        cast(SimpleCaster.new(column_name), result)
       end
     end
 
@@ -36,9 +36,9 @@ module ActiveRecord
     def average(column_name, options = {})
       result = calculate(:average, column_name, options)
       if group_values.any?
-        cast(GroupCaster, result)
+        cast(GroupCaster.new, result)
       else
-        cast(SimpleCaster, result)
+        cast(SimpleCaster.new(column_name), result)
       end
     end
 
@@ -50,9 +50,9 @@ module ActiveRecord
     def minimum(column_name, options = {})
       result = calculate(:minimum, column_name, options)
       if group_values.any?
-        cast(GroupCaster, result)
+        cast(GroupCaster.new, result)
       else
-        cast(SimpleCaster, result)
+        cast(SimpleCaster.new(column_name), result)
       end
     end
 
@@ -64,9 +64,9 @@ module ActiveRecord
     def maximum(column_name, options = {})
       result = calculate(:maximum, column_name, options)
       if group_values.any?
-        cast(GroupCaster, result)
+        cast(GroupCaster.new, result)
       else
-        cast(SimpleCaster, result)
+        cast(SimpleCaster.new(column_name), result)
       end
     end
 
@@ -85,9 +85,9 @@ module ActiveRecord
       else
         result = calculate(:sum, *args)
         if group_values.any?
-          cast(GroupCaster, result)
+          cast(GroupCaster.new, result)
         else
-          cast(SimpleCaster, result)
+          cast(SimpleCaster.new(column_name), result)
       end
       end
     end
@@ -140,15 +140,18 @@ module ActiveRecord
     end
 
     def cast(casting_object, result_set)
-      casting_object.cast result_set
+      casting_object.cast(result_set)
     end
 
     class SimpleCaster 
+      def initialize(column_name)
+        @column_name = column_name
+      end
       def cast(result)
         row    = result.first
         value  = row && row.values.first
-        column = result.column_types.fetch(column_alias) do
-          column_for(column_name)
+        column = result.column_types.fetch(@column_name) do
+          column_for(@column_name)
         end
 
         type_cast_calculated_value(value, column, operation)
