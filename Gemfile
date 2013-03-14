@@ -2,6 +2,8 @@ source 'https://rubygems.org'
 
 gemspec
 
+gem 'debugger'
+
 gem 'arel', github: 'rails/arel', branch: 'master'
 
 gem 'mocha', '~> 0.13.0', require: false

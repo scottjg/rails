@@ -149,18 +149,29 @@ module ActionDispatch
       #    # => '/myapp/tasks/testing'
       def url_for(options = nil)
 
-        puts 'URL FOR IS GETTING CALLED FROM THE TEST URL_FOR'
-        puts _routes.set.named_routes
+        # puts 'URL FOR IS GETTING CALLED FROM THE TEST URL_FOR'
+        # puts self.class.instance_methods(false)
+        # puts _routes.class.instance_methods(false)
+        # puts self.named_routes
 
-        puts 'testing now'
+        # require 'debugger'
+        # debugger
+        # _routes.named_routes.each do |x|
+        #   puts x.class.instance_methods(false)
+        # end
+        # puts _routes.set.named_routes
 
-        _routes.set.named_routes.each do |x|
-          puts x[1].ast
-          x[1].ast.each do |you|
-            puts you
-          end
-          #puts x.app
-        end
+        # puts 'testing now'
+
+        # _routes.set.named_routes.each do |x|
+        #   puts 'xs !!!!!!!!!!!!!! '
+
+        #   puts x[0].class
+        #   puts x[0]
+        #   puts x[1].class
+        #   puts x[1].ast.first
+        #   puts x[2].class
+        # end
 
 
 
@@ -173,6 +184,11 @@ module ActionDispatch
           options
         else
           polymorphic_url(options)
+        end
+
+        
+        self.routes.each do |x|
+          puts x
         end
       end
 
