@@ -186,10 +186,32 @@ module ActionDispatch
           polymorphic_url(options)
         end
 
-        
-        self.routes.each do |x|
-          puts x
-        end
+        # puts _routes.routes.class
+        # puts "Should be journey class above"
+        # puts _routes.routes.class.instance_methods(false)
+
+        # puts "testing methods"
+        # puts _routes.routes.partitioned_routes
+        # puts _routes.routes.method(:partitioned_routes).source_location
+
+        mycache =  _routes.formatter.cache
+        # puts myFormatter.cache.keys
+        # mycache.each do |key, val|
+        #   puts "this is key"
+        #   puts key
+        #   puts "this is val"
+        #   puts val
+        # end
+
+        #puts mycache[[:controller, "list"]]
+        puts mycache[[:controller, "list"]][[:action, "favorited"]][:___routes]
+        require 'debugger'
+        debugger        
+
+        # _routes.named_routes.each do |x|
+        #   puts x
+        #   puts _routes.named_routes.get(x).ast
+        # end
       end
 
 
