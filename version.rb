@@ -3,7 +3,7 @@ module Rails
     MAJOR = 3
     MINOR = 0
     TINY  = 20
-    PRE   = 3
+    PRE   = 4
 
     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
   end
