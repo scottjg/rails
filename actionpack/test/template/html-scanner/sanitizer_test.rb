@@ -273,6 +273,15 @@ class SanitizerTest < ActionController::TestCase
     assert_sanitized "<span class=\"\\", "<span class=\"\\\">"
   end
 
+  def test_x03a
+    assert_sanitized %(<a href="javascript&#x3a;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="javascript&#x003a;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="http&#x3a;//legit">), %(<a href="http://legit">)
+    assert_sanitized %(<a href="javascript&#x3A;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="javascript&#x003A;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="http&#x3A;//legit">), %(<a href="http://legit">)
+  end
+
 protected
   def assert_sanitized(input, expected = nil)
     @sanitizer ||= HTML::WhiteListSanitizer.new
