@@ -1,5 +1,14 @@
 ## unreleased ##
 
+*   Include I18n locale fallbacks in view lookup.
+    Fixes GH#3512.
+
+    *Juan Barreneche*
+*   No changes.
+
+
+## Rails 3.2.13 ##
+
 *   Fix incorrectly appended square brackets to a multiple select box
     if an explicit name has been given and it already ends with "[]".
 
@@ -17,6 +26,7 @@
 
     *Olek Janiszewski*
 
+<<<<<<< HEAD
 *   Fix `ActionDispatch::Request#formats` when the Accept request-header is an
     empty string. Fix #7774 [Backport #8977, #9541]
 
@@ -24,6 +34,8 @@
 
 ## Rails 3.2.13.rc1 (Feb 17, 2013) ##
 
+=======
+>>>>>>> 3-2-13
 *   Determine the controller#action from only the matched path when using the
     shorthand syntax. Previously the complete path was used, which led
     to problems with nesting (scopes and namespaces).
