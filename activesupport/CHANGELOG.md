@@ -1,5 +1,14 @@
 ## unreleased ##
 
+*   Fix `ActiveSupport::TimeZone.parse` when time is at a local DST jump.
+    Fixes #9678.
+
+    *Andrew White*
+
+
+## Rails 3.2.13 (Feb 17, 2013) ##
+
+
 *   Fix DateTime comparison with DateTime::Infinity object.
 
     *Dan Kubb*
