@@ -1,5 +1,10 @@
 ## unreleased ##
 
+*   Fixed ActionController#action_missing not being called.
+    Fixes GH#9799.
+
+    *Janko Luin*
+
 *   Include I18n locale fallbacks in view lookup.
     Fixes GH#3512.
 
