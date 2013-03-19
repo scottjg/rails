@@ -172,7 +172,33 @@ module ActionDispatch
         #   puts x[1].ast.first
         #   puts x[2].class
         # end
+          # puts _routes.routes.class
+        # puts "Should be journey class above"
+        # puts _routes.routes.class.instance_methods(false)
 
+        # puts "testing methods"
+        # puts _routes.routes.partitioned_routes
+        # puts _routes.routes.method(:partitioned_routes).source_location
+        # puts myFormatter.cache.keys
+        # mycache.each do |key, val|
+        #   puts "this is key"
+        #   puts key
+        #   puts "this is val"
+        #   puts val
+        # end
+
+        # puts mycache[[:controller, "list"]]
+        # puts mycache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes]
+        # require 'debugger'
+        # debugger        
+
+        # _routes.named_routes.each do |x|
+        #   puts x
+        #   puts _routes.named_routes.get(x).ast
+        # end
+
+        # mycache =  _routes.formatter.cache
+        # puts mycache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes][0][1].ast
 
 
         case options
@@ -186,33 +212,44 @@ module ActionDispatch
           polymorphic_url(options)
         end
 
-        # puts _routes.routes.class
-        # puts "Should be journey class above"
-        # puts _routes.routes.class.instance_methods(false)
-
-        # puts "testing methods"
-        # puts _routes.routes.partitioned_routes
-        # puts _routes.routes.method(:partitioned_routes).source_location
-
-        mycache =  _routes.formatter.cache
-        # puts myFormatter.cache.keys
-        # mycache.each do |key, val|
-        #   puts "this is key"
-        #   puts key
-        #   puts "this is val"
-        #   puts val
-        # end
-
-        #puts mycache[[:controller, "list"]]
-        puts mycache[[:controller, "list"]][[:action, "favorited"]][:___routes]
-        require 'debugger'
-        debugger        
-
-        # _routes.named_routes.each do |x|
-        #   puts x
-        #   puts _routes.named_routes.get(x).ast
-        # end
       end
+
+      def url_for_optimized(options = nil)
+        #TODO -> integrate script and full path
+        #make it work with arguments such as :id
+        #in routes.rb
+        #get 'unread' => 'list#unread'
+        #get 'unread/more' => 'list#unread'
+        #how do i deal with this case of two links?????
+
+
+        ast_link = _routes.formatter.cache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes][0][1].ast
+        #what do we do with formatting?
+
+
+        #Uncomment this to learn more about the set of links a hash returns given a controller and an action
+
+
+        # possible_routes = _routes.formatter.cache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes]
+        # puts "POSSIBLE ROUTES"
+        # possible_routes.each do |possible_route|
+        #   # puts possible_route[1].class.instance_methods(false)
+        #   puts possible_route[1].path
+        #   #puts possible_route[1].optional_parts
+        # end
+        # puts possible_routes
+
+
+        ast_link = ast_link.to_s.sub("(.:format)", "")
+        # puts _routes.formatter.cache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes][0][1].ast.class
+        options_hash =  url_options.symbolize_keys
+
+        # require "debugger"
+        # debugger
+
+        "#{options_hash[:protocol]}#{options_hash[:host]}:#{options_hash[:port]}#{ast_link}"
+      end
+
 
 
 
