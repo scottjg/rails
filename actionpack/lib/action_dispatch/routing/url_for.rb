@@ -222,8 +222,9 @@ module ActionDispatch
         #get 'unread/more' => 'list#unread'
         #how do i deal with this case of two links?????
 
-
-        ast_link = _routes.formatter.cache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes][0][1].ast
+        #MAYBE USE HASH.DELETE TO OPTIMIZE THIS SO WE KNOW IT WONT BE IN HASH
+        ast_link = _routes.formatter.cache[[:controller, options.delete(:controller)]][[:action, options.delete(:action)]][:___routes][0][1].ast
+        
         #what do we do with formatting?
 
 
@@ -238,10 +239,25 @@ module ActionDispatch
         #   #puts possible_route[1].optional_parts
         # end
         # puts possible_routes
+        # puts 'THESE ARE THE AST PART'
+        # ast_link.each do |node_part|
+        #   puts node_part
+        # end
 
 
-        ast_link = ast_link.to_s.sub("(.:format)", "")
+        if options.has_key?(:format)
+          ast_link = ast_link.to_s.sub("(.:format)", ".#{options.delete(:format)}")
+        else
+          ast_link = ast_link.to_s.sub("(.:format)", "")
+        end
         # puts _routes.formatter.cache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes][0][1].ast.class
+                #adding argument values
+        options.each do |key, value|
+          if key != :controller and key != :action
+            puts key
+            ast_link = ast_link.to_s.sub(":#{key}", value.to_s)
+          end
+        end
         options_hash =  url_options.symbolize_keys
 
         # require "debugger"
