@@ -68,8 +68,8 @@ This is the reason for needing another rails app and this is the rails app
 
 <a name="formatter.rb" />
 #### formatter.rb
->Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
->##### Methods of Interest
+Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
+##### Methods of Interest
 
 <a name="pattern.rb" />
 #### pattern.rb
