@@ -1,13 +1,22 @@
 URL\_FOR Optimization
 =====================
 
+Table of Contents
+--------------------------
+[Description](#description)
+[Our Progress](#progress)
+
+<a name="description" />
 Description
 --------------------------
-    ['a', 'b'].map { |x| x.uppercase }
+
 Currently, url\_for is a huge bottleneck for rails apps.
 We are currently in the process of updating url\_for to use the cached routes efficiently.
 
-## Our Progress
+<a name="progress" />
+Our Progress
+--------------------------
+
 Through exploration and testing, we have started to make progress on making the method url\_for run faster.
 Below we will discus the necessary files to get started, files of importance, and debugging tools that have helped us thus far.
 
