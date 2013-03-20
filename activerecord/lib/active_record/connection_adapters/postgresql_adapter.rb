@@ -1165,11 +1165,19 @@ module ActiveRecord
             @connection.block
             @connection.get_last_result
           rescue PGError => e
-            # Get the PG code for the failure.  Annoyingly, the code for
-            # prepared statements whose return value may have changed is
-            # FEATURE_NOT_SUPPORTED.  Check here for more details:
-            # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
-            code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
+            # This additional begin/rescue block is in ActiveRecord 4.0.0, but not in the 3.2.x branch.
+            # We (Moneytree) needs it now to determine what the underlying DB failure on Heroku workers/decider
+            # is.  MMA believes it has to do w database connection pools, but we should not get the error to prove it.
+            # MMA Mar 20 2013
+            begin
+              # Get the PG code for the failure.  Annoyingly, the code for
+              # prepared statements whose return value may have changed is
+              # FEATURE_NOT_SUPPORTED.  Check here for more details:
+              # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
+              code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
+            rescue
+              raise e
+            end
             if FEATURE_NOT_SUPPORTED == code
               @statements.delete sql_key(sql)
               retry
