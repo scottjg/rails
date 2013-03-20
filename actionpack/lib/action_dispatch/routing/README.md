@@ -8,8 +8,14 @@ Table of Contents
 [Our Progress](#our_progress)
 * [Getting Started](#getting_started)
  * [Setting up the Rails Environment](#setting_up_the_rails_environment)
-   *  [Our Forked Repository](#our_forked_repository)
-   *  [The Other Rails App Used](#other_rails_app_used)
+* [Files Used for This Project](#files_used_for_this_project)
+ * [url\_for.rb](#url_for.rb)
+ * [url\_for\_test.rb](#url_for_test.rb)
+ * [pattern.rb](#pattern.rb)
+ * [route\_set.rb](#route_set.rb)
+ * [formatter.rb](#formatter.rb)
+ * [routes.rb](#routes.rb)
+* [Debugging](#debugging)
 
 <a name="description" />
 Description
@@ -43,7 +49,6 @@ This is how we set up the Rails environment on our own computer
 
 
 
-<a name="our_forked_repository" />
 ##### Our Forked Repository
 This is how we forked the repository and our current repository
 Rails Repository: https://github.com/rails/rails.git
@@ -52,44 +57,50 @@ Our Forked Repository: https://github.com/rhintz42/url\_for\_optimization.git
 
 
 
-<a name="other_rails_app_used" />
 ##### The other Rails App Used
 This is the reason for needing another rails app and this is the rails app
 
 
 
 
-
+<a name="files_used_for_this_project" />
 ### Files Used for This Project
+
+<a name="url_for.rb" />
 #### url\_for.rb
 Path To File: actionpack/lib/action\_dispatch/routing/url\_for.rb
 ##### Methods of Interest
 ###### url\_for
 ###### url\_for\_improved
 
+<a name="url_for_test.rb" />
 #### url\_for\_test.rb
 Path To File: actionpack/test/controller/url\_for\_test.rb
 ##### Methods of Interest
 
+<a name="pattern.rb" />
 #### pattern.rb
 Path To File: actionpack/lib/action\_dispatch/journey/path/pattern.rb
 ##### Methods of Interest
 
+<a name="route_set.rb" />
 #### route\_set.rb
 Path To File: actionpack/lib/action\_dispatch/routing/route\_set.rb
 ##### Methods of Interest
 
+<a name="formatter.rb" />
 #### formatter.rb
 Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
 ##### Methods of Interest
 
+<a name="routes.rb" />
 #### routes.rb
 Path to File: actionpack/lib/action\_dispatch/journey/routes.rb
 ##### Methods of Interest
 
 
 
-
+<a name="debugging" />
 Debugging
 -------------------------
 
