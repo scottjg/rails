@@ -136,7 +136,7 @@ module ActiveSupport
         if @_is_object_filter
           _filter_matches = @filter.to_s.start_with?(_method_name_for_object_filter(_kind, _filter, false))
         else
-          _filter_matches = (@filter == _filter) 
+          _filter_matches = (@filter == _filter)
         end
 
         @kind == _kind && _filter_matches
@@ -230,7 +230,7 @@ module ActiveSupport
       # expression based on the options.
       def recompile_options!
         conditions = ["true"]
-
+        p options[:only]
         unless options[:if].empty?
           conditions << Array(_compile_filter(options[:if]))
         end

@@ -1,3 +1,5 @@
+require 'debugger'
+
 module AbstractController
   module Callbacks
     extend ActiveSupport::Concern
@@ -34,6 +36,10 @@ module AbstractController
       end
 
       def _normalize_callback_option(options, from, to) # :nodoc:
+      if self.to_s =~ /OnlyIfConditionalCollectionFilterController/ && !options.empty?
+         p self.inspect
+         debugger
+       end
         if from = options[from]
           from = Array(from).map {|o| "action_name == '#{o}'"}.join(" || ")
           options[to] = Array(options[to]) << from
@@ -73,6 +79,7 @@ module AbstractController
         _normalize_callback_options(options)
         callbacks.push(block) if block
         callbacks.each do |callback|
+          p callback.inspect + "----------------" + yield.inspect
           yield callback, options
         end
       end
