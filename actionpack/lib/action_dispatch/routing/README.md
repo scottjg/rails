@@ -7,11 +7,11 @@ Description
 Currently, url\_for is a huge bottleneck for rails apps.
 We are currently in the process of updating url\_for to use the cached routes efficiently.
 
-=== Our Progress
+### Our Progress
 Through exploration and testing, we have started to make progress on making the method url\_for run faster.
 Below we will discus the necessary files to get started, files of importance, and debugging tools that have helped us thus far.
 
-===== Getting Started
+##### Getting Started
 To get started, we needed to do 3 things:
 set up our environment for rails,
 create our own forked rails repository,
@@ -21,7 +21,7 @@ and create a test app to test out the routes in the repository
 
 
 
-======= Setting up the Rails Environment
+####### Setting up the Rails Environment
 
 This is how we set up the Rails environment on our own computer
 
@@ -29,7 +29,7 @@ This is how we set up the Rails environment on our own computer
 
 
 
-======= Our Forked Repository
+####### Our Forked Repository
 This is how we forked the repository and our current repository
 Rails Repository: https://github.com/rails/rails.git
 Our Forked Repository: https://github.com/rhintz42/url\_for\_optimization.git
@@ -38,38 +38,38 @@ Our Forked Repository: https://github.com/rhintz42/url\_for\_optimization.git
 
 
 
-======= The other Rails App Used
+####### The other Rails App Used
 This is the reason for needing another rails app and this is the rails app
 
 
 
 
 
-===== Files Used for This Project
-======= url\_for.rb
+##### Files Used for This Project
+####### url\_for.rb
 Path To File: actionpack/lib/action\_dispatch/routing/url\_for.rb
-========= Methods of Interest
-=========== url_for
-=========== url_for_improved
+######### Methods of Interest
+########### url\_for
+########### url\_for\_improved
 
-======= url_for_test.rb
-Path To File: actionpack/test/controller/url_for_test.rb
+======= url\_for\_test.rb
+Path To File: actionpack/test/controller/url\_for\_test.rb
 ========= Methods of Interest
 
 ======= pattern.rb
-Path To File: actionpack/lib/action_dispatch/journey/path/pattern.rb
+Path To File: actionpack/lib/action\_dispatch/journey/path/pattern.rb
 ========= Methods of Interest
 
-======= route_set.rb
-Path To File: actionpack/lib/action_dispatch/routing/route_set.rb
+======= route\_set.rb
+Path To File: actionpack/lib/action\_dispatch/routing/route\_set.rb
 ========= Methods of Interest
 
 ======= formatter.rb
-Path to File: actionpack/lib/action_dispatch/journey/formatter.rb
+Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
 ========= Methods of Interest
 
 ======= routes.rb
-Path to File: actionpack/lib/action_dispatch/journey/routes.rb
+Path to File: actionpack/lib/action\_dispatch/journey/routes.rb
 ========= Methods of Interest
 
 
