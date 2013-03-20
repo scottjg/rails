@@ -1,14 +1,14 @@
-URL_FOR Optimization
+URL\_FOR Optimization
 =====================
 
-=== Description
+Description
 --------------------------
     ['a', 'b'].map { |x| x.uppercase }
-Currently, url_for is a huge bottleneck for rails apps.
-We are currently in the process of updating url_for to use the cached routes efficiently.
+Currently, url\_for is a huge bottleneck for rails apps.
+We are currently in the process of updating url\_for to use the cached routes efficiently.
 
 === Our Progress
-Through exploration and testing, we have started to make progress on making the method url_for run faster.
+Through exploration and testing, we have started to make progress on making the method url\_for run faster.
 Below we will discus the necessary files to get started, files of importance, and debugging tools that have helped us thus far.
 
 ===== Getting Started
@@ -32,7 +32,7 @@ This is how we set up the Rails environment on our own computer
 ======= Our Forked Repository
 This is how we forked the repository and our current repository
 Rails Repository: https://github.com/rails/rails.git
-Our Forked Repository: https://github.com/rhintz42/url_for_optimization.git
+Our Forked Repository: https://github.com/rhintz42/url\_for\_optimization.git
 
 
 
@@ -46,8 +46,8 @@ This is the reason for needing another rails app and this is the rails app
 
 
 ===== Files Used for This Project
-======= url_for.rb
-Path To File: actionpack/lib/action_dispatch/routing/url_for.rb
+======= url\_for.rb
+Path To File: actionpack/lib/action\_dispatch/routing/url\_for.rb
 ========= Methods of Interest
 =========== url_for
 =========== url_for_improved
