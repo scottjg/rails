@@ -1,9 +1,36 @@
 ## unreleased ##
 
+*   Fixed `ActionController#action_missing` not being called.
+    Fixes #9799.
+
+    *Janko Luin*
+
+*   `ActiveSupport::NumberHelper#number_to_human` returns the number unaltered when
+    the units hash does not contain the needed key, e.g. when the number provided is less
+    than the largest key proivided.
+
+    Examples:
+
+        number_to_human(123, :units => {}) # => 123
+        number_to_human(123, :units => {:thousand => 'k'}) # => 123
+
+    Fixes #9269.
+    Backport #9347.
+
+    *Michael Hoffman*
+
 *   Include I18n locale fallbacks in view lookup.
     Fixes GH#3512.
 
     *Juan Barreneche*
+
+*   Fix `ActionDispatch::Request#formats` when the Accept request-header is an
+    empty string. Fix #7774 [Backport #8977, #9541]
+
+    *Soylent + Maxime Réty*
+
+
+## Rails 3.2.13 (Mar 18, 2013) ##
 
 *   Fix incorrectly appended square brackets to a multiple select box
     if an explicit name has been given and it already ends with "[]".
@@ -21,13 +48,6 @@
     Backport #9616.
 
     *Olek Janiszewski*
-
-*   Fix `ActionDispatch::Request#formats` when the Accept request-header is an
-    empty string. Fix #7774 [Backport #8977, #9541]
-
-    *Soylent + Maxime Réty*
-
-## Rails 3.2.13.rc1 (Feb 17, 2013) ##
 
 *   Determine the controller#action from only the matched path when using the
     shorthand syntax. Previously the complete path was used, which led
