@@ -8,8 +8,8 @@ Table of Contents
 [Our Progress](#our_progress)
 * [Getting Started](#getting_started)
  * [Setting up the Rails Environment](#setting_up_the_rails_environment)
-  * [Our Forked Repository](#our_forked_repository)
-  * [The Other Rails App Used](#other_rails_app_used)
+   *  [Our Forked Repository](#our_forked_repository)
+   *  [The Other Rails App Used](#other_rails_app_used)
 
 <a name="description" />
 Description
