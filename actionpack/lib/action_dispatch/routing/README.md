@@ -1,4 +1,5 @@
-= URL_FOR Optimization
+URL_FOR Optimization
+=====================
 
 === Description
 Currently, url_for is a huge bottleneck for rails apps.
