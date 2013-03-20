@@ -1,8 +1,9 @@
 = URL_FOR Optimization
 
+== Description
 We are currently in the process of updating url_for to reduce bottlenecks
 in the implementation.
 
+
 https://gist.github.com/rhintz42/5044571
 
-<script src="https://gist.github.com/rhintz42/5044571.js"></script>
