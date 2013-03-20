@@ -1,5 +1,9 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Raise an `ArgumentError` when a clashing named route is defined.
+
+    *Trevor Turk*
+
 *   Fixed `ActionView::Helpers::CaptureHelper#content_for` regression when trying to use it in
     a boolean statement.
     Fixes #9360.
