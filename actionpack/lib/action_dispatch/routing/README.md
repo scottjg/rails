@@ -2,6 +2,8 @@ URL_FOR Optimization
 =====================
 
 === Description
+--------------------------
+    ['a', 'b'].map { |x| x.uppercase }
 Currently, url_for is a huge bottleneck for rails apps.
 We are currently in the process of updating url_for to use the cached routes efficiently.
 
