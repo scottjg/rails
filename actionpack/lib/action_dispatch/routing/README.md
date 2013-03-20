@@ -68,35 +68,35 @@ This is the reason for needing another rails app and this is the rails app
 
 <a name="formatter.rb" />
 #### formatter.rb
-  Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
-  ##### Methods of Interest
+>Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
+>##### Methods of Interest
 
 <a name="pattern.rb" />
 #### pattern.rb
-  Path To File: actionpack/lib/action\_dispatch/journey/path/pattern.rb
-  ##### Methods of Interest
+Path To File: actionpack/lib/action\_dispatch/journey/path/pattern.rb
+##### Methods of Interest
 
 <a name="route_set.rb" />
 #### route\_set.rb
-  Path To File: actionpack/lib/action\_dispatch/routing/route\_set.rb
-  ##### Methods of Interest
+Path To File: actionpack/lib/action\_dispatch/routing/route\_set.rb
+##### Methods of Interest
 
 <a name="routes.rb" />
 #### routes.rb
-  Path to File: actionpack/lib/action\_dispatch/journey/routes.rb
-  ##### Methods of Interest
+Path to File: actionpack/lib/action\_dispatch/journey/routes.rb
+##### Methods of Interest
 
 <a name="url_for.rb" />
 #### url\_for.rb
-  Path To File: actionpack/lib/action\_dispatch/routing/url\_for.rb
-  ##### Methods of Interest
-    ###### url\_for
-    ###### url\_for\_improved
+Path To File: actionpack/lib/action\_dispatch/routing/url\_for.rb
+##### Methods of Interest
+###### url\_for
+###### url\_for\_improved
 
 <a name="url_for_test.rb" />
 #### url\_for\_test.rb
-  Path To File: actionpack/test/controller/url\_for\_test.rb
-  ##### Methods of Interest
+Path To File: actionpack/test/controller/url\_for\_test.rb
+##### Methods of Interest
 
 
 
