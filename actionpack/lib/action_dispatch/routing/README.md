@@ -4,7 +4,6 @@ URL\_FOR Optimization
 Table of Contents
 --------------------------
 [Description](#description)
-
 [Our Progress](#progress)
 
 <a name="description" />
