@@ -457,10 +457,16 @@ module ActiveRecord
 
       binds = Hash[bind_values.find_all(&:first).map { |column, v| [column.name, v] }]
 
+      # https://rubyonrails-security.googlegroups.com/attach/3245c31947c76604/3-1-attribute_symbols.patch?view=1&part=4
+      # Hash[equalities.map { |where|
+      #   name = where.left.name
+      #   [name, binds.fetch(name.to_s) { where.right }]
+      # }]
+
       Hash[equalities.map { |where|
         name = where.left.name
         [name, binds.fetch(name.to_s) { where.right }]
-      }]
+      }].with_indifferent_access
     end
 
     def scope_for_create
