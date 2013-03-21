@@ -87,6 +87,7 @@ module ActionDispatch
     ENCRYPTED_COOKIE_SALT = "action_dispatch.encrypted_cookie_salt".freeze
     ENCRYPTED_SIGNED_COOKIE_SALT = "action_dispatch.encrypted_signed_cookie_salt".freeze
     TOKEN_KEY   = "action_dispatch.secret_token".freeze
+    UPGRADE_SIGNATURE_TO_ENCRYPTION_COOKIE = "action_dispatch.upgrade_signature_to_encryption_cookie".freeze
 
     # Cookies can typically store 4096 bytes.
     MAX_COOKIE_SIZE = 4096
@@ -115,6 +116,7 @@ module ActionDispatch
         { signed_cookie_salt: env[SIGNED_COOKIE_SALT] || '',
           encrypted_cookie_salt: env[ENCRYPTED_COOKIE_SALT] || '',
           encrypted_signed_cookie_salt: env[ENCRYPTED_SIGNED_COOKIE_SALT] || '',
+          upgrade_signature_to_encryption_cookie: env[UPGRADE_SIGNATURE_TO_ENCRYPTION_COOKIE] || false,
           token_key: env[TOKEN_KEY] }
       end
 
@@ -261,7 +263,13 @@ module ActionDispatch
       #
       #   cookies.signed[:discount] # => 45
       def signed
-        @signed ||= SignedCookieJar.new(self, @key_generator, @options)
+        @signed ||= begin
+          if @options[:upgrade_signature_to_encryption_cookie]
+            UpgradeSignatureToEncryptionCookieSignedCookieJar.new(self, @key_generator, @options)
+          else
+            SignedCookieJar.new(self, @key_generator, @options)
+          end
+        end
       end
 
       # Only needed for supporting the +UpgradeSignatureToEncryptionCookieStore+, users and plugin authors should not use this
@@ -344,6 +352,7 @@ module ActionDispatch
           "You probably want to try this method over the parent CookieJar."
       end
     end
+    
 
     class SignedCookieJar #:nodoc:
       def initialize(parent_jar, key_generator, options = {})
@@ -388,6 +397,14 @@ module ActionDispatch
       def method_missing(method, *arguments, &block)
         ActiveSupport::Deprecation.warn "#{method} is deprecated with no replacement. " +
           "You probably want to try this method over the parent CookieJar."
+      end
+    end
+
+    class UpgradeSignatureToEncryptionCookieSignedCookieJar < SignedCookieJar
+      def initialize(*args)
+        super
+        secret = @options[:token_key]
+        @verifier   = ActiveSupport::MessageVerifier.new(secret)
       end
     end
 
