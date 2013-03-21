@@ -80,7 +80,7 @@ module ActiveRecord
 
     def test_create_with_value
       relation = Relation.new Post, Post.arel_table
-      hash = { :hello => 'world' }
+      hash = { 'hello' => 'world' }
       relation.create_with_value = hash
       assert_equal hash, relation.scope_for_create
     end
