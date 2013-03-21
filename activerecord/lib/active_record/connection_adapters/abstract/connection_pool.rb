@@ -77,7 +77,7 @@ module ActiveRecord
         @reserved_connections = {}
 
         @queue = new_cond
-        @timeout = spec.config[:wait_timeout] || 5
+        @timeout = spec.config[:checkout_timeout] || spec.config[:wait_timeout] || 5
 
         # default max pool size to 5
         @size = (spec.config[:pool] && spec.config[:pool].to_i) || 5
