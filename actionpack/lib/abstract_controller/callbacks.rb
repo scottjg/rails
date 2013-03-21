@@ -73,7 +73,6 @@ module AbstractController
       def _insert_callbacks(callbacks, block = nil)
         options = callbacks.last.is_a?(Hash) ? callbacks.pop : {}
         _normalize_callback_options(options)
-        debugger
         callbacks.push(block) if block
         callbacks.each do |callback|
           yield callback, options

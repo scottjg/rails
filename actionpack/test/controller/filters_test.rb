@@ -177,7 +177,7 @@ class FilterTest < ActionController::TestCase
 
   class OnlyIfConditionalCollectionFilterController < ConditionalFilterController
     before_filter :ensure_login
-    skip_before_filter :ensure_login , only: [:show], if: -> {false}
+    skip_before_filter :ensure_login , only: [ :show ], if: -> { true }
   end
 
   class ExceptConditionSymController < ConditionalFilterController
@@ -643,7 +643,7 @@ class FilterTest < ActionController::TestCase
 
   def test_running_only_if_condtion_filters
     test_process(OnlyIfConditionalCollectionFilterController, "show")
-    assert assigns["ran_filter"]
+    assert !assigns["ran_filter"]
 
   end
 
