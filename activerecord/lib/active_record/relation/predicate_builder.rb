@@ -15,7 +15,10 @@ module ActiveRecord
             table = Arel::Table.new(table_name, engine)
           end
 
-          build(table[column.to_sym], value)
+          # https://rubyonrails-security.googlegroups.com/attach/3245c31947c76604/3-1-attribute_symbols.patch?view=1&part=4
+          # build(table[column.to_sym], value)
+
+          build(table[column], value)
         end
       end.flatten
     end
