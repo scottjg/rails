@@ -2,7 +2,7 @@ require 'active_support/core_ext/object/blank'
 
 module ActiveRecord
   module SpawnMethods
-    def merge(r)
+    def merge(r, options = {})
       return self unless r
       return to_a & r if r.is_a?(Array)
 
@@ -43,6 +43,28 @@ module ActiveRecord
             nuke              = seen[table][name]
             seen[table][name] = true
           end
+          nuke
+        }.reverse
+      end
+
+      merged_relation.where_values = merged_wheres
+
+      merged_wheres = @where_values + r.where_values
+      dont_nuke_rightmost = r.where_values.size
+
+      if options[:allow_override] and not @where_values.empty?
+        # Remove duplicates, last one wins.
+        seen = Hash.new { |h,table| h[table] = {} }
+        index = 0
+        merged_wheres = merged_wheres.reverse.reject { |w|
+          nuke = false
+          if w.respond_to?(:operator) && w.operator == :==
+            name              = w.left.name
+            table             = w.left.relation.name
+            nuke              = seen[table][name] && index >= dont_nuke_rightmost
+            seen[table][name] = true
+          end
+          index += 1
           nuke
         }.reverse
       end
