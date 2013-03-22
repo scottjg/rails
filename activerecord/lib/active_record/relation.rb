@@ -500,7 +500,7 @@ module ActiveRecord
 
     def with_default_scope #:nodoc:
       if default_scoped? && default_scope = klass.send(:build_default_scope)
-        default_scope = default_scope.merge(self)
+        default_scope = default_scope.merge(self, :allow_override => true)
         default_scope.default_scoped = false
         default_scope
       else

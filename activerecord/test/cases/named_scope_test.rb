@@ -383,6 +383,11 @@ class NamedScopeTest < ActiveRecord::TestCase
     assert_equal [posts(:sti_comments)], Post.with_special_comments.with_post(4).all.uniq
   end
 
+  def test_chaining_should_allow_to_override_default_scopes
+    assert_equal 1, FirstPost.all.size
+    assert_equal 2, FirstPost.where(:id => [1, 2]).all.size
+  end
+
   def test_scopes_batch_finders
     assert_equal 3, Topic.approved.count
 
