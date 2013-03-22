@@ -6,10 +6,6 @@ module ActionDispatch
     # passed to +url_for+ in rails will eventually call Formatter#generate.
     class Formatter # :nodoc:
       attr_reader :routes
-        ##this was moved to the public section
-        def cache
-          @cache ||= build_cache
-        end
 
       def initialize(routes)
         @routes = routes
@@ -39,9 +35,14 @@ module ActionDispatch
         raise ActionController::UrlGenerationError, message
       end
 
+      def cache
+          @cache ||= build_cache
+      end
+
       def clear
         @cache = nil
       end
+
 
       private
 
