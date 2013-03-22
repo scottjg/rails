@@ -1,0 +1,43 @@
+From c0a6bb8af579a66162ba5a173d58f76e30ee3228 Mon Sep 17 00:00:00 2001
+From: Noam Ben-Avi <nbenavi91@gmail.com>
+Date: Fri, 22 Mar 2013 18:17:24 -0400
+Subject: [PATCH] patch
+
+---
+ .../lib/action_dispatch/journey/formatter.rb       |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/actionpack/lib/action_dispatch/journey/formatter.rb b/actionpack/lib/action_dispatch/journey/formatter.rb
+index 66deef4..92afe08 100644
+--- a/actionpack/lib/action_dispatch/journey/formatter.rb
++++ b/actionpack/lib/action_dispatch/journey/formatter.rb
+@@ -6,10 +6,6 @@ module ActionDispatch
+     # passed to +url_for+ in rails will eventually call Formatter#generate.
+     class Formatter # :nodoc:
+       attr_reader :routes
+-        ##this was moved to the public section
+-        def cache
+-          @cache ||= build_cache
+-        end
+ 
+       def initialize(routes)
+         @routes = routes
+@@ -39,10 +35,15 @@ module ActionDispatch
+         raise ActionController::UrlGenerationError, message
+       end
+ 
++      def cache
++          @cache ||= build_cache
++      end
++
+       def clear
+         @cache = nil
+       end
+ 
++
+       private
+ 
+         def extract_parameterized_parts(route, options, recall, parameterize = nil)
+-- 
+1.7.7.5 (Apple Git-26)
+
