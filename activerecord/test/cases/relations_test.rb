@@ -1159,6 +1159,13 @@ class RelationTest < ActiveRecord::TestCase
 
     assert_equal count - 1, comments.update_all(:post_id => posts(:thinking).id)
   end
+  
+  def test_subquery_doesnt_trigger_eager_loading
+    scope = Post.where('not exists (select comments.* from comments where post_id = posts.id and body = "skip me")').includes(:comments)
+    assert !scope.eager_loading?
+    scope.all
+    assert_no_queries { scope.first.comments }
+  end
 
   def test_update_all_with_joins_and_offset_and_order
     all_comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id).order('posts.id', 'comments.id')
