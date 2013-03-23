@@ -66,6 +66,7 @@ The reason why we needed this extra rails app was because we needed to simulate 
 The app we are using can be found at this repository: https://github.com/nbenavi/url_for_test_app.git
 
 To use this app to test the rails repository, follow these instructions:
+
 1. Clone this test app repository
 2. Copy the location of the forked repository
 3. In the test app repository you just cloned, goto the Gemfile
