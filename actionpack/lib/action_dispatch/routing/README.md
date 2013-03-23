@@ -81,7 +81,18 @@ To use this app to test the rails repository, follow these instructions:
 6. After that line, add this line (Replacing the '/location/of/repository' with the rails repository you cloned)
 		
 		gem 'rails', :path => '/location/of/repository/'
-		
+
+7. After adding that line, do either of these in the terminal:
+
+		bundle install
+
+or
+
+		bundle update
+
+As long as one of those commands works out ok, then you are all set!
+
+
 
 
 <a name="files_used_for_this_project" />
