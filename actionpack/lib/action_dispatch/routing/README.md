@@ -86,6 +86,7 @@ To use this app to test the rails repository, follow these instructions:
 
 		bundle install
 or
+
 		bundle update
 
 As long as one of those command gives no errors and you get "Your bundle is complete!" then you are all set!
