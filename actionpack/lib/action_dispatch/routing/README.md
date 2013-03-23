@@ -29,7 +29,7 @@ Our Progress
 --------------------------
 
 Through exploration and testing, we have started to make progress on making the method url\_for run faster.
-Below we will discus the necessary files to get started, files of importance, and debugging tools that have helped us thus far.
+Below we will discuss the necessary files to get started, files of importance, and debugging tools that have helped us thus far in working on this project.
 
 <a name="getting_started" />
 ### Getting Started
@@ -44,22 +44,37 @@ and create a test app to test out the routes in the repository
 <a name="setting_up_the_rails_environment" />
 #### Setting up the Rails Environment
 
-This is how we set up the Rails environment on our own computer
+This is a guide that helped us set up the Rails environment on our own computer: http://edgeguides.rubyonrails.org/contributing_to_ruby_on_rails.html
 
 
 
 
 ##### Our Forked Repository
-This is how we forked the repository and our current repository
+This is the repository we forked from and our current repository
 Rails Repository: https://github.com/rails/rails.git
-Our Forked Repository: https://github.com/rhintz42/url\_for\_optimization.git
+
+Our Forked Repository: https://github.com/rhintz42/url_for_optimization.git
+
+Clone our forked repository and put it in a location you can remember.
 
 
 
 
 ##### The other Rails App Used
-This is the reason for needing another rails app and this is the rails app
+The reason why we needed this extra rails app was because we needed to simulate the routes and get real results in our benchmark tests.
 
+The app we are using can be found at this repository: https://github.com/nbenavi/url_for_test_app.git
+
+To use this app to test the rails repository, follow these instructions:
+1. Clone this test app repository
+2. Copy the location of the forked repository
+3. In the test app repository you just cloned, goto the Gemfile
+4. In the Gemfile, find this line
+		gem 'rails', '3.2.3'
+5. Comment that line out by adding a '#' to the beginning of that line
+		#gem 'rails', '3.2.3'
+6. After that line, add this line (Replacing the '/location/of/repository' with the rails repository you cloned)
+		gem 'rails', :path => '/location/of/repository/'
 
 
 
