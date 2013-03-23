@@ -90,7 +90,7 @@ or
 
 		bundle update
 
-As long as one of those commands works out ok, then you are all set!
+As long as one of those command gives no errors and you get "Your bundle is complete!" then you are all set!
 
 
 
@@ -102,6 +102,12 @@ As long as one of those commands works out ok, then you are all set!
 #### formatter.rb
 Path to File: actionpack/lib/action\_dispatch/journey/formatter.rb
 ##### Methods of Interest
+
+		def cache
+
+Description of significance: This method (cache) returns a hash of all the routes in the program. This method is extremely necessary to make url_for more efficient. Before, this method did not use this method efficiently.
+
+Our change: We moved this method from the private section to the public section in order to be able to use this method more efficiently.
 
 <a name="pattern.rb" />
 #### pattern.rb
