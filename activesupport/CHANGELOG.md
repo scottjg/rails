@@ -204,4 +204,6 @@
 *   ActiveSupport::BufferedLogger#flush is deprecated.  Set sync on your
     filehandle, or tune your filesystem.
 
+*   Match acronyms greedily in the inflector. *Johan Lindblad*
+
 Please check [3-1-stable](https://github.com/rails/rails/blob/3-1-stable/activesupport/CHANGELOG.md) for previous changes.
