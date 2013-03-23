@@ -71,12 +71,22 @@ To use this app to test the rails repository, follow these instructions:
 2. Copy the location of the forked repository
 3. In the test app repository you just cloned, goto the Gemfile
 4. In the Gemfile, find this line
-		gem 'rails', '3.2.3'
-5. Comment that line out by adding a '#' to the beginning of that line
-		#gem 'rails', '3.2.3'
-6. After that line, add this line (Replacing the '/location/of/repository' with the rails repository you cloned)
-		gem 'rails', :path => '/location/of/repository/'
 
+		'''ruby
+		gem 'rails', '3.2.3'
+		'''
+
+5. Comment that line out by adding a '#' to the beginning of that line
+
+		'''ruby
+		#gem 'rails', '3.2.3'
+		'''
+
+6. After that line, add this line (Replacing the '/location/of/repository' with the rails repository you cloned)
+		
+		'''ruby
+		gem 'rails', :path => '/location/of/repository/'
+		'''
 
 
 <a name="files_used_for_this_project" />
