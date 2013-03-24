@@ -1,10 +1,86 @@
+## unreleased ##
+
+*   Fixed assets loading performance in 3.2.13.
+
+    #8756 uses Sprockets for resolving files that already exists on disk, for those files
+    their extensions don't need to be rewritten.
+
+    Fixes #9803.
+
+    *Fred Wu*
+
+*   Fixed `ActionController#action_missing` not being called.
+
+    Fixes #9799.
+
+    *Janko Luin*
+
+*   `ActiveSupport::NumberHelper#number_to_human` returns the number unaltered when
+    the units hash does not contain the needed key, e.g. when the number provided is less
+    than the largest key proivided.
+
+    Examples:
+
+        number_to_human(123, :units => {}) # => 123
+        number_to_human(123, :units => {:thousand => 'k'}) # => 123
+
+    Fixes #9269.
+    Backport #9347.
+
+    *Michael Hoffman*
+
+*   Include I18n locale fallbacks in view lookup.
+    Fixes GH#3512.
+
+    *Juan Barreneche*
+
+*   Fix `ActionDispatch::Request#formats` when the Accept request-header is an
+    empty string. Fix #7774 [Backport #8977, #9541]
+
+    *Soylent + Maxime Réty*
+
+
+## Rails 3.2.13 (Mar 18, 2013) ##
+
+*   Fix incorrectly appended square brackets to a multiple select box
+    if an explicit name has been given and it already ends with "[]".
+
+    Before:
+
+        select(:category, [], {}, multiple: true, name: "post[category][]")
+        # => <select name="post[category][][]" ...>
+
+    After:
+
+        select(:category, [], {}, multiple: true, name: "post[category][]")
+        # => <select name="post[category][]" ...>
+
+    Backport #9616.
+
+    *Olek Janiszewski*
+
+*   Determine the controller#action from only the matched path when using the
+    shorthand syntax. Previously the complete path was used, which led
+    to problems with nesting (scopes and namespaces).
+    Fixes #7554.
+    Backport #9361.
+
+    Example:
+
+        # this will route to questions#new
+        scope ':locale' do
+          get 'questions/new'
+        end
+
+    *Yves Senn*
+
 *   Fix `assert_template` with `render :stream => true`.
     Fix #1743.
     Backport #5288.
 
     *Sergey Nartimov*
 
-*   Eagerly populate the http method loookup cache so local project inflections do
+*   Eagerly populate the http method lookup cache so local project inflections do
     not interfere with use of underscore method ( and we don't need locks )
 
     *Aditya Sanghi*
@@ -122,7 +198,7 @@
     *Daniel Fox, Grant Hutchins & Trace Wax*
 
 
-## Rails 3.2.12 (Fev 11, 2013) ##
+## Rails 3.2.12 (Feb 11, 2013) ##
 
 *   No changes.
 
