@@ -1,0 +1,48 @@
+From 49cd1c57bf76a18767e22113dbdb0e16d3a9cbb2 Mon Sep 17 00:00:00 2001
+From: Noam Ben-Avi <nbenavi91@gmail.com>
+Date: Mon, 25 Mar 2013 11:56:50 -0400
+Subject: [PATCH] first commit for the profiler, takes in a uri and gives you
+ a time
+
+---
+ actionpack/lib/action_pack/request_profiler.rb |   28 +++++++++--------------
+ 1 files changed, 11 insertions(+), 17 deletions(-)
+
+diff --git a/actionpack/lib/action_pack/request_profiler.rb b/actionpack/lib/action_pack/request_profiler.rb
+index 8b94a5c..403f60d 100644
+--- a/actionpack/lib/action_pack/request_profiler.rb
++++ b/actionpack/lib/action_pack/request_profiler.rb
+@@ -1,18 +1,12 @@
+-#require 'config/environment'
+-
+-def test_output_profiler
+-	puts Rails.application.method(:call).source_location
+-
+-	#This will use a realistic mock env and Rails.app
+-	env = Rack::MockRequest.env_for("/")
+-    puts "THIS IS THE ENV THING"
+-    puts env
+-    Rails.application.call(env)
+-
+-    #This 
+-    app = -> env {[ 200, { 'Content-Type' => 'text/html' }, [ '<html><body><marquee>1999</marquee></body></html>' ]] }
+-   	env = {}
+-   	response = app.call(env)
+-
+-   	puts response
++require 'benchmark'
++
++def test_output_profiler(uri = "/")
++  Benchmark.bm(7) do |x|
++    x.report("url_for:"){
++      env = Rack::MockRequest.env_for(uri)
++      status, header, body = Rails.application.call(env)
++      body.each {|chunk|}
++      body.close if body.respond_to?(:close)
++    }
++  end
+ end
+\ No newline at end of file
+-- 
+1.7.7.5 (Apple Git-26)
+
