@@ -134,14 +134,16 @@ namespace :test do
     t.pattern = 'test/helpers/**/*_test.rb'
   end
 
-  Rails::SubTestTask.new(units: "test:prepare") do |t|
-    t.libs << "test"
-    t.pattern = 'test/{models,helpers,unit}/**/*_test.rb'
+  task units: 'test:prepare' do |t|
+    $: << "."
+    $: << "test"
+    Dir['test/{models,helpers,unit}/**/*_test.rb'].each { |f| require f }
   end
 
-  Rails::SubTestTask.new(controllers: "test:prepare") do |t|
-    t.libs << "test"
-    t.pattern = 'test/controllers/**/*_test.rb'
+  task controllers: 'test:prepare' do |t|
+    $: << "."
+    $: << "test"
+    Dir['test/controllers/**/*_test.rb'].each { |f| require f }
   end
 
   Rails::SubTestTask.new(mailers: "test:prepare") do |t|
