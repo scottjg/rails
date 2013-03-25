@@ -1,5 +1,4 @@
 require 'isolation/abstract_unit'
-require 'active_support/core_ext/string/strip'
 
 module ApplicationTests
   class TestRunnerTest < ActiveSupport::TestCase
@@ -184,6 +183,7 @@ module ApplicationTests
       end
     end
 
+<<<<<<< HEAD
     def test_not_load_fixtures_when_running_single_test
       create_model_with_fixture
       create_fixture_test :models, 'user'
@@ -239,10 +239,6 @@ module ApplicationTests
     end
 
     private
-      def run_test_command(arguments = 'test/unit/test_test.rb')
-        Dir.chdir(app_path) { `bundle exec rails test #{arguments}` }
-      end
-
       def create_model_with_fixture
         script 'generate model user name:string'
 

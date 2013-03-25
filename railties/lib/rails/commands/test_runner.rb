@@ -31,7 +31,6 @@ module Rails
         when 'integration'
           new(Dir['test/integration/**/*_test.rb'], options).run
         else
-          options[:fixtures] = original_fixtures_options
           new(files, options).run
         end
       end
