@@ -1,18 +1,12 @@
-#require 'config/environment'
+require 'benchmark'
 
-def test_output_profiler
-	puts Rails.application.method(:call).source_location
-
-	#This will use a realistic mock env and Rails.app
-	env = Rack::MockRequest.env_for("/")
-    puts "THIS IS THE ENV THING"
-    puts env
-    Rails.application.call(env)
-
-    #This 
-    app = -> env {[ 200, { 'Content-Type' => 'text/html' }, [ '<html><body><marquee>1999</marquee></body></html>' ]] }
-   	env = {}
-   	response = app.call(env)
-
-   	puts response
+def test_output_profiler(uri = "/")
+  Benchmark.bm(7) do |x|
+    x.report("url_for:"){
+      env = Rack::MockRequest.env_for(uri)
+      status, header, body = Rails.application.call(env)
+      body.each {|chunk|}
+      body.close if body.respond_to?(:close)
+    }
+  end
 end
