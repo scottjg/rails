@@ -1,4 +1,5 @@
 require 'uri'
+require 'rack'
 
 module ActiveRecord
   module ConnectionAdapters
@@ -83,12 +84,18 @@ module ActiveRecord
           spec.map { |key,value| spec[key] = uri_parser.unescape(value) if value.is_a?(String) }
 
           if config.query
-            options = Hash[config.query.split("&").map{ |pair| pair.split("=") }].symbolize_keys
-
-            spec.merge!(options)
+            spec.merge!(symbolize_nested_keys(Rack::Utils.parse_nested_query(config.query)))
           end
 
           spec
+        end
+
+        def symbolize_nested_keys(options)
+          opts = options.symbolize_keys
+          opts.each do |k, v|
+            opts[k] = symbolize_nested_keys(v) if v.is_a?(Hash)
+          end
+          opts
         end
       end
     end
