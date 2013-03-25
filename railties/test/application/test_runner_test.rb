@@ -183,7 +183,6 @@ module ApplicationTests
       end
     end
 
-<<<<<<< HEAD
     def test_not_load_fixtures_when_running_single_test
       create_model_with_fixture
       create_fixture_test :models, 'user'
