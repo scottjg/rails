@@ -1,4 +1,289 @@
-## Rails 3.2.12 (unreleased) ##
+## Rails 3.2.13 (Feb 17, 2013) ##
+
+*   Reverted 921a296a3390192a71abeec6d9a035cc6d1865c8, 'Quote numeric values
+    compared to string columns.' This caused several regressions.
+
+    *Steve Klabnik*
+
+*   Fix overriding of attributes by default_scope on `ActiveRecord::Base#dup`.
+
+    *Hiroshige UMINO*
+
+*   Fix issue with overriding Active Record reader methods with a composed object
+    and using that attribute as the scope of a `uniqueness_of` validation.
+    Backport #7072.
+
+    *Peter Brown*
+
+*   Sqlite now preserves custom primary keys when copying or altering tables.
+    Fixes #9367.
+    Backport #2312.
+
+    *Sean Scally + Yves Senn*
+
+*   Preloading `has_many :through` associations with conditions won't
+    cache the `:through` association. This will prevent invalid
+    subsets to be cached.
+    Fixes #8423.
+    Backport #9252.
+
+    Example:
+
+        class User
+          has_many :posts
+          has_many :recent_comments, -> { where('created_at > ?', 1.week.ago) }, :through => :posts
+        end
+
+        a_user = User.includes(:recent_comments).first
+
+        # this is preloaded
+        a_user.recent_comments
+
+        # fetching the recent_comments through the posts association won't preload it.
+        a_user.posts
+
+    *Yves Senn*
+
+*   Fix handling of dirty time zone aware attributes
+
+    Previously, when `time_zone_aware_attributes` were enabled, after
+    changing a datetime or timestamp attribute and then changing it back
+    to the original value, `changed_attributes` still tracked the
+    attribute as changed. This caused `[attribute]_changed?` and
+    `changed?` methods to return true incorrectly.
+
+    Example:
+
+        in_time_zone 'Paris' do
+          order = Order.new
+          original_time = Time.local(2012, 10, 10)
+          order.shipped_at = original_time
+          order.save
+          order.changed? # => false
+
+          # changing value
+          order.shipped_at = Time.local(2013, 1, 1)
+          order.changed? # => true
+
+          # reverting to original value
+          order.shipped_at = original_time
+          order.changed? # => false, used to return true
+        end
+
+    Backport of #9073
+    Fixes #8898
+
+    *Lilibeth De La Cruz*
+
+*   Fix counter cache columns not updated when replacing `has_many :through`
+    associations.
+    Backport #8400.
+    Fix #7630.
+
+    *Matthew Robertson*
+
+*   Don't update `column_defaults` when calling destructive methods on column with default value.
+    Backport c517602.
+    Fix #6115.
+
+    *Piotr Sarnacki + Aleksey Magusev + Alan Daud*
+
+*   When `#count` is used in conjunction with `#uniq` we perform `count(:distinct => true)`.
+    Fix #6865.
+
+    Example:
+
+      relation.uniq.count # => SELECT COUNT(DISTINCT *)
+
+    *Yves Senn + Kaspar Schiess*
+
+*   Fix `ActiveRecord::Relation#pluck` when columns or tables are reserved words.
+    Backport #7536.
+    Fix #8968.
+
+    *Ian Lesperance + Yves Senn + Kaspar Schiess*
+
+*   Don't run explain on slow queries for database adapters that don't support it.
+    Backport #6197.
+
+    *Blake Smith*
+
+*   Revert round usec when comparing timestamp attributes in the dirty tracking.
+    Fixes #8460.
+
+    *Andrew White*
+
+*   Revert creation of through association models when using `collection=[]`
+    on a `has_many :through` association from an unsaved model.
+    Fix #7661, #8269.
+
+    *Ernie Miller*
+
+*   Fix undefined method `to_i` when calling `new` on a scope that uses an
+    Array; Fix FloatDomainError when setting integer column to NaN.
+    Fixes #8718, #8734, #8757.
+
+    *Jason Stirk + Tristan Harward*
+
+*   Serialized attributes can be serialized in integer columns.
+    Fix #8575.
+
+    *Rafael Mendonça França*
+
+*   Keep index names when using `alter_table` with sqlite3.
+    Fix #3489.
+    Backport #8522.
+
+    *Yves Senn*
+
+*   Recognize migrations placed in directories containing numbers and 'rb'.
+    Fix #8492.
+    Backport of #8500.
+
+    *Yves Senn*
+
+*   Add `ActiveRecord::Base.cache_timestamp_format` class attribute to control
+    the format of the timestamp value in the cache key.
+    This allows users to improve the precision of the cache key.
+    Fixes #8195.
+
+    *Rafael Mendonça França*
+
+*   Add `:nsec` date format. This can be used to improve the precision of cache key.
+    Please note that this format only works with Ruby 1.9, Ruby 1.8 will ignore it completely.
+
+    *Jamie Gaskins*
+
+*   Unscope `update_column(s)` query to ignore default scope.
+
+    When applying `default_scope` to a class with a where clause, using
+    `update_column(s)` could generate a query that would not properly update
+    the record due to the where clause from the `default_scope` being applied
+    to the update query.
+
+        class User < ActiveRecord::Base
+          default_scope where(active: true)
+        end
+
+        user = User.first
+        user.active = false
+        user.save!
+
+        user.update_column(:active, true) # => false
+
+    In this situation we want to skip the default_scope clause and just
+    update the record based on the primary key. With this change:
+
+        user.update_column(:active, true) # => true
+
+    Backport of #8436 fix.
+
+    *Carlos Antonio da Silva*
+
+*   Fix performance problem with primary_key method in PostgreSQL adapter when having many schemas.
+    Uses pg_constraint table instead of pg_depend table which has many records in general.
+    Fix #8414
+
+    *kennyj*
+
+*   Do not instantiate intermediate Active Record objects when eager loading.
+    These records caused `after_find` to run more than expected.
+    Fix #3313
+    Backport of #8403
+
+    *Yves Senn*
+
+*   Fix `pluck` to work with joins. Backport of #4942.
+
+    *Carlos Antonio da Silva*
+
+*   Fix a problem with `translate_exception` method in a non English environment.
+    Backport of #6397.
+
+    *kennyj*
+
+*   Fix dirty attribute checks for TimeZoneConversion with nil and blank
+    datetime attributes. Setting a nil datetime to a blank string should not
+    result in a change being flagged.
+    Fixes #8310.
+    Backport of #8311.
+
+    *Alisdair McDiarmid*
+
+*   Prevent mass assignment to the type column of polymorphic associations when using `build`.
+    Fixes #8265.
+    Backport of #8291.
+
+    *Yves Senn*
+
+*   When running migrations on Postgresql, the `:limit` option for `binary` and `text` columns is
+    silently dropped.
+    Previously, these migrations caused sql exceptions, because Postgresql doesn't support limits
+    on these types.
+
+    *Victor Costan*
+
+*   Use `nil?` instead of `blank?` to check whether dynamic finder with a bang
+    should raise RecordNotFound.
+    Fixes #7238.
+
+    *Nikita Afanasenko*
+
+*   Fix deleting from a HABTM join table upon destroying an object of a model
+    with optimistic locking enabled.
+    Fixes #5332.
+
+    *Nick Rogers*
+
+*   Use query cache/uncache when using ENV["DATABASE_URL"].
+    Fixes #6951.
+    Backport of #8074.
+
+    *kennyj*
+
+*   Do not create useless database transaction when building `has_one` association.
+
+    Example:
+
+        User.has_one :profile
+        User.new.build_profile
+
+    Backport of #8154.
+
+    *Bogdan Gusiev*
+
+*   `AR::Base#attributes_before_type_cast` now returns unserialized values for serialized attributes.
+
+    *Nikita Afanasenko*
+
+*   Fix issue that raises `NameError` when overriding the `accepts_nested_attributes` in child classes.
+
+    Before:
+
+        class Shared::Person < ActiveRecord::Base
+          has_one :address
+
+          accepts_nested_attributes :address, :reject_if => :all_blank
+        end
+
+        class Person < Shared::Person
+          accepts_nested_attributes :address
+        end
+
+        Person
+        #=> NameError: method `address_attributes=' not defined in Person
+
+    After:
+
+        Person
+        #=> Person(id: integer, ...)
+
+    Fixes #8131.
+
+    *Gabriel Sobrinho, Ricardo Henrique*
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
 
 *   Quote numeric values being compared to non-numeric columns. Otherwise,
     in some database, the string column values will be coerced to a numeric
@@ -10,16 +295,23 @@
 
     *Dylan Smith*
 
+
 ## Rails 3.2.11 (Jan 8, 2013) ##
 
 *   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
 
-## Rails 3.2.10 ##
+
+## Rails 3.2.10 (Jan 2, 2013) ##
 
 *   CVE-2012-5664 options hashes should only be extracted if there are extra
     parameters
 
+
 ## Rails 3.2.9 (Nov 12, 2012) ##
+
+*   Fix `find_in_batches` crashing when IDs are strings and start option is not specified.
+
+    *Alexis Bernard*
 
 *   Fix issue with collection associations calling first(n)/last(n) and attempting
     to set the inverse association when `:inverse_of` was used. Fixes #8087.

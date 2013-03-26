@@ -204,7 +204,7 @@ task :default => :test
       end
 
       def create_test_dummy_files
-        return if options[:skip_test_unit] && options[:dummy_path] == 'test/dummy'
+        return unless with_dummy_app?
         create_dummy_app
       end
 
@@ -213,6 +213,18 @@ task :default => :test
       end
 
       public_task :apply_rails_template, :run_bundle
+
+      def name
+        @name ||= begin
+          # same as ActiveSupport::Inflector#underscore except not replacing '-'
+          underscored = original_name.dup
+          underscored.gsub!(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
+          underscored.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
+          underscored.downcase!
+
+          underscored
+        end
+      end
 
     protected
 
@@ -242,24 +254,16 @@ task :default => :test
         options[:mountable]
       end
 
+      def with_dummy_app?
+        options[:skip_test_unit].blank? || options[:dummy_path] != 'test/dummy'
+      end
+
       def self.banner
         "rails plugin new #{self.arguments.map(&:usage).join(' ')} [options]"
       end
 
       def original_name
         @original_name ||= File.basename(destination_root)
-      end
-
-      def name
-        @name ||= begin
-          # same as ActiveSupport::Inflector#underscore except not replacing '-'
-          underscored = original_name.dup
-          underscored.gsub!(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
-          underscored.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
-          underscored.downcase!
-
-          underscored
-        end
       end
 
       def camelized
@@ -282,7 +286,7 @@ task :default => :test
           dummy_application_path = File.expand_path("#{dummy_path}/config/application.rb", destination_root)
           unless options[:pretend] || !File.exists?(dummy_application_path)
             contents = File.read(dummy_application_path)
-            contents[(contents.index("module Dummy"))..-1]
+            contents[(contents.index(/module ([\w]+)\n(.*)class Application/m))..-1]
           end
         end
       end

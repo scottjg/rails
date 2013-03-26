@@ -37,18 +37,16 @@ module ActiveRecord
             if create_time_zone_conversion_attribute?(attr_name, columns_hash[attr_name])
               method_body, line = <<-EOV, __LINE__ + 1
                 def #{attr_name}=(original_time)
+                  original_time = nil if original_time.blank?
                   time = original_time
                   unless time.acts_like?(:time)
                     time = time.is_a?(String) ? Time.zone.parse(time) : time.to_time rescue time
                   end
-                  zoned_time   = time && time.in_time_zone rescue nil
-                  rounded_time = round_usec(zoned_time)
-                  rounded_value = round_usec(read_attribute("#{attr_name}"))
-                  if (rounded_value != rounded_time) || (!rounded_value && original_time)
-                    write_attribute("#{attr_name}", original_time)
-                    #{attr_name}_will_change!
-                    @attributes_cache["#{attr_name}"] = zoned_time
-                  end
+                  time = time.in_time_zone rescue nil if time
+                  previous_time = attribute_changed?("#{attr_name}") ? changed_attributes["#{attr_name}"] : read_attribute(:#{attr_name})
+                  write_attribute(:#{attr_name}, original_time)
+                  #{attr_name}_will_change! if previous_time != time
+                  @attributes_cache["#{attr_name}"] = time
                 end
               EOV
               generated_attribute_methods.module_eval(method_body, __FILE__, line)
@@ -61,12 +59,6 @@ module ActiveRecord
           def create_time_zone_conversion_attribute?(name, column)
             time_zone_aware_attributes && !self.skip_time_zone_conversion_for_attributes.include?(name.to_sym) && column.type.in?([:datetime, :timestamp])
           end
-      end
-
-      private
-      def round_usec(value)
-        return unless value
-        value.change(:usec => 0)
       end
     end
   end

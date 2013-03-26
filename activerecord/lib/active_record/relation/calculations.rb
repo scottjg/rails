@@ -177,8 +177,15 @@ module ActiveRecord
     #   Person.where(:confirmed => true).limit(5).pluck(:id)
     #
     def pluck(column_name)
-      column_name = column_name.to_s
-      klass.connection.select_all(select(column_name).arel).map! do |attributes|
+      if column_name.is_a?(Symbol) && column_names.include?(column_name.to_s)
+        column_name = "#{connection.quote_table_name(table_name)}.#{connection.quote_column_name(column_name)}"
+      else
+        column_name = column_name.to_s
+      end
+
+      relation = clone
+      relation.select_values = [column_name]
+      klass.connection.select_all(relation.arel).map! do |attributes|
         klass.type_cast_attribute(attributes.keys.first, klass.initialize_attributes(attributes))
       end
     end
@@ -188,7 +195,8 @@ module ActiveRecord
     def perform_calculation(operation, column_name, options = {})
       operation = operation.to_s.downcase
 
-      distinct = options[:distinct]
+      # If #count is used in conjuction with #uniq it is considered distinct. (eg. relation.uniq.count)
+      distinct = options[:distinct] || self.uniq_value
 
       if operation == "count"
         column_name ||= (select_for_count || :all)

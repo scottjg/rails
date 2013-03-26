@@ -15,7 +15,15 @@ module ActionDispatch
 
     def call(env)
       status, headers, body = @app.call(env)
-      headers["X-UA-Compatible"] = @header
+
+      if headers["X-UA-Compatible"] && @header
+        unless headers["X-UA-Compatible"][@header]
+          headers["X-UA-Compatible"] << "," << @header.to_s
+        end
+      else
+        headers["X-UA-Compatible"] = @header
+      end
+
       [status, headers, body]
     end
   end
