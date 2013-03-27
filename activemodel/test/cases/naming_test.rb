@@ -3,6 +3,7 @@ require 'models/contact'
 require 'models/sheep'
 require 'models/track_back'
 require 'models/blog_post'
+require 'models/user_team'
 
 class NamingTest < ActiveModel::TestCase
   def setup
@@ -286,5 +287,22 @@ class NameWithAnonymousClassTest < Test::Unit::TestCase
   def test_anonymous_class_with_name_argument
     model_name = ActiveModel::Name.new(Class.new, nil, "Anonymous")
     assert_equal "Anonymous", model_name
+  end
+end
+
+class RedeclareRouteKeyTest < ActiveModel::TestCase
+  def test_set_route_key_in_base_model
+    @model_name = UserTeam.model_name
+    assert_equal 'teams', @model_name.route_key
+  end
+
+  def test_set_route_key_in_model_with_namespace
+    @model_name = UserTeam::Developers.model_name
+    assert_equal 'teams', @model_name.route_key
+  end
+
+  def test_set_route_key_in_sti_model
+    @model_name = Developers.model_name
+    assert_equal 'teams', @model_name.route_key
   end
 end
