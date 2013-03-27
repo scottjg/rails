@@ -166,7 +166,7 @@ module ActiveRecord
       #     end  # RELEASE SAVEPOINT active_record_1  <--- BOOM! database error!
       #   end
       def transaction(options = {})
-        options.assert_valid_keys :requires_new, :joinable
+        options.assert_valid_keys :requires_new, :joinable, :remember_record_state
 
         last_transaction_joinable = defined?(@transaction_joinable) ? @transaction_joinable : nil
         if options.has_key?(:joinable)
@@ -174,6 +174,18 @@ module ActiveRecord
         else
           @transaction_joinable = true
         end
+
+        if options.has_key?(:remember_record_state)
+          remember_record_state = options[:remember_record_state]
+        else
+          # Child transactions where parents have run with
+          # +remember_record_state+ of false will end up with
+          # @_current_transaction_records.blank == [nil, nil]. In that case
+          # this condition will set the child's +remember_record_state+
+          # also to false
+          remember_record_state = (@_current_transaction_records.blank? || !@_current_transaction_records.last.nil?)
+        end
+
         requires_new = options[:requires_new] || !last_transaction_joinable
 
         transaction_open = false
@@ -189,7 +201,7 @@ module ActiveRecord
               end
               increment_open_transactions
               transaction_open = true
-              @_current_transaction_records.push([])
+              @_current_transaction_records.push(remember_record_state ? [] : nil)
             end
             yield
           end
@@ -221,8 +233,7 @@ module ActiveRecord
             else
               release_savepoint
               save_point_records = @_current_transaction_records.pop
-              unless save_point_records.blank?
-                @_current_transaction_records.push([]) if @_current_transaction_records.empty?
+              unless save_point_records.blank? || @_current_transaction_records.empty?
                 @_current_transaction_records.last.concat(save_point_records)
               end
             end
@@ -319,10 +330,10 @@ module ActiveRecord
       # Sanitizes the given LIMIT parameter in order to prevent SQL injection.
       #
       # The +limit+ may be anything that can evaluate to a string via #to_s. It
-      # should look like an integer, or a comma-delimited list of integers, or 
+      # should look like an integer, or a comma-delimited list of integers, or
       # an Arel SQL literal.
       #
-      # Returns Integer and Arel::Nodes::SqlLiteral limits as is. 
+      # Returns Integer and Arel::Nodes::SqlLiteral limits as is.
       # Returns the sanitized limit parameter, either as an integer, or as a
       # string which contains a comma-delimited list of integers.
       def sanitize_limit(limit)
