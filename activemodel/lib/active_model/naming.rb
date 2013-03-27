@@ -187,6 +187,35 @@ module ActiveModel
       I18n.translate(defaults.shift, options)
     end
 
+    # Setup string to use while generating route names.
+    #
+    # class UserTeam
+    #   set_route_key :team
+    # end
+    #
+    # ActiveModel::Naming.route_key(UserTeam) #=> teams
+    #
+    # class UserTeam::Developers
+    #   set_route_key :team
+    # end
+    #
+    # ActiveModel::Naming.route_key(UserTeam::Developers) #=> teams
+    #
+    # class Developers < UserTeam
+    #   set_route_key :team
+    # end
+    #
+    # ActiveModel::Naming.route_key(Developers) #=> teams
+    #
+    # The route key also considers if the noun is uncountable and, in
+    # such cases, automatically appends _index.
+    def route_key=(route)
+      singular = _singularize(route)
+      @route_key = ActiveSupport::Inflector.pluralize(singular)
+      @singular_route_key = ActiveSupport::Inflector.singularize(@route_key)
+      @route_key << "_index" if @route_key == singular
+    end
+
     private
 
     def _singularize(string, replacement='_')
@@ -283,6 +312,32 @@ module ActiveModel
     # such cases, automatically appends _index.
     def self.route_key(record_or_class)
       model_name_from_record_or_class(record_or_class).route_key
+    end
+
+    # Setup string to use while generating route names.
+    #
+    # class UserTeam
+    #   set_route_key :team
+    # end
+    #
+    # ActiveModel::Naming.route_key(UserTeam) #=> teams
+    #
+    # class UserTeam::Developers
+    #   set_route_key :team
+    # end
+    #
+    # ActiveModel::Naming.route_key(UserTeam::Developers) #=> teams
+    #
+    # class Developers < UserTeam
+    #   set_route_key :team
+    # end
+    #
+    # ActiveModel::Naming.route_key(Developers) #=> teams
+    #
+    # The route key also considers if the noun is uncountable and, in
+    # such cases, automatically appends _index.
+    def set_route_key(route_key)
+      self.model_name.route_key = route_key.to_s
     end
 
     # Returns string to use for params names. It differs for
