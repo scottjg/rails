@@ -135,6 +135,14 @@ class InverseHasOneTests < ActiveRecord::TestCase
     assert_equal m.name, f.man.name, "Name of man should be the same after changes to newly-created-child-owned instance"
   end
 
+  def test_parent_instance_should_be_shared_with_newly_created_child_before_is_saved
+    m = Man.find(:first)
+    m.create_face(:description => 'haunted') do |f|
+      assert_not_nil f.man
+      assert m.equal?(f.man), "Instance in child is not same as parent"
+    end
+  end
+
   def test_parent_instance_should_be_shared_with_newly_created_child_via_bang_method
     m = Man.find(:first)
     f = m.create_face!(:description => 'haunted')
