@@ -56,7 +56,12 @@ module ActionDispatch
     RFC5789 = %w(PATCH)
 
     HTTP_METHODS = RFC2616 + RFC2518 + RFC3253 + RFC3648 + RFC3744 + RFC5323 + RFC5789
-    HTTP_METHOD_LOOKUP = Hash.new { |h, m| h[m] = m.underscore.to_sym if HTTP_METHODS.include?(m) }
+    HTTP_METHOD_LOOKUP = {}
+
+    # Populate the HTTP method lookup cache
+    HTTP_METHODS.each do |method|
+      HTTP_METHOD_LOOKUP[method] = method.underscore.to_sym
+    end
 
     # Returns the HTTP \method that the application should see.
     # In the case where the \method was overridden by a middleware
@@ -248,18 +253,14 @@ module ActionDispatch
       LOCALHOST.any? { |local_ip| local_ip === remote_addr && local_ip === remote_ip }
     end
 
-    protected
-
     # Remove nils from the params hash
     def deep_munge(hash)
-      keys = hash.keys.find_all { |k| hash[k] == [nil] }
-      keys.each { |k| hash[k] = nil }
-
-      hash.each_value do |v|
+      hash.each do |k, v|
         case v
         when Array
           v.grep(Hash) { |x| deep_munge(x) }
           v.compact!
+          hash[k] = nil if v.empty?
         when Hash
           deep_munge(v)
         end
@@ -267,6 +268,8 @@ module ActionDispatch
 
       hash
     end
+
+    protected
 
     def parse_query(qs)
       deep_munge(super)
