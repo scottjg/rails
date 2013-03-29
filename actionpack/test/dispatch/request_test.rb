@@ -598,7 +598,7 @@ class RequestTest < ActiveSupport::TestCase
                            'HTTP_X_REQUESTED_WITH' => "XMLHttpRequest"
     request.expects(:parameters).at_least_once.returns({})
     assert_equal [Mime::JS], request.formats
-    
+
     request = stub_request 'CONTENT_TYPE' => 'application/xml; charset=UTF-8',
                            'HTTP_X_REQUESTED_WITH' => "XMLHttpRequest"
     request.expects(:parameters).at_least_once.returns({})
@@ -606,7 +606,7 @@ class RequestTest < ActiveSupport::TestCase
 
     request = stub_request 'HTTP_ACCEPT' => 'application/json, text/javascript, */*'
     request.expects(:parameters).at_least_once.returns({})
-    assert_equal with_set(Mime::JSON, Mime::JS, Mime::ALL), request.formats
+    assert_equal [Mime::JSON, Mime::JS, Mime::ALL], request.formats
 
     request = stub_request
     request.expects(:parameters).at_least_once.returns({ :format => :txt })

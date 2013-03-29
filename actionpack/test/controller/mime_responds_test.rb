@@ -53,6 +53,14 @@ class RespondToController < ActionController::Base
     end
   end
 
+  def html_xml_or_json
+    respond_to do |type|
+      type.html { render :text => 'HTML' }
+      type.xml { render :xml => 'XML' }
+      type.json { render :text => 'JSON' }
+    end
+  end
+
 
   def forced_xml
     request.format = :xml
@@ -380,6 +388,24 @@ class RespondToControllerTest < ActionController::TestCase
     @request.accept = "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5"
     get :html_or_xml
     assert_equal 'HTML', @response.body
+  end
+
+  def test_common_browsers_simulation
+    accept_headers = [
+      "text/html, application/xml;q=0.9",
+      "text/html, application/xhtml+xml, */*",
+      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1",
+      "text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1",
+      "application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5",
+      "*/*"
+    ]
+
+    accept_headers.each do |header|
+      @request.accept = header
+      get :html_xml_or_json
+      assert_equal 'HTML', @response.body
+    end
   end
 
   def test_handle_any

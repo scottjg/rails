@@ -55,7 +55,7 @@ module ActionDispatch
         @env["action_dispatch.request.formats"] ||=
           if parameters[:format]
             Array(Mime[parameters[:format]])
-          elsif use_accept_header && valid_accept_header
+          elsif use_accept_header && valid_accept_header && accepts_present?
             accepts
           elsif xhr?
             [Mime::JS]
@@ -120,6 +120,10 @@ module ActionDispatch
 
       def valid_accept_header
         accept || content_mime_type
+      end
+
+      def accepts_present?
+        accepts.compact.present?
       end
 
       def use_accept_header
