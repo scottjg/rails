@@ -1,13 +1,45 @@
 ## unreleased ##
 
+*   Fix assets loading performance in 3.2.13.
+
+    Issue #8756 uses Sprockets for resolving files that already exist on disk,
+    for those files their extensions don't need to be rewritten.
+
+    Fixes #9803.
+
+    *Fred Wu*
+
+*   Fix `ActionController#action_missing` not being called.
+    Fixes #9799.
+
+    *Janko Luin*
+
+*   `ActionView::Helpers::NumberHelper#number_to_human` returns the number unaltered when
+    the units hash does not contain the needed key, e.g. when the number provided is less
+    than the largest key provided.
+
+    Examples:
+
+        number_to_human(123, units: {})                # => 123
+        number_to_human(123, units: { thousand: 'k' }) # => 123
+
+    Fixes #9269.
+    Backport #9347.
+
+    *Michael Hoffman*
+
 *   Include I18n locale fallbacks in view lookup.
     Fixes GH#3512.
 
     *Juan Barreneche*
-*   No changes.
+
+*   Fix `ActionDispatch::Request#formats` when the Accept request-header is an
+    empty string. Fix #7774 [Backport #8977, #9541]
+
+    *Soylent + Maxime Réty*
 
 
-## Rails 3.2.13 ##
+## Rails 3.2.13 (Mar 18, 2013) ##
 
 *   Fix incorrectly appended square brackets to a multiple select box
     if an explicit name has been given and it already ends with "[]".
@@ -26,16 +58,6 @@
 
     *Olek Janiszewski*
 
-<<<<<<< HEAD
-*   Fix `ActionDispatch::Request#formats` when the Accept request-header is an
-    empty string. Fix #7774 [Backport #8977, #9541]
-
-    *Soylent + Maxime Réty*
-
-## Rails 3.2.13.rc1 (Feb 17, 2013) ##
-
-=======
->>>>>>> 3-2-13
 *   Determine the controller#action from only the matched path when using the
     shorthand syntax. Previously the complete path was used, which led
     to problems with nesting (scopes and namespaces).

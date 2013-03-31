@@ -1,4 +1,28 @@
-## Rails 3.2.13 (Feb 17, 2013) ##
+## unreleased ##
+
+*   Removed warning when `auto_explain_threshold_in_seconds` is set and the
+    connection adapter doesn't support explain.
+    This is causing a regression since the Active Record Railtie is trying to
+    connect to the development database in the application boot.
+
+    *Rafael Mendonça França*
+
+*   Do not reset `inheritance_column` when it's set explicitly.
+    Backport of #5327.
+
+    *kennyj + Fred Wu*
+
+*   Fix a problem wrong exception is occured
+    when raising no translatable exception in PostgreSQL.
+
+    *kennyj*
+
+*   Resets the postgres search path in the structure.sql after the structure
+    is dumped in order to find schema_migrations table when multiples schemas
+    are used.
+    Fixes #9796.
+
+    *Juan M. Cuello + Dembskiy Alexander*
 
 *   Reload the association target if it's stale. `@stale_state` should be nil
     when a model isn't saved.
@@ -13,7 +37,7 @@
     *kennyj*
 
 
-## Rails 3.2.13.rc1 (Feb 17, 2013) ##
+## Rails 3.2.13 (Mar 18, 2013) ##
 
 *   Reverted 921a296a3390192a71abeec6d9a035cc6d1865c8, 'Quote numeric values
     compared to string columns.' This caused several regressions.
@@ -237,6 +261,16 @@
     on these types.
 
     *Victor Costan*
+
+*   `#pluck` can be used on a relation with `select` clause.
+    Fixes #7551.
+    Backport of #8176.
+
+    Example:
+
+        Topic.select([:approved, :id]).order(:id).pluck(:id)
+
+    *Yves Senn*
 
 *   Use `nil?` instead of `blank?` to check whether dynamic finder with a bang
     should raise RecordNotFound.
