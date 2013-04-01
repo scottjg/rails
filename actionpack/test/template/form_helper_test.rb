@@ -96,6 +96,8 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
+    resource :car
+
     get "/foo", to: "controller#action"
     root to: "main#index"
   end
@@ -2887,6 +2889,21 @@ class FormHelperTest < ActionView::TestCase
   def test_fields_for_returns_block_result
     output = fields_for(Post.new) { |f| "fields" }
     assert_equal "fields", output
+  end
+
+  def test_form_for_with_new_singular_resource
+    form_for(@car) do |f| end
+
+    expected = whole_form("/car", "new_car", "new_car")
+    assert_equal expected, output_buffer
+  end
+
+  def test_form_for_with_an_existing_singular_resource
+    @car.save
+    form_for(@car) do |f| end
+
+    expected = whole_form("/car", "edit_car", "edit_car", method: "patch")
+    assert_equal expected, output_buffer
   end
 
   def test_form_builder_block_argument_deprecation

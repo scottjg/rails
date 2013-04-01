@@ -216,4 +216,10 @@ class RenderJsonTestException < Exception
 end
 
 class Car < Struct.new(:color)
+  attr_reader :id
+  extend ActiveModel::Naming
+  include ActiveModel::Conversion
+  def to_key; id ? [id] : nil end
+  def save; @id = 1; end
+  def persisted?; id.present?; end
 end
