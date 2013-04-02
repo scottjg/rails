@@ -62,9 +62,8 @@ module ActiveRecord
       end
 
       def scoped
-        association = @association
-        association.scoped.extending do
-          define_method(:proxy_association) { association }
+        @association.scoped.tap do |scope|
+          scope.proxy_association = @association
         end
       end
 
