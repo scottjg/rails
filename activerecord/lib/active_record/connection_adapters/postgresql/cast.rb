@@ -123,7 +123,7 @@ module ActiveRecord
             when "NULL"
               value
             else
-              "\"#{value.gsub(/"/,"\\\"")}\""
+              "\"#{value.gsub(/"/,"\\\"").gsub(/'/,"''")}\""
             end
           end
       end
