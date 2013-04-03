@@ -433,7 +433,7 @@ module ActionView
 
         builder = instantiate_builder(object_name, object, options)
         output  = capture(builder, &block)
-        html_options[:multipart] = builder.multipart?
+        html_options[:multipart] ||= builder.multipart?
 
         form_tag(options[:url] || {}, html_options) { output }
       end
@@ -654,14 +654,6 @@ module ActionView
       #     <% end %>
       #     ...
       #   <% end %>
-      #
-      # When projects is already an association on Person you can use
-      # +accepts_nested_attributes_for+ to define the writer method for you:
-      #
-      #   class Person < ActiveRecord::Base
-      #     has_many :projects
-      #     accepts_nested_attributes_for :projects
-      #   end
       #
       # If you want to destroy any of the associated models through the
       # form, you have to enable it first using the <tt>:allow_destroy</tt>
@@ -1424,14 +1416,6 @@ module ActionView
       #     <% end %>
       #     ...
       #   <% end %>
-      #
-      # When projects is already an association on Person you can use
-      # +accepts_nested_attributes_for+ to define the writer method for you:
-      #
-      #   class Person < ActiveRecord::Base
-      #     has_many :projects
-      #     accepts_nested_attributes_for :projects
-      #   end
       #
       # If you want to destroy any of the associated models through the
       # form, you have to enable it first using the <tt>:allow_destroy</tt>

@@ -1,30 +1,124 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   Add --rc option to support the load of a custom rc file during the generation of a new app.
+*   Move rails.png into a data-uri. One less file to get generated into a new
+    application. This is also consistent with the removal of index.html.
+
+    *Steve Klabnik*
+
+*   The application rake task `doc:rails` generates now an API like the
+    official one (except for the links to GitHub).
+
+    *Xavier Noria*
+
+*   Allow vanilla apps to render CoffeeScript templates in production
+
+    Vanilla apps already render CoffeeScript templates in development and test
+    environments.  With this change, the production behavior matches that of
+    the other environments.
+
+    Effectively, this meant moving coffee-rails (and the JavaScript runtime on
+    which it is dependent) from the :assets group to the top-level of the
+    generated Gemfile.
+
+    *Gabe Kopley*
+
+*   Don't generate a scaffold.css when --no-assets is specified
+
+    *Kevin Glowacz*
+
+*   Add support for generate scaffold password:digest
+
+    * adds password_digest attribute to the migration
+    * adds has_secure_password to the model
+    * adds password and password_confirmation password_fields to _form.html
+    * omits password from index.html and show.html
+    * adds password and password_confirmation to the controller
+    * adds unencrypted password and password_confirmation to the controller test
+    * adds encrypted password_digest to the fixture
+
+    *Sam Ruby*
+
+*   Rails now generates a `test/test_helper.rb` file with `fixtures :all` commented out by default,
+    since we don't want to force loading all fixtures for user when a single test is run. However,
+    fixtures are still going to be loaded automatically for test suites.
+
+    To force all fixtures to be create in your database, use `rails test -f` to run your test.
+
+    *Prem Sichanugrist*
+
+*   Add `rails test` command for running tests
+
+    To run all tests:
+
+        $ rails test
+
+    To run a test suite
+
+        $ rails test [models,helpers,units,controllers,mailers,...]
+
+    To run a selected test file(s):
+
+        $ rails test test/unit/foo_test.rb [test/unit/bar_test.rb ...]
+
+    To run a single test from a test file
+
+        $ rails test test/unit/foo_test.rb -n test_the_truth
+
+    For more information, see `rails test --help`.
+
+    This command will eventually replace `rake test:*` and `rake test` tasks.
+
+    *Prem Sichanugrist and Chris Toomey*
+
+*   Improve service pages with new layout (404, etc).
+
+     *Stanislav Sobolev*
+
+
+## Rails 4.0.0.beta1 (February 25, 2013) ##
+
+*   Improve `rake stats` for JavaScript and CoffeeScript: ignore block comments
+    and calculates number of functions.
+
+    *Hendy Tanata*
+
+*   Ability to use a custom builder by passing `--builder` (or `-b`) has been removed.
+    Consider using application template instead. See this guide for more detail:
+    http://guides.rubyonrails.org/rails_application_templates.html
+
+    *Prem Sichanugrist*
+
+*   Fix `rake db:*` tasks to work with `DATABASE_URL` and without `config/database.yml`.
+
+    *Terence Lee*
+
+*   Add notice message for destroy action in scaffold generator.
+
+    *Rahul P. Chaudhari*
+
+*   Add two new test rake tasks to speed up full test runs.
+
+    * `test:all`: run tests quickly by merging all types and not resetting db.
+    * `test:all:db`: run tests quickly, but also reset db.
+
+    *Ryan Davis*
+
+*   Add `--rc` option to support the load of a custom rc file during the generation of a new app.
 
     *Amparo Luna*
 
-*   Add --no-rc option to skip the loading of railsrc file during the generation of a new app.
-    
+*   Add `--no-rc` option to skip the loading of railsrc file during the generation of a new app.
+
     *Amparo Luna*
 
 *   Fixes database.yml when creating a new rails application with '.'
-    Fix #8304
+    Fixes #8304.
 
     *Jeremy W. Rowe*
 
-*   Deprecate the `eager_load_paths` configuration and alias it to `autoload_paths`.
-    Since the default in Rails 4.0 is to run in 'threadsafe' mode we need to eager
-    load all of the paths in `autoload_paths`. This may have unintended consequences
-    if you have added 'lib' to `autoload_paths` such as loading unneeded code or
-    code intended only for development and/or test environments. If this applies to
-    your application you should thoroughly check what is being eager loaded.
-
-    *Andrew White*
-
 *   Restore Rails::Engine::Railties#engines with deprecation to ensure
     compatibility with gems such as Thinking Sphinx
-    Fix #8551
+    Fixes #8551.
 
     *Tim Raymond*
 
@@ -98,7 +192,7 @@
 
 *   Environment name can be a start substring of the default environment names
     (production, development, test). For example: tes, pro, prod, dev, devel.
-    Fix #8628.
+    Fixes #8628.
 
     *Mykola Kyryk*
 
@@ -108,7 +202,7 @@
 
 *   Quote column names in generates fixture files. This prevents
     conflicts with reserved YAML keywords such as 'yes' and 'no'
-    Fix #8612.
+    Fixes #8612.
 
     *Yves Senn*
 
@@ -141,19 +235,19 @@
 *   Add `db` to list of folders included by `rake notes` and `rake notes:custom`. *Antonio Cangiano*
 
 *   Engines with a dummy app include the rake tasks of dependencies in the app namespace.
-    Fix #8229
+    Fixes #8229.
 
     *Yves Senn*
 
 *   Add `sqlserver.yml` template file to satisfy `-d sqlserver` being passed to `rails new`.
-    Fix #6882
+    Fixes #6882.
 
     *Robert Nesius*
 
 *   Rake test:uncommitted finds git directory in ancestors *Nicolas Despres*
 
 *   Add dummy app Rake tasks when `--skip-test-unit` and `--dummy-path` is passed to the plugin generator.
-    Fix #8121
+    Fixes #8121.
 
     *Yves Senn*
 
@@ -195,17 +289,25 @@
 
     *Derek Prior & Francesco Rodriguez*
 
-*   Fixed support for DATABASE_URL environment variable for rake db tasks. *Grace Liu*
+*   Fixed support for `DATABASE_URL` environment variable for rake db tasks.
 
-*   rails dbconsole now can use SSL for MySQL. The database.yml options sslca, sslcert, sslcapath, sslcipher,
-    and sslkey now affect rails dbconsole. *Jim Kingdon and Lars Petrus*
+    *Grace Liu*
+
+*   `rails dbconsole` now can use SSL for MySQL. The `database.yml` options sslca, sslcert, sslcapath, sslcipher
+    and sslkey now affect `rails dbconsole`.
+
+    *Jim Kingdon and Lars Petrus*
 
 *   Correctly handle SCRIPT_NAME when generating routes to engine in application
     that's mounted at a sub-uri. With this behavior, you *should not* use
-    default_url_options[:script_name] to set proper application's mount point by
-    yourself. *Piotr Sarnacki*
+    `default_url_options[:script_name]` to set proper application's mount point by
+    yourself.
 
-*   `config.threadsafe!` is deprecated in favor of `config.eager_load` which provides a more fine grained control on what is eager loaded *José Valim*
+     *Piotr Sarnacki*
+
+*   `config.threadsafe!` is deprecated in favor of `config.eager_load` which provides a more fine grained control on what is eager loaded .
+
+    *José Valim*
 
 *   The migration generator will now produce AddXXXToYYY/RemoveXXXFromYYY migrations with references statements, for instance
 
@@ -228,21 +330,35 @@
 
     *Aleksey Magusev*
 
-*   Set `config.active_record.migration_error` to `:page_load` for development *Richard Schneeman*
+*   Set `config.active_record.migration_error` to `:page_load` for development.
 
-*   Add runner to Rails::Railtie as a hook called just after runner starts. *José Valim & kennyj*
+     *Richard Schneeman*
 
-*   Add `/rails/info/routes` path, displays same information as `rake routes` *Richard Schneeman & Andrew White*
+*   Add runner to `Rails::Railtie` as a hook called just after runner starts.
 
-*   Improved `rake routes` output for redirects *Łukasz Strzałkowski & Andrew White*
+     *José Valim & kennyj*
 
-*   Load all environments available in `config.paths["config/environments"]`. *Piotr Sarnacki*
+*   Add `/rails/info/routes` path, displays same information as `rake routes` .
 
-*   Remove Rack::SSL in favour of ActionDispatch::SSL. *Rafael Mendonça França*
+     *Richard Schneeman & Andrew White*
 
-*   Remove Active Resource from Rails framework. *Prem Sichangrist*
+*   Improved `rake routes` output for redirects.
 
-*   Allow to set class that will be used to run as a console, other than IRB, with `Rails.application.config.console=`. It's best to add it to `console` block. *Piotr Sarnacki*
+     *Łukasz Strzałkowski & Andrew White*
+
+*   Load all environments available in `config.paths["config/environments"]`.
+
+     *Piotr Sarnacki*
+
+*   Remove `Rack::SSL` in favour of `ActionDispatch::SSL`.
+
+     *Rafael Mendonça França*
+
+*   Remove Active Resource from Rails framework.
+
+     *Prem Sichangrist*
+
+*   Allow to set class that will be used to run as a console, other than IRB, with `Rails.application.config.console=`. It's best to add it to `console` block.
 
     Example:
 
@@ -254,12 +370,20 @@
           config.console = Pry
         end
 
-*   Add convenience `hide!` method to Rails generators to hide current generator
-    namespace from showing when running `rails generate`. *Carlos Antonio da Silva*
+    *Piotr Sarnacki*
 
-*   Rails::Plugin has gone. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies. *Santiago Pastorino*
+*   Add convenience `hide!` method to Rails generators to hide current generator
+    namespace from showing when running `rails generate`.
+
+     *Carlos Antonio da Silva*
+
+*   Rails::Plugin has gone. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies.
+
+    *Santiago Pastorino*
 
 *   Set config.action_mailer.async = true to turn on asynchronous
-    message delivery *Brian Cardarella*
+    message delivery.
+
+     *Brian Cardarella*
 
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/railties/CHANGELOG.md) for previous changes.

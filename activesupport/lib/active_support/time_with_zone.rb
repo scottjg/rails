@@ -317,6 +317,10 @@ module ActiveSupport
     end
     alias_method :tv_sec, :to_i
 
+    def to_r
+      utc.to_r
+    end
+
     # Return an instance of Time in the system timezone.
     def to_time
       utc.to_time
@@ -362,6 +366,8 @@ module ActiveSupport
     # TimeWithZone with the existing +time_zone+.
     def method_missing(sym, *args, &block)
       wrap_with_time_zone time.__send__(sym, *args, &block)
+    rescue NoMethodError => e
+      raise e, e.message.sub(time.inspect, self.inspect), e.backtrace
     end
 
     private

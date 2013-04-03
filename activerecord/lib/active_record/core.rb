@@ -69,8 +69,25 @@ module ActiveRecord
       mattr_accessor :timestamped_migrations, instance_writer: false
       self.timestamped_migrations = true
 
-      class_attribute :connection_handler, instance_writer: false
-      self.connection_handler = ConnectionAdapters::ConnectionHandler.new
+      ##
+      # :singleton-method:
+      # Disable implicit join references. This feature was deprecated with Rails 4.
+      # If you don't make use of implicit references but still see deprecation warnings
+      # you can disable the feature entirely. This will be the default with Rails 4.1.
+      mattr_accessor :disable_implicit_join_references, instance_writer: false
+      self.disable_implicit_join_references = false
+
+      class_attribute :default_connection_handler, instance_writer: false
+
+      def self.connection_handler
+        Thread.current[:active_record_connection_handler] || self.default_connection_handler
+      end
+
+      def self.connection_handler=(handler)
+        Thread.current[:active_record_connection_handler] = handler
+      end
+
+      self.default_connection_handler = ConnectionAdapters::ConnectionHandler.new
     end
 
     module ClassMethods
@@ -168,6 +185,7 @@ module ActiveRecord
       @columns_hash = self.class.column_types.dup
 
       init_internals
+      init_changed_attributes
       ensure_proper_type
       populate_with_current_scope_attributes
 
@@ -238,9 +256,7 @@ module ActiveRecord
       run_callbacks(:initialize) unless _initialize_callbacks.empty?
 
       @changed_attributes = {}
-      self.class.column_defaults.each do |attr, orig_value|
-        @changed_attributes[attr] = orig_value if _field_changed?(attr, orig_value, @attributes[attr])
-      end
+      init_changed_attributes
 
       @aggregation_cache = {}
       @association_cache = {}
@@ -249,7 +265,6 @@ module ActiveRecord
       @new_record  = true
 
       ensure_proper_type
-      populate_with_current_scope_attributes
       super
     end
 
@@ -325,6 +340,7 @@ module ActiveRecord
     # also be used to "borrow" the connection to do database work that isn't
     # easily done without going straight to SQL.
     def connection
+      ActiveSupport::Deprecation.warn("#connection is deprecated in favour of accessing it via the class")
       self.class.connection
     end
 
@@ -347,7 +363,53 @@ module ActiveRecord
       Hash[methods.map { |method| [method, public_send(method)] }].with_indifferent_access
     end
 
+    def set_transaction_state(state) # :nodoc:
+      @transaction_state = state
+    end
+
+    def has_transactional_callbacks? # :nodoc:
+      !_rollback_callbacks.empty? || !_commit_callbacks.empty? || !_create_callbacks.empty?
+    end
+
     private
+
+    # Updates the attributes on this particular ActiveRecord object so that
+    # if it is associated with a transaction, then the state of the AR object
+    # will be updated to reflect the current state of the transaction
+    #
+    # The @transaction_state variable stores the states of the associated
+    # transaction. This relies on the fact that a transaction can only be in
+    # one rollback or commit (otherwise a list of states would be required)
+    # Each AR object inside of a transaction carries that transaction's
+    # TransactionState.
+    #
+    # This method checks to see if the ActiveRecord object's state reflects
+    # the TransactionState, and rolls back or commits the ActiveRecord object
+    # as appropriate.
+    #
+    # Since ActiveRecord objects can be inside multiple transactions, this
+    # method recursively goes through the parent of the TransactionState and
+    # checks if the ActiveRecord object reflects the state of the object.
+    def sync_with_transaction_state
+      update_attributes_from_transaction_state(@transaction_state, 0)
+    end
+
+    def update_attributes_from_transaction_state(transaction_state, depth)
+      if transaction_state && !has_transactional_callbacks?
+        unless @reflects_state[depth]
+          if transaction_state.committed?
+            committed!
+          elsif transaction_state.rolledback?
+            rolledback!
+          end
+          @reflects_state[depth] = true
+        end
+
+        if transaction_state.parent && !@reflects_state[depth+1]
+          update_attributes_from_transaction_state(transaction_state.parent, depth+1)
+        end
+      end
+    end
 
     # Under Ruby 1.9, Array#flatten will call #to_ary (recursively) on each of the elements
     # of the array, and then rescues from the possible NoMethodError. If those elements are
@@ -373,10 +435,21 @@ module ActiveRecord
       @readonly                 = false
       @destroyed                = false
       @marked_for_destruction   = false
+      @destroyed_by_association = nil
       @new_record               = true
       @txn                      = nil
       @_start_transaction_state = {}
-      @transaction              = nil
+      @transaction_state        = nil
+      @reflects_state           = [false]
+    end
+
+    def init_changed_attributes
+      # Intentionally avoid using #column_defaults since overridden defaults (as is done in
+      # optimistic locking) won't get written unless they get marked as changed
+      self.class.columns.each do |c|
+        attr, orig_value = c.name, c.default
+        @changed_attributes[attr] = orig_value if _field_changed?(attr, orig_value, @attributes[attr])
+      end
     end
   end
 end

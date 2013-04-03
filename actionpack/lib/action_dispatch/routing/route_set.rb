@@ -31,6 +31,8 @@ module ActionDispatch
           # If any of the path parameters has a invalid encoding then
           # raise since it's likely to trigger errors further on.
           params.each do |key, value|
+            next unless value.respond_to?(:valid_encoding?)
+
             unless value.valid_encoding?
               raise ActionController::BadRequest, "Invalid parameter: #{key} => #{value}"
             end
@@ -163,7 +165,7 @@ module ActionDispatch
               super
               @path_parts   = @route.required_parts
               @arg_size     = @path_parts.size
-              @string_route = string_route(route)
+              @string_route = @route.optimized_path
             end
 
             def call(t, args)
@@ -177,14 +179,6 @@ module ActionDispatch
             end
 
             private
-
-            def string_route(route)
-              string_route = route.ast.to_s.dup
-              while string_route.gsub!(/\([^\)]*\)/, "")
-                true
-              end
-              string_route
-            end
 
             def optimized_helper(args)
               path = @string_route.dup
@@ -409,11 +403,19 @@ module ActionDispatch
       def add_route(app, conditions = {}, requirements = {}, defaults = {}, name = nil, anchor = true)
         raise ArgumentError, "Invalid route name: '#{name}'" unless name.blank? || name.to_s.match(/^[_a-z]\w*$/i)
 
+        if name && named_routes[name]
+          raise ArgumentError, "Invalid route name, already in use: '#{name}' \n" \
+            "You may have defined two routes with the same name using the `:as` option, or " \
+            "you may be overriding a route already defined by a resource with the same naming. " \
+            "For the latter, you can restrict the routes created with `resources` as explained here: \n" \
+            "http://guides.rubyonrails.org/routing.html#restricting-the-routes-created"
+        end
+
         path = build_path(conditions.delete(:path_info), requirements, SEPARATORS, anchor)
         conditions = build_conditions(conditions, path.names.map { |x| x.to_sym })
 
         route = @set.add_route(app, path, conditions, defaults, name)
-        named_routes[name] = route if name && !named_routes[name]
+        named_routes[name] = route if name
         route
       end
 

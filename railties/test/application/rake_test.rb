@@ -1,5 +1,6 @@
 # coding:utf-8
 require "isolation/abstract_unit"
+require "active_support/core_ext/string/strip"
 
 module ApplicationTests
   class RakeTest < ActiveSupport::TestCase
@@ -90,19 +91,9 @@ module ApplicationTests
         raise 'models'
       RUBY
 
-      app_file "test/controllers/one_controller_test.rb", <<-RUBY
-        raise 'controllers'
-      RUBY
-
-      app_file "test/integration/one_integration_test.rb", <<-RUBY
-        raise 'integration'
-      RUBY
-
       silence_stderr do
         output = Dir.chdir(app_path) { `rake test 2>&1` }
         assert_match 'models', output
-        assert_match 'controllers', output
-        assert_match 'integration', output
       end
     end
 
@@ -134,13 +125,43 @@ module ApplicationTests
       end
     end
 
+    def test_rake_test_deprecation_messages
+      Dir.chdir(app_path){ `rails generate scaffold user name:string` }
+      Dir.chdir(app_path){ `rake db:migrate` }
+
+      %w(run recent uncommitted models helpers units controllers functionals integration).each do |test_suit_name|
+        output = Dir.chdir(app_path) { `rake test:#{test_suit_name} 2>&1` }
+        assert_match /DEPRECATION WARNING: `rake test:#{test_suit_name}` is deprecated/, output
+      end
+
+      assert_match /DEPRECATION WARNING: `rake test:single` is deprecated/,
+        Dir.chdir(app_path) { `rake test:single TEST=test/models/user_test.rb 2>&1` }
+    end
+
     def test_rake_routes_calls_the_route_inspector
       app_file "config/routes.rb", <<-RUBY
         AppTemplate::Application.routes.draw do
           get '/cart', to: 'cart#show'
         end
       RUBY
-      assert_equal "cart GET /cart(.:format) cart#show\n", Dir.chdir(app_path){ `rake routes` }
+
+      output = Dir.chdir(app_path){ `rake routes` }
+      assert_equal "Prefix Verb URI Pattern     Controller#Action\ncart GET /cart(.:format) cart#show\n", output
+    end
+
+    def test_rake_routes_displays_message_when_no_routes_are_defined
+      app_file "config/routes.rb", <<-RUBY
+        AppTemplate::Application.routes.draw do
+        end
+      RUBY
+
+      assert_equal <<-MESSAGE.strip_heredoc, Dir.chdir(app_path){ `rake routes` }
+        You don't have any routes defined!
+
+        Please add some routes in config/routes.rb.
+
+        For more information about routes, see the Rails guide: http://guides.rubyonrails.org/routing.html.
+      MESSAGE
     end
 
     def test_logger_is_flushed_when_exiting_production_rake_tasks

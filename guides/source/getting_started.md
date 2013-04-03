@@ -21,7 +21,7 @@ application from scratch. It does not assume that you have any prior experience
 with Rails. However, to get the most out of it, you need to have some
 prerequisites installed:
 
-* The [Ruby](http://www.ruby-lang.org/en/downloads) language version 1.9.3 or higher
+* The [Ruby](http://www.ruby-lang.org/en/downloads) language version 1.9.3 or newer
 * The [RubyGems](http://rubygems.org/) packaging system
     * To learn more about RubyGems, please read the [RubyGems User Guide](http://docs.rubygems.org/read/book/1)
 * A working installation of the [SQLite3 Database](http://www.sqlite.org)
@@ -84,7 +84,7 @@ current version of Ruby installed:
 
 ```bash
 $ ruby -v
-ruby 1.9.3p327
+ruby 1.9.3p385
 ```
 
 To install Rails, use the `gem install` command provided by RubyGems:
@@ -103,7 +103,7 @@ To verify that you have everything installed correctly, you should be able to ru
 $ rails --version
 ```
 
-If it says something like "Rails 3.2.9", you are ready to continue.
+If it says something like "Rails 4.0.0", you are ready to continue.
 
 ### Creating the Blog Application
 
@@ -208,7 +208,7 @@ create      app/assets/stylesheets/welcome.css.scss
 
 Most important of these are of course the controller, located at `app/controllers/welcome_controller.rb` and the view, located at `app/views/welcome/index.html.erb`.
 
-Open the `app/views/welcome/index.html.erb` file in your text editor and edit it to contain a single line of code:
+Open the `app/views/welcome/index.html.erb` file in your text editor. Delete all of the existing code in the file, and replace it with the following single line of code:
 
 ```html
 <h1>Hello, Rails!</h1>
@@ -278,7 +278,7 @@ With the route defined, requests can now be made to `/posts/new` in the applicat
 
 ![Another routing error, uninitialized constant PostsController](images/getting_started/routing_error_no_controller.png)
 
-This error is happening because this route need a controller to be defined. The route is attempting to find that controller so it can serve the request, but with the controller undefined, it just can't do that. The solution to this particular problem is simple: you need to create a controller called `PostsController`. You can do this by running this command:
+This error occurs because the route needs to have a controller defined in order to serve the request. The solution to this particular problem is simple: create a controller called `PostsController`. You can do this by running this command:
 
 ```bash
 $ rails g controller posts
@@ -568,7 +568,7 @@ interested in. We also use an instance variable (prefixed by `@`) to
 hold a reference to the post object. We do this because Rails will pass all instance
 variables to the view.
 
-Now, create a new file `app/view/posts/show.html.erb` with the following
+Now, create a new file `app/views/posts/show.html.erb` with the following
 content:
 
 ```html+erb
@@ -1761,7 +1761,7 @@ cannot be automatically detected by Rails and corrected.
 
 Two very common sources of data that are not UTF-8:
 
-* Your text editor: Most text editors (such as Textmate), default to saving files as
+* Your text editor: Most text editors (such as TextMate), default to saving files as
   UTF-8. If your text editor does not, this can result in special characters that you
   enter in your templates (such as é) to appear as a diamond with a question mark inside
   in the browser. This also applies to your i18n translation files.

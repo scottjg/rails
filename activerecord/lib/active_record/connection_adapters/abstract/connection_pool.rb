@@ -406,7 +406,9 @@ module ActiveRecord
         synchronize do
           stale = Time.now - @dead_connection_timeout
           connections.dup.each do |conn|
-            remove conn if conn.in_use? && stale > conn.last_use && !conn.active?
+            if conn.in_use? && stale > conn.last_use && !conn.active?
+              remove conn
+            end
           end
         end
       end
@@ -577,10 +579,10 @@ module ActiveRecord
       # When a connection is established or removed, we invalidate the cache.
       #
       # Ideally we would use #fetch here, as class_to_pool[klass] may sometimes be nil.
-      # However, benchmarking (https://gist.github.com/3552829) showed that #fetch is
-      # significantly slower than #[]. So in the nil case, no caching will take place,
-      # but that's ok since the nil case is not the common one that we wish to optimise
-      # for.
+      # However, benchmarking (https://gist.github.com/jonleighton/3552829) showed that
+      # #fetch is significantly slower than #[]. So in the nil case, no caching will
+      # take place, but that's ok since the nil case is not the common one that we wish
+      # to optimise for.
       def retrieve_connection_pool(klass)
         class_to_pool[klass.name] ||= begin
           until pool = pool_for(klass)

@@ -19,9 +19,6 @@ module Rails
       argument :app_path, type: :string
 
       def self.add_shared_options_for(name)
-        class_option :builder,            type: :string, aliases: '-b',
-                                          desc: "Path to some #{name} builder (can be a filesystem path or URL)"
-
         class_option :template,           type: :string, aliases: '-m',
                                           desc: "Path to some #{name} template (can be a filesystem path or URL)"
 
@@ -81,17 +78,6 @@ module Rails
 
       def builder
         @builder ||= begin
-          if path = options[:builder]
-            if URI(path).is_a?(URI::HTTP)
-              contents = open(path, "Accept" => "application/x-thor-template") {|io| io.read }
-            else
-              contents = open(File.expand_path(path, @original_wd)) {|io| io.read }
-            end
-
-            prok = eval("proc { #{contents} }", TOPLEVEL_BINDING, path, 1)
-            instance_eval(&prok)
-          end
-
           builder_class = get_builder_class
           builder_class.send(:include, ActionMethods)
           builder_class.new(self)
@@ -192,32 +178,46 @@ module Rails
         return if options[:skip_sprockets]
 
         gemfile = if options.dev? || options.edge?
-          <<-GEMFILE
-            # Gems used only for assets and not required
-            # in production environments by default.
-            group :assets do
-              gem 'sprockets-rails', github: 'rails/sprockets-rails'
-              gem 'sass-rails',   github: 'rails/sass-rails'
-              gem 'coffee-rails', github: 'rails/coffee-rails'
+          <<-GEMFILE.gsub(/^ {12}/, '')
+            # Use edge version of sprockets-rails
+            gem 'sprockets-rails', github: 'rails/sprockets-rails'
 
-              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-              #{javascript_runtime_gemfile_entry}
-              gem 'uglifier', '>= 1.0.3'
-            end
+            # Use SCSS for stylesheets
+            gem 'sass-rails',   github: 'rails/sass-rails'
+
+            # To use Uglifier as compressor for JavaScript assets
+            gem 'uglifier', '>= 1.3.0'
           GEMFILE
         else
-          <<-GEMFILE
-            # Gems used only for assets and not required
-            # in production environments by default.
-            group :assets do
-              gem 'sprockets-rails', '~> 2.0.0.rc1'
-              gem 'sass-rails',   '~> 4.0.0.beta'
-              gem 'coffee-rails', '~> 4.0.0.beta'
+          <<-GEMFILE.gsub(/^ {12}/, '')
+            # Use SCSS for stylesheets
+            gem 'sass-rails',   '~> 4.0.0.beta1'
 
-              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-              #{javascript_runtime_gemfile_entry}
-              gem 'uglifier', '>= 1.0.3'
-            end
+            # To use Uglifier as compressor for JavaScript assets
+            gem 'uglifier', '>= 1.3.0'
+          GEMFILE
+        end
+
+        if options[:skip_javascript]
+          gemfile += <<-GEMFILE.gsub(/^ {12}/, '')
+            #{coffee_gemfile_entry}
+            #{javascript_runtime_gemfile_entry}
+          GEMFILE
+        end
+
+        gemfile.strip_heredoc.gsub(/^[ \t]*$/, '')
+      end
+
+      def coffee_gemfile_entry
+        gemfile = if options.dev? || options.edge?
+          <<-GEMFILE.gsub(/^ {12}/, '')
+            # Use CoffeeScript for .js.coffee assets and views
+            gem 'coffee-rails', github: 'rails/coffee-rails'
+          GEMFILE
+        else
+          <<-GEMFILE.gsub(/^ {12}/, '')
+            # Use CoffeeScript for .js.coffee assets and views
+            gem 'coffee-rails', '~> 4.0.0.beta1'
           GEMFILE
         end
 
@@ -226,7 +226,10 @@ module Rails
 
       def javascript_gemfile_entry
         unless options[:skip_javascript]
-          <<-GEMFILE.strip_heredoc
+          <<-GEMFILE.gsub(/^ {12}/, '').strip_heredoc
+            #{coffee_gemfile_entry}
+            #{javascript_runtime_gemfile_entry}
+
             gem '#{options[:javascript]}-rails'
 
             # Turbolinks makes following links in your web application faster. Read more: https://github.com/rails/turbolinks
@@ -236,11 +239,15 @@ module Rails
       end
 
       def javascript_runtime_gemfile_entry
-        if defined?(JRUBY_VERSION)
-          "gem 'therubyrhino'\n"
+        runtime = if defined?(JRUBY_VERSION)
+          "gem 'therubyrhino'"
         else
-          "# gem 'therubyracer', platforms: :ruby\n"
+          "# gem 'therubyracer', platforms: :ruby"
         end
+        <<-GEMFILE.gsub(/^ {10}/, '')
+          # See https://github.com/sstephenson/execjs#readme for more supported runtimes
+          #{runtime}
+        GEMFILE
       end
 
       def bundle_command(command)

@@ -16,7 +16,7 @@ require 'pg'
 require 'ipaddr'
 
 module ActiveRecord
-  module ConnectionHandling
+  module ConnectionHandling # :nodoc:
     VALID_CONN_PARAMS = [:host, :hostaddr, :port, :dbname, :user, :password, :connect_timeout,
                          :client_encoding, :options, :application_name, :fallback_application_name,
                          :keepalives, :keepalives_idle, :keepalives_interval, :keepalives_count,
@@ -24,7 +24,7 @@ module ActiveRecord
                          :requirepeer, :krbsrvname, :gsslib, :service]
 
     # Establishes a connection to the database that's used by all Active Record objects
-    def postgresql_connection(config) # :nodoc:
+    def postgresql_connection(config)
       conn_params = config.symbolize_keys
 
       conn_params.delete_if { |_, v| v.nil? }
@@ -263,7 +263,7 @@ module ActiveRecord
         attr_accessor :array
       end
 
-      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+      module ColumnMethods
         def xml(*args)
           options = args.extract_options!
           column(args[0], 'xml', options)
@@ -325,6 +325,17 @@ module ActiveRecord
         def json(name, options = {})
           column(name, 'json', options)
         end
+      end
+
+      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+        include ColumnMethods
+
+        def primary_key(name, type = :primary_key, options = {})
+          return super unless type == :uuid
+          options[:default] ||= 'uuid_generate_v4()'
+          options[:primary_key] = true
+          column name, type, options
+        end
 
         def column(name, type = nil, options = {})
           super
@@ -334,14 +345,19 @@ module ActiveRecord
           self
         end
 
+        def xml(options = {})
+          column(args[0], :text, options)
+        end
+
         private
 
-        def new_column_definition(base, name, type)
-          definition = ColumnDefinition.new base, name, type
-          @columns << definition
-          @columns_hash[name] = definition
-          definition
+        def create_column_definition(name, type)
+          ColumnDefinition.new name, type
         end
+      end
+
+      class Table < ActiveRecord::ConnectionAdapters::Table
+        include ColumnMethods
       end
 
       ADAPTER_NAME = 'PostgreSQL'
@@ -417,6 +433,10 @@ module ActiveRecord
         true
       end
 
+      def index_algorithms
+        { concurrently: 'CONCURRENTLY' }
+      end
+
       class StatementPool < ConnectionAdapters::StatementPool
         def initialize(connection, max)
           super
@@ -478,10 +498,10 @@ module ActiveRecord
       def initialize(connection, logger, connection_parameters, config)
         super(connection, logger)
 
-        if config.fetch(:prepared_statements) { true }
+        if self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements) { true })
           @visitor = Arel::Visitors::PostgreSQL.new self
         else
-          @visitor = BindSubstitution.new self
+          @visitor = unprepared_visitor
         end
 
         @connection_parameters, @config = connection_parameters, config
@@ -492,7 +512,7 @@ module ActiveRecord
 
         connect
         @statements = StatementPool.new @connection,
-                                        config.fetch(:statement_limit) { 1000 }
+                                        self.class.type_cast_config_to_integer(config.fetch(:statement_limit) { 1000 })
 
         if postgresql_version < 80200
           raise "Your version of PostgreSQL (#{postgresql_version}) is too old, please upgrade!"
@@ -500,7 +520,7 @@ module ActiveRecord
 
         initialize_type_map
         @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
-        @use_insert_returning = @config.key?(:insert_returning) ? @config[:insert_returning] : true
+        @use_insert_returning = @config.key?(:insert_returning) ? self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
       end
 
       # Clears the prepared statements cache.
@@ -510,8 +530,7 @@ module ActiveRecord
 
       # Is this connection alive and ready for queries?
       def active?
-        @connection.query 'SELECT 1'
-        true
+        @connection.connect_poll != PG::PGRES_POLLING_FAILED
       rescue PGError
         false
       end
@@ -586,13 +605,13 @@ module ActiveRecord
       end
 
       def enable_extension(name)
-        exec_query("CREATE EXTENSION IF NOT EXISTS #{name}").tap {
+        exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"").tap {
           reload_type_map
         }
       end
 
       def disable_extension(name)
-        exec_query("DROP EXTENSION IF EXISTS #{name} CASCADE").tap {
+        exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE").tap {
           reload_type_map
         }
       end
@@ -617,13 +636,6 @@ module ActiveRecord
       # Returns the configured supported identifier length supported by PostgreSQL
       def table_alias_length
         @table_alias_length ||= query('SHOW max_identifier_length', 'SCHEMA')[0][0].to_i
-      end
-
-      def add_column_options!(sql, options)
-        if options[:array] || options[:column].try(:array)
-          sql << '[]'
-        end
-        super
       end
 
       # Set the authorized user for this session
@@ -655,6 +667,10 @@ module ActiveRecord
         @use_insert_returning
       end
 
+      def valid_type?(type)
+        !native_database_types[type].nil?
+      end
+
       protected
 
         # Returns the version of the connected PostgreSQL server.
@@ -667,6 +683,8 @@ module ActiveRecord
         UNIQUE_VIOLATION      = "23505"
 
         def translate_exception(exception, message)
+          return exception unless exception.respond_to?(:result)
+
           case exception.result.try(:error_field, PGresult::PG_DIAG_SQLSTATE)
           when UNIQUE_VIOLATION
             RecordNotUnique.new(message, exception)
@@ -697,7 +715,14 @@ module ActiveRecord
 
           # populate composite types
           nodes.find_all { |row| OID::TYPE_MAP.key? row['typelem'].to_i }.each do |row|
-            vector = OID::Vector.new row['typdelim'], OID::TYPE_MAP[row['typelem'].to_i]
+            if OID.registered_type? row['typname']
+              # this composite type is explicitly registered
+              vector = OID::NAMES[row['typname']]
+            else
+              # use the default for composite types
+              vector = OID::Vector.new row['typdelim'], OID::TYPE_MAP[row['typelem'].to_i]
+            end
+
             OID::TYPE_MAP[row['oid'].to_i] = vector
           end
 
@@ -884,8 +909,12 @@ module ActiveRecord
           $1.strip if $1
         end
 
-        def table_definition
-          TableDefinition.new(self)
+        def create_table_definition(name, temporary, options)
+          TableDefinition.new native_database_types, name, temporary, options
+        end
+
+        def update_table_definition(table_name, base)
+          Table.new(table_name, base)
         end
     end
   end

@@ -177,13 +177,19 @@ class SchemaDumperTest < ActiveRecord::TestCase
 
   def test_schema_dumps_index_columns_in_right_order
     index_definition = standard_dump.split(/\n/).grep(/add_index.*companies/).first.strip
-    assert_equal 'add_index "companies", ["firm_id", "type", "rating"], name: "company_index"', index_definition
+    if current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter) || current_adapter?(:PostgreSQLAdapter)
+      assert_equal 'add_index "companies", ["firm_id", "type", "rating"], name: "company_index", using: :btree', index_definition
+    else
+      assert_equal 'add_index "companies", ["firm_id", "type", "rating"], name: "company_index"', index_definition
+    end
   end
 
   def test_schema_dumps_partial_indices
     index_definition = standard_dump.split(/\n/).grep(/add_index.*company_partial_index/).first.strip
     if current_adapter?(:PostgreSQLAdapter)
-      assert_equal 'add_index "companies", ["firm_id", "type"], name: "company_partial_index", where: "(rating > 10)"', index_definition
+      assert_equal 'add_index "companies", ["firm_id", "type"], name: "company_partial_index", where: "(rating > 10)", using: :btree', index_definition
+    elsif current_adapter?(:MysqlAdapter) || current_adapter?(:Mysql2Adapter)
+      assert_equal 'add_index "companies", ["firm_id", "type"], name: "company_partial_index", using: :btree', index_definition
     else
       assert_equal 'add_index "companies", ["firm_id", "type"], name: "company_partial_index"', index_definition
     end
@@ -218,6 +224,12 @@ class SchemaDumperTest < ActiveRecord::TestCase
       assert_match %r{t.text\s+"normal_text"$}, output
       assert_match %r{t.text\s+"medium_text",\s+limit: 16777215$}, output
       assert_match %r{t.text\s+"long_text",\s+limit: 2147483647$}, output
+    end
+
+    def test_schema_dumps_index_type
+      output = standard_dump
+      assert_match %r{add_index "key_tests", \["awesome"\], name: "index_key_tests_on_awesome", type: :fulltext}, output
+      assert_match %r{add_index "key_tests", \["pizza"\], name: "index_key_tests_on_pizza", using: :btree}, output
     end
   end
 
@@ -261,22 +273,22 @@ class SchemaDumperTest < ActiveRecord::TestCase
 
     def test_schema_dump_includes_inet_shorthand_definition
       output = standard_dump
-      if %r{create_table "postgresql_network_address"} =~ output
-        assert_match %r{t.inet "inet_address"}, output
+      if %r{create_table "postgresql_network_addresses"} =~ output
+        assert_match %r{t.inet\s+"inet_address",\s+default: "192.168.1.1"}, output
       end
     end
 
     def test_schema_dump_includes_cidr_shorthand_definition
       output = standard_dump
-      if %r{create_table "postgresql_network_address"} =~ output
-        assert_match %r{t.cidr "cidr_address"}, output
+      if %r{create_table "postgresql_network_addresses"} =~ output
+        assert_match %r{t.cidr\s+"cidr_address",\s+default: "192.168.1.0/24"}, output
       end
     end
 
     def test_schema_dump_includes_macaddr_shorthand_definition
       output = standard_dump
-      if %r{create_table "postgresql_network_address"} =~ output
-        assert_match %r{t.macaddr "macaddr_address"}, output
+      if %r{create_table "postgresql_network_addresses"} =~ output
+        assert_match %r{t.macaddr\s+"mac_address",\s+default: "ff:ff:ff:ff:ff:ff"}, output
       end
     end
 

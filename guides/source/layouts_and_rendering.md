@@ -363,7 +363,7 @@ You can use a symbol to defer the choice of layout until a request is processed:
 
 ```ruby
 class ProductsController < ApplicationController
-  layout "products_layout"
+  layout :products_layout
 
   def show
     @product = Product.find(params[:id])
@@ -568,7 +568,8 @@ def show
   @book = Book.find_by_id(params[:id])
   if @book.nil?
     @books = Book.all
-    render "index", alert: "Your book was not found!"
+    flash[:alert] = "Your book was not found"
+    render "index"
   end
 end
 ```

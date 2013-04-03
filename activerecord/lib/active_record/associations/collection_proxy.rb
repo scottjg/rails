@@ -83,9 +83,9 @@ module ActiveRecord
       #   #      #<Pet id: 3, name: "Choo-Choo">
       #   #    ]
       #
-      # Be careful because this also means you’re initializing a model
-      # object with only the fields that you’ve selected. If you attempt
-      # to access a field that is not in the initialized record you’ll
+      # Be careful because this also means you're initializing a model
+      # object with only the fields that you've selected. If you attempt
+      # to access a field that is not in the initialized record you'll
       # receive:
       #
       #   person.pets.select(:name).first.person_id
@@ -649,11 +649,12 @@ module ActiveRecord
       #   #      #<Pet name: "Fancy-Fancy">
       #   #    ]
       #
-      #   person.pets.select(:name).uniq
+      #   person.pets.select(:name).distinct
       #   # => [#<Pet name: "Fancy-Fancy">]
-      def uniq
-        @association.uniq
+      def distinct
+        @association.distinct
       end
+      alias uniq distinct
 
       # Count all records using SQL.
       #
@@ -924,7 +925,7 @@ module ActiveRecord
       alias_method :to_a, :to_ary
 
       # Adds one or more +records+ to the collection by setting their foreign keys
-      # to the association‘s primary key. Returns +self+, so several appends may be
+      # to the association's primary key. Returns +self+, so several appends may be
       # chained together.
       #
       #   class Person < ActiveRecord::Base
@@ -947,6 +948,11 @@ module ActiveRecord
         proxy_association.concat(records) && self
       end
       alias_method :push, :<<
+      alias_method :append, :<<
+
+      def prepend(*args)
+        raise NoMethodError, "prepend on association is not defined. Please use << or append"
+      end
 
       # Equivalent to +delete_all+. The difference is that returns +self+, instead
       # of an array with the deleted objects, so methods can be chained. See

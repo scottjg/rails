@@ -572,7 +572,7 @@ module ActionView
           zone_options.safe_concat content_tag(:option, '-------------', :value => '', :disabled => 'disabled')
           zone_options.safe_concat "\n"
 
-          zones.reject! { |z| priority_zones.include?(z) }
+          zones = zones - priority_zones
         end
 
         zone_options.safe_concat options_for_select(convert_zones[zones], selected)
@@ -752,7 +752,7 @@ module ActionView
         end
 
         def prompt_text(prompt)
-          prompt = prompt.kind_of?(String) ? prompt : I18n.translate('helpers.select.prompt', :default => 'Please select')
+          prompt.kind_of?(String) ? prompt : I18n.translate('helpers.select.prompt', :default => 'Please select')
         end
     end
 

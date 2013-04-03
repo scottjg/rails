@@ -423,7 +423,7 @@ Whenever Rails sees that the internal value of an option being generated matches
 
 TIP: The second argument to `options_for_select` must be exactly equal to the desired internal value. In particular if the value is the integer 2 you cannot pass "2" to `options_for_select` — you must pass 2. Be aware of values extracted from the `params` hash as they are all strings.
 
-WARNING: when `:inlude_blank` or `:prompt:` are not present, `:include_blank` is forced true if the select attribute `required` is true, display `size` is one and `multiple` is not true.
+WARNING: when `:include_blank` or `:prompt` are not present, `:include_blank` is forced true if the select attribute `required` is true, display `size` is one and `multiple` is not true.
 
 You can add arbitrary attributes to the options using hashes:
 
@@ -906,7 +906,21 @@ If the associated object is already saved, `fields_for` autogenerates a hidden i
 
 ### The Controller
 
-You do not need to write any specific controller code to use nested attributes. Create and update records as you would with a simple form.
+As usual you need to
+[whitelist the parameters](action_controller_overview.html#strong-parameters) in
+the controller before you pass them to the model:
+
+```ruby
+def create
+  @person = Person.new(person_params)
+  # ...
+end
+
+private
+def person_params
+  params.require(:person).permit(:name, addresses_attributes: [:id, :kind, :street])
+end
+```
 
 ### Removing Objects
 
@@ -935,6 +949,16 @@ If the hash of attributes for an object contains the key `_destroy` with a value
     <% end %>
   </ul>
 <% end %>
+```
+
+Don't forget to update the whitelisted params in your controller to also include
+the `_destroy` field:
+
+```ruby
+def person_params
+  params.require(:person).
+    permit(:name, addresses_attributes: [:id, :kind, :street, :_destroy])
+end
 ```
 
 ### Preventing Empty Records

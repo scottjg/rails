@@ -1,7 +1,7 @@
 require 'logger'
 require 'abstract_unit'
 require 'active_support/cache'
-require 'dependecies_test_helpers'
+require 'dependencies_test_helpers'
 
 class CacheKeyTest < ActiveSupport::TestCase
   def test_entry_legacy_optional_ivars
@@ -564,7 +564,7 @@ module LocalCacheBehavior
 end
 
 module AutoloadingCacheBehavior
-  include DependeciesTestHelpers
+  include DependenciesTestHelpers
   def test_simple_autoloading
     with_autoloading_fixtures do
       @cache.write('foo', E.new)
@@ -670,6 +670,18 @@ class FileStoreTest < ActiveSupport::TestCase
     assert_nothing_raised(Exception) do
       ActiveSupport::Cache::FileStore.new('/test/cache/directory').delete_matched(/does_not_exist/)
     end
+  end
+
+  def test_delete_does_not_delete_empty_parent_dir
+    sub_cache_dir = File.join(cache_dir, 'subdir/')
+    sub_cache_store = ActiveSupport::Cache::FileStore.new(sub_cache_dir)
+    assert_nothing_raised(Exception) do
+      assert sub_cache_store.write('foo', 'bar')
+      assert sub_cache_store.delete('foo')
+    end
+    assert File.exist?(cache_dir), "Parent of top level cache dir was deleted!"
+    assert File.exist?(sub_cache_dir), "Top level cache dir was deleted!"
+    assert Dir.entries(sub_cache_dir).reject {|f| ActiveSupport::Cache::FileStore::EXCLUDED_DIRS.include?(f)}.empty?
   end
 
   def test_log_exception_when_cache_read_fails

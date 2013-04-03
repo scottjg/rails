@@ -95,7 +95,7 @@ class AssociationsTest < ActiveRecord::TestCase
   def test_force_reload
     firm = Firm.new("name" => "A New Firm, Inc")
     firm.save
-    firm.clients.each {|c|} # forcing to load all clients
+    firm.clients.each {} # forcing to load all clients
     assert firm.clients.empty?, "New firm shouldn't have client objects"
     assert_equal 0, firm.clients.size, "New firm should have 0 clients"
 
@@ -172,6 +172,18 @@ class AssociationProxyTest < ActiveRecord::TestCase
     assert_equal 1, josh.posts.size
   end
 
+  def test_append_behaves_like_push
+    josh = Author.new(:name => "Josh")
+    josh.posts.append Post.new(:title => "New on Edge", :body => "More cool stuff!")
+    assert josh.posts.loaded?
+    assert_equal 1, josh.posts.size
+  end
+
+  def test_prepend_is_not_defined
+    josh = Author.new(:name => "Josh")
+    assert_raises(NoMethodError) { josh.posts.prepend Post.new }
+  end
+
   def test_save_on_parent_does_not_load_target
     david = developers(:david)
 
@@ -224,6 +236,11 @@ class AssociationProxyTest < ActiveRecord::TestCase
 
     assert david.projects.scope.is_a?(ActiveRecord::Relation)
     assert_equal david.projects, david.projects.scope
+  end
+
+  test "proxy object is cached" do
+    david = developers(:david)
+    assert david.projects.equal?(david.projects)
   end
 end
 
@@ -291,7 +308,7 @@ class OverridingAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_requires_symbol_argument
-    assert_raises ArgumentError do 
+    assert_raises ArgumentError do
       Class.new(Post) do
         belongs_to "author"
       end

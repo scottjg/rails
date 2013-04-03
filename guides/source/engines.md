@@ -57,7 +57,7 @@ The `--full` option tells the generator that you want to create an engine, inclu
     end
     ```
   * A file at `lib/blorgh/engine.rb` which is identical in function to a standard Rails application's `config/application.rb` file:
-  
+
     ```ruby
     module Blorgh
       class Engine < ::Rails::Engine
@@ -72,12 +72,12 @@ The `--mountable` option tells the generator that you want to create a "mountabl
   * A namespaced `ApplicationHelper` stub
   * A layout view template for the engine
   * Namespace isolation to `config/routes.rb`:
-  
+
     ```ruby
     Blorgh::Engine.routes.draw do
     end
     ```
- 
+
   * Namespace isolation to `lib/blorgh/engine.rb`:
 
     ```ruby
@@ -395,7 +395,7 @@ def create
   @post = Post.find(params[:post_id])
   @comment = @post.comments.create(params[:comment])
   flash[:notice] = "Comment has been created!"
-  redirect_to post_path
+  redirect_to posts_path
 end
 ```
 
@@ -650,6 +650,14 @@ self.author = Blorgh.user_class.find_or_create_by(name: author_name)
 
 Resulting in something a little shorter, and more implicit in its behavior. The `user_class` method should always return a `Class` object.
 
+Since we changed the `user_class` method to no longer return a
+`String` but a `Class` we must also modify our `belongs_to` definition
+in the `Blorgh::Post` model:
+
+```ruby
+belongs_to :author, class_name: Blorgh.user_class.to_s
+```
+
 To set this configuration setting within the application, an initializer should be used. By using an initializer, the configuration will be set up before the application starts and calls the engine's models which may depend on this configuration setting existing.
 
 Create a new initializer at `config/initializers/blorgh.rb` inside the application where the `blorgh` engine is installed and put this content in it:
@@ -668,7 +676,12 @@ There are now no strict dependencies on what the class is, only what the API for
 
 Within an engine, there may come a time where you wish to use things such as initializers, internationalization or other configuration options. The great news is that these things are entirely possible because a Rails engine shares much the same functionality as a Rails application. In fact, a Rails application's functionality is actually a superset of what is provided by engines!
 
-If you wish to use an initializer — code that should run before the engine is loaded — the place for it is the `config/initializers` folder. This directory's functionality is explained in the [Initializers section](http://guides.rubyonrails.org/configuring.html#initializers) of the Configuring guide, and works precisely the same way as the `config/initializers` directory inside an application. Same goes for if you want to use a standard initializer.
+If you wish to use an initializer — code that should run before the engine is
+loaded — the place for it is the `config/initializers` folder. This directory's
+functionality is explained in the
+[Initializers section](configuring.html#initializers) of the Configuring guide,
+and works precisely the same way as the `config/initializers` directory inside
+an application. Same goes for if you want to use a standard initializer.
 
 For locales, simply place the locale files in the `config/locales` directory, just like you would in an application.
 
@@ -789,7 +802,7 @@ module Blorgh::Concerns::Models::Post
   extend ActiveSupport::Concern
 
   # 'included do' causes the included code to be evaluated in the
-  # context where it is included (post.rb), rather than be 
+  # context where it is included (post.rb), rather than be
   # executed in the module's context (blorgh/concerns/models/post).
   included do
     attr_accessor :author_name
@@ -910,7 +923,7 @@ initializer "blorgh.assets.precompile" do |app|
 end
 ```
 
-For more information, read the [Asset Pipeline guide](http://guides.rubyonrails.org/asset_pipeline.html)
+For more information, read the [Asset Pipeline guide](asset_pipeline.html)
 
 ### Other gem dependencies
 
