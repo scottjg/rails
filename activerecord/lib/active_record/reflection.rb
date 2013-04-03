@@ -506,9 +506,16 @@ module ActiveRecord
         source_reflection.options[:primary_key] || primary_key(klass || self.klass)
       end
 
-      # Gets an array of possible <tt>:through</tt> source reflection names:
+      # Gets an array of possible <tt>:through</tt> source reflection names in both singular and plural form.
       #
-      #   [:singularized, :pluralized]
+      #   class Post < ActiveRecord::Base
+      #     has_many :taggings
+      #     has_many :tags, through: :taggings
+      #   end
+      #
+      #   tags_reflection = Post.reflect_on_association(:tags)
+      #   tags_reflection.source_reflection_names
+      #   #=> [:tag, :tags]
       #
       def source_reflection_names
         @source_reflection_names ||= (options[:source] ? [options[:source]] : [name.to_s.singularize, name]).collect { |n| n.to_sym }
