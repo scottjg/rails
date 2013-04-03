@@ -73,6 +73,10 @@ module ActiveRecord
             bind_val = bind scope, table.table_name, key.to_s, owner[foreign_key]
             scope    = scope.where(table[key].eq(bind_val))
 
+            if reflection.scope && reflection.scope.respond_to?(:options) && order_value = reflection.scope.options.values.first
+              scope    = scope.order(order_value)
+            end
+
             if reflection.type
               value    = owner.class.base_class.name
               bind_val = bind scope, table.table_name, reflection.type.to_s, value
