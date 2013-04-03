@@ -436,6 +436,17 @@ module ActiveRecord
       # The chain is built by recursively calling #chain on the source reflection and the through
       # reflection. The base case for the recursion is a normal association, which just returns
       # [self] as its #chain.
+      #
+      #   class Post < ActiveRecord::Base
+      #     has_many :taggings
+      #     has_many :tags, through: :taggings
+      #   end
+      #
+      #   tags_reflection = Post.reflect_on_association(:tags)
+      #   tags_reflection.chain
+      #   #=> [<ActiveRecord::Reflection::ThroughReflection: @macro=:has_many, @name=:tags, @options={:through=>:taggings}, @active_record=Post>,
+      #        <ActiveRecord::Reflection::AssociationReflection: @macro=:has_many, @name=:taggings, @options={}, @active_record=Post>]
+      #
       def chain
         @chain ||= begin
           chain = source_reflection.chain + through_reflection.chain
