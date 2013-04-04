@@ -160,9 +160,20 @@ module ActiveRecord
           @conn.type_to_sql type.to_sym, limit, precision, scale
         end
 
-        def add_column_options!(column_sql, column_options)
-          @conn.add_column_options! column_sql, column_options
-          column_sql
+        def add_column_options!(sql, options)
+          sql << " DEFAULT #{@conn.quote(options[:default], options[:column])}" if options_include_default?(options)
+          # must explicitly check for :null to allow change_column to work on migrations
+          if options[:null] == false
+            sql << " NOT NULL"
+          end
+          if options[:auto_increment] == true
+            sql << " AUTO_INCREMENT"
+          end
+          sql
+        end
+
+        def options_include_default?(options)
+          options.include?(:default) && !(options[:null] == false && options[:default].nil?)
         end
       end
 
