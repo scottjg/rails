@@ -77,6 +77,14 @@ module ActionDispatch
 
           return [status, headers, body]
         end
+        
+        methods_allowed = find_matched_path_routes(env).map do |r|
+          verb = r.verb
+          verb = verb.to_s.gsub!(%r%\(\?-mix:\^(\w+)\$\)%, '\1') if verb.is_a?(Regexp)
+          verb.to_s.upcase
+        end
+        
+        return [405, {'Allow' => methods_allowed.join(", ")}, ['Method Not Allowed']] if methods_allowed.any?
 
         return [404, {'X-Cascade' => 'pass'}, ['Not Found']]
       end
@@ -122,14 +130,25 @@ module ActionDispatch
           data = simulator.match(path)
           data ? data.memos : []
         end
-
-        def find_routes env
+        
+        def find_matched_path_routes(env)          
           req = request_class.new(env)
 
           routes = filter_routes(req.path_info).concat custom_routes.find_all { |r|
             r.path.match(req.path_info)
           }
           routes.concat get_routes_as_head(routes)
+        end
+
+        def find_routes(env)
+          req = request_class.new(env)
+
+          # routes = filter_routes(req.path_info).concat custom_routes.find_all { |r|
+          #   r.path.match(req.path_info)
+          # }
+          # routes.concat get_routes_as_head(routes)
+          # 
+          routes = find_matched_path_routes(env)
 
           routes.sort_by!(&:precedence).select! { |r| r.matches?(req) }
 

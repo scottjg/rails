@@ -92,7 +92,8 @@ class RoutingConcernsTest < ActionDispatch::IntegrationTest
 
   def test_concerns_accept_options
     delete "/videos/comments/1"
-    assert_equal "404", @response.code
+    assert_equal "405", @response.code
+    assert_equal("GET, PATCH, PUT, HEAD", @response.headers["Allow"])
   end
 
   def test_with_an_invalid_concern_name
