@@ -20,7 +20,7 @@ module ActiveRecord
         super
         construct_sql
       end
-      
+
       def find(*args)
         options = args.extract_options!
 
@@ -41,7 +41,7 @@ module ActiveRecord
           if sanitized_conditions = sanitize_sql(options[:conditions])
             conditions << " AND (#{sanitized_conditions})"
           end
-          
+
           options[:conditions] = conditions
 
           if options[:order] && @reflection.options[:order]
@@ -49,12 +49,12 @@ module ActiveRecord
           elsif @reflection.options[:order]
             options[:order] = @reflection.options[:order]
           end
-          
+
           # Build options specific to association
           construct_find_options!(options)
-          
+
           merge_options_from_reflection!(options)
-          
+
           # Pass through args exactly as we received them.
           args << options
           @reflection.klass.find(*args)
@@ -106,7 +106,7 @@ module ActiveRecord
         end
       end
 
-      # Add +records+ to this association.  Returns +self+ so method calls may be chained.  
+      # Add +records+ to this association.  Returns +self+ so method calls may be chained.
       # Since << flattens its argument list and inserts each record, +push+ and +concat+ behave identically.
       def <<(*records)
         result = true
@@ -150,7 +150,7 @@ module ActiveRecord
         delete(@target)
         reset_target!
       end
-      
+
       # Calculate sum using SQL, not Enumerable
       def sum(*args)
         if block_given?
@@ -222,7 +222,7 @@ module ActiveRecord
 
         if @reflection.options[:dependent] && @reflection.options[:dependent] == :destroy
           destroy_all
-        else          
+        else
           delete_all
         end
 
@@ -339,13 +339,17 @@ module ActiveRecord
       end
 
       def proxy_respond_to?(method, include_private = false)
-        super || @reflection.klass.respond_to?(method, include_private)
+        @reflection.klass.respond_to?(method, include_private) || super
+      end
+
+      def proxy_respond_to_missing?(method, include_private = false)
+        @reflection.klass.respond_to_missing?(method, include_private) || super
       end
 
       protected
         def construct_find_options!(options)
         end
-        
+
         def load_target
           if !@owner.new_record? || foreign_key_present
             begin
@@ -373,7 +377,7 @@ module ActiveRecord
           loaded if target
           target
         end
-        
+
         def method_missing(method, *args, &block)
           case method.to_s
           when 'find_or_create'
@@ -395,7 +399,7 @@ module ActiveRecord
             end
           elsif @reflection.klass.scopes.include?(method)
             @reflection.klass.scopes[method].call(self, *args)
-          else          
+          else
             with_scope(construct_scope) do
               if block_given?
                 @reflection.klass.send(method, *args) { |*block_args| yield(*block_args) }
