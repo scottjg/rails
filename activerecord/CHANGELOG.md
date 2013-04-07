@@ -1,5 +1,17 @@
 ## unreleased ##
 
+*   Removed warning when `auto_explain_threshold_in_seconds` is set and the
+    connection adapter doesn't support explain.
+    This is causing a regression since the Active Record Railtie is trying to
+    connect to the development database in the application boot.
+
+    *Rafael Mendonça França*
+
+*   Do not reset `inheritance_column` when it's set explicitly.
+    Backport of #5327.
+
+    *kennyj + Fred Wu*
+
 *   Fix a problem wrong exception is occured
     when raising no translatable exception in PostgreSQL.
 
@@ -26,6 +38,11 @@
 
 
 ## Rails 3.2.13 (Mar 18, 2013) ##
+
+*   Chaining multiple preloaded scopes will correctly preload all the scopes
+    at the same time.
+
+    *Chris Geihsler*
 
 *   Reverted 921a296a3390192a71abeec6d9a035cc6d1865c8, 'Quote numeric values
     compared to string columns.' This caused several regressions.
