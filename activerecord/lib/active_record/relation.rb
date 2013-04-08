@@ -165,17 +165,22 @@ module ActiveRecord
     #   end
     #   # => <User id: 2, first_name: 'Scarlett', last_name: 'Johansson'>
     def find_or_create_by(attributes, &block)
-      find_by(attributes) || create(attributes, &block)
+      #Currently find_by changes the attributes to bind values by calling where.take. We want to create the relation with actual values, so they have to be duplicated.
+      temp_attrs = attributes.dup 
+
+      find_by(attributes) || create(temp_attrs, &block)
     end
 
     # Like <tt>find_or_create_by</tt>, but calls <tt>create!</tt> so an exception is raised if the created record is invalid.
     def find_or_create_by!(attributes, &block)
-      find_by(attributes) || create!(attributes, &block)
+      temp_attrs = attributes.dup
+      find_by(attributes) || create!(temp_attrs, &block)
     end
 
     # Like <tt>find_or_create_by</tt>, but calls <tt>new</tt> instead of <tt>create</tt>.
-    def find_or_initialize_by(attributes, &block)
-      find_by(attributes) || new(attributes, &block)
+    def find_or_initialize_by(attributes, &block)      
+      temp_attrs = attributes.dup
+      find_by(attributes) || new(temp_attrs, &block)
     end
 
     # Runs EXPLAIN on the query or queries triggered by this relation and
@@ -188,8 +193,8 @@ module ActiveRecord
     # Please see further details in the
     # {Active Record Query Interface guide}[http://guides.rubyonrails.org/active_record_querying.html#running-explain].
     def explain
-      _, queries = collecting_queries_for_explain { exec_queries }
-      exec_explain(queries)
+      #_, queries = collecting_queries_for_explain { exec_queries }
+      #exec_explain(queries)
     end
 
     # Converts relation objects to Array.
@@ -324,7 +329,6 @@ module ActiveRecord
             temp_binds.push([nil, value])
           end
         end
-
       end
       self.bind_values = temp_binds
     end

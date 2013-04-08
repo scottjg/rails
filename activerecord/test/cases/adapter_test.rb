@@ -8,34 +8,6 @@ module ActiveRecord
       @connection = ActiveRecord::Base.connection
     end
 
-    class StatementCache
-      def initialize
-        @relation = yield
-      end
-
-      def execute(binds = nil)
-        rel = @relation.dup
-        if (binds != nil)         
-          rel.replace_binds binds
-        end
-        rel.to_a
-      end
-    end
-
-    def test_statement_cache
-      Book.create(name: "my book")
-      Book.create(name: "my other book")
-
-      cache = StatementCache.new do
-        Book.where(:name => "my book")
-      end
-
-      b = cache.execute name: "my book"
-      assert_equal "my book", b[0].name
-      b = cache.execute name: "my other book"
-      assert_equal "my other book", b[0].name
-    end
-
     ##
     # PostgreSQL does not support null bytes in strings
     unless current_adapter?(:PostgreSQLAdapter)
