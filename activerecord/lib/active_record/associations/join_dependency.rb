@@ -18,8 +18,8 @@ module ActiveRecord
         build(associations)
       end
 
-      def graft(*associations)
-        associations.each do |association|
+      def graft(*stashed_associations)
+        stashed_associations.each do |association|
           join_associations.detect {|a| association == a} ||
             build(association.reflection.name, association.find_parent_in(self) || join_base, association.join_type)
         end
