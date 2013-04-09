@@ -88,8 +88,6 @@ module ActiveRecord
         end
       end
 
-      protected
-
       def cache_joined_association(association)
         associations = []
         parent = association.parent
