@@ -934,17 +934,14 @@ module ActiveRecord
       association_joins         = buckets[:association_join] || []
       stashed_association_joins = buckets[:stashed_join] || []
       join_nodes                = (buckets[:join_node] || []).uniq
-      string_joins              = (buckets[:string_join] || []).map { |x|
-        x.strip
-      }.uniq
+      string_joins              = (buckets[:string_join] || []).map { |x| x.strip }.uniq
 
       join_list = join_nodes + custom_join_ast(manager, string_joins)
 
-      join_dependency = ActiveRecord::Associations::JoinDependency.new(
-        @klass,
-        association_joins,
-        join_list
-      )
+      join_dependency = ActiveRecord::Associations::JoinDependency.new( @klass,
+                                                                        association_joins,
+                                                                        join_list
+                                                                      )
 
       join_dependency.graft(*stashed_association_joins)
 
