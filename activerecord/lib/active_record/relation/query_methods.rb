@@ -915,6 +915,7 @@ module ActiveRecord
       end
     end
 
+    # Updates the manager's `from` and `join_sources` .
     def build_joins(manager, joins)
       buckets = joins.group_by do |join|
         case join
