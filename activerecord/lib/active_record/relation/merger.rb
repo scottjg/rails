@@ -77,12 +77,10 @@ module ActiveRecord
       def merge_joins
         return if values[:joins].blank?
 
-        debugger
-
         if other.klass == relation.klass
-          relation.joins! values[:joins]
+          relation.joins! *values[:joins]
         else
-          joins_for_join_dependency, rest_of_joins = values[:joins].partition { |join| 
+          joins_dependency, rest = values[:joins].partition { |join|
             case join
             when Hash, Symbol, Array
               true
@@ -92,9 +90,9 @@ module ActiveRecord
           }
 
           join_dependency = ActiveRecord::Associations::JoinDependency.new(other.klass, 
-                                                                           joins_for_join_dependency, 
+                                                                           joins_dependency,
                                                                            [])
-          relation.joins! rest_of_joins
+          relation.joins! rest
 
           join_dependency.join_associations.each do |association|
             @relation = association.join_relation(relation)
