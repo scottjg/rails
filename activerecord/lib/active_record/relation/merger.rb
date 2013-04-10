@@ -39,7 +39,7 @@ module ActiveRecord
     end
 
     class Merger # :nodoc:
-      attr_reader :relation, :values
+      attr_reader :relation, :values, :other
 
       def initialize(relation, other)
         if other.default_scoped? && other.klass != relation.klass
@@ -47,12 +47,13 @@ module ActiveRecord
         end
 
         @relation = relation
+        @other = other
         @values   = other.values
       end
 
       NORMAL_VALUES = Relation::SINGLE_VALUE_METHODS +
                       Relation::MULTI_VALUE_METHODS -
-                      [:where, :order, :bind, :reverse_order, :lock, :create_with, :reordering, :from] # :nodoc:
+                      [:where, :order, :bind, :reverse_order, :lock, :create_with, :reordering, :from, :joins] # :nodoc:
 
       def normal_values
         NORMAL_VALUES
@@ -66,7 +67,9 @@ module ActiveRecord
 
         merge_multi_values
         merge_single_values
+        merge_joins
 
+        debugger
         relation
       end
 
@@ -102,6 +105,35 @@ module ActiveRecord
           (relation.bind_values + values[:bind]).uniq(&:first)
         else
           relation.bind_values
+        end
+      end
+
+      def merge_joins
+        return if values[:joins].blank?
+
+        if other.klass == relation.klass
+          relation.joins! values[:joins]
+        else
+          joins_for_join_dependency, rest_of_joins = values[:joins].partition { |join| 
+            case join
+            when Hash, Symbol, Array
+              true
+            else
+              false
+            end
+          }
+
+          join_dependency = ActiveRecord::Associations::JoinDependency.new(other.klass, 
+                                                                           joins_for_join_dependency, 
+                                                                           [])
+          relation.joins! rest_of_joins
+
+          join_dependency.join_associations.each do |association|
+            @relation = association.join_relation(relation)
+          end
+
+          relation
+          relation
         end
       end
 
