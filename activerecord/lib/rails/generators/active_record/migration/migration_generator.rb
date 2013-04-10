@@ -43,7 +43,7 @@ module ActiveRecord
         if attribute.foreign_key?
           attribute.name
         else
-          attribute.name.singularize.foreign_key
+          attribute.name.singularize(:en).foreign_key
         end.to_sym
       end
 
