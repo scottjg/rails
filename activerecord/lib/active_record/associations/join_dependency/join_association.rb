@@ -55,7 +55,21 @@ module ActiveRecord
 
         def find_parent_in(other_join_dependency)
           other_join_dependency.join_parts.detect do |join_part|
-            parent == join_part
+
+            #case join_part
+            #when JoinAssociation
+              #join_part.base_klass == parent.base_klass
+            #else
+              #parent == join_part
+            #end
+
+            case parent
+            when JoinBase
+              parent.base_klass == join_part.base_klass
+            else
+              parent == join_part
+            end
+
           end
         end
 
