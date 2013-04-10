@@ -338,12 +338,43 @@ class CallbacksOnMultipleActionsTest < ActiveRecord::TestCase
     assert_equal [:create_and_update, :create_and_destroy], topic.history
 
     topic.clear_history
-    topic.approved = true
+    topic.approved = false
     topic.save
     assert_equal [:update_and_destroy, :create_and_update], topic.history
 
     topic.clear_history
     topic.destroy
     assert_equal [:update_and_destroy, :create_and_destroy], topic.history
+  end
+end
+
+class CallbacksOnMultipleActions1Test < ActiveRecord::TestCase
+  self.use_transactional_fixtures = false
+
+  class TopicCallbacksChangingTheRecord < ActiveRecord::Base
+    self.table_name = :topics
+
+    after_create { self.save! }
+    after_commit(on: :create) { |record| record.history << :create }
+    after_commit(on: :update) { |record| record.history << :update }
+
+    def clear_history
+      @history = []
+    end
+
+    def history
+      @history ||= []
+    end
+  end
+
+  def test_after_commit_on_create_with_update_in_an_after_create_block
+    topic = TopicCallbacksChangingTheRecord.new
+    topic.save!
+    assert_equal [:create], topic.history
+
+    topic.clear_history
+    topic.approved = false
+    topic.save!
+    assert_equal [:update], topic.history
   end
 end
