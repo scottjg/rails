@@ -94,11 +94,6 @@ task default: :test
       end
     end
 
-    def test_dummy_assets
-      template "rails/javascripts.js",  "#{dummy_path}/app/assets/javascripts/application.js", force: true
-      template "rails/stylesheets.css", "#{dummy_path}/app/assets/stylesheets/application.css", force: true
-    end
-
     def test_dummy_clean
       inside dummy_path do
         remove_file ".gitignore"
@@ -117,7 +112,7 @@ task default: :test
 
     def stylesheets
       if mountable?
-        copy_file "rails/stylesheets.css",
+        copy_file "#{app_templates_dir}/app/assets/stylesheets/application.css",
                   "app/assets/stylesheets/#{name}/application.css"
       elsif full?
         empty_directory_with_keep_file "app/assets/stylesheets/#{name}"
@@ -128,8 +123,8 @@ task default: :test
       return if options.skip_javascript?
 
       if mountable?
-        template "rails/javascripts.js",
-                 "app/assets/javascripts/#{name}/application.js"
+        template "#{app_templates_dir}/app/assets/javascripts/application.js.tt",
+                  "app/assets/javascripts/#{name}/application.js"
       elsif full?
         empty_directory_with_keep_file "app/assets/javascripts/#{name}"
       end
@@ -268,7 +263,6 @@ task default: :test
           build(:generate_test_dummy)
           store_application_definition!
           build(:test_dummy_config)
-          build(:test_dummy_assets)
           build(:test_dummy_clean)
           # ensure that bin/rails has proper dummy_path
           build(:bin, true)
