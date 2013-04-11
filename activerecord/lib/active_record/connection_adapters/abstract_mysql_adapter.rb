@@ -4,17 +4,27 @@ module ActiveRecord
   module ConnectionAdapters
     class AbstractMysqlAdapter < AbstractAdapter
       class SchemaCreation < AbstractAdapter::SchemaCreation
-        private
 
         def visit_AddColumn(o)
-          add_column_position!(super, o)
+          add_column_position!(super, column_options(o))
         end
 
-        def add_column_position!(sql, column)
-          if column.first
+        private
+  
+        def visit_ChangeColumnDefinition(o)
+          column = o.column
+          options = o.options
+          sql_type = type_to_sql(o.type, options[:limit], options[:precision], options[:scale])
+          change_column_sql = "CHANGE #{quote_column_name(column.name)} #{quote_column_name(column.name)} #{sql_type}"
+          add_column_options!(change_column_sql, options)
+          add_column_position!(change_column_sql, options)
+        end
+
+        def add_column_position!(sql, options)
+          if options[:first]
             sql << " FIRST"
-          elsif column.after
-            sql << " AFTER #{quote_column_name(column.after)}"
+          elsif options[:after]
+            sql << " AFTER #{quote_column_name(options[:after])}"
           end
           sql
         end
@@ -659,10 +669,9 @@ module ActiveRecord
       end
 
       def add_column_sql(table_name, column_name, type, options = {})
-        add_column_sql = "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        add_column_options!(add_column_sql, options)
-        add_column_position!(add_column_sql, options)
-        add_column_sql
+        td = create_table_definition table_name, options[:temporary], options[:options]
+        cd = td.new_column_definition(column_name, type, options)
+        schema_creation.visit_AddColumn cd
       end
 
       def change_column_sql(table_name, column_name, type, options = {})
@@ -676,10 +685,7 @@ module ActiveRecord
           options[:null] = column.null
         end
 
-        change_column_sql = "CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        add_column_options!(change_column_sql, options)
-        add_column_position!(change_column_sql, options)
-        change_column_sql
+        schema_creation.accept ChangeColumnDefinition.new column, type, options
       end
 
       def rename_column_sql(table_name, column_name, new_column_name)
