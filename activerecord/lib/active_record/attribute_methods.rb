@@ -164,7 +164,7 @@ module ActiveRecord
     #   person.respond_to(:nothing) # => false
     def respond_to?(name, include_private = false)
       self.class.define_attribute_methods unless self.class.attribute_methods_generated?
-      return false if @attributes.present? && !has_attribute?(name)
+      return false if @attributes.present? && !@attributes.has_key?(name.to_s)
       super
     end
 
