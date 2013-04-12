@@ -97,6 +97,10 @@ module ActiveRecord
         }
       end
 
+      def has_attribute? attr_name
+        @attributes.keys.include? attr_name.to_s
+      end
+
       private
 
       def attribute(attribute_name)
