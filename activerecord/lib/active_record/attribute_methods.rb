@@ -163,9 +163,22 @@ module ActiveRecord
     #   person.respond_to('age?')   # => true
     #   person.respond_to(:nothing) # => false
     def respond_to?(name, include_private = false)
+      name = name.to_s
       self.class.define_attribute_methods unless self.class.attribute_methods_generated?
-      return false if @attributes.present? && !@attributes.has_key?(name.to_s)
-      super
+
+      result = super
+
+      # if the result is false then just return it
+      return false unless result
+
+      # if the result is true then check for the select case
+      # if a query selects only a few columns then for this method
+      # should return false for the columns that were not selected in select clause
+      if @attributes.present? && self.class.column_names.include?(name)
+        return has_attribute?(name)
+      end
+
+      return true
     end
 
     # Returns +true+ if the given attribute is in the attributes hash, otherwise +false+.
