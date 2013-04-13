@@ -27,14 +27,14 @@ module ActiveSupport
   #
   # This feature is accomplished by instantiating the class and storing the
   # instance as a thread local keyed by the class name. In the example above
-  # a key "ActiveRecord::RuntimeRegistry" is stored in <tt>Thread.current</tt>.
+  # a key ActiveRecord::RuntimeRegistry is stored in <tt>Thread.current</tt>.
   # The class methods proxy to said thread local instance.
   #
   # If the class has an initializer, it must accept no arguments.
   module PerThreadRegistry
     protected
 
-      def method_missing(name, *args, &block)
+      def method_missing(name, *args, &block) # :nodoc:
         # Caches the method definition as a singleton method of the receiver.
         singleton_class.class_eval do
           define_method(name) do |*a, &b|
