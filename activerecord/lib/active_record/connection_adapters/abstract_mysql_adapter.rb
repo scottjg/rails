@@ -15,7 +15,7 @@ module ActiveRecord
           column = o.column
           options = o.options
           sql_type = type_to_sql(o.type, options[:limit], options[:precision], options[:scale])
-          change_column_sql = "CHANGE #{quote_column_name(column.name)} #{quote_column_name(column.name)} #{sql_type}"
+          change_column_sql = "CHANGE #{quote_column_name(column.name)} #{quote_column_name(options[:name])} #{sql_type}"
           add_column_options!(change_column_sql, options)
           add_column_position!(change_column_sql, options)
         end
@@ -685,11 +685,12 @@ module ActiveRecord
           options[:null] = column.null
         end
 
+        options[:name] = column.name
         schema_creation.accept ChangeColumnDefinition.new column, type, options
       end
 
       def rename_column_sql(table_name, column_name, new_column_name)
-        options = {}
+        options = {:name => new_column_name}
 
         if column = columns(table_name).find { |c| c.name == column_name.to_s }
           options[:default] = column.default
@@ -700,9 +701,7 @@ module ActiveRecord
         end
 
         current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'", 'SCHEMA')["Type"]
-        rename_column_sql = "CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
-        add_column_options!(rename_column_sql, options)
-        rename_column_sql
+        schema_creation.accept ChangeColumnDefinition.new column, current_type, options
       end
 
       def remove_column_sql(table_name, column_name, type = nil, options = {})
