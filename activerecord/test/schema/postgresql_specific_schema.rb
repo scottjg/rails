@@ -1,7 +1,7 @@
 ActiveRecord::Schema.define do
 
   %w(postgresql_ranges postgresql_tsvectors postgresql_hstores postgresql_arrays postgresql_moneys postgresql_numbers postgresql_times postgresql_network_addresses postgresql_bit_strings postgresql_uuids postgresql_ltrees
-      postgresql_oids postgresql_xml_data_type defaults geometrics postgresql_timestamp_with_zones postgresql_partitioned_table postgresql_partitioned_table_parent postgresql_json_data_type).each do |table_name|
+     postgresql_citexts postgresql_domains postgresql_oids postgresql_xml_data_type defaults geometrics postgresql_timestamp_with_zones postgresql_partitioned_table postgresql_partitioned_table_parent postgresql_json_data_type).each do |table_name|
     execute "DROP TABLE IF EXISTS #{quote_table_name table_name}"
   end
 
@@ -13,6 +13,8 @@ ActiveRecord::Schema.define do
   execute 'DROP FUNCTION IF EXISTS partitioned_insert_trigger()'
 
   execute "DROP SCHEMA IF EXISTS schema_1 CASCADE"
+
+  execute "DROP EXTENSION IF EXISTS citext CASCADE"
 
   %w(accounts_id_seq developers_id_seq projects_id_seq topics_id_seq customers_id_seq orders_id_seq).each do |seq_name|
     execute "SELECT setval('#{seq_name}', 100)"
@@ -63,6 +65,14 @@ _SQL
     id SERIAL PRIMARY KEY,
     commission_by_quarter INTEGER[],
     nicknames TEXT[]
+  );
+_SQL
+
+  execute <<_SQL
+  create extension citext;
+  CREATE TABLE postgresql_citexts (
+    id SERIAL PRIMARY KEY,
+    email citext
   );
 _SQL
 

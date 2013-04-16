@@ -12,6 +12,9 @@ end
 class PostgresqlMoney < ActiveRecord::Base
 end
 
+class PostgresqlCitext < ActiveRecord::Base
+end
+
 class PostgresqlNumber < ActiveRecord::Base
 end
 
@@ -45,6 +48,9 @@ class PostgresqlDataTypeTest < ActiveRecord::TestCase
 
     @connection.execute("INSERT INTO postgresql_arrays (id, commission_by_quarter, nicknames) VALUES (1, '{35000,21000,18000,17000}', '{foo,bar,baz}')")
     @first_array = PostgresqlArray.find(1)
+
+    @connection.execute("INSERT INTO postgresql_citexts (id, email) values (default, 'joe@tanga.com')")
+    @first_citext = PostgresqlCitext.first
 
     @connection.execute <<_SQL if @connection.supports_ranges?
     INSERT INTO postgresql_ranges (
@@ -176,12 +182,16 @@ _SQL
 
   def teardown
     [PostgresqlArray, PostgresqlTsvector, PostgresqlMoney, PostgresqlNumber, PostgresqlTime, PostgresqlNetworkAddress,
-     PostgresqlBitString, PostgresqlOid, PostgresqlTimestampWithZone, PostgresqlUUID].each(&:delete_all)
+     PostgresqlBitString, PostgresqlOid, PostgresqlTimestampWithZone, PostgresqlUUID, PostgresqlCitext].each(&:delete_all)
   end
 
   def test_data_type_of_array_types
     assert_equal :integer, @first_array.column_for_attribute(:commission_by_quarter).type
     assert_equal :text, @first_array.column_for_attribute(:nicknames).type
+  end
+
+  def test_data_type_of_citext
+    assert_equal :text, @first_citext.column_for_attribute(:email).type
   end
 
   def test_data_type_of_range_types
