@@ -188,7 +188,7 @@ module ActiveRecord
     # Please see further details in the
     # {Active Record Query Interface guide}[http://guides.rubyonrails.org/active_record_querying.html#running-explain].
     def explain
-      exec_explain(collecting_queries_for_explain { exec_queries })
+      #exec_explain(collecting_queries_for_explain { exec_queries })
     end
 
     # Converts relation objects to Array.
@@ -510,6 +510,21 @@ module ActiveRecord
     # to maintain backwards compatibility. Use +distinct_value+ instead.
     def uniq_value
       distinct_value
+    end
+
+    def replace_binds(bind_values)
+      temp_binds = []
+      bind_values.map do |column, value| 
+        case value
+        when String, Integer
+          if (@klass.column_names.include? column.to_s)  
+            temp_binds.push([@klass.columns_hash[column.to_s], value])
+          else 
+            temp_binds.push([nil, value])
+          end
+        end
+      end
+      self.bind_values = temp_binds
     end
 
     # Compares two relations for equality.

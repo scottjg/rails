@@ -891,7 +891,12 @@ module ActiveRecord
       when String, Array
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
-        attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
+        temp_opts = opts.dup
+        if (self.bind_values.empty?)
+          self.replace_binds temp_opts
+          temp_opts = substitute_opts(temp_opts)
+        end
+        attributes = @klass.send(:expand_hash_conditions_for_aggregates, temp_opts)
 
         attributes.values.grep(ActiveRecord::Relation) do |rel|
           self.bind_values += rel.bind_values
@@ -902,6 +907,17 @@ module ActiveRecord
         [opts]
       end
     end
+
+    def substitute_opts(temp_opts)
+      temp_opts = temp_opts.each_with_index do |(column,value), index|
+        substitute = connection.substitute_at(column, index) 
+        case value
+          when String, Integer
+            temp_opts[column] = substitute
+        end
+      end
+    end
+
 
     def build_from
       opts, name = from_value
