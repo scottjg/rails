@@ -15,6 +15,7 @@ module ActionView
   module Context
     include CompiledTemplates
     attr_accessor :output_buffer, :view_flow
+    attr_reader   :virtual_path
 
     # Prepares the context by setting the appropriate instance variables.
     # :api: plugin
