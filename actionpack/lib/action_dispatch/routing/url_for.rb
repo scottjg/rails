@@ -149,58 +149,10 @@ module ActionDispatch
       #    # => '/myapp/tasks/testing'
       def url_for(options = nil)
 
-        # puts 'URL FOR IS GETTING CALLED FROM THE TEST URL_FOR'
-        # puts self.class.instance_methods(false)
-        # puts _routes.class.instance_methods(false)
-        # puts self.named_routes
-
-        # require 'debugger'
-        # debugger
-        # _routes.named_routes.each do |x|
-        #   puts x.class.instance_methods(false)
-        # end
-        # puts _routes.set.named_routes
-
-        # puts 'testing now'
-
-        # _routes.set.named_routes.each do |x|
-        #   puts 'xs !!!!!!!!!!!!!! '
-
-        #   puts x[0].class
-        #   puts x[0]
-        #   puts x[1].class
-        #   puts x[1].ast.first
-        #   puts x[2].class
-        # end
-          # puts _routes.routes.class
-        # puts "Should be journey class above"
-        # puts _routes.routes.class.instance_methods(false)
-
-        # puts "testing methods"
-        # puts _routes.routes.partitioned_routes
-        # puts _routes.routes.method(:partitioned_routes).source_location
-        # puts myFormatter.cache.keys
-        # mycache.each do |key, val|
-        #   puts "this is key"
-        #   puts key
-        #   puts "this is val"
-        #   puts val
-        # end
-
-        # puts mycache[[:controller, "list"]]
-        # puts mycache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes]
-        # require 'debugger'
-        # debugger        
-
-        # _routes.named_routes.each do |x|
-        #   puts x
-        #   puts _routes.named_routes.get(x).ast
-        # end
-
-        # mycache =  _routes.formatter.cache
-        # puts mycache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes][0][1].ast
-
-
+        if options != nil and options.has_key?(:controller) and options.has_key?(:action)
+          return url_for_optimized(options)
+        end
+        
         case options
         when nil
           _routes.url_for(url_options.symbolize_keys)
@@ -254,7 +206,7 @@ module ActionDispatch
                 #adding argument values
         options.each do |key, value|
           if key != :controller and key != :action
-            puts key
+            #puts key
             ast_link = ast_link.to_s.sub(":#{key}", value.to_s)
           end
         end

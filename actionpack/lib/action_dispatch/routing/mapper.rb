@@ -469,6 +469,8 @@ module ActionDispatch
         #   Allows you to specify the default value for optional +format+
         #   segment or disable it by supplying +false+.
         def match(path, options=nil)
+          require "debugger"
+          debugger
         end
 
         # Mount a Rack-based application to be used within the application.
@@ -600,13 +602,47 @@ module ActionDispatch
         end
 
         private
+          #stable version
           def map_method(method, args, &block)
             options = args.extract_options!
             options[:via]    = method
+
+            #if you change to args[2] maps differently
             options[:path] ||= args.first if args.first.is_a?(String)
+
             match(*args, options, &block)
+            #puts method(:match).source_location
+
+            require "debugger"
+            #debugger
+            #caller
+
+            # @set.routes.each do |x|
+            #   puts x.ast
+            # end  
+
             self
           end
+          # def map_method(method, args, &block)
+          #   options = args.extract_options!
+          #   options[:via]    = method
+
+          #   #if you change to args[2] maps differently
+          #   options[:path] ||= args.first if args.first.is_a?(String)
+
+          #   match(*args, options, &block)
+          #   puts method(:match).source_location
+
+          #   require "debugger"
+          #   //debugger
+          #   #caller
+
+          #   # @set.routes.each do |x|
+          #   #   puts x.ast
+          #   # end  
+
+          #   self
+          # end
       end
 
       # You may wish to organize groups of controllers under a namespace.
