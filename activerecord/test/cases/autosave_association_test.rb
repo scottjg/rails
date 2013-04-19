@@ -566,7 +566,7 @@ class TestDefaultAutosaveAssociationOnNewRecord < ActiveRecord::TestCase
 end
 
 class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
-  self.use_transactional_fixtures = false unless supports_savepoints?
+  self.use_transactional_fixtures = false
 
   def setup
     super
@@ -767,7 +767,7 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
   def test_should_save_new_record_that_has_same_value_as_existing_record_marked_for_destruction_on_field_that_has_unique_index
     Bird.connection.add_index :birds, :name, unique: true
 
-    3.times { |i| @pirate.birds.create(name: "birds_#{i}") }
+    3.times { |i| @pirate.birds.create(name: "unique_birds_#{i}") }
 
     @pirate.birds[0].mark_for_destruction
     @pirate.birds.build(name: @pirate.birds[0].name)
@@ -860,8 +860,10 @@ class TestDestroyAsPartOfAutosaveAssociation < ActiveRecord::TestCase
     @pirate.parrots.each { |parrot| parrot.mark_for_destruction }
     assert @pirate.save
 
-    assert_queries(0) do
-      assert @pirate.save
+    Pirate.transaction do
+      assert_queries(0) do
+        assert @pirate.save
+      end
     end
   end
 
