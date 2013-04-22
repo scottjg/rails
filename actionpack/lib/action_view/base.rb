@@ -6,7 +6,7 @@ require 'action_view/log_subscriber'
 module ActionView #:nodoc:
   # = Action View Base
   #
-  # Action View templates can be written in several ways. If the template file has a <tt>.erb</tt> extension then it uses a mixture of ERb
+  # Action View templates can be written in several ways. If the template file has a <tt>.erb</tt> extension then it uses a mixture of ERB
   # (included in Ruby) and HTML. If the template file has a <tt>.builder</tt> extension then Jim Weirich's Builder::XmlMarkup library is used.
   #
   # == ERB
@@ -55,7 +55,7 @@ module ActionView #:nodoc:
   #
   # You can pass local variables to sub templates by using a hash with the variable names as keys and the objects as values:
   #
-  #   <%= render "shared/header", { :headline => "Welcome", :person => person } %>
+  #   <%= render "shared/header", { headline: "Welcome", person: person } %>
   #
   # These can now be accessed in <tt>shared/header</tt> with:
   #

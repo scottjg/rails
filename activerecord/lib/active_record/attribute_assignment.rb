@@ -57,9 +57,8 @@ module ActiveRecord
     # by calling new on the column type or aggregation type (through composed_of) object with these parameters.
     # So having the pairs written_on(1) = "2004", written_on(2) = "6", written_on(3) = "24", will instantiate
     # written_on (a date type) with Date.new("2004", "6", "24"). You can also specify a typecast character in the
-    # parentheses to have the parameters typecasted before they're used in the constructor. Use i for Fixnum,
-    # f for Float, s for String, and a for Array. If all the values for a given attribute are empty, the
-    # attribute will be set to +nil+.
+    # parentheses to have the parameters typecasted before they're used in the constructor. Use i for Fixnum and
+    # f for Float. If all the values for a given attribute are empty, the attribute will be set to +nil+.
     def assign_multiparameter_attributes(pairs)
       execute_callstack_for_multiparameter_attributes(
         extract_callstack_for_multiparameter_attributes(pairs)
@@ -82,7 +81,7 @@ module ActiveRecord
     end
 
     def extract_callstack_for_multiparameter_attributes(pairs)
-      attributes = { }
+      attributes = {}
 
       pairs.each do |(multiparameter_name, value)|
         attribute_name = multiparameter_name.split("(").first
@@ -133,7 +132,7 @@ module ActiveRecord
         if object.class.send(:create_time_zone_conversion_attribute?, name, column)
           Time.zone.local(*set_values)
         else
-          Time.time_with_datetime_fallback(object.class.default_timezone, *set_values)
+          Time.send(object.class.default_timezone, *set_values)
         end
       end
 
@@ -147,7 +146,7 @@ module ActiveRecord
           end
         else
           # else column is a timestamp, so if Date bits were not provided, error
-          validate_missing_parameters!([1,2,3])
+          validate_required_parameters!([1,2,3])
 
           # If Date bits were provided but blank, then return nil
           return if blank_date_parameter?
@@ -173,14 +172,14 @@ module ActiveRecord
       def read_other(klass)
         max_position = extract_max_param
         positions    = (1..max_position)
-        validate_missing_parameters!(positions)
+        validate_required_parameters!(positions)
 
         set_values = values.values_at(*positions)
         klass.new(*set_values)
       end
 
       # Checks whether some blank date parameter exists. Note that this is different
-      # than the validate_missing_parameters! method, since it just checks for blank
+      # than the validate_required_parameters! method, since it just checks for blank
       # positions instead of missing ones, and does not raise in case one blank position
       # exists. The caller is responsible to handle the case of this returning true.
       def blank_date_parameter?
@@ -188,7 +187,7 @@ module ActiveRecord
       end
 
       # If some position is not provided, it errors out a missing parameter exception.
-      def validate_missing_parameters!(positions)
+      def validate_required_parameters!(positions)
         if missing_parameter = positions.detect { |position| !values.key?(position) }
           raise ArgumentError.new("Missing Parameter - #{name}(#{missing_parameter})")
         end

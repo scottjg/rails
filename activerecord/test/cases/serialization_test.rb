@@ -18,6 +18,10 @@ class SerializationTest < ActiveRecord::TestCase
     }
   end
 
+  def test_include_root_in_json_is_false_by_default
+    assert_equal false, ActiveRecord::Base.include_root_in_json, "include_root_in_json should be false by default but was not"
+  end
+
   def test_serialize_should_be_reversible
     FORMATS.each do |format|
       @serialized = Contact.new.send("to_#{format}")
@@ -44,5 +48,21 @@ class SerializationTest < ActiveRecord::TestCase
       assert_nil contact.age, "For #{format}"
       assert_equal @contact_attributes[:awesome], contact.awesome, "For #{format}"
     end
+  end
+
+  def test_include_root_in_json_allows_inheritance
+    original_root_in_json = ActiveRecord::Base.include_root_in_json
+    ActiveRecord::Base.include_root_in_json = true
+
+    klazz = Class.new(ActiveRecord::Base)
+    klazz.table_name = 'topics'
+    assert klazz.include_root_in_json
+
+    klazz.include_root_in_json = false
+    assert ActiveRecord::Base.include_root_in_json
+    assert !klazz.include_root_in_json
+    assert !klazz.new.include_root_in_json
+  ensure
+    ActiveRecord::Base.include_root_in_json = original_root_in_json
   end
 end

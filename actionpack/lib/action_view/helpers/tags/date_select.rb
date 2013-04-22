@@ -1,7 +1,9 @@
+require 'active_support/core_ext/time/calculations'
+
 module ActionView
   module Helpers
-    module Tags
-      class DateSelect < Base #:nodoc:
+    module Tags # :nodoc:
+      class DateSelect < Base # :nodoc:
         def initialize(object_name, method_name, template_object, options, html_options)
           @html_options = html_options
 
@@ -25,7 +27,7 @@ module ActionView
         end
 
         def datetime_selector(options, html_options)
-          datetime = value(object) || default_datetime(options)
+          datetime = options.fetch(:selected) { value(object) || default_datetime(options) }
           @auto_index ||= nil
 
           options = options.dup
@@ -58,7 +60,7 @@ module ActionView
               default[key] ||= time.send(key)
             end
 
-            Time.utc_time(
+            Time.utc(
               default[:year], default[:month], default[:day],
               default[:hour], default[:min], default[:sec]
             )

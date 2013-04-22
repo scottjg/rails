@@ -16,7 +16,6 @@ require 'models/ship_part'
 require 'models/tag'
 require 'models/tagging'
 require 'models/treasure'
-require 'models/company'
 require 'models/eye'
 
 class TestAutosaveAssociationsInGeneral < ActiveRecord::TestCase
@@ -145,7 +144,7 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
 
     firm = Firm.first
     firm.account = Account.first
-    assert_queries(Firm.partial_updates? ? 0 : 1) { firm.save! }
+    assert_queries(Firm.partial_writes? ? 0 : 1) { firm.save! }
 
     firm = Firm.first.dup
     firm.account = Account.first
@@ -162,16 +161,16 @@ class TestDefaultAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCas
   end
 
   def test_callbacks_firing_order_on_update
-    eye = Eye.create(:iris_attributes => {:color => 'honey'})
-    eye.update_attributes(:iris_attributes => {:color => 'green'})
+    eye = Eye.create(iris_attributes: {color: 'honey'})
+    eye.update(iris_attributes: {color: 'green'})
     assert_equal [true, false], eye.after_update_callbacks_stack
   end
 
   def test_callbacks_firing_order_on_save
-    eye = Eye.create(:iris_attributes => {:color => 'honey'})
+    eye = Eye.create(iris_attributes: {color: 'honey'})
     assert_equal [false, false], eye.after_save_callbacks_stack
 
-    eye.update_attributes(:iris_attributes => {:color => 'blue'})
+    eye.update(iris_attributes: {color: 'blue'})
     assert_equal [false, false, false, false], eye.after_save_callbacks_stack
   end
 end
@@ -440,7 +439,7 @@ class TestDefaultAutosaveAssociationOnAHasManyAssociation < ActiveRecord::TestCa
   end
 
   def test_assign_ids_for_through_a_belongs_to
-    post = Post.new(:title => "Assigning IDs works!", :body => "You heared it here first, folks!")
+    post = Post.new(:title => "Assigning IDs works!", :body => "You heard it here first, folks!")
     post.person_ids = [people(:david).id, people(:michael).id]
     post.save
     post.reload
@@ -1336,7 +1335,7 @@ class TestAutosaveAssociationValidationsOnAHasOneAssociation < ActiveRecord::Tes
     assert !@pirate.valid?
   end
 
-  test "should not automatically asd validate associations without :validate => true" do
+  test "should not automatically add validate associations without :validate => true" do
     assert @pirate.valid?
     @pirate.non_validated_ship.name = ''
     assert @pirate.valid?

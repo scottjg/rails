@@ -27,7 +27,7 @@ module Mime
   class << self
     def [](type)
       return type if type.is_a?(Type)
-      Type.lookup_by_extension(type)
+      Type.lookup_by_extension(type) || NullType.new
     end
 
     def fetch(type)
@@ -44,8 +44,8 @@ module Mime
   #
   #       respond_to do |format|
   #         format.html
-  #         format.ics { render :text => post.to_ics, :mime_type => Mime::Type["text/calendar"]  }
-  #         format.xml { render :xml => @people }
+  #         format.ics { render text: post.to_ics, mime_type: Mime::Type["text/calendar"]  }
+  #         format.xml { render xml: @people }
   #       end
   #     end
   #   end
@@ -223,8 +223,8 @@ module Mime
         Mime.instance_eval { remove_const(symbol) }
 
         SET.delete_if { |v| v.eql?(mime) }
-        LOOKUP.delete_if { |k,v| v.eql?(mime) }
-        EXTENSION_LOOKUP.delete_if { |k,v| v.eql?(mime) }
+        LOOKUP.delete_if { |_,v| v.eql?(mime) }
+        EXTENSION_LOOKUP.delete_if { |_,v| v.eql?(mime) }
       end
     end
 
@@ -288,18 +288,42 @@ module Mime
       @@html_types.include?(to_sym) || @string =~ /html/
     end
 
-    private
-      def method_missing(method, *args)
-        if method.to_s.ends_with? '?'
-          method[0..-2].downcase.to_sym == to_sym
-        else
-          super
-        end
-      end
 
-      def respond_to_missing?(method, include_private = false) #:nodoc:
-        method.to_s.ends_with? '?'
+    private
+
+    def to_ary; end
+    def to_a; end
+
+    def method_missing(method, *args)
+      if method.to_s.ends_with? '?'
+        method[0..-2].downcase.to_sym == to_sym
+      else
+        super
       end
+    end
+
+    def respond_to_missing?(method, include_private = false) #:nodoc:
+      method.to_s.ends_with? '?'
+    end
+  end
+
+  class NullType
+    def nil?
+      true
+    end
+
+    def ref
+      nil
+    end
+
+    def respond_to_missing?(method, include_private = false)
+      method.to_s.ends_with? '?'
+    end
+
+    private
+    def method_missing(method, *args)
+      false if method.to_s.ends_with? '?'
+    end
   end
 end
 

@@ -9,7 +9,7 @@ module RailsGuides
         <<-HTML
 <div class="code_container">
 <pre class="brush: #{brush_for(language)}; gutter: false; toolbar: false">
-#{ERB::Util.h(code).strip}
+#{ERB::Util.h(code)}
 </pre>
 </div>
 HTML
@@ -65,7 +65,7 @@ HTML
           # if a bulleted list follows the first item is not rendered
           # as a list item, but as a paragraph starting with a plain
           # asterisk.
-          body.gsub(/^(TIP|IMPORTANT|CAUTION|WARNING|NOTE|INFO|TODO)[.:](.*?)(\n(?=\n)|\Z)/m) do |m|
+          body.gsub(/^(TIP|IMPORTANT|CAUTION|WARNING|NOTE|INFO|TODO)[.:](.*?)(\n(?=\n)|\Z)/m) do
             css_class = case $1
                         when 'CAUTION', 'IMPORTANT'
                           'warning'

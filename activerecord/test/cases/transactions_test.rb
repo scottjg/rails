@@ -14,6 +14,21 @@ class TransactionTest < ActiveRecord::TestCase
     @first, @second = Topic.find(1, 2).sort_by { |t| t.id }
   end
 
+  def test_raise_after_destroy
+    assert_not @first.frozen?
+
+    assert_raises(RuntimeError) {
+      Topic.transaction do
+        @first.destroy
+        assert @first.frozen?
+        raise
+      end
+    }
+
+    assert @first.reload
+    assert_not @first.frozen?
+  end
+
   def test_successful
     Topic.transaction do
       @first.approved  = true
@@ -102,21 +117,21 @@ class TransactionTest < ActiveRecord::TestCase
     assert !Topic.find(1).approved?
   end
 
-  def test_update_attributes_should_rollback_on_failure
+  def test_update_should_rollback_on_failure
     author = Author.find(1)
     posts_count = author.posts.size
     assert posts_count > 0
-    status = author.update_attributes(:name => nil, :post_ids => [])
+    status = author.update(name: nil, post_ids: [])
     assert !status
     assert_equal posts_count, author.posts(true).size
   end
 
-  def test_update_attributes_should_rollback_on_failure!
+  def test_update_should_rollback_on_failure!
     author = Author.find(1)
     posts_count = author.posts.size
     assert posts_count > 0
     assert_raise(ActiveRecord::RecordInvalid) do
-      author.update_attributes!(:name => nil, :post_ids => [])
+      author.update!(name: nil, post_ids: [])
     end
     assert_equal posts_count, author.posts(true).size
   end
@@ -434,6 +449,34 @@ class TransactionTest < ActiveRecord::TestCase
         raise ActiveRecord::Rollback
       end
     end
+  end
+
+  def test_transactions_state_from_rollback
+    connection = Topic.connection
+    transaction = ActiveRecord::ConnectionAdapters::ClosedTransaction.new(connection).begin
+
+    assert transaction.open?
+    assert !transaction.state.rolledback?
+    assert !transaction.state.committed?
+
+    transaction.perform_rollback
+
+    assert transaction.state.rolledback?
+    assert !transaction.state.committed?
+  end
+
+  def test_transactions_state_from_commit
+    connection = Topic.connection
+    transaction = ActiveRecord::ConnectionAdapters::ClosedTransaction.new(connection).begin
+
+    assert transaction.open?
+    assert !transaction.state.rolledback?
+    assert !transaction.state.committed?
+
+    transaction.perform_commit
+
+    assert !transaction.state.rolledback?
+    assert transaction.state.committed?
   end
 
   private

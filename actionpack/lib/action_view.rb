@@ -1,5 +1,5 @@
 #--
-# Copyright (c) 2004-2012 David Heinemeier Hansson
+# Copyright (c) 2004-2013 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -29,7 +29,6 @@ module ActionView
   extend ActiveSupport::Autoload
 
   eager_autoload do
-    autoload :AssetPaths
     autoload :Base
     autoload :Context
     autoload :CompiledTemplates, "action_view/context"

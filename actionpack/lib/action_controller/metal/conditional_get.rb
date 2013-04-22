@@ -1,4 +1,4 @@
-require 'active_support/core_ext/class/attribute'
+require 'active_support/core_ext/hash/keys'
 
 module ActionController
   module ConditionalGet
@@ -42,7 +42,7 @@ module ActionController
     # * <tt>:public</tt> By default the Cache-Control header is private, set this to
     #   +true+ if you want your application to be cachable by other devices (proxy caches).
     #
-    # === Example:
+    # === Example:
     #
     #   def show
     #     @article = Article.find(params[:id])
@@ -64,7 +64,7 @@ module ActionController
     #
     #   def show
     #     @article = Article.find(params[:id])
-    #     fresh_when(@article, :public => true)
+    #     fresh_when(@article, public: true)
     #   end
     def fresh_when(record_or_options, additional_options = {})
       if record_or_options.is_a? Hash

@@ -1,4 +1,3 @@
-
 module ActiveRecord
   # = Active Record Reflection
   module Reflection # :nodoc:
@@ -76,18 +75,23 @@ module ActiveRecord
       end
     end
 
-    # Abstract base class for AggregateReflection and AssociationReflection. Objects of
+    # Base class for AggregateReflection and AssociationReflection. Objects of
     # AggregateReflection and AssociationReflection are returned by the Reflection::ClassMethods.
+    #
+    #   MacroReflection
+    #     AggregateReflection
+    #     AssociationReflection
+    #       ThroughReflection
     class MacroReflection
       # Returns the name of the macro.
       #
-      # <tt>composed_of :balance, :class_name => 'Money'</tt> returns <tt>:balance</tt>
+      # <tt>composed_of :balance, class_name: 'Money'</tt> returns <tt>:balance</tt>
       # <tt>has_many :clients</tt> returns <tt>:clients</tt>
       attr_reader :name
 
       # Returns the macro type.
       #
-      # <tt>composed_of :balance, :class_name => 'Money'</tt> returns <tt>:composed_of</tt>
+      # <tt>composed_of :balance, class_name: 'Money'</tt> returns <tt>:composed_of</tt>
       # <tt>has_many :clients</tt> returns <tt>:has_many</tt>
       attr_reader :macro
 
@@ -95,7 +99,7 @@ module ActiveRecord
 
       # Returns the hash of options used for the macro.
       #
-      # <tt>composed_of :balance, :class_name => 'Money'</tt> returns <tt>{ :class_name => "Money" }</tt>
+      # <tt>composed_of :balance, class_name: 'Money'</tt> returns <tt>{ class_name: "Money" }</tt>
       # <tt>has_many :clients</tt> returns +{}+
       attr_reader :options
 
@@ -115,7 +119,7 @@ module ActiveRecord
 
       # Returns the class for the macro.
       #
-      # <tt>composed_of :balance, :class_name => 'Money'</tt> returns the Money class
+      # <tt>composed_of :balance, class_name: 'Money'</tt> returns the Money class
       # <tt>has_many :clients</tt> returns the Client class
       def klass
         @klass ||= class_name.constantize
@@ -123,7 +127,7 @@ module ActiveRecord
 
       # Returns the class name for the macro.
       #
-      # <tt>composed_of :balance, :class_name => 'Money'</tt> returns <tt>'Money'</tt>
+      # <tt>composed_of :balance, class_name: 'Money'</tt> returns <tt>'Money'</tt>
       # <tt>has_many :clients</tt> returns <tt>'Client'</tt>
       def class_name
         @class_name ||= (options[:class_name] || derive_class_name).to_s
@@ -179,7 +183,7 @@ module ActiveRecord
         @collection = [:has_many, :has_and_belongs_to_many].include?(macro)
       end
 
-      # Returns a new, unsaved instance of the associated class. +options+ will
+      # Returns a new, unsaved instance of the associated class. +attributes+ will
       # be passed to the class's constructor.
       def build_association(attributes, &block)
         klass.new(attributes, &block)
@@ -315,10 +319,10 @@ module ActiveRecord
       # the parent's validation.
       #
       # Unless you explicitly disable validation with
-      # <tt>:validate => false</tt>, validation will take place when:
+      # <tt>validate: false</tt>, validation will take place when:
       #
-      # * you explicitly enable validation; <tt>:validate => true</tt>
-      # * you use autosave; <tt>:autosave => true</tt>
+      # * you explicitly enable validation; <tt>validate: true</tt>
+      # * you use autosave; <tt>autosave: true</tt>
       # * the association is a +has_many+ association
       def validate?
         !options[:validate].nil? ? options[:validate] : (options[:autosave] == true || macro == :has_many)
@@ -399,8 +403,18 @@ module ActiveRecord
       #
       #   class Post < ActiveRecord::Base
       #     has_many :taggings
-      #     has_many :tags, :through => :taggings
+      #     has_many :tags, through: :taggings
       #   end
+      #
+      #   class Tagging < ActiveRecord::Base
+      #     belongs_to :post
+      #     belongs_to :tag
+      #   end
+      #
+      #   tags_reflection = Post.reflect_on_association(:tags)
+      #
+      #   taggings_reflection = tags_reflection.source_reflection
+      #   # => <ActiveRecord::Reflection::AssociationReflection: @macro=:belongs_to, @name=:tag, @active_record=Tagging, @plural_name="tags">
       #
       def source_reflection
         @source_reflection ||= source_reflection_names.collect { |name| through_reflection.klass.reflect_on_association(name) }.compact.first
@@ -411,7 +425,7 @@ module ActiveRecord
       #
       #   class Post < ActiveRecord::Base
       #     has_many :taggings
-      #     has_many :tags, :through => :taggings
+      #     has_many :tags, through: :taggings
       #   end
       #
       #   tags_reflection = Post.reflect_on_association(:tags)
@@ -427,6 +441,17 @@ module ActiveRecord
       # The chain is built by recursively calling #chain on the source reflection and the through
       # reflection. The base case for the recursion is a normal association, which just returns
       # [self] as its #chain.
+      #
+      #   class Post < ActiveRecord::Base
+      #     has_many :taggings
+      #     has_many :tags, through: :taggings
+      #   end
+      #
+      #   tags_reflection = Post.reflect_on_association(:tags)
+      #   tags_reflection.chain
+      #   # => [<ActiveRecord::Reflection::ThroughReflection: @macro=:has_many, @name=:tags, @options={:through=>:taggings}, @active_record=Post>,
+      #         <ActiveRecord::Reflection::AssociationReflection: @macro=:has_many, @name=:taggings, @options={}, @active_record=Post>]
+      #
       def chain
         @chain ||= begin
           chain = source_reflection.chain + through_reflection.chain
@@ -439,12 +464,12 @@ module ActiveRecord
       #
       #   class Person
       #     has_many :articles
-      #     has_many :comment_tags, :through => :articles
+      #     has_many :comment_tags, through: :articles
       #   end
       #
       #   class Article
       #     has_many :comments
-      #     has_many :comment_tags, :through => :comments, :source => :tags
+      #     has_many :comment_tags, through: :comments, source: :tags
       #   end
       #
       #   class Comment
@@ -497,9 +522,16 @@ module ActiveRecord
         source_reflection.options[:primary_key] || primary_key(klass || self.klass)
       end
 
-      # Gets an array of possible <tt>:through</tt> source reflection names:
+      # Gets an array of possible <tt>:through</tt> source reflection names in both singular and plural form.
       #
-      #   [:singularized, :pluralized]
+      #   class Post < ActiveRecord::Base
+      #     has_many :taggings
+      #     has_many :tags, through: :taggings
+      #   end
+      #
+      #   tags_reflection = Post.reflect_on_association(:tags)
+      #   tags_reflection.source_reflection_names
+      #   # => [:tag, :tags]
       #
       def source_reflection_names
         @source_reflection_names ||= (options[:source] ? [options[:source]] : [name.to_s.singularize, name]).collect { |n| n.to_sym }

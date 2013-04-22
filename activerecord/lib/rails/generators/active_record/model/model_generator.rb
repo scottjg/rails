@@ -1,8 +1,8 @@
 require 'rails/generators/active_record'
 
 module ActiveRecord
-  module Generators
-    class ModelGenerator < Base
+  module Generators # :nodoc:
+    class ModelGenerator < Base # :nodoc:
       argument :attributes, :type => :array, :default => [], :banner => "field[:type][:index] field[:type][:index]"
 
       check_class_collision
@@ -15,7 +15,7 @@ module ActiveRecord
       def create_migration_file
         return unless options[:migration] && options[:parent].nil?
         attributes.each { |a| a.attr_options.delete(:index) if a.reference? && !a.has_index? } if options[:indexes] == false
-        migration_template "migration.rb", "db/migrate/create_#{table_name}.rb"
+        migration_template "../../migration/templates/create_table_migration.rb", "db/migrate/create_#{table_name}.rb"
       end
 
       def create_model_file

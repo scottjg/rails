@@ -1,3 +1,4 @@
+require 'active_support/core_ext/array/extract_options'
 require 'action_dispatch/middleware/stack'
 
 module ActionController
@@ -5,7 +6,7 @@ module ActionController
   # allowing the following syntax in controllers:
   #
   #   class PostsController < ApplicationController
-  #     use AuthenticationMiddleware, :except => [:index, :show]
+  #     use AuthenticationMiddleware, except: [:index, :show]
   #   end
   #
   class MiddlewareStack < ActionDispatch::MiddlewareStack #:nodoc:
@@ -35,8 +36,7 @@ module ActionController
       raise "MiddlewareStack#build requires an app" unless app
 
       middlewares.reverse.inject(app) do |a, middleware|
-        middleware.valid?(action) ?
-          middleware.build(a) : a
+        middleware.valid?(action) ? middleware.build(a) : a
       end
     end
   end
@@ -56,7 +56,7 @@ module ActionController
   # And then to route requests to your metal controller, you would add
   # something like this to <tt>config/routes.rb</tt>:
   #
-  #   match 'hello', :to => HelloController.action(:index)
+  #   get 'hello', to: HelloController.action(:index)
   #
   # The +action+ method returns a valid Rack application for the \Rails
   # router to dispatch to.

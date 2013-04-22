@@ -2,23 +2,19 @@ require 'fileutils'
 require 'uri'
 require 'set'
 
-module ActionController #:nodoc:
+module ActionController
   # \Caching is a cheap way of speeding up slow applications by keeping the result of
   # calculations, renderings, and database calls around for subsequent requests.
-  # Action Controller affords you three approaches in varying levels of granularity:
-  # Page, Action, Fragment.
   #
-  # You can read more about each approach and the sweeping assistance by clicking the
-  # modules below.
+  # You can read more about each approach by clicking the modules below.
   #
-  # Note: To turn off all caching and sweeping, set
+  # Note: To turn off all caching, set
   #   config.action_controller.perform_caching = false.
   #
   # == \Caching stores
   #
   # All the caching stores from ActiveSupport::Cache are available to be used as backends
-  # for Action Controller caching. This setting only affects action and fragment caching
-  # as page caching is always written to disk.
+  # for Action Controller caching.
   #
   # Configuration examples (MemoryStore is the default):
   #
@@ -32,11 +28,7 @@ module ActionController #:nodoc:
     extend ActiveSupport::Autoload
 
     eager_autoload do
-      autoload :Actions
       autoload :Fragments
-      autoload :Pages
-      autoload :Sweeper, 'action_controller/caching/sweeping'
-      autoload :Sweeping, 'action_controller/caching/sweeping'
     end
 
     module ConfigMethods
@@ -58,18 +50,40 @@ module ActionController #:nodoc:
     include AbstractController::Callbacks
 
     include ConfigMethods
-    include Pages, Actions, Fragments
-    include Sweeping if defined?(ActiveRecord)
+    include Fragments
 
     included do
       extend ConfigMethods
 
+      config_accessor :default_static_extension
+      self.default_static_extension ||= '.html'
+
+      def self.page_cache_extension=(extension)
+        ActiveSupport::Deprecation.deprecation_warning(:page_cache_extension, :default_static_extension)
+        self.default_static_extension = extension
+      end
+
+      def self.page_cache_extension
+        ActiveSupport::Deprecation.deprecation_warning(:page_cache_extension, :default_static_extension)
+        default_static_extension
+      end
+
       config_accessor :perform_caching
       self.perform_caching = true if perform_caching.nil?
+
+      class_attribute :_view_cache_dependencies
+      self._view_cache_dependencies = []
+      helper_method :view_cache_dependencies if respond_to?(:helper_method)
     end
 
-    def caching_allowed?
-      request.get? && response.status == 200
+    module ClassMethods
+      def view_cache_dependency(&dependency)
+        self._view_cache_dependencies += [dependency]
+      end
+    end
+
+    def view_cache_dependencies
+      self.class._view_cache_dependencies.map { |dep| instance_exec(&dep) }.compact
     end
 
     protected

@@ -5,7 +5,12 @@ Active Support is the Ruby on Rails component responsible for providing Ruby lan
 
 It offers a richer bottom-line at the language level, targeted both at the development of Rails applications, and at the development of Ruby on Rails itself.
 
-By referring to this guide you will learn the extensions to the Ruby core classes and modules provided by Active Support.
+After reading this guide, you will know:
+
+* What Core Extensions are.
+* How to load all extensions.
+* How to cherry-pick just the extensions you want.
+* What extensions ActiveSupport provides.
 
 --------------------------------------------------------------------------------
 
@@ -14,7 +19,7 @@ How to Load Core Extensions
 
 ### Stand-Alone Active Support
 
-In order to have a near zero default footprint, Active Support does not load anything by default. It is broken in small pieces so that you may load just what you need, and also has some convenience entry points to load related extensions in one shot, even everything.
+In order to have a near-zero default footprint, Active Support does not load anything by default. It is broken in small pieces so that you can load just what you need, and also has some convenience entry points to load related extensions in one shot, even everything.
 
 Thus, after a simple require like:
 
@@ -85,11 +90,11 @@ The following values are considered to be blank in a Rails application:
 
 * empty arrays and hashes, and
 
-* any other object that responds to `empty?` and it is empty.
+* any other object that responds to `empty?` and is empty.
 
 INFO: The predicate for strings uses the Unicode-aware character class `[:space:]`, so for example U+2029 (paragraph separator) is considered to be whitespace.
 
-WARNING: Note that numbers are not mentioned, in particular 0 and 0.0 are **not** blank.
+WARNING: Note that numbers are not mentioned. In particular, 0 and 0.0 are **not** blank.
 
 For example, this method from `ActionDispatch::Session::AbstractStore` uses `blank?` for checking whether a session key is present:
 
@@ -147,19 +152,21 @@ Some numbers which are not singletons are not duplicable either:
 Active Support provides `duplicable?` to programmatically query an object about this property:
 
 ```ruby
+"foo".duplicable? # => true
 "".duplicable?     # => true
+0.0.duplicable?   # => false
 false.duplicable?  # => false
 ```
 
-By definition all objects are `duplicable?` except `nil`, `false`, `true`, symbols, numbers, and class and module objects.
+By definition all objects are `duplicable?` except `nil`, `false`, `true`, symbols, numbers, class, and module objects.
 
-WARNING. Any class can disallow duplication removing `dup` and `clone` or raising exceptions from them, only `rescue` can tell whether a given arbitrary object is duplicable. `duplicable?` depends on the hard-coded list above, but it is much faster than `rescue`. Use it only if you know the hard-coded list is enough in your use case.
+WARNING: Any class can disallow duplication by removing `dup` and `clone` or raising exceptions from them. Thus only `rescue` can tell whether a given arbitrary object is duplicable. `duplicable?` depends on the hard-coded list above, but it is much faster than `rescue`. Use it only if you know the hard-coded list is enough in your use case.
 
 NOTE: Defined in `active_support/core_ext/object/duplicable.rb`.
 
 ### `deep_dup`
 
-The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, ruby does not `dup` them. If you have an array with a string, for example, it will look like this:
+The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
 
 ```ruby
 array     = ['string']
@@ -167,18 +174,18 @@ duplicate = array.dup
 
 duplicate.push 'another-string'
 
-# object was duplicated, so element was added only to duplicate
+# the object was duplicated, so the element was added only to the duplicate
 array     #=> ['string']
 duplicate #=> ['string', 'another-string']
 
 duplicate.first.gsub!('string', 'foo')
 
-# first element was not duplicated, it will be changed for both arrays
+# first element was not duplicated, it will be changed in both arrays
 array     #=> ['foo']
 duplicate #=> ['foo', 'another-string']
 ```
 
-As you can see, after duplicating `Array` instance, we got another object, therefore we can modify it and the original object will stay unchanged. This is not true for array's elements, however. Since `dup` does not make deep copy, the string inside array is still the same object.
+As you can see, after duplicating the `Array` instance, we got another object, therefore we can modify it and the original object will stay unchanged. This is not true for array's elements, however. Since `dup` does not make deep copy, the string inside the array is still the same object.
 
 If you need a deep copy of an object, you should use `deep_dup`. Here is an example:
 
@@ -192,12 +199,12 @@ array     #=> ['string']
 duplicate #=> ['foo']
 ```
 
-If object is not duplicable, `deep_dup` will just return this object:
+If the object is not duplicable, `deep_dup` will just return it:
 
 ```ruby
 number = 1
-dup = number.deep_dup
-number.object_id == dup.object_id   # => true
+duplicate = number.deep_dup
+number.object_id == duplicate.object_id   # => true
 ```
 
 NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
@@ -358,13 +365,13 @@ Arrays return the result of applying `to_query` to each element with `_key_[]` a
 Hashes also respond to `to_query` but with a different signature. If no argument is passed a call generates a sorted series of key/value assignments calling `to_query(key)` on its values. Then it joins the result with "&":
 
 ```ruby
-{:c => 3, :b => 2, :a => 1}.to_query # => "a=1&b=2&c=3"
+{c: 3, b: 2, a: 1}.to_query # => "a=1&b=2&c=3"
 ```
 
 The method `Hash#to_query` accepts an optional namespace for the keys:
 
 ```ruby
-{:id => 89, :name => "John Smith"}.to_query('user')
+{id: 89, name: "John Smith"}.to_query('user')
 # => "user%5Bid%5D=89&user%5Bname%5D=John+Smith"
 ```
 
@@ -378,10 +385,10 @@ Given a default options hash, `with_options` yields a proxy object to a block. W
 
 ```ruby
 class Account < ActiveRecord::Base
-  has_many :customers, :dependent => :destroy
-  has_many :products,  :dependent => :destroy
-  has_many :invoices,  :dependent => :destroy
-  has_many :expenses,  :dependent => :destroy
+  has_many :customers, dependent: :destroy
+  has_many :products,  dependent: :destroy
+  has_many :invoices,  dependent: :destroy
+  has_many :expenses,  dependent: :destroy
 end
 ```
 
@@ -389,7 +396,7 @@ this way:
 
 ```ruby
 class Account < ActiveRecord::Base
-  with_options :dependent => :destroy do |assoc|
+  with_options dependent: :destroy do |assoc|
     assoc.has_many :customers
     assoc.has_many :products
     assoc.has_many :invoices
@@ -401,9 +408,9 @@ end
 That idiom may convey _grouping_ to the reader as well. For example, say you want to send a newsletter whose language depends on the user. Somewhere in the mailer you could group locale-dependent bits like this:
 
 ```ruby
-I18n.with_options :locale => user.locale, :scope => "newsletter" do |i18n|
+I18n.with_options locale: user.locale, scope: "newsletter" do |i18n|
   subject i18n.t :subject
-  body    i18n.t :body, :user_name => user.name
+  body    i18n.t :body, user_name: user.name
 end
 ```
 
@@ -414,24 +421,6 @@ NOTE: Defined in `active_support/core_ext/object/with_options.rb`.
 ### Instance Variables
 
 Active Support provides several methods to ease access to instance variables.
-
-#### `instance_variable_names`
-
-Ruby 1.8 and 1.9 have a method called `instance_variables` that returns the names of the defined instance variables. But they behave differently, in 1.8 it returns strings whereas in 1.9 it returns symbols. Active Support defines `instance_variable_names` as a portable way to obtain them as strings:
-
-```ruby
-class C
-  def initialize(x, y)
-    @x, @y = x, y
-  end
-end
-
-C.new(0, 1).instance_variable_names # => ["@y", "@x"]
-```
-
-WARNING: The order in which the names are returned is unspecified, and it indeed depends on the version of the interpreter.
-
-NOTE: Defined in `active_support/core_ext/object/instance_variables.rb`.
 
 #### `instance_values`
 
@@ -892,7 +881,7 @@ That is what `delegate` does for you:
 class User < ActiveRecord::Base
   has_one :profile
 
-  delegate :name, :to => :profile
+  delegate :name, to: :profile
 end
 ```
 
@@ -903,17 +892,17 @@ The method must be public in the target.
 The `delegate` macro accepts several methods:
 
 ```ruby
-delegate :name, :age, :address, :twitter, :to => :profile
+delegate :name, :age, :address, :twitter, to: :profile
 ```
 
 When interpolated into a string, the `:to` option should become an expression that evaluates to the object the method is delegated to. Typically a string or symbol. Such an expression is evaluated in the context of the receiver:
 
 ```ruby
 # delegates to the Rails constant
-delegate :logger, :to => :Rails
+delegate :logger, to: :Rails
 
 # delegates to the receiver's class
-delegate :table_name, :to => 'self.class'
+delegate :table_name, to: :class
 ```
 
 WARNING: If the `:prefix` option is `true` this is less generic, see below.
@@ -921,7 +910,7 @@ WARNING: If the `:prefix` option is `true` this is less generic, see below.
 By default, if the delegation raises `NoMethodError` and the target is `nil` the exception is propagated. You can ask that `nil` is returned instead with the `:allow_nil` option:
 
 ```ruby
-delegate :name, :to => :profile, :allow_nil => true
+delegate :name, to: :profile, allow_nil: true
 ```
 
 With `:allow_nil` the call `user.name` returns `nil` if the user has no profile.
@@ -929,7 +918,7 @@ With `:allow_nil` the call `user.name` returns `nil` if the user has no profile.
 The option `:prefix` adds a prefix to the name of the generated method. This may be handy for example to get a better name:
 
 ```ruby
-delegate :street, :to => :address, :prefix => true
+delegate :street, to: :address, prefix: true
 ```
 
 The previous example generates `address_street` rather than `street`.
@@ -939,7 +928,7 @@ WARNING: Since in this case the name of the generated method is composed of the 
 A custom prefix may also be configured:
 
 ```ruby
-delegate :size, :to => :attachment, :prefix => :avatar
+delegate :size, to: :attachment, prefix: :avatar
 ```
 
 In the previous example the macro generates `avatar_size` rather than `size`.
@@ -1003,10 +992,10 @@ For example `ActionMailer::Base` defines:
 ```ruby
 class_attribute :default_params
 self.default_params = {
-  :mime_version => "1.0",
-  :charset      => "UTF-8",
-  :content_type => "text/plain",
-  :parts_order  => [ "text/plain", "text/enriched", "text/html" ]
+  mime_version: "1.0",
+  charset: "UTF-8",
+  content_type: "text/plain",
+  parts_order: [ "text/plain", "text/enriched", "text/html" ]
 }.freeze
 ```
 
@@ -1028,7 +1017,7 @@ The generation of the writer instance method can be prevented by setting the opt
 ```ruby
 module ActiveRecord
   class Base
-    class_attribute :table_name_prefix, :instance_writer => false
+    class_attribute :table_name_prefix, instance_writer: false
     self.table_name_prefix = ""
   end
 end
@@ -1040,7 +1029,7 @@ The generation of the reader instance method can be prevented by setting the opt
 
 ```ruby
 class A
-  class_attribute :x, :instance_reader => false
+  class_attribute :x, instance_reader: false
 end
 
 A.new.x = 1 # NoMethodError
@@ -1049,6 +1038,8 @@ A.new.x = 1 # NoMethodError
 For convenience `class_attribute` also defines an instance predicate which is the double negation of what the instance reader returns. In the examples above it would be called `x?`.
 
 When `:instance_reader` is `false`, the instance predicate returns a `NoMethodError` just like the reader method.
+
+If you do not want the instance predicate,  pass `instance_predicate: false` and it will not be defined.
 
 NOTE: Defined in `active_support/core_ext/class/attribute.rb`
 
@@ -1083,11 +1074,11 @@ The generation of the reader instance method can be prevented by setting `:insta
 module A
   class B
     # No first_name instance reader is generated.
-    cattr_accessor :first_name, :instance_reader => false
+    cattr_accessor :first_name, instance_reader: false
     # No last_name= instance writer is generated.
-    cattr_accessor :last_name, :instance_writer => false
+    cattr_accessor :last_name, instance_writer: false
     # No surname instance reader or surname= writer is generated.
-    cattr_accessor :surname, :instance_accessor => false
+    cattr_accessor :surname, instance_accessor: false
   end
 end
 ```
@@ -1117,8 +1108,6 @@ C.subclasses # => [B, D]
 ```
 
 The order in which these classes are returned is unspecified.
-
-WARNING: This method is redefined in some Rails core classes but should be all compatible in Rails 3.1.
 
 NOTE: Defined in `active_support/core_ext/class/subclasses.rb`.
 
@@ -1155,7 +1144,7 @@ Inserting data into HTML templates needs extra care. For example, you can't just
 
 #### Safe Strings
 
-Active Support has the concept of <i>(html) safe</i> strings since Rails 3. A safe string is one that is marked as being insertable into HTML as is. It is trusted, no matter whether it has been escaped or not.
+Active Support has the concept of <i>(html) safe</i> strings. A safe string is one that is marked as being insertable into HTML as is. It is trusted, no matter whether it has been escaped or not.
 
 Strings are considered to be <i>unsafe</i> by default:
 
@@ -1192,10 +1181,10 @@ Safe arguments are directly appended:
 "".html_safe + "<".html_safe # => "<"
 ```
 
-These methods should not be used in ordinary views. In Rails 3 unsafe values are automatically escaped:
+These methods should not be used in ordinary views. Unsafe values are automatically escaped:
 
 ```erb
-<%= @review.title %> <%# fine in Rails 3, escaped if needed %>
+<%= @review.title %> <%# fine, escaped if needed %>
 ```
 
 To insert something verbatim use the `raw` helper rather than calling `html_safe`:
@@ -1246,6 +1235,8 @@ The method `squish` strips leading and trailing whitespace, and substitutes runs
 
 There's also the destructive version `String#squish!`.
 
+Note that it handles both ASCII and Unicode whitespace like mongolian vowel separator (U+180E).
+
 NOTE: Defined in `active_support/core_ext/string/filters.rb`.
 
 ### `truncate`
@@ -1260,7 +1251,7 @@ The method `truncate` returns a copy of its receiver truncated after a given `le
 Ellipsis can be customized with the `:omission` option:
 
 ```ruby
-"Oh dear! Oh dear! I shall be late!".truncate(20, :omission => '&hellip;')
+"Oh dear! Oh dear! I shall be late!".truncate(20, omission: '&hellip;')
 # => "Oh dear! Oh &hellip;"
 ```
 
@@ -1271,14 +1262,14 @@ Pass a `:separator` to truncate the string at a natural break:
 ```ruby
 "Oh dear! Oh dear! I shall be late!".truncate(18)
 # => "Oh dear! Oh dea..."
-"Oh dear! Oh dear! I shall be late!".truncate(18, :separator => ' ')
+"Oh dear! Oh dear! I shall be late!".truncate(18, separator: ' ')
 # => "Oh dear! Oh..."
 ```
 
 The option `:separator` can be a regexp:
 
 ```ruby
-"Oh dear! Oh dear! I shall be late!".truncate(18, :separator => /\s/)
+"Oh dear! Oh dear! I shall be late!".truncate(18, separator: /\s/)
 # => "Oh dear! Oh..."
 ```
 
@@ -1355,7 +1346,7 @@ The second argument, `indent_string`, specifies which indent string to use. The 
 "foo".indent(2, "\t")    # => "\t\tfoo"
 ```
 
-While `indent_string` is tipically one space or tab, it may be any string.
+While `indent_string` is typically one space or tab, it may be any string.
 
 The third argument, `indent_empty_lines`, is a flag that says whether empty lines should be indented. Default is false.
 
@@ -1444,11 +1435,10 @@ As the previous example shows, Active Support knows some irregular plurals and u
 Active Record uses this method to compute the default table name that corresponds to a model:
 
 ```ruby
-# active_record/base.rb
+# active_record/model_schema.rb
 def undecorated_table_name(class_name = base_class.name)
   table_name = class_name.to_s.demodulize.underscore
-  table_name = table_name.pluralize if pluralize_table_names
-  table_name
+  pluralize_table_names ? table_name.pluralize : table_name
 end
 ```
 
@@ -1757,7 +1747,7 @@ def full_messages
   each do |attribute, messages|
     ...
     attr_name = attribute.to_s.gsub('.', '_').humanize
-    attr_name = @base.class.human_attribute_name(attribute, :default => attr_name)
+    attr_name = @base.class.human_attribute_name(attribute, default: attr_name)
     ...
   end
 
@@ -1861,13 +1851,13 @@ These methods use Time#advance for precise date calculations when using from_now
 as well as adding or subtracting their results from a Time object. For example:
 
 ```ruby
-# equivalent to Time.current.advance(:months => 1)
+# equivalent to Time.current.advance(months: 1)
 1.month.from_now
 
-# equivalent to Time.current.advance(:years => 2)
+# equivalent to Time.current.advance(years: 2)
 2.years.from_now
 
-# equivalent to Time.current.advance(:months => 4, :years => 5)
+# equivalent to Time.current.advance(months: 4, years: 5)
 (4.months + 5.years).from_now
 ```
 
@@ -1900,22 +1890,22 @@ Produce a string representation of a number as a telephone number:
 # => 555-1234
 1235551234.to_s(:phone)
 # => 123-555-1234
-1235551234.to_s(:phone, :area_code => true)
+1235551234.to_s(:phone, area_code: true)
 # => (123) 555-1234
-1235551234.to_s(:phone, :delimiter => " ")
+1235551234.to_s(:phone, delimiter: " ")
 # => 123 555 1234
-1235551234.to_s(:phone, :area_code => true, :extension => 555)
+1235551234.to_s(:phone, area_code: true, extension: 555)
 # => (123) 555-1234 x 555
-1235551234.to_s(:phone, :country_code => 1)
+1235551234.to_s(:phone, country_code: 1)
 # => +1-123-555-1234
 ```
 
 Produce a string representation of a number as currency:
 
 ```ruby
-1234567890.50.to_s(:currency)                    # => $1,234,567,890.50
-1234567890.506.to_s(:currency)                   # => $1,234,567,890.51
-1234567890.506.to_s(:currency, :precision => 3)  # => $1,234,567,890.506
+1234567890.50.to_s(:currency)                 # => $1,234,567,890.50
+1234567890.506.to_s(:currency)                # => $1,234,567,890.51
+1234567890.506.to_s(:currency, precision: 3)  # => $1,234,567,890.506
 ```
 
 Produce a string representation of a number as a percentage:
@@ -1923,32 +1913,32 @@ Produce a string representation of a number as a percentage:
 ```ruby
 100.to_s(:percentage)
 # => 100.000%
-100.to_s(:percentage, :precision => 0)
+100.to_s(:percentage, precision: 0)
 # => 100%
-1000.to_s(:percentage, :delimiter => '.', :separator => ',')
+1000.to_s(:percentage, delimiter: '.', separator: ',')
 # => 1.000,000%
-302.24398923423.to_s(:percentage, :precision => 5)
+302.24398923423.to_s(:percentage, precision: 5)
 # => 302.24399%
 ```
 
 Produce a string representation of a number in delimited form:
 
 ```ruby
-12345678.to_s(:delimited)                        # => 12,345,678
-12345678.05.to_s(:delimited)                     # => 12,345,678.05
-12345678.to_s(:delimited, :delimiter => ".")     # => 12.345.678
-12345678.to_s(:delimited, :delimiter => ",")     # => 12,345,678
-12345678.05.to_s(:delimited, :separator => " ")  # => 12,345,678 05
+12345678.to_s(:delimited)                     # => 12,345,678
+12345678.05.to_s(:delimited)                  # => 12,345,678.05
+12345678.to_s(:delimited, delimiter: ".")     # => 12.345.678
+12345678.to_s(:delimited, delimiter: ",")     # => 12,345,678
+12345678.05.to_s(:delimited, separator: " ")  # => 12,345,678 05
 ```
 
 Produce a string representation of a number rounded to a precision:
 
 ```ruby
-111.2345.to_s(:rounded)                        # => 111.235
-111.2345.to_s(:rounded, :precision => 2)       # => 111.23
-13.to_s(:rounded, :precision => 5)             # => 13.00000
-389.32314.to_s(:rounded, :precision => 0)      # => 389
-111.2345.to_s(:rounded, :significant => true)  # => 111
+111.2345.to_s(:rounded)                     # => 111.235
+111.2345.to_s(:rounded, precision: 2)       # => 111.23
+13.to_s(:rounded, precision: 5)             # => 13.00000
+389.32314.to_s(:rounded, precision: 0)      # => 389
+111.2345.to_s(:rounded, significant: true)  # => 111
 ```
 
 Produce a string representation of a number as a human-readable number of bytes:
@@ -2042,7 +2032,7 @@ Addition only assumes the elements respond to `+`:
 ```ruby
 [[1, 2], [2, 3], [3, 4]].sum    # => [1, 2, 2, 3, 3, 4]
 %w(foo bar baz).sum             # => "foobarbaz"
-{:a => 1, :b => 2, :c => 3}.sum # => [:b, 2, :c, 3, :a, 1]
+{a: 1, b: 2, c: 3}.sum # => [:b, 2, :c, 3, :a, 1]
 ```
 
 The sum of an empty collection is zero by default, but this is customizable:
@@ -2063,14 +2053,6 @@ The sum of an empty receiver can be customized in this form as well:
 
 ```ruby
 [].sum(1) {|n| n**3} # => 1
-```
-
-The method `ActiveRecord::Observer#observed_subclasses` for example is implemented this way:
-
-```ruby
-def observed_subclasses
-  observed_classes.sum([]) { |klass| klass.send(:subclasses) }
-end
 ```
 
 NOTE: Defined in `active_support/core_ext/enumerable.rb`.
@@ -2176,7 +2158,7 @@ NOTE: Defined in `active_support/core_ext/array/prepend_and_append.rb`.
 When the last argument in a method call is a hash, except perhaps for a `&block` argument, Ruby allows you to omit the brackets:
 
 ```ruby
-User.exists?(:email => params[:email])
+User.exists?(email: params[:email])
 ```
 
 That syntactic sugar is used a lot in Rails to avoid positional arguments where there would be too many, offering instead interfaces that emulate named parameters. In particular it is very idiomatic to use a trailing hash for options.
@@ -2218,7 +2200,7 @@ This method accepts three options:
 * `:words_connector`: What is used to join the elements of arrays with 3 or more elements, except for the last two. Default is ", ".
 * `:last_word_connector`: What is used to join the last items of an array with 3 or more elements. Default is ", and ".
 
-The defaults for these options can be localised, their keys are:
+The defaults for these options can be localized, their keys are:
 
 | Option                 | I18n key                            |
 | ---------------------- | ----------------------------------- |
@@ -2305,7 +2287,7 @@ If there's any element that does not belong to the type of the first one the roo
 If the receiver is an array of hashes the root element is by default also "objects":
 
 ```ruby
-[{:a => 1, :b => 2}, {:c => 3}].to_xml
+[{a: 1, b: 2}, {c: 3}].to_xml
 # =>
 # <?xml version="1.0" encoding="UTF-8"?>
 # <objects type="array">
@@ -2326,7 +2308,7 @@ The name of children nodes is by default the name of the root node singularized.
 The default XML builder is a fresh instance of `Builder::XmlMarkup`. You can configure your own builder via the `:builder` option. The method also accepts options like `:dasherize` and friends, they are forwarded to the builder:
 
 ```ruby
-Contributor.limit(2).order(:rank).to_xml(:skip_types => true)
+Contributor.limit(2).order(:rank).to_xml(skip_types: true)
 # =>
 # <?xml version="1.0" encoding="UTF-8"?>
 # <contributors>
@@ -2372,8 +2354,8 @@ This method is similar in purpose to `Kernel#Array`, but there are some differen
 The last point is particularly worth comparing for some enumerables:
 
 ```ruby
-Array.wrap(:foo => :bar) # => [{:foo => :bar}]
-Array(:foo => :bar)      # => [[:foo, :bar]]
+Array.wrap(foo: :bar) # => [{:foo=>:bar}]
+Array(foo: :bar)      # => [[:foo, :bar]]
 ```
 
 There's also a related idiom that uses the splat operator:
@@ -2416,9 +2398,9 @@ or yields them in turn if a block is passed:
 ```html+erb
 <% sample.in_groups_of(3) do |a, b, c| %>
   <tr>
-    <td><%=h a %></td>
-    <td><%=h b %></td>
-    <td><%=h c %></td>
+    <td><%= a %></td>
+    <td><%= b %></td>
+    <td><%= c %></td>
   </tr>
 <% end %>
 ```
@@ -2556,8 +2538,8 @@ NOTE: Defined in `active_support/core_ext/hash/conversions.rb`.
 Ruby has a built-in method `Hash#merge` that merges two hashes:
 
 ```ruby
-{:a => 1, :b => 1}.merge(:a => 0, :c => 2)
-# => {:a => 0, :b => 1, :c => 2}
+{a: 1, b: 1}.merge(a: 0, c: 2)
+# => {:a=>0, :b=>1, :c=>2}
 ```
 
 Active Support defines a few more ways of merging hashes that may be convenient.
@@ -2567,19 +2549,19 @@ Active Support defines a few more ways of merging hashes that may be convenient.
 In case of collision the key in the hash of the argument wins in `merge`. You can support option hashes with default values in a compact way with this idiom:
 
 ```ruby
-options = {:length => 30, :omission => "..."}.merge(options)
+options = {length: 30, omission: "..."}.merge(options)
 ```
 
 Active Support defines `reverse_merge` in case you prefer this alternative notation:
 
 ```ruby
-options = options.reverse_merge(:length => 30, :omission => "...")
+options = options.reverse_merge(length: 30, omission: "...")
 ```
 
 And a bang version `reverse_merge!` that performs the merge in place:
 
 ```ruby
-options.reverse_merge!(:length => 30, :omission => "...")
+options.reverse_merge!(length: 30, omission: "...")
 ```
 
 WARNING. Take into account that `reverse_merge!` may change the hash in the caller, which may or may not be a good idea.
@@ -2601,8 +2583,8 @@ As you can see in the previous example if a key is found in both hashes the valu
 Active Support defines `Hash#deep_merge`. In a deep merge, if a key is found in both hashes and their values are hashes in turn, then their _merge_ becomes the value in the resulting hash:
 
 ```ruby
-{:a => {:b => 1}}.deep_merge(:a => {:c => 2})
-# => {:a => {:b => 1, :c => 2}}
+{a: {b: 1}}.deep_merge(a: {c: 2})
+# => {:a=>{:b=>1, :c=>2}}
 ```
 
 The method `deep_merge!` performs a deep merge in place.
@@ -2614,7 +2596,7 @@ NOTE: Defined in `active_support/core_ext/hash/deep_merge.rb`.
 The method `Hash.deep_dup` duplicates itself and all keys and values inside recursively with ActiveSupport method `Object#deep_dup`. It works like `Enumerator#each_with_object` with sending `deep_dup` method to each pair inside.
 
 ```ruby
-hash = { :a => 1, :b => { :c => 2, :d => [3, 4] } }
+hash = { a: 1, b: { c: 2, d: [3, 4] } }
 
 dup = hash.deep_dup
 dup[:b][:e] = 5
@@ -2637,21 +2619,21 @@ The method `diff` returns a hash that represents a diff of the receiver and the 
 * The rest is just merged.
 
 ```ruby
-{:a => 1}.diff(:a => 1)
+{a: 1}.diff(a: 1)
 # => {}, first rule
 
-{:a => 1}.diff(:a => 2)
-# => {:a => 1}, second rule
+{a: 1}.diff(a: 2)
+# => {:a=>1}, second rule
 
-{:a => 1}.diff(:b => 2)
-# => {:a => 1, :b => 2}, third rule
+{a: 1}.diff(b: 2)
+# => {:a=>1, :b=>2}, third rule
 
-{:a => 1, :b => 2, :c => 3}.diff(:b => 1, :c => 3, :d => 4)
-# => {:a => 1, :b => 2, :d => 4}, all rules
+{a: 1, b: 2, c: 3}.diff(b: 1, c: 3, d: 4)
+# => {:a=>1, :b=>2, :d=>4}, all rules
 
 {}.diff({})        # => {}
-{:a => 1}.diff({}) # => {:a => 1}
-{}.diff(:a => 1)   # => {:a => 1}
+{a: 1}.diff({})    # => {:a=>1}
+{}.diff(a: 1)      # => {:a=>1}
 ```
 
 An important property of this diff hash is that you can retrieve the original hash by applying `diff` twice:
@@ -2671,21 +2653,14 @@ NOTE: Defined in `active_support/core_ext/hash/diff.rb`.
 The method `except` returns a hash with the keys in the argument list removed, if present:
 
 ```ruby
-{:a => 1, :b => 2}.except(:a) # => {:b => 2}
+{a: 1, b: 2}.except(:a) # => {:b=>2}
 ```
 
 If the receiver responds to `convert_key`, the method is called on each of the arguments. This allows `except` to play nice with hashes with indifferent access for instance:
 
 ```ruby
-{:a => 1}.with_indifferent_access.except(:a)  # => {}
-{:a => 1}.with_indifferent_access.except("a") # => {}
-```
-
-The method `except` may come in handy for example when you want to protect some parameter that can't be globally protected with `attr_protected`:
-
-```ruby
-params[:account] = params[:account].except(:plan_id) unless admin?
-@account.update_attributes(params[:account])
+{a: 1}.with_indifferent_access.except(:a)  # => {}
+{a: 1}.with_indifferent_access.except("a") # => {}
 ```
 
 There's also the bang variant `except!` that removes keys in the very receiver.
@@ -2697,14 +2672,14 @@ NOTE: Defined in `active_support/core_ext/hash/except.rb`.
 The method `transform_keys` accepts a block and returns a hash that has applied the block operations to each of the keys in the receiver:
 
 ```ruby
-{nil => nil, 1 => 1, :a => :a}.transform_keys{ |key| key.to_s.upcase }
+{nil => nil, 1 => 1, a: :a}.transform_keys{ |key| key.to_s.upcase }
 # => {"" => nil, "A" => :a, "1" => 1}
 ```
 
 The result in case of collision is undefined:
 
 ```ruby
-{"a" => 1, :a => 2}.transform_keys{ |key| key.to_s.upcase }
+{"a" => 1, a: 2}.transform_keys{ |key| key.to_s.upcase }
 # => {"A" => 2}, in my test, can't rely on this result though
 ```
 
@@ -2725,7 +2700,7 @@ There's also the bang variant `transform_keys!` that applies the block operation
 Besides that, one can use `deep_transform_keys` and `deep_transform_keys!` to perform the block operation on all the keys in the given hash and all the hashes nested into it. An example of the result is:
 
 ```ruby
-{nil => nil, 1 => 1, :nested => {:a => 3, 5 => 5}}.deep_transform_keys{ |key| key.to_s.upcase }
+{nil => nil, 1 => 1, nested: {a: 3, 5 => 5}}.deep_transform_keys{ |key| key.to_s.upcase }
 # => {""=>nil, "1"=>1, "NESTED"=>{"A"=>3, "5"=>5}}
 ```
 
@@ -2736,14 +2711,14 @@ NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 The method `stringify_keys` returns a hash that has a stringified version of the keys in the receiver. It does so by sending `to_s` to them:
 
 ```ruby
-{nil => nil, 1 => 1, :a => :a}.stringify_keys
+{nil => nil, 1 => 1, a: :a}.stringify_keys
 # => {"" => nil, "a" => :a, "1" => 1}
 ```
 
 The result in case of collision is undefined:
 
 ```ruby
-{"a" => 1, :a => 2}.stringify_keys
+{"a" => 1, a: 2}.stringify_keys
 # => {"a" => 2}, in my test, can't rely on this result though
 ```
 
@@ -2764,7 +2739,7 @@ There's also the bang variant `stringify_keys!` that stringifies keys in the ver
 Besides that, one can use `deep_stringify_keys` and `deep_stringify_keys!` to stringify all the keys in the given hash and all the hashes nested into it. An example of the result is:
 
 ```ruby
-{nil => nil, 1 => 1, :nested => {:a => 3, 5 => 5}}.deep_stringify_keys
+{nil => nil, 1 => 1, nested: {a: 3, 5 => 5}}.deep_stringify_keys
 # => {""=>nil, "1"=>1, "nested"=>{"a"=>3, "5"=>5}}
 ```
 
@@ -2776,7 +2751,7 @@ The method `symbolize_keys` returns a hash that has a symbolized version of the 
 
 ```ruby
 {nil => nil, 1 => 1, "a" => "a"}.symbolize_keys
-# => {1 => 1, nil => nil, :a => "a"}
+# => {1=>1, nil=>nil, :a=>"a"}
 ```
 
 WARNING. Note in the previous example only one key was symbolized.
@@ -2784,8 +2759,8 @@ WARNING. Note in the previous example only one key was symbolized.
 The result in case of collision is undefined:
 
 ```ruby
-{"a" => 1, :a => 2}.symbolize_keys
-# => {:a => 2}, in my test, can't rely on this result though
+{"a" => 1, a: 2}.symbolize_keys
+# => {:a=>2}, in my test, can't rely on this result though
 ```
 
 This method may be useful for example to easily accept both symbols and strings as options. For instance `ActionController::UrlRewriter` defines
@@ -2806,7 +2781,7 @@ Besides that, one can use `deep_symbolize_keys` and `deep_symbolize_keys!` to sy
 
 ```ruby
 {nil => nil, 1 => 1, "nested" => {"a" => 3, 5 => 5}}.deep_symbolize_keys
-# => {nil=>nil, 1=>1, :nested=>{:a=>3, 5=>5}}
+# => {nil=>nil, 1=>1, nested:{a:3, 5=>5}}
 ```
 
 NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
@@ -2822,8 +2797,8 @@ NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 The method `assert_valid_keys` receives an arbitrary number of arguments, and checks whether the receiver has any key outside that white list. If it does `ArgumentError` is raised.
 
 ```ruby
-{:a => 1}.assert_valid_keys(:a)  # passes
-{:a => 1}.assert_valid_keys("a") # ArgumentError
+{a: 1}.assert_valid_keys(:a)  # passes
+{a: 1}.assert_valid_keys("a") # ArgumentError
 ```
 
 Active Record does not accept unknown options when building associations, for example. It implements that control via `assert_valid_keys`.
@@ -2835,18 +2810,18 @@ NOTE: Defined in `active_support/core_ext/hash/keys.rb`.
 Ruby has built-in support for taking slices out of strings and arrays. Active Support extends slicing to hashes:
 
 ```ruby
-{:a => 1, :b => 2, :c => 3}.slice(:a, :c)
-# => {:c => 3, :a => 1}
+{a: 1, b: 2, c: 3}.slice(:a, :c)
+# => {:c=>3, :a=>1}
 
-{:a => 1, :b => 2, :c => 3}.slice(:b, :X)
-# => {:b => 2} # non-existing keys are ignored
+{a: 1, b: 2, c: 3}.slice(:b, :X)
+# => {:b=>2} # non-existing keys are ignored
 ```
 
 If the receiver responds to `convert_key` keys are normalized:
 
 ```ruby
-{:a => 1, :b => 2}.with_indifferent_access.slice("a")
-# => {:a => 1}
+{a: 1, b: 2}.with_indifferent_access.slice("a")
+# => {:a=>1}
 ```
 
 NOTE. Slicing may come in handy for sanitizing option hashes with a white list of keys.
@@ -2854,9 +2829,9 @@ NOTE. Slicing may come in handy for sanitizing option hashes with a white list o
 There's also `slice!` which in addition to perform a slice in place returns what's removed:
 
 ```ruby
-hash = {:a => 1, :b => 2}
-rest = hash.slice!(:a) # => {:b => 2}
-hash                   # => {:a => 1}
+hash = {a: 1, b: 2}
+rest = hash.slice!(:a) # => {:b=>2}
+hash                   # => {:a=>1}
 ```
 
 NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
@@ -2866,9 +2841,17 @@ NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
 The method `extract!` removes and returns the key/value pairs matching the given keys.
 
 ```ruby
-hash = {:a => 1, :b => 2}
-rest = hash.extract!(:a) # => {:a => 1}
-hash                     # => {:b => 2}
+hash = {a: 1, b: 2}
+rest = hash.extract!(:a) # => {:a=>1}
+hash                     # => {:b=>2}
+```
+
+The method `extract!` returns the same subclass of Hash, that the receiver is.
+
+```ruby
+hash = {a: 1, b: 2}.with_indifferent_access
+rest = hash.extract!(:a).class
+# => ActiveSupport::HashWithIndifferentAccess
 ```
 
 NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
@@ -2878,7 +2861,7 @@ NOTE: Defined in `active_support/core_ext/hash/slice.rb`.
 The method `with_indifferent_access` returns an `ActiveSupport::HashWithIndifferentAccess` out of its receiver:
 
 ```ruby
-{:a => 1}.with_indifferent_access["a"] # => 1
+{a: 1}.with_indifferent_access["a"] # => 1
 ```
 
 NOTE: Defined in `active_support/core_ext/hash/indifferent_access.rb`.
@@ -2982,7 +2965,7 @@ An unbound method is not callable as is, you need to bind it first to an object 
 
 ```ruby
 clear = Hash.instance_method(:clear)
-clear.bind({:a => 1}).call # => {}
+clear.bind({a: 1}).call # => {}
 ```
 
 Active Support defines `Proc#bind` with an analogous purpose:
@@ -3097,7 +3080,8 @@ Time.local(2000, 11, 31).next_quarter # => Wed, 28 Feb 2001
 
 The methods `beginning_of_week` and `end_of_week` return the dates for the
 beginning and end of the week, respectively. Weeks are assumed to start on
-Monday, but that can be changed passing an argument.
+Monday, but that can be changed passing an argument, setting thread local
+`Date.beginning_of_week` or `config.beginning_of_week`.
 
 ```ruby
 d = Date.new(2010, 5, 8)     # => Sat, 08 May 2010
@@ -3111,18 +3095,24 @@ d.end_of_week(:sunday)       # => Sat, 08 May 2010
 
 ##### `monday`, `sunday`
 
-The methods `monday` and `sunday` return the dates for the beginning and
-end of the week, respectively. Weeks are assumed to start on Monday.
+The methods `monday` and `sunday` return the dates for the previous Monday and
+next Sunday, respectively.
 
 ```ruby
 d = Date.new(2010, 5, 8)     # => Sat, 08 May 2010
 d.monday                     # => Mon, 03 May 2010
 d.sunday                     # => Sun, 09 May 2010
+
+d = Date.new(2012, 9, 10)    # => Mon, 10 Sep 2012
+d.monday                     # => Mon, 10 Sep 2012
+
+d = Date.new(2012, 9, 16)    # => Sun, 16 Sep 2012
+d.sunday                     # => Sun, 16 Sep 2012
 ```
 
 ##### `prev_week`, `next_week`
 
-The method `next_week` receives a symbol with a day name in English (in lowercase, default is `:monday`) and it returns the date corresponding to that day:
+The method `next_week` receives a symbol with a day name in English (default is the thread local `Date.beginning_of_week`, or `config.beginning_of_week`, or `:monday`) and it returns the date corresponding to that day.
 
 ```ruby
 d = Date.new(2010, 5, 9) # => Sun, 09 May 2010
@@ -3139,6 +3129,8 @@ d.prev_week(:friday)     # => Fri, 30 Apr 2010
 ```
 
 `prev_week` is aliased to `last_week`.
+
+Both `next_week` and `prev_week` work as expected when `Date.beginning_of_week` or `config.beginning_of_week` are set.
 
 ##### `beginning_of_month`, `end_of_month`
 
@@ -3232,8 +3224,8 @@ The most generic way to jump to other days is `advance`. This method receives a 
 
 ```ruby
 date = Date.new(2010, 6, 6)
-date.advance(:years => 1, :weeks => 2)  # => Mon, 20 Jun 2011
-date.advance(:months => 2, :days => -2) # => Wed, 04 Aug 2010
+date.advance(years: 1, weeks: 2)  # => Mon, 20 Jun 2011
+date.advance(months: 2, days: -2) # => Wed, 04 Aug 2010
 ```
 
 Note in the previous example that increments may be negative.
@@ -3243,14 +3235,14 @@ To perform the computation the method first increments years, then months, then 
 The method `advance` advances first one month, and then one day, the result is:
 
 ```ruby
-Date.new(2010, 2, 28).advance(:months => 1, :days => 1)
+Date.new(2010, 2, 28).advance(months: 1, days: 1)
 # => Sun, 29 Mar 2010
 ```
 
 While if it did it the other way around the result would be different:
 
 ```ruby
-Date.new(2010, 2, 28).advance(:days => 1).advance(:months => 1)
+Date.new(2010, 2, 28).advance(days: 1).advance(months: 1)
 # => Thu, 01 Apr 2010
 ```
 
@@ -3259,14 +3251,14 @@ Date.new(2010, 2, 28).advance(:days => 1).advance(:months => 1)
 The method `change` allows you to get a new date which is the same as the receiver except for the given year, month, or day:
 
 ```ruby
-Date.new(2010, 12, 23).change(:year => 2011, :month => 11)
+Date.new(2010, 12, 23).change(year: 2011, month: 11)
 # => Wed, 23 Nov 2011
 ```
 
 This method is not tolerant to non-existing dates, if the change is invalid `ArgumentError` is raised:
 
 ```ruby
-Date.new(2010, 1, 31).change(:month => 2)
+Date.new(2010, 1, 31).change(month: 2)
 # => ArgumentError: invalid date
 ```
 
@@ -3330,7 +3322,25 @@ date.end_of_hour # => Mon Jun 07 19:59:59 +0200 2010
 
 `beginning_of_hour` is aliased to `at_beginning_of_hour`.
 
-INFO: `beginning_of_hour` and `end_of_hour` are implemented for `Time` and `DateTime` but **not** `Date` as it does not make sense to request the beginning or end of an hour on a `Date` instance.
+##### `beginning_of_minute`, `end_of_minute`
+
+The method `beginning_of_minute` returns a timestamp at the beginning of the minute (hh:mm:00):
+
+```ruby
+date = DateTime.new(2010, 6, 7, 19, 55, 25)
+date.beginning_of_minute # => Mon Jun 07 19:55:00 +0200 2010
+```
+
+The method `end_of_minute` returns a timestamp at the end of the minute (hh:mm:59):
+
+```ruby
+date = DateTime.new(2010, 6, 7, 19, 55, 25)
+date.end_of_minute # => Mon Jun 07 19:55:59 +0200 2010
+```
+
+`beginning_of_minute` is aliased to `at_beginning_of_minute`.
+
+INFO: `beginning_of_hour`, `end_of_hour`, `beginning_of_minute` and `end_of_minute` are implemented for `Time` and `DateTime` but **not** `Date` as it does not make sense to request the beginning or end of an hour or minute on a `Date` instance.
 
 ##### `ago`, `since`
 
@@ -3452,7 +3462,7 @@ The most generic way to jump to another datetime is `advance`. This method recei
 ```ruby
 d = DateTime.current
 # => Thu, 05 Aug 2010 11:33:31 +0000
-d.advance(:years => 1, :months => 1, :days => 1, :hours => 1, :minutes => 1, :seconds => 1)
+d.advance(years: 1, months: 1, days: 1, hours: 1, minutes: 1, seconds: 1)
 # => Tue, 06 Sep 2011 12:34:32 +0000
 ```
 
@@ -3463,14 +3473,14 @@ If we first move the date bits (that have also a relative order of processing, a
 ```ruby
 d = DateTime.new(2010, 2, 28, 23, 59, 59)
 # => Sun, 28 Feb 2010 23:59:59 +0000
-d.advance(:months => 1, :seconds => 1)
+d.advance(months: 1, seconds: 1)
 # => Mon, 29 Mar 2010 00:00:00 +0000
 ```
 
 but if we computed them the other way around, the result would be different:
 
 ```ruby
-d.advance(:seconds => 1).advance(:months => 1)
+d.advance(seconds: 1).advance(months: 1)
 # => Thu, 01 Apr 2010 00:00:00 +0000
 ```
 
@@ -3483,28 +3493,28 @@ The method `change` allows you to get a new datetime which is the same as the re
 ```ruby
 now = DateTime.current
 # => Tue, 08 Jun 2010 01:56:22 +0000
-now.change(:year => 2011, :offset => Rational(-6, 24))
+now.change(year: 2011, offset: Rational(-6, 24))
 # => Wed, 08 Jun 2011 01:56:22 -0600
 ```
 
 If hours are zeroed, then minutes and seconds are too (unless they have given values):
 
 ```ruby
-now.change(:hour => 0)
+now.change(hour: 0)
 # => Tue, 08 Jun 2010 00:00:00 +0000
 ```
 
 Similarly, if minutes are zeroed, then seconds are too (unless it has given a value):
 
 ```ruby
-now.change(:min => 0)
+now.change(min: 0)
 # => Tue, 08 Jun 2010 01:00:00 +0000
 ```
 
 This method is not tolerant to non-existing dates, if the change is invalid `ArgumentError` is raised:
 
 ```ruby
-DateTime.current.change(:month => 2, :day => 30)
+DateTime.current.change(month: 2, day: 30)
 # => ArgumentError: invalid date
 ```
 
@@ -3585,9 +3595,9 @@ Time.zone_default
 # => #<ActiveSupport::TimeZone:0x7f73654d4f38 @utc_offset=nil, @name="Madrid", ...>
 
 # In Barcelona, 2010/03/28 02:00 +0100 becomes 2010/03/28 03:00 +0200 due to DST.
-t = Time.local_time(2010, 3, 28, 1, 59, 59)
+t = Time.local(2010, 3, 28, 1, 59, 59)
 # => Sun Mar 28 01:59:59 +0100 2010
-t.advance(:seconds => 1)
+t.advance(seconds: 1)
 # => Sun Mar 28 03:00:00 +0200 2010
 ```
 
@@ -3617,6 +3627,8 @@ now = Time.current
 # => Mon, 09 Aug 2010 23:20:05 UTC +00:00
 now.all_week
 # => Mon, 09 Aug 2010 00:00:00 UTC +00:00..Sun, 15 Aug 2010 23:59:59 UTC +00:00
+now.all_week(:sunday)
+# => Sun, 16 Sep 2012 00:00:00 UTC +00:00..Sat, 22 Sep 2012 23:59:59 UTC +00:00
 now.all_month
 # => Sat, 01 Aug 2010 00:00:00 UTC +00:00..Tue, 31 Aug 2010 23:59:59 UTC +00:00
 now.all_quarter
@@ -3638,26 +3650,6 @@ Time.current
 
 Analogously to `DateTime`, the predicates `past?`, and `future?` are relative to `Time.current`.
 
-Use the `local_time` class method to create time objects honoring the user time zone:
-
-```ruby
-Time.zone_default
-# => #<ActiveSupport::TimeZone:0x7f73654d4f38 @utc_offset=nil, @name="Madrid", ...>
-Time.local_time(2010, 8, 15)
-# => Sun Aug 15 00:00:00 +0200 2010
-```
-
-The `utc_time` class method returns a time in UTC:
-
-```ruby
-Time.zone_default
-# => #<ActiveSupport::TimeZone:0x7f73654d4f38 @utc_offset=nil, @name="Madrid", ...>
-Time.utc_time(2010, 8, 15)
-# => Sun Aug 15 00:00:00 UTC 2010
-```
-
-Both `local_time` and `utc_time` accept up to seven positional arguments: year, month, day, hour, min, sec, usec. Year is mandatory, month and day default to 1, and the rest default to 0.
-
 If the time to be constructed lies beyond the range supported by `Time` in the runtime platform, usecs are discarded and a `DateTime` object is returned instead.
 
 #### Durations
@@ -3676,7 +3668,7 @@ now - 1.week
 They translate to calls to `since` or `advance`. For example here we get the correct jump in the calendar reform:
 
 ```ruby
-Time.utc_time(1582, 10, 3) + 5.days
+Time.utc(1582, 10, 3) + 5.days
 # => Mon Oct 18 00:00:00 UTC 1582
 ```
 
@@ -3697,13 +3689,34 @@ File.atomic_write(joined_asset_path) do |cache|
 end
 ```
 
-To accomplish this `atomic_write` creates a temporary file. That's the file the code in the block actually writes to. On completion, the temporary file is renamed, which is an atomic operation on POSIX systems. If the target file exists `atomic_write` overwrites it and keeps owners and permissions.
+To accomplish this `atomic_write` creates a temporary file. That's the file the code in the block actually writes to. On completion, the temporary file is renamed, which is an atomic operation on POSIX systems. If the target file exists `atomic_write` overwrites it and keeps owners and permissions. However there are a few cases where `atomic_write` cannot change the file ownership or permissions, this error is caught and skipped over trusting in the user/filesystem to ensure the file is accessible to the processes that need it.
+
+NOTE. Due to the chmod operation `atomic_write` performs, if the target file has an ACL set on it this ACL will be recalculated/modified.
 
 WARNING. Note you can't append with `atomic_write`.
 
 The auxiliary file is written in a standard directory for temporary files, but you can pass a directory of your choice as second argument.
 
 NOTE: Defined in `active_support/core_ext/file/atomic.rb`.
+
+Extensions to `Marshal`
+-----------------------
+
+### `load`
+
+Active Support adds constant autoloading support to `load`.
+
+For example, the file cache store deserializes this way:
+
+```ruby
+File.open(file_name) { |f| Marshal.load(f) }
+```
+
+If the cached data refers to a constant that is unknown at that point, the autoloading mechanism is triggered and if it succeeds the deserialization is retried transparently.
+
+WARNING. If the argument is an `IO` it needs to respond to `rewind` to be able to retry. Regular files respond to `rewind`.
+
+NOTE: Defined in `active_support/core_ext/marshal.rb`.
 
 Extensions to `Logger`
 ----------------------

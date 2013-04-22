@@ -34,7 +34,7 @@ module ActiveSupport
     # Returns the backtrace after all filters and silencers have been run
     # against it. Filters run first, then silencers.
     def clean(backtrace, kind = :silent)
-      filtered = filter(backtrace)
+      filtered = filter_backtrace(backtrace)
 
       case kind
       when :silent
@@ -45,6 +45,7 @@ module ActiveSupport
         filtered
       end
     end
+    alias :filter :clean
 
     # Adds a filter from the block provided. Each line in the backtrace will be
     # mapped against this filter.
@@ -71,12 +72,15 @@ module ActiveSupport
       @silencers = []
     end
 
+    # Removes all filters, but leaves in silencers. Useful if you suddenly
+    # need to see entire filepaths in the backtrace that you had already
+    # filtered out.
     def remove_filters!
       @filters = []
     end
 
     private
-      def filter(backtrace)
+      def filter_backtrace(backtrace)
         @filters.each do |f|
           backtrace = backtrace.map { |line| f.call(line) }
         end

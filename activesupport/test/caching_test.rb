@@ -1,8 +1,23 @@
 require 'logger'
 require 'abstract_unit'
 require 'active_support/cache'
+require 'dependencies_test_helpers'
 
 class CacheKeyTest < ActiveSupport::TestCase
+  def test_entry_legacy_optional_ivars
+    legacy = Class.new(ActiveSupport::Cache::Entry) do
+      def initialize(value, options = {})
+        @value = value
+        @expires_in = nil
+        @created_at = nil
+        super
+      end
+    end
+
+    entry = legacy.new 'foo'
+    assert_equal 'foo', entry.value
+  end
+
   def test_expand_cache_key
     assert_equal '1/2/true', ActiveSupport::Cache.expand_cache_key([1, '2', true])
     assert_equal 'name/1/2/true', ActiveSupport::Cache.expand_cache_key([1, '2', true], :name)
@@ -69,7 +84,7 @@ class CacheKeyTest < ActiveSupport::TestCase
   def test_expand_cache_key_of_true
     assert_equal 'true', ActiveSupport::Cache.expand_cache_key(true)
   end
-  
+
   def test_expand_cache_key_of_array_like_object
     assert_equal 'foo/bar/baz', ActiveSupport::Cache.expand_cache_key(%w{foo bar baz}.to_enum)
   end
@@ -181,6 +196,16 @@ module CacheStoreBehavior
   def test_fetch_with_cache_miss
     @cache.expects(:write).with('foo', 'baz', @cache.options)
     assert_equal 'baz', @cache.fetch('foo') { 'baz' }
+  end
+
+  def test_fetch_with_cache_miss_passes_key_to_block
+    cache_miss = false
+    assert_equal 3, @cache.fetch('foo') { |key| cache_miss = true; key.length }
+    assert cache_miss
+
+    cache_miss = false
+    assert_equal 3, @cache.fetch('foo') { |key| cache_miss = true; key.length }
+    assert !cache_miss
   end
 
   def test_fetch_with_forced_cache_miss
@@ -380,7 +405,7 @@ module CacheStoreBehavior
 end
 
 # https://rails.lighthouseapp.com/projects/8994/tickets/6225-memcachestore-cant-deal-with-umlauts-and-special-characters
-# The error is caused by charcter encodings that can't be compared with ASCII-8BIT regular expressions and by special
+# The error is caused by character encodings that can't be compared with ASCII-8BIT regular expressions and by special
 # characters like the umlaut in UTF-8.
 module EncodedKeyCacheBehavior
   Encoding.list.each do |encoding|
@@ -538,6 +563,45 @@ module LocalCacheBehavior
   end
 end
 
+module AutoloadingCacheBehavior
+  include DependenciesTestHelpers
+  def test_simple_autoloading
+    with_autoloading_fixtures do
+      @cache.write('foo', E.new)
+    end
+
+    remove_constants(:E)
+    ActiveSupport::Dependencies.clear
+
+    with_autoloading_fixtures do
+      assert_kind_of E, @cache.read('foo')
+    end
+
+    remove_constants(:E)
+    ActiveSupport::Dependencies.clear
+  end
+
+  def test_two_classes_autoloading
+    with_autoloading_fixtures do
+      @cache.write('foo', [E.new, ClassFolder.new])
+    end
+
+    remove_constants(:E, :ClassFolder)
+    ActiveSupport::Dependencies.clear
+
+    with_autoloading_fixtures do
+      loaded = @cache.read('foo')
+      assert_kind_of Array, loaded
+      assert_equal 2, loaded.size
+      assert_kind_of E, loaded[0]
+      assert_kind_of ClassFolder, loaded[1]
+    end
+
+    remove_constants(:E, :ClassFolder)
+    ActiveSupport::Dependencies.clear
+  end
+end
+
 class FileStoreTest < ActiveSupport::TestCase
   def setup
     Dir.mkdir(cache_dir) unless File.exist?(cache_dir)
@@ -561,6 +625,7 @@ class FileStoreTest < ActiveSupport::TestCase
   include LocalCacheBehavior
   include CacheDeleteMatchedBehavior
   include CacheIncrementDecrementBehavior
+  include AutoloadingCacheBehavior
 
   def test_clear
     filepath = File.join(cache_dir, ".gitkeep")
@@ -580,7 +645,7 @@ class FileStoreTest < ActiveSupport::TestCase
     assert_equal "views/index?id=1", @cache_with_pathname.send(:file_path_key, key)
   end
 
-  # Test that generated cache keys are short enough to have Tempfile stuff added to them and 
+  # Test that generated cache keys are short enough to have Tempfile stuff added to them and
   # remain valid
   def test_filename_max_size
     key = "#{'A' * ActiveSupport::Cache::FileStore::FILENAME_MAX_SIZE}"
@@ -607,10 +672,22 @@ class FileStoreTest < ActiveSupport::TestCase
     end
   end
 
+  def test_delete_does_not_delete_empty_parent_dir
+    sub_cache_dir = File.join(cache_dir, 'subdir/')
+    sub_cache_store = ActiveSupport::Cache::FileStore.new(sub_cache_dir)
+    assert_nothing_raised(Exception) do
+      assert sub_cache_store.write('foo', 'bar')
+      assert sub_cache_store.delete('foo')
+    end
+    assert File.exist?(cache_dir), "Parent of top level cache dir was deleted!"
+    assert File.exist?(sub_cache_dir), "Top level cache dir was deleted!"
+    assert Dir.entries(sub_cache_dir).reject {|f| ActiveSupport::Cache::FileStore::EXCLUDED_DIRS.include?(f)}.empty?
+  end
+
   def test_log_exception_when_cache_read_fails
     File.expects(:exist?).raises(StandardError, "failed")
     @cache.send(:read_entry, "winston", {})
-    assert_present @buffer.string
+    assert @buffer.string.present?
   end
 end
 
@@ -721,6 +798,7 @@ class MemCacheStoreTest < ActiveSupport::TestCase
   include LocalCacheBehavior
   include CacheIncrementDecrementBehavior
   include EncodedKeyCacheBehavior
+  include AutoloadingCacheBehavior
 
   def test_raw_values
     cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, :raw => true)
@@ -831,12 +909,12 @@ class CacheStoreLoggerTest < ActiveSupport::TestCase
 
   def test_logging
     @cache.fetch('foo') { 'bar' }
-    assert_present @buffer.string
+    assert @buffer.string.present?
   end
 
   def test_mute_logging
     @cache.mute { @cache.fetch('foo') { 'bar' } }
-    assert_blank @buffer.string
+    assert @buffer.string.blank?
   end
 end
 
@@ -865,29 +943,28 @@ class CacheEntryTest < ActiveSupport::TestCase
     assert_equal value.bytesize, entry.size
   end
 
-  def test_restoring_version_3_entries
-    version_3_entry = ActiveSupport::Cache::Entry.allocate
-    version_3_entry.instance_variable_set(:@value, "hello")
-    version_3_entry.instance_variable_set(:@created_at, Time.now - 60)
-    entry = Marshal.load(Marshal.dump(version_3_entry))
+  def test_restoring_version_4beta1_entries
+    version_4beta1_entry = ActiveSupport::Cache::Entry.allocate
+    version_4beta1_entry.instance_variable_set(:@v, "hello")
+    version_4beta1_entry.instance_variable_set(:@x, Time.now.to_i + 60)
+    entry = Marshal.load(Marshal.dump(version_4beta1_entry))
     assert_equal "hello", entry.value
     assert_equal false, entry.expired?
   end
 
-  def test_restoring_compressed_version_3_entries
-    version_3_entry = ActiveSupport::Cache::Entry.allocate
-    version_3_entry.instance_variable_set(:@value, Zlib::Deflate.deflate(Marshal.dump("hello")))
-    version_3_entry.instance_variable_set(:@compressed, true)
-    entry = Marshal.load(Marshal.dump(version_3_entry))
+  def test_restoring_compressed_version_4beta1_entries
+    version_4beta1_entry = ActiveSupport::Cache::Entry.allocate
+    version_4beta1_entry.instance_variable_set(:@v, Zlib::Deflate.deflate(Marshal.dump("hello")))
+    version_4beta1_entry.instance_variable_set(:@c, true)
+    entry = Marshal.load(Marshal.dump(version_4beta1_entry))
     assert_equal "hello", entry.value
   end
 
-  def test_restoring_expired_version_3_entries
-    version_3_entry = ActiveSupport::Cache::Entry.allocate
-    version_3_entry.instance_variable_set(:@value, "hello")
-    version_3_entry.instance_variable_set(:@created_at, Time.now - 60)
-    version_3_entry.instance_variable_set(:@expires_in, 58.9)
-    entry = Marshal.load(Marshal.dump(version_3_entry))
+  def test_restoring_expired_version_4beta1_entries
+    version_4beta1_entry = ActiveSupport::Cache::Entry.allocate
+    version_4beta1_entry.instance_variable_set(:@v, "hello")
+    version_4beta1_entry.instance_variable_set(:@x, Time.now.to_i - 1)
+    entry = Marshal.load(Marshal.dump(version_4beta1_entry))
     assert_equal "hello", entry.value
     assert_equal true, entry.expired?
   end

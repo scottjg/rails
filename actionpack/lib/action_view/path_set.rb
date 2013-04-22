@@ -1,9 +1,17 @@
 module ActionView #:nodoc:
   # = Action View PathSet
+  #
+  # This class is used to store and access paths in Action View. A number of
+  # operations are defined so that you can search among the paths in this
+  # set and also perform operations on other +PathSet+ objects.
+  #
+  # A +LookupContext+ will use a +PathSet+ to store the paths in its context.
   class PathSet #:nodoc:
     include Enumerable
 
     attr_reader :paths
+
+    delegate :[], :include?, :pop, :size, :each, to: :paths
 
     def initialize(paths = [])
       @paths = typecast paths
@@ -14,28 +22,8 @@ module ActionView #:nodoc:
       self
     end
 
-    def [](i)
-      paths[i]
-    end
-
     def to_ary
       paths.dup
-    end
-
-    def include?(item)
-      paths.include? item
-    end
-
-    def pop
-      paths.pop
-    end
-
-    def size
-      paths.size
-    end
-
-    def each(&block)
-      paths.each(&block)
     end
 
     def compact

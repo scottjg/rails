@@ -1,11 +1,15 @@
 require "rails"
 
+if defined?(Rake) && Rake.application.top_level_tasks.grep(/^(default$|test(:|$))/).any?
+  ENV['RAILS_ENV'] ||= 'test'
+end
+
 %w(
   active_record
   action_controller
   action_mailer
   rails/test_unit
-  sprockets/rails
+  sprockets
 ).each do |framework|
   begin
     require "#{framework}/railtie"

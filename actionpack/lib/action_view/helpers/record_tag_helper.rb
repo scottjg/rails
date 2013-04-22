@@ -7,7 +7,7 @@ module ActionView
       # Produces a wrapper DIV element with id and class parameters that
       # relate to the specified Active Record object. Usage example:
       #
-      #    <%= div_for(@person, :class => "foo") do %>
+      #    <%= div_for(@person, class: "foo") do %>
       #       <%= @person.name %>
       #    <% end %>
       #
@@ -19,7 +19,7 @@ module ActionView
       # get iterated over and yield each record as an argument for the block.
       # For example:
       #
-      #    <%= div_for(@people, :class => "foo") do |person| %>
+      #    <%= div_for(@people, class: "foo") do |person| %>
       #      <%= person.name %>
       #    <% end %>
       #
@@ -65,14 +65,14 @@ module ActionView
       #
       # produces:
       #
-      #   <tr id="person_123" class="person">...</tr>
-      #   <tr id="person_124" class="person">...</tr>
+      #    <tr id="person_123" class="person">...</tr>
+      #    <tr id="person_124" class="person">...</tr>
       #
       # content_tag_for also accepts a hash of options, which will be converted to
       # additional HTML attributes. If you specify a <tt>:class</tt> value, it will be combined
       # with the default class name for your object. For example:
       #
-      #    <%= content_tag_for(:li, @person, :class => "bar") %>...
+      #    <%= content_tag_for(:li, @person, class: "bar") %>...
       #
       # produces:
       #
@@ -92,10 +92,14 @@ module ActionView
         # for each record.
         def content_tag_for_single_record(tag_name, record, prefix, options, &block)
           options = options ? options.dup : {}
-          options[:class] = "#{dom_class(record, prefix)} #{options[:class]}".rstrip
+          options[:class] = [ dom_class(record, prefix), options[:class] ].compact
           options[:id]    = dom_id(record, prefix)
 
-          content_tag(tag_name, capture(record, &block), options)
+          if block_given?
+            content_tag(tag_name, capture(record, &block), options)
+          else
+            content_tag(tag_name, "", options)
+          end
         end
     end
   end

@@ -4,7 +4,6 @@ require 'models/automobile'
 require 'active_support/core_ext/object/instance_variables'
 
 class Contact
-  extend ActiveModel::Naming
   include ActiveModel::Serializers::JSON
   include ActiveModel::Validations
 
@@ -154,6 +153,12 @@ class JsonSerializationTest < ActiveModel::TestCase
     %w(name age created_at awesome preferences).each do |field|
       assert_equal @contact.send(field), json['contact'][field]
     end
+  end
+
+  test "as_json should keep the default order in the hash" do
+    json = @contact.as_json
+
+    assert_equal %w(name age created_at awesome preferences), json.keys
   end
 
   test "from_json should work without a root (class attribute)" do

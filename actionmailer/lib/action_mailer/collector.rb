@@ -20,8 +20,8 @@ module ActionMailer
     end
     alias :all :any
 
-    def custom(mime, options={})
-      options.reverse_merge!(:content_type => mime.to_s)
+    def custom(mime, options = {})
+      options.reverse_merge!(content_type: mime.to_s)
       @context.formats = [mime.to_sym]
       options[:body] = block_given? ? yield : @default_render.call
       @responses << options

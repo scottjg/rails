@@ -8,6 +8,8 @@ ActionController::Base.send :include, ActiveRecord::Railties::ControllerRuntime
 
 class ControllerRuntimeLogSubscriberTest < ActionController::TestCase
   class LogSubscriberController < ActionController::Base
+    respond_to :html
+
     def show
       render :inline => "<%= Project.all %>"
     end
@@ -15,7 +17,13 @@ class ControllerRuntimeLogSubscriberTest < ActionController::TestCase
     def zero
       render :inline => "Zero DB runtime"
     end
-    
+
+    def create
+      ActiveRecord::LogSubscriber.runtime += 100
+      project = Project.last
+      respond_with(project, location: url_for(action: :show))
+    end
+
     def redirect
       Project.all
       redirect_to :action => 'show'
@@ -63,18 +71,24 @@ class ControllerRuntimeLogSubscriberTest < ActionController::TestCase
     assert_equal 2, @logger.logged(:info).size
     assert_match(/\(Views: [\d.]+ms \| ActiveRecord: 0.0ms\)/, @logger.logged(:info)[1])
   end
-  
+
+  def test_log_with_active_record_when_post
+    post :create
+    wait
+    assert_match(/ActiveRecord: ([1-9][\d.]+)ms\)/, @logger.logged(:info)[2])
+  end
+
   def test_log_with_active_record_when_redirecting
     get :redirect
     wait
     assert_equal 3, @logger.logged(:info).size
     assert_match(/\(ActiveRecord: [\d.]+ms\)/, @logger.logged(:info)[2])
   end
-  
+
   def test_include_time_query_time_after_rendering
     get :db_after_render
     wait
-    
+
     assert_equal 2, @logger.logged(:info).size
     assert_match(/\(Views: [\d.]+ms \| ActiveRecord: ([1-9][\d.]+)ms\)/, @logger.logged(:info)[1])
   end

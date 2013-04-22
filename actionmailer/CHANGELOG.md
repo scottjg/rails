@@ -1,30 +1,62 @@
 ## Rails 4.0.0 (unreleased) ##
 
-* Support `Mailer.deliver_foo(*args)` as a synonym for
-  `Mailer.foo(*args).deliver`. This makes it easy to write e.g.
-  `Mailer.expects(:deliver_foo)` when testing code that calls
-  the mailer. *Jon Leighton*
 
-* Allow delivery method options to be set per mail instance *Aditya Sanghi*
+## Rails 4.0.0.beta1 (February 25, 2013) ##
 
-  If your smtp delivery settings are dynamic,
-  you can now override settings per mail instance for e.g.
+*   Allow passing interpolations to `#default_i18n_subject`, e.g.:
 
-      def my_mailer(user,company)
-        mail to: user.email, subject: "Welcome!",
-             delivery_method_options: {user_name: company.smtp_user,
-                                       password: company.smtp_password}
-      end
+        # config/locales/en.yml
+        en:
+          user_mailer:
+            welcome:
+              subject: 'Hello, %{username}'
 
-  This will ensure that your default SMTP settings will be overridden
-  by the company specific ones. You only have to override the settings
-  that are dynamic and leave the static setting in your environment
-  configuration file (e.g. config/environments/production.rb)
+        # app/mailers/user_mailer.rb
+        class UserMailer < ActionMailer::Base
+          def welcome(user)
+            mail(subject: default_i18n_subject(username: user.name))
+          end
+        end
 
-* Allow to set default Action Mailer options via `config.action_mailer.default_options=` *Robert Pankowecki*
+    *Olek Janiszewski*
 
-* Raise an `ActionView::MissingTemplate` exception when no implicit template could be found. *Damien Mathieu*
+*   Eager loading made to use relation's `in_clause_length` instead of host's one.
+    Fixes #8474.
 
-* Asynchronously send messages via the Rails Queue *Brian Cardarella*
+    *Boris Staal*
+
+*   Explicit multipart messages no longer set the order of the MIME parts.
+
+    *Nate Berkopec*
+
+*   Do not render views when `mail` isn't called. Fixes #7761.
+
+    *Yves Senn*
+
+*   Allow delivery method options to be set per mail instance.
+
+    If your SMTP delivery settings are dynamic, you can now override settings
+    per mail instance for e.g.
+
+        def my_mailer(user, company)
+          mail to: user.email, subject: "Welcome!",
+               delivery_method_options: { user_name: company.smtp_user,
+                                          password: company.smtp_password }
+        end
+
+    This will ensure that your default SMTP settings will be overridden
+    by the company specific ones. You only have to override the settings
+    that are dynamic and leave the static setting in your environment
+    configuration file (e.g. `config/environments/production.rb`).
+
+    *Aditya Sanghi*
+
+*   Allow to set default Action Mailer options via `config.action_mailer.default_options=`. *Robert Pankowecki*
+
+*   Raise an `ActionView::MissingTemplate` exception when no implicit template could be found. *Damien Mathieu*
+
+*   Allow callbacks to be defined in mailers similar to `ActionController::Base`. You can configure default
+    settings, headers, attachments, delivery settings or change delivery using
+    `before_filter`, `after_filter`, etc. *Justin S. Leitgeb*
 
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/actionmailer/CHANGELOG.md) for previous changes.

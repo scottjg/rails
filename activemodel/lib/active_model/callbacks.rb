@@ -1,7 +1,7 @@
-require 'active_support/callbacks'
+require 'active_support/core_ext/array/extract_options'
 
 module ActiveModel
-  # == Active Model Callbacks
+  # == Active \Model \Callbacks
   #
   # Provides an interface for any class to have Active Record like callbacks.
   #

@@ -4,15 +4,14 @@ require 'active_support/core_ext/object/instance_variables'
 require 'ostruct'
 
 class Contact
-  extend ActiveModel::Naming
   include ActiveModel::Serializers::Xml
 
-  attr_accessor :address, :friends
+  attr_accessor :address, :friends, :contact
 
   remove_method :attributes if method_defined?(:attributes)
 
   def attributes
-    instance_values.except("address", "friends")
+    instance_values.except("address", "friends", "contact")
   end
 end
 
@@ -25,7 +24,6 @@ class Customer < Struct.new(:name)
 end
 
 class Address
-  extend ActiveModel::Naming
   include ActiveModel::Serializers::Xml
 
   attr_accessor :street, :city, :state, :zip, :apt_number
@@ -52,12 +50,11 @@ class XmlSerializationTest < ActiveModel::TestCase
     customer.name = "John"
     @contact.preferences = customer
     @contact.address = Address.new
-    @contact.address.street = "123 Lane"
     @contact.address.city = "Springfield"
-    @contact.address.state = "CA"
-    @contact.address.zip = 11111
     @contact.address.apt_number = 35
     @contact.friends = [Contact.new, Contact.new]
+    @related_contact = SerializableContact.new
+    @contact.contact = @related_contact
   end
 
   test "should serialize default root" do
@@ -257,5 +254,10 @@ class XmlSerializationTest < ActiveModel::TestCase
     xml = @contact.to_xml :dasherize => false, :include => { :address => { :dasherize => true } }, :indent => 0
     assert_match %r{<address>}, xml
     assert_match %r{<apt-number type="integer">}, xml
+  end
+
+  test "association with sti" do
+    xml = @contact.to_xml(include: :contact)
+    assert xml.include?(%(<contact type="SerializableContact">))
   end
 end

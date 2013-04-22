@@ -1,19 +1,19 @@
-A Guide to The Rails Command Line
-=================================
+The Rails Command Line
+======================
 
 Rails comes with every command line tool you'll need to
 
-* Create a Rails application
-* Generate models, controllers, database migrations, and unit tests
-* Start a development server
-* Experiment with objects through an interactive shell
-* Profile and benchmark your new creation
+After reading this guide, you will know:
+
+* How to create a Rails application.
+* How to generate models, controllers, database migrations, and unit tests.
+* How to start a development server.
+* How to experiment with objects through an interactive shell.
+* How to profile and benchmark your new creation.
 
 --------------------------------------------------------------------------------
 
 NOTE: This tutorial assumes you have basic Rails knowledge from reading the [Getting Started with Rails Guide](getting_started.html).
-
-WARNING. This Guide is based on Rails 3.2. Some of the code shown here will not work in earlier versions of Rails.
 
 Command Line Basics
 -------------------
@@ -82,7 +82,7 @@ The server can be run on a different port using the `-p` option. The default dev
 $ rails server -e production -p 4000
 ```
 
-The `-b` option binds Rails to the specified ip, by default it is 0.0.0.0. You can run a server as a daemon by passing a `-d` option.
+The `-b` option binds Rails to the specified IP, by default it is 0.0.0.0. You can run a server as a daemon by passing a `-d` option.
 
 ### `rails generate`
 
@@ -134,10 +134,10 @@ Example:
     `rails generate controller CreditCard open debit credit close`
 
     Credit card controller with URLs like /credit_card/debit.
-        Controller:      app/controllers/credit_card_controller.rb
-        Functional Test: test/functional/credit_card_controller_test.rb
-        Views:           app/views/credit_card/debit.html.erb [...]
-        Helper:          app/helpers/credit_card_helper.rb
+        Controller: app/controllers/credit_card_controller.rb
+        Test:       test/controllers/credit_card_controller_test.rb
+        Views:      app/views/credit_card/debit.html.erb [...]
+        Helper:     app/helpers/credit_card_helper.rb
 ```
 
 The controller generator is expecting parameters in the form of `generate controller ControllerName action1 action2`. Let's make a `Greetings` controller with an action of **hello**, which will say something nice to us.
@@ -150,11 +150,11 @@ $ rails generate controller Greetings hello
      create    app/views/greetings
      create    app/views/greetings/hello.html.erb
      invoke  test_unit
-     create    test/functional/greetings_controller_test.rb
+     create    test/controllers/greetings_controller_test.rb
      invoke  helper
      create    app/helpers/greetings_helper.rb
      invoke    test_unit
-     create      test/unit/helpers/greetings_helper_test.rb
+     create      test/helpers/greetings_helper_test.rb
      invoke  assets
      invoke    coffee
      create      app/assets/javascripts/greetings.js.coffee
@@ -223,9 +223,10 @@ $ rails generate scaffold HighScore game:string score:integer
     create    db/migrate/20120528060026_create_high_scores.rb
     create    app/models/high_score.rb
     invoke    test_unit
-    create      test/unit/high_score_test.rb
+    create      test/models/high_score_test.rb
     create      test/fixtures/high_scores.yml
-     route  resources :high_scores
+    invoke  resource_route
+     route    resources :high_scores
     invoke  scaffold_controller
     create    app/controllers/high_scores_controller.rb
     invoke    erb
@@ -236,11 +237,11 @@ $ rails generate scaffold HighScore game:string score:integer
     create      app/views/high_scores/new.html.erb
     create      app/views/high_scores/_form.html.erb
     invoke    test_unit
-    create      test/functional/high_scores_controller_test.rb
+    create      test/controllers/high_scores_controller_test.rb
     invoke    helper
     create      app/helpers/high_scores_helper.rb
     invoke      test_unit
-    create        test/unit/helpers/high_scores_helper_test.rb
+    create        test/helpers/high_scores_helper_test.rb
     invoke  assets
     invoke    coffee
     create      app/assets/javascripts/high_scores.js.coffee
@@ -327,7 +328,7 @@ $ rails generate model Oops
       create    db/migrate/20120528062523_create_oops.rb
       create    app/models/oops.rb
       invoke    test_unit
-      create      test/unit/oops_test.rb
+      create      test/models/oops_test.rb
       create      test/fixtures/oops.yml
 ```
 ```bash
@@ -336,7 +337,7 @@ $ rails destroy model Oops
       remove    db/migrate/20120528062523_create_oops.rb
       remove    app/models/oops.rb
       invoke    test_unit
-      remove      test/unit/oops_test.rb
+      remove      test/models/oops_test.rb
       remove      test/fixtures/oops.yml
 ```
 
@@ -354,7 +355,7 @@ rake assets:clean       # Remove compiled assets
 rake assets:precompile  # Compile all the assets named in config.assets.precompile
 rake db:create          # Create the database from config/database.yml for the current Rails.env
 ...
-rake log:clear          # Truncates all *.log files in log/ to zero bytes
+rake log:clear          # Truncates all *.log files in log/ to zero bytes (specify which logs with LOGS=test,development)
 rake middleware         # Prints out your Rack middleware stack
 ...
 rake tmp:clear          # Clear session, cache, and socket files from tmp/ (narrow w/ tmp:sessions:clear, tmp:cache:clear, tmp:sockets:clear)
@@ -377,7 +378,7 @@ Active Record version     4.0.0.beta
 Action Pack version       4.0.0.beta
 Action Mailer version     4.0.0.beta
 Active Support version    4.0.0.beta
-Middleware                ActionDispatch::Static, Rack::Lock, Rack::Runtime, Rack::MethodOverride, ActionDispatch::RequestId, Rails::Rack::Logger, ActionDispatch::ShowExceptions, ActionDispatch::DebugExceptions, ActionDispatch::RemoteIp, ActionDispatch::Reloader, ActionDispatch::Callbacks, ActiveRecord::ConnectionAdapters::ConnectionManagement, ActiveRecord::QueryCache, ActionDispatch::Cookies, ActionDispatch::Session::CookieStore, ActionDispatch::Flash, ActionDispatch::ParamsParser, ActionDispatch::Head, Rack::ConditionalGet, Rack::ETag, ActionDispatch::BestStandardsSupport
+Middleware                ActionDispatch::Static, Rack::Lock, Rack::Runtime, Rack::MethodOverride, ActionDispatch::RequestId, Rails::Rack::Logger, ActionDispatch::ShowExceptions, ActionDispatch::DebugExceptions, ActionDispatch::RemoteIp, ActionDispatch::Reloader, ActionDispatch::Callbacks, ActiveRecord::Migration::CheckPending, ActiveRecord::ConnectionAdapters::ConnectionManagement, ActiveRecord::QueryCache, ActionDispatch::Cookies, ActionDispatch::Session::EncryptedCookieStore, ActionDispatch::Flash, ActionDispatch::ParamsParser, Rack::Head, Rack::ConditionalGet, Rack::ETag
 Application root          /home/foobar/commandsapp
 Environment               development
 Database adapter          sqlite3
@@ -413,7 +414,7 @@ app/controllers/admin/users_controller.rb:
   * [ 20] [TODO] any other way to do this?
   * [132] [FIXME] high priority for next deploy
 
-app/model/school.rb:
+app/models/school.rb:
   * [ 13] [OPTIMIZE] refactor this code to make it faster
   * [ 17] [FIXME]
 ```
@@ -426,7 +427,7 @@ $ rake notes:fixme
 app/controllers/admin/users_controller.rb:
   * [132] high priority for next deploy
 
-app/model/school.rb:
+app/models/school.rb:
   * [ 17]
 ```
 
@@ -435,21 +436,21 @@ You can also use custom annotations in your code and list them using `rake notes
 ```bash
 $ rake notes:custom ANNOTATION=BUG
 (in /home/foobar/commandsapp)
-app/model/post.rb:
+app/models/post.rb:
   * [ 23] Have to fix this one before pushing!
 ```
 
 NOTE. When using specific annotations and custom annotations, the annotation name (FIXME, BUG etc) is not displayed in the output lines.
 
-By default, `rake notes` will look in the `app`, `config`, `lib`, `script` and `test` directories. If you would like to search other directories, you can provide them as a comma separated list in an environment variable `SOURCE_ANNOTATION_DIRECTORIES`.
+By default, `rake notes` will look in the `app`, `config`, `lib`, `bin` and `test` directories. If you would like to search other directories, you can provide them as a comma separated list in an environment variable `SOURCE_ANNOTATION_DIRECTORIES`.
 
 ```bash
-$ export SOURCE_ANNOTATION_DIRECTORIES='rspec,vendor'
+$ export SOURCE_ANNOTATION_DIRECTORIES='spec,vendor'
 $ rake notes
 (in /home/foobar/commandsapp)
-app/model/user.rb:
+app/models/user.rb:
   * [ 35] [FIXME] User should have a subscription at this point
-rspec/model/user_spec.rb:
+spec/models/user_spec.rb:
   * [122] [TODO] Verify the user that has a subscription works
 ```
 
@@ -486,7 +487,7 @@ Custom rake tasks have a `.rake` extension and are placed in `Rails.root/lib/tas
 
 ```ruby
 desc "I am short, but comprehensive description for my cool task"
-task :task_name => [:prerequisite_task, :another_task_we_depend_on] do
+task task_name: [:prerequisite_task, :another_task_we_depend_on] do
   # All your magic here
   # Any valid Ruby code is allowed
 end
@@ -563,14 +564,20 @@ We had to create the **gitapp** directory and initialize an empty git repository
 $ cat config/database.yml
 # PostgreSQL. Versions 8.2 and up are supported.
 #
-# Install the ruby-postgres driver:
-#   gem install ruby-postgres
-# On Mac OS X:
-#   gem install ruby-postgres -- --include=/usr/local/pgsql
+# Install the pg driver:
+#   gem install pg
+# On OS X with Homebrew:
+#   gem install pg -- --with-pg-config=/usr/local/bin/pg_config
+# On OS X with MacPorts:
+#   gem install pg -- --with-pg-config=/opt/local/lib/postgresql84/bin/pg_config
 # On Windows:
-#   gem install ruby-postgres
+#   gem install pg
 #       Choose the win32 build.
 #       Install PostgreSQL and put its /bin directory on your path.
+#
+# Configure Using Gemfile
+# gem 'pg'
+#
 development:
   adapter: postgresql
   encoding: unicode
@@ -585,28 +592,3 @@ development:
 It also generated some lines in our database.yml configuration corresponding to our choice of PostgreSQL for database.
 
 NOTE. The only catch with using the SCM options is that you have to make your application's directory first, then initialize your SCM, then you can run the `rails new` command to generate the basis of your app.
-
-### `server` with Different Backends
-
-Many people have created a large number of different web servers in Ruby, and many of them can be used to run Rails. Since version 2.3, Rails uses Rack to serve its webpages, which means that any webserver that implements a Rack handler can be used. This includes WEBrick, Mongrel, Thin, and Phusion Passenger (to name a few!).
-
-NOTE: For more details on the Rack integration, see [Rails on Rack](rails_on_rack.html).
-
-To use a different server, just install its gem, then use its name for the first parameter to `rails server`:
-
-```bash
-$ sudo gem install mongrel
-Building native extensions.  This could take a while...
-Building native extensions.  This could take a while...
-Successfully installed gem_plugin-0.2.3
-Successfully installed fastthread-1.0.1
-Successfully installed cgi_multipart_eof_fix-2.5.0
-Successfully installed mongrel-1.1.5
-...
-...
-Installing RDoc documentation for mongrel-1.1.5...
-$ rails server mongrel
-=> Booting Mongrel (use 'rails server webrick' to force WEBrick)
-=> Rails 3.1.0 application starting on http://0.0.0.0:3000
-...
-```

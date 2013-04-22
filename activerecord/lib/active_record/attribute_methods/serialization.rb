@@ -5,12 +5,18 @@ module ActiveRecord
 
       included do
         # Returns a hash of all the attributes that have been specified for
-        # serialization as keys and their class restriction as values.
+        # serialization as keys and their class restriction as values.
         class_attribute :serialized_attributes, instance_accessor: false
         self.serialized_attributes = {}
       end
 
       module ClassMethods
+        ##
+        # :method: serialized_attributes
+        #
+        # Returns a hash of all the attributes that have been specified for
+        # serialization as keys and their class restriction as values.
+
         # If you have an attribute that needs to be saved to the database as an
         # object, and retrieved as the same object, then specify the name of that
         # attribute using this method and it will be handled automatically. The
@@ -44,8 +50,10 @@ module ActiveRecord
         end
       end
 
+      # *DEPRECATED*: Use ActiveRecord::AttributeMethods::Serialization::ClassMethods#serialized_attributes class level method instead.
       def serialized_attributes
-        ActiveSupport::Deprecation.warn("Instance level serialized_attributes method is deprecated, please use class level method.")
+        message = "Instance level serialized_attributes method is deprecated, please use class level method."
+        ActiveSupport::Deprecation.warn message
         defined?(@serialized_attributes) ? @serialized_attributes : self.class.serialized_attributes
       end
 
@@ -85,10 +93,10 @@ module ActiveRecord
 
       # This is only added to the model when serialize is called, which
       # ensures we do not make things slower when serialization is not used.
-      module Behavior #:nodoc:
+      module Behavior # :nodoc:
         extend ActiveSupport::Concern
 
-        module ClassMethods
+        module ClassMethods # :nodoc:
           def initialize_attributes(attributes, options = {})
             serialized = (options.delete(:serialized) { true }) ? :serialized : :unserialized
             super(attributes, options)
@@ -111,9 +119,35 @@ module ActiveRecord
           end
         end
 
+        def _field_changed?(attr, old, value)
+          if self.class.serialized_attributes.include?(attr)
+            old != value
+          else
+            super
+          end
+        end
+
         def read_attribute_before_type_cast(attr_name)
           if self.class.serialized_attributes.include?(attr_name)
             super.unserialized_value
+          else
+            super
+          end
+        end
+
+        def attributes_before_type_cast
+          super.dup.tap do |attributes|
+            self.class.serialized_attributes.each_key do |key|
+              if attributes.key?(key)
+                attributes[key] = attributes[key].unserialized_value
+              end
+            end
+          end
+        end
+
+        def typecasted_attribute_value(name)
+          if self.class.serialized_attributes.include?(name)
+            @attributes[name].serialized_value
           else
             super
           end

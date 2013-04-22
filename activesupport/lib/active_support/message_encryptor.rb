@@ -1,5 +1,6 @@
 require 'openssl'
 require 'base64'
+require 'active_support/core_ext/array/extract_options'
 
 module ActiveSupport
   # MessageEncryptor is a simple way to encrypt values which get stored
@@ -27,27 +28,30 @@ module ActiveSupport
     end
 
     class InvalidMessage < StandardError; end
-    OpenSSLCipherError = OpenSSL::Cipher.const_defined?(:CipherError) ? OpenSSL::Cipher::CipherError : OpenSSL::CipherError
+    OpenSSLCipherError = OpenSSL::Cipher::CipherError
 
     # Initialize a new MessageEncryptor. +secret+ must be at least as long as
     # the cipher key size. For the default 'aes-256-cbc' cipher, this is 256
     # bits. If you are using a user-entered secret, you can generate a suitable
     # key with <tt>OpenSSL::Digest::SHA256.new(user_secret).digest</tt> or
-    # similar.
+    # similar.
     #
     # Options:
     # * <tt>:cipher</tt>     - Cipher to use. Can be any cipher returned by
     #   <tt>OpenSSL::Cipher.ciphers</tt>. Default is 'aes-256-cbc'.
     # * <tt>:serializer</tt> - Object serializer to use. Default is +Marshal+.
-    def initialize(secret, options = {})
+    def initialize(secret, *signature_key_or_options)
+      options = signature_key_or_options.extract_options!
+      sign_secret = signature_key_or_options.first
       @secret = secret
+      @sign_secret = sign_secret
       @cipher = options[:cipher] || 'aes-256-cbc'
-      @verifier = MessageVerifier.new(@secret, :serializer => NullSerializer)
+      @verifier = MessageVerifier.new(@sign_secret || @secret, :serializer => NullSerializer)
       @serializer = options[:serializer] || Marshal
     end
 
     # Encrypt and sign a message. We need to sign the message in order to avoid
-    # padding attacks. Reference: http://www.limited-entropy.com/padding-oracle-attacks.
+    # padding attacks. Reference: http://www.limited-entropy.com/padding-oracle-attacks.
     def encrypt_and_sign(value)
       verifier.generate(_encrypt(value))
     end
@@ -62,12 +66,11 @@ module ActiveSupport
 
     def _encrypt(value)
       cipher = new_cipher
-      # Rely on OpenSSL for the initialization vector
-      iv = cipher.random_iv
-
       cipher.encrypt
       cipher.key = @secret
-      cipher.iv  = iv
+
+      # Rely on OpenSSL for the initialization vector
+      iv = cipher.random_iv
 
       encrypted_data = cipher.update(@serializer.dump(value))
       encrypted_data << cipher.final

@@ -1,11 +1,6 @@
 require 'active_support/core_ext/module/attribute_accessors'
 
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :partial_updates, instance_accessor: false
-    self.partial_updates = true
-  end
-
   module AttributeMethods
     module Dirty # :nodoc:
       extend ActiveSupport::Concern
@@ -17,7 +12,19 @@ module ActiveRecord
           raise "You cannot include Dirty after Timestamp"
         end
 
-        config_attribute :partial_updates
+        class_attribute :partial_writes, instance_writer: false
+        self.partial_writes = true
+
+        def self.partial_updates=(v); self.partial_writes = v; end
+        def self.partial_updates?; partial_writes?; end
+        def self.partial_updates; partial_writes; end
+
+        ActiveSupport::Deprecation.deprecate_methods(
+          singleton_class,
+          :partial_updates= => :partial_writes=,
+          :partial_updates? => :partial_writes?,
+          :partial_updates  => :partial_writes
+        )
       end
 
       # Attempts to +save+ the record and clears changed attributes if successful.
@@ -63,27 +70,17 @@ module ActiveRecord
         super(attr, value)
       end
 
-      def update(*)
-        partial_updates? ? super(keys_for_partial_update) : super
+      def update_record(*)
+        partial_writes? ? super(keys_for_partial_write) : super
       end
 
-      def create(*)
-        if partial_updates?
-          keys = keys_for_partial_update
-
-          # This is an extremely bloody annoying necessity to work around mysql being crap.
-          # See test_mysql_text_not_null_defaults
-          keys.concat self.class.columns.select(&:explicit_default?).map(&:name)
-
-          super keys
-        else
-          super
-        end
+      def create_record(*)
+        partial_writes? ? super(keys_for_partial_write) : super
       end
 
       # Serialized attributes should always be written in case they've been
       # changed in place.
-      def keys_for_partial_update
+      def keys_for_partial_write
         changed | (attributes.keys & self.class.serialized_attributes.keys)
       end
 
@@ -110,7 +107,11 @@ module ActiveRecord
 
       def changes_from_zero_to_string?(old, value)
         # For columns with old 0 and value non-empty string
-        old == 0 && value.is_a?(String) && value.present? && value != '0'
+        old == 0 && value.is_a?(String) && value.present? && non_zero?(value)
+      end
+
+      def non_zero?(value)
+        value !~ /\A0+(\.0+)?\z/
       end
     end
   end

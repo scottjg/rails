@@ -78,7 +78,7 @@ module ActiveSupport
     end
 
     def self.[](*args)
-      new.merge(Hash[*args])
+      new.merge!(Hash[*args])
     end
 
     alias_method :regular_writer, :[]= unless method_defined?(:regular_writer)
@@ -204,6 +204,14 @@ module ActiveSupport
       replace(reverse_merge( other_hash ))
     end
 
+    # Replaces the contents of this hash with other_hash.
+    #
+    #   h = { "a" => 100, "b" => 200 }
+    #   h.replace({ "c" => 300, "d" => 400 }) #=> {"c"=>300, "d"=>400}
+    def replace(other_hash)
+      super(self.class.new_from_hash_copying_default(other_hash))
+    end
+
     # Removes the specified key from the hash.
     def delete(key)
       super(convert_key(key))
@@ -215,7 +223,7 @@ module ActiveSupport
     def deep_stringify_keys; dup end
     undef :symbolize_keys!
     undef :deep_symbolize_keys!
-    def symbolize_keys; to_hash.symbolize_keys end
+    def symbolize_keys; to_hash.symbolize_keys! end
     def deep_symbolize_keys; to_hash.deep_symbolize_keys end
     def to_options!; self end
 

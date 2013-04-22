@@ -1,8 +1,6 @@
-require 'active_support/callbacks'
-
 module ActiveModel
   module Validations
-    # == Active Model Validation callbacks
+    # == Active \Model Validation Callbacks
     #
     # Provides an interface for any class to have +before_validation+ and
     # +after_validation+ callbacks.
@@ -85,8 +83,8 @@ module ActiveModel
         #   person = Person.new
         #   person.name = ''
         #   person.valid? # => false
-        #   person.status # => false
-        #   person.name = 'bob'
+        #   person.status # => false
+        #   person.name = 'bob'
         #   person.valid? # => true
         #   person.status # => true
         def after_validation(*args, &block)

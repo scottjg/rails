@@ -1,10 +1,5 @@
 
 module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :record_timestamps, instance_accessor: false
-    self.record_timestamps = true
-  end
-
   # = Active Record Timestamp
   #
   # Active Record automatically timestamps create and update operations if the
@@ -37,16 +32,18 @@ module ActiveRecord
     extend ActiveSupport::Concern
 
     included do
-      config_attribute :record_timestamps, instance_writer: true
+      class_attribute :record_timestamps
+      self.record_timestamps = true
     end
 
     def initialize_dup(other) # :nodoc:
       clear_timestamp_attributes
+      super
     end
 
   private
 
-    def create
+    def create_record
       if self.record_timestamps
         current_time = current_time_from_proper_timezone
 
@@ -60,7 +57,7 @@ module ActiveRecord
       super
     end
 
-    def update(*args)
+    def update_record(*args)
       if should_record_timestamps?
         current_time = current_time_from_proper_timezone
 
@@ -74,7 +71,7 @@ module ActiveRecord
     end
 
     def should_record_timestamps?
-      self.record_timestamps && (!partial_updates? || changed? || (attributes.keys & self.class.serialized_attributes.keys).present?)
+      self.record_timestamps && (!partial_writes? || changed? || (attributes.keys & self.class.serialized_attributes.keys).present?)
     end
 
     def timestamp_attributes_for_create_in_model
@@ -99,6 +96,12 @@ module ActiveRecord
 
     def all_timestamp_attributes
       timestamp_attributes_for_create + timestamp_attributes_for_update
+    end
+
+    def max_updated_column_timestamp
+      if (timestamps = timestamp_attributes_for_update.map { |attr| self[attr] }.compact).present?
+        timestamps.map { |ts| ts.to_time }.max
+      end
     end
 
     def current_time_from_proper_timezone

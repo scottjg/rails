@@ -1,3 +1,4 @@
+require 'thread_safe'
 require 'active_support/concern'
 require 'active_support/descendants_tracker'
 require 'active_support/core_ext/class/attribute'
@@ -14,7 +15,7 @@ module ActiveSupport
   # Mixing in this module allows you to define the events in the object's
   # lifecycle that will support callbacks (via +ClassMethods.define_callbacks+),
   # set the instance methods, procs, or callback objects to be called (via
-  # +ClassMethods.set_callback+), and run the installed callbacks at the
+  # +ClassMethods.set_callback+), and run the installed callbacks at the
   # appropriate times (via +run_callbacks+).
   #
   # Three kinds of callbacks are supported: before callbacks, run before a
@@ -59,6 +60,8 @@ module ActiveSupport
     included do
       extend ActiveSupport::DescendantsTracker
     end
+
+    CALLBACK_FILTER_TYPES = [:before, :after, :around]
 
     # Runs the callbacks for the given event.
     #
@@ -130,7 +133,19 @@ module ActiveSupport
       end
 
       def matches?(_kind, _filter)
-        @kind == _kind && @filter == _filter
+        _filter_matches = false
+
+        if @_is_object_filter
+          _filter_matches = @filter.to_s.start_with?(_method_name_for_object_filter(_kind, _filter, false))
+        else
+          _filter_matches = (@filter == _filter) 
+        end
+
+        @kind == _kind && _filter_matches
+      end
+
+      def duplicates?(other)
+        matches?(other.kind, other.filter)
       end
 
       def _update_filter(filter_options, new_options)
@@ -229,6 +244,16 @@ module ActiveSupport
         @compiled_options = conditions.flatten.join(" && ")
       end
 
+      def _method_name_for_object_filter(kind, filter, append_next_id = true)
+        class_name = filter.kind_of?(Class) ? filter.to_s : filter.class.to_s
+        class_name.gsub!(/<|>|#/, '')
+        class_name.gsub!(/\/|:/, "_")
+
+        method_name = "_callback_#{kind}_#{class_name}"
+        method_name << "_#{next_id}" if append_next_id
+        method_name
+      end
+
       # Filters support:
       #
       #   Arrays::  Used in conditions. This is used to specify
@@ -250,7 +275,8 @@ module ActiveSupport
       #     a method is created that calls the before_foo method
       #     on the object.
       def _compile_filter(filter)
-        method_name = "_callback_#{@kind}_#{next_id}"
+        @_is_object_filter = false
+
         case filter
         when Array
           filter.map {|f| _compile_filter(f)}
@@ -259,11 +285,14 @@ module ActiveSupport
         when String
           "(#{filter})"
         when Proc
+          method_name = "_callback_#{@kind}_#{next_id}"
           @klass.send(:define_method, method_name, &filter)
           return method_name if filter.arity <= 0
 
           method_name << (filter.arity == 1 ? "(self)" : " self, Proc.new ")
         else
+          method_name = _method_name_for_object_filter(kind, filter)
+          @_is_object_filter = true
           @klass.send(:define_method, "#{method_name}_object") { filter }
 
           _normalize_legacy_filter(kind, filter)
@@ -282,12 +311,15 @@ module ActiveSupport
 
       def _normalize_legacy_filter(kind, filter)
         if !filter.respond_to?(kind) && filter.respond_to?(:filter)
-          ActiveSupport::Deprecation.warn("Filter object with #filter method is deprecated. Define method corresponding to filter type (#before, #after or #around).")
+          message = "Filter object with #filter method is deprecated. Define method corresponding " \
+                    "to filter type (#before, #after or #around)."
+          ActiveSupport::Deprecation.warn message
           filter.singleton_class.class_eval <<-RUBY_EVAL, __FILE__, __LINE__ + 1
             def #{kind}(context, &block) filter(context, &block) end
           RUBY_EVAL
         elsif filter.respond_to?(:before) && filter.respond_to?(:after) && kind == :around && !filter.respond_to?(:around)
-          ActiveSupport::Deprecation.warn("Filter object with #before and #after methods is deprecated. Define #around method instead.")
+          message = "Filter object with #before and #after methods is deprecated. Define #around method instead."
+          ActiveSupport::Deprecation.warn message
           def filter.around(context)
             should_continue = before(context)
             yield if should_continue
@@ -306,7 +338,7 @@ module ActiveSupport
         @config = {
           :terminator => "false",
           :scope => [ :kind ]
-        }.merge(config)
+        }.merge!(config)
       end
 
       def compile
@@ -322,6 +354,30 @@ module ActiveSupport
 
         method << "value"
         method.join("\n")
+      end
+
+      def append(*callbacks)
+        callbacks.each { |c| append_one(c) }
+      end
+
+      def prepend(*callbacks)
+        callbacks.each { |c| prepend_one(c) }
+      end
+
+      private
+
+      def append_one(callback)
+        remove_duplicates(callback)
+        push(callback)
+      end
+
+      def prepend_one(callback)
+        remove_duplicates(callback)
+        unshift(callback)
+      end
+
+      def remove_duplicates(callback)
+        delete_if { |c| callback.duplicates?(c) }
       end
 
     end
@@ -348,14 +404,22 @@ module ActiveSupport
         undef_method(name) if method_defined?(name)
       end
 
-      def __callback_runner_name(kind)
+      def __callback_runner_name_cache
+        @__callback_runner_name_cache ||= ThreadSafe::Cache.new {|cache, kind| cache[kind] = __generate_callback_runner_name(kind) }
+      end
+
+      def __generate_callback_runner_name(kind)
         "_run__#{self.name.hash.abs}__#{kind}__callbacks"
+      end
+
+      def __callback_runner_name(kind)
+        __callback_runner_name_cache[kind]
       end
 
       # This is used internally to append, prepend and skip callbacks to the
       # CallbackChain.
       def __update_callbacks(name, filters = [], block = nil) #:nodoc:
-        type = [:before, :after, :around].include?(filters.first) ? filters.shift : :before
+        type = CALLBACK_FILTER_TYPES.include?(filters.first) ? filters.shift : :before
         options = filters.last.is_a?(Hash) ? filters.pop : {}
         filters.unshift(block) if block
 
@@ -379,7 +443,7 @@ module ActiveSupport
       #   set_callback :save, :before_meth
       #
       # The callback can specified as a symbol naming an instance method; as a
-      # proc, lambda, or block; as a string to be instance evaluated; or as an
+      # proc, lambda, or block; as a string to be instance evaluated; or as an
       # object that responds to a certain method determined by the <tt>:scope</tt>
       # argument to +define_callback+.
       #
@@ -409,11 +473,7 @@ module ActiveSupport
             Callback.new(chain, filter, type, options.dup, self)
           end
 
-          filters.each do |filter|
-            chain.delete_if {|c| c.matches?(type, filter) }
-          end
-
-          options[:prepend] ? chain.unshift(*(mapped.reverse)) : chain.push(*mapped)
+          options[:prepend] ? chain.prepend(*mapped) : chain.append(*mapped)
 
           target.send("_#{name}_callbacks=", chain)
         end

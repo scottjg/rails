@@ -29,14 +29,6 @@ module RenderTestCases
     assert_equal "Hello world!", @view.render(:file => "test/hello_world")
   end
 
-  def test_render_file_not_using_full_path
-    assert_equal "Hello world!", @view.render(:file => "test/hello_world")
-  end
-
-  def test_render_file_without_specific_extension
-    assert_equal "Hello world!", @view.render(:file => "test/hello_world")
-  end
-
   # Test if :formats, :locale etc. options are passed correctly to the resolvers.
   def test_render_file_with_format
     assert_match "<h1>No Comment</h1>", @view.render(:file => "comments/empty", :formats => [:html])
@@ -61,7 +53,7 @@ module RenderTestCases
 
   def test_render_partial_use_last_prepended_format_for_partials_with_the_same_names
     @view.lookup_context.formats = [:html]
-    assert_equal "\nHTML Template, but JSON partial", @view.render(:template => "test/change_priorty")
+    assert_equal "\nHTML Template, but JSON partial", @view.render(:template => "test/change_priority")
   end
 
   def test_render_template_with_a_missing_partial_of_another_format
@@ -318,6 +310,13 @@ module RenderTestCases
       @controller_view.render(customers, :greeting => "Hello")
   end
 
+  def test_render_partial_without_object_or_collection_does_not_generate_partial_name_local_variable
+    exception = assert_raises ActionView::Template::Error do
+      @controller_view.render("partial_name_local_variable")
+    end
+    assert_match "undefined local variable or method `partial_name_local_variable'", exception.message
+  end
+
   # TODO: The reason for this test is unclear, improve documentation
   def test_render_partial_and_fallback_to_layout
     assert_equal "Before (Josh)\n\nAfter", @view.render(:partial => "test/layout_for_partial", :locals => { :name => "Josh" })
@@ -437,6 +436,11 @@ module RenderTestCases
       @view.render(:partial => 'test/partial_with_layout_block_content', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
   end
 
+  def test_render_partial_with_layout_raises_descriptive_error
+    e = assert_raises(ActionView::MissingTemplate) { @view.render(partial: 'test/partial', layout: true) }
+    assert_match "Missing partial /true with", e.message
+  end
+
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout", :layout => "layouts/yield")
@@ -451,12 +455,12 @@ module RenderTestCases
     assert_equal %(<title>David</title>),
       @view.render(:file => "test/layout_render_object")
   end
-  
+
   def test_render_with_passing_couple_extensions_to_one_register_template_handler_function_call
     ActionView::Template.register_template_handler :foo1, :foo2, CustomHandler
     assert_equal @view.render(:inline => "Hello, World!", :type => :foo1), @view.render(:inline => "Hello, World!", :type => :foo2)
   end
-  
+
   def test_render_throws_exception_when_no_extensions_passed_to_register_template_handler_function_call
     assert_raises(ArgumentError) { ActionView::Template.register_template_handler CustomHandler }
   end

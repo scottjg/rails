@@ -1,4 +1,5 @@
 require 'active_support/core_ext/hash/keys'
+require "set"
 
 module ActiveRecord
   class Relation
@@ -22,13 +23,23 @@ module ActiveRecord
       # the values.
       def other
         other = Relation.new(relation.klass, relation.table)
-        hash.each { |k, v| other.send("#{k}!", v) }
+        hash.each { |k, v|
+          if k == :joins
+            if Hash === v
+              other.joins!(v)
+            else
+              other.joins!(*v)
+            end
+          else
+            other.send("#{k}!", v)
+          end
+        }
         other
       end
     end
 
     class Merger # :nodoc:
-      attr_reader :relation, :values
+      attr_reader :relation, :values, :other
 
       def initialize(relation, other)
         if other.default_scoped? && other.klass != relation.klass
@@ -37,27 +48,57 @@ module ActiveRecord
 
         @relation = relation
         @values   = other.values
+        @other    = other
       end
 
+      NORMAL_VALUES = Relation::SINGLE_VALUE_METHODS +
+                      Relation::MULTI_VALUE_METHODS -
+                      [:joins, :where, :order, :bind, :reverse_order, :lock, :create_with, :reordering, :from] # :nodoc:
+
       def normal_values
-        Relation::SINGLE_VALUE_METHODS +
-          Relation::MULTI_VALUE_METHODS -
-          [:where, :order, :bind, :reverse_order, :lock, :create_with, :reordering, :from]
+        NORMAL_VALUES
       end
 
       def merge
         normal_values.each do |name|
           value = values[name]
-          relation.send("#{name}!", value) unless value.blank?
+          relation.send("#{name}!", *value) unless value.blank?
         end
 
         merge_multi_values
         merge_single_values
+        merge_joins
 
         relation
       end
 
       private
+
+      def merge_joins
+        return if values[:joins].blank?
+
+        if other.klass == relation.klass
+          relation.joins!(*values[:joins])
+        else
+          joins_dependency, rest = values[:joins].partition do |join|
+            case join
+            when Hash, Symbol, Array
+              true
+            else
+              false
+            end
+          end
+
+          join_dependency = ActiveRecord::Associations::JoinDependency.new(other.klass,
+                                                                           joins_dependency,
+                                                                           [])
+          relation.joins! rest
+
+          join_dependency.join_associations.each do |association|
+            @relation = association.join_relation(relation)
+          end
+        end
+      end
 
       def merge_multi_values
         relation.where_values = merged_wheres
@@ -93,25 +134,26 @@ module ActiveRecord
       end
 
       def merged_wheres
-        if values[:where]
-          merged_wheres = relation.where_values + values[:where]
+        values[:where] ||= []
 
-          unless relation.where_values.empty?
-            # Remove equalities with duplicated left-hand. Last one wins.
-            seen = {}
-            merged_wheres = merged_wheres.reverse.reject { |w|
-              nuke = false
-              if w.respond_to?(:operator) && w.operator == :==
-                nuke         = seen[w.left]
-                seen[w.left] = true
-              end
-              nuke
-            }.reverse
-          end
-
-          merged_wheres
+        if values[:where].empty? || relation.where_values.empty?
+          relation.where_values + values[:where]
         else
-          relation.where_values
+          # Remove equalities from the existing relation with a LHS which is
+          # present in the relation being merged in.
+
+          seen = Set.new
+          values[:where].each { |w|
+            if w.respond_to?(:operator) && w.operator == :==
+              seen << w.left
+            end
+          }
+
+          relation.where_values.reject { |w|
+            w.respond_to?(:operator) &&
+              w.operator == :== &&
+              seen.include?(w.left)
+          } + values[:where]
         end
       end
     end

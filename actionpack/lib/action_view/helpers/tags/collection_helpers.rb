@@ -1,8 +1,8 @@
 module ActionView
   module Helpers
-    module Tags
-      module CollectionHelpers
-        class Builder
+    module Tags # :nodoc:
+      module CollectionHelpers # :nodoc:
+        class Builder # :nodoc:
           attr_reader :object, :text, :value
 
           def initialize(template_object, object_name, method_name, object,
@@ -44,7 +44,8 @@ module ActionView
           html_options = @html_options.dup
 
           [:checked, :selected, :disabled].each do |option|
-            next unless current_value = @options[option]
+            current_value = @options[option]
+            next if current_value.nil?
 
             accept = if current_value.respond_to?(:call)
               current_value.call(item)

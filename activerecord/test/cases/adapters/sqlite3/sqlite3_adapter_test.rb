@@ -25,6 +25,19 @@ module ActiveRecord
         @conn.intercepted = true
       end
 
+      def test_valid_column
+        column = @conn.columns('items').find { |col| col.name == 'id' }
+        assert @conn.valid_type?(column.type)
+      end
+
+      # sqlite databses should be able to support any type and not
+      # just the ones mentioned in the native_database_types. 
+      # Therefore test_invalid column should always return true 
+      # even if the type is not valid.
+      def test_invalid_column
+        assert @conn.valid_type?(:foobar)
+      end
+
       def teardown
         @conn.intercepted = false
         @conn.logged = []
@@ -152,6 +165,12 @@ module ActiveRecord
 
       ensure
         DualEncoding.connection.drop_table('dual_encodings')
+      end
+
+      def test_type_cast_should_not_mutate_encoding
+        name  = 'hello'.force_encoding(Encoding::ASCII_8BIT)
+        Owner.create(name: name)
+        assert_equal Encoding::ASCII_8BIT, name.encoding
       end
 
       def test_execute
