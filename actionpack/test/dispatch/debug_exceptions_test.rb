@@ -29,6 +29,8 @@ class DebugExceptionsTest < ActionDispatch::IntegrationTest
         raise RuntimeError
       when "/method_not_allowed"
         raise ActionController::MethodNotAllowed
+      when "/unknown_http_method"
+        raise ActionController::UnknownHttpMethod
       when "/not_implemented"
         raise ActionController::NotImplemented
       when "/unprocessable_entity"
@@ -88,6 +90,10 @@ class DebugExceptionsTest < ActionDispatch::IntegrationTest
     get "/method_not_allowed", {}, {'action_dispatch.show_exceptions' => true}
     assert_response 405
     assert_match(/ActionController::MethodNotAllowed/, body)
+
+    get "/unknown_http_method", {}, {'action_dispatch.show_exceptions' => true}
+    assert_response 405
+    assert_match(/ActionController::UnknownHttpMethod/, body)
   end
 
   test "does not show filtered parameters" do
