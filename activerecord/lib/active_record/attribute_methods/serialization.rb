@@ -26,8 +26,10 @@ module ActiveRecord
         #
         # ==== Parameters
         #
-        # * +attr_name+ - The field name that should be serialized.
+        # * +attr_name+  - The field name that should be serialized.
         # * +class_name+ - Optional, class name that the object type should be equal to.
+        # * +coder+      - Optional, class name that should be used to encode the data. Default value is
+        #                  AcitiveRecord::Coders:YAMLColumn.   
         #
         # ==== Example
         #
@@ -35,14 +37,11 @@ module ActiveRecord
         #   class User < ActiveRecord::Base
         #     serialize :preferences
         #   end
-        def serialize(attr_name, class_name = Object)
+        def serialize(attr_name, *args)
           include Behavior
 
-          coder = if [:load, :dump].all? { |x| class_name.respond_to?(x) }
-                    class_name
-                  else
-                    Coders::YAMLColumn.new(class_name)
-                  end
+          options = args.extract_options!.reverse_merge class_name: Object, coder: Coders::YAMLColumn
+          coder = options[:coder].new(options[:class_name])
 
           # merge new serialized attribute and create new hash to ensure that each class in inheritance hierarchy
           # has its own hash of own serialized attributes
