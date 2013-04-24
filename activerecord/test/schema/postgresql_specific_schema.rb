@@ -146,8 +146,8 @@ rescue #This version of PostgreSQL either has no XML support or is was not compi
 
   create_table :duplicate_table do |t|
     t.integer :field1
-    t.index :field1
   end
+  add_index :duplicate_table, :field1
 
   # Temporarily switch search_path to schema_2 and create a duplicate table
   conn = ActiveRecord::Base.connection
@@ -156,8 +156,8 @@ rescue #This version of PostgreSQL either has no XML support or is was not compi
 
   create_table :duplicate_table do |t|
     t.integer :field1
-    t.index :field1
   end
+  add_index :duplicate_table, :field1
 
   # Revert search_path
   conn.schema_search_path = old_search_path
