@@ -31,6 +31,10 @@ module ActiveRecord
             super
           end
         end
+
+        def type_to_sql(type, limit, precision, scale)
+          @conn.type_to_sql type.to_sym, limit, precision, scale
+        end
       end
 
       def schema_creation

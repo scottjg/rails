@@ -159,7 +159,27 @@ module ActiveRecord
         end
 
         def type_to_sql(type, limit, precision, scale)
-          @conn.type_to_sql type.to_sym, limit, precision, scale
+          if native = @conn.native_database_types[type.to_sym]
+            column_type_sql = (native.is_a?(Hash) ? native[:name] : native).dup
+            if type.to_sym == :decimal # ignore limit, use precision and scale
+              scale ||= native[:scale]
+
+              if precision ||= native[:precision]
+                if scale
+                  column_type_sql << "(#{precision},#{scale})"
+                else
+                  column_type_sql << "(#{precision})"
+                end
+              elsif scale
+                raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale is specified"
+              end
+            elsif (type.to_sym != :primary_key) && (limit ||= native.is_a?(Hash) && native[:limit])
+              column_type_sql << "(#{limit})"
+            end
+            column_type_sql
+          else
+            type.to_sym
+          end
         end
 
         def add_column_options!(sql, options)
