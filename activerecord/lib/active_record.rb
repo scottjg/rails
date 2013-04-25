@@ -92,7 +92,8 @@ module ActiveRecord
   end
 
   module Coders
-    autoload :YAMLColumn, 'active_record/coders/yaml_column'
+    autoload :YAMLColumn,   'active_record/coders/yaml_column'
+    autoload :HstoreColumn, 'active_record/coders/hstore_column'
   end
 
   module AttributeMethods

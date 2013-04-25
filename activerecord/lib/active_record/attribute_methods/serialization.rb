@@ -35,6 +35,14 @@ module ActiveRecord
         #   class User < ActiveRecord::Base
         #     serialize :preferences
         #   end
+        #
+        #   If you want you can use `hstore` to store your value.
+        #
+        #   # Serialize a preferences attribute but store the value using hstore.
+        #   class User < ActiveRecord::Base
+        #     serialize :preferences, ActiveRecord::Coders::HstoreColumn.new
+        #   end
+        #
         def serialize(attr_name, class_name = Object)
           include Behavior
 
