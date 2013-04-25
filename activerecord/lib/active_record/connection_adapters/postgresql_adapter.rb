@@ -332,7 +332,9 @@ module ActiveRecord
 
         def primary_key(name, type = :primary_key, options = {})
           return super unless type == :uuid
-          options[:default] ||= 'uuid_generate_v4()'
+          if !options.include?(:default)
+            options[:default] ||= 'uuid_generate_v4()'  
+          end
           options[:primary_key] = true
           column name, type, options
         end
