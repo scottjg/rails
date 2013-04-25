@@ -78,6 +78,8 @@ class SchemaDumperTest < ActiveRecord::TestCase
 
   def test_schema_dump_has_no_duplicate_tables
     output_lines = standard_dump.split("\n")
+    puts output_lines.inspect
+    sleep(10)
     assert output_lines.select{|i| i.match(/create_table "duplicate_table"/)}.size == 1
   end
 
