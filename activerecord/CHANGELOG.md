@@ -1,5 +1,76 @@
 ## unreleased ##
 
+*   Default values for PostgreSQL bigint types now get parsed and dumped to the
+    schema correctly.
+    Backport #10098.
+
+    *Erik Peterson*
+
+*   Removed warning when `auto_explain_threshold_in_seconds` is set and the
+    connection adapter doesn't support explain.
+    This is causing a regression since the Active Record Railtie is trying to
+    connect to the development database in the application boot.
+
+    *Rafael Mendonça França*
+
+*   Do not reset `inheritance_column` when it's set explicitly.
+    Backport of #5327.
+
+    *kennyj + Fred Wu*
+
+*   Fix a problem wrong exception is occured
+    when raising no translatable exception in PostgreSQL.
+
+    *kennyj*
+
+*   Resets the postgres search path in the structure.sql after the structure
+    is dumped in order to find schema_migrations table when multiples schemas
+    are used.
+    Fixes #9796.
+
+    *Juan M. Cuello + Dembskiy Alexander*
+
+*   Reload the association target if it's stale. `@stale_state` should be nil
+    when a model isn't saved.
+    Fixes #7526.
+
+    *Larry Lv*
+
+*   Don't read CSV files during execution of `db:fixtures:load`. CSV support for
+    fixtures was removed some time ago but the task was still loading them, even
+    though later the code was looking for the related yaml file instead.
+
+    *kennyj*
+
+
+## Rails 3.2.13 (Mar 18, 2013) ##
+
+*   Chaining multiple preloaded scopes will correctly preload all the scopes
+    at the same time.
+
+    *Chris Geihsler*
+
+*   Reverted 921a296a3390192a71abeec6d9a035cc6d1865c8, 'Quote numeric values
+    compared to string columns.' This caused several regressions.
+
+    *Steve Klabnik*
+
+*   Fix overriding of attributes by `default_scope` on `ActiveRecord::Base#dup`.
+
+    *Hiroshige UMINO*
+
+*   Fix issue with overriding Active Record reader methods with a composed object
+    and using that attribute as the scope of a `uniqueness_of` validation.
+    Backport #7072.
+
+    *Peter Brown*
+
+*   Sqlite now preserves custom primary keys when copying or altering tables.
+    Fixes #9367.
+    Backport #2312.
+
+    *Sean Scally + Yves Senn*
+
 *   Preloading `has_many :through` associations with conditions won't
     cache the `:through` association. This will prevent invalid
     subsets to be cached.
