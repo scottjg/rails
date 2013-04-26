@@ -1,5 +1,14 @@
 ## unreleased ##
 
+*   Fixed a bug in ActiveRecord#sanitize_sql_hash_for_conditions in which
+    `self.class` is an argument to PredicateBuilder#build_from_hash
+    causing PredicateBuilder to call non-existant method
+    Class#reflect_on_association.
+
+    *Zach Ohlgren*
+
+*   While removing index if column option is missing then raise IrreversibleMigration exception.
+
 *   Fix pending migrations error when loading schema and `ActiveRecord::Base.table_name_prefix`
     is not blank.
 
@@ -1970,6 +1979,7 @@
       => remove db/schema_cache.dump
 
     *kennyj*
+<<<<<<< HEAD
 
 *   Added support for partial indices to PostgreSQL adapter.
 
@@ -2075,3 +2085,11 @@
 
 
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activerecord/CHANGELOG.md) for previous changes.
+=======
+
+*   rake:db:test:prepare falls back to original environment after execution.
+
+    *Slava Markevich*
+
+Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/activerecord/CHANGELOG.md) for previous changes.
+>>>>>>> a6bc35c... Fix bug in ActiveRecord::Sanitization#sanitize_sql_hash_for_conditions
