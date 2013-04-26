@@ -739,12 +739,12 @@ module ActiveRecord
 
       # Returns the current client message level.
       def client_min_messages
-        query('SHOW client_min_messages')[0][0]
+        'notify'
       end
 
       # Set the client message level.
       def client_min_messages=(level)
-        execute("SET client_min_messages TO '#{level}'")
+        nil
       end
 
       # Returns the sequence name for a table's primary key or some other specified key.
