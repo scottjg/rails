@@ -1,4 +1,12 @@
 ## Rails 4.0.0 (June 25, 2013) ##
+*   Fixed a bug in ActiveRecord#sanitize_sql_hash_for_conditions in which
+    `self.class` is an argument to PredicateBuilder#build_from_hash
+    causing PredicateBuilder to call non-existant method
+    Class#reflect_on_association.
+
+    *Zach Ohlgren*
+
+*   While removing index if column option is missing then raise IrreversibleMigration exception.
 
 *   Fix `add_column` with `array` option when using PostgreSQL. Fixes #10432
 
