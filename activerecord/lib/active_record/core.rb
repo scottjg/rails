@@ -80,11 +80,11 @@ module ActiveRecord
       class_attribute :default_connection_handler, instance_writer: false
 
       def self.connection_handler
-        Thread.current[:active_record_connection_handler] || self.default_connection_handler
+        ActiveRecord::RuntimeRegistry.connection_handler || default_connection_handler
       end
 
       def self.connection_handler=(handler)
-        Thread.current[:active_record_connection_handler] = handler
+        ActiveRecord::RuntimeRegistry.connection_handler = handler
       end
 
       self.default_connection_handler = ConnectionAdapters::ConnectionHandler.new
@@ -307,9 +307,11 @@ module ActiveRecord
       id.hash
     end
 
-    # Freeze the attributes hash such that associations are still accessible, even on destroyed records.
+    # Clone and freeze the attributes hash such that associations are still
+    # accessible, even on destroyed records, but cloned models will not be
+    # frozen.
     def freeze
-      @attributes.freeze
+      @attributes = @attributes.clone.freeze
       self
     end
 

@@ -34,7 +34,6 @@ module ActiveRecord
       #
       #    User.where.not(name: "Jon", role: "admin")
       #    # SELECT * FROM users WHERE name != 'Jon' AND role != 'admin'
-      #
       def not(opts, *rest)
         where_value = @scope.send(:build_where, opts, rest).map do |rel|
           case rel
@@ -353,7 +352,7 @@ module ActiveRecord
       spawn.unscope!(*args)
     end
 
-    def unscope!(*args)
+    def unscope!(*args) # :nodoc:
       args.flatten!
 
       args.each do |scope|
@@ -552,7 +551,6 @@ module ActiveRecord
     #   Order.having('SUM(price) > 30').group('user_id')
     def having(opts, *rest)
       opts.blank? ? self : spawn.having!(opts, *rest)
-      spawn.having!(opts, *rest)
     end
 
     def having!(opts, *rest) # :nodoc:
@@ -934,9 +932,7 @@ module ActiveRecord
       association_joins         = buckets[:association_join] || []
       stashed_association_joins = buckets[:stashed_join] || []
       join_nodes                = (buckets[:join_node] || []).uniq
-      string_joins              = (buckets[:string_join] || []).map { |x|
-        x.strip
-      }.uniq
+      string_joins              = (buckets[:string_join] || []).map { |x| x.strip }.uniq
 
       join_list = join_nodes + custom_join_ast(manager, string_joins)
 

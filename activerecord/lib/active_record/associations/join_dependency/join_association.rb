@@ -55,14 +55,19 @@ module ActiveRecord
 
         def find_parent_in(other_join_dependency)
           other_join_dependency.join_parts.detect do |join_part|
-            parent == join_part
+            case parent
+            when JoinBase
+              parent.base_klass == join_part.base_klass
+            else
+              parent == join_part
+            end
           end
         end
 
         def join_to(manager)
           tables        = @tables.dup
           foreign_table = parent_table
-          foreign_klass = parent.active_record
+          foreign_klass = parent.base_klass
 
           # The chain starts with the target table, but we want to end with it here (makes
           # more sense in this context), so we reverse
@@ -118,6 +123,21 @@ module ActiveRecord
           manager
         end
 
+        #  Builds equality condition.
+        #
+        #  Example:
+        #
+        #  class Physician < ActiveRecord::Base
+        #    has_many :appointments
+        #  end
+        #
+        #  If I execute `Physician.joins(:appointments).to_a` then
+        #    reflection    #=> #<ActiveRecord::Reflection::AssociationReflection @macro=:has_many ...>
+        #    table         #=> #<Arel::Table @name="appointments" ...>
+        #    key           #=>  physician_id
+        #    foreign_table #=> #<Arel::Table @name="physicians" ...>
+        #    foreign_key   #=> id
+        #
         def build_constraint(reflection, table, key, foreign_table, foreign_key)
           constraint = table[key].eq(foreign_table[foreign_key])
 

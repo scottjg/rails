@@ -1,7 +1,95 @@
 ## Rails 4.0.0 (unreleased) ##
 
-*   `#default_scopes?` is deprecated. Instead, do something like
-    `Post.default_scopes.empty?`.
+*   Allow to use databases.rake tasks without having `Rails.application`.
+
+    *Piotr Sarnacki*
+
+*   Fix a `SystemStackError` problem when using time zone aware or serialized attributes.
+    In current implementation, we reuse `column_types` argument when initiating an instance.
+    If an instance has serialized or time zone aware attributes, `column_types` is
+    wrapped multiple times in `decorate_columns` method. Thus the above error occurs.
+
+    *Dan Erikson & kennyj*
+
+*   Fix for a regression bug in which counter cache columns were not being updated
+    when record was pushed into a has_many association. For example:
+
+        Post.first.comments << Comment.create
+
+    Fixes #3891.
+
+    *Matthew Robertson*
+
+*   If a model was instantiated from the database using `select`, `respond_to?`
+    returns false for non-selected attributes. For example:
+
+        post = Post.select(:title).first
+        post.respond_to?(:body) # => false
+
+        post = Post.select('title as post_title').first
+        post.respond_to?(:title) # => false
+
+    Fixes #4208.
+
+    *Neeraj Singh*
+
+*   Run `rake migrate:down` & `rake migrate:up` in transaction if database supports.
+
+    *Alexander Bondarev*
+
+*   `0x` prefix must be added when assigning hexadecimal string into `bit` column in PostgreSQL.
+
+    *kennyj*
+
+*   Added Statement Cache to allow the caching of a single statement. The cache works by
+    duping the relation returned from yielding a statement, which allows skipping the AST
+    building phase for following executes. The cache returns results in array format.
+
+    Example:
+
+        cache = ActiveRecord::StatementCache.new do
+          Book.where(name: "my book").limit(100)
+        end
+
+        books = cache.execute
+
+    The solution attempts to get closer to the speed of `find_by_sql` but still maintaining
+    the expressiveness of the Active Record queries.
+
+    *Olli Rissanen*
+
+*   Preserve context while merging relations with join information.
+
+        class Comment < ActiveRecord::Base
+          belongs_to :post
+        end
+
+        class Author < ActiveRecord::Base
+          has_many :posts
+        end
+
+        class Post < ActiveRecord::Base
+          belongs_to :author
+          has_many :comments
+        end
+
+    `Comment.joins(:post).merge(Post.joins(:author).merge(Author.where(:name => "Joe Blogs"))).all`
+    would fail with
+    `ActiveRecord::ConfigurationError: Association named 'author' was not found on Comment`.
+
+    It is failing because `all` is being called on relation which looks like this after all
+    the merging: `{:joins=>[:post, :author], :where=>[#<Arel::Nodes::Equality: ....}`. In this
+    relation all the context that `Post` was joined with `Author` is lost and hence the error
+    that `author` was not found on `Comment`.
+
+    The solution is to build `JoinAssociation` when two relations with join information are being
+    merged. And later while building the Arel use the previously built `JoinAssociation` record
+    in `JoinDependency#graft` to build the right from clause.
+    Fixes #3002.
+
+    *Jared Armstrong and Neeraj Singh*
+
+*   `default_scopes?` is deprecated. Check for `default_scopes.empty?` instead.
 
     *Agis Anastasopoulos*
 
@@ -28,7 +116,8 @@
     *Michal Cichra*
 
 *   `has_many` using `:through` now obeys the order clause mentioned in
-    through association. Fixes #10016.
+    through association.
+    Fixes #10016.
 
     *Neeraj Singh*
 
@@ -58,8 +147,8 @@
     *kennyj*
 
 *   Allow `ActiveRecord::Base.connection_handler` to have thread affinity and be
-    settable, this effectively allows Active Record to be used in a multi threaded
-    setup with multiple connections to multiple dbs.
+    settable, this effectively allows Active Record to be used in a multithreaded
+    setup with multiple connections to multiple databases.
 
     *Sam Saffron*
 
@@ -93,7 +182,8 @@
     *Ken Mazaika*
 
 *   Add an `add_index` override in PostgreSQL adapter and MySQL adapter
-    to allow custom index type support. Fixes #6101.
+    to allow custom index type support.
+    Fixes #6101.
 
         add_index(:wikis, :body, :using => 'gin')
 
@@ -117,7 +207,6 @@
     in the association for a particular id. Then, it will go to the DB if it
     is not found. This is accomplished by calling `find_by_scan` in
     collection associations whenever `options[:inverse_of]` is not nil.
-
     Fixes #9470.
 
     *John Wang*
@@ -1227,7 +1316,7 @@
 
 *   Explain only normal CRUD sql (select / update / insert / delete).
     Fix problem that explains unexplainable sql.
-    Closes #7544 #6458.
+    Fixes #7544 #6458.
 
     *kennyj*
 
@@ -1856,13 +1945,13 @@
 
         add_index(:accounts, :code, where: 'active')
 
-        Generates
+    generates
 
         CREATE INDEX index_accounts_on_code ON accounts(code) WHERE active
 
     *Marcelo Silveira*
 
-*   Implemented ActiveRecord::Relation#none method.
+*   Implemented `ActiveRecord::Relation#none` method.
 
     The `none` method returns a chainable relation with zero records
     (an instance of the NullRelation class).

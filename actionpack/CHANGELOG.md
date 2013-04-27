@@ -1,5 +1,39 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Add support for passing custom url options other than `:host` and custom
+    status and flash options to `force_ssl`.
+
+    *Andrew White*
+
+*   The `force_ssl` command now builds the redirect url from `request.fullpath`.
+    This ensures that the format is maintained and it doesn't redirect to a route
+    that has the same parameters but is defined earlier in `routes.rb`. Also any
+    optional segments are maintained.
+
+    Fixes #7528, #9061, #10305.
+
+    *Andrew White*
+
+*   Return a 405 Method Not Allowed response when a request contains an unknown
+    HTTP method.
+
+    *Lewis Marshall*
+
+*   Add support for extracting the port from the `:host` option passed to `url_for`.
+
+    *Andrew White*
+
+*   Add support for removing the subdomain from a url by passing `nil`, `false` or `''`.
+    Fixes #10180.
+
+    *Derek Watson + Andrew White*
+
+*   Element of the collection for `options_from_collection_for_select` helper can
+    optionally contain html attributes as the last element of the array as
+    `options_for_select` helper.
+
+    *Vasiliy Ermolovich*
+
 *   Fix explicit names on multiple file fields. If a file field tag has
     the multiple option, it is turned into an array field (appending `[]`),
     but if an explicit name is passed to `file_field` the `[]` is not
@@ -64,7 +98,7 @@
     *Brad Dunbar*
 
 *   Include I18n locale fallbacks in view lookup.
-    Fixes GH#3512.
+    Fixes #3512.
 
     *Juan Barreneche*
 

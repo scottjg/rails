@@ -25,9 +25,10 @@ module ActiveRecord::Associations::Builder
 
       mixin.class_eval <<-CODE, __FILE__, __LINE__ + 1
         def belongs_to_counter_cache_after_create_for_#{name}
-          record = #{name}
-          record.class.increment_counter(:#{cache_column}, record.id) unless record.nil?
-          @_after_create_counter_called = true
+          if record = #{name}
+            record.class.increment_counter(:#{cache_column}, record.id)
+            @_after_create_counter_called = true
+          end
         end
 
         def belongs_to_counter_cache_before_destroy_for_#{name}
@@ -70,8 +71,8 @@ module ActiveRecord::Associations::Builder
           old_foreign_id    = attribute_was(foreign_key_field)
 
           if old_foreign_id
-            reflection_klass = #{reflection.klass}
-            old_record       = reflection_klass.find_by(reflection_klass.primary_key => old_foreign_id)
+            klass      = association(#{name.inspect}).klass
+            old_record = klass.find_by(klass.primary_key => old_foreign_id)
 
             if old_record
               old_record.touch #{options[:touch].inspect if options[:touch] != true}

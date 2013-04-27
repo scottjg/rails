@@ -1,5 +1,15 @@
 ## Rails 4.0.0 (unreleased) ##
 
+*   Fix skipping of filters defined by objects in `ActiveSupport::Callbacks::Callback`.
+
+    *Ben McRedmond*
+
+*   An `ActiveSupport::Subscriber` class has been extracted from
+    `ActiveSupport::LogSubscriber`, allowing you to use the event attachment
+    API for other kinds of subscribers.
+
+    *Daniel Schierbeck*
+
 *   `Class#class_attribute` accepts an `instance_predicate` option which
     defaults to `true`. If set to `false` the predicate method will not
     be defined.
@@ -8,8 +18,8 @@
 
 *   `fast_xs` support has been removed.  Use `String#encode(xml: :attr)`.
 
-*   `ActiveSupport::Notifications::Instrumenter#instrument` should yield
-    its payload.
+*   `ActiveSupport::Notifications::Instrumenter#instrument` should
+    yield its payload.
 
     *stopdropandrew*
 
@@ -21,7 +31,6 @@
 *   Fix deletion of empty directories in `ActiveSupport::Cache::FileStore`.
 
     *Charles Jones*
-
 
 ## Rails 4.0.0.beta1 (February 25, 2013) ##
 
@@ -93,7 +102,7 @@
 
 *   Improve `String#squish` to handle Unicode whitespace. *Antoine Lyset*
 
-*   Standardize on `to_time` returning an instance of `Time` in the local system timezone
+*   Standardise on `to_time` returning an instance of `Time` in the local system timezone
     across `String`, `Time`, `Date`, `DateTime` and `ActiveSupport::TimeWithZone`.
 
     *Andrew White*
@@ -159,7 +168,7 @@
 
 *   Remove surrogate unicode character encoding from `ActiveSupport::JSON.encode`
     The encoding scheme was broken for unicode characters outside the basic multilingual plane;
-    since JSON is assumed to be UTF-8, and we already force the encoding to UTF-8,
+    since json is assumed to be UTF-8, and we already force the encoding to UTF-8,
     simply pass through the un-encoded characters.
 
     *Brett Carter*
@@ -378,7 +387,7 @@
 
 *   An optional block can be passed to `HashWithIndifferentAccess#update` and `#merge`.
     The block will be invoked for each duplicated key, and used to resolve the conflict,
-    thus replicating the behavior of the corresponding methods on the `Hash` class.
+    thus replicating the behaviour of the corresponding methods on the `Hash` class.
 
     *Leo Cassarani*
 

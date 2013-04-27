@@ -50,12 +50,14 @@ module ActiveRecord
   autoload :Querying
   autoload :ReadonlyAttributes
   autoload :Reflection
+  autoload :RuntimeRegistry
   autoload :Sanitization
   autoload :Schema
   autoload :SchemaDumper
   autoload :SchemaMigration
   autoload :Scoping
   autoload :Serialization
+  autoload :StatementCache
   autoload :Store
   autoload :Timestamp
   autoload :Transactions
