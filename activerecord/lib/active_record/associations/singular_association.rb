@@ -35,7 +35,9 @@ module ActiveRecord
       private
 
         def create_scope
-          scope.scope_for_create.stringify_keys.except(klass.primary_key)
+          scope_for_create = scope.scope_for_create.stringify_keys
+          scope_for_create = scope_for_create.except(klass.primary_key) unless reflection.foreign_key == klass.primary_key
+          scope_for_create
         end
 
         def find_target
