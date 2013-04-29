@@ -10,7 +10,6 @@ module ActiveRecord
         end
 
         private
-  
         def visit_ChangeColumnDefinition(o)
           column = o.column
           options = o.options
