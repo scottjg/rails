@@ -25,7 +25,7 @@ module ActiveRecord
       end
     end
 
-    class ChangeColumnDefinition < Struct.new(:column, :type, :options) #:nodoc:
+    class ChangeColumnDefinition < Struct.new(:column_name, :type, :options) #:nodoc:
     end
 
     # Represents the schema of an SQL table in an abstract way. This class
