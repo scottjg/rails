@@ -19,6 +19,13 @@ module ActiveRecord
           sql
         end
 
+        def visit_ChangeColumnDefinition(o)
+          column_name = o.column_name
+          options = o.options
+          type = o.type
+          "ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+        end
+
         def add_column_options!(sql, options)
           if options[:array] || options[:column].try(:array)
             sql << '[]'
@@ -386,7 +393,9 @@ module ActiveRecord
           clear_cache!
           quoted_table_name = quote_table_name(table_name)
 
-          execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+          sql = schema_creation.accept create_alter_table(quoted_table_name)
+          sql << (schema_creation.accept ChangeColumnDefinition.new column_name, type, options)
+          execute sql
 
           change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
           change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
