@@ -46,6 +46,8 @@ module ActiveModel
             option_value = option_value.call(record) if option_value.is_a?(Proc)
             option_value = record.send(option_value) if option_value.is_a?(Symbol)
 
+            value = coerce_value_to_integer_if_option_is_a_float(value, option_value)
+
             unless value.send(CHECKS[option], option_value)
               record.errors.add(attr_name, option, filtered_options(value).merge(:count => option_value))
             end
@@ -74,6 +76,16 @@ module ActiveModel
 
       def filtered_options(value)
         options.except(*RESERVED_OPTIONS).merge!(:value => value)
+      end
+
+      def coerce_value_to_integer_if_option_is_a_float(value, option_value)
+        if value.is_a?(Float) && option_value.is_a?(Integer)
+          value.to_i
+        else
+          value
+        end
+      rescue FloatDomainError
+        # pass Infinity through unscathed
       end
     end
 
