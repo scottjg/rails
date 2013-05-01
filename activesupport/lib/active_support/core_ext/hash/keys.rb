@@ -38,6 +38,17 @@ class Hash
     transform_keys!{ |key| key.to_s }
   end
 
+  # Return a new hash with all keys converted to integers.
+  #
+  #   hash = { name: 'Rob', age: '28' }
+  #
+  #   hash.intify_keys
+  #   #=> { "NAME" => 'Rob', "AGE": '28' }
+  def upcase_keys
+    transform_keys{ |key| key.to_s.upcase }
+  end
+
+
   # Return a new hash with all keys converted to symbols, as long as
   # they respond to +to_sym+.
   #

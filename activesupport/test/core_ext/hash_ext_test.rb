@@ -54,6 +54,7 @@ class HashExtTest < ActiveSupport::TestCase
     assert_respond_to h, :deep_stringify_keys!
     assert_respond_to h, :to_options
     assert_respond_to h, :to_options!
+    assert_respond_to h, :upcase_keys
   end
 
   def test_transform_keys
@@ -115,6 +116,18 @@ class HashExtTest < ActiveSupport::TestCase
   def test_symbolize_keys_not_mutates
     transformed_hash = @mixed.dup
     transformed_hash.symbolize_keys
+    assert_equal @mixed, transformed_hash
+  end
+
+  def test_upcase_keys
+    assert_equal @upcase_strings, @symbols.upcase_keys
+    assert_equal @upcase_strings, @strings.upcase_keys
+    assert_equal @upcase_strings, @mixed.upcase_keys
+  end
+
+  def test_intify_keys_not_mutates
+    transformed_hash = @mixed.dup
+    transformed_hash.upcase_keys
     assert_equal @mixed, transformed_hash
   end
 
