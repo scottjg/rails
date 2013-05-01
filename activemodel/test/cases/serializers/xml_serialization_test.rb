@@ -70,7 +70,7 @@ class XmlSerializationTest < ActiveModel::TestCase
   end
 
   test "should serialize default root with namespace" do
-    @xml = @contact.to_xml :namespace => "http://xml.rubyonrails.org/contact"
+    @xml = @contact.to_xml namespace: "http://xml.rubyonrails.org/contact"
     assert_match %r{^<contact xmlns="http://xml.rubyonrails.org/contact">}, @xml
     assert_match %r{</contact>$}, @xml
   end
