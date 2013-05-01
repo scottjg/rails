@@ -135,4 +135,8 @@ class Hash
   def deep_symbolize_keys!
     deep_transform_keys!{ |key| key.to_sym rescue key }
   end
+
+  def cap_keys
+    transform_keys{ |key| key.to_s.upcase }
+  end
 end
