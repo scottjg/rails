@@ -308,7 +308,7 @@ class ValidationsTest < ActiveModel::TestCase
 
   def test_strict_validation_not_fails
     Topic.validates :title, strict: true, presence: true
-    assert Topic.new(:title => "hello").valid?
+    assert Topic.new(title: "hello").valid?
   end
 
   def test_strict_validation_particular_validator
