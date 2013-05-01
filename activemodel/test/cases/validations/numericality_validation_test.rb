@@ -57,6 +57,19 @@ class NumericalityValidationTest < ActiveModel::TestCase
     valid!([11])
   end
 
+  def test_validates_numericality_of_greater_than_with_float_passed_into_integer_check
+    Topic.validates_numericality_of :approved, greater_than: 0
+
+    invalid!([0.9], 'must be greater than 0')
+  end
+
+  def test_validates_numericality_of_greater_than_with_float_passed_into_float_check
+    Topic.validates_numericality_of :approved, greater_than: 0.0
+
+    valid!([0.1])
+    invalid!([0.0], 'must be greater than 0.0')
+  end
+
   def test_validates_numericality_with_greater_than_or_equal
     Topic.validates_numericality_of :approved, :greater_than_or_equal_to => 10
 
@@ -69,6 +82,12 @@ class NumericalityValidationTest < ActiveModel::TestCase
 
     invalid!([-10, 11] + INFINITY, 'must be equal to 10')
     valid!([10])
+  end
+
+  def test_validates_numericality_with_equal_with_float_passed_into_integer_check
+    Topic.validates_numericality_of :approved, equal_to: 10
+
+    valid!([10.01])
   end
 
   def test_validates_numericality_with_less_than
