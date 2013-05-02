@@ -4,6 +4,13 @@
 
     *Godfrey Chan*
 
+*   Fix pending migrations error when loading schema and ActiveRecord::Base.table_name_prefix
+    it not blank.
+
+    Fixes #10411.
+
+    *Kyle Stevens*
+
 
 ## Rails 4.0.0.rc1 (April 29, 2013) ##
 

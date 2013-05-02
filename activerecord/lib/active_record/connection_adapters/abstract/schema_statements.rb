@@ -643,7 +643,7 @@ module ActiveRecord
 
       def assume_migrated_upto_version(version, migrations_paths = ActiveRecord::Migrator.migrations_paths)
         migrations_paths = Array(migrations_paths)
-        version = version.to_i
+        version = version.gsub(/\A#{ActiveRecord::Base.table_name_prefix}/, "").to_i
         sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
 
         migrated = select_values("SELECT version FROM #{sm_table}").map { |v| v.to_i }
