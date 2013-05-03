@@ -5,12 +5,20 @@ rvm:
   - 1.9.3
   - 2.0.0
 env:
-  - "GEM=railties"
-  - "GEM=ap,am,amo,as"
-  - "GEM=ar:mysql"
-  - "GEM=ar:mysql2"
-  - "GEM=ar:sqlite3"
-  - "GEM=ar:postgresql"
+  matrix:
+    - "GEM=railties"
+    - "GEM=ap,am,amo,as"
+    - "GEM=ar:mysql"
+    - "GEM=ar:mysql2"
+    - "GEM=ar:sqlite3"
+    - "GEM=ar:postgresql"
+  global:
+    - "RUBY_HEAP_MIN_SLOTS=1000000"
+    - "RUBY_HEAP_SLOTS_INCREMENT=1000000"
+    - "RUBY_HEAP_SLOTS_GROWTH_FACTOR=1"
+    - "RUBY_GC_MALLOC_LIMIT=1000000000"
+    - "RUBY_HEAP_FREE_MIN=500000"
+    - "RUBY_FREE_MIN=$RUBY_HEAP_FREE_MIN"
 notifications:
   email: false
   irc:
