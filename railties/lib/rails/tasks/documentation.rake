@@ -26,7 +26,7 @@ class RDocTaskWithoutDescriptions < RDoc::Task
         argstring = args.join(' ')
         sh %{ruby -Ivendor vendor/rd #{argstring}}
       else
-        require 'rdoc/rdoc'
+        require 'sdoc'
         RDoc::RDoc.new.document(args)
       end
     end
