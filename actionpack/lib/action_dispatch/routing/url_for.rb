@@ -167,34 +167,13 @@ module ActionDispatch
       end
 
       def url_for_optimized(options = nil)
-        #TODO -> integrate script and full path
-        #make it work with arguments such as :id
-        #in routes.rb
-        #get 'unread' => 'list#unread'
-        #get 'unread/more' => 'list#unread'
-        #how do i deal with this case of two links?????
+        
 
         #MAYBE USE HASH.DELETE TO OPTIMIZE THIS SO WE KNOW IT WONT BE IN HASH
+        require "debugger"
+        debugger
         ast_link = _routes.formatter.cache[[:controller, options.delete(:controller)]][[:action, options.delete(:action)]][:___routes][0][1].ast
-        
-        #what do we do with formatting?
 
-
-        #Uncomment this to learn more about the set of links a hash returns given a controller and an action
-
-
-        # possible_routes = _routes.formatter.cache[[:controller, options[:controller]]][[:action, options[:action]]][:___routes]
-        # puts "POSSIBLE ROUTES"
-        # possible_routes.each do |possible_route|
-        #   # puts possible_route[1].class.instance_methods(false)
-        #   puts possible_route[1].path
-        #   #puts possible_route[1].optional_parts
-        # end
-        # puts possible_routes
-        # puts 'THESE ARE THE AST PART'
-        # ast_link.each do |node_part|
-        #   puts node_part
-        # end
 
 
         if options.has_key?(:format)
@@ -212,8 +191,6 @@ module ActionDispatch
         end
         options_hash =  url_options.symbolize_keys
 
-        # require "debugger"
-        # debugger
 
         "#{options_hash[:protocol]}#{options_hash[:host]}:#{options_hash[:port]}#{ast_link}"
       end
