@@ -73,24 +73,16 @@ module ActionController
     # ==== Parameters
     # * <tt>host_or_options</tt> - Either a host name or any of the url & redirect options
     #                              available to the <tt>force_ssl</tt> method.
-    def force_ssl_redirect(host_or_options = nil)
+    def force_ssl_redirect(host = nil)
       unless request.ssl?
-        options = {
+        secure_url = ActionDispatch::Http::URL.url_for({
           :protocol => 'https://',
-          :host     => request.host,
           :path     => request.fullpath,
-          :status   => :moved_permanently
-        }
+          :host     => request.host
+        })
 
-        if host_or_options.is_a?(Hash)
-          options.merge!(host_or_options)
-        elsif host_or_options
-          options.merge!(:host => host_or_options)
-        end
-
-        secure_url = ActionDispatch::Http::URL.url_for(options.slice(*URL_OPTIONS))
         flash.keep if respond_to?(:flash)
-        redirect_to secure_url, options.slice(*REDIRECT_OPTIONS)
+        redirect_to secure_url, :status => :moved_permanently
       end
     end
   end
