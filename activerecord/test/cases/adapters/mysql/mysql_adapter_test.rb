@@ -16,12 +16,17 @@ module ActiveRecord
         eosql
       end
 
+      def test_valid_column
+        column = @conn.columns('ex').find { |col| col.name == 'id' }
+        assert @conn.valid_type?(column.type)
+      end
+
+      def test_invalid_column
+        assert_not @conn.valid_type?(:foobar)
+      end
+
       def test_client_encoding
-        if "<3".respond_to?(:encoding)
-          assert_equal Encoding::UTF_8, @conn.client_encoding
-        else
-          assert_equal 'utf8', @conn.client_encoding
-        end
+        assert_equal Encoding::UTF_8, @conn.client_encoding
       end
 
       def test_exec_insert_number
@@ -43,15 +48,21 @@ module ActiveRecord
 
         value = result.rows.last.last
 
-        if "<3".respond_to?(:encoding)
-          # FIXME: this should probably be inside the mysql AR adapter?
-          value.force_encoding(@conn.client_encoding)
+        # FIXME: this should probably be inside the mysql AR adapter?
+        value.force_encoding(@conn.client_encoding)
 
-          # The strings in this file are utf-8, so transcode to utf-8
-          value.encode!(Encoding::UTF_8)
-        end
+        # The strings in this file are utf-8, so transcode to utf-8
+        value.encode!(Encoding::UTF_8)
 
         assert_equal str, value
+      end
+
+      def test_tables_quoting
+        @conn.tables(nil, "foo-bar", nil)
+        flunk
+      rescue => e
+        # assertion for *quoted* database properly
+        assert_match(/database 'foo-bar'/, e.inspect)
       end
 
       def test_pk_and_sequence_for
@@ -82,16 +93,6 @@ module ActiveRecord
         pk, seq = @conn.pk_and_sequence_for('ex_with_custom_index_type_pk')
         assert_equal 'id', pk
         assert_equal @conn.default_sequence_name('ex_with_custom_index_type_pk', 'id'), seq
-      end
-
-      def test_tables_quoting
-        begin
-          @conn.tables(nil, "foo-bar", nil)
-          flunk
-        rescue => e
-          # assertion for *quoted* database properly
-          assert_match(/database 'foo-bar'/, e.inspect)
-        end
       end
 
       private

@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'abstract_unit'
 require 'rbconfig'
 
@@ -34,6 +35,11 @@ module StaticTests
     assert_html "/foo/index.html", get("/foo/")
     assert_html "/foo/index.html", get("/foo")
   end
+
+  def test_served_static_file_with_non_english_filename
+    assert_html "means hello in Japanese\n", get("/foo/#{Rack::Utils.escape("こんにちは.html")}")
+  end
+
 
   def test_serves_static_file_with_exclamation_mark_in_filename
     with_static_file "/foo/foo!bar.html" do |file|

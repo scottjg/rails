@@ -5,12 +5,9 @@ require 'rails/generators/generated_attribute'
 module Rails
   module Generators
     class NamedBase < Base
-      argument :name, :type => :string
-      class_option :skip_namespace, :type => :boolean, :default => false,
-                                    :desc => "Skip namespace (affects only isolated applications)"
-
-      class_option :old_style_hash, :type => :boolean, :default => false,
-                                    :desc => "Force using old style hash (:foo => 'bar') on Ruby >= 1.9"
+      argument :name, type: :string
+      class_option :skip_namespace, type: :boolean, default: false,
+                                    desc: "Skip namespace (affects only isolated applications)"
 
       def initialize(args, *options) #:nodoc:
         @inside_template = nil
@@ -43,7 +40,7 @@ module Rails
 
         def indent(content, multiplier = 2)
           spaces = " " * multiplier
-          content = content.each_line.map {|line| "#{spaces}#{line}" }.join
+          content.each_line.map {|line| line.blank? ? line : "#{spaces}#{line}" }.join
         end
 
         def wrap_with_namespace(content)
@@ -87,10 +84,11 @@ module Rails
         end
 
         def namespaced_class_path
-          @namespaced_class_path ||= begin
-            namespace_path = namespace.name.split("::").map {|m| m.underscore }
-            namespace_path + @class_path
-          end
+          @namespaced_class_path ||= [namespaced_path] + @class_path
+        end
+
+        def namespaced_path
+          @namespaced_path ||= namespace.name.split("::").map {|m| m.underscore }[0]
         end
 
         def class_name
@@ -106,7 +104,7 @@ module Rails
         end
 
         def i18n_scope
-          @i18n_scope ||= file_path.gsub('/', '.')
+          @i18n_scope ||= file_path.tr('/', '.')
         end
 
         def table_name
@@ -137,7 +135,7 @@ module Rails
         end
 
         def route_url
-          @route_url ||= class_path.collect{|dname| "/" + dname  }.join('') + "/" + plural_file_name
+          @route_url ||= class_path.collect {|dname| "/" + dname }.join + "/" + plural_file_name
         end
 
         # Tries to retrieve the application name or simple return application.
@@ -162,6 +160,14 @@ module Rails
           end
         end
 
+        def attributes_names
+          @attributes_names ||= attributes.each_with_object([]) do |a, names|
+            names << a.column_name
+            names << 'password_confirmation' if a.password_digest?
+            names << "#{a.name}_type" if a.polymorphic?
+          end
+        end
+
         def pluralize_table_names?
           !defined?(ActiveRecord::Base) || ActiveRecord::Base.pluralize_table_names
         end
@@ -171,10 +177,10 @@ module Rails
         #
         # ==== Examples
         #
-        #   check_class_collision :suffix => "Observer"
+        #   check_class_collision suffix: "Decorator"
         #
         # If the generator is invoked with class name Admin, it will check for
-        # the presence of "AdminObserver".
+        # the presence of "AdminDecorator".
         #
         def self.check_class_collision(options={})
           define_method :check_class_collision do
@@ -185,16 +191,6 @@ module Rails
             end
 
             class_collisions "#{options[:prefix]}#{name}#{options[:suffix]}"
-          end
-        end
-
-        # Returns Ruby 1.9 style key-value pair if current code is running on
-        # Ruby 1.9.x. Returns the old-style (with hash rocket) otherwise.
-        def key_value(key, value)
-          if options[:old_style_hash] || RUBY_VERSION < '1.9'
-            ":#{key} => #{value}"
-          else
-            "#{key}: #{value}"
           end
         end
     end

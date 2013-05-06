@@ -1,6 +1,5 @@
 require "abstract_controller/base"
 require "action_view"
-require "active_support/core_ext/object/instance_variables"
 
 module AbstractController
   class DoubleRenderError < Error
@@ -50,9 +49,19 @@ module AbstractController
     module ClassMethods
       def view_context_class
         @view_context_class ||= begin
-          routes  = _routes  if respond_to?(:_routes)
-          helpers = _helpers if respond_to?(:_helpers)
-          ActionView::Base.prepare(routes, helpers)
+          routes = respond_to?(:_routes) && _routes
+          helpers = respond_to?(:_helpers) && _helpers
+
+          Class.new(ActionView::Base) do
+            if routes
+              include routes.url_helpers
+              include routes.mounted_helpers
+            end
+
+            if helpers
+              include helpers
+            end
+          end
         end
       end
     end
@@ -88,15 +97,23 @@ module AbstractController
       self.response_body = render_to_body(options)
     end
 
-    # Raw rendering of a template to a string. Just convert the results of
-    # render_response into a String.
+    # Raw rendering of a template to a string.
+    #
+    # It is similar to render, except that it does not
+    # set the response_body and it should be guaranteed
+    # to always return a string.
+    #
+    # If a component extends the semantics of response_body
+    # (as Action Controller extends it to be anything that
+    # responds to the method each), this method needs to be
+    # overridden in order to still return a string.
     # :api: plugin
     def render_to_string(*args, &block)
       options = _normalize_render(*args, &block)
       render_to_body(options)
     end
 
-    # Raw rendering of a template to a Rack-compatible body.
+    # Raw rendering of a template.
     # :api: plugin
     def render_to_body(options = {})
       _process_options(options)
@@ -110,20 +127,20 @@ module AbstractController
       view_renderer.render(view_context, options)
     end
 
-    DEFAULT_PROTECTED_INSTANCE_VARIABLES = %w(
-      @_action_name @_response_body @_formats @_prefixes @_config
-      @_view_context_class @_view_renderer @_lookup_context
-    )
+    DEFAULT_PROTECTED_INSTANCE_VARIABLES = [
+      :@_action_name, :@_response_body, :@_formats, :@_prefixes, :@_config,
+      :@_view_context_class, :@_view_renderer, :@_lookup_context
+    ]
 
     # This method should return a hash with assigns.
     # You can overwrite this configuration per controller.
     # :api: public
     def view_assigns
       hash = {}
-      variables  = instance_variable_names
+      variables  = instance_variables
       variables -= protected_instance_variables
       variables -= DEFAULT_PROTECTED_INSTANCE_VARIABLES
-      variables.each { |name| hash[name.to_s[1, name.length]] = instance_variable_get(name) }
+      variables.each { |name| hash[name[1..-1]] = instance_variable_get(name) }
       hash
     end
 

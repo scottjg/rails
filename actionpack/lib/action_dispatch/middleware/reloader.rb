@@ -1,5 +1,3 @@
-require 'action_dispatch/middleware/body_proxy'
-
 module ActionDispatch
   # ActionDispatch::Reloader provides prepare and cleanup callbacks,
   # intended to assist with code reloading during development.
@@ -20,10 +18,10 @@ module ActionDispatch
   # classes before they are unloaded.
   #
   # By default, ActionDispatch::Reloader is included in the middleware stack
-  # only in the development environment; specifically, when config.cache_classes
+  # only in the development environment; specifically, when +config.cache_classes+
   # is false. Callbacks may be registered even when it is not included in the
-  # middleware stack, but are executed only when +ActionDispatch::Reloader.prepare!+
-  # or +ActionDispatch::Reloader.cleanup!+ are called manually.
+  # middleware stack, but are executed only when <tt>ActionDispatch::Reloader.prepare!</tt>
+  # or <tt>ActionDispatch::Reloader.cleanup!</tt> are called manually.
   #
   class Reloader
     include ActiveSupport::Callbacks
@@ -62,8 +60,10 @@ module ActionDispatch
     def call(env)
       @validated = @condition.call
       prepare!
+
       response = @app.call(env)
-      response[2] = ActionDispatch::BodyProxy.new(response[2]) { cleanup! }
+      response[2] = ::Rack::BodyProxy.new(response[2]) { cleanup! }
+
       response
     rescue Exception
       cleanup!

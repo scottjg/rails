@@ -1,7 +1,7 @@
 require 'abstract_unit'
 require 'active_support/core_ext/kernel'
 
-class KernelTest < Test::Unit::TestCase
+class KernelTest < ActiveSupport::TestCase
   def test_silence_warnings
     silence_warnings { assert_nil $VERBOSE }
     assert_equal 1234, silence_warnings { 1234 }
@@ -38,13 +38,20 @@ class KernelTest < Test::Unit::TestCase
     # Skip if we can't STDERR.tell
   end
 
-  def test_silence_stderr_with_return_value
-    assert_equal 1, silence_stderr { 1 }
+  def test_quietly
+    old_stdout_position, old_stderr_position = STDOUT.tell, STDERR.tell
+    quietly do
+      puts 'see me, feel me'
+      STDERR.puts 'touch me, heal me'
+    end
+    assert_equal old_stdout_position, STDOUT.tell
+    assert_equal old_stderr_position, STDERR.tell
+  rescue Errno::ESPIPE
+    # Skip if we can't STDERR.tell
   end
 
-  def test_singleton_class
-    o = Object.new
-    assert_equal class << o; self end, o.singleton_class
+  def test_silence_stderr_with_return_value
+    assert_equal 1, silence_stderr { 1 }
   end
 
   def test_class_eval
@@ -56,10 +63,12 @@ class KernelTest < Test::Unit::TestCase
   def test_capture
     assert_equal 'STDERR', capture(:stderr) { $stderr.print 'STDERR' }
     assert_equal 'STDOUT', capture(:stdout) { print 'STDOUT' }
+    assert_equal "STDERR\n", capture(:stderr) { system('echo STDERR 1>&2') }
+    assert_equal "STDOUT\n", capture(:stdout) { system('echo STDOUT') }
   end
 end
 
-class KernelSuppressTest < Test::Unit::TestCase
+class KernelSuppressTest < ActiveSupport::TestCase
   def test_reraise
     assert_raise(LoadError) do
       suppress(ArgumentError) { raise LoadError }
@@ -90,7 +99,7 @@ class MockStdErr
   end
 end
 
-class KernelDebuggerTest < Test::Unit::TestCase
+class KernelDebuggerTest < ActiveSupport::TestCase
   def test_debugger_not_available_message_to_stderr
     old_stderr = $stderr
     $stderr = MockStdErr.new
@@ -106,10 +115,10 @@ class KernelDebuggerTest < Test::Unit::TestCase
         @logger ||= MockStdErr.new
       end
     end
-    Object.const_set("Rails", rails)
+    Object.const_set(:Rails, rails)
     debugger
     assert_match(/Debugger requested/, rails.logger.output.first)
   ensure
-    Object.send(:remove_const, "Rails")
+    Object.send(:remove_const, :Rails)
   end
 end

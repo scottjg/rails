@@ -1,9 +1,11 @@
 require 'abstract_unit'
 require 'stringio'
+require 'active_support/key_generator'
 
 class CookieStoreTest < ActionDispatch::IntegrationTest
   SessionKey = '_myapp_session'
   SessionSecret = 'b3c631c314c0bbca50c1b2843150fe33'
+  Generator = ActiveSupport::LegacyKeyGenerator.new(SessionSecret)
 
   Verifier = ActiveSupport::MessageVerifier.new(SessionSecret, :digest => 'SHA1')
   SignedBar = Verifier.generate(:foo => "bar", :session_id => SecureRandom.hex(16))
@@ -30,6 +32,11 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
       render :text => "id: #{request.session_options[:id]}"
     end
 
+    def get_class_after_reset_session
+      reset_session
+      render :text => "class: #{session.class}"
+    end
+
     def call_session_clear
       session.clear
       head :ok
@@ -54,8 +61,6 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
       request.session_options[:renew] = true
       head :ok
     end
-
-    def rescue_action(e) raise end
   end
 
   def test_setting_session_value
@@ -189,11 +194,26 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
       get '/call_reset_session'
       assert_response :success
       assert_not_equal [], headers['Set-Cookie']
+      assert_not_nil session_payload
       assert_not_equal session_payload, cookies[SessionKey]
 
       get '/get_session_value'
       assert_response :success
       assert_equal 'foo: nil', response.body
+    end
+  end
+
+  def test_class_type_after_session_reset
+    with_test_route_set do
+      get '/set_session_value'
+      assert_response :success
+      assert_equal "_myapp_session=#{response.body}; path=/; HttpOnly",
+        headers['Set-Cookie']
+
+      get '/get_class_after_reset_session'
+      assert_response :success
+      assert_not_equal [], headers['Set-Cookie']
+      assert_equal 'class: ActionDispatch::Request::Session', response.body
     end
   end
 
@@ -255,7 +275,7 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
       # First request accesses the session
       time = Time.local(2008, 4, 24)
       Time.stubs(:now).returns(time)
-      expected_expiry = (time + 5.hours).gmtime.strftime("%a, %d-%b-%Y %H:%M:%S GMT")
+      expected_expiry = (time + 5.hours).gmtime.strftime("%a, %d %b %Y %H:%M:%S -0000")
 
       cookies[SessionKey] = SignedBar
 
@@ -269,7 +289,7 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
       # Second request does not access the session
       time = Time.local(2008, 4, 25)
       Time.stubs(:now).returns(time)
-      expected_expiry = (time + 5.hours).gmtime.strftime("%a, %d-%b-%Y %H:%M:%S GMT")
+      expected_expiry = (time + 5.hours).gmtime.strftime("%a, %d %b %Y %H:%M:%S -0000")
 
       get '/no_session_access'
       assert_response :success
@@ -312,14 +332,14 @@ class CookieStoreTest < ActionDispatch::IntegrationTest
 
     # Overwrite get to send SessionSecret in env hash
     def get(path, parameters = nil, env = {})
-      env["action_dispatch.secret_token"] ||= SessionSecret
+      env["action_dispatch.key_generator"] ||= Generator
       super
     end
 
     def with_test_route_set(options = {})
       with_routing do |set|
         set.draw do
-          match ':action', :to => ::CookieStoreTest::TestController
+          get ':action', :to => ::CookieStoreTest::TestController
         end
 
         options = { :key => SessionKey }.merge!(options)

@@ -14,8 +14,8 @@ module ActiveRecord
         def target_scope
           scope = super
           chain[1..-1].each do |reflection|
-            scope = scope.merge(
-              reflection.klass.scoped.with_default_scope.
+            scope.merge!(
+              reflection.klass.all.with_default_scope.
                 except(:select, :create_with, :includes, :preload, :joins, :eager_load)
             )
           end
@@ -28,7 +28,7 @@ module ActiveRecord
         # methods which create and delete records on the association.
         #
         # We only support indirectly modifying through associations which has a belongs_to source.
-        # This is the "has_many :tags, :through => :taggings" situation, where the join model
+        # This is the "has_many :tags, through: :taggings" situation, where the join model
         # typically has a belongs_to on both side. In other words, associations which could also
         # be represented as has_and_belongs_to_many associations.
         #
@@ -62,7 +62,7 @@ module ActiveRecord
         # properly support stale-checking for nested associations.
         def stale_state
           if through_reflection.macro == :belongs_to
-            owner[through_reflection.foreign_key].to_s
+            owner[through_reflection.foreign_key] && owner[through_reflection.foreign_key].to_s
           end
         end
 

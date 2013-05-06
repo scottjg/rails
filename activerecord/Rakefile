@@ -1,4 +1,3 @@
-#!/usr/bin/env rake
 require 'rake/testtask'
 require 'rake/packagetask'
 require 'rubygems/package_task'
@@ -40,6 +39,11 @@ namespace :test do
   end
 end
 
+namespace :db do
+  task :create => ['mysql:build_databases', 'postgresql:build_databases']
+  task :drop => ['mysql:drop_databases', 'postgresql:drop_databases']
+end
+
 %w( mysql mysql2 postgresql sqlite3 sqlite3_mem firebird db2 oracle sybase openbase frontbase jdbcmysql jdbcpostgresql jdbcsqlite3 jdbcderby jdbch2 jdbchsqldb ).each do |adapter|
   Rake::TestTask.new("test_#{adapter}") { |t|
     adapter_short = adapter == 'db2' ? adapter : adapter[/^[a-z0-9]+/]
@@ -48,8 +52,8 @@ end
       |x| x =~ /\/adapters\//
     } + Dir.glob("test/cases/adapters/#{adapter_short}/**/*_test.rb")).sort
 
-    t.verbose = true
     t.warning = true
+    t.verbose = true
   }
 
   task "isolated_test_#{adapter}" do
@@ -113,8 +117,18 @@ namespace :postgresql do
   desc 'Build the PostgreSQL test databases'
   task :build_databases do
     config = ARTest.config['connections']['postgresql']
-    %x( createdb -E UTF8 #{config['arunit']['database']} )
-    %x( createdb -E UTF8 #{config['arunit2']['database']} )
+    %x( createdb -E UTF8 -T template0 #{config['arunit']['database']} )
+    %x( createdb -E UTF8 -T template0 #{config['arunit2']['database']} )
+
+    # prepare hstore
+    version = %x( createdb --version ).strip.gsub(/(.*)(\d\.\d\.\d)$/, "\\2")
+    %w(arunit arunit2).each do |db|
+      if version < "9.1.0"
+        puts "Please prepare hstore data type. See http://www.postgresql.org/docs/9.0/static/hstore.html"
+      else
+        %x( psql #{config[db]['database']} -c "CREATE EXTENSION hstore;" )
+      end
+    end
   end
 
   desc 'Drop the PostgreSQL test databases'
@@ -187,15 +201,15 @@ end
 task :lines do
   lines, codelines, total_lines, total_codelines = 0, 0, 0, 0
 
-  for file_name in FileList["lib/active_record/**/*.rb"]
+  FileList["lib/active_record/**/*.rb"].each do |file_name|
     next if file_name =~ /vendor/
-    f = File.open(file_name)
-
-    while line = f.gets
-      lines += 1
-      next if line =~ /^\s*$/
-      next if line =~ /^\s*#/
-      codelines += 1
+    File.open(file_name, 'r') do |f|
+      while line = f.gets
+        lines += 1
+        next if line =~ /^\s*$/
+        next if line =~ /^\s*#/
+        codelines += 1
+      end
     end
     puts "L: #{sprintf("%4d", lines)}, LOC #{sprintf("%4d", codelines)} | #{file_name}"
 

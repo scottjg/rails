@@ -4,13 +4,19 @@ module ActionView
   class OutputBuffer < ActiveSupport::SafeBuffer #:nodoc:
     def initialize(*)
       super
-      encode! if encoding_aware?
+      encode!
     end
 
     def <<(value)
+      return self if value.nil?
       super(value.to_s)
     end
     alias :append= :<<
+
+    def safe_concat(value)
+      return self if value.nil?
+      super(value.to_s)
+    end
     alias :safe_append= :safe_concat
   end
 

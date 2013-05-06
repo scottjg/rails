@@ -2,8 +2,8 @@ require 'date'
 require 'bigdecimal'
 require 'bigdecimal/util'
 require 'active_support/core_ext/benchmark'
-require 'active_support/deprecation'
 require 'active_record/connection_adapters/schema_cache'
+require 'active_record/connection_adapters/abstract/schema_dumper'
 require 'monitor'
 
 module ActiveRecord
@@ -11,24 +11,34 @@ module ActiveRecord
     extend ActiveSupport::Autoload
 
     autoload :Column
+    autoload :ConnectionSpecification
+
+    autoload_at 'active_record/connection_adapters/abstract/schema_definitions' do
+      autoload :IndexDefinition
+      autoload :ColumnDefinition
+      autoload :TableDefinition
+      autoload :Table
+      autoload :AlterTable
+    end
+
+    autoload_at 'active_record/connection_adapters/abstract/connection_pool' do
+      autoload :ConnectionHandler
+      autoload :ConnectionManagement
+    end
 
     autoload_under 'abstract' do
-      autoload :IndexDefinition,  'active_record/connection_adapters/abstract/schema_definitions'
-      autoload :ColumnDefinition, 'active_record/connection_adapters/abstract/schema_definitions'
-      autoload :TableDefinition,  'active_record/connection_adapters/abstract/schema_definitions'
-      autoload :Table,            'active_record/connection_adapters/abstract/schema_definitions'
-
       autoload :SchemaStatements
       autoload :DatabaseStatements
       autoload :DatabaseLimits
       autoload :Quoting
-
       autoload :ConnectionPool
-      autoload :ConnectionHandler,       'active_record/connection_adapters/abstract/connection_pool'
-      autoload :ConnectionManagement,    'active_record/connection_adapters/abstract/connection_pool'
-      autoload :ConnectionSpecification
-
       autoload :QueryCache
+    end
+
+    autoload_at 'active_record/connection_adapters/abstract/transaction' do
+      autoload :ClosedTransaction
+      autoload :RealTransaction
+      autoload :SavepointTransaction
     end
 
     # Active Record supports multiple database systems. AbstractAdapter and
@@ -50,6 +60,9 @@ module ActiveRecord
       include QueryCache
       include ActiveSupport::Callbacks
       include MonitorMixin
+      include ColumnDumper
+
+      SIMPLE_INT = /\A\d+\z/
 
       define_callbacks :checkout, :checkin
 
@@ -57,21 +70,108 @@ module ActiveRecord
       attr_reader :schema_cache, :last_use, :in_use, :logger
       alias :in_use? :in_use
 
+      def self.type_cast_config_to_integer(config)
+        if config =~ SIMPLE_INT
+          config.to_i
+        else
+          config
+        end
+      end
+
+      def self.type_cast_config_to_boolean(config)
+        if config == "false"
+          false
+        else
+          config
+        end
+      end
+
       def initialize(connection, logger = nil, pool = nil) #:nodoc:
         super()
 
-        @active              = nil
         @connection          = connection
         @in_use              = false
         @instrumenter        = ActiveSupport::Notifications.instrumenter
         @last_use            = false
         @logger              = logger
-        @open_transactions   = 0
         @pool                = pool
         @query_cache         = Hash.new { |h,sql| h[sql] = {} }
         @query_cache_enabled = false
         @schema_cache        = SchemaCache.new self
         @visitor             = nil
+      end
+
+      def valid_type?(type)
+        true
+      end
+
+      class SchemaCreation
+        def initialize(conn)
+          @conn  = conn
+          @cache = {}
+        end
+
+        def accept(o)
+          m = @cache[o.class] ||= "visit_#{o.class.name.split('::').last}"
+          send m, o
+        end
+
+        private
+
+        def visit_AlterTable(o)
+          sql = "ALTER TABLE #{quote_table_name(o.name)} "
+          sql << o.adds.map { |col| visit_AddColumn col }.join(' ')
+        end
+
+        def visit_AddColumn(o)
+          sql_type = type_to_sql(o.type.to_sym, o.limit, o.precision, o.scale)
+          sql = "ADD #{quote_column_name(o.name)} #{sql_type}"
+          add_column_options!(sql, column_options(o))
+        end
+
+        def visit_ColumnDefinition(o)
+          sql_type = type_to_sql(o.type.to_sym, o.limit, o.precision, o.scale)
+          column_sql = "#{quote_column_name(o.name)} #{sql_type}"
+          add_column_options!(column_sql, column_options(o)) unless o.primary_key?
+          column_sql
+        end
+
+        def visit_TableDefinition(o)
+          create_sql = "CREATE#{' TEMPORARY' if o.temporary} TABLE "
+          create_sql << "#{quote_table_name(o.name)} ("
+          create_sql << o.columns.map { |c| accept c }.join(', ')
+          create_sql << ") #{o.options}"
+          create_sql
+        end
+
+        def column_options(o)
+          column_options = {}
+          column_options[:null] = o.null unless o.null.nil?
+          column_options[:default] = o.default unless o.default.nil?
+          column_options[:column] = o
+          column_options
+        end
+
+        def quote_column_name(name)
+          @conn.quote_column_name name
+        end
+
+        def quote_table_name(name)
+          @conn.quote_table_name name
+        end
+
+        def type_to_sql(type, limit, precision, scale)
+          @conn.type_to_sql type.to_sym, limit, precision, scale
+        end
+
+        def add_column_options!(column_sql, column_options)
+          @conn.add_column_options! column_sql, column_options
+          column_sql
+        end
+      end
+
+      def schema_creation
+        SchemaCreation.new self
       end
 
       def lease
@@ -83,8 +183,24 @@ module ActiveRecord
         end
       end
 
+      def schema_cache=(cache)
+        cache.connection = self
+        @schema_cache = cache
+      end
+
       def expire
         @in_use = false
+      end
+
+      def unprepared_visitor
+        self.class::BindSubstitution.new self
+      end
+
+      def unprepared_statement
+        old, @visitor = @visitor, unprepared_visitor
+        yield
+      ensure
+        @visitor = old
       end
 
       # Returns the human-readable name of the adapter. Use mixed case - one
@@ -142,21 +258,44 @@ module ActiveRecord
         false
       end
 
+      # Does this adapter support partial indices?
+      def supports_partial_index?
+        false
+      end
+
       # Does this adapter support explain? As of this writing sqlite3,
       # mysql2, and postgresql are the only ones that do.
       def supports_explain?
         false
       end
 
-      # QUOTING ==================================================
-
-      # Override to return the quoted table name. Defaults to column quoting.
-      def quote_table_name(name)
-        quote_column_name(name)
+      # Does this adapter support setting the isolation level for a transaction?
+      def supports_transaction_isolation?
+        false
       end
 
+      # Does this adapter support database extensions? As of this writing only
+      # postgresql does.
+      def supports_extensions?
+        false
+      end
+
+      # A list of extensions, to be filled in by adapters that support them. At
+      # the moment only postgresql does.
+      def extensions
+        []
+      end
+
+      # A list of index algorithms, to be filled by adapters that support them.
+      # MySQL and PostgreSQL have support for them right now.
+      def index_algorithms
+        {}
+      end
+
+      # QUOTING ==================================================
+
       # Returns a bind substitution value given a +column+ and list of current
-      # +binds+
+      # +binds+.
       def substitute_at(column, index)
         Arel::Nodes::BindParam.new '?'
       end
@@ -174,19 +313,21 @@ module ActiveRecord
       # checking whether the database is actually capable of responding, i.e. whether
       # the connection isn't stale.
       def active?
-        @active != false
       end
 
       # Disconnects from the database if already connected, and establishes a
-      # new connection with the database.
+      # new connection with the database. Implementors should call super if they
+      # override the default implementation.
       def reconnect!
-        @active = true
+        clear_cache!
+        reset_transaction
       end
 
       # Disconnects from the database if already connected. Otherwise, this
       # method does nothing.
       def disconnect!
-        @active = false
+        clear_cache!
+        reset_transaction
       end
 
       # Reset the state of this connection, directing the DBMS to clear
@@ -229,18 +370,22 @@ module ActiveRecord
         @connection
       end
 
-      attr_reader :open_transactions
+      def open_transactions
+        @transaction.number
+      end
 
       def increment_open_transactions
-        @open_transactions += 1
+        ActiveSupport::Deprecation.warn "#increment_open_transactions is deprecated and has no effect"
       end
 
       def decrement_open_transactions
-        @open_transactions -= 1
+        ActiveSupport::Deprecation.warn "#decrement_open_transactions is deprecated and has no effect"
       end
 
       def transaction_joinable=(joinable)
-        @transaction_joinable = joinable
+        message = "#transaction_joinable= is deprecated. Please pass the :joinable option to #begin_transaction instead."
+        ActiveSupport::Deprecation.warn message
+        @transaction.joinable = joinable
       end
 
       def create_savepoint
@@ -271,26 +416,25 @@ module ActiveRecord
 
       protected
 
-        def log(sql, name = "SQL", binds = [])
-          @instrumenter.instrument(
-            "sql.active_record",
-            :sql           => sql,
-            :name          => name,
-            :connection_id => object_id,
-            :binds         => binds) { yield }
-        rescue Exception => e
-          message = "#{e.class.name}: #{e.message}: #{sql}"
-          @logger.debug message if @logger
-          exception = translate_exception(e, message)
-          exception.set_backtrace e.backtrace
-          raise exception
-        end
+      def log(sql, name = "SQL", binds = [])
+        @instrumenter.instrument(
+          "sql.active_record",
+          :sql           => sql,
+          :name          => name,
+          :connection_id => object_id,
+          :binds         => binds) { yield }
+      rescue => e
+        message = "#{e.class.name}: #{e.message}: #{sql}"
+        @logger.error message if @logger
+        exception = translate_exception(e, message)
+        exception.set_backtrace e.backtrace
+        raise exception
+      end
 
-        def translate_exception(e, message)
-          # override in derived class
-          ActiveRecord::StatementInvalid.new(message)
-        end
-
+      def translate_exception(exception, message)
+        # override in derived class
+        ActiveRecord::StatementInvalid.new(message, exception)
+      end
     end
   end
 end

@@ -1,18 +1,17 @@
 require 'active_support/core_ext/object/try'
-require 'active_support/core_ext/array/wrap'
 
 module ActionView
   class TemplateRenderer < AbstractRenderer #:nodoc:
     def render(context, options)
       @view    = context
       @details = extract_details(options)
-      extract_format(options[:file] || options[:template], @details)
       template = determine_template(options)
       context  = @lookup_context
 
+      prepend_formats(template.formats)
+
       unless context.rendered_format
-        context.formats = template.formats unless template.formats.empty?
-        context.rendered_format = context.formats.first
+        context.rendered_format = template.formats.first || formats.last
       end
 
       render_template(template, options[:layout], options[:locals])
@@ -20,26 +19,29 @@ module ActionView
 
     # Determine the template to be rendered using the given options.
     def determine_template(options) #:nodoc:
-      keys = options[:locals].try(:keys) || []
+      keys = options.fetch(:locals, {}).keys
 
       if options.key?(:text)
-        Template::Text.new(options[:text], formats.try(:first))
+        Template::Text.new(options[:text], formats.first)
       elsif options.key?(:file)
         with_fallbacks { find_template(options[:file], nil, false, keys, @details) }
       elsif options.key?(:inline)
         handler = Template.handler_for_extension(options[:type] || "erb")
         Template.new(options[:inline], "inline template", handler, :locals => keys)
       elsif options.key?(:template)
-        options[:template].respond_to?(:render) ?
-          options[:template] : find_template(options[:template], options[:prefixes], false, keys, @details)
+        if options[:template].respond_to?(:render)
+          options[:template]
+        else
+          find_template(options[:template], options[:prefixes], false, keys, @details)
+        end
       else
         raise ArgumentError, "You invoked render but did not give any of :partial, :template, :inline, :file or :text option."
       end
     end
 
-    # Renders the given template. An string representing the layout can be
+    # Renders the given template. A string representing the layout can be
     # supplied as well.
-    def render_template(template, layout_name = nil, locals = {}) #:nodoc:
+    def render_template(template, layout_name = nil, locals = nil) #:nodoc:
       view, locals = @view, locals || {}
 
       render_with_layout(layout_name, locals) do |layout|

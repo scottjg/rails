@@ -157,7 +157,7 @@ module Notifications
       assert_equal 2, instrument(:awesome) { 1 + 1 }
     end
 
-    def test_instrument_yields_the_paylod_for_further_modification
+    def test_instrument_yields_the_payload_for_further_modification
       assert_equal 2, instrument(:awesome) { |p| p[:result] = 1 + 1 }
       assert_equal 1, @events.size
       assert_equal :awesome, @events.first.name
@@ -221,12 +221,14 @@ module Notifications
       assert_equal Hash[:payload => :bar], event.payload
     end
 
-    def test_event_is_parent_based_on_time_frame
+    def test_event_is_parent_based_on_children
       time = Time.utc(2009, 01, 01, 0, 0, 1)
 
       parent    = event(:foo, Time.utc(2009), Time.utc(2009) + 100, random_id, {})
       child     = event(:foo, time, time + 10, random_id, {})
       not_child = event(:foo, time, time + 100, random_id, {})
+
+      parent.children << child
 
       assert parent.parent_of?(child)
       assert !child.parent_of?(parent)

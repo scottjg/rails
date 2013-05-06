@@ -45,17 +45,16 @@ class MessageVerifierTest < ActiveSupport::TestCase
   end
   
   def test_alternative_serialization_method
+    prev = ActiveSupport.use_standard_json_time_format
+    ActiveSupport.use_standard_json_time_format = true
     verifier = ActiveSupport::MessageVerifier.new("Hey, I'm a secret!", :serializer => JSONSerializer.new)
     message = verifier.generate({ :foo => 123, 'bar' => Time.utc(2010) })
-    assert_equal verifier.verify(message), { "foo" => 123, "bar" => "2010-01-01T00:00:00Z" }
+    exp = { "foo" => 123, "bar" => "2010-01-01T00:00:00Z" }
+    assert_equal exp, verifier.verify(message)
+  ensure
+    ActiveSupport.use_standard_json_time_format = prev
   end
   
-  def test_digest_algorithm_as_second_parameter_deprecation
-    assert_deprecated(/options hash/) do
-      ActiveSupport::MessageVerifier.new("secret", "SHA1")
-    end
-  end
-
   def assert_not_verified(message)
     assert_raise(ActiveSupport::MessageVerifier::InvalidSignature) do
       @verifier.verify(message)

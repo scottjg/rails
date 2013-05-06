@@ -45,15 +45,15 @@ module ActionController #:nodoc:
   #       if @user.save
   #         flash[:notice] = 'User was successfully created.'
   #         format.html { redirect_to(@user) }
-  #         format.xml { render :xml => @user, :status => :created, :location => @user }
+  #         format.xml { render xml: @user, status: :created, location: @user }
   #       else
-  #         format.html { render :action => "new" }
-  #         format.xml { render :xml => @user.errors, :status => :unprocessable_entity }
+  #         format.html { render action: "new" }
+  #         format.xml { render xml: @user.errors, status: :unprocessable_entity }
   #       end
   #     end
   #   end
   #
-  # The same happens for PUT and DELETE requests.
+  # The same happens for PATCH/PUT and DELETE requests.
   #
   # === Nested resources
   #
@@ -63,7 +63,7 @@ module ActionController #:nodoc:
   #
   #   def create
   #     @project = Project.find(params[:project_id])
-  #     @task = @project.comments.build(params[:task])
+  #     @task = @project.tasks.build(params[:task])
   #     flash[:notice] = 'Task was successfully created.' if @task.save
   #     respond_with(@project, @task)
   #   end
@@ -90,9 +90,9 @@ module ActionController #:nodoc:
   #
   #   def create
   #     @project = Project.find(params[:project_id])
-  #     @task = @project.comments.build(params[:task])
+  #     @task = @project.tasks.build(params[:task])
   #     flash[:notice] = 'Task was successfully created.' if @task.save
-  #     respond_with(@project, @task, :status => 201)
+  #     respond_with(@project, @task, status: 201)
   #   end
   #
   # This will return status 201 if the task was saved successfully. If not,
@@ -102,8 +102,8 @@ module ActionController #:nodoc:
   #
   #   def create
   #     @project = Project.find(params[:project_id])
-  #     @task = @project.comments.build(params[:task])
-  #     respond_with(@project, @task, :status => 201) do |format|
+  #     @task = @project.tasks.build(params[:task])
+  #     respond_with(@project, @task, status: 201) do |format|
   #       if @task.save
   #         flash[:notice] = 'Task was successfully created.'
   #       else
@@ -116,8 +116,9 @@ module ActionController #:nodoc:
   class Responder
     attr_reader :controller, :request, :format, :resource, :resources, :options
 
-    ACTIONS_FOR_VERBS = {
+    DEFAULT_ACTIONS_FOR_VERBS = {
       :post => :new,
+      :patch => :edit,
       :put => :edit
     }
 
@@ -133,7 +134,7 @@ module ActionController #:nodoc:
     end
 
     delegate :head, :render, :redirect_to,   :to => :controller
-    delegate :get?, :post?, :put?, :delete?, :to => :request
+    delegate :get?, :post?, :patch?, :put?, :delete?, :to => :request
 
     # Undefine :to_json and :to_yaml since it's defined on Object
     undef_method(:to_json) if method_defined?(:to_json)
@@ -235,20 +236,20 @@ module ActionController #:nodoc:
 
     # Display is just a shortcut to render a resource with the current format.
     #
-    #   display @user, :status => :ok
+    #   display @user, status: :ok
     #
     # For XML requests it's equivalent to:
     #
-    #   render :xml => @user, :status => :ok
+    #   render xml: @user, status: :ok
     #
     # Options sent by the user are also used:
     #
-    #   respond_with(@user, :status => :created)
-    #   display(@user, :status => :ok)
+    #   respond_with(@user, status: :created)
+    #   display(@user, status: :ok)
     #
     # Results in:
     #
-    #   render :xml => @user, :status => :created
+    #   render xml: @user, status: :created
     #
     def display(resource, given_options={})
       controller.render given_options.merge!(options).merge!(format => resource)
@@ -264,11 +265,11 @@ module ActionController #:nodoc:
       resource.respond_to?(:errors) && !resource.errors.empty?
     end
 
-    # By default, render the <code>:edit</code> action for HTML requests with failure, unless
-    # the verb is POST.
+    # By default, render the <code>:edit</code> action for HTML requests with errors, unless
+    # the verb was POST.
     #
     def default_action
-      @action ||= ACTIONS_FOR_VERBS[request.request_method_symbol]
+      @action ||= DEFAULT_ACTIONS_FOR_VERBS[request.request_method_symbol]
     end
 
     def resource_errors

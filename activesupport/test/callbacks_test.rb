@@ -1,10 +1,9 @@
 require 'abstract_unit'
-require 'test/unit'
 
 module CallbacksTest
   class Phone
     include ActiveSupport::Callbacks
-    define_callbacks :save, :rescuable => true
+    define_callbacks :save
 
     set_callback :save, :before, :before_save1
     set_callback :save, :after, :after_save1
@@ -67,6 +66,16 @@ module CallbacksTest
     end
   end
 
+  class CallbackClass
+    def self.before(model)
+      model.history << [:before_save, :class]
+    end
+    
+    def self.after(model)
+      model.history << [:after_save, :class]
+    end
+  end
+
   class Person < Record
     [:before_save, :after_save].each do |callback_method|
       callback_method_sym = callback_method.to_sym
@@ -74,6 +83,7 @@ module CallbacksTest
       send(callback_method, callback_string(callback_method_sym))
       send(callback_method, callback_proc(callback_method_sym))
       send(callback_method, callback_object(callback_method_sym.to_s.gsub(/_save/, '')))
+      send(callback_method, CallbackClass)
       send(callback_method) { |model| model.history << [callback_method_sym, :block] }
     end
 
@@ -87,6 +97,7 @@ module CallbacksTest
     skip_callback :save, :after, :before_save_method, :unless => :yes
     skip_callback :save, :after, :before_save_method, :if => :no
     skip_callback :save, :before, :before_save_method, :unless => :no
+    skip_callback :save, :before, CallbackClass , :if => :yes
     def yes; true; end
     def no; false; end
   end
@@ -96,7 +107,7 @@ module CallbacksTest
 
     define_callbacks :dispatch
 
-    set_callback :dispatch, :before, :log, :per_key => {:unless => proc {|c| c.action_name == :index || c.action_name == :show }}
+    set_callback :dispatch, :before, :log, :unless => proc {|c| c.action_name == :index || c.action_name == :show }
     set_callback :dispatch, :after, :log2
 
     attr_reader :action_name, :logger
@@ -113,7 +124,7 @@ module CallbacksTest
     end
 
     def dispatch
-      run_callbacks :dispatch, action_name do
+      run_callbacks :dispatch do
         @logger << "Done"
       end
       self
@@ -121,7 +132,7 @@ module CallbacksTest
   end
 
   class Child < ParentController
-    skip_callback :dispatch, :before, :log, :per_key => {:if => proc {|c| c.action_name == :update} }
+    skip_callback :dispatch, :before, :log, :if => proc {|c| c.action_name == :update}
     skip_callback :dispatch, :after, :log2
   end
 
@@ -132,10 +143,10 @@ module CallbacksTest
       super
     end
 
-    before_save Proc.new {|r| r.history << [:before_save, :starts_true, :if] }, :per_key => {:if => :starts_true}
-    before_save Proc.new {|r| r.history << [:before_save, :starts_false, :if] }, :per_key => {:if => :starts_false}
-    before_save Proc.new {|r| r.history << [:before_save, :starts_true, :unless] }, :per_key => {:unless => :starts_true}
-    before_save Proc.new {|r| r.history << [:before_save, :starts_false, :unless] }, :per_key => {:unless => :starts_false}
+    before_save Proc.new {|r| r.history << [:before_save, :starts_true, :if] }, :if => :starts_true
+    before_save Proc.new {|r| r.history << [:before_save, :starts_false, :if] }, :if => :starts_false
+    before_save Proc.new {|r| r.history << [:before_save, :starts_true, :unless] }, :unless => :starts_true
+    before_save Proc.new {|r| r.history << [:before_save, :starts_false, :unless] }, :unless => :starts_false
 
     def starts_true
       if @@starts_true
@@ -154,11 +165,11 @@ module CallbacksTest
     end
 
     def save
-      run_callbacks :save, :action
+      run_callbacks :save
     end
   end
 
-  class OneTimeCompileTest < Test::Unit::TestCase
+  class OneTimeCompileTest < ActiveSupport::TestCase
     def test_optimized_first_compile
       around = OneTimeCompile.new
       around.save
@@ -177,7 +188,7 @@ module CallbacksTest
     end
   end
 
-  class AfterSaveConditionalPersonCallbackTest < Test::Unit::TestCase
+  class AfterSaveConditionalPersonCallbackTest < ActiveSupport::TestCase
     def test_after_save_runs_in_the_reverse_order
       person = AfterSaveConditionalPerson.new
       person.save
@@ -330,7 +341,7 @@ module CallbacksTest
     define_callbacks :save
     attr_reader :stuff
 
-    set_callback :save, :before, :action, :per_key => {:if => :yes}
+    set_callback :save, :before, :action, :if => :yes
 
     def yes() true end
 
@@ -339,12 +350,11 @@ module CallbacksTest
     end
 
     def save
-      run_callbacks :save, "hyphen-ated" do
+      run_callbacks :save do
         @stuff
       end
     end
   end
-
 
   module ExtendModule
     def self.extended(base)
@@ -394,7 +404,7 @@ module CallbacksTest
       end
   end
 
-  class AroundCallbacksTest < Test::Unit::TestCase
+  class AroundCallbacksTest < ActiveSupport::TestCase
     def test_save_around
       around = AroundPerson.new
       around.save
@@ -413,7 +423,7 @@ module CallbacksTest
     end
   end
 
-  class AroundCallbackResultTest < Test::Unit::TestCase
+  class AroundCallbackResultTest < ActiveSupport::TestCase
     def test_save_around
       around = AroundPersonResult.new
       around.save
@@ -421,7 +431,7 @@ module CallbacksTest
     end
   end
 
-  class SkipCallbacksTest < Test::Unit::TestCase
+  class SkipCallbacksTest < ActiveSupport::TestCase
     def test_skip_person
       person = PersonSkipper.new
       assert_equal [], person.history
@@ -432,6 +442,7 @@ module CallbacksTest
         [:before_save, :object],
         [:before_save, :block],
         [:after_save, :block],
+        [:after_save, :class],
         [:after_save, :object],
         [:after_save, :proc],
         [:after_save, :string],
@@ -440,14 +451,7 @@ module CallbacksTest
     end
   end
 
-  class CallbacksTest < Test::Unit::TestCase
-    def test_save_phone
-      phone = Phone.new
-      assert_raise RuntimeError do
-        phone.save
-      end
-      assert_equal [:before, :after], phone.history
-    end
+  class CallbacksTest < ActiveSupport::TestCase
 
     def test_save_person
       person = Person.new
@@ -458,8 +462,10 @@ module CallbacksTest
         [:before_save, :string],
         [:before_save, :proc],
         [:before_save, :object],
+        [:before_save, :class],
         [:before_save, :block],
         [:after_save, :block],
+        [:after_save, :class],
         [:after_save, :object],
         [:after_save, :proc],
         [:after_save, :string],
@@ -468,7 +474,7 @@ module CallbacksTest
     end
   end
 
-  class ConditionalCallbackTest < Test::Unit::TestCase
+  class ConditionalCallbackTest < ActiveSupport::TestCase
     def test_save_conditional_person
       person = ConditionalPerson.new
       person.save
@@ -486,7 +492,7 @@ module CallbacksTest
 
 
 
-  class ResetCallbackTest < Test::Unit::TestCase
+  class ResetCallbackTest < ActiveSupport::TestCase
     def test_save_conditional_person
       person = CleanPerson.new
       person.save
@@ -616,7 +622,46 @@ module CallbacksTest
     end
   end
 
-  class UsingObjectTest < Test::Unit::TestCase
+  class OneTwoThreeSave
+    include ActiveSupport::Callbacks
+
+    define_callbacks :save
+
+    attr_accessor :record
+
+    def initialize
+      @record = []
+    end
+
+    def save
+      run_callbacks :save do
+        @record << "yielded"
+      end
+    end
+
+    def first
+      @record << "one"
+    end
+
+    def second
+      @record << "two"
+    end
+
+    def third
+      @record << "three"
+    end
+  end
+
+  class DuplicatingCallbacks < OneTwoThreeSave
+    set_callback :save, :before, :first, :second
+    set_callback :save, :before, :first, :third
+  end
+
+  class DuplicatingCallbacksInSameCall < OneTwoThreeSave
+    set_callback :save, :before, :first, :second, :first, :third
+  end
+
+  class UsingObjectTest < ActiveSupport::TestCase
     def test_before_object
       u = UsingObjectBefore.new
       u.save
@@ -641,7 +686,7 @@ module CallbacksTest
     end
   end
 
-  class CallbackTerminatorTest < Test::Unit::TestCase
+  class CallbackTerminatorTest < ActiveSupport::TestCase
     def test_termination
       terminator = CallbackTerminator.new
       terminator.save
@@ -661,7 +706,7 @@ module CallbacksTest
     end
   end
 
-  class HyphenatedKeyTest < Test::Unit::TestCase
+  class HyphenatedKeyTest < ActiveSupport::TestCase
     def test_save
       obj = HyphenatedCallbacks.new
       obj.save
@@ -674,7 +719,7 @@ module CallbacksTest
     skip_callback :save, :before, :before_save_method, :if => lambda {self.age > 21}
   end
 
-  class WriterCallbacksTest < Test::Unit::TestCase
+  class WriterCallbacksTest < ActiveSupport::TestCase
     def test_skip_writer
       writer = WriterSkipper.new
       writer.age = 18
@@ -685,8 +730,10 @@ module CallbacksTest
         [:before_save, :string],
         [:before_save, :proc],
         [:before_save, :object],
+        [:before_save, :class],
         [:before_save, :block],
         [:after_save, :block],
+        [:after_save, :class],
         [:after_save, :object],
         [:after_save, :proc],
         [:after_save, :string],
@@ -695,7 +742,7 @@ module CallbacksTest
     end
   end
 
-  class ExtendCallbacksTest < Test::Unit::TestCase
+  class ExtendCallbacksTest < ActiveSupport::TestCase
     def test_save
       model = ExtendCallbacks.new.extend ExtendModule
       model.save
@@ -703,4 +750,33 @@ module CallbacksTest
     end
   end
 
+  class PerKeyOptionDeprecationTest < ActiveSupport::TestCase
+
+    def test_per_key_option_deprecation
+      assert_raise NotImplementedError do
+        Phone.class_eval do
+          set_callback :save, :before, :before_save1, :per_key => {:if => "true"}
+        end
+      end
+      assert_raise NotImplementedError do
+        Phone.class_eval do
+          skip_callback :save, :before, :before_save1, :per_key => {:if => "true"}
+        end
+      end
+    end
+  end
+
+  class ExcludingDuplicatesCallbackTest < ActiveSupport::TestCase
+    def test_excludes_duplicates_in_separate_calls
+      model = DuplicatingCallbacks.new
+      model.save
+      assert_equal ["two", "one", "three", "yielded"], model.record
+    end
+
+    def test_excludes_duplicates_in_one_call
+      model = DuplicatingCallbacksInSameCall.new
+      model.save
+      assert_equal ["two", "one", "three", "yielded"], model.record
+    end
+  end
 end

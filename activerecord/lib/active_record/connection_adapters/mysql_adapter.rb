@@ -2,13 +2,11 @@ require 'active_record/connection_adapters/abstract_mysql_adapter'
 require 'active_record/connection_adapters/statement_pool'
 require 'active_support/core_ext/hash/keys'
 
-gem 'mysql', '~> 2.8.1'
+gem 'mysql', '~> 2.9'
 require 'mysql'
 
 class Mysql
   class Time
-    ###
-    # This monkey patch is for test_additional_columns_from_join_table
     def to_date
       Date.new(year, month, day)
     end
@@ -18,9 +16,9 @@ class Mysql
 end
 
 module ActiveRecord
-  class Base
+  module ConnectionHandling # :nodoc:
     # Establishes a connection to the database that's used by all Active Record objects.
-    def self.mysql_connection(config) # :nodoc:
+    def mysql_connection(config)
       config = config.symbolize_keys
       host     = config[:host]
       port     = config[:port]
@@ -53,6 +51,8 @@ module ActiveRecord
     # * <tt>:database</tt> - The name of the database. No default, must be provided.
     # * <tt>:encoding</tt> - (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection.
     # * <tt>:reconnect</tt> - Defaults to false (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html).
+    # * <tt>:strict</tt> - Defaults to true. Enable STRICT_ALL_TABLES. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html)
+    # * <tt>:variables</tt> - (Optional) A hash session variables to send as `SET @@SESSION.key = value` on each database connection. Use the value `:default` to set a variable to its DEFAULT value. (See MySQL documentation: http://dev.mysql.com/doc/refman/5.0/en/set-statement.html).
     # * <tt>:sslca</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslkey</tt> - Necessary to use MySQL with an SSL connection.
     # * <tt>:sslcert</tt> - Necessary to use MySQL with an SSL connection.
@@ -119,14 +119,14 @@ module ActiveRecord
 
         private
         def cache
-          @cache[$$]
+          @cache[Process.pid]
         end
       end
 
       def initialize(connection, logger, connection_options, config)
         super
         @statements = StatementPool.new(@connection,
-                                        config.fetch(:statement_limit) { 1000 })
+                                        self.class.type_cast_config_to_integer(config.fetch(:statement_limit) { 1000 }))
         @client_encoding = nil
         connect
       end
@@ -150,8 +150,8 @@ module ActiveRecord
         end
       end
 
-      def new_column(field, default, type, null, collation) # :nodoc:
-        Column.new(field, default, type, null, collation)
+      def new_column(field, default, type, null, collation, extra = "") # :nodoc:
+        Column.new(field, default, type, null, collation, strict_mode?, extra)
       end
 
       def error_number(exception) # :nodoc:
@@ -190,14 +190,15 @@ module ActiveRecord
       end
 
       def reconnect!
+        super
         disconnect!
-        clear_cache!
         connect
       end
 
       # Disconnects from the database if already connected. Otherwise, this
       # method does nothing.
       def disconnect!
+        super
         @connection.close rescue nil
       end
 
@@ -224,52 +225,48 @@ module ActiveRecord
         @statements.clear
       end
 
-      if "<3".respond_to?(:encode)
-        # Taken from here:
-        #   https://github.com/tmtm/ruby-mysql/blob/master/lib/mysql/charset.rb
-        # Author: TOMITA Masahiro <tommy@tmtm.org>
-        ENCODINGS = {
-          "armscii8" => nil,
-          "ascii"    => Encoding::US_ASCII,
-          "big5"     => Encoding::Big5,
-          "binary"   => Encoding::ASCII_8BIT,
-          "cp1250"   => Encoding::Windows_1250,
-          "cp1251"   => Encoding::Windows_1251,
-          "cp1256"   => Encoding::Windows_1256,
-          "cp1257"   => Encoding::Windows_1257,
-          "cp850"    => Encoding::CP850,
-          "cp852"    => Encoding::CP852,
-          "cp866"    => Encoding::IBM866,
-          "cp932"    => Encoding::Windows_31J,
-          "dec8"     => nil,
-          "eucjpms"  => Encoding::EucJP_ms,
-          "euckr"    => Encoding::EUC_KR,
-          "gb2312"   => Encoding::EUC_CN,
-          "gbk"      => Encoding::GBK,
-          "geostd8"  => nil,
-          "greek"    => Encoding::ISO_8859_7,
-          "hebrew"   => Encoding::ISO_8859_8,
-          "hp8"      => nil,
-          "keybcs2"  => nil,
-          "koi8r"    => Encoding::KOI8_R,
-          "koi8u"    => Encoding::KOI8_U,
-          "latin1"   => Encoding::ISO_8859_1,
-          "latin2"   => Encoding::ISO_8859_2,
-          "latin5"   => Encoding::ISO_8859_9,
-          "latin7"   => Encoding::ISO_8859_13,
-          "macce"    => Encoding::MacCentEuro,
-          "macroman" => Encoding::MacRoman,
-          "sjis"     => Encoding::SHIFT_JIS,
-          "swe7"     => nil,
-          "tis620"   => Encoding::TIS_620,
-          "ucs2"     => Encoding::UTF_16BE,
-          "ujis"     => Encoding::EucJP_ms,
-          "utf8"     => Encoding::UTF_8,
-          "utf8mb4"  => Encoding::UTF_8,
-        }
-      else
-        ENCODINGS = Hash.new { |h,k| h[k] = k }
-      end
+      # Taken from here:
+      #   https://github.com/tmtm/ruby-mysql/blob/master/lib/mysql/charset.rb
+      # Author: TOMITA Masahiro <tommy@tmtm.org>
+      ENCODINGS = {
+        "armscii8" => nil,
+        "ascii"    => Encoding::US_ASCII,
+        "big5"     => Encoding::Big5,
+        "binary"   => Encoding::ASCII_8BIT,
+        "cp1250"   => Encoding::Windows_1250,
+        "cp1251"   => Encoding::Windows_1251,
+        "cp1256"   => Encoding::Windows_1256,
+        "cp1257"   => Encoding::Windows_1257,
+        "cp850"    => Encoding::CP850,
+        "cp852"    => Encoding::CP852,
+        "cp866"    => Encoding::IBM866,
+        "cp932"    => Encoding::Windows_31J,
+        "dec8"     => nil,
+        "eucjpms"  => Encoding::EucJP_ms,
+        "euckr"    => Encoding::EUC_KR,
+        "gb2312"   => Encoding::EUC_CN,
+        "gbk"      => Encoding::GBK,
+        "geostd8"  => nil,
+        "greek"    => Encoding::ISO_8859_7,
+        "hebrew"   => Encoding::ISO_8859_8,
+        "hp8"      => nil,
+        "keybcs2"  => nil,
+        "koi8r"    => Encoding::KOI8_R,
+        "koi8u"    => Encoding::KOI8_U,
+        "latin1"   => Encoding::ISO_8859_1,
+        "latin2"   => Encoding::ISO_8859_2,
+        "latin5"   => Encoding::ISO_8859_9,
+        "latin7"   => Encoding::ISO_8859_13,
+        "macce"    => Encoding::MacCentEuro,
+        "macroman" => Encoding::MacRoman,
+        "sjis"     => Encoding::SHIFT_JIS,
+        "swe7"     => nil,
+        "tis620"   => Encoding::TIS_620,
+        "ucs2"     => Encoding::UTF_16BE,
+        "ujis"     => Encoding::EucJP_ms,
+        "utf8"     => Encoding::UTF_8,
+        "utf8mb4"  => Encoding::UTF_8,
+      }
 
       # Get the client encoding for this database
       def client_encoding
@@ -301,6 +298,120 @@ module ActiveRecord
         @connection.insert_id
       end
 
+      module Fields
+        class Type
+          def type; end
+
+          def type_cast_for_write(value)
+            value
+          end
+        end
+
+        class Identity < Type
+          def type_cast(value); value; end
+        end
+
+        class Integer < Type
+          def type_cast(value)
+            return if value.nil?
+
+            value.to_i rescue value ? 1 : 0
+          end
+        end
+
+        class Date < Type
+          def type; :date; end
+
+          def type_cast(value)
+            return if value.nil?
+
+            # FIXME: probably we can improve this since we know it is mysql
+            # specific
+            ConnectionAdapters::Column.value_to_date value
+          end
+        end
+
+        class DateTime < Type
+          def type; :datetime; end
+
+          def type_cast(value)
+            return if value.nil?
+
+            # FIXME: probably we can improve this since we know it is mysql
+            # specific
+            ConnectionAdapters::Column.string_to_time value
+          end
+        end
+
+        class Time < Type
+          def type; :time; end
+
+          def type_cast(value)
+            return if value.nil?
+
+            # FIXME: probably we can improve this since we know it is mysql
+            # specific
+            ConnectionAdapters::Column.string_to_dummy_time value
+          end
+        end
+
+        class Float < Type
+          def type; :float; end
+
+          def type_cast(value)
+            return if value.nil?
+
+            value.to_f
+          end
+        end
+
+        class Decimal < Type
+          def type_cast(value)
+            return if value.nil?
+
+            ConnectionAdapters::Column.value_to_decimal value
+          end
+        end
+
+        class Boolean < Type
+          def type_cast(value)
+            return if value.nil?
+
+            ConnectionAdapters::Column.value_to_boolean value
+          end
+        end
+
+        TYPES = {}
+
+        # Register an MySQL +type_id+ with a typecasting object in
+        # +type+.
+        def self.register_type(type_id, type)
+          TYPES[type_id] = type
+        end
+
+        def self.alias_type(new, old)
+          TYPES[new] = TYPES[old]
+        end
+
+        register_type Mysql::Field::TYPE_TINY,    Fields::Boolean.new
+        register_type Mysql::Field::TYPE_LONG,    Fields::Integer.new
+        alias_type Mysql::Field::TYPE_LONGLONG,   Mysql::Field::TYPE_LONG
+        alias_type Mysql::Field::TYPE_NEWDECIMAL, Mysql::Field::TYPE_LONG
+
+        register_type Mysql::Field::TYPE_VAR_STRING, Fields::Identity.new
+        register_type Mysql::Field::TYPE_BLOB, Fields::Identity.new
+        register_type Mysql::Field::TYPE_DATE, Fields::Date.new
+        register_type Mysql::Field::TYPE_DATETIME, Fields::DateTime.new
+        register_type Mysql::Field::TYPE_TIME, Fields::Time.new
+        register_type Mysql::Field::TYPE_FLOAT, Fields::Float.new
+
+        Mysql::Field.constants.grep(/TYPE/).map { |class_name|
+          Mysql::Field.const_get class_name
+        }.reject { |const| TYPES.key? const }.each do |const|
+          register_type const, Fields::Identity.new
+        end
+      end
+
       def exec_without_stmt(sql, name = 'SQL') # :nodoc:
         # Some queries, like SHOW CREATE TABLE don't work through the prepared
         # statement API. For those queries, we need to use this method. :'(
@@ -309,8 +420,17 @@ module ActiveRecord
           affected_rows = @connection.affected_rows
 
           if result
-            cols = result.fetch_fields.map { |field| field.name }
-            result_set = ActiveRecord::Result.new(cols, result.to_a)
+            types = {}
+            result.fetch_fields.each { |field|
+              if field.decimals > 0
+                types[field.name] = Fields::Decimal.new
+              else
+                types[field.name] = Fields::TYPES.fetch(field.type) {
+                  Fields::Identity.new
+                }
+              end
+            }
+            result_set = ActiveRecord::Result.new(types.keys, result.to_a, types)
             result.free
           else
             result_set = ActiveRecord::Result.new([], [])
@@ -416,18 +536,15 @@ module ActiveRecord
         configure_connection
       end
 
+      # Many Rails applications monkey-patch a replacement of the configure_connection method
+      # and don't call 'super', so leave this here even though it looks superfluous.
       def configure_connection
-        encoding = @config[:encoding]
-        execute("SET NAMES '#{encoding}'", :skip_logging) if encoding
-
-        # By default, MySQL 'where id is null' selects the last inserted id.
-        # Turn this off. http://dev.rubyonrails.org/ticket/6778
-        execute("SET SQL_AUTO_IS_NULL=0", :skip_logging)
+        super
       end
 
       def select(sql, name = nil, binds = [])
         @connection.query_with_result = true
-        rows = exec_query(sql, name, binds).to_a
+        rows = exec_query(sql, name, binds)
         @connection.more_results && @connection.next_result    # invoking stored procedures with CLIENT_MULTI_RESULTS requires this to tidy up else connection will be dropped
         rows
       end

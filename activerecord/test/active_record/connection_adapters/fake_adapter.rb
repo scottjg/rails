@@ -1,6 +1,6 @@
 module ActiveRecord
-  class Base
-    def self.fake_connection(config)
+  module ConnectionHandling
+    def fake_connection(config)
       ConnectionAdapters::FakeAdapter.new nil, logger
     end
   end
@@ -33,8 +33,12 @@ module ActiveRecord
           options[:null])
       end
 
-      def columns(table_name, message)
+      def columns(table_name)
         @columns[table_name]
+      end
+
+      def active?
+        true
       end
     end
   end

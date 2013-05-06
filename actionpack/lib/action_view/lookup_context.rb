@@ -1,6 +1,6 @@
-require 'active_support/core_ext/array/wrap'
-require 'active_support/core_ext/object/blank'
+require 'thread_safe'
 require 'active_support/core_ext/module/remove_method'
+require 'active_support/core_ext/module/attribute_accessors'
 
 module ActionView
   # = Action View Lookup Context
@@ -25,11 +25,11 @@ module ActionView
       Accessors.send :define_method, :"default_#{name}", &block
       Accessors.module_eval <<-METHOD, __FILE__, __LINE__ + 1
         def #{name}
-          @details[:#{name}]
+          @details.fetch(:#{name}, [])
         end
 
         def #{name}=(value)
-          value = value.present? ? Array.wrap(value) : default_#{name}
+          value = value.present? ? Array(value) : default_#{name}
           _set_detail(:#{name}, value) if value != @details[:#{name}]
         end
 
@@ -44,8 +44,14 @@ module ActionView
     module Accessors #:nodoc:
     end
 
-    register_detail(:locale)  { [I18n.locale, I18n.default_locale].uniq }
-    register_detail(:formats) { Mime::SET.symbols }
+    register_detail(:locale) do
+      locales = [I18n.locale]
+      locales.concat(I18n.fallbacks[I18n.locale]) if I18n.respond_to? :fallbacks
+      locales << I18n.default_locale
+      locales.uniq!
+      locales
+    end
+    register_detail(:formats) { ActionView::Base.default_formats || [:html, :text, :js, :css,  :xml, :json] }
     register_detail(:handlers){ Template::Handlers.extensions }
 
     class DetailsKey #:nodoc:
@@ -53,7 +59,7 @@ module ActionView
       alias :object_hash :hash
 
       attr_reader :hash
-      @details_keys = Hash.new
+      @details_keys = ThreadSafe::Cache.new
 
       def self.get(details)
         @details_keys[details] ||= new
@@ -97,12 +103,12 @@ module ActionView
 
     # Helpers related to template lookup using the lookup context information.
     module ViewPaths
-      attr_reader :view_paths
+      attr_reader :view_paths, :html_fallback_for_js
 
       # Whenever setting view paths, makes a copy so we can manipulate then in
       # instance objects as we wish.
       def view_paths=(paths)
-        @view_paths = ActionView::PathSet.new(Array.wrap(paths))
+        @view_paths = ActionView::PathSet.new(Array(paths))
       end
 
       def find(name, prefixes = [], partial = false, keys = [], options = {})
@@ -151,14 +157,9 @@ module ActionView
       # as well as incorrectly putting part of the path in the template
       # name instead of the prefix.
       def normalize_name(name, prefixes) #:nodoc:
-        name  = name.to_s.sub(handlers_regexp) do |match|
-          ActiveSupport::Deprecation.warn "Passing a template handler in the template name is deprecated. " \
-            "You can simply remove the handler name or pass render :handlers => [:#{match[1..-1]}] instead.", caller
-          ""
-        end
-
-        prefixes = nil if prefixes.blank?
-        parts    = name.split('/')
+        prefixes = prefixes.presence
+        parts    = name.to_s.split('/')
+        parts.shift if parts.first.empty?
         name     = parts.pop
 
         return name, prefixes || [""] if parts.empty?
@@ -167,10 +168,6 @@ module ActionView
         prefixes = prefixes ? prefixes.map { |p| "#{p}/#{parts}" } : [parts]
 
         return name, prefixes
-      end
-
-      def handlers_regexp #:nodoc:
-        @@handlers_regexp ||= /\.(?:#{default_handlers.join('|')})$/
       end
     end
 
@@ -194,7 +191,10 @@ module ActionView
     def formats=(values)
       if values
         values.concat(default_formats) if values.delete "*/*"
-        values << :html if values == [:js]
+        if values == [:js]
+          values << :html
+          @html_fallback_for_js = true
+        end
       end
       super(values)
     end

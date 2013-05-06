@@ -1,4 +1,3 @@
-require 'active_support/core_ext/class/attribute'
 
 module ActiveRecord
   # = Active Record Timestamp
@@ -37,14 +36,14 @@ module ActiveRecord
       self.record_timestamps = true
     end
 
-    def initialize_dup(other)
+    def initialize_dup(other) # :nodoc:
       clear_timestamp_attributes
       super
     end
 
   private
 
-    def create #:nodoc:
+    def create_record
       if self.record_timestamps
         current_time = current_time_from_proper_timezone
 
@@ -58,7 +57,7 @@ module ActiveRecord
       super
     end
 
-    def update(*args) #:nodoc:
+    def update_record(*args)
       if should_record_timestamps?
         current_time = current_time_from_proper_timezone
 
@@ -72,7 +71,7 @@ module ActiveRecord
     end
 
     def should_record_timestamps?
-      self.record_timestamps && (!partial_updates? || changed? || (attributes.keys & self.class.serialized_attributes.keys).present?)
+      self.record_timestamps && (!partial_writes? || changed? || (attributes.keys & self.class.serialized_attributes.keys).present?)
     end
 
     def timestamp_attributes_for_create_in_model
@@ -87,19 +86,25 @@ module ActiveRecord
       timestamp_attributes_for_create_in_model + timestamp_attributes_for_update_in_model
     end
 
-    def timestamp_attributes_for_update #:nodoc:
+    def timestamp_attributes_for_update
       [:updated_at, :updated_on]
     end
 
-    def timestamp_attributes_for_create #:nodoc:
+    def timestamp_attributes_for_create
       [:created_at, :created_on]
     end
 
-    def all_timestamp_attributes #:nodoc:
+    def all_timestamp_attributes
       timestamp_attributes_for_create + timestamp_attributes_for_update
     end
 
-    def current_time_from_proper_timezone #:nodoc:
+    def max_updated_column_timestamp
+      if (timestamps = timestamp_attributes_for_update.map { |attr| self[attr] }.compact).present?
+        timestamps.map { |ts| ts.to_time }.max
+      end
+    end
+
+    def current_time_from_proper_timezone
       self.class.default_timezone == :utc ? Time.now.utc : Time.now
     end
 

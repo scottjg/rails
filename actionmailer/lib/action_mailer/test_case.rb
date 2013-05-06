@@ -1,4 +1,4 @@
-require 'active_support/core_ext/class/attribute'
+require 'active_support/test_case'
 
 module ActionMailer
   class NonInferrableMailerError < ::StandardError
@@ -13,6 +13,7 @@ module ActionMailer
     module Behavior
       extend ActiveSupport::Concern
 
+      include ActiveSupport::Testing::ConstantLookup
       include TestHelper
 
       included do
@@ -42,9 +43,11 @@ module ActionMailer
         end
 
         def determine_default_mailer(name)
-          name.sub(/Test$/, '').constantize
-        rescue NameError
-          raise NonInferrableMailerError.new(name)
+          mailer = determine_constant_from_test_name(name) do |constant|
+            Class === constant && constant < ActionMailer::Base
+          end
+          raise NonInferrableMailerError.new(name) if mailer.nil?
+          mailer
         end
       end
 

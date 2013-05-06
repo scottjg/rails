@@ -1,5 +1,6 @@
 require 'abstract_unit'
-require 'logger'
+require 'active_support/logger'
+require 'controller/fake_models'
 require 'pp' # require 'pp' early to prevent hidden_methods from not picking up the pretty-print methods until too late
 
 # Provide some controller to run the tests on.
@@ -40,29 +41,6 @@ class NonEmptyController < ActionController::Base
   end
 end
 
-class MethodMissingController < ActionController::Base
-  hide_action :shouldnt_be_called
-  def shouldnt_be_called
-    raise "NO WAY!"
-  end
-
-protected
-
-  def method_missing(selector)
-    render :text => selector.to_s
-  end
-end
-
-class AnotherMethodMissingController < ActionController::Base
-  cattr_accessor :_exception
-  rescue_from Exception, :with => :_exception=
-
-  protected
-  def method_missing(*attrs, &block)
-    super
-  end
-end
-
 class DefaultUrlOptionsController < ActionController::Base
   def from_view
     render :inline => "<%= #{params[:route]} %>"
@@ -79,11 +57,21 @@ class UrlOptionsController < ActionController::Base
   end
 
   def url_options
-    super.merge(:host => 'www.override.com', :action => 'new', :locale => 'en')
+    super.merge(:host => 'www.override.com')
   end
 end
 
 class RecordIdentifierController < ActionController::Base
+end
+
+class RecordIdentifierWithoutDeprecationController < ActionController::Base
+  include ActionView::RecordIdentifier
+end
+
+class ActionMissingController < ActionController::Base
+  def action_missing(action)
+    render :text => "Response for #{action}"
+  end
 end
 
 class ControllerClassTests < ActiveSupport::TestCase
@@ -104,9 +92,45 @@ class ControllerClassTests < ActiveSupport::TestCase
     assert_respond_to RecordIdentifierController.new, :dom_id
     assert_respond_to RecordIdentifierController.new, :dom_class
   end
+
+  def test_record_identifier_is_deprecated
+    record = Comment.new
+    record.save
+
+    dom_id = nil
+    assert_deprecated 'dom_id method will no longer' do
+      dom_id = RecordIdentifierController.new.dom_id(record)
+    end
+
+    assert_equal 'comment_1', dom_id
+
+    dom_class = nil
+    assert_deprecated 'dom_class method will no longer' do
+      dom_class = RecordIdentifierController.new.dom_class(record)
+    end
+    assert_equal 'comment', dom_class
+  end
+
+  def test_no_deprecation_when_action_view_record_identifier_is_included
+    record = Comment.new
+    record.save
+
+    dom_id = nil
+    assert_not_deprecated do
+      dom_id = RecordIdentifierWithoutDeprecationController.new.dom_id(record)
+    end
+
+    assert_equal 'comment_1', dom_id
+
+    dom_class = nil
+    assert_not_deprecated do
+      dom_class = RecordIdentifierWithoutDeprecationController.new.dom_class(record)
+    end
+    assert_equal 'comment', dom_class
+  end
 end
 
-class ControllerInstanceTests < Test::Unit::TestCase
+class ControllerInstanceTests < ActiveSupport::TestCase
   def setup
     @empty = EmptyController.new
     @contained = Submodule::ContainedEmptyController.new
@@ -148,7 +172,7 @@ class PerformActionTest < ActionController::TestCase
 
     # enable a logger so that (e.g.) the benchmarking stuff runs, so we can get
     # a more accurate simulation of what happens in "real life".
-    @controller.logger = Logger.new(nil)
+    @controller.logger = ActiveSupport::Logger.new(nil)
 
     @request     = ActionController::TestRequest.new
     @response    = ActionController::TestResponse.new
@@ -163,38 +187,16 @@ class PerformActionTest < ActionController::TestCase
     assert_equal exception.message, "The action 'non_existent' could not be found for EmptyController"
   end
 
-  def test_get_on_priv_should_show_selector
-    use_controller MethodMissingController
-    assert_deprecated(/Using `method_missing` to handle .* use `action_missing` instead/) do
-      get :shouldnt_be_called
-    end
-    assert_response :success
-    assert_equal 'shouldnt_be_called', @response.body
-  end
-
-  def test_method_missing_is_not_an_action_name
-    use_controller MethodMissingController
-    assert !@controller.__send__(:action_method?, 'method_missing')
-
-    assert_deprecated(/Using `method_missing` to handle .* use `action_missing` instead/) do
-      get :method_missing
-    end
-    assert_response :success
-    assert_equal 'method_missing', @response.body
-  end
-
-  def test_method_missing_should_recieve_symbol
-    use_controller AnotherMethodMissingController
-    assert_deprecated(/Using `method_missing` to handle .* use `action_missing` instead/) do
-      get :some_action
-    end
-    assert_kind_of NameError, @controller._exception
-  end
-
   def test_get_on_hidden_should_fail
     use_controller NonEmptyController
     assert_raise(AbstractController::ActionNotFound) { get :hidden_action }
     assert_raise(AbstractController::ActionNotFound) { get :another_hidden_action }
+  end
+
+  def test_action_missing_should_work
+    use_controller ActionMissingController
+    get :arbitrary_action
+    assert_equal "Response for arbitrary_action", @response.body
   end
 end
 
@@ -206,58 +208,10 @@ class UrlOptionsTest < ActionController::TestCase
     @request.host = 'www.example.com'
   end
 
-  ##
-  # When generating routes, the last defined named route wins.  This is in
-  # contrast to route recognition where the first recognized route wins.
-  # This behavior will not exist in Rails 4.0.
-  #
-  # See:
-  #
-  #   https://github.com/rails/rails/issues/4245
-  #   https://github.com/rails/rails/issues/4164
-  def test_last_named_route_wins
-    rs = ActionDispatch::Routing::RouteSet.new
-    rs.draw do
-      resources :purchases
-      match 'purchase/:product_id' => 'purchases#new', :as => :new_purchase
-      match 'purchase/:product_id' => 'purchases#new', :as => :correct_new_purchase
-    end
-
-    x = Struct.new(:rs, :tc) {
-      include rs.named_routes.module
-      public :correct_new_purchase_url
-      public :new_purchase_url
-
-      def url_for(options)
-        options[:host] = 'example.org'
-        rs.url_for(options)
-      end
-    }.new(rs, self)
-
-    assert_equal "http://example.org/purchase/1", x.correct_new_purchase_url(1)
-    assert_equal "http://example.org/purchase/1", x.new_purchase_url(1)
-  end
-
-  def test_url_for_params_priority
-    rs = ActionDispatch::Routing::RouteSet.new
-    rs.draw do
-      resources :models
-      match 'special' => 'model#new', :as => :new_model
-    end
-
-    url_params = {
-       :action     => "new",
-       :controller => "model",
-       :use_route  => "new_model",
-       :only_path  => true }
-
-    assert_equal '/special', rs.url_for(url_params)
-  end
-
   def test_url_for_query_params_included
     rs = ActionDispatch::Routing::RouteSet.new
     rs.draw do
-      match 'home' => 'pages#home'
+      get 'home' => 'pages#home'
     end
 
     options = {
@@ -273,25 +227,24 @@ class UrlOptionsTest < ActionController::TestCase
   def test_url_options_override
     with_routing do |set|
       set.draw do
-        match 'from_view', :to => 'url_options#from_view', :as => :from_view
-        match ':controller/:action'
+        get 'from_view', :to => 'url_options#from_view', :as => :from_view
+        get ':controller/:action'
       end
 
       get :from_view, :route => "from_view_url"
 
-      assert_equal 'http://www.override.com/from_view?locale=en', @response.body
-      assert_equal 'http://www.override.com/from_view?locale=en', @controller.send(:from_view_url)
-      assert_equal 'http://www.override.com/default_url_options/new?locale=en', @controller.url_for(:controller => 'default_url_options')
+      assert_equal 'http://www.override.com/from_view', @response.body
+      assert_equal 'http://www.override.com/from_view', @controller.send(:from_view_url)
+      assert_equal 'http://www.override.com/default_url_options/index', @controller.url_for(:controller => 'default_url_options')
     end
   end
 
   def test_url_helpers_does_not_become_actions
     with_routing do |set|
       set.draw do
-        match "account/overview"
+        get "account/overview"
       end
 
-      @controller.class.send(:include, set.url_helpers)
       assert !@controller.class.action_methods.include?("account_overview_path")
     end
   end
@@ -308,8 +261,8 @@ class DefaultUrlOptionsTest < ActionController::TestCase
   def test_default_url_options_override
     with_routing do |set|
       set.draw do
-        match 'from_view', :to => 'default_url_options#from_view', :as => :from_view
-        match ':controller/:action'
+        get 'from_view', :to => 'default_url_options#from_view', :as => :from_view
+        get ':controller/:action'
       end
 
       get :from_view, :route => "from_view_url"
@@ -326,7 +279,7 @@ class DefaultUrlOptionsTest < ActionController::TestCase
         scope("/:locale") do
           resources :descriptions
         end
-        match ':controller/:action'
+        get ':controller/:action'
       end
 
       get :from_view, :route => "description_path(1)"

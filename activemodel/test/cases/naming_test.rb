@@ -25,14 +25,16 @@ class NamingTest < ActiveModel::TestCase
     assert_equal 'post/track_backs', @model_name.collection
   end
 
-  def test_partial_path
-    assert_deprecated(/#partial_path.*#to_partial_path/) do
-      assert_equal 'post/track_backs/track_back', @model_name.partial_path
-    end
-  end
-
   def test_human
     assert_equal 'Track back', @model_name.human
+  end
+
+  def test_route_key
+    assert_equal 'post_track_backs', @model_name.route_key
+  end
+
+  def test_param_key
+    assert_equal 'post_track_back', @model_name.param_key
   end
 
   def test_i18n_key
@@ -59,12 +61,6 @@ class NamingWithNamespacedModelInIsolatedNamespaceTest < ActiveModel::TestCase
 
   def test_collection
     assert_equal 'blog/posts', @model_name.collection
-  end
-
-  def test_partial_path
-    assert_deprecated(/#partial_path.*#to_partial_path/) do
-      assert_equal 'blog/posts/post', @model_name.partial_path
-    end
   end
 
   def test_human
@@ -105,12 +101,6 @@ class NamingWithNamespacedModelInSharedNamespaceTest < ActiveModel::TestCase
     assert_equal 'blog/posts', @model_name.collection
   end
 
-  def test_partial_path
-    assert_deprecated(/#partial_path.*#to_partial_path/) do
-      assert_equal 'blog/posts/post', @model_name.partial_path
-    end
-  end
-
   def test_human
     assert_equal 'Post', @model_name.human
   end
@@ -147,12 +137,6 @@ class NamingWithSuppliedModelNameTest < ActiveModel::TestCase
 
   def test_collection
     assert_equal 'articles', @model_name.collection
-  end
-
-  def test_partial_path
-    assert_deprecated(/#partial_path.*#to_partial_path/) do
-      assert_equal 'articles/article', @model_name.partial_path
-    end
   end
 
   def test_human
@@ -210,7 +194,7 @@ class NamingUsingRelativeModelNameTest < ActiveModel::TestCase
   end
 end
 
-class NamingHelpersTest < Test::Unit::TestCase
+class NamingHelpersTest < ActiveModel::TestCase
   def setup
     @klass  = Contact
     @record = @klass.new
@@ -261,7 +245,7 @@ class NamingHelpersTest < Test::Unit::TestCase
   end
 
   def test_uncountable
-    assert uncountable?(@uncountable), "Expected 'sheep' to be uncoutable"
+    assert uncountable?(@uncountable), "Expected 'sheep' to be uncountable"
     assert !uncountable?(@klass), "Expected 'contact' to be countable"
   end
 
@@ -276,7 +260,7 @@ class NamingHelpersTest < Test::Unit::TestCase
     end
 end
 
-class NameWithAnonymousClassTest < Test::Unit::TestCase
+class NameWithAnonymousClassTest < ActiveModel::TestCase
   def test_anonymous_class_without_name_argument
     assert_raises(ArgumentError) do
       ActiveModel::Name.new(Class.new)

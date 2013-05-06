@@ -2,6 +2,12 @@ module ActionView
   # This is the main entry point for rendering. It basically delegates
   # to other objects like TemplateRenderer and PartialRenderer which
   # actually renders the template.
+  #
+  # The Renderer will parse the options from the +render+ or +render_body+
+  # method and render a partial or a template based on the options. The
+  # +TemplateRenderer+ and +PartialRenderer+ objects are wrappers which do all
+  # the setup and logic necessary to render a view and a new object is created
+  # each time +render+ is called.
   class Renderer
     attr_accessor :lookup_context
 
@@ -33,22 +39,12 @@ module ActionView
 
     # Direct accessor to template rendering.
     def render_template(context, options) #:nodoc:
-      _template_renderer.render(context, options)
+      TemplateRenderer.new(@lookup_context).render(context, options)
     end
 
     # Direct access to partial rendering.
     def render_partial(context, options, &block) #:nodoc:
-      _partial_renderer.render(context, options, block)
-    end
-
-    private
-
-    def _template_renderer #:nodoc:
-      @_template_renderer ||= TemplateRenderer.new(@lookup_context)
-    end
-
-    def _partial_renderer #:nodoc:
-      @_partial_renderer ||= PartialRenderer.new(@lookup_context)
+      PartialRenderer.new(@lookup_context).render(context, options, block)
     end
   end
 end

@@ -2,16 +2,16 @@ module ActiveRecord
   module ConnectionAdapters # :nodoc:
     module QueryCache
       class << self
-        def included(base)
+        def included(base) #:nodoc:
           dirties_query_cache base, :insert, :update, :delete
         end
 
         def dirties_query_cache(base, *method_names)
           method_names.each do |method_name|
             base.class_eval <<-end_code, __FILE__, __LINE__ + 1
-              def #{method_name}(*)                         # def update_with_query_dirty(*args)
+              def #{method_name}(*)                         # def update_with_query_dirty(*)
                 clear_query_cache if @query_cache_enabled   #   clear_query_cache if @query_cache_enabled
-                super                                       #   update_without_query_dirty(*args)
+                super                                       #   super
               end                                           # end
             end_code
           end
@@ -65,26 +65,31 @@ module ActiveRecord
       end
 
       private
-        def cache_sql(sql, binds)
-          result =
-            if @query_cache[sql].key?(binds)
-              ActiveSupport::Notifications.instrument("sql.active_record",
-                :sql => sql, :binds => binds, :name => "CACHE", :connection_id => object_id)
-              @query_cache[sql][binds]
-            else
-              @query_cache[sql][binds] = yield
-            end
 
+      def cache_sql(sql, binds)
+        result =
+          if @query_cache[sql].key?(binds)
+            ActiveSupport::Notifications.instrument("sql.active_record",
+              :sql => sql, :binds => binds, :name => "CACHE", :connection_id => object_id)
+            @query_cache[sql][binds]
+          else
+            @query_cache[sql][binds] = yield
+          end
+
+        # FIXME: we should guarantee that all cached items are Result
+        # objects.  Then we can avoid this conditional
+        if ActiveRecord::Result === result
+          result.dup
+        else
           result.collect { |row| row.dup }
         end
+      end
 
-        def locked?(arel)
-          if arel.respond_to?(:locked)
-            arel.locked
-          else
-            false
-          end
-        end
+      # If arel is locked this is a SELECT ... FOR UPDATE or somesuch. Such
+      # queries should not be cached.
+      def locked?(arel)
+        arel.respond_to?(:locked) && arel.locked
+      end
     end
   end
 end

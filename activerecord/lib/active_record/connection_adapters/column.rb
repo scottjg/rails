@@ -66,6 +66,26 @@ module ActiveRecord
         end
       end
 
+      def binary?
+        type == :binary
+      end
+
+      # Casts a Ruby value to something appropriate for writing to the database.
+      def type_cast_for_write(value)
+        return value unless number?
+
+        case value
+        when FalseClass
+          0
+        when TrueClass
+          1
+        when String
+          value.presence
+        else
+          value
+        end
+      end
+
       # Casts value (which is a String) to an appropriate instance.
       def type_cast(value)
         return nil if value.nil?
@@ -80,7 +100,7 @@ module ActiveRecord
         when :decimal              then klass.value_to_decimal(value)
         when :datetime, :timestamp then klass.string_to_time(value)
         when :time                 then klass.string_to_dummy_time(value)
-        when :date                 then klass.string_to_date(value)
+        when :date                 then klass.value_to_date(value)
         when :binary               then klass.binary_to_string(value)
         when :boolean              then klass.value_to_boolean(value)
         else value
@@ -88,6 +108,10 @@ module ActiveRecord
       end
 
       def type_cast_code(var_name)
+        message = "Column#type_cast_code is deprecated in favor of using Column#type_cast only, " \
+                  "and it is going to be removed in future Rails versions."
+        ActiveSupport::Deprecation.warn message
+
         klass = self.class.name
 
         case type
@@ -97,9 +121,12 @@ module ActiveRecord
         when :decimal              then "#{klass}.value_to_decimal(#{var_name})"
         when :datetime, :timestamp then "#{klass}.string_to_time(#{var_name})"
         when :time                 then "#{klass}.string_to_dummy_time(#{var_name})"
-        when :date                 then "#{klass}.string_to_date(#{var_name})"
+        when :date                 then "#{klass}.value_to_date(#{var_name})"
         when :binary               then "#{klass}.binary_to_string(#{var_name})"
         when :boolean              then "#{klass}.value_to_boolean(#{var_name})"
+        when :hstore               then "#{klass}.string_to_hstore(#{var_name})"
+        when :inet, :cidr          then "#{klass}.string_to_cidr(#{var_name})"
+        when :json                 then "#{klass}.string_to_json(#{var_name})"
         else var_name
         end
       end
@@ -132,11 +159,15 @@ module ActiveRecord
           value
         end
 
-        def string_to_date(string)
-          return string unless string.is_a?(String)
-          return nil if string.empty?
-
-          fast_string_to_date(string) || fallback_string_to_date(string)
+        def value_to_date(value)
+          if value.is_a?(String)
+            return nil if value.empty?
+            fast_string_to_date(value) || fallback_string_to_date(value)
+          elsif value.respond_to?(:to_date)
+            value.to_date
+          else
+            value
+          end
         end
 
         def string_to_time(string)
@@ -161,7 +192,7 @@ module ActiveRecord
 
         # convert something to a boolean
         def value_to_boolean(value)
-          if value.is_a?(String) && value.blank?
+          if value.is_a?(String) && value.empty?
             nil
           else
             TRUE_VALUES.include?(value)
@@ -175,7 +206,7 @@ module ActiveRecord
           when TrueClass, FalseClass
             value ? 1 : 0
           else
-            value.to_i
+            value.to_i rescue nil
           end
         end
 
@@ -210,7 +241,7 @@ module ActiveRecord
             # Treat 0000-00-00 00:00:00 as nil.
             return nil if year.nil? || (year == 0 && mon == 0 && mday == 0)
 
-            Time.time_with_datetime_fallback(Base.default_timezone, year, mon, mday, hour, min, sec, microsec) rescue nil
+            Time.send(Base.default_timezone, year, mon, mday, hour, min, sec, microsec) rescue nil
           end
 
           def fast_string_to_date(string)
@@ -219,20 +250,11 @@ module ActiveRecord
             end
           end
 
-          if RUBY_VERSION >= '1.9'
-            # Doesn't handle time zones.
-            def fast_string_to_time(string)
-              if string =~ Format::ISO_DATETIME
-                microsec = ($7.to_r * 1_000_000).to_i
-                new_time $1.to_i, $2.to_i, $3.to_i, $4.to_i, $5.to_i, $6.to_i, microsec
-              end
-            end
-          else
-            def fast_string_to_time(string)
-              if string =~ Format::ISO_DATETIME
-                microsec = ($7.to_f * 1_000_000).round.to_i
-                new_time $1.to_i, $2.to_i, $3.to_i, $4.to_i, $5.to_i, $6.to_i, microsec
-              end
+          # Doesn't handle time zones.
+          def fast_string_to_time(string)
+            if string =~ Format::ISO_DATETIME
+              microsec = ($7.to_r * 1_000_000).to_i
+              new_time $1.to_i, $2.to_i, $3.to_i, $4.to_i, $5.to_i, $6.to_i, microsec
             end
           end
 

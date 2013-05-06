@@ -1,7 +1,6 @@
 require 'abstract_unit'
 require 'controller/fake_models'
 require 'active_support/core_ext/hash/conversions'
-require 'active_support/core_ext/object/inclusion'
 
 class StarStarMimeController < ActionController::Base
   layout nil
@@ -81,6 +80,13 @@ class RespondToController < ActionController::Base
     respond_to(:html, :xml)
   end
 
+  def using_defaults_with_all
+    respond_to do |type|
+      type.html
+      type.all{ render text: "ALL" }
+    end
+  end
+
   def made_for_content_type
     respond_to do |type|
       type.rss  { render :text => "RSS"  }
@@ -150,16 +156,13 @@ class RespondToController < ActionController::Base
     end
   end
 
-  def rescue_action(e)
-    raise
-  end
-
   protected
     def set_layout
-      if action_name.in?(["all_types_with_layout", "iphone_with_html_response_type"])
-        "respond_to/layouts/standard"
-      elsif action_name == "iphone_with_html_response_type_without_layout"
-        "respond_to/layouts/missing"
+      case action_name
+        when "all_types_with_layout", "iphone_with_html_response_type"
+          "respond_to/layouts/standard"
+        when "iphone_with_html_response_type_without_layout"
+          "respond_to/layouts/missing"
       end
     end
 end
@@ -211,8 +214,9 @@ class RespondToControllerTest < ActionController::TestCase
     get :html_or_xml
     assert_equal 'HTML', @response.body
 
-    get :just_xml
-    assert_response 406
+    assert_raises(ActionController::UnknownFormat) do
+      get :just_xml
+    end
   end
 
   def test_all
@@ -243,8 +247,10 @@ class RespondToControllerTest < ActionController::TestCase
     assert_equal 'HTML', @response.body
 
     @request.accept = "text/javascript, text/html"
-    xhr :get, :just_xml
-    assert_response 406
+
+    assert_raises(ActionController::UnknownFormat) do
+      xhr :get, :just_xml
+    end
   end
 
   def test_json_or_yaml_with_leading_star_star
@@ -300,6 +306,20 @@ class RespondToControllerTest < ActionController::TestCase
     get :using_defaults
     assert_equal "application/xml", @response.content_type
     assert_equal "<p>Hello world!</p>\n", @response.body
+  end
+
+  def test_using_defaults_with_all
+    @request.accept = "*/*"
+    get :using_defaults_with_all
+    assert_equal "HTML!", @response.body.strip
+
+    @request.accept = "text/html"
+    get :using_defaults_with_all
+    assert_equal "HTML!", @response.body.strip
+
+    @request.accept = "application/json"
+    get :using_defaults_with_all
+    assert_equal "ALL", @response.body
   end
 
   def test_using_defaults_with_type_list
@@ -497,16 +517,16 @@ class RespondToControllerTest < ActionController::TestCase
     assert_equal '<html><div id="iphone">Hello iPhone future from iPhone!</div></html>', @response.body
     assert_equal "text/html", @response.content_type
   end
-  
+
   def test_invalid_format
-    get :using_defaults, :format => "invalidformat"
-    assert_equal " ", @response.body
-    assert_equal "text/html", @response.content_type
+    assert_raises(ActionController::UnknownFormat) do
+      get :using_defaults, :format => "invalidformat"
+    end
   end
 end
 
 class RespondWithController < ActionController::Base
-  respond_to :html, :json
+  respond_to :html, :json, :touch
   respond_to :xml, :except => :using_resource_with_block
   respond_to :js,  :only => [ :using_resource_with_block, :using_resource, 'using_hash_resource' ]
 
@@ -624,12 +644,14 @@ class RespondWithControllerTest < ActionController::TestCase
     super
     @request.host = "www.example.com"
     Mime::Type.register_alias('text/html', :iphone)
+    Mime::Type.register_alias('text/html', :touch)
     Mime::Type.register('text/x-mobile', :mobile)
   end
 
   def teardown
     super
     Mime::Type.unregister(:iphone)
+    Mime::Type.unregister(:touch)
     Mime::Type.unregister(:mobile)
   end
 
@@ -705,12 +727,14 @@ class RespondWithControllerTest < ActionController::TestCase
 
   def test_not_acceptable
     @request.accept = "application/xml"
-    get :using_resource_with_block
-    assert_equal 406, @response.status
+    assert_raises(ActionController::UnknownFormat) do
+      get :using_resource_with_block
+    end
 
     @request.accept = "text/javascript"
-    get :using_resource_with_overwrite_block
-    assert_equal 406, @response.status
+    assert_raises(ActionController::UnknownFormat) do
+      get :using_resource_with_overwrite_block
+    end
   end
 
   def test_using_resource_for_post_with_html_redirects_on_success
@@ -773,6 +797,41 @@ class RespondWithControllerTest < ActionController::TestCase
     end
   end
 
+  def test_using_resource_for_patch_with_html_redirects_on_success
+    with_test_route_set do
+      patch :using_resource
+      assert_equal "text/html", @response.content_type
+      assert_equal 302, @response.status
+      assert_equal "http://www.example.com/customers/13", @response.location
+      assert @response.redirect?
+    end
+  end
+
+  def test_using_resource_for_patch_with_html_rerender_on_failure
+    with_test_route_set do
+      errors = { :name => :invalid }
+      Customer.any_instance.stubs(:errors).returns(errors)
+      patch :using_resource
+      assert_equal "text/html", @response.content_type
+      assert_equal 200, @response.status
+      assert_equal "Edit world!\n", @response.body
+      assert_nil @response.location
+    end
+  end
+
+  def test_using_resource_for_patch_with_html_rerender_on_failure_even_on_method_override
+    with_test_route_set do
+      errors = { :name => :invalid }
+      Customer.any_instance.stubs(:errors).returns(errors)
+      @request.env["rack.methodoverride.original_method"] = "POST"
+      patch :using_resource
+      assert_equal "text/html", @response.content_type
+      assert_equal 200, @response.status
+      assert_equal "Edit world!\n", @response.body
+      assert_nil @response.location
+    end
+  end
+
   def test_using_resource_for_put_with_html_redirects_on_success
     with_test_route_set do
       put :using_resource
@@ -813,7 +872,7 @@ class RespondWithControllerTest < ActionController::TestCase
     put :using_resource
     assert_equal "application/xml", @response.content_type
     assert_equal 204, @response.status
-    assert_equal " ", @response.body
+    assert_equal "", @response.body
   end
 
   def test_using_resource_for_put_with_json_yields_no_content_on_success
@@ -822,7 +881,7 @@ class RespondWithControllerTest < ActionController::TestCase
     put :using_resource
     assert_equal "application/json", @response.content_type
     assert_equal 204, @response.status
-    assert_equal " ", @response.body
+    assert_equal "", @response.body
   end
 
   def test_using_resource_for_put_with_xml_yields_unprocessable_entity_on_failure
@@ -864,7 +923,7 @@ class RespondWithControllerTest < ActionController::TestCase
     delete :using_resource
     assert_equal "application/xml", @response.content_type
     assert_equal 204, @response.status
-    assert_equal " ", @response.body
+    assert_equal "", @response.body
   end
 
   def test_using_resource_for_delete_with_json_yields_no_content_on_success
@@ -874,7 +933,7 @@ class RespondWithControllerTest < ActionController::TestCase
     delete :using_resource
     assert_equal "application/json", @response.content_type
     assert_equal 204, @response.status
-    assert_equal " ", @response.body
+    assert_equal "", @response.body
   end
 
   def test_using_resource_for_delete_with_html_redirects_on_failure
@@ -953,8 +1012,9 @@ class RespondWithControllerTest < ActionController::TestCase
   def test_clear_respond_to
     @controller = InheritedRespondWithController.new
     @request.accept = "text/html"
-    get :index
-    assert_equal 406, @response.status
+    assert_raises(ActionController::UnknownFormat) do
+      get :index
+    end
   end
 
   def test_first_in_respond_to_has_higher_priority
@@ -1087,7 +1147,7 @@ class RespondWithControllerTest < ActionController::TestCase
           resources :quiz_stores do
             resources :customers
           end
-          match ":controller/:action"
+          get ":controller/:action"
         end
         yield
       end
@@ -1100,7 +1160,7 @@ end
 
 # For testing layouts which are set automatically
 class PostController < AbstractPostController
-  around_filter :with_iphone
+  around_action :with_iphone
 
   def index
     respond_to(:html, :iphone, :js)

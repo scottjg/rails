@@ -1,11 +1,13 @@
 require 'rack/utils'
+require 'active_support/core_ext/uri'
 
 module ActionDispatch
   class FileHandler
     def initialize(root, cache_control)
       @root          = root.chomp('/')
       @compiled_root = /^#{Regexp.escape(root)}/
-      @file_server   = ::Rack::File.new(@root, cache_control)
+      headers = cache_control && { 'Cache-Control' => cache_control }
+      @file_server   = ::Rack::File.new(@root, headers)
     end
 
     def match?(path)
@@ -28,7 +30,7 @@ module ActionDispatch
 
     def ext
       @ext ||= begin
-        ext = ::ActionController::Base.page_cache_extension
+        ext = ::ActionController::Base.default_static_extension
         "{,#{ext},/index#{ext}}"
       end
     end

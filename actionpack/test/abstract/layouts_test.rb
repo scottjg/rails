@@ -8,6 +8,8 @@ module AbstractControllerTests
       include AbstractController::Rendering
       include AbstractController::Layouts
 
+      abstract!
+
       self.view_paths = [ActionView::FixtureResolver.new(
         "layouts/hello.erb"             => "With String <%= yield %>",
         "layouts/hello_override.erb"    => "With Override <%= yield %>",
@@ -61,6 +63,7 @@ module AbstractControllerTests
     end
 
     class WithStringImpliedChild < WithString
+      layout nil
     end
 
     class WithChildOfImplied < WithStringImpliedChild
@@ -71,10 +74,39 @@ module AbstractControllerTests
     end
 
     class WithProc < Base
-      layout proc { |c| "overwrite" }
+      layout proc { "overwrite" }
 
       def index
         render :template => ActionView::Template::Text.new("Hello proc!")
+      end
+    end
+
+    class WithProcReturningNil < Base
+      layout proc { nil }
+
+      def index
+        render template: ActionView::Template::Text.new("Hello nil!")
+      end
+    end
+
+    class WithZeroArityProc < Base
+      layout proc { "overwrite" }
+
+      def index
+        render :template => ActionView::Template::Text.new("Hello zero arity proc!")
+      end
+    end
+
+    class WithProcInContextOfInstance < Base
+      def an_instance_method; end
+
+      layout proc {
+        break unless respond_to? :an_instance_method
+        "overwrite"
+      }
+
+      def index
+        render :template => ActionView::Template::Text.new("Hello again zero arity proc!")
       end
     end
 
@@ -221,10 +253,32 @@ module AbstractControllerTests
         assert_equal "Hello nil!", controller.response_body
       end
 
+      test "when layout is specified as a proc, do not leak any methods into controller's action_methods" do
+        assert_equal Set.new(['index']), WithProc.action_methods
+      end
+
       test "when layout is specified as a proc, call it and use the layout returned" do
         controller = WithProc.new
         controller.process(:index)
         assert_equal "Overwrite Hello proc!", controller.response_body
+      end
+
+      test "when layout is specified as a proc and the proc retuns nil, don't use a layout" do
+        controller = WithProcReturningNil.new
+        controller.process(:index)
+        assert_equal "Hello nil!", controller.response_body
+      end
+
+      test "when layout is specified as a proc without parameters it works just the same" do
+        controller = WithZeroArityProc.new
+        controller.process(:index)
+        assert_equal "Overwrite Hello zero arity proc!", controller.response_body
+      end
+
+      test "when layout is specified as a proc without parameters the block is evaluated in the context of an instance" do
+        controller = WithProcInContextOfInstance.new
+        controller.process(:index)
+        assert_equal "Overwrite Hello again zero arity proc!", controller.response_body
       end
 
       test "when layout is specified as a symbol, call the requested method and use the layout returned" do
@@ -261,14 +315,14 @@ module AbstractControllerTests
 
       test "when a child controller has an implied layout, use that layout and not the parent controller layout" do
         controller = WithStringImpliedChild.new
-        assert_deprecated { controller.process(:index) }
+        controller.process(:index)
         assert_equal "With Implied Hello string!", controller.response_body
       end
 
       test "when a grandchild has no layout specified, the child has an implied layout, and the " \
         "parent has specified a layout, use the child controller layout" do
           controller = WithChildOfImplied.new
-          assert_deprecated { controller.process(:index) }
+          controller.process(:index)
           assert_equal "With Implied Hello string!", controller.response_body
       end
 
@@ -311,6 +365,18 @@ module AbstractControllerTests
         controller = WithExceptConditional.new
         controller.process(:index)
         assert_equal "Overwrite Hello index!", controller.response_body
+      end
+
+      test "layout for anonymous controller" do
+        klass = Class.new(WithString) do
+          def index
+            render :text => 'index', :layout => true
+          end
+        end
+
+        controller = klass.new
+        controller.process(:index)
+        assert_equal "With String index", controller.response_body
       end
     end
   end

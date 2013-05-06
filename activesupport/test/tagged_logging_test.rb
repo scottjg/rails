@@ -1,9 +1,9 @@
 require 'abstract_unit'
-require 'active_support/core_ext/logger'
+require 'active_support/logger'
 require 'active_support/tagged_logging'
 
 class TaggedLoggingTest < ActiveSupport::TestCase
-  class MyLogger < ::Logger
+  class MyLogger < ::ActiveSupport::Logger
     def flush(*)
       info "[FLUSHED]"
     end
@@ -14,11 +14,19 @@ class TaggedLoggingTest < ActiveSupport::TestCase
     @logger = ActiveSupport::TaggedLogging.new(MyLogger.new(@output))
   end
 
+  test 'sets logger.formatter if missing and extends it with a tagging API' do
+    logger = Logger.new(StringIO.new)
+    assert_nil logger.formatter
+    ActiveSupport::TaggedLogging.new(logger)
+    assert_not_nil logger.formatter
+    assert logger.formatter.respond_to?(:tagged)
+  end
+
   test "tagged once" do
     @logger.tagged("BCX") { @logger.info "Funky time" }
     assert_equal "[BCX] Funky time\n", @output.string
   end
-  
+
   test "tagged twice" do
     @logger.tagged("BCX") { @logger.tagged("Jason") { @logger.info "Funky time" } }
     assert_equal "[BCX] [Jason] Funky time\n", @output.string
@@ -91,18 +99,4 @@ class TaggedLoggingTest < ActiveSupport::TestCase
 
     assert_equal "[BCX] [Jason] Funky time\n[BCX] Junky time!\n", @output.string
   end
-
-  test "silence" do
-    assert_deprecated do
-      assert_nothing_raised { @logger.silence {} }
-    end
-  end
-
-  test "calls block" do
-    @logger.tagged("BCX") do
-      @logger.info { "Funky town" }
-    end
-    assert_equal "[BCX] Funky town\n", @output.string
-  end
-
 end

@@ -3,9 +3,8 @@ require 'abstract_unit'
 class ViewLoadPathsTest < ActionController::TestCase
   class TestController < ActionController::Base
     def self.controller_path() "test" end
-    def rescue_action(e) raise end
 
-    before_filter :add_view_path, :only => :hello_world_at_request_time
+    before_action :add_view_path, only: :hello_world_at_request_time
 
     def hello_world() end
     def hello_world_at_request_time() render(:action => 'hello_world') end
@@ -16,9 +15,11 @@ class ViewLoadPathsTest < ActionController::TestCase
       end
   end
 
-  class Test::SubController < ActionController::Base
-    layout 'test/sub'
-    def hello_world; render(:template => 'test/hello_world'); end
+  module Test
+    class SubController < ActionController::Base
+      layout 'test/sub'
+      def hello_world; render(:template => 'test/hello_world'); end
+    end
   end
 
   def setup

@@ -1,9 +1,9 @@
 require 'active_support/core_ext/object/try'
-require 'action_controller/vendor/html-scanner'
+require 'action_view/vendor/html-scanner'
 
 module ActionView
   # = Action View Sanitize Helpers
-  module Helpers #:nodoc:
+  module Helpers
     # The SanitizeHelper module provides a set of methods for scrubbing text of undesired HTML elements.
     # These helper methods extend Action View making them callable within your template files.
     module SanitizeHelper
@@ -29,7 +29,7 @@ module ActionView
       #
       # Custom Use (only the mentioned tags and attributes are allowed, nothing else)
       #
-      #   <%= sanitize @article.body, :tags => %w(table tr td), :attributes => %w(id class style) %>
+      #   <%= sanitize @article.body, tags: %w(table tr td), attributes: %w(id class style) %>
       #
       # Add table tags to the default allowed tags
       #
@@ -69,8 +69,6 @@ module ActionView
       # html-scanner tokenizer and so its HTML parsing ability is limited by
       # that of html-scanner.
       #
-      # ==== Examples
-      #
       #   strip_tags("Strip <i>these</i> tags!")
       #   # => Strip these tags!
       #
@@ -85,7 +83,6 @@ module ActionView
 
       # Strips all link tags from +text+ leaving just the link text.
       #
-      # ==== Examples
       #   strip_links('<a href="http://www.rubyonrails.org">Ruby on Rails</a>')
       #   # => Ruby on Rails
       #

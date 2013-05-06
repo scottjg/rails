@@ -1,5 +1,3 @@
-require 'active_support/core_ext/object/blank'
-require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/module/remove_method'
 require 'action_controller'
 require 'action_controller/test_case'
@@ -40,10 +38,13 @@ module ActionView
       include ActionView::Context
 
       include ActionDispatch::Routing::PolymorphicRoutes
-      include ActionController::RecordIdentifier
 
       include AbstractController::Helpers
       include ActionView::Helpers
+      include ActionView::RecordIdentifier
+      include ActionView::RoutingUrlFor
+
+      include ActiveSupport::Testing::ConstantLookup
 
       delegate :lookup_context, :to => :controller
       attr_accessor :controller, :output_buffer, :rendered
@@ -59,10 +60,9 @@ module ActionView
         end
 
         def determine_default_helper_class(name)
-          mod = name.sub(/Test$/, '').constantize
-          mod.is_a?(Class) ? nil : mod
-        rescue NameError
-          nil
+          determine_constant_from_test_name(name) do |constant|
+            Module === constant && !(Class === constant)
+          end
         end
 
         def helper_method(*methods)
@@ -116,8 +116,33 @@ module ActionView
         output
       end
 
-      def locals
-        @locals ||= {}
+      def rendered_views
+        @_rendered_views ||= RenderedViewsCollection.new
+      end
+
+      class RenderedViewsCollection
+        def initialize
+          @rendered_views ||= Hash.new { |hash, key| hash[key] = [] }
+        end
+
+        def add(view, locals)
+          @rendered_views[view] ||= []
+          @rendered_views[view] << locals
+        end
+
+        def locals_for(view)
+          @rendered_views[view]
+        end
+
+        def rendered_views
+          @rendered_views.keys
+        end
+
+        def view_rendered?(view, expected_locals)
+          locals_for(view).any? do |actual_locals|
+            expected_locals.all? {|key, value| value == actual_locals[key] }
+          end
+        end
       end
 
       included do
@@ -153,18 +178,18 @@ module ActionView
       end
 
       module Locals
-        attr_accessor :locals
+        attr_accessor :rendered_views
 
         def render(options = {}, local_assigns = {})
           case options
           when Hash
             if block_given?
-              locals[options[:layout]] = options[:locals]
+              rendered_views.add options[:layout], options[:locals]
             elsif options.key?(:partial)
-              locals[options[:partial]] = options[:locals]
+              rendered_views.add options[:partial], options[:locals]
             end
           else
-            locals[options] = local_assigns
+            rendered_views.add options, local_assigns
           end
 
           super
@@ -177,7 +202,7 @@ module ActionView
           view = @controller.view_context
           view.singleton_class.send :include, _helpers
           view.extend(Locals)
-          view.locals = self.locals
+          view.rendered_views = self.rendered_views
           view.output_buffer = self.output_buffer
           view
         end
@@ -185,32 +210,34 @@ module ActionView
 
       alias_method :_view, :view
 
-      INTERNAL_IVARS = %w{
-        @__name__
-        @__io__
-        @_assertion_wrapped
-        @_assertions
-        @_result
-        @_routes
-        @controller
-        @layouts
-        @locals
-        @method_name
-        @output_buffer
-        @partials
-        @passed
-        @rendered
-        @request
-        @routes
-        @templates
-        @options
-        @test_passed
-        @view
-        @view_context_class
-      }
+      INTERNAL_IVARS = [
+        :@__name__,
+        :@__io__,
+        :@_assertion_wrapped,
+        :@_assertions,
+        :@_result,
+        :@_routes,
+        :@controller,
+        :@_layouts,
+        :@_files,
+        :@_rendered_views,
+        :@method_name,
+        :@output_buffer,
+        :@_partials,
+        :@passed,
+        :@rendered,
+        :@request,
+        :@routes,
+        :@tagged_logger,
+        :@_templates,
+        :@options,
+        :@test_passed,
+        :@view,
+        :@view_context_class
+      ]
 
       def _user_defined_ivars
-        instance_variables.map(&:to_s) - INTERNAL_IVARS
+        instance_variables - INTERNAL_IVARS
       end
 
       # Returns a Hash of instance variables and their values, as defined by
@@ -218,8 +245,8 @@ module ActionView
       # rendered. This is generally intended for internal use and extension
       # frameworks.
       def view_assigns
-        Hash[_user_defined_ivars.map do |var|
-          [var[1, var.length].to_sym, instance_variable_get(var)]
+        Hash[_user_defined_ivars.map do |ivar|
+          [ivar[1..-1].to_sym, instance_variable_get(ivar)]
         end]
       end
 
@@ -236,10 +263,8 @@ module ActionView
           super
         end
       end
-
     end
 
     include Behavior
-
   end
 end

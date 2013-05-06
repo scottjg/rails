@@ -1,40 +1,34 @@
 require 'abstract_unit'
 require 'controller/fake_models'
 
-class RecordIdentifierTest < Test::Unit::TestCase
+class ControllerRecordIdentifierTest < ActiveSupport::TestCase
   include ActionController::RecordIdentifier
 
   def setup
-    @klass  = Comment
-    @record = @klass.new
-    @singular = 'comment'
-    @plural = 'comments'
-    @uncountable = Sheep
+    @record = Comment.new
   end
 
-  def test_dom_id_with_new_record
-    assert_equal "new_#{@singular}", dom_id(@record)
+  def test_dom_id_deprecation
+    assert_deprecated(/dom_id method will no longer be included by default in controllers/) do
+      dom_id(@record)
+    end
   end
 
-  def test_dom_id_with_new_record_and_prefix
-    assert_equal "custom_prefix_#{@singular}", dom_id(@record, :custom_prefix)
+  def test_dom_class_deprecation
+    assert_deprecated(/dom_class method will no longer be included by default in controllers/) do
+      dom_class(@record)
+    end
   end
 
-  def test_dom_id_with_saved_record
-    @record.save
-    assert_equal "#{@singular}_1", dom_id(@record)
+  def test_dom_id_from_module_deprecation
+    assert_deprecated(/Calling ActionController::RecordIdentifier.dom_id is deprecated/) do
+      ActionController::RecordIdentifier.dom_id(@record)
+    end
   end
 
-  def test_dom_id_with_prefix
-    @record.save
-    assert_equal "edit_#{@singular}_1", dom_id(@record, :edit)
-  end
-
-  def test_dom_class
-    assert_equal @singular, dom_class(@record)
-  end
-
-  def test_dom_class_with_prefix
-    assert_equal "custom_prefix_#{@singular}", dom_class(@record, :custom_prefix)
+  def test_dom_class_from_module_deprecation
+    assert_deprecated(/Calling ActionController::RecordIdentifier.dom_class is deprecated/) do
+      ActionController::RecordIdentifier.dom_class(@record)
+    end
   end
 end

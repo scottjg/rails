@@ -7,10 +7,12 @@ if ActiveRecord::Base.connection.supports_migrations?
 
     def setup
       @connection = ActiveRecord::Base.connection
+      ActiveRecord::SchemaMigration.drop_table
     end
 
     def teardown
       @connection.drop_table :fruits rescue nil
+      ActiveRecord::SchemaMigration.delete_all rescue nil
     end
 
     def test_schema_define
@@ -37,6 +39,12 @@ if ActiveRecord::Base.connection.supports_migrations?
         end
       end
     end
-  end
 
+    def test_schema_subclass
+      Class.new(ActiveRecord::Schema).define(:version => 9) do
+        create_table :fruits
+      end
+      assert_nothing_raised { @connection.select_all "SELECT * FROM fruits" }
+    end
+  end
 end

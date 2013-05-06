@@ -34,6 +34,12 @@ class Someone < Struct.new(:name, :place)
   delegate :street, :city, :to_f, :to => :place
   delegate :name=, :to => :place, :prefix => true
   delegate :upcase, :to => "place.city"
+  delegate :table_name, :to => :class
+  delegate :table_name, :to => :class, :prefix => true
+
+  def self.table_name
+    'some_table'
+  end
 
   FAILED_DELEGATE_LINE = __LINE__ + 1
   delegate :foo, :to => :place
@@ -60,6 +66,14 @@ Tester = Struct.new(:client) do
   delegate :name, :to => :client, :prefix => false
 end
 
+class ParameterSet
+  delegate :[], :[]=, :to => :@params
+
+  def initialize
+    @params = {:foo => "bar"}
+  end
+end
+
 class Name
   delegate :upcase, :to => :@full_name
 
@@ -68,7 +82,22 @@ class Name
   end
 end
 
-class ModuleTest < Test::Unit::TestCase
+class SideEffect
+  attr_reader :ints
+
+  delegate :to_i, :to => :shift, :allow_nil => true
+  delegate :to_s, :to => :shift
+
+  def initialize
+    @ints = [1, 2, 3]
+  end
+
+  def shift
+    @ints.shift
+  end
+end
+
+class ModuleTest < ActiveSupport::TestCase
   def setup
     @david = Someone.new("David", Somewhere.new("Paulina", "Chicago"))
   end
@@ -83,6 +112,17 @@ class ModuleTest < Test::Unit::TestCase
     assert_equal "Fred", @david.place.name
   end
 
+  def test_delegation_to_index_get_method
+    @params = ParameterSet.new
+    assert_equal "bar", @params[:foo]
+  end
+
+  def test_delegation_to_index_set_method
+    @params = ParameterSet.new
+    @params[:foo] = "baz"
+    assert_equal "baz", @params[:foo]
+  end
+
   def test_delegation_down_hierarchy
     assert_equal "CHICAGO", @david.upcase
   end
@@ -90,6 +130,11 @@ class ModuleTest < Test::Unit::TestCase
   def test_delegation_to_instance_variable
     david = Name.new("David", "Hansson")
     assert_equal "DAVID HANSSON", david.upcase
+  end
+
+  def test_delegation_to_class_method
+    assert_equal 'some_table', @david.table_name
+    assert_equal 'some_table', @david.class_table_name
   end
 
   def test_missing_delegation_target
@@ -139,6 +184,17 @@ class ModuleTest < Test::Unit::TestCase
   def test_delegation_with_allow_nil_and_nil_value
     rails = Project.new("Rails")
     assert_nil rails.name
+  end
+
+  # Ensures with check for nil, not for a falseish target.
+  def test_delegation_with_allow_nil_and_false_value
+    project = Project.new(false, false)
+    assert_raise(NoMethodError) { project.name }
+  end
+
+  def test_delegation_with_allow_nil_and_invalid_value
+    rails = Project.new("Rails", "David")
+    assert_raise(NoMethodError) { rails.name }
   end
 
   def test_delegation_with_allow_nil_and_nil_value_and_prefix
@@ -198,6 +254,16 @@ class ModuleTest < Test::Unit::TestCase
            "[#{e.backtrace.inspect}] did not include [#{file_and_line}]"
   end
 
+  def test_delegation_invokes_the_target_exactly_once
+    se = SideEffect.new
+
+    assert_equal 1, se.to_i
+    assert_equal [2, 3], se.ints
+
+    assert_equal '2', se.to_s
+    assert_equal [3], se.ints
+  end
+
   def test_parent
     assert_equal Yz::Zy, Yz::Zy::Cd.parent
     assert_equal Yz, Yz::Zy.parent
@@ -211,6 +277,12 @@ class ModuleTest < Test::Unit::TestCase
 
   def test_local_constants
     assert_equal %w(Constant1 Constant3), Ab.local_constants.sort.map(&:to_s)
+  end
+
+  def test_local_constant_names
+    ActiveSupport::Deprecation.silence do
+      assert_equal %w(Constant1 Constant3), Ab.local_constant_names.sort.map(&:to_s)
+    end
   end
 end
 
@@ -245,7 +317,7 @@ module BarMethods
   end
 end
 
-class MethodAliasingTest < Test::Unit::TestCase
+class MethodAliasingTest < ActiveSupport::TestCase
   def setup
     Object.const_set :FooClassWithBarMethod, Class.new { def bar() 'bar' end }
     @instance = FooClassWithBarMethod.new

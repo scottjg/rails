@@ -1,5 +1,6 @@
 require 'abstract_unit'
 require 'rbconfig'
+require 'active_support/core_ext/array/extract_options'
 
 # The view_paths array must be set on Base and not LayoutTest so that LayoutTest's inherited
 # method has access to the view_paths array when looking for a layout to automatically assign.
@@ -78,12 +79,31 @@ end
 class DefaultLayoutController < LayoutTest
 end
 
+class StreamingLayoutController < LayoutTest
+  def render(*args)
+    options = args.extract_options!
+    super(*args, options.merge(:stream => true))
+  end
+end
+
 class AbsolutePathLayoutController < LayoutTest
   layout File.expand_path(File.expand_path(__FILE__) + '/../../fixtures/layout_tests/layouts/layout_test')
 end
 
 class HasOwnLayoutController < LayoutTest
   layout 'item'
+end
+
+class HasNilLayoutSymbol < LayoutTest
+  layout :nilz
+
+  def nilz
+    nil
+  end
+end
+
+class HasNilLayoutProc < LayoutTest
+  layout proc { nil }
 end
 
 class PrependsViewPathController < LayoutTest
@@ -122,10 +142,28 @@ class LayoutSetInResponseTest < ActionController::TestCase
     assert_template :layout => "layouts/layout_test"
   end
 
+  def test_layout_set_when_using_streaming_layout
+    @controller = StreamingLayoutController.new
+    get :hello
+    assert_template :hello
+  end
+
   def test_layout_set_when_set_in_controller
     @controller = HasOwnLayoutController.new
     get :hello
     assert_template :layout => "layouts/item"
+  end
+
+  def test_layout_symbol_set_in_controller_returning_nil_falls_back_to_default
+    @controller = HasNilLayoutSymbol.new
+    get :hello
+    assert_template layout: "layouts/layout_test"
+  end
+
+  def test_layout_proc_set_in_controller_returning_nil_falls_back_to_default
+    @controller = HasNilLayoutProc.new
+    get :hello
+    assert_template layout: "layouts/layout_test"
   end
 
   def test_layout_only_exception_when_included
@@ -187,7 +225,7 @@ class SetsNonExistentLayoutFile < LayoutTest
   layout "nofile"
 end
 
-class LayoutExceptionRaised < ActionController::TestCase
+class LayoutExceptionRaisedTest < ActionController::TestCase
   def test_exception_raised_when_layout_file_not_found
     @controller = SetsNonExistentLayoutFile.new
     assert_raise(ActionView::MissingTemplate) { get :hello }

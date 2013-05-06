@@ -113,8 +113,6 @@ class RedirectController < ActionController::Base
 
   def rescue_errors(e) raise e end
 
-  def rescue_action(e) raise end
-
   protected
     def dashbord_url(id, message)
       url_for :action => "dashboard", :params => { "id" => id, "message" => message }
@@ -264,7 +262,7 @@ class RedirectTest < ActionController::TestCase
     with_routing do |set|
       set.draw do
         resources :workshops
-        match ':controller/:action'
+        get ':controller/:action'
       end
 
       get :redirect_to_existing_record
@@ -298,7 +296,7 @@ class RedirectTest < ActionController::TestCase
   def test_redirect_to_with_block_and_accepted_options
     with_routing do |set|
       set.draw do
-        match ':controller/:action'
+        get ':controller/:action'
       end
 
       get :redirect_to_with_block_and_options

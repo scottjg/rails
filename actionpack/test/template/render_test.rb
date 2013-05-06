@@ -29,14 +29,6 @@ module RenderTestCases
     assert_equal "Hello world!", @view.render(:file => "test/hello_world")
   end
 
-  def test_render_file_not_using_full_path
-    assert_equal "Hello world!", @view.render(:file => "test/hello_world")
-  end
-
-  def test_render_file_without_specific_extension
-    assert_equal "Hello world!", @view.render(:file => "test/hello_world")
-  end
-
   # Test if :formats, :locale etc. options are passed correctly to the resolvers.
   def test_render_file_with_format
     assert_match "<h1>No Comment</h1>", @view.render(:file => "comments/empty", :formats => [:html])
@@ -52,6 +44,16 @@ module RenderTestCases
   def test_render_partial_implicitly_use_format_of_the_rendered_template
     @view.lookup_context.formats = [:json]
     assert_equal "Hello world", @view.render(:template => "test/one", :formats => [:html])
+  end
+
+  def test_render_partial_implicitly_use_format_of_the_rendered_partial
+    @view.lookup_context.formats = [:html]
+    assert_equal "Third level", @view.render(:template => "test/html_template")
+  end
+
+  def test_render_partial_use_last_prepended_format_for_partials_with_the_same_names
+    @view.lookup_context.formats = [:html]
+    assert_equal "\nHTML Template, but JSON partial", @view.render(:template => "test/change_priority")
   end
 
   def test_render_template_with_a_missing_partial_of_another_format
@@ -77,6 +79,22 @@ module RenderTestCases
 
   def test_render_template_with_handlers
     assert_equal "<h1>No Comment</h1>\n", @view.render(:template => "comments/empty", :handlers => [:builder])
+  end
+
+  def test_render_raw_template_with_handlers
+    assert_equal "<%= hello_world %>\n", @view.render(:template => "plain_text")
+  end
+
+  def test_render_raw_template_with_quotes
+    assert_equal %q;Here are some characters: !@#$%^&*()-="'}{`; + "\n", @view.render(:template => "plain_text_with_characters")
+  end
+
+  def test_render_ruby_template_with_handlers
+    assert_equal "Hello from Ruby code", @view.render(:template => "ruby_template")
+  end
+
+  def test_render_ruby_template_inline
+    assert_equal '4', @view.render(:inline => "(2**2).to_s", :type => :ruby)
   end
 
   def test_render_file_with_localization_on_context_level
@@ -153,20 +171,27 @@ module RenderTestCases
   def test_render_partial_with_invalid_name
     e = assert_raises(ArgumentError) { @view.render(:partial => "test/200") }
     assert_equal "The partial name (test/200) is not a valid Ruby identifier; " +
-      "make sure your partial name starts with a letter or underscore, " +
-      "and is followed by any combinations of letters, numbers, or underscores.", e.message
+      "make sure your partial name starts with a lowercase letter or underscore, " +
+      "and is followed by any combination of letters, numbers and underscores.", e.message
   end
 
   def test_render_partial_with_missing_filename
     e = assert_raises(ArgumentError) { @view.render(:partial => "test/") }
     assert_equal "The partial name (test/) is not a valid Ruby identifier; " +
-      "make sure your partial name starts with a letter or underscore, " +
-      "and is followed by any combinations of letters, numbers, or underscores.", e.message
+      "make sure your partial name starts with a lowercase letter or underscore, " +
+      "and is followed by any combination of letters, numbers and underscores.", e.message
   end
 
   def test_render_partial_with_incompatible_object
     e = assert_raises(ArgumentError) { @view.render(:partial => nil) }
-    assert_equal "'#{nil.inspect}' is not an ActiveModel-compatible object that returns a valid partial path.", e.message
+    assert_equal "'#{nil.inspect}' is not an ActiveModel-compatible object. It must implement :to_partial_path.", e.message
+  end
+
+  def test_render_partial_with_hyphen
+    e = assert_raises(ArgumentError) { @view.render(:partial => "test/a-in") }
+    assert_equal "The partial name (test/a-in) is not a valid Ruby identifier; " +
+      "make sure your partial name starts with a lowercase letter or underscore, " +
+      "and is followed by any combination of letters, numbers and underscores.", e.message
   end
 
   def test_render_partial_with_errors
@@ -176,6 +201,15 @@ module RenderTestCases
     assert_equal "1", e.line_number
     assert_equal "1: <%= doesnt_exist %>", e.annoted_source_code.strip
     assert_equal File.expand_path("#{FIXTURE_LOAD_PATH}/test/_raise.html.erb"), e.file_name
+  end
+
+  def test_render_error_indentation
+    e = assert_raises(ActionView::Template::Error) { @view.render(:partial => "test/raise_indentation") }
+    error_lines = e.annoted_source_code.split("\n")
+    assert_match %r!error\shere!, e.message
+    assert_equal "11", e.line_number
+    assert_equal "     9: <p>Ninth paragraph</p>", error_lines.second
+    assert_equal "    10: <p>Tenth paragraph</p>", error_lines.third
   end
 
   def test_render_sub_template_with_errors
@@ -234,6 +268,25 @@ module RenderTestCases
     assert_equal "Hello: davidHello: Anonymous", @view.render(:partial => "test/customer", :collection => [ Customer.new("david"), nil ])
   end
 
+  def test_render_partial_with_layout_using_collection_and_template
+    assert_equal "<b>Hello: Amazon</b><b>Hello: Yahoo</b>", @view.render(:partial => "test/customer", :layout => 'test/b_layout_for_partial', :collection => [ Customer.new("Amazon"), Customer.new("Yahoo") ])
+  end
+
+  def test_render_partial_with_layout_using_collection_and_template_makes_current_item_available_in_layout
+    assert_equal '<b class="amazon">Hello: Amazon</b><b class="yahoo">Hello: Yahoo</b>',
+      @view.render(:partial => "test/customer", :layout => 'test/b_layout_for_partial_with_object', :collection => [ Customer.new("Amazon"), Customer.new("Yahoo") ])
+  end
+
+  def test_render_partial_with_layout_using_collection_and_template_makes_current_item_counter_available_in_layout
+    assert_equal '<b data-counter="0">Hello: Amazon</b><b data-counter="1">Hello: Yahoo</b>',
+      @view.render(:partial => "test/customer", :layout => 'test/b_layout_for_partial_with_object_counter', :collection => [ Customer.new("Amazon"), Customer.new("Yahoo") ])
+  end
+
+  def test_render_partial_with_layout_using_object_and_template_makes_object_available_in_layout
+    assert_equal '<b class="amazon">Hello: Amazon</b>',
+      @view.render(:partial => "test/customer", :layout => 'test/b_layout_for_partial_with_object', :object => Customer.new("Amazon"))
+  end
+
   def test_render_partial_with_empty_array_should_return_nil
     assert_nil @view.render(:partial => [])
   end
@@ -257,34 +310,11 @@ module RenderTestCases
       @controller_view.render(customers, :greeting => "Hello")
   end
 
-  class CustomerWithDeprecatedPartialPath
-    attr_reader :name
-
-    def self.model_name
-      Struct.new(:partial_path).new("customers/customer")
+  def test_render_partial_without_object_or_collection_does_not_generate_partial_name_local_variable
+    exception = assert_raises ActionView::Template::Error do
+      @controller_view.render("partial_name_local_variable")
     end
-
-    def initialize(name)
-      @name = name
-    end
-  end
-
-  def test_render_partial_using_object_with_deprecated_partial_path
-    assert_deprecated(/#model_name.*#partial_path.*#to_partial_path/) do
-      assert_equal "Hello: nertzy",
-        @controller_view.render(CustomerWithDeprecatedPartialPath.new("nertzy"), :greeting => "Hello")
-    end
-  end
-
-  def test_render_partial_using_collection_with_deprecated_partial_path
-    assert_deprecated(/#model_name.*#partial_path.*#to_partial_path/) do
-      customers = [
-        CustomerWithDeprecatedPartialPath.new("nertzy"),
-        CustomerWithDeprecatedPartialPath.new("peeja")
-      ]
-      assert_equal "Hello: nertzyHello: peeja",
-        @controller_view.render(customers, :greeting => "Hello")
-    end
+    assert_match "undefined local variable or method `partial_name_local_variable'", exception.message
   end
 
   # TODO: The reason for this test is unclear, improve documentation
@@ -336,7 +366,7 @@ module RenderTestCases
     ActionView::Template.register_template_handler :foo, CustomHandler
     assert_equal 'source: "Hello, <%= name %>!"', @view.render(:inline => "Hello, <%= name %>!", :locals => { :name => "Josh" }, :type => :foo)
   end
-  
+
   def test_render_knows_about_types_registered_when_extensions_are_checked_earlier_in_initialization
     ActionView::Template::Handlers.extensions
     ActionView::Template.register_template_handler :foo, CustomHandler
@@ -406,6 +436,11 @@ module RenderTestCases
       @view.render(:partial => 'test/partial_with_layout_block_content', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
   end
 
+  def test_render_partial_with_layout_raises_descriptive_error
+    e = assert_raises(ActionView::MissingTemplate) { @view.render(partial: 'test/partial', layout: true) }
+    assert_match "Missing partial /true with", e.message
+  end
+
   def test_render_with_nested_layout
     assert_equal %(<title>title</title>\n\n<div id="column">column</div>\n<div id="content">content</div>\n),
       @view.render(:file => "test/nested_layout", :layout => "layouts/yield")
@@ -419,6 +454,15 @@ module RenderTestCases
   def test_render_layout_with_object
     assert_equal %(<title>David</title>),
       @view.render(:file => "test/layout_render_object")
+  end
+
+  def test_render_with_passing_couple_extensions_to_one_register_template_handler_function_call
+    ActionView::Template.register_template_handler :foo1, :foo2, CustomHandler
+    assert_equal @view.render(:inline => "Hello, World!", :type => :foo1), @view.render(:inline => "Hello, World!", :type => :foo2)
+  end
+
+  def test_render_throws_exception_when_no_extensions_passed_to_register_template_handler_function_call
+    assert_raises(ArgumentError) { ActionView::Template.register_template_handler CustomHandler }
   end
 end
 
@@ -453,43 +497,41 @@ class LazyViewRenderTest < ActiveSupport::TestCase
     GC.start
   end
 
-  if '1.9'.respond_to?(:force_encoding)
-    def test_render_utf8_template_with_magic_comment
-      with_external_encoding Encoding::ASCII_8BIT do
-        result = @view.render(:file => "test/utf8_magic", :formats => [:html], :layouts => "layouts/yield")
-        assert_equal Encoding::UTF_8, result.encoding
-        assert_equal "\nРусский \nтекст\n\nUTF-8\nUTF-8\nUTF-8\n", result
-      end
+  def test_render_utf8_template_with_magic_comment
+    with_external_encoding Encoding::ASCII_8BIT do
+      result = @view.render(:file => "test/utf8_magic", :formats => [:html], :layouts => "layouts/yield")
+      assert_equal Encoding::UTF_8, result.encoding
+      assert_equal "\nРусский \nтекст\n\nUTF-8\nUTF-8\nUTF-8\n", result
     end
+  end
 
-    def test_render_utf8_template_with_default_external_encoding
-      with_external_encoding Encoding::UTF_8 do
-        result = @view.render(:file => "test/utf8", :formats => [:html], :layouts => "layouts/yield")
-        assert_equal Encoding::UTF_8, result.encoding
-        assert_equal "Русский текст\n\nUTF-8\nUTF-8\nUTF-8\n", result
-      end
+  def test_render_utf8_template_with_default_external_encoding
+    with_external_encoding Encoding::UTF_8 do
+      result = @view.render(:file => "test/utf8", :formats => [:html], :layouts => "layouts/yield")
+      assert_equal Encoding::UTF_8, result.encoding
+      assert_equal "Русский текст\n\nUTF-8\nUTF-8\nUTF-8\n", result
     end
+  end
 
-    def test_render_utf8_template_with_incompatible_external_encoding
-      with_external_encoding Encoding::SHIFT_JIS do
-        e = assert_raises(ActionView::Template::Error) { @view.render(:file => "test/utf8", :formats => [:html], :layouts => "layouts/yield") }
-        assert_match 'Your template was not saved as valid Shift_JIS', e.original_exception.message
-      end
+  def test_render_utf8_template_with_incompatible_external_encoding
+    with_external_encoding Encoding::SHIFT_JIS do
+      e = assert_raises(ActionView::Template::Error) { @view.render(:file => "test/utf8", :formats => [:html], :layouts => "layouts/yield") }
+      assert_match 'Your template was not saved as valid Shift_JIS', e.original_exception.message
     end
+  end
 
-    def test_render_utf8_template_with_partial_with_incompatible_encoding
-      with_external_encoding Encoding::SHIFT_JIS do
-        e = assert_raises(ActionView::Template::Error) { @view.render(:file => "test/utf8_magic_with_bare_partial", :formats => [:html], :layouts => "layouts/yield") }
-        assert_match 'Your template was not saved as valid Shift_JIS', e.original_exception.message
-      end
+  def test_render_utf8_template_with_partial_with_incompatible_encoding
+    with_external_encoding Encoding::SHIFT_JIS do
+      e = assert_raises(ActionView::Template::Error) { @view.render(:file => "test/utf8_magic_with_bare_partial", :formats => [:html], :layouts => "layouts/yield") }
+      assert_match 'Your template was not saved as valid Shift_JIS', e.original_exception.message
     end
+  end
 
-    def with_external_encoding(encoding)
-      old = Encoding.default_external
-      silence_warnings { Encoding.default_external = encoding }
-      yield
-    ensure
-      silence_warnings { Encoding.default_external = old }
-    end
+  def with_external_encoding(encoding)
+    old = Encoding.default_external
+    silence_warnings { Encoding.default_external = encoding }
+    yield
+  ensure
+    silence_warnings { Encoding.default_external = old }
   end
 end

@@ -1,46 +1,51 @@
-require 'active_support/core_ext/class/attribute'
-require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/module/attribute_accessors'
 
 module ActiveRecord
   module AttributeMethods
-    module Dirty
+    module Dirty # :nodoc:
       extend ActiveSupport::Concern
+
       include ActiveModel::Dirty
-      include AttributeMethods::Write
 
       included do
         if self < ::ActiveRecord::Timestamp
           raise "You cannot include Dirty after Timestamp"
         end
 
-        class_attribute :partial_updates
-        self.partial_updates = true
+        class_attribute :partial_writes, instance_writer: false
+        self.partial_writes = true
+
+        def self.partial_updates=(v); self.partial_writes = v; end
+        def self.partial_updates?; partial_writes?; end
+        def self.partial_updates; partial_writes; end
+
+        ActiveSupport::Deprecation.deprecate_methods(
+          singleton_class,
+          :partial_updates= => :partial_writes=,
+          :partial_updates? => :partial_writes?,
+          :partial_updates  => :partial_writes
+        )
       end
 
       # Attempts to +save+ the record and clears changed attributes if successful.
-      def save(*) #:nodoc:
+      def save(*)
         if status = super
           @previously_changed = changes
           @changed_attributes.clear
-        elsif IdentityMap.enabled?
-          IdentityMap.remove(self)
         end
         status
       end
 
       # Attempts to <tt>save!</tt> the record and clears changed attributes if successful.
-      def save!(*) #:nodoc:
+      def save!(*)
         super.tap do
           @previously_changed = changes
           @changed_attributes.clear
         end
-      rescue
-        IdentityMap.remove(self) if IdentityMap.enabled?
-        raise
       end
 
       # <tt>reload</tt> the record and clears changed attributes.
-      def reload(*) #:nodoc:
+      def reload(*)
         super.tap do
           @previously_changed.clear
           @changed_attributes.clear
@@ -58,8 +63,6 @@ module ActiveRecord
           @changed_attributes.delete(attr) unless _field_changed?(attr, old, value)
         else
           old = clone_attribute_value(:read_attribute, attr)
-          # Save Time objects as TimeWithZone if time_zone_aware_attributes == true
-          old = old.in_time_zone if clone_with_time_zone_conversion_attribute?(attr, old)
           @changed_attributes[attr] = old if _field_changed?(attr, old, value)
         end
 
@@ -67,14 +70,18 @@ module ActiveRecord
         super(attr, value)
       end
 
-      def update(*)
-        if partial_updates?
-          # Serialized attributes should always be written in case they've been
-          # changed in place.
-          super(changed | (attributes.keys & self.class.serialized_attributes.keys))
-        else
-          super
-        end
+      def update_record(*)
+        partial_writes? ? super(keys_for_partial_write) : super
+      end
+
+      def create_record(*)
+        partial_writes? ? super(keys_for_partial_write) : super
+      end
+
+      # Serialized attributes should always be written in case they've been
+      # changed in place.
+      def keys_for_partial_write
+        changed | (attributes.keys & self.class.serialized_attributes.keys)
       end
 
       def _field_changed?(attr, old, value)
@@ -90,10 +97,6 @@ module ActiveRecord
         old != value
       end
 
-      def clone_with_time_zone_conversion_attribute?(attr, old)
-        old.class.name == "Time" && time_zone_aware_attributes && !self.skip_time_zone_conversion_for_attributes.include?(attr.to_sym)
-      end
-
       def changes_from_nil_to_empty_string?(column, old, value)
         # For nullable numeric columns, NULL gets stored in database for blank (i.e. '') values.
         # Hence we don't record it as a change if the value changes from nil to ''.
@@ -104,7 +107,11 @@ module ActiveRecord
 
       def changes_from_zero_to_string?(old, value)
         # For columns with old 0 and value non-empty string
-        old == 0 && value.is_a?(String) && value.present? && value != '0'
+        old == 0 && value.is_a?(String) && value.present? && non_zero?(value)
+      end
+
+      def non_zero?(value)
+        value !~ /\A0+(\.0+)?\z/
       end
     end
   end

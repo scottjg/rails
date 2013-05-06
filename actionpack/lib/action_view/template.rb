@@ -1,5 +1,3 @@
-require 'active_support/core_ext/array/wrap'
-require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/object/try'
 require 'active_support/core_ext/kernel/singleton_class'
 require 'thread'
@@ -82,8 +80,7 @@ module ActionView
     # problems with converting the user's data to
     # the <tt>default_internal</tt>.
     #
-    # To do so, simply raise the raise +WrongEncodingError+
-    # as follows:
+    # To do so, simply raise +WrongEncodingError+ as follows:
     #
     #     raise WrongEncodingError.new(
     #       problematic_string,
@@ -94,6 +91,7 @@ module ActionView
       autoload :Error
       autoload :Handlers
       autoload :Text
+      autoload :Types
     end
 
     extend Template::Handlers
@@ -123,7 +121,7 @@ module ActionView
       @locals            = details[:locals] || []
       @virtual_path      = details[:virtual_path]
       @updated_at        = details[:updated_at] || Time.now
-      @formats = Array.wrap(format).map { |f| f.is_a?(Mime::Type) ? f.ref : f }
+      @formats           = Array(format).map { |f| f.respond_to?(:ref) ? f.ref : f  }
       @compile_mutex     = Mutex.new
     end
 
@@ -140,7 +138,7 @@ module ActionView
     # we use a bang in this instrumentation because you don't want to
     # consume this in production. This is only slow if it's being listened to.
     def render(view, locals, buffer=nil, &block)
-      ActiveSupport::Notifications.instrument("!render_template.action_view", :virtual_path => @virtual_path) do
+      ActiveSupport::Notifications.instrument("!render_template.action_view", virtual_path: @virtual_path, identifier: @identifier) do
         compile!(view)
         view.send(method_name, locals, buffer, &block)
       end
@@ -149,7 +147,13 @@ module ActionView
     end
 
     def mime_type
+      message = 'Template#mime_type is deprecated and will be removed in Rails 4.1. Please use type method instead.'
+      ActiveSupport::Deprecation.warn message
       @mime_type ||= Mime::Type.lookup_by_extension(@formats.first.to_s) if @formats.first
+    end
+
+    def type
+      @type ||= Types[@formats.first] if @formats.first
     end
 
     # Receives a view object and return a template similar to self by using @virtual_path.
@@ -186,7 +190,7 @@ module ActionView
     # before passing the source on to the template engine, leaving a
     # blank line in its stead.
     def encode!
-      return unless source.encoding_aware? && source.encoding == Encoding::BINARY
+      return unless source.encoding == Encoding::BINARY
 
       # Look for # encoding: *. If we find one, we'll encode the
       # String in that encoding, otherwise, we'll use the
@@ -277,20 +281,18 @@ module ActionView
           end
         end_src
 
-        if source.encoding_aware?
-          # Make sure the source is in the encoding of the returned code
-          source.force_encoding(code.encoding)
+        # Make sure the source is in the encoding of the returned code
+        source.force_encoding(code.encoding)
 
-          # In case we get back a String from a handler that is not in
-          # BINARY or the default_internal, encode it to the default_internal
-          source.encode!
+        # In case we get back a String from a handler that is not in
+        # BINARY or the default_internal, encode it to the default_internal
+        source.encode!
 
-          # Now, validate that the source we got back from the template
-          # handler is valid in the default_internal. This is for handlers
-          # that handle encoding but screw up
-          unless source.valid_encoding?
-            raise WrongEncodingError.new(@source, Encoding.default_internal)
-          end
+        # Now, validate that the source we got back from the template
+        # handler is valid in the default_internal. This is for handlers
+        # that handle encoding but screw up
+        unless source.valid_encoding?
+          raise WrongEncodingError.new(@source, Encoding.default_internal)
         end
 
         begin
@@ -303,7 +305,7 @@ module ActionView
             logger.debug "Backtrace: #{e.backtrace.join("\n")}"
           end
 
-          raise ActionView::Template::Error.new(self, {}, e)
+          raise ActionView::Template::Error.new(self, e)
         end
       end
 
@@ -312,18 +314,18 @@ module ActionView
           e.sub_template_of(self)
           raise e
         else
-          assigns  = view.respond_to?(:assigns) ? view.assigns : {}
           template = self
           unless template.source
             template = refresh(view)
             template.encode!
           end
-          raise Template::Error.new(template, assigns, e)
+          raise Template::Error.new(template, e)
         end
       end
 
       def locals_code #:nodoc:
-        @locals.map { |key| "#{key} = local_assigns[:#{key}];" }.join
+        # Double assign to suppress the dreaded 'assigned but unused variable' warning
+        @locals.map { |key| "#{key} = #{key} = local_assigns[:#{key}];" }.join
       end
 
       def method_name #:nodoc:

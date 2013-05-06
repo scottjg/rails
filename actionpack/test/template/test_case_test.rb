@@ -64,18 +64,18 @@ module ActionView
       assert_equal 'Howdy!', from_another_helper
     end
 
-    test "determine_default_helper_class returns nil if name.sub(/Test$/, '').constantize resolves to a class" do
+    test "determine_default_helper_class returns nil if the test name constant resolves to a class" do
       assert_nil self.class.determine_default_helper_class("String")
     end
 
-    test "delegates notice to request.flash" do
-      view.request.flash.expects(:notice).with("this message")
-      view.notice("this message")
+    test "delegates notice to request.flash[:notice]" do
+      view.request.flash.expects(:[]).with(:notice)
+      view.notice
     end
 
-    test "delegates alert to request.flash" do
-      view.request.flash.expects(:alert).with("this message")
-      view.alert("this message")
+    test "delegates alert to request.flash[:alert]" do
+      view.request.flash.expects(:[]).with(:alert)
+      view.alert
     end
 
     test "uses controller lookup context" do
@@ -155,7 +155,7 @@ module ActionView
     test "view_assigns excludes internal ivars" do
       INTERNAL_IVARS.each do |ivar|
         assert defined?(ivar), "expected #{ivar} to be defined"
-        assert !view_assigns.keys.include?(ivar.sub('@','').to_sym), "expected #{ivar} to be excluded from view_assigns"
+        assert !view_assigns.keys.include?(ivar.to_s.sub('@', '').to_sym), "expected #{ivar} to be excluded from view_assigns"
       end
     end
   end
@@ -296,6 +296,12 @@ module ActionView
   end
 
   class RenderTemplateTest < ActionView::TestCase
+    test "supports specifying templates with a Regexp" do
+      controller.controller_path = "fun"
+      render(:template => "fun/games/hello_world")
+      assert_template %r{\Afun/games/hello_world\Z}
+    end
+
     test "supports specifying partials" do
       controller.controller_path = "test"
       render(:template => "test/calling_partial_with_layout")
@@ -314,6 +320,35 @@ module ActionView
       assert_raise ActiveSupport::TestCase::Assertion, /Somebody else.*David/m do
         assert_template :partial => "_partial_for_use_in_layout", :locals => { :name => "Somebody Else" }
       end
+    end
+
+    test 'supports different locals on the same partial' do
+      controller.controller_path = "test"
+      render(:template => "test/render_two_partials")
+      assert_template partial: '_partial', locals: { 'first' => '1' }
+      assert_template partial: '_partial', locals: { 'second' => '2' }
+    end
+
+    test 'raises descriptive error message when template was not rendered' do
+      controller.controller_path = "test"
+      render(template: "test/hello_world_with_partial")
+      e = assert_raise ActiveSupport::TestCase::Assertion do
+        assert_template partial: 'i_was_never_rendered', locals: { 'did_not' => 'happen' }
+      end
+      assert_match "i_was_never_rendered to be rendered but it was not.", e.message
+      assert_match 'Expected ["/test/partial"] to include "i_was_never_rendered"', e.message
+    end
+
+    test 'specifying locals works when the partial is inside a directory with underline prefix' do
+      controller.controller_path = "test"
+      render(template: 'test/render_partial_inside_directory')
+      assert_template partial: 'test/_directory/_partial_with_locales', locals: { 'name' => 'Jane' }
+    end
+
+    test 'specifying locals works when the partial is inside a directory without underline prefix' do
+      controller.controller_path = "test"
+      render(template: 'test/render_partial_inside_directory')
+      assert_template partial: 'test/_directory/partial_with_locales', locals: { 'name' => 'Jane' }
     end
   end
 

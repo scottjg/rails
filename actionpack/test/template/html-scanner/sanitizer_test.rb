@@ -56,7 +56,6 @@ class SanitizerTest < ActionController::TestCase
     assert_sanitized "a b c<script language=\"Javascript\">blah blah blah</script>d e f", "a b cd e f"
   end
 
-  # TODO: Clean up
   def test_sanitize_js_handlers
     raw = %{onthis="do that" <a href="#" onclick="hello" name="foo" onbogus="remove me">hello</a>}
     assert_sanitized raw, %{onthis="do that" <a name="foo" href="#">hello</a>}
@@ -126,6 +125,24 @@ class SanitizerTest < ActionController::TestCase
     assert_equal(text, sanitizer.sanitize(text, :attributes => ['foo']))
   end
 
+  def test_should_raise_argument_error_if_tags_is_not_enumerable
+    sanitizer = HTML::WhiteListSanitizer.new
+    e = assert_raise(ArgumentError) do
+      sanitizer.sanitize('', :tags => 'foo')
+    end
+
+    assert_equal "You should pass :tags as an Enumerable", e.message
+  end
+
+  def test_should_raise_argument_error_if_attributes_is_not_enumerable
+    sanitizer = HTML::WhiteListSanitizer.new
+    e = assert_raise(ArgumentError) do
+      sanitizer.sanitize('', :attributes => 'foo')
+    end
+
+    assert_equal "You should pass :attributes as an Enumerable", e.message
+  end
+
   [%w(img src), %w(a href)].each do |(tag, attr)|
     define_method "test_should_strip_#{attr}_attribute_in_#{tag}_with_bad_protocols" do
       assert_sanitized %(<#{tag} #{attr}="javascript:bang" title="1">boo</#{tag}>), %(<#{tag} title="1">boo</#{tag}>)
@@ -138,11 +155,18 @@ class SanitizerTest < ActionController::TestCase
       assert sanitizer.send(:contains_bad_protocols?, 'src', "#{proto}://bad")
     end
   end
-  
+
   def test_should_accept_good_protocols_ignoring_case
     sanitizer = HTML::WhiteListSanitizer.new
     HTML::WhiteListSanitizer.allowed_protocols.each do |proto|
       assert !sanitizer.send(:contains_bad_protocols?, 'src', "#{proto.capitalize}://good")
+    end
+  end
+
+  def test_should_accept_good_protocols_ignoring_space
+    sanitizer = HTML::WhiteListSanitizer.new
+    HTML::WhiteListSanitizer.allowed_protocols.each do |proto|
+      assert !sanitizer.send(:contains_bad_protocols?, 'src', " #{proto}://good")
     end
   end
 
@@ -176,6 +200,7 @@ class SanitizerTest < ActionController::TestCase
    %(<IMG SRC="jav&#x0A;ascript:alert('XSS');">),
    %(<IMG SRC="jav&#x0D;ascript:alert('XSS');">),
    %(<IMG SRC=" &#14;  javascript:alert('XSS');">),
+   %(<IMG SRC="javascript&#x3a;alert('XSS');">),
    %(<IMG SRC=`javascript:alert("RSnake says, 'XSS'")`>)].each_with_index do |img_hack, i|
     define_method "test_should_not_fall_for_xss_image_hack_#{i+1}" do
       assert_sanitized img_hack, "<img>"
@@ -208,9 +233,8 @@ class SanitizerTest < ActionController::TestCase
     assert_sanitized img_hack, "<img>"
   end
 
-  # TODO: Clean up
   def test_should_sanitize_attributes
-    assert_sanitized %(<SPAN title="'><script>alert()</script>">blah</SPAN>), %(<span title="'&gt;&lt;script&gt;alert()&lt;/script&gt;">blah</span>)
+    assert_sanitized %(<SPAN title="'><script>alert()</script>">blah</SPAN>), %(<span title="#{CGI.escapeHTML "'><script>alert()</script>"}">blah</span>)
   end
 
   def test_should_sanitize_illegal_style_properties
@@ -256,6 +280,11 @@ class SanitizerTest < ActionController::TestCase
     assert_equal '', sanitize_css(raw)
   end
 
+  def test_should_sanitize_across_newlines
+    raw = %(\nwidth:\nexpression(alert('XSS'));\n)
+    assert_equal '', sanitize_css(raw)
+  end
+
   def test_should_sanitize_img_vbscript
     assert_sanitized %(<img src='vbscript:msgbox("XSS")' />), '<img />'
   end
@@ -274,6 +303,15 @@ class SanitizerTest < ActionController::TestCase
 
   def test_should_sanitize_neverending_attribute
     assert_sanitized "<span class=\"\\", "<span class=\"\\\">"
+  end
+
+  def test_x03a
+    assert_sanitized %(<a href="javascript&#x3a;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="javascript&#x003a;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="http&#x3a;//legit">), %(<a href="http://legit">)
+    assert_sanitized %(<a href="javascript&#x3A;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="javascript&#x003A;alert('XSS');">), "<a>"
+    assert_sanitized %(<a href="http&#x3A;//legit">), %(<a href="http://legit">)
   end
 
 protected

@@ -1,12 +1,14 @@
 require 'active_support/time'
-require 'active_support/core_ext/object/inclusion'
-require 'active_support/core_ext/object/blank'
 
 module Rails
   module Generators
-    class GeneratedAttribute
+    class GeneratedAttribute # :nodoc:
+      INDEX_OPTIONS = %w(index uniq)
+      UNIQ_INDEX_OPTIONS = %w(uniq)
+
       attr_accessor :name, :type
       attr_reader   :attr_options
+      attr_writer   :index_name
 
       class << self
         def parse(column_definition)
@@ -15,22 +17,35 @@ module Rails
           # if user provided "name:index" instead of "name:string:index"
           # type should be set blank so GeneratedAttribute's constructor
           # could set it to :string
-          has_index, type = type, nil if %w(index uniq).include?(type)
+          has_index, type = type, nil if INDEX_OPTIONS.include?(type)
 
           type, attr_options = *parse_type_and_options(type)
+          type = type.to_sym if type
+
+          if type && reference?(type)
+            references_index = UNIQ_INDEX_OPTIONS.include?(has_index) ? { unique: true } : true
+            attr_options[:index] = references_index
+          end
+
           new(name, type, has_index, attr_options)
+        end
+
+        def reference?(type)
+          [:references, :belongs_to].include? type
         end
 
         private
 
-        # parse possible attribute options like :limit for string/text/binary/integer or :precision/:scale for decimals
+        # parse possible attribute options like :limit for string/text/binary/integer, :precision/:scale for decimals or :polymorphic for references/belongs_to
         # when declaring options curly brackets should be used
         def parse_type_and_options(type)
           case type
           when /(string|text|binary|integer)\{(\d+)\}/
-            return $1, :limit => $2.to_i
-          when /decimal\{(\d+)(,|\.|\-)(\d+)\}/
-            return :decimal, :precision => $1.to_i, :scale => $3.to_i
+            return $1, limit: $2.to_i
+          when /decimal\{(\d+)[,.-](\d+)\}/
+            return :decimal, precision: $1.to_i, scale: $2.to_i
+          when /(references|belongs_to)\{polymorphic\}/
+            return $1, polymorphic: true
           else
             return type, {}
           end
@@ -39,9 +54,9 @@ module Rails
 
       def initialize(name, type=nil, index_type=false, attr_options={})
         @name           = name
-        @type           = (type.presence || :string).to_sym
-        @has_index      = %w(index uniq).include?(index_type)
-        @has_uniq_index = %w(uniq).include?(index_type)
+        @type           = type || :string
+        @has_index      = INDEX_OPTIONS.include?(index_type)
+        @has_uniq_index = UNIQ_INDEX_OPTIONS.include?(index_type)
         @attr_options   = attr_options
       end
 
@@ -75,16 +90,36 @@ module Rails
         end
       end
 
+      def plural_name
+        name.sub(/_id$/, '').pluralize
+      end
+
       def human_name
-        name.to_s.humanize
+        name.humanize
       end
 
       def index_name
-        reference? ? "#{name}_id" : name
+        @index_name ||= if polymorphic?
+          %w(id type).map { |t| "#{name}_#{t}" }
+        else
+          column_name
+        end
+      end
+
+      def column_name
+        @column_name ||= reference? ? "#{name}_id" : name
+      end
+
+      def foreign_key?
+        !!(name =~ /_id$/)
       end
 
       def reference?
-        self.type.in?([:references, :belongs_to])
+        self.class.reference?(type)
+      end
+
+      def polymorphic?
+        self.attr_options.has_key?(:polymorphic)
       end
 
       def has_index?
@@ -95,12 +130,16 @@ module Rails
         @has_uniq_index
       end
 
+      def password_digest?
+        name == 'password' && type == :digest 
+      end
+
       def inject_options
-        "".tap { |s| @attr_options.each { |k,v| s << ", :#{k} => #{v.inspect}" } }
+        "".tap { |s| @attr_options.each { |k,v| s << ", #{k}: #{v.inspect}" } }
       end
 
       def inject_index_options
-        has_uniq_index? ? ", :unique => true" : ''
+        has_uniq_index? ? ", unique: true" : ""
       end
     end
   end

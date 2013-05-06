@@ -10,7 +10,7 @@ class ModelWithAttributes
   end
 
   def attributes
-    { :foo => 'value of foo' }
+    { foo: 'value of foo', baz: 'value of baz' }
   end
 
 private
@@ -76,13 +76,26 @@ private
   end
 end
 
-class ModelWithouAttributesMethod
+class ModelWithRubyKeywordNamedAttributes
+  include ActiveModel::AttributeMethods
+
+  def attributes
+    { begin: 'value of begin', end: 'value of end' }
+  end
+
+private
+  def attribute(name)
+    attributes[name.to_sym]
+  end
+end
+
+class ModelWithoutAttributesMethod
   include ActiveModel::AttributeMethods
 end
 
 class AttributeMethodsTest < ActiveModel::TestCase
   test 'method missing works correctly even if attributes method is not defined' do
-    assert_raises(NoMethodError) { ModelWithouAttributesMethod.new.foo }
+    assert_raises(NoMethodError) { ModelWithoutAttributesMethod.new.foo }
   end
 
   test 'unrelated classes should not share attribute method matchers' do
@@ -127,67 +140,61 @@ class AttributeMethodsTest < ActiveModel::TestCase
     assert_equal "value of a?b", ModelWithWeirdNamesAttributes.new.send('a?b')
   end
 
+  test '#define_attribute_methods works passing multiple arguments' do
+    ModelWithAttributes.define_attribute_methods(:foo, :baz)
+
+    assert_equal "value of foo", ModelWithAttributes.new.foo
+    assert_equal "value of baz", ModelWithAttributes.new.baz
+  end
+
   test '#define_attribute_methods generates attribute methods' do
-    ModelWithAttributes.define_attribute_methods([:foo])
+    ModelWithAttributes.define_attribute_methods(:foo)
 
     assert_respond_to ModelWithAttributes.new, :foo
     assert_equal "value of foo", ModelWithAttributes.new.foo
   end
 
+  test '#alias_attribute generates attribute_aliases lookup hash' do
+    klass = Class.new(ModelWithAttributes) do
+      define_attribute_methods :foo
+      alias_attribute :bar, :foo
+    end
+
+    assert_equal({ "bar" => "foo" }, klass.attribute_aliases)
+  end
+
   test '#define_attribute_methods generates attribute methods with spaces in their names' do
-    ModelWithAttributesWithSpaces.define_attribute_methods([:'foo bar'])
+    ModelWithAttributesWithSpaces.define_attribute_methods(:'foo bar')
 
     assert_respond_to ModelWithAttributesWithSpaces.new, :'foo bar'
     assert_equal "value of foo bar", ModelWithAttributesWithSpaces.new.send(:'foo bar')
   end
 
-  test '#define_attr_method generates attribute method' do
-    assert_deprecated do
-      ModelWithAttributes.define_attr_method(:bar, 'bar')
-    end
-
-    assert_respond_to ModelWithAttributes, :bar
-
-    assert_deprecated do
-      assert_equal "original bar", ModelWithAttributes.original_bar
-    end
-
-    assert_equal "bar", ModelWithAttributes.bar
-    ActiveSupport::Deprecation.silence do
-      ModelWithAttributes.define_attr_method(:bar)
-    end
-    assert !ModelWithAttributes.bar
-  end
-
-  test '#define_attr_method generates attribute method with invalid identifier characters' do
-    ActiveSupport::Deprecation.silence do
-      ModelWithWeirdNamesAttributes.define_attr_method(:'c?d', 'c?d')
-    end
-
-    assert_respond_to ModelWithWeirdNamesAttributes, :'c?d'
-
-    ActiveSupport::Deprecation.silence do
-      assert_equal "original c?d", ModelWithWeirdNamesAttributes.send('original_c?d')
-    end
-    assert_equal "c?d", ModelWithWeirdNamesAttributes.send('c?d')
-  end
-
   test '#alias_attribute works with attributes with spaces in their names' do
-    ModelWithAttributesWithSpaces.define_attribute_methods([:'foo bar'])
+    ModelWithAttributesWithSpaces.define_attribute_methods(:'foo bar')
     ModelWithAttributesWithSpaces.alias_attribute(:'foo_bar', :'foo bar')
 
     assert_equal "value of foo bar", ModelWithAttributesWithSpaces.new.foo_bar
   end
 
+  test '#alias_attribute works with attributes named as a ruby keyword' do
+    ModelWithRubyKeywordNamedAttributes.define_attribute_methods([:begin, :end])
+    ModelWithRubyKeywordNamedAttributes.alias_attribute(:from, :begin)
+    ModelWithRubyKeywordNamedAttributes.alias_attribute(:to, :end)
+
+    assert_equal "value of begin", ModelWithRubyKeywordNamedAttributes.new.from
+    assert_equal "value of end", ModelWithRubyKeywordNamedAttributes.new.to
+  end
+
   test '#undefine_attribute_methods removes attribute methods' do
-    ModelWithAttributes.define_attribute_methods([:foo])
+    ModelWithAttributes.define_attribute_methods(:foo)
     ModelWithAttributes.undefine_attribute_methods
 
     assert !ModelWithAttributes.new.respond_to?(:foo)
     assert_raises(NoMethodError) { ModelWithAttributes.new.foo }
   end
 
-  test 'acessing a suffixed attribute' do
+  test 'accessing a suffixed attribute' do
     m = ModelWithAttributes2.new
     m.attributes = { 'foo' => 'bar' }
 
@@ -201,7 +208,7 @@ class AttributeMethodsTest < ActiveModel::TestCase
     assert_deprecated { klass.attribute_method_suffix '' }
     assert_deprecated { klass.attribute_method_prefix '' }
 
-    klass.define_attribute_methods([:foo])
+    klass.define_attribute_methods(:foo)
 
     assert_equal 'value of foo', klass.new.foo
   end

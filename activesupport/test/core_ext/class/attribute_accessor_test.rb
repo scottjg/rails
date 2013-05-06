@@ -1,7 +1,7 @@
 require 'abstract_unit'
 require 'active_support/core_ext/class/attribute_accessors'
 
-class ClassAttributeAccessorTest < Test::Unit::TestCase
+class ClassAttributeAccessorTest < ActiveSupport::TestCase
   def setup
     @class = Class.new do
       cattr_accessor :foo
@@ -41,5 +41,21 @@ class ClassAttributeAccessorTest < Test::Unit::TestCase
     assert_respond_to @class, :camp
     assert !@object.respond_to?(:camp)
     assert !@object.respond_to?(:camp=)
+  end
+
+  def test_should_raise_name_error_if_attribute_name_is_invalid
+    exception = assert_raises NameError do
+      Class.new do
+        cattr_reader "1nvalid"
+      end
+    end
+    assert_equal "invalid class attribute name: 1nvalid", exception.message
+
+    exception = assert_raises NameError do
+      Class.new do
+        cattr_writer "1nvalid"
+      end
+    end
+    assert_equal "invalid class attribute name: 1nvalid", exception.message
   end
 end

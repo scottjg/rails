@@ -1,10 +1,11 @@
 module ActionPack
-  module VERSION #:nodoc:
-    MAJOR = 3
-    MINOR = 2
-    TINY  = 12
-    PRE   = nil
+  # Returns the version of the currently loaded ActionPack as a Gem::Version
+  def self.version
+    Gem::Version.new "4.1.0.beta"
+  end
 
-    STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+  module VERSION #:nodoc:
+    MAJOR, MINOR, TINY, PRE = ActionPack.version.segments
+    STRING = ActionPack.version.to_s
   end
 end

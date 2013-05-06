@@ -6,7 +6,7 @@ module ActiveRecord
       attr_reader :association, :alias_tracker
 
       delegate :klass, :owner, :reflection, :interpolate, :to => :association
-      delegate :chain, :conditions, :options, :source_options, :active_record, :to => :reflection
+      delegate :chain, :scope_chain, :options, :source_options, :active_record, :to => :reflection
 
       def initialize(association)
         @association   = association
@@ -15,23 +15,28 @@ module ActiveRecord
 
       def scope
         scope = klass.unscoped
-        scope = scope.extending(*Array.wrap(options[:extend]))
-
-        # It's okay to just apply all these like this. The options will only be present if the
-        # association supports that option; this is enforced by the association builder.
-        scope = scope.apply_finder_options(options.slice(
-          :readonly, :include, :order, :limit, :joins, :group, :having, :offset, :select))
-
-        if options[:through] && !options[:include]
-          scope = scope.includes(source_options[:include])
-        end
-
-        scope = scope.uniq if options[:uniq]
-
+        scope.extending! Array(options[:extend])
         add_constraints(scope)
       end
 
       private
+
+      def column_for(table_name, column_name)
+        columns = alias_tracker.connection.schema_cache.columns_hash(table_name)
+        columns[column_name]
+      end
+
+      def bind_value(scope, column, value)
+        substitute = alias_tracker.connection.substitute_at(
+          column, scope.bind_values.length)
+        scope.bind_values += [[column, value]]
+        substitute
+      end
+
+      def bind(scope, table_name, column_name, value)
+        column   = column_for table_name, column_name
+        bind_value scope, column, value
+      end
 
       def add_constraints(scope)
         tables = construct_tables
@@ -53,7 +58,7 @@ module ActiveRecord
 
           if reflection.source_macro == :belongs_to
             if reflection.options[:polymorphic]
-              key = reflection.association_primary_key(klass)
+              key = reflection.association_primary_key(self.klass)
             else
               key = reflection.association_primary_key
             end
@@ -64,21 +69,14 @@ module ActiveRecord
             foreign_key = reflection.active_record_primary_key
           end
 
-          conditions = self.conditions[i]
-
           if reflection == chain.last
-            scope = scope.where(table[key].eq(owner[foreign_key]))
+            bind_val = bind scope, table.table_name, key.to_s, owner[foreign_key]
+            scope    = scope.where(table[key].eq(bind_val))
 
             if reflection.type
-              scope = scope.where(table[reflection.type].eq(owner.class.base_class.name))
-            end
-
-            conditions.each do |condition|
-              if options[:through] && condition.is_a?(Hash)
-                condition = disambiguate_condition(table, condition)
-              end
-
-              scope = scope.where(interpolate(condition))
+              value    = owner.class.base_class.name
+              bind_val = bind scope, table.table_name, reflection.type.to_s, value
+              scope    = scope.where(table[reflection.type].eq(bind_val))
             end
           else
             constraint = table[key].eq(foreign_table[foreign_key])
@@ -89,10 +87,21 @@ module ActiveRecord
             end
 
             scope = scope.joins(join(foreign_table, constraint))
+          end
 
-            unless conditions.empty?
-              scope = scope.where(sanitize(conditions, table))
+          # Exclude the scope of the association itself, because that
+          # was already merged in the #scope method.
+          scope_chain[i].each do |scope_chain_item|
+            klass = i == 0 ? self.klass : reflection.klass
+            item  = eval_scope(klass, scope_chain_item)
+
+            if scope_chain_item == self.reflection.scope
+              scope.merge! item.except(:where, :includes)
             end
+
+            scope.includes! item.includes_values
+            scope.where_values += item.where_values
+            scope.order_values |= item.order_values
           end
         end
 
@@ -114,19 +123,11 @@ module ActiveRecord
         end
       end
 
-      def disambiguate_condition(table, condition)
-        if condition.is_a?(Hash)
-          Hash[
-            condition.map do |k, v|
-              if v.is_a?(Hash)
-                [k, v]
-              else
-                [table.table_alias || table.name, { k => v }]
-              end
-            end
-          ]
+      def eval_scope(klass, scope)
+        if scope.is_a?(Relation)
+          scope
         else
-          condition
+          klass.unscoped.instance_exec(owner, &scope)
         end
       end
     end

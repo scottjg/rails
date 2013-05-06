@@ -8,7 +8,7 @@ require 'uri'
 
 module Rails
   module Generators
-    class AppBase < Base
+    class AppBase < Base # :nodoc:
       DATABASES = %w( mysql oracle postgresql sqlite3 frontbase ibm_db sqlserver )
       JDBC_DATABASES = %w( jdbcmysql jdbcsqlite3 jdbcpostgresql jdbc )
       DATABASES.concat(JDBC_DATABASES)
@@ -16,53 +16,56 @@ module Rails
       attr_accessor :rails_template
       add_shebang_option!
 
-      argument :app_path,               :type => :string
+      argument :app_path, type: :string
 
       def self.add_shared_options_for(name)
-        class_option :builder,            :type => :string, :aliases => "-b",
-                                          :desc => "Path to a #{name} builder (can be a filesystem path or URL)"
+        class_option :template,           type: :string, aliases: '-m',
+                                          desc: "Path to some #{name} template (can be a filesystem path or URL)"
 
-        class_option :template,           :type => :string, :aliases => "-m",
-                                          :desc => "Path to an #{name} template (can be a filesystem path or URL)"
+        class_option :skip_gemfile,       type: :boolean, default: false,
+                                          desc: "Don't create a Gemfile"
 
-        class_option :skip_gemfile,       :type => :boolean, :default => false,
-                                          :desc => "Don't create a Gemfile"
+        class_option :skip_bundle,        type: :boolean, aliases: '-B', default: false,
+                                          desc: "Don't run bundle install"
 
-        class_option :skip_bundle,        :type => :boolean, :default => false,
-                                          :desc => "Don't run bundle install"
+        class_option :skip_git,           type: :boolean, aliases: '-G', default: false,
+                                          desc: 'Skip .gitignore file'
 
-        class_option :skip_git,           :type => :boolean, :aliases => "-G", :default => false,
-                                          :desc => "Skip Git ignores and keeps"
+        class_option :skip_keeps,         type: :boolean, default: false,
+                                          desc: 'Skip source control .keep files'
 
-        class_option :skip_active_record, :type => :boolean, :aliases => "-O", :default => false,
-                                          :desc => "Skip Active Record files"
+        class_option :skip_active_record, type: :boolean, aliases: '-O', default: false,
+                                          desc: 'Skip Active Record files'
 
-        class_option :skip_sprockets,     :type => :boolean, :aliases => "-S", :default => false,
-                                          :desc => "Skip Sprockets files"
+        class_option :skip_sprockets,     type: :boolean, aliases: '-S', default: false,
+                                          desc: 'Skip Sprockets files'
 
-        class_option :database,           :type => :string, :aliases => "-d", :default => "sqlite3",
-                                          :desc => "Preconfigure for selected database (options: #{DATABASES.join('/')})"
+        class_option :database,           type: :string, aliases: '-d', default: 'sqlite3',
+                                          desc: "Preconfigure for selected database (options: #{DATABASES.join('/')})"
 
-        class_option :javascript,         :type => :string, :aliases => '-j', :default => 'jquery',
-                                          :desc => 'Preconfigure for selected JavaScript library'
+        class_option :javascript,         type: :string, aliases: '-j', default: 'jquery',
+                                          desc: 'Preconfigure for selected JavaScript library'
 
-        class_option :skip_javascript,    :type => :boolean, :aliases => "-J", :default => false,
-                                          :desc => "Skip JavaScript files"
+        class_option :skip_javascript,    type: :boolean, aliases: '-J', default: false,
+                                          desc: 'Skip JavaScript files'
 
-        class_option :dev,                :type => :boolean, :default => false,
-                                          :desc => "Setup the #{name} with Gemfile pointing to your Rails checkout"
+        class_option :dev,                type: :boolean, default: false,
+                                          desc: "Setup the #{name} with Gemfile pointing to your Rails checkout"
 
-        class_option :edge,               :type => :boolean, :default => false,
-                                          :desc => "Setup the #{name} with Gemfile pointing to Rails repository"
+        class_option :edge,               type: :boolean, default: false,
+                                          desc: "Setup the #{name} with Gemfile pointing to Rails repository"
 
-        class_option :skip_test_unit,     :type => :boolean, :aliases => "-T", :default => false,
-                                          :desc => "Skip Test::Unit files"
+        class_option :skip_test_unit,     type: :boolean, aliases: '-T', default: false,
+                                          desc: 'Skip Test::Unit files'
 
-        class_option :help,               :type => :boolean, :aliases => "-h", :group => :rails,
-                                          :desc => "Show this help message and quit"
+        class_option :rc,                 type: :string, default: false,
+                                          desc: "Path to file containing extra configuration options for rails command"
 
-        class_option :old_style_hash,     :type => :boolean, :default => false,
-                                          :desc => "Force using old style hash (:foo => 'bar') on Ruby >= 1.9"
+        class_option :no_rc,              type: :boolean, default: false,
+                                          desc: 'Skip loading of extra configuration options from .railsrc file'
+
+        class_option :help,               type: :boolean, aliases: '-h', group: :rails,
+                                          desc: 'Show this help message and quit'
       end
 
       def initialize(*args)
@@ -75,17 +78,6 @@ module Rails
 
       def builder
         @builder ||= begin
-          if path = options[:builder]
-            if URI(path).is_a?(URI::HTTP)
-              contents = open(path, "Accept" => "application/x-thor-template") {|io| io.read }
-            else
-              contents = open(File.expand_path(path, @original_wd)) {|io| io.read }
-            end
-
-            prok = eval("proc { #{contents} }", TOPLEVEL_BINDING, path, 1)
-            instance_eval(&prok)
-          end
-
           builder_class = get_builder_class
           builder_class.send(:include, ActionMethods)
           builder_class.new(self)
@@ -123,7 +115,11 @@ module Rails
       end
 
       def database_gemfile_entry
-        options[:skip_active_record] ? "" : "gem '#{gem_for_database}'\n"
+        options[:skip_active_record] ? "" :
+          <<-GEMFILE.strip_heredoc.chomp
+            # Use #{options[:database]} as the database for Active Record
+            gem '#{gem_for_database}'
+          GEMFILE
       end
 
       def include_all_railties?
@@ -137,22 +133,18 @@ module Rails
       def rails_gemfile_entry
         if options.dev?
           <<-GEMFILE.strip_heredoc
-            gem 'rails',     :path => '#{Rails::Generators::RAILS_DEV_PATH}'
-            gem 'journey',   :git => 'git://github.com/rails/journey.git', :branch => '1-0-stable'
-            gem 'arel',      :git => 'git://github.com/rails/arel.git', :branch => '3-0-stable'
+            gem 'rails',     path: '#{Rails::Generators::RAILS_DEV_PATH}'
+            gem 'arel',      github: 'rails/arel'
           GEMFILE
         elsif options.edge?
           <<-GEMFILE.strip_heredoc
-            gem 'rails',     :git => 'git://github.com/rails/rails.git', :branch => '3-2-stable'
-            gem 'journey',   :git => 'git://github.com/rails/journey.git', :branch => '1-0-stable'
-            gem 'arel',      :git => 'git://github.com/rails/arel.git', :branch => '3-0-stable'
+            gem 'rails',     github: 'rails/rails'
+            gem 'arel',      github: 'rails/arel'
           GEMFILE
         else
           <<-GEMFILE.strip_heredoc
+            # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
             gem 'rails', '#{Rails::VERSION::STRING}'
-
-            # Bundle edge Rails instead:
-            # gem 'rails', :git => 'git://github.com/rails/rails.git'
           GEMFILE
         end
       end
@@ -184,58 +176,78 @@ module Rails
         end
       end
 
-      def ruby_debugger_gemfile_entry
-        if RUBY_VERSION < "1.9"
-          "gem 'ruby-debug'"
-        else
-          "gem 'debugger'"
-        end
-      end
-
       def assets_gemfile_entry
         return if options[:skip_sprockets]
 
         gemfile = if options.dev? || options.edge?
-          <<-GEMFILE
-            # Gems used only for assets and not required
-            # in production environments by default.
-            group :assets do
-              gem 'sass-rails',   :git => 'git://github.com/rails/sass-rails.git', :branch => '3-2-stable'
-              gem 'coffee-rails', :git => 'git://github.com/rails/coffee-rails.git', :branch => '3-2-stable'
+          <<-GEMFILE.strip_heredoc
+            # Use edge version of sprockets-rails
+            gem 'sprockets-rails', github: 'rails/sprockets-rails'
 
-              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-              #{javascript_runtime_gemfile_entry}
-              gem 'uglifier', '>= 1.0.3'
-            end
+            # Use SCSS for stylesheets
+            gem 'sass-rails', github: 'rails/sass-rails'
           GEMFILE
         else
-          <<-GEMFILE
-            # Gems used only for assets and not required
-            # in production environments by default.
-            group :assets do
-              gem 'sass-rails',   '~> 3.2.3'
-              gem 'coffee-rails', '~> 3.2.1'
-
-              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-              #{javascript_runtime_gemfile_entry}
-              gem 'uglifier', '>= 1.0.3'
-            end
+          <<-GEMFILE.strip_heredoc
+            # Use SCSS for stylesheets
+            gem 'sass-rails', '~> 4.0.0.rc1'
           GEMFILE
         end
 
-        gemfile.strip_heredoc.gsub(/^[ \t]*$/, '')
+        gemfile += <<-GEMFILE.strip_heredoc
+
+          # Use Uglifier as compressor for JavaScript assets
+          gem 'uglifier', '>= 1.3.0'
+        GEMFILE
+
+        if options[:skip_javascript]
+          gemfile += <<-GEMFILE
+            #{coffee_gemfile_entry}
+            #{javascript_runtime_gemfile_entry}
+          GEMFILE
+        end
+
+        gemfile.gsub(/^[ \t]+/, '')
+      end
+
+      def coffee_gemfile_entry
+        if options.dev? || options.edge?
+          <<-GEMFILE
+            # Use CoffeeScript for .js.coffee assets and views
+            gem 'coffee-rails', github: 'rails/coffee-rails'
+          GEMFILE
+        else
+          <<-GEMFILE
+            # Use CoffeeScript for .js.coffee assets and views
+            gem 'coffee-rails', '~> 4.0.0'
+          GEMFILE
+        end
       end
 
       def javascript_gemfile_entry
-        "gem '#{options[:javascript]}-rails'" unless options[:skip_javascript]
+        unless options[:skip_javascript]
+          <<-GEMFILE.gsub(/^[ \t]+/, '')
+            #{coffee_gemfile_entry}
+            #{javascript_runtime_gemfile_entry}
+            # Use #{options[:javascript]} as the JavaScript library
+            gem '#{options[:javascript]}-rails'
+
+            # Turbolinks makes following links in your web application faster. Read more: https://github.com/rails/turbolinks
+            gem 'turbolinks'
+          GEMFILE
+        end
       end
 
       def javascript_runtime_gemfile_entry
-        if defined?(JRUBY_VERSION)
-          "gem 'therubyrhino'\n"
+        runtime = if defined?(JRUBY_VERSION)
+          "gem 'therubyrhino'"
         else
-          "# gem 'therubyracer', :platforms => :ruby\n"
+          "# gem 'therubyracer', platforms: :ruby"
         end
+        <<-GEMFILE
+          # See https://github.com/sstephenson/execjs#readme for more supported runtimes
+          #{runtime}
+        GEMFILE
       end
 
       def bundle_command(command)
@@ -250,31 +262,28 @@ module Rails
         # is easier to silence stdout in the existing test suite this way. The
         # end-user gets the bundler commands called anyway, so no big deal.
         #
+        # We unset temporary bundler variables to load proper bundler and Gemfile.
+        #
         # Thanks to James Tucker for the Gem tricks involved in this call.
-        print `"#{Gem.ruby}" -rubygems "#{Gem.bin_path('bundler', 'bundle')}" #{command}`
+        _bundle_command = Gem.bin_path('bundler', 'bundle')
+
+        require 'bundler'
+        Bundler.with_clean_env do
+          print `"#{Gem.ruby}" "#{_bundle_command}" #{command}`
+        end
       end
 
       def run_bundle
-        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle]
+        bundle_command('install') unless options[:skip_gemfile] || options[:skip_bundle] || options[:pretend]
       end
 
-      def empty_directory_with_gitkeep(destination, config = {})
+      def empty_directory_with_keep_file(destination, config = {})
         empty_directory(destination, config)
-        git_keep(destination)
+        keep_file(destination)
       end
 
-      def git_keep(destination)
-        create_file("#{destination}/.gitkeep") unless options[:skip_git]
-      end
-
-      # Returns Ruby 1.9 style key-value pair if current code is running on
-      # Ruby 1.9.x. Returns the old-style (with hash rocket) otherwise.
-      def key_value(key, value)
-        if options[:old_style_hash] || RUBY_VERSION < '1.9'
-          ":#{key} => #{value}"
-        else
-          "#{key}: #{value}"
-        end
+      def keep_file(destination)
+        create_file("#{destination}/.keep") unless options[:skip_keeps]
       end
     end
   end

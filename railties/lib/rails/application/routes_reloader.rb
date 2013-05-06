@@ -4,7 +4,7 @@ module Rails
   class Application
     class RoutesReloader
       attr_reader :route_sets, :paths
-      delegate :execute_if_updated, :execute, :updated?, :to => :updater
+      delegate :execute_if_updated, :execute, :updated?, to: :updater
 
       def initialize
         @paths      = []
@@ -42,7 +42,7 @@ module Rails
 
       def finalize!
         route_sets.each do |routes|
-          ActiveSupport.on_load(:action_controller) { routes.finalize! }
+          routes.finalize!
         end
       end
 

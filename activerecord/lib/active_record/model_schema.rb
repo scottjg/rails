@@ -1,5 +1,3 @@
-require 'active_support/concern'
-
 module ActiveRecord
   module ModelSchema
     extend ActiveSupport::Concern
@@ -12,8 +10,7 @@ module ActiveRecord
       # the Product class will look for "productid" instead of "id" as the primary column. If the
       # latter is specified, the Product class will look for "product_id" instead of "id". Remember
       # that this is a global setting for all Active Records.
-      cattr_accessor :primary_key_prefix_type, :instance_writer => false
-      self.primary_key_prefix_type = nil
+      mattr_accessor :primary_key_prefix_type, instance_writer: false
 
       ##
       # :singleton-method:
@@ -25,14 +22,14 @@ module ActiveRecord
       # If you are organising your models within modules you can add a prefix to the models within
       # a namespace by defining a singleton method in the parent module called table_name_prefix which
       # returns your chosen prefix.
-      class_attribute :table_name_prefix, :instance_writer => false
+      class_attribute :table_name_prefix, instance_writer: false
       self.table_name_prefix = ""
 
       ##
       # :singleton-method:
       # Works like +table_name_prefix+, but appends instead of prepends (set to "_basecamp" gives "projects_basecamp",
       # "people_basecamp"). By default, the suffix is the empty string.
-      class_attribute :table_name_suffix, :instance_writer => false
+      class_attribute :table_name_suffix, instance_writer: false
       self.table_name_suffix = ""
 
       ##
@@ -40,8 +37,10 @@ module ActiveRecord
       # Indicates whether table names should be the pluralized versions of the corresponding class names.
       # If true, the default table name for a Product class will be +products+. If false, it would just be +product+.
       # See table_name for the full rules on table/class naming. This is true, by default.
-      class_attribute :pluralize_table_names, :instance_writer => false
+      class_attribute :pluralize_table_names, instance_writer: false
       self.pluralize_table_names = true
+
+      self.inheritance_column = 'type'
     end
 
     module ClassMethods
@@ -105,10 +104,6 @@ module ActiveRecord
         @table_name
       end
 
-      def original_table_name #:nodoc:
-        deprecated_original_property_getter :table_name
-      end
-
       # Sets the table name explicitly. Example:
       #
       #   class Project < ActiveRecord::Base
@@ -118,17 +113,17 @@ module ActiveRecord
       # You can also just define your own <tt>self.table_name</tt> method; see
       # the documentation for ActiveRecord::Base#table_name.
       def table_name=(value)
-        @original_table_name = @table_name if defined?(@table_name)
-        @table_name          = value && value.to_s
-        @quoted_table_name   = nil
-        @arel_table          = nil
-        @relation            = Relation.new(self, arel_table)
-      end
+        value = value && value.to_s
 
-      def set_table_name(value = nil, &block) #:nodoc:
-        deprecated_property_setter :table_name, value, block
+        if defined?(@table_name)
+          return if value == @table_name
+          reset_column_information if connected?
+        end
+
+        @table_name        = value
         @quoted_table_name = nil
         @arel_table        = nil
+        @sequence_name     = nil unless defined?(@explicit_sequence_name) && @explicit_sequence_name
         @relation          = Relation.new(self, arel_table)
       end
 
@@ -139,16 +134,12 @@ module ActiveRecord
 
       # Computes the table name, (re)sets it internally, and returns it.
       def reset_table_name #:nodoc:
-        if abstract_class?
-          self.table_name = if superclass == Base || superclass.abstract_class?
-                              nil
-                            else
-                              superclass.table_name
-                            end
+        self.table_name = if abstract_class?
+          superclass == Base ? nil : superclass.table_name
         elsif superclass.abstract_class?
-          self.table_name = superclass.table_name || compute_table_name
+          superclass.table_name || compute_table_name
         else
-          self.table_name = compute_table_name
+          compute_table_name
         end
       end
 
@@ -156,27 +147,23 @@ module ActiveRecord
         (parents.detect{ |p| p.respond_to?(:table_name_prefix) } || self).table_name_prefix
       end
 
-      # The name of the column containing the object's class when Single Table Inheritance is used
+      # Defines the name of the table column which will store the class name on single-table
+      # inheritance situations.
+      #
+      # The default inheritance column name is +type+, which means it's a
+      # reserved word inside Active Record. To be able to use single-table
+      # inheritance with another column name, or to use the column +type+ in
+      # your own model for something else, you can set +inheritance_column+:
+      #
+      #     self.inheritance_column = 'zoink'
       def inheritance_column
-        if self == Base
-          'type'
-        else
-          (@inheritance_column ||= nil) || superclass.inheritance_column
-        end
-      end
-
-      def original_inheritance_column #:nodoc:
-        deprecated_original_property_getter :inheritance_column
+        (@inheritance_column ||= nil) || superclass.inheritance_column
       end
 
       # Sets the value of inheritance_column
       def inheritance_column=(value)
-        @original_inheritance_column = inheritance_column
-        @inheritance_column          = value.to_s
-      end
-
-      def set_inheritance_column(value = nil, &block) #:nodoc:
-        deprecated_property_setter :inheritance_column, value, block
+        @inheritance_column = value.to_s
+        @explicit_inheritance_column = true
       end
 
       def sequence_name
@@ -187,12 +174,9 @@ module ActiveRecord
         end
       end
 
-      def original_sequence_name #:nodoc:
-        deprecated_original_property_getter :sequence_name
-      end
-
       def reset_sequence_name #:nodoc:
-        self.sequence_name = connection.default_sequence_name(table_name, primary_key)
+        @explicit_sequence_name = false
+        @sequence_name          = connection.default_sequence_name(table_name, primary_key)
       end
 
       # Sets the name of the sequence to use when generating ids to the given
@@ -210,12 +194,8 @@ module ActiveRecord
       #     self.sequence_name = "projectseq"   # default would have been "project_seq"
       #   end
       def sequence_name=(value)
-        @original_sequence_name = @sequence_name if defined?(@sequence_name)
         @sequence_name          = value.to_s
-      end
-
-      def set_sequence_name(value = nil, &block) #:nodoc:
-        deprecated_property_setter :sequence_name, value, block
+        @explicit_sequence_name = true
       end
 
       # Indicates whether the table associated with this class exists
@@ -225,7 +205,7 @@ module ActiveRecord
 
       # Returns an array of column objects for the table associated with this class.
       def columns
-        @columns ||= connection.schema_cache.columns[table_name].map do |col|
+        @columns ||= connection.schema_cache.columns(table_name).map do |col|
           col = col.dup
           col.primary = (col.name == primary_key)
           col
@@ -235,6 +215,25 @@ module ActiveRecord
       # Returns a hash of column objects for the table associated with this class.
       def columns_hash
         @columns_hash ||= Hash[columns.map { |c| [c.name, c] }]
+      end
+
+      def column_types # :nodoc:
+        @column_types ||= decorate_columns(columns_hash.dup)
+      end
+
+      def decorate_columns(columns_hash) # :nodoc:
+        return if columns_hash.empty?
+
+        columns_hash.each do |name, col|
+          if serialized_attributes.key?(name)
+            columns_hash[name] = AttributeMethods::Serialization::Type.new(col)
+          end
+          if create_time_zone_conversion_attribute?(name, col)
+            columns_hash[name] = AttributeMethods::TimeZoneConversion::Type.new(col)
+          end
+        end
+
+        columns_hash
       end
 
       # Returns a hash where the keys are column names and the values are
@@ -258,13 +257,12 @@ module ActiveRecord
       # and true as the value. This makes it possible to do O(1) lookups in respond_to? to check if a given method for attribute
       # is available.
       def column_methods_hash #:nodoc:
-        @dynamic_methods_hash ||= column_names.inject(Hash.new(false)) do |methods, attr|
+        @dynamic_methods_hash ||= column_names.each_with_object(Hash.new(false)) do |attr, methods|
           attr_name = attr.to_s
           methods[attr.to_sym]       = attr_name
           methods["#{attr}=".to_sym] = attr_name
           methods["#{attr}?".to_sym] = attr_name
           methods["#{attr}_before_type_cast".to_sym] = attr_name
-          methods
         end
       end
 
@@ -286,7 +284,7 @@ module ActiveRecord
       #
       #      JobLevel.reset_column_information
       #      %w{assistant executive manager director}.each do |type|
-      #        JobLevel.create(:name => type)
+      #        JobLevel.create(name: type)
       #      end
       #    end
       #
@@ -299,13 +297,23 @@ module ActiveRecord
         undefine_attribute_methods
         connection.schema_cache.clear_table_cache!(table_name) if table_exists?
 
-        @column_names = @content_columns = @column_defaults = @columns = @columns_hash = nil
-        @dynamic_methods_hash = @inheritance_column = nil
-        @arel_engine = @relation = nil
+        @arel_engine          = nil
+        @column_defaults      = nil
+        @column_names         = nil
+        @columns              = nil
+        @columns_hash         = nil
+        @column_types         = nil
+        @content_columns      = nil
+        @dynamic_methods_hash = nil
+        @inheritance_column   = nil unless defined?(@explicit_inheritance_column) && @explicit_inheritance_column
+        @relation             = nil
       end
 
-      def clear_cache! # :nodoc:
-        connection.schema_cache.clear!
+      # This is a hook for use by modules that need to do extra stuff to
+      # attributes when they are initialized. (e.g. attribute
+      # serialization)
+      def initialize_attributes(attributes, options = {}) #:nodoc:
+        attributes
       end
 
       private
@@ -313,8 +321,7 @@ module ActiveRecord
       # Guesses the table name, but does not decorate it with prefix and suffix information.
       def undecorated_table_name(class_name = base_class.name)
         table_name = class_name.to_s.demodulize.underscore
-        table_name = table_name.pluralize if pluralize_table_names
-        table_name
+        pluralize_table_names ? table_name.pluralize : table_name
       end
 
       # Computes and returns a table name according to default conventions.
@@ -322,7 +329,7 @@ module ActiveRecord
         base = base_class
         if self == base
           # Nested classes are prefixed with singular parent table name.
-          if parent < ActiveRecord::Base && !parent.abstract_class?
+          if parent < Base && !parent.abstract_class?
             contained = parent.table_name
             contained = contained.singularize if parent.pluralize_table_names
             contained += '_'
@@ -331,34 +338,6 @@ module ActiveRecord
         else
           # STI subclasses always use their superclass' table.
           base.table_name
-        end
-      end
-
-      def deprecated_property_setter(property, value, block)
-        if block
-          ActiveSupport::Deprecation.warn(
-            "Calling set_#{property} is deprecated. If you need to lazily evaluate " \
-            "the #{property}, define your own `self.#{property}` class method. You can use `super` " \
-            "to get the default #{property} where you would have called `original_#{property}`."
-          )
-
-          define_attr_method property, value, false, &block
-        else
-          ActiveSupport::Deprecation.warn(
-            "Calling set_#{property} is deprecated. Please use `self.#{property} = 'the_name'` instead."
-          )
-
-          define_attr_method property, value, false
-        end
-      end
-
-      def deprecated_original_property_getter(property)
-        ActiveSupport::Deprecation.warn("original_#{property} is deprecated. Define self.#{property} and call super instead.")
-
-        if !instance_variable_defined?("@original_#{property}") && respond_to?("reset_#{property}")
-          send("reset_#{property}")
-        else
-          instance_variable_get("@original_#{property}")
         end
       end
     end

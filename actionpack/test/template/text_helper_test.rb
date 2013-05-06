@@ -1,10 +1,8 @@
 # encoding: utf-8
 require 'abstract_unit'
-require 'testing_sandbox'
 
 class TextHelperTest < ActionView::TestCase
   tests ActionView::Helpers::TextHelper
-  include TestingSandbox
 
   def setup
     super
@@ -48,6 +46,14 @@ class TextHelperTest < ActionView::TestCase
     assert_equal "<p><b> test with unsafe string </b><script>code!</script></p>", simple_format("<b> test with unsafe string </b><script>code!</script>", {}, :sanitize => false)
   end
 
+  def test_simple_format_with_custom_wrapper
+    assert_equal "<div></div>", simple_format(nil, {}, :wrapper_tag => "div")
+  end
+
+  def test_simple_format_with_custom_wrapper_and_multi_line_breaks
+    assert_equal "<div>We want to put a wrapper...</div>\n\n<div>...right there.</div>", simple_format("We want to put a wrapper...\n\n...right there.", {}, :wrapper_tag => "div")
+  end
+
   def test_simple_format_should_not_change_the_text_passed
     text = "<b>Ok</b><script>code!</script>"
     text_clone = text.dup
@@ -55,17 +61,23 @@ class TextHelperTest < ActionView::TestCase
     assert_equal text_clone, text
   end
 
-  def test_truncate_should_not_be_html_safe
-    assert !truncate("Hello World!", :length => 12).html_safe?
+  def test_simple_format_does_not_modify_the_html_options_hash
+    options = { :class => "foobar"}
+    passed_options = options.dup
+    simple_format("some text", passed_options)
+    assert_equal options, passed_options
+  end
+
+  def test_simple_format_does_not_modify_the_options_hash
+    options = { :wrapper_tag => :div, :sanitize => false }
+    passed_options = options.dup
+    simple_format("some text", {}, passed_options)
+    assert_equal options, passed_options
   end
 
   def test_truncate
     assert_equal "Hello World!", truncate("Hello World!", :length => 12)
     assert_equal "Hello Wor...", truncate("Hello World!!", :length => 12)
-  end
-
-  def test_truncate_should_not_escape_input
-    assert_equal "Hello <sc...", truncate("Hello <script>code!</script>World!!", :length => 12)
   end
 
   def test_truncate_should_use_default_length_of_30
@@ -82,25 +94,63 @@ class TextHelperTest < ActionView::TestCase
     assert_equal "Hello Big[...]", truncate("Hello Big World!", :omission => "[...]", :length => 15, :separator => ' ')
   end
 
-  if RUBY_VERSION < '1.9.0'
-    def test_truncate_multibyte
-      with_kcode 'none' do
-        assert_equal "\354\225\210\353\205\225\355...", truncate("\354\225\210\353\205\225\355\225\230\354\204\270\354\232\224", :length => 10)
-      end
-      with_kcode 'u' do
-        assert_equal "\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 ...",
-          truncate("\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 \354\225\204\353\235\274\353\246\254\354\230\244", :length => 10)
-      end
-    end
-  else
-    def test_truncate_multibyte
-      # .mb_chars always returns a UTF-8 String.
-      # assert_equal "\354\225\210\353\205\225\355...",
-      #   truncate("\354\225\210\353\205\225\355\225\230\354\204\270\354\232\224", :length => 10)
+  def test_truncate_multibyte
+    assert_equal "\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 ...".force_encoding(Encoding::UTF_8),
+      truncate("\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 \354\225\204\353\235\274\353\246\254\354\230\244".force_encoding(Encoding::UTF_8), :length => 10)
+  end
 
-      assert_equal "\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 ...".force_encoding('UTF-8'),
-        truncate("\354\225\204\353\246\254\353\236\221 \354\225\204\353\246\254 \354\225\204\353\235\274\353\246\254\354\230\244".force_encoding('UTF-8'), :length => 10)
-    end
+  def test_truncate_does_not_modify_the_options_hash
+    options = { :length => 10 }
+    passed_options = options.dup
+    truncate("some text", passed_options)
+    assert_equal options, passed_options
+  end
+
+  def test_truncate_with_link_options
+    assert_equal "Here is a long test and ...<a href=\"#\">Continue</a>",
+    truncate("Here is a long test and I need a continue to read link", :length => 27) { link_to 'Continue', '#' }
+  end
+
+  def test_truncate_should_be_html_safe
+    assert truncate("Hello World!", :length => 12).html_safe?
+  end
+
+  def test_truncate_should_escape_the_input
+    assert_equal "Hello &lt;sc...", truncate("Hello <script>code!</script>World!!", :length => 12)
+  end
+
+  def test_truncate_should_not_escape_the_input_with_escape_false
+    assert_equal "Hello <sc...", truncate("Hello <script>code!</script>World!!", :length => 12, :escape => false)
+  end
+
+  def test_truncate_with_escape_false_should_be_html_safe
+    truncated = truncate("Hello <script>code!</script>World!!", :length => 12, :escape => false)
+    assert truncated.html_safe?
+  end
+
+  def test_truncate_with_block_should_be_html_safe
+    truncated = truncate("Here's a long test and I need a continue to read link", :length => 27) { link_to 'Continue', '#' }
+    assert truncated.html_safe?
+  end
+
+  def test_truncate_with_block_should_escape_the_input
+    assert_equal "&lt;script&gt;code!&lt;/script&gt;He...<a href=\"#\">Continue</a>",
+      truncate("<script>code!</script>Here's a long test and I need a continue to read link", :length => 27) { link_to 'Continue', '#' }
+  end
+
+  def test_truncate_with_block_should_not_escape_the_input_with_escape_false
+    assert_equal "<script>code!</script>He...<a href=\"#\">Continue</a>",
+      truncate("<script>code!</script>Here's a long test and I need a continue to read link", :length => 27, :escape => false) { link_to 'Continue', '#' }
+  end
+
+  def test_truncate_with_block_with_escape_false_should_be_html_safe
+    truncated = truncate("<script>code!</script>Here's a long test and I need a continue to read link", :length => 27, :escape => false) { link_to 'Continue', '#' }
+    assert truncated.html_safe?
+  end
+
+  def test_truncate_with_block_should_escape_the_block
+    assert_equal "Here is a long test and ...&lt;script&gt;alert(&#39;foo&#39;);&lt;/script&gt;",
+      truncate("Here is a long test and I need a continue to read link", :length => 27) { "<script>alert('foo');</script>" }
   end
 
   def test_highlight_should_be_html_safe
@@ -109,12 +159,12 @@ class TextHelperTest < ActionView::TestCase
 
   def test_highlight
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful</strong> morning",
+      "This is a <mark>beautiful</mark> morning",
       highlight("This is a beautiful morning", "beautiful")
     )
 
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful</strong> morning, but also a <strong class=\"highlight\">beautiful</strong> day",
+      "This is a <mark>beautiful</mark> morning, but also a <mark>beautiful</mark> day",
       highlight("This is a beautiful morning, but also a beautiful day", "beautiful")
     )
 
@@ -131,39 +181,33 @@ class TextHelperTest < ActionView::TestCase
     assert_equal '   ', highlight('   ', 'blank text is returned verbatim')
   end
 
-  def test_highlight_old_api_is_depcrecated
-    assert_deprecated("Calling highlight with a highlighter as an argument is deprecated. Please call with :highlighter => '<mark>\\1</mark>' instead.") do
-      highlight("This is a beautiful morning", "beautiful", '<mark>\1</mark>')
-    end
-  end
-
   def test_highlight_should_sanitize_input
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful</strong> morning",
+      "This is a <mark>beautiful</mark> morning",
       highlight("This is a beautiful morning<script>code!</script>", "beautiful")
     )
   end
 
   def test_highlight_should_not_sanitize_if_sanitize_option_if_false
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful</strong> morning<script>code!</script>",
+      "This is a <mark>beautiful</mark> morning<script>code!</script>",
       highlight("This is a beautiful morning<script>code!</script>", "beautiful", :sanitize => false)
     )
   end
 
   def test_highlight_with_regexp
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful!</strong> morning",
+      "This is a <mark>beautiful!</mark> morning",
       highlight("This is a beautiful! morning", "beautiful!")
     )
 
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful! morning</strong>",
+      "This is a <mark>beautiful! morning</mark>",
       highlight("This is a beautiful! morning", "beautiful! morning")
     )
 
     assert_equal(
-      "This is a <strong class=\"highlight\">beautiful? morning</strong>",
+      "This is a <mark>beautiful? morning</mark>",
       highlight("This is a beautiful? morning", "beautiful? morning")
     )
   end
@@ -174,23 +218,23 @@ class TextHelperTest < ActionView::TestCase
 
   def test_highlight_with_html
     assert_equal(
-      "<p>This is a <strong class=\"highlight\">beautiful</strong> morning, but also a <strong class=\"highlight\">beautiful</strong> day</p>",
+      "<p>This is a <mark>beautiful</mark> morning, but also a <mark>beautiful</mark> day</p>",
       highlight("<p>This is a beautiful morning, but also a beautiful day</p>", "beautiful")
     )
     assert_equal(
-      "<p>This is a <em><strong class=\"highlight\">beautiful</strong></em> morning, but also a <strong class=\"highlight\">beautiful</strong> day</p>",
+      "<p>This is a <em><mark>beautiful</mark></em> morning, but also a <mark>beautiful</mark> day</p>",
       highlight("<p>This is a <em>beautiful</em> morning, but also a beautiful day</p>", "beautiful")
     )
     assert_equal(
-      "<p>This is a <em class=\"error\"><strong class=\"highlight\">beautiful</strong></em> morning, but also a <strong class=\"highlight\">beautiful</strong> <span class=\"last\">day</span></p>",
+      "<p>This is a <em class=\"error\"><mark>beautiful</mark></em> morning, but also a <mark>beautiful</mark> <span class=\"last\">day</span></p>",
       highlight("<p>This is a <em class=\"error\">beautiful</em> morning, but also a beautiful <span class=\"last\">day</span></p>", "beautiful")
     )
     assert_equal(
-      "<p class=\"beautiful\">This is a <strong class=\"highlight\">beautiful</strong> morning, but also a <strong class=\"highlight\">beautiful</strong> day</p>",
+      "<p class=\"beautiful\">This is a <mark>beautiful</mark> morning, but also a <mark>beautiful</mark> day</p>",
       highlight("<p class=\"beautiful\">This is a beautiful morning, but also a beautiful day</p>", "beautiful")
     )
     assert_equal(
-      "<p>This is a <strong class=\"highlight\">beautiful</strong> <a href=\"http://example.com/beautiful#top?what=beautiful%20morning&amp;when=now+then\">morning</a>, but also a <strong class=\"highlight\">beautiful</strong> day</p>",
+      "<p>This is a <mark>beautiful</mark> <a href=\"http://example.com/beautiful#top?what=beautiful%20morning&amp;when=now+then\">morning</a>, but also a <mark>beautiful</mark> day</p>",
       highlight("<p>This is a beautiful <a href=\"http://example.com/beautiful\#top?what=beautiful%20morning&when=now+then\">morning</a>, but also a beautiful day</p>", "beautiful")
     )
     assert_equal(
@@ -199,20 +243,18 @@ class TextHelperTest < ActionView::TestCase
     )
   end
 
+  def test_highlight_does_not_modify_the_options_hash
+    options = { :highlighter => '<b>\1</b>', :sanitize => false }
+    passed_options = options.dup
+    highlight("<div>abc div</div>", "div", passed_options)
+    assert_equal options, passed_options
+  end
+
   def test_excerpt
     assert_equal("...is a beautiful morn...", excerpt("This is a beautiful morning", "beautiful", :radius => 5))
     assert_equal("This is a...", excerpt("This is a beautiful morning", "this", :radius => 5))
     assert_equal("...iful morning", excerpt("This is a beautiful morning", "morning", :radius => 5))
     assert_nil excerpt("This is a beautiful morning", "day")
-  end
-
-  def test_excerpt_old_api_is_depcrecated
-    assert_deprecated("Calling excerpt with radius and omission as arguments is deprecated. Please call with :radius => 5 instead.") do
-      excerpt("This is a beautiful morning", "morning", 5)
-    end
-    assert_deprecated("Calling excerpt with radius and omission as arguments is deprecated. Please call with :radius => 5, :omission => 'mor' instead.") do
-      excerpt("This is a beautiful morning", "morning", 5, "mor")
-    end
   end
 
   def test_excerpt_should_not_be_html_safe
@@ -250,35 +292,43 @@ class TextHelperTest < ActionView::TestCase
     )
   end
 
-  if RUBY_VERSION < '1.9'
-    def test_excerpt_with_utf8
-      with_kcode('u') do
-        assert_equal("...\357\254\203ciency could not be...", excerpt("That's why e\357\254\203ciency could not be helped", 'could', :radius => 8))
-      end
-      with_kcode('none') do
-        assert_equal("...\203ciency could not be...", excerpt("That's why e\357\254\203ciency could not be helped", 'could', :radius => 8))
-      end
-    end
-  else
-    def test_excerpt_with_utf8
-      assert_equal("...\357\254\203ciency could not be...".force_encoding('UTF-8'), excerpt("That's why e\357\254\203ciency could not be helped".force_encoding('UTF-8'), 'could', :radius => 8))
-      # .mb_chars always returns UTF-8, even in 1.9. This is not great, but it's how it works. Let's work this out.
-      # assert_equal("...\203ciency could not be...", excerpt("That's why e\357\254\203ciency could not be helped".force_encoding("BINARY"), 'could', 8))
-    end
+  def test_excerpt_with_utf8
+    assert_equal("...\357\254\203ciency could not be...".force_encoding(Encoding::UTF_8), excerpt("That's why e\357\254\203ciency could not be helped".force_encoding(Encoding::UTF_8), 'could', :radius => 8))
+  end
+
+  def test_excerpt_does_not_modify_the_options_hash
+    options = { :omission => "[...]",:radius => 5 }
+    passed_options = options.dup
+    excerpt("This is a beautiful morning", "beautiful", passed_options)
+    assert_equal options, passed_options
+  end
+
+  def test_excerpt_with_separator
+    options = { :separator => ' ', :radius => 1 }
+    assert_equal('...a very beautiful...', excerpt('This is a very beautiful morning', 'very', options))
+    assert_equal('This is...', excerpt('This is a very beautiful morning', 'this', options))
+    assert_equal('...beautiful morning', excerpt('This is a very beautiful morning', 'morning', options))
+
+    options = { :separator => "\n", :radius => 0 }
+    assert_equal("...very long...", excerpt("my very\nvery\nvery long\nstring", 'long', options))
+
+    options = { :separator => "\n", :radius => 1 }
+    assert_equal("...very\nvery long\nstring", excerpt("my very\nvery\nvery long\nstring", 'long', options))
   end
 
   def test_word_wrap
     assert_equal("my very very\nvery long\nstring", word_wrap("my very very very long string", :line_width => 15))
   end
 
-  def test_word_wrap_old_api_is_depcrecated
-    assert_deprecated("Calling word_wrap with line_width as an argument is deprecated. Please call with :line_width => 15 instead.") do
-      word_wrap("my very very very long string", 15)
-    end
-  end
-
   def test_word_wrap_with_extra_newlines
     assert_equal("my very very\nvery long\nstring\n\nwith another\nline", word_wrap("my very very very long string\n\nwith another line", :line_width => 15))
+  end
+
+  def test_word_wrap_does_not_modify_the_options_hash
+    options = { :line_width => 15 }
+    passed_options = options.dup
+    word_wrap("some text", passed_options)
+    assert_equal options, passed_options
   end
 
   def test_pluralization

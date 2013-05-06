@@ -5,11 +5,37 @@ class ResponseTest < ActiveSupport::TestCase
     @response = ActionDispatch::Response.new
   end
 
-  def test_response_body_encoding
-    # FIXME: remove this conditional on Rails 4.0
-    return unless "<3".encoding_aware?
+  def test_can_wait_until_commit
+    t = Thread.new {
+      @response.await_commit
+    }
+    @response.commit!
+    assert @response.committed?
+    assert t.join(0.5)
+  end
 
-    body = ["hello".encode('utf-8')]
+  def test_stream_close
+    @response.stream.close
+    assert @response.stream.closed?
+  end
+
+  def test_stream_write
+    @response.stream.write "foo"
+    @response.stream.close
+    assert_equal "foo", @response.body
+  end
+
+  def test_write_after_close
+    @response.stream.close
+
+    e = assert_raises(IOError) do
+      @response.stream.write "omg"
+    end
+    assert_equal "closed stream", e.message
+  end
+
+  def test_response_body_encoding
+    body = ["hello".encode(Encoding::UTF_8)]
     response = ActionDispatch::Response.new 200, {}, body
     assert_equal Encoding::UTF_8, response.body.encoding
   end
@@ -103,7 +129,7 @@ class ResponseTest < ActiveSupport::TestCase
 
     @response.set_cookie("login", :value => "foo&bar", :path => "/", :expires => Time.utc(2005, 10, 10,5))
     status, headers, body = @response.to_a
-    assert_equal "user_name=david; path=/\nlogin=foo%26bar; path=/; expires=Mon, 10-Oct-2005 05:00:00 GMT", headers["Set-Cookie"]
+    assert_equal "user_name=david; path=/\nlogin=foo%26bar; path=/; expires=Mon, 10 Oct 2005 05:00:00 -0000", headers["Set-Cookie"]
     assert_equal({"login" => "foo&bar", "user_name" => "david"}, @response.cookies)
 
     @response.delete_cookie("login")
@@ -148,6 +174,44 @@ class ResponseTest < ActiveSupport::TestCase
       assert_equal('utf-16', resp.charset)
     ensure
       ActionDispatch::Response.default_charset = original
+    end
+  end
+
+  test "read x_frame_options, x_content_type_options and x_xss_protection" do
+    begin
+      ActionDispatch::Response.default_headers = {
+        'X-Frame-Options' => 'DENY',
+        'X-Content-Type-Options' => 'nosniff',
+        'X-XSS-Protection' => '1;',
+        'X-UA-Compatible' => 'chrome=1'
+      }
+      resp = ActionDispatch::Response.new.tap { |response|
+        response.body = 'Hello'
+      }
+      resp.to_a
+
+      assert_equal('DENY', resp.headers['X-Frame-Options'])
+      assert_equal('nosniff', resp.headers['X-Content-Type-Options'])
+      assert_equal('1;', resp.headers['X-XSS-Protection'])
+      assert_equal('chrome=1', resp.headers['X-UA-Compatible'])
+    ensure
+      ActionDispatch::Response.default_headers = nil
+    end
+  end
+
+  test "read custom default_header" do
+    begin
+      ActionDispatch::Response.default_headers = {
+        'X-XX-XXXX' => 'Here is my phone number'
+      }
+      resp = ActionDispatch::Response.new.tap { |response|
+        response.body = 'Hello'
+      }
+      resp.to_a
+
+      assert_equal('Here is my phone number', resp.headers['X-XX-XXXX'])
+    ensure
+      ActionDispatch::Response.default_headers = nil
     end
   end
 end

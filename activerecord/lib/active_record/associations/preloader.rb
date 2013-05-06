@@ -12,7 +12,7 @@ module ActiveRecord
     # and all of its books via a single query:
     #
     #   SELECT * FROM authors
-    #   LEFT OUTER JOIN books ON authors.id = books.id
+    #   LEFT OUTER JOIN books ON authors.id = books.author_id
     #   WHERE authors.name = 'Ken Akamatsu'
     #
     # However, this could result in many rows that contain redundant data. After
@@ -46,7 +46,7 @@ module ActiveRecord
         autoload :BelongsTo,           'active_record/associations/preloader/belongs_to'
       end
 
-      attr_reader :records, :associations, :options, :model
+      attr_reader :records, :associations, :preload_scope, :model
 
       # Eager loads the named associations for the given Active Record record(s).
       #
@@ -72,7 +72,7 @@ module ActiveRecord
       #   books.
       # - a Hash which specifies multiple association names, as well as
       #   association names for the to-be-preloaded association objects. For
-      #   example, specifying <tt>{ :author => :avatar }</tt> will preload a
+      #   example, specifying <tt>{ author: :avatar }</tt> will preload a
       #   book's author, as well as that author's avatar.
       #
       # +:associations+ has the same format as the +:include+ option for
@@ -80,17 +80,12 @@ module ActiveRecord
       #
       #   :books
       #   [ :books, :author ]
-      #   { :author => :avatar }
-      #   [ :books, { :author => :avatar } ]
-      #
-      # +options+ contains options that will be passed to ActiveRecord::Base#find
-      # (which is called under the hood for preloading records). But it is passed
-      # only one level deep in the +associations+ argument, i.e. it's not passed
-      # to the child associations when +associations+ is a Hash.
-      def initialize(records, associations, options = {})
-        @records      = Array.wrap(records).compact.uniq
-        @associations = Array.wrap(associations)
-        @options      = options
+      #   { author: :avatar }
+      #   [ :books, { author: :avatar } ]
+      def initialize(records, associations, preload_scope = nil)
+        @records       = Array.wrap(records).compact.uniq
+        @associations  = Array.wrap(associations)
+        @preload_scope = preload_scope || Relation.new(nil, nil)
       end
 
       def run
@@ -105,7 +100,9 @@ module ActiveRecord
         case association
         when Hash
           preload_hash(association)
-        when String, Symbol
+        when Symbol
+          preload_one(association)
+        when String
           preload_one(association.to_sym)
         else
           raise ArgumentError, "#{association.inspect} was not recognised for preload"
@@ -114,7 +111,7 @@ module ActiveRecord
 
       def preload_hash(association)
         association.each do |parent, child|
-          Preloader.new(records, parent, options).run
+          Preloader.new(records, parent, preload_scope).run
           Preloader.new(records.map { |record| record.send(parent) }.flatten, child).run
         end
       end
@@ -129,7 +126,7 @@ module ActiveRecord
       def preload_one(association)
         grouped_records(association).each do |reflection, klasses|
           klasses.each do |klass, records|
-            preloader_for(reflection).new(klass, records, reflection, options).run
+            preloader_for(reflection).new(klass, records, reflection, preload_scope).run
           end
         end
       end

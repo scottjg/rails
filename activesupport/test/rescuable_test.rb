@@ -21,7 +21,7 @@ class Stargate
 
   rescue_from WraithAttack, :with => :sos
 
-  rescue_from NuclearExplosion do
+  rescue_from 'NuclearExplosion' do
     @result = 'alldead'
   end
 
@@ -70,7 +70,7 @@ class CoolStargate < Stargate
 end
 
 
-class RescuableTest < Test::Unit::TestCase
+class RescuableTest < ActiveSupport::TestCase
   def setup
     @stargate = Stargate.new
     @cool_stargate = CoolStargate.new
@@ -102,5 +102,4 @@ class RescuableTest < Test::Unit::TestCase
     result = @cool_stargate.send(:rescue_handlers).collect {|e| e.first}
     assert_equal expected, result
   end
-
 end

@@ -1,7 +1,7 @@
 require "isolation/abstract_unit"
 
 module RailtiesTest
-  class RailtieTest < Test::Unit::TestCase
+  class RailtieTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::Isolation
 
     def setup
@@ -19,8 +19,8 @@ module RailtiesTest
       @app ||= Rails.application
     end
 
-    test "Rails::Railtie itself does not respond to config" do
-      assert !Rails::Railtie.respond_to?(:config)
+    test "cannot instantiate a Railtie object" do
+      assert_raise(RuntimeError) { Rails::Railtie.new }
     end
 
     test "Railtie provides railtie_name" do
@@ -32,18 +32,11 @@ module RailtiesTest
       end
     end
 
-    test "railtie_name can be set manualy" do
+    test "railtie_name can be set manually" do
       class Foo < Rails::Railtie
         railtie_name "bar"
       end
       assert_equal "bar", Foo.railtie_name
-    end
-
-    test "cannot inherit from a railtie" do
-      class Foo < Rails::Railtie ; end
-      assert_raise RuntimeError do
-        class Bar < Foo; end
-      end
     end
 
     test "config is available to railtie" do
@@ -160,6 +153,22 @@ module RailtiesTest
 
       assert !$ran_block
       AppTemplate::Application.load_console
+      assert $ran_block
+    end
+
+    test "runner block is executed when MyApp.load_runner is called" do
+      $ran_block = false
+
+      class MyTie < Rails::Railtie
+        runner do
+          $ran_block = true
+        end
+      end
+
+      require "#{app_path}/config/environment"
+
+      assert !$ran_block
+      AppTemplate::Application.load_runner
       assert $ran_block
     end
 

@@ -1,5 +1,4 @@
 require 'abstract_unit'
-require 'active_support/core_ext/object/inclusion'
 
 class FormTagHelperTest < ActionView::TestCase
   include RenderERBUtils
@@ -16,7 +15,7 @@ class FormTagHelperTest < ActionView::TestCase
 
     txt =  %{<div style="margin:0;padding:0;display:inline">}
     txt << %{<input name="utf8" type="hidden" value="&#x2713;" />}
-    if method && !method.to_s.in?(['get','post'])
+    if method && !%w(get post).include?(method.to_s)
       txt << %{<input name="_method" type="hidden" value="#{method}" />}
     end
     txt << %{</div>}
@@ -75,6 +74,12 @@ class FormTagHelperTest < ActionView::TestCase
   def test_form_tag_multipart
     actual = form_tag({}, { 'multipart' => true })
     expected = whole_form("http://www.example.com", :enctype => true)
+    assert_dom_equal expected, actual
+  end
+
+  def test_form_tag_with_method_patch
+    actual = form_tag({}, { :method => :patch })
+    expected = whole_form("http://www.example.com", :method => :patch)
     assert_dom_equal expected, actual
   end
 
@@ -386,30 +391,32 @@ class FormTagHelperTest < ActionView::TestCase
 
   def test_submit_tag
     assert_dom_equal(
-      %(<input name='commit' data-disable-with="Saving..." onclick="alert(&#x27;hello!&#x27;)" type="submit" value="Save" />),
-      submit_tag("Save", :disable_with => "Saving...", :onclick => "alert('hello!')")
+      %(<input name='commit' data-disable-with="Saving..." onclick="alert(&#39;hello!&#39;)" type="submit" value="Save" />),
+      submit_tag("Save", :onclick => "alert('hello!')", :data => { :disable_with => "Saving..." })
     )
   end
 
   def test_submit_tag_with_no_onclick_options
     assert_dom_equal(
       %(<input name='commit' data-disable-with="Saving..." type="submit" value="Save" />),
-      submit_tag("Save", :disable_with => "Saving...")
+      submit_tag("Save", :data => { :disable_with => "Saving..." })
     )
   end
 
   def test_submit_tag_with_confirmation
     assert_dom_equal(
       %(<input name='commit' type='submit' value='Save' data-confirm="Are you sure?" />),
-      submit_tag("Save", :confirm => "Are you sure?")
+      submit_tag("Save", :data => { :confirm => "Are you sure?" })
     )
   end
 
-  def test_submit_tag_with_confirmation_and_with_disable_with
-    assert_dom_equal(
-      %(<input name="commit" data-disable-with="Saving..." data-confirm="Are you sure?" type="submit" value="Save" />),
-      submit_tag("Save", :disable_with => "Saving...", :confirm => "Are you sure?")
-    )
+  def test_submit_tag_with_deprecated_confirmation
+    assert_deprecated ":confirm option is deprecated and will be removed from Rails 4.1. Use 'data: { confirm: \'Text\' }' instead" do
+      assert_dom_equal(
+        %(<input name='commit' type='submit' value='Save' data-confirm="Are you sure?" />),
+        submit_tag("Save", :confirm => "Are you sure?")
+      )
+    end
   end
 
   def test_button_tag
@@ -463,11 +470,42 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal('<button name="temptation" type="button"><strong>Do not press me</strong></button>', output)
   end
 
+  def test_button_tag_with_confirmation
+    assert_dom_equal(
+      %(<button name="button" type="submit" data-confirm="Are you sure?">Save</button>),
+      button_tag("Save", :type => "submit", :data => { :confirm => "Are you sure?" })
+    )
+  end
+
+  def test_button_tag_with_deprecated_confirmation
+    assert_deprecated ":confirm option is deprecated and will be removed from Rails 4.1. Use 'data: { confirm: \'Text\' }' instead" do
+      assert_dom_equal(
+        %(<button name="button" type="submit" data-confirm="Are you sure?">Save</button>),
+        button_tag("Save", :type => "submit", :confirm => "Are you sure?")
+      )
+    end
+  end
+
   def test_image_submit_tag_with_confirmation
     assert_dom_equal(
-      %(<input type="image" src="/images/save.gif" data-confirm="Are you sure?" />),
-      image_submit_tag("save.gif", :confirm => "Are you sure?")
+      %(<input alt="Save" type="image" src="/images/save.gif" data-confirm="Are you sure?" />),
+      image_submit_tag("save.gif", :data => { :confirm => "Are you sure?" })
     )
+  end
+
+  def test_image_submit_tag_with_deprecated_confirmation
+    assert_deprecated ":confirm option is deprecated and will be removed from Rails 4.1. Use 'data: { confirm: \'Text\' }' instead" do
+      assert_dom_equal(
+        %(<input alt="Save" type="image" src="/images/save.gif" data-confirm="Are you sure?" />),
+        image_submit_tag("save.gif", :confirm => "Are you sure?")
+      )
+    end
+  end
+
+
+  def test_color_field_tag
+    expected = %{<input id="car" name="car" type="color" />}
+    assert_dom_equal(expected, color_field_tag("car"))
   end
 
   def test_search_field_tag
@@ -475,9 +513,39 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal(expected, search_field_tag("query"))
   end
 
-  def telephone_field_tag
+  def test_telephone_field_tag
     expected = %{<input id="cell" name="cell" type="tel" />}
     assert_dom_equal(expected, telephone_field_tag("cell"))
+  end
+
+  def test_date_field_tag
+    expected = %{<input id="cell" name="cell" type="date" />}
+    assert_dom_equal(expected, date_field_tag("cell"))
+  end
+
+  def test_time_field_tag
+    expected = %{<input id="cell" name="cell" type="time" />}
+    assert_dom_equal(expected, time_field_tag("cell"))
+  end
+
+  def test_datetime_field_tag
+    expected = %{<input id="appointment" name="appointment" type="datetime" />}
+    assert_dom_equal(expected, datetime_field_tag("appointment"))
+  end
+
+  def test_datetime_local_field_tag
+    expected = %{<input id="appointment" name="appointment" type="datetime-local" />}
+    assert_dom_equal(expected, datetime_local_field_tag("appointment"))
+  end
+
+  def test_month_field_tag
+    expected = %{<input id="birthday" name="birthday" type="month" />}
+    assert_dom_equal(expected, month_field_tag("birthday"))
+  end
+
+  def test_week_field_tag
+    expected = %{<input id="birthday" name="birthday" type="week" />}
+    assert_dom_equal(expected, week_field_tag("birthday"))
   end
 
   def test_url_field_tag
@@ -500,10 +568,6 @@ class FormTagHelperTest < ActionView::TestCase
     assert_dom_equal(expected, range_field_tag("volume", nil, :in => 0..11, :step => 0.1))
   end
 
-  def test_pass
-    assert_equal 1, 1
-  end
-
   def test_field_set_tag_in_erb
     output_buffer = render_erb("<%= field_set_tag('Your details') do %>Hello world!<% end %>")
 
@@ -523,6 +587,16 @@ class FormTagHelperTest < ActionView::TestCase
     output_buffer = render_erb("<%= field_set_tag('', :class => 'format') do %>Hello world!<% end %>")
 
     expected = %(<fieldset class="format">Hello world!</fieldset>)
+    assert_dom_equal expected, output_buffer
+
+    output_buffer = render_erb("<%= field_set_tag %>")
+
+    expected = %(<fieldset></fieldset>)
+    assert_dom_equal expected, output_buffer
+
+    output_buffer = render_erb("<%= field_set_tag('You legend!') %>")
+
+    expected = %(<fieldset><legend>You legend!</legend></fieldset>)
     assert_dom_equal expected, output_buffer
   end
 

@@ -1,5 +1,5 @@
 #--
-# Copyright (c) 2004-2011 David Heinemeier Hansson
+# Copyright (c) 2004-2013 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -22,24 +22,47 @@
 #++
 
 require 'active_support'
-require 'active_support/i18n'
+require 'active_support/rails'
 require 'active_model'
 require 'arel'
+require 'active_record/deprecated_finders'
 
 require 'active_record/version'
 
 module ActiveRecord
   extend ActiveSupport::Autoload
 
-  # ActiveRecord::SessionStore depends on the abstract store in Action Pack.
-  # Eager loading this class would break client code that eager loads Active
-  # Record standalone.
-  #
-  # Note that the Rails application generator creates an initializer specific
-  # for setting the session store. Thus, albeit in theory this autoload would
-  # not be thread-safe, in practice it is because if the application uses this
-  # session store its autoload happens at boot time.
-  autoload :SessionStore
+  autoload :Base
+  autoload :Callbacks
+  autoload :Core
+  autoload :ConnectionHandling
+  autoload :CounterCache
+  autoload :DynamicMatchers
+  autoload :Explain
+  autoload :Inheritance
+  autoload :Integration
+  autoload :Migration
+  autoload :Migrator, 'active_record/migration'
+  autoload :ModelSchema
+  autoload :NestedAttributes
+  autoload :Persistence
+  autoload :QueryCache
+  autoload :Querying
+  autoload :ReadonlyAttributes
+  autoload :Reflection
+  autoload :RuntimeRegistry
+  autoload :Sanitization
+  autoload :Schema
+  autoload :SchemaDumper
+  autoload :SchemaMigration
+  autoload :Scoping
+  autoload :Serialization
+  autoload :StatementCache
+  autoload :Store
+  autoload :Timestamp
+  autoload :Transactions
+  autoload :Translation
+  autoload :Validations
 
   eager_autoload do
     autoload :ActiveRecordError, 'active_record/errors'
@@ -48,11 +71,12 @@ module ActiveRecord
 
     autoload :Aggregations
     autoload :Associations
-    autoload :AttributeMethods
     autoload :AttributeAssignment
+    autoload :AttributeMethods
     autoload :AutosaveAssociation
 
     autoload :Relation
+    autoload :NullRelation
 
     autoload_under 'relation' do
       autoload :QueryMethods
@@ -61,41 +85,10 @@ module ActiveRecord
       autoload :PredicateBuilder
       autoload :SpawnMethods
       autoload :Batches
-      autoload :Explain
       autoload :Delegation
     end
 
-    autoload :Base
-    autoload :Callbacks
-    autoload :CounterCache
-    autoload :DynamicMatchers
-    autoload :DynamicFinderMatch
-    autoload :DynamicScopeMatch
-    autoload :Explain
-    autoload :IdentityMap
-    autoload :Inheritance
-    autoload :Integration
-    autoload :Migration
-    autoload :Migrator, 'active_record/migration'
-    autoload :ModelSchema
-    autoload :NestedAttributes
-    autoload :Observer
-    autoload :Persistence
-    autoload :QueryCache
-    autoload :Querying
-    autoload :ReadonlyAttributes
-    autoload :Reflection
     autoload :Result
-    autoload :Sanitization
-    autoload :Schema
-    autoload :SchemaDumper
-    autoload :Scoping
-    autoload :Serialization
-    autoload :Store
-    autoload :Timestamp
-    autoload :Transactions
-    autoload :Translation
-    autoload :Validations
   end
 
   module Coders
@@ -114,7 +107,6 @@ module ActiveRecord
       autoload :TimeZoneConversion
       autoload :Write
       autoload :Serialization
-      autoload :DeprecatedUnderscoreRead
     end
   end
 
@@ -145,12 +137,37 @@ module ActiveRecord
     end
   end
 
+  module Tasks
+    extend ActiveSupport::Autoload
+
+    autoload :DatabaseTasks
+    autoload :SQLiteDatabaseTasks, 'active_record/tasks/sqlite_database_tasks'
+    autoload :MySQLDatabaseTasks,  'active_record/tasks/mysql_database_tasks'
+    autoload :PostgreSQLDatabaseTasks,
+      'active_record/tasks/postgresql_database_tasks'
+
+    autoload :FirebirdDatabaseTasks, 'active_record/tasks/firebird_database_tasks'
+    autoload :SqlserverDatabaseTasks, 'active_record/tasks/sqlserver_database_tasks'
+    autoload :OracleDatabaseTasks, 'active_record/tasks/oracle_database_tasks'
+  end
+
   autoload :TestCase
   autoload :TestFixtures, 'active_record/fixtures'
+
+  def self.eager_load!
+    super
+    ActiveRecord::Locking.eager_load!
+    ActiveRecord::Scoping.eager_load!
+    ActiveRecord::Associations.eager_load!
+    ActiveRecord::AttributeMethods.eager_load!
+    ActiveRecord::ConnectionAdapters.eager_load!
+  end
 end
 
 ActiveSupport.on_load(:active_record) do
   Arel::Table.engine = self
 end
 
-I18n.load_path << File.dirname(__FILE__) + '/active_record/locale/en.yml'
+ActiveSupport.on_load(:i18n) do
+  I18n.load_path << File.dirname(__FILE__) + '/active_record/locale/en.yml'
+end
