@@ -135,4 +135,26 @@ class AssociationValidationTest < ActiveRecord::TestCase
     r.title = "Longer"
     assert t.valid?(:custom_context), "Should be valid if the associated object is not valid in the same context."
   end
+
+  def test_does_not_run_association_create_validations_when_parent_is_created
+    Pet.class_eval do
+      validate :create_validation, :on => :create
+
+      class << self
+        def log
+          @log ||= []
+        end
+      end
+
+      def create_validation
+        self.class.log << [:create_validation, persisted?]
+      end
+    end
+
+    pet = Pet.create!
+    owner = Owner.create('pets' => [pet])
+
+    assert_equal [[:create_validation, false]], Pet.log
+  end
+
 end
