@@ -115,9 +115,9 @@ module Rails
       end
 
       def database_gemfile_entry
-        options[:skip_active_record] ? "" : 
+        options[:skip_active_record] ? "" :
           <<-GEMFILE.strip_heredoc.chomp
-            # Use #{options[:database]} as the database for ActiveRecord
+            # Use #{options[:database]} as the database for Active Record
             gem '#{gem_for_database}'
           GEMFILE
       end
@@ -135,13 +135,11 @@ module Rails
           <<-GEMFILE.strip_heredoc
             gem 'rails',     path: '#{Rails::Generators::RAILS_DEV_PATH}'
             gem 'arel',      github: 'rails/arel'
-            gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
           GEMFILE
         elsif options.edge?
           <<-GEMFILE.strip_heredoc
             gem 'rails',     github: 'rails/rails'
             gem 'arel',      github: 'rails/arel'
-            gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
           GEMFILE
         else
           <<-GEMFILE.strip_heredoc
@@ -188,19 +186,19 @@ module Rails
 
             # Use SCSS for stylesheets
             gem 'sass-rails', github: 'rails/sass-rails'
-
-            # Use Uglifier as compressor for JavaScript assets
-            gem 'uglifier', '~> 1.3'
           GEMFILE
         else
           <<-GEMFILE.strip_heredoc
             # Use SCSS for stylesheets
-            gem 'sass-rails', '~> 4.0.0.beta1'
-
-            # Use Uglifier as compressor for JavaScript assets
-            gem 'uglifier', '~> 1.3'
+            gem 'sass-rails', '~> 4.0.0.rc1'
           GEMFILE
         end
+
+        gemfile += <<-GEMFILE.strip_heredoc
+
+          # Use Uglifier as compressor for JavaScript assets
+          gem 'uglifier', '>= 1.3.0'
+        GEMFILE
 
         if options[:skip_javascript]
           gemfile += <<-GEMFILE
@@ -221,7 +219,7 @@ module Rails
         else
           <<-GEMFILE
             # Use CoffeeScript for .js.coffee assets and views
-            gem 'coffee-rails', '~> 4.0.0.beta1'
+            gem 'coffee-rails', '~> 4.0.0'
           GEMFILE
         end
       end

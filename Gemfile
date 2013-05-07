@@ -7,11 +7,11 @@ gem 'rack-cache', '~> 1.2'
 gem 'bcrypt-ruby', '~> 3.0.0'
 gem 'jquery-rails', '~> 2.2.0'
 gem 'turbolinks'
-gem 'coffee-rails', '~> 4.0.0.beta1'
+gem 'coffee-rails', '~> 4.0.0'
 
 # This needs to be with require false to avoid
 # it being automatically loaded by sprockets
-gem 'uglifier', '~> 1.3', require: false
+gem 'uglifier', '>= 1.3.0', require: false
 
 group :doc do
   gem 'sdoc'

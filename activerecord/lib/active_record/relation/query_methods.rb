@@ -553,7 +553,6 @@ module ActiveRecord
     #   Order.having('SUM(price) > 30').group('user_id')
     def having(opts, *rest)
       opts.blank? ? self : spawn.having!(opts, *rest)
-      spawn.having!(opts, *rest)
     end
 
     def having!(opts, *rest) # :nodoc:
