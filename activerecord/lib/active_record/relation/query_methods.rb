@@ -373,7 +373,9 @@ module ActiveRecord
           raise ArgumentError, "Unrecognized scoping: #{args.inspect}. Use .unscope(where: :attribute_name) or .unscope(:order), for example."
         end
       end
-
+      #For bind param caching. TODO: VALIDATE AND CORRECT THIS
+      self.bind_values = []
+      #end
       self
     end
 
@@ -802,19 +804,16 @@ module ActiveRecord
 
       build_joins(arel, joins_values) unless joins_values.empty?
 
-      collapse_wheres(arel, (where_values - ['']).uniq)
-
+      collapse_wheres(arel, (where_values - [''])) #TODO: Add uniq with real value comparison
       arel.having(*having_values.uniq.reject{|h| h.blank?}) unless having_values.empty?
 
       arel.take(connection.sanitize_limit(limit_value)) if limit_value
       arel.skip(offset_value.to_i) if offset_value
 
       arel.group(*group_values.uniq.reject{|g| g.blank?}) unless group_values.empty?
-
       build_order(arel)
 
       build_select(arel, select_values.uniq)
-
       arel.distinct(distinct_value)
       arel.from(build_from) if from_value
       arel.lock(lock_value) if lock_value
@@ -892,17 +891,25 @@ module ActiveRecord
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
         temp_opts = opts.dup
-        if (self.bind_values.empty?)
-          self.replace_binds temp_opts
-          temp_opts = substitute_opts(temp_opts)
-        end
-        attributes = @klass.send(:expand_hash_conditions_for_aggregates, temp_opts)
+        temp_binds = []
 
-        attributes.values.grep(ActiveRecord::Relation) do |rel|
+        temp_opts.map do |column, value| 
+          case value
+            when String, Integer
+              if @klass.column_names.include? column.to_s
+                temp_binds.push([@klass.columns_hash[column.to_s], value])
+              end
+          end
+        end
+
+        self.bind_values += temp_binds
+        temp_opts = substitute_opts(temp_opts)
+
+        attributes = @klass.send(:expand_hash_conditions_for_aggregates, temp_opts)
+        attributes.values.grep(ActiveRecord::Relation) do |rel|    
           self.bind_values += rel.bind_values
         end
-
-        PredicateBuilder.build_from_hash(klass, attributes, table)
+        PredicateBuilder.build_from_hash(klass, attributes, table)     
       else
         [opts]
       end
@@ -910,14 +917,15 @@ module ActiveRecord
 
     def substitute_opts(temp_opts)
       temp_opts = temp_opts.each_with_index do |(column,value), index|
-        substitute = connection.substitute_at(column, index) 
-        case value
-          when String, Integer
-            temp_opts[column] = substitute
+        if @klass.columns_hash[column.to_s] != nil
+          substitute = connection.substitute_at(column, index) 
+          case value
+            when String, Integer
+              temp_opts[column] = substitute
+          end
         end
       end
     end
-
 
     def build_from
       opts, name = from_value

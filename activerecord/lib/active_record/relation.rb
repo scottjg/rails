@@ -516,12 +516,10 @@ module ActiveRecord
       temp_binds = []
       bind_values.map do |column, value| 
         case value
-        when String, Integer
-          if (@klass.column_names.include? column.to_s)  
-            temp_binds.push([@klass.columns_hash[column.to_s], value])
-          else 
-            temp_binds.push([nil, value])
-          end
+          when String, Integer
+            if @klass.column_names.include? column.to_s
+              temp_binds.push([@klass.columns_hash[column.to_s], value])
+            end
         end
       end
       self.bind_values = temp_binds

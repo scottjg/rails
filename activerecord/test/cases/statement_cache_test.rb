@@ -10,7 +10,7 @@ module ActiveRecord
       @connection = ActiveRecord::Base.connection
     end
 
-    ##Cache v 1.1 tests
+    #Cache v 1.1 tests
     def test_statement_cache
       Book.create(name: "my book")
       Book.create(name: "my other book")
@@ -25,6 +25,22 @@ module ActiveRecord
       assert_equal "my other book", b[0].name
     end
 
+
+    #Validate primary key binding
+    def test_statement_cache_id
+      Book.create(name: "my book")
+      Book.create(name: "my other book")
+
+      cache = StatementCache.new do
+        Book.where(id: "1")
+      end
+
+      b = cache.execute id: "1"
+      assert_equal "my book", b[0].name
+      b = cache.execute id: "2"
+      assert_equal "my other book", b[0].name
+    end
+
     def test_find_or_create_by
       Book.create(name: "my book")
 
@@ -35,7 +51,7 @@ module ActiveRecord
       assert_equal("my other book", b.name)
     end
 
-    ##End
+    #End
 
     def test_statement_cache_with_simple_statement
       cache = ActiveRecord::StatementCache.new do
