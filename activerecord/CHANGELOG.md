@@ -1,3 +1,9 @@
+*   Fix pending migrations error when loading schema and ActiveRecord::Base.table_name_prefix is not blank.
+
+    Fix #10411.
+
+    *Kyle Stevens*
+
 *   Handle aliased attributes in ActiveRecord::Relation.
 
     When using symbol keys, ActiveRecord will now translate aliased attribute names to the actual column name used in the database:
