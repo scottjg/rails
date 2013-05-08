@@ -54,7 +54,9 @@ module I18n
       # format string. Takes a key from the date/time formats translations as
       # a format argument (<em>e.g.</em>, <tt>:short</tt> in <tt>:'date.formats'</tt>).
       def localize(locale, object, format = :default, options = {})
-        raise ArgumentError, "Object must be a Date, DateTime or Time object. #{object.inspect} given." unless object.respond_to?(:strftime)
+        raise ArgumentError, "Object must be a Date, DateTime or Time object. #{object.inspect} given." unless object.
+        
+      ?(:strftime)
 
         if Symbol === format
           key = format
@@ -210,7 +212,7 @@ module I18n
         # for all other file extensions.
         def load_file(filename)
           type = File.extname(filename).tr('.', '').downcase
-          raise UnknownFileType.new(type, filename) unless respond_to?(:"load_#{type}")
+          raise UnknownFileType.new(type, filename) unless respond_to?(:"load_#{type}", true)
           data = send(:"load_#{type}", filename) # TODO raise a meaningful exception if this does not yield a Hash
           data.each { |locale, d| store_translations(locale, d) }
         end
