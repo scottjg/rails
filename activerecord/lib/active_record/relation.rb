@@ -250,6 +250,7 @@ module ActiveRecord
       c = count
       c.respond_to?(:zero?) ? c.zero? : c.empty?
     end
+    alias :blank? :empty?
 
     # Returns true if there are any records.
     def any?
@@ -573,11 +574,6 @@ module ActiveRecord
       else
         self
       end
-    end
-
-    # Returns true if relation is blank.
-    def blank?
-      to_a.blank?
     end
 
     def values
