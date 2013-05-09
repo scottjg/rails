@@ -108,7 +108,7 @@ module ActionDispatch
           :singular
         elsif (record.respond_to?(:persisted?) && !record.persisted?)
           args.pop
-          :plural
+          options[:singleton] ? :singular : :plural
         elsif record.is_a?(Class)
           args.pop
           :plural
@@ -119,7 +119,7 @@ module ActionDispatch
         args.delete_if {|arg| arg.is_a?(Symbol) || arg.is_a?(String)}
         named_route = build_named_route_call(record_or_hash_or_array, inflection, options)
 
-        url_options = options.except(:action, :routing_type)
+        url_options = options.except(:action, :singleton, :routing_type)
         unless url_options.empty?
           args.last.kind_of?(Hash) ? args.last.merge!(url_options) : args << url_options
         end

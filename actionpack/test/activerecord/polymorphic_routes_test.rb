@@ -264,6 +264,13 @@ class PolymorphicRoutesTest < ActionController::TestCase
     end
   end
 
+  def test_explicit_delaration_of_a_singleton_record
+    with_test_routes do
+      @project.save
+      assert_equal "http://example.com/projects/#{@project.id}/bid", polymorphic_url([@project, @bid], :singleton => true)
+    end
+  end
+
   def test_nesting_with_array_ending_in_singleton_resource
     with_test_routes do
       @project.save
