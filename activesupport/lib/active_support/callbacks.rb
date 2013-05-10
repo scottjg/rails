@@ -485,12 +485,12 @@ module ActiveSupport
         require 'debugger'
         __update_callbacks(name, filter_list, block) do |target, chain, type, filters, options|
           filters.each do |filter|
-            p "filer:#{filter}-type:#{type} - options:#{options} \n -->#{options.any?}"
+            p "filer:#{filter}-type:#{type} - options:#{options} \n -->#{options.any?}"  if options[:if] && options[:if].first.respond_to?(:call)
            debugger if options[:if] && options[:if].first.respond_to?(:call)
             filter = chain.find {|c| c.matches?(type, filter) }
             if filter && options.any?
               new_filter = filter.clone(chain, self)
-              p "#{new_filter} -COMPILE #{new_filter.recompile!(options)} \n"
+              p "#{new_filter} -COMPILE #{new_filter.recompile!(options)} \n"  if options[:if] && options[:if].first.respond_to?(:call)
               new_filter.recompile!(options)
               chain.insert(chain.index(filter), new_filter)
             end
