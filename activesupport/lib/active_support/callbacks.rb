@@ -230,7 +230,7 @@ module ActiveSupport
       # expression based on the options.
       def recompile_options!
         conditions = ["true"]
-        p options[:only]
+
         unless options[:if].empty?
           conditions << Array(_compile_filter(options[:if]))
         end
@@ -482,16 +482,19 @@ module ActiveSupport
       #      skip_callback :validate, :before, :check_membership, if: -> { self.age > 18 }
       #   end
       def skip_callback(name, *filter_list, &block)
+        require 'debugger'
         __update_callbacks(name, filter_list, block) do |target, chain, type, filters, options|
           filters.each do |filter|
+            p "filer:#{filter}-type:#{type} - options:#{options} \n -->#{options.any?}"
+           debugger if options[:if] && options[:if].first.respond_to?(:call)
             filter = chain.find {|c| c.matches?(type, filter) }
-
             if filter && options.any?
               new_filter = filter.clone(chain, self)
-              chain.insert(chain.index(filter), new_filter)
+              p "#{new_filter} -COMPILE #{new_filter.recompile!(options)} \n"
               new_filter.recompile!(options)
+              chain.insert(chain.index(filter), new_filter)
             end
-
+            p "FILTER:#{filter.inspect}"
             chain.delete(filter)
           end
           target.send("_#{name}_callbacks=", chain)
