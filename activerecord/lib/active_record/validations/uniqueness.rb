@@ -7,11 +7,8 @@ module ActiveRecord
                                "Pass a callable instead: `conditions: -> { where(approved: true) }`"
         end
         super({ case_sensitive: true }.merge!(options))
-      end
 
-      # Unfortunately, we have to tie Uniqueness validators to a class.
-      def setup(klass)
-        @klass = klass
+        setup!
       end
 
       def validate_each(record, attribute, value)
