@@ -1,6 +1,6 @@
 require File.expand_path('../../../../load_paths', __FILE__)
 
-require 'config'
+require 'rbconfig'
 
 require 'test/unit'
 require 'stringio'
