@@ -890,18 +890,8 @@ module ActiveRecord
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
         temp_opts = opts.dup
-        temp_binds = []
 
-        temp_opts.map do |column, value| 
-          case value
-            when String, Integer
-              if @klass.column_names.include? column.to_s
-                temp_binds.push([@klass.columns_hash[column.to_s], value])
-              end
-          end
-        end
-
-        self.bind_values += temp_binds
+        create_binds(temp_opts)
         temp_opts = substitute_opts(temp_opts)
 
         attributes = @klass.send(:expand_hash_conditions_for_aggregates, temp_opts)
@@ -912,6 +902,19 @@ module ActiveRecord
       else
         [opts]
       end
+    end
+
+    def create_binds(temp_opts)
+      binds = []
+      temp_opts.map do |column, value| 
+          case value
+            when String, Integer
+              if @klass.column_names.include? column.to_s
+                binds.push([@klass.columns_hash[column.to_s], value])
+              end
+          end
+        end
+        self.bind_values += binds
     end
 
     def substitute_opts(temp_opts)
