@@ -919,11 +919,10 @@ module ActiveRecord
 
     def substitute_opts(temp_opts)
       temp_opts = temp_opts.each_with_index do |(column,value), index|
-        if @klass.columns_hash[column.to_s] != nil
-          substitute = connection.substitute_at(column, index) 
+        if @klass.columns_hash[column.to_s] != nil        
           case value
             when String, Integer
-              temp_opts[column] = substitute
+              temp_opts[column] = connection.substitute_at(column, index) 
           end
         end
       end
