@@ -611,7 +611,8 @@ module ActiveSupport
       #   end
       def skip_callback(name, *filter_list, &block)
         type, filters, options = normalize_callback_params(name, filter_list, block)
-
+        require 'debugger'
+        debugger
         __update_callbacks(name) do |target, chain|
           filters.each do |filter|
             filter = chain.find {|c| c.matches?(type, filter) }
@@ -620,7 +621,6 @@ module ActiveSupport
               new_filter = filter.merge(chain, options)
               chain.insert(chain.index(filter), new_filter)
             end
-
             chain.delete(filter)
           end
           target.set_callbacks name, chain

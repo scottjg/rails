@@ -74,6 +74,8 @@ module AbstractController
         options = callbacks.last.is_a?(Hash) ? callbacks.pop : {}
         _normalize_callback_options(options)
         callbacks.push(block) if block
+        require 'debugger'
+        debugger
         callbacks.each do |callback|
           yield callback, options
         end
