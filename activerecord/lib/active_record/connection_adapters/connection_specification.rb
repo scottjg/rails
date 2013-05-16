@@ -25,24 +25,28 @@ module ActiveRecord
 
         def spec
           case config
-          when nil
-            raise AdapterNotSpecified unless defined?(Rails.env)
-            resolve_string_connection Rails.env
-          when Symbol, String
-            resolve_string_connection config.to_s
+          when Symbol
+            # resolve Rails env connection
+            env_config = configurations[config.to_s]
+            if env_config.is_a?(Hash)
+              resolve_hash_connection env_config
+            elsif config.is_a?(String)
+              resolve_string_connection env_config
+            else
+              raise AdapterNotSpecified
+            end
+          when String
+            resolve_string_connection config
           when Hash
             resolve_hash_connection config
+          when nil
+            raise AdapterNotSpecified
           end
         end
 
         private
-        def resolve_string_connection(spec) # :nodoc:
-          hash = configurations.fetch(spec) do |k|
-            connection_url_to_hash(k)
-          end
-
-          raise(AdapterNotSpecified, "#{spec} database is not configured") unless hash
-
+        def resolve_string_connection(url) # :nodoc:
+          hash = connection_url_to_hash(url)
           resolve_hash_connection hash
         end
 

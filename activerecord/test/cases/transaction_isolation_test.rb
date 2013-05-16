@@ -35,8 +35,8 @@ class TransactionIsolationTest < ActiveRecord::TestCase
       skip "database does not support setting transaction isolation"
     end
 
-    Tag.establish_connection 'arunit'
-    Tag2.establish_connection 'arunit'
+    Tag.establish_connection :arunit
+    Tag2.establish_connection :arunit
     Tag.destroy_all
   end
 

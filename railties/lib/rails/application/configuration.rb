@@ -105,7 +105,7 @@ module Rails
           require "erb"
           YAML.load ERB.new(IO.read(yaml)).result
         elsif ENV['DATABASE_URL']
-          nil
+          {Rails.env => ENV['DATABASE_URL'] }
         else
           raise "Could not load database configuration. No such file - #{yaml}"
         end

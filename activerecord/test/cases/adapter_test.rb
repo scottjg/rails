@@ -92,7 +92,7 @@ module ActiveRecord
             )
           end
         ensure
-          ActiveRecord::Base.establish_connection 'arunit'
+          ActiveRecord::Base.establish_connection :arunit
         end
       end
     end
@@ -182,7 +182,7 @@ module ActiveRecord
     end
 
     def setup
-      Klass.establish_connection 'arunit'
+      Klass.establish_connection :arunit
       @connection = Klass.connection
     end
 
