@@ -1,5 +1,7 @@
 class AbstractCompany < ActiveRecord::Base
   self.abstract_class = true
+  
+  scope :abstract_company_scope, ->{ order('id') }
 end
 
 class Company < AbstractCompany

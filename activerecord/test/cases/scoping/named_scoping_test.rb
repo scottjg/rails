@@ -5,6 +5,8 @@ require 'models/comment'
 require 'models/reply'
 require 'models/author'
 require 'models/developer'
+require 'models/company'
+
 
 class NamedScopingTest < ActiveRecord::TestCase
   fixtures :posts, :authors, :topics, :comments, :author_addresses
@@ -462,6 +464,10 @@ class NamedScopingTest < ActiveRecord::TestCase
 
   def test_subclass_merges_scopes_properly
     assert_equal 1, SpecialComment.where(body: 'go crazy').created.count
+  end
+  
+  def test_scopes_defined_in_abstract_class
+    assert Company.abstract_company_scope.first
   end
 
 end
