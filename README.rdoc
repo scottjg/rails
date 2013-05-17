@@ -1,0 +1,79 @@
+= Id Validations - extracted and adapted from Active Model
+
+= Active Model -- model interfaces for Rails
+
+* Adding +errors+ interface to objects
+
+  Exposing error messages allows objects to interact with Action Pack
+  helpers seamlessly.
+
+    class Person
+
+      def initialize
+        @errors = ActiveModel::Errors.new(self)
+      end
+
+      attr_accessor :name
+      attr_reader   :errors
+
+      def validate!
+        errors.add(:name, "can not be nil") if name.nil?
+      end
+
+      def self.human_attribute_name(attr, options = {})
+        "Name"
+      end
+    end
+
+    person.errors.full_messages
+    # => ["Name can not be nil"]
+
+  {Learn more}[link:classes/ActiveModel/Errors.html]
+
+* Validation support
+
+   class Person
+     include ActiveModel::Validations
+
+     attr_accessor :first_name, :last_name
+
+     validates_each :first_name, :last_name do |record, attr, value|
+       record.errors.add attr, 'starts with z.' if value.to_s[0] == ?z
+     end
+   end
+
+   person = Person.new
+   person.first_name = 'zoolander'
+   person.valid?  # => false
+
+  {Learn more}[link:classes/ActiveModel/Validations.html]
+
+* Custom validators
+
+   class ValidatorPerson
+     include ActiveModel::Validations
+     validates_with HasNameValidator
+     attr_accessor :name
+   end
+
+   class HasNameValidator < ActiveModel::Validator
+     def validate(record)
+       record.errors[:name] = "must exist" if record.name.blank?
+     end
+   end
+
+   p = ValidatorPerson.new
+   p.valid?                  # =>  false
+   p.errors.full_messages    # => ["Name must exist"]
+   p.name = "Bob"
+   p.valid?                  # =>  true
+
+  {Learn more}[link:classes/ActiveModel/Validator.html]
+
+== License
+
+Active Model is released under the MIT license:
+
+* http://www.opensource.org/licenses/MIT
+
+Id Validations respects the original MIT licence.
