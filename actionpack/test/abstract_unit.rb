@@ -8,8 +8,8 @@ require 'yaml'
 require 'stringio'
 require 'test/unit'
 
-gem 'mocha', '>= 0.9.7'
-require 'mocha'
+gem 'mocha', '>= 0.13.1'
+require 'mocha/setup'
 
 begin
   require 'ruby-debug'
@@ -60,7 +60,7 @@ end
 
 class ActionController::IntegrationTest < ActiveSupport::TestCase
   def with_autoload_path(path)
-    path = File.join(File.dirname(__FILE__), "fixtures", path)  
+    path = File.join(File.dirname(__FILE__), "fixtures", path)
     if ActiveSupport::Dependencies.autoload_paths.include?(path)
       yield
     else
@@ -70,7 +70,7 @@ class ActionController::IntegrationTest < ActiveSupport::TestCase
       ensure
         ActiveSupport::Dependencies.autoload_paths.reject! {|p| p == path}
         ActiveSupport::Dependencies.clear
-      end              
+      end
     end
   end
 end

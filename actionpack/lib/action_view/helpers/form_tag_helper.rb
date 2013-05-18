@@ -120,7 +120,7 @@ module ActionView
 
       # Creates a label field
       #
-      # ==== Options  
+      # ==== Options
       # * Creates standard HTML attributes for the tag.
       #
       # ==== Examples
@@ -359,7 +359,7 @@ module ActionView
         if disable_with = options.delete("disable_with")
           disable_with = "this.value='#{disable_with}'"
           disable_with << ";#{options.delete('onclick')}" if options['onclick']
-          
+
           options["onclick"]  = "if (window.hiddenCommit) { window.hiddenCommit.setAttribute('value', this.value); }"
           options["onclick"] << "else { hiddenCommit = document.createElement('input');hiddenCommit.type = 'hidden';"
           options["onclick"] << "hiddenCommit.value = this.value;hiddenCommit.name = this.name;this.form.appendChild(hiddenCommit); }"
@@ -442,6 +442,8 @@ module ActionView
         def html_options_for_form(url_for_options, options, *parameters_for_url)
           options.stringify_keys.tap do |html_options|
             html_options["enctype"] = "multipart/form-data" if html_options.delete("multipart")
+            # The following URL is unescaped, this is just a hash of options, and it is the
+            # responsability of the caller to escape all the values.
             html_options["action"]  = url_for(url_for_options, *parameters_for_url)
           end
         end
