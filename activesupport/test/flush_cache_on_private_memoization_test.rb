@@ -31,13 +31,13 @@ class FlashCacheOnPrivateMemoizationTest < Test::Unit::TestCase
 
   def assert_method_unmemoizable(meth, message=nil)
     full_message = build_message(message, "<?> not unmemoizable.\n", meth)
-    assert_block(full_message) do
+    assert_block(lambda do
       a = send meth
       b = send meth
       unmemoize_all
       c = send meth
       a == b && a != c
-    end
+    end, full_message)
   end
 
 end

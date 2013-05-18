@@ -77,4 +77,3 @@ class TestJSONDecoding < ActiveSupport::TestCase
     assert_raise(ActiveSupport::JSON.parse_error) { ActiveSupport::JSON.decode(%({: 1})) }
   end
 end
-

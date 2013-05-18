@@ -597,7 +597,7 @@ module ActiveSupport
     Spc = ' '[0]
     Unesc = {?b=>?\b, ?f=>?\f, ?n=>?\n, ?r=>?\r, ?t=>?\t}
   end
-  
+
   module JSON
     module Backends
       module OkJson

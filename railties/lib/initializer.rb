@@ -1149,4 +1149,3 @@ class Rails::OrderedOptions < Array #:nodoc:
       return false
     end
 end
-

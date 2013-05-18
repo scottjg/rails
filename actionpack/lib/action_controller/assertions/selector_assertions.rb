@@ -448,7 +448,7 @@ module ActionController
         end
 
         if matches
-          assert_block("") { true } # to count the assertion
+          assert true # to count the assertion
           if block_given? && !([:remove, :show, :hide, :toggle].include? rjs_type)
             begin
               in_scope, @selected = @selected, matches

@@ -14,7 +14,7 @@ module ActionController #:nodoc:
     end
 
     module ClassMethods
-      # Log and benchmark the workings of a single block and silence whatever logging that may have happened inside it 
+      # Log and benchmark the workings of a single block and silence whatever logging that may have happened inside it
       # (unless <tt>use_silence</tt> is set to false).
       #
       # The benchmark is only recorded if the current level of the logger matches the <tt>log_level</tt>, which makes it
@@ -42,7 +42,7 @@ module ActionController #:nodoc:
 
     protected
       def render_with_benchmark(options = nil, extra_options = {}, &block)
-        if logger
+        ActiveSupport::Notifications.instrument("render.action_controller") do |payload|
           if Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
             db_runtime = ActiveRecord::Base.connection.reset_runtime
           end
@@ -55,42 +55,51 @@ module ActionController #:nodoc:
             @db_rt_after_render = ActiveRecord::Base.connection.reset_runtime
             @view_runtime -= @db_rt_after_render
           end
-
           render_output
-        else
-          render_without_benchmark(options, extra_options, &block)
         end
-      end    
+      end
 
     private
       def perform_action_with_benchmark
-        if logger
-          ms = [Benchmark.ms { perform_action_without_benchmark }, 0.01].max
-          logging_view          = defined?(@view_runtime)
-          logging_active_record = Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
+        ActiveSupport::Notifications.instrumenter.notifier.start("perform_action.action_controller", ActiveSupport::Notifications.instrumenter.id, {})
+        ms = [Benchmark.ms { perform_action_without_benchmark }, 0.01].max
 
-          log_message  = 'Completed in %.0fms' % ms
+        parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
+        parameters = parameters.except('controller', 'action', 'format', '_method', 'protocol')
 
-          if logging_view || logging_active_record
-            log_message << " ("
-            log_message << view_runtime if logging_view
+        payload = {
+          :uuid          => (request.uuid if request.respond_to?(:uuid)),
+          :controller    => self.class.name,
+          :action        => self.action_name,
+          :params        => parameters,
+          :format        => request.format.to_sym,
+          :method        => request.method.to_s.upcase,
+          :path          => (request.fullpath rescue "unknown"),
+          :status        => response.status.to_s[0..2],
+          :location      => response.location
+        }
 
-            if logging_active_record
-              log_message << ", " if logging_view
-              log_message << active_record_runtime + ")"
-            else
-              ")"
-            end
-          end
-
-          log_message << " | #{response.status}"
-          log_message << " [#{complete_request_uri rescue "unknown"}]"
-
-          logger.info(log_message)
-          response.headers["X-Runtime"] = "%.0f" % ms
-        else
-          perform_action_without_benchmark
+        if !response.body.respond_to?(:call) && response.status.to_s[0..2] != '304'
+          payload[:length] = (response.body.respond_to?(:bytesize) ? response.body.bytesize : response.body.size)
         end
+
+        logging_view          = defined?(@view_runtime)
+        logging_active_record = Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
+
+        if logging_active_record
+          db_runtime = ActiveRecord::Base.connection.reset_runtime
+          db_runtime += @db_rt_before_render if @db_rt_before_render
+          db_runtime += @db_rt_after_render if @db_rt_after_render
+
+          payload[:db_runtime] = db_runtime.to_i
+        end
+
+        if logging_view
+          payload[:view_runtime] = @view_runtime.to_i
+        end
+
+        ActiveSupport::Notifications.instrumenter.notifier.finish("perform_action.action_controller", ActiveSupport::Notifications.instrumenter.id, payload)
+        response.headers["X-Runtime"] = "%.0f" % ms
       end
 
       def view_runtime

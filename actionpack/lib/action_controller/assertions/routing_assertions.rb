@@ -55,7 +55,7 @@ module ActionController
           routing_diff = expected_options.diff(request.path_parameters)
           msg = build_message(message, "The recognized options <?> did not match <?>, difference: <?>",
               request.path_parameters, expected_options, expected_options.diff(request.path_parameters))
-          assert_block(msg) { request.path_parameters == expected_options }
+          assert(lambda { request.path_parameters == expected_options }, msg)
         end
       end
 
@@ -87,11 +87,11 @@ module ActionController
           found_extras = options.reject {|k, v| ! extra_keys.include? k}
 
           msg = build_message(message, "found extras <?>, not <?>", found_extras, extras)
-          assert_block(msg) { found_extras == extras }
+          assert(lambda { found_extras == extras }, msg)
 
           msg = build_message(message, "The generated path <?> did not match <?>", generated_path,
               expected_path)
-          assert_block(msg) { expected_path == generated_path }
+          assert(lambda { expected_path == generated_path }, msg)
         end
       end
 

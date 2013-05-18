@@ -30,16 +30,6 @@ class Hash
   # would pass the <tt>:include => :posts</tt> option to <tt>users</tt>,
   # allowing the posts association in the User model to be converted to JSON
   # as well.
-  def to_json(options = nil) #:nodoc:
-    hash = as_json(options)
-
-    result = '{'
-    result << hash.map do |key, value|
-      "#{ActiveSupport::JSON.encode(key.to_s)}:#{ActiveSupport::JSON.encode(value, options)}"
-    end * ','
-    result << '}'
-  end
-
   def as_json(options = nil) #:nodoc:
     if options
       if attrs = options[:except]

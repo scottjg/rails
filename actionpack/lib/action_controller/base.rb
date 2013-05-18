@@ -779,7 +779,6 @@ module ActionController #:nodoc:
 
         layout = pick_layout(options)
         response.layout = layout.path_without_format_and_extension if layout
-        logger.info("Rendering template within #{layout.path_without_format_and_extension}") if logger && layout
 
         if content_type = options[:content_type]
           response.content_type = content_type.to_s
@@ -932,7 +931,7 @@ module ActionController #:nodoc:
       #   redirect_to post_url(@post), :status => 301
       #   redirect_to :action=>'atom', :status => 302
       #
-      # The status code can either be a standard {HTTP Status code}[http://www.iana.org/assignments/http-status-codes] as an 
+      # The status code can either be a standard {HTTP Status code}[http://www.iana.org/assignments/http-status-codes] as an
       # integer, or a symbol representing the downcased, underscored and symbolized description.
       #
       # It is also possible to assign a flash message as part of the redirection. There are two special accessors for commonly used the flash names
@@ -980,7 +979,6 @@ module ActionController #:nodoc:
 
       def redirect_to_full_url(url, status)
         raise DoubleRenderError if performed?
-        logger.info("Redirected to #{url}") if logger && logger.info?
         response.redirect(url, interpret_status(status))
         @performed_redirect = true
       end
@@ -992,7 +990,7 @@ module ActionController #:nodoc:
       #
       # Parameters:
       # * <tt>:etag</tt>
-      # * <tt>:last_modified</tt> 
+      # * <tt>:last_modified</tt>
       # * <tt>:public</tt> By default the Cache-Control header is private, set this to true if you want your application to be cachable by other devices (proxy caches).
       #
       # Example:
@@ -1017,7 +1015,7 @@ module ActionController #:nodoc:
       #
       # Parameters:
       # * <tt>:etag</tt>
-      # * <tt>:last_modified</tt> 
+      # * <tt>:last_modified</tt>
       # * <tt>:public</tt> By default the Cache-Control header is private, set this to true if you want your application to be cachable by other devices (proxy caches).
       #
       # Example:
@@ -1035,8 +1033,8 @@ module ActionController #:nodoc:
 
         response.etag          = options[:etag]          if options[:etag]
         response.last_modified = options[:last_modified] if options[:last_modified]
-        
-        if options[:public] 
+
+        if options[:public]
           cache_control = response.headers["Cache-Control"].split(",").map {|k| k.strip }
           cache_control.delete("private")
           cache_control.delete("no-cache")
@@ -1070,10 +1068,10 @@ module ActionController #:nodoc:
         else
           cache_control << "private"
         end
-        
+
         # This allows for additional headers to be passed through like 'max-stale' => 5.hours
         cache_control += options.symbolize_keys.reject{|k,v| k == :public || k == :private }.map{ |k,v| v == true ? k.to_s : "#{k.to_s}=#{v.to_s}"}
-        
+
         response.headers["Cache-Control"] = cache_control.join(', ')
       end
 
@@ -1092,7 +1090,6 @@ module ActionController #:nodoc:
     private
       def render_for_file(template_path, status = nil, layout = nil, locals = {}) #:nodoc:
         path = template_path.respond_to?(:path_without_format_and_extension) ? template_path.path_without_format_and_extension : template_path
-        logger.info("Rendering #{path}" + (status ? " (#{status})" : '')) if logger
         render_for_text @template.render(:file => template_path, :locals => locals, :layout => layout), status
       end
 
@@ -1148,10 +1145,19 @@ module ActionController #:nodoc:
       end
 
       def log_processing
-        if logger && logger.info?
-          log_processing_for_request_id
-          log_processing_for_parameters
-        end
+        parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
+        parameters = parameters.except!(:controller, :action, :format, :_method)
+
+        payload = {
+          :uuid       => request.uuid,
+          :method     => request.method.to_s.upcase,
+          :class_name => self.class.name,
+          :action     => action_name,
+          :origin     => request_origin,
+          :format     => params[:format],
+          :params     => parameters
+        }
+        ActiveSupport::Notifications.instrument('process_start.action_controller', payload) { |payload| }
       end
 
       def log_processing_for_request_id
@@ -1159,14 +1165,14 @@ module ActionController #:nodoc:
         request_id << "to #{params[:format]} " if params[:format]
         request_id << "(for #{request_origin}) [#{request.method.to_s.upcase}]"
 
-        logger.info(request_id)
+        logger.debug(request_id)
       end
 
       def log_processing_for_parameters
         parameters = respond_to?(:filter_parameters) ? filter_parameters(params) : params.dup
         parameters = parameters.except!(:controller, :action, :format, :_method)
 
-        logger.info "  Parameters: #{parameters.inspect}" unless parameters.empty?
+        logger.debug "  Parameters: #{parameters.inspect}" unless parameters.empty?
       end
 
       def default_render #:nodoc:

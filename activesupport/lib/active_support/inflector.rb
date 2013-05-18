@@ -1,6 +1,5 @@
 # encoding: utf-8
 require 'singleton'
-require 'iconv' if RUBY_VERSION < '1.9'
 require 'kconv'
 
 module ActiveSupport
@@ -274,26 +273,9 @@ module ActiveSupport
       parameterized_string.downcase
     end
 
-
     # Replaces accented characters with their ascii equivalents.
     def transliterate(string)
-      Iconv.iconv('ascii//ignore//translit', 'utf-8', string).to_s
-    end
-
-    if RUBY_VERSION >= '1.9'
-      undef_method :transliterate
-      def transliterate(string)
-        string.encode("us-ascii", :undef => :replace, :invalid => :replace, :replace => "")
-      end
-
-    # The iconv transliteration code doesn't function correctly
-    # on some platforms, but it's very fast where it does function.
-    elsif "foo" != (Inflector.transliterate("föö") rescue nil)
-      undef_method :transliterate
-      def transliterate(string)
-        string.mb_chars.normalize(:kd). # Decompose accented characters
-          gsub(/[^\x00-\x7F]+/, '')     # Remove anything non-ASCII entirely (e.g. diacritics).
-      end
+      string.dup
     end
 
     # Create the name of a table like Rails does for models to table names. This method

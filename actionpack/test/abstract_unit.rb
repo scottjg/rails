@@ -60,7 +60,7 @@ end
 
 class ActionController::IntegrationTest < ActiveSupport::TestCase
   def with_autoload_path(path)
-    path = File.join(File.dirname(__FILE__), "fixtures", path)  
+    path = File.join(File.dirname(__FILE__), "fixtures", path)
     if ActiveSupport::Dependencies.autoload_paths.include?(path)
       yield
     else
@@ -70,7 +70,7 @@ class ActionController::IntegrationTest < ActiveSupport::TestCase
       ensure
         ActiveSupport::Dependencies.autoload_paths.reject! {|p| p == path}
         ActiveSupport::Dependencies.clear
-      end              
+      end
     end
   end
 end

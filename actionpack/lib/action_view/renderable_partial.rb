@@ -16,7 +16,7 @@ module ActionView
 
     def render(view, local_assigns = {})
       if defined? ActionController
-        ActionController::Base.benchmark("Rendered #{path_without_format_and_extension}", Logger::DEBUG, false) do
+        ActiveSupport::Notifications.instrument("render_partial.action_controller", :name => path_without_format_and_extension) do
           super
         end
       else
