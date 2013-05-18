@@ -21,6 +21,10 @@ module ActiveRecord
           @migration_action = $1
           @table_name       = $3.pluralize
           @migration_template = 'timestamps.rb' if $2 =~ /^timestamps$/
+        when /^(add|remove)_index(?:es)?_(.*)_(?:on)_(.*)/
+          @migration_action = $1
+          @table_name       = $3.pluralize
+          @migration_template = 'indexes.rb'
         when /join_table/
           if attributes.length == 2
             @migration_action = 'join'
