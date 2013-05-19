@@ -90,7 +90,8 @@ module Rails
         options << '-e'  << 'UTF-8'
 
         options << '-f'  << 'sdoc'
-        options << '-T'  << 'rails'
+
+        options << '--all'
       rescue LoadError
         $stderr.puts %(Unable to load SDoc, please add\n\n    gem 'sdoc', require: false\n\nto the Gemfile.)
         exit 1
