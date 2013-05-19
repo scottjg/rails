@@ -143,16 +143,20 @@ module ActiveRecord
           # present in the relation being merged in.
 
           seen = Set.new
+          seen_left = Set.new
           values[:where].each { |w|
             if w.respond_to?(:operator) && w.operator == :==
-              seen << w.left
+              seen_left << w.left
+            else
+              seen << w
             end
           }
 
           relation.where_values.reject { |w|
+            seen.include?(w) || (
             w.respond_to?(:operator) &&
               w.operator == :== &&
-              seen.include?(w.left)
+              seen_left.include?(w.left))
           } + values[:where]
         end
       end

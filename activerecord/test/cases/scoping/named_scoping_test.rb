@@ -467,7 +467,7 @@ class NamedScopingTest < ActiveRecord::TestCase
   end
   
   def test_scopes_defined_in_abstract_class
-    assert Company.abstract_company_scope.first
+    assert_equal 'companies', Company.abstract_company_scope.table_name
   end
 
 end
