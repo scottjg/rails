@@ -118,7 +118,7 @@ module ActionView
       def content_for(name, content = nil, &block)
         ivar = "@content_for_#{name}"
         content = capture(&block) if block_given?
-        instance_variable_set(ivar, "#{instance_variable_get(ivar)}#{ERB::Util.html_escape(content)}".html_safe)
+        instance_variable_set(ivar, "#{instance_variable_get(ivar)}#{content}".html_safe)
         nil
       end
 
