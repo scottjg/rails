@@ -18,7 +18,7 @@ module ActiveRecord
         def quote(value, column = nil) #:nodoc:
           return super unless column
 
-          sql_type = type_to_sql(column.type, column.limit, column.precision, column.scale)
+          sql_type = schema_creation.type_to_sql(column.type, column.limit, column.precision, column.scale)
 
           case value
           when Range
