@@ -170,8 +170,10 @@ module ActionDispatch
         
 
         #MAYBE USE HASH.DELETE TO OPTIMIZE THIS SO WE KNOW IT WONT BE IN HASH
-        require "debugger"
-        debugger
+
+        #cache = _routes.formatter.cache
+        #ast_link = cache[[:controller, options.delete(:controller)]][[:action, options.delete(:action)]][:__routes][0][1].ast
+
         ast_link = _routes.formatter.cache[[:controller, options.delete(:controller)]][[:action, options.delete(:action)]][:___routes][0][1].ast
 
 
