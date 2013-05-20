@@ -41,7 +41,7 @@ module ActiveRecord
 
         public
 
-        def type_to_sql(type, limit, precision, scale)
+        def type_to_sql(type, limit = nil, precision = nil, scale = nil)
           type = type.to_sym
           case type.to_s
           when 'binary'

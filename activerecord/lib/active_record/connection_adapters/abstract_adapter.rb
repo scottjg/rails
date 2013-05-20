@@ -158,7 +158,7 @@ module ActiveRecord
           @conn.quote_table_name name
         end
 
-        def type_to_sql(type, limit, precision, scale)
+        def type_to_sql(type, limit = nil, precision = nil, scale = nil)
           if native = @conn.native_database_types[type.to_sym]
             column_type_sql = (native.is_a?(Hash) ? native[:name] : native).dup
             if type.to_sym == :decimal # ignore limit, use precision and scale

@@ -28,8 +28,37 @@ module ActiveRecord
           sql
         end
 
-        def type_to_sql(type, limit, precision, scale)
-          @conn.type_to_sql type.to_sym, limit, precision, scale
+        public
+
+        def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+          case type.to_s
+          when 'binary'
+            case limit
+            when 0..0xfff;           "varbinary(#{limit})"
+            when nil;                "blob"
+            when 0x1000..0xffffffff; "blob(#{limit})"
+            else raise(ActiveRecordError, "No binary type has character length #{limit}")
+            end
+          when 'integer'
+            case limit
+            when 1; 'tinyint'
+            when 2; 'smallint'
+            when 3; 'mediumint'
+            when nil, 4, 11; 'int(11)'  # compatibility with MySQL default
+            when 5..8; 'bigint'
+            else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+            end
+          when 'text'
+            case limit
+            when 0..0xff;               'tinytext'
+            when nil, 0x100..0xffff;    'text'
+            when 0x10000..0xffffff;     'mediumtext'
+            when 0x1000000..0xffffffff; 'longtext'
+            else raise(ActiveRecordError, "No text type has character length #{limit}")
+            end
+          else
+            super
+          end
         end
       end
 
@@ -531,38 +560,6 @@ module ActiveRecord
       def add_index(table_name, column_name, options = {}) #:nodoc:
         index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
         execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} #{index_using} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options} #{index_algorithm}"
-      end
-
-      # Maps logical Rails types to MySQL-specific data types.
-      def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-        case type.to_s
-        when 'binary'
-          case limit
-          when 0..0xfff;           "varbinary(#{limit})"
-          when nil;                "blob"
-          when 0x1000..0xffffffff; "blob(#{limit})"
-          else raise(ActiveRecordError, "No binary type has character length #{limit}")
-          end
-        when 'integer'
-          case limit
-          when 1; 'tinyint'
-          when 2; 'smallint'
-          when 3; 'mediumint'
-          when nil, 4, 11; 'int(11)'  # compatibility with MySQL default
-          when 5..8; 'bigint'
-          else raise(ActiveRecordError, "No integer type has byte size #{limit}")
-          end
-        when 'text'
-          case limit
-          when 0..0xff;               'tinytext'
-          when nil, 0x100..0xffff;    'text'
-          when 0x10000..0xffffff;     'mediumtext'
-          when 0x1000000..0xffffffff; 'longtext'
-          else raise(ActiveRecordError, "No text type has character length #{limit}")
-          end
-        else
-          super
-        end
       end
 
       def add_column_position!(sql, options)

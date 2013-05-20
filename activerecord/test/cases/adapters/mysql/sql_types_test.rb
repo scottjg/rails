@@ -9,6 +9,6 @@ class SqlTypesTest < ActiveRecord::TestCase
   end
 
   def type_to_sql(*args)
-    ActiveRecord::Base.connection.type_to_sql(*args)
+    ActiveRecord::Base.connection.schema_creation.type_to_sql(*args)
   end
 end
