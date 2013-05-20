@@ -601,20 +601,20 @@ module ActionDispatch
           def map_method(method, args, &block)
             options = args.extract_options!
 =begin
-<<<<<<< HEAD
+            <<<<<<< HEAD
             options[:via]    = method
 
             #if you change to args[2] maps differently
             options[:path] ||= args.first if args.first.is_a?(String)
 
-=======
+            =======
 =end
             options[:via] = method
-#>>>>>>> upstream/master
+            #>>>>>>> upstream/master
             match(*args, options, &block)
             #puts method(:match).source_location
 
-            require "debugger"
+            #require "debugger"
             #debugger
             #caller
 
