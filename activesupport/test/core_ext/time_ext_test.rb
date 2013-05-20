@@ -121,6 +121,10 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal Time.local(2005,2,4,19,0,0), Time.local(2005,2,4,19,30,10).beginning_of_hour
   end
 
+  def test_beginning_of_minute
+    assert_equal Time.local(2005,2,4,19,30,0), Time.local(2005,2,4,19,30,10).beginning_of_minute
+  end
+
   def test_end_of_day
     assert_equal Time.local(2007,8,12,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,12,10,10,10).end_of_day
     with_env_tz 'US/Eastern' do
@@ -135,6 +139,10 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
 
   def test_end_of_hour
     assert_equal Time.local(2005,2,4,19,59,59,Rational(999999999, 1000)), Time.local(2005,2,4,19,30,10).end_of_hour
+  end
+
+  def test_end_of_minute
+    assert_equal Time.local(2005,2,4,19,30,59,Rational(999999999, 1000)), Time.local(2005,2,4,19,30,10).end_of_minute
   end
 
   def test_last_year
@@ -845,12 +853,5 @@ class TimeExtMarshalingTest < ActiveSupport::TestCase
 
   def test_last_quarter_on_31st
     assert_equal Time.local(2004, 2, 29), Time.local(2004, 5, 31).last_quarter
-  end
-end
-
-class TimeExtBehaviorTest < ActiveSupport::TestCase
-  def test_compare_with_infinity
-    assert_equal(-1, Time.now <=> Float::INFINITY)
-    assert_equal(1, Time.now <=> -Float::INFINITY)
   end
 end

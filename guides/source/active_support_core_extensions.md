@@ -10,7 +10,7 @@ After reading this guide, you will know:
 * What Core Extensions are.
 * How to load all extensions.
 * How to cherry-pick just the extensions you want.
-* What extensions ActiveSupport provides.
+* What extensions Active Support provides.
 
 --------------------------------------------------------------------------------
 
@@ -166,7 +166,7 @@ NOTE: Defined in `active_support/core_ext/object/duplicable.rb`.
 
 ### `deep_dup`
 
-The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
+The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, Ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
 
 ```ruby
 array     = ['string']
@@ -476,12 +476,11 @@ NOTE: Defined in `active_support/core_ext/kernel/reporting.rb`.
 
 ### `in?`
 
-The predicate `in?` tests if an object is included in another object or a list of objects. An `ArgumentError` exception will be raised if a single argument is passed and it does not respond to `include?`.
+The predicate `in?` tests if an object is included in another object. An `ArgumentError` exception will be raised if the argument passed does not respond to `include?`.
 
 Examples of `in?`:
 
 ```ruby
-1.in?(1,2)          # => true
 1.in?([1,2])        # => true
 "lo".in?("hello")   # => true
 25.in?(30..50)      # => false
@@ -1039,6 +1038,8 @@ For convenience `class_attribute` also defines an instance predicate which is th
 
 When `:instance_reader` is `false`, the instance predicate returns a `NoMethodError` just like the reader method.
 
+If you do not want the instance predicate,  pass `instance_predicate: false` and it will not be defined.
+
 NOTE: Defined in `active_support/core_ext/class/attribute.rb`
 
 #### `cattr_reader`, `cattr_writer`, and `cattr_accessor`
@@ -1344,7 +1345,7 @@ The second argument, `indent_string`, specifies which indent string to use. The 
 "foo".indent(2, "\t")    # => "\t\tfoo"
 ```
 
-While `indent_string` is tipically one space or tab, it may be any string.
+While `indent_string` is typically one space or tab, it may be any string.
 
 The third argument, `indent_empty_lines`, is a flag that says whether empty lines should be indented. Default is false.
 
@@ -2198,7 +2199,7 @@ This method accepts three options:
 * `:words_connector`: What is used to join the elements of arrays with 3 or more elements, except for the last two. Default is ", ".
 * `:last_word_connector`: What is used to join the last items of an array with 3 or more elements. Default is ", and ".
 
-The defaults for these options can be localised, their keys are:
+The defaults for these options can be localized, their keys are:
 
 | Option                 | I18n key                            |
 | ---------------------- | ----------------------------------- |
@@ -2214,7 +2215,9 @@ NOTE: Defined in `active_support/core_ext/array/conversions.rb`.
 
 The method `to_formatted_s` acts like `to_s` by default.
 
-If the array contains items that respond to `id`, however, it may be passed the symbol `:db` as argument. That's typically used with collections of ARs. Returned strings are:
+If the array contains items that respond to `id`, however, the symbol
+`:db` may be passed as argument. That's typically used with
+collections of Active Record objects. Returned strings are:
 
 ```ruby
 [].to_formatted_s(:db)            # => "null"
@@ -2370,7 +2373,8 @@ NOTE: Defined in `active_support/core_ext/array/wrap.rb`.
 
 ### Duplicating
 
-The method `Array.deep_dup` duplicates itself and all objects inside recursively with ActiveSupport method `Object#deep_dup`. It works like `Array#map` with sending `deep_dup` method to each object inside.
+The method `Array.deep_dup` duplicates itself and all objects inside
+recursively with Active Support method `Object#deep_dup`. It works like `Array#map` with sending `deep_dup` method to each object inside.
 
 ```ruby
 array = [1, [2, 3]]
@@ -2591,7 +2595,8 @@ NOTE: Defined in `active_support/core_ext/hash/deep_merge.rb`.
 
 ### Deep duplicating
 
-The method `Hash.deep_dup` duplicates itself and all keys and values inside recursively with ActiveSupport method `Object#deep_dup`. It works like `Enumerator#each_with_object` with sending `deep_dup` method to each pair inside.
+The method `Hash.deep_dup` duplicates itself and all keys and values
+inside recursively with Active Support method `Object#deep_dup`. It works like `Enumerator#each_with_object` with sending `deep_dup` method to each pair inside.
 
 ```ruby
 hash = { a: 1, b: { c: 2, d: [3, 4] } }
@@ -3320,7 +3325,25 @@ date.end_of_hour # => Mon Jun 07 19:59:59 +0200 2010
 
 `beginning_of_hour` is aliased to `at_beginning_of_hour`.
 
-INFO: `beginning_of_hour` and `end_of_hour` are implemented for `Time` and `DateTime` but **not** `Date` as it does not make sense to request the beginning or end of an hour on a `Date` instance.
+##### `beginning_of_minute`, `end_of_minute`
+
+The method `beginning_of_minute` returns a timestamp at the beginning of the minute (hh:mm:00):
+
+```ruby
+date = DateTime.new(2010, 6, 7, 19, 55, 25)
+date.beginning_of_minute # => Mon Jun 07 19:55:00 +0200 2010
+```
+
+The method `end_of_minute` returns a timestamp at the end of the minute (hh:mm:59):
+
+```ruby
+date = DateTime.new(2010, 6, 7, 19, 55, 25)
+date.end_of_minute # => Mon Jun 07 19:55:59 +0200 2010
+```
+
+`beginning_of_minute` is aliased to `at_beginning_of_minute`.
+
+INFO: `beginning_of_hour`, `end_of_hour`, `beginning_of_minute` and `end_of_minute` are implemented for `Time` and `DateTime` but **not** `Date` as it does not make sense to request the beginning or end of an hour or minute on a `Date` instance.
 
 ##### `ago`, `since`
 

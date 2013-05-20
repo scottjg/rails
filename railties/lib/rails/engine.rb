@@ -1,4 +1,5 @@
 require 'rails/railtie'
+require 'rails/engine/railties'
 require 'active_support/core_ext/module/delegation'
 require 'pathname'
 require 'rbconfig'
@@ -34,8 +35,9 @@ module Rails
   # == Configuration
   #
   # Besides the +Railtie+ configuration which is shared across the application, in a
-  # <tt>Rails::Engine</tt> you can access <tt>autoload_paths</tt> and <tt>autoload_once_paths</tt>,
-  # which, differently from a <tt>Railtie</tt>, are scoped to the current engine.
+  # <tt>Rails::Engine</tt> you can access <tt>autoload_paths</tt>, <tt>eager_load_paths</tt>
+  # and <tt>autoload_once_paths</tt>, which, differently from a <tt>Railtie</tt>, are scoped to
+  # the current engine.
   #
   #   class MyEngine < Rails::Engine
   #     # Add a load path for this specific Engine
@@ -105,7 +107,7 @@ module Rails
   #
   # The <tt>Application</tt> class adds a couple more paths to this set. And as in your
   # <tt>Application</tt>, all folders under +app+ are automatically added to the load path.
-  # If you have an <tt>app/services/tt> folder for example, it will be added by default.
+  # If you have an <tt>app/services</tt> folder for example, it will be added by default.
   #
   # == Endpoint
   #
@@ -122,7 +124,7 @@ module Rails
   #
   # Now you can mount your engine in application's routes just like that:
   #
-  #   MyRailsApp::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     mount MyEngine::Engine => "/engine"
   #   end
   #
@@ -152,7 +154,7 @@ module Rails
   # Note that now there can be more than one router in your application, and it's better to avoid
   # passing requests through many routers. Consider this situation:
   #
-  #   MyRailsApp::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     mount MyEngine::Engine => "/blog"
   #     get "/blog/omg" => "main#omg"
   #   end
@@ -162,7 +164,7 @@ module Rails
   # and if there is no such route in +Engine+'s routes, it will be dispatched to <tt>main#omg</tt>.
   # It's much better to swap that:
   #
-  #   MyRailsApp::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     get "/blog/omg" => "main#omg"
   #     mount MyEngine::Engine => "/blog"
   #   end
@@ -249,7 +251,7 @@ module Rails
   # created to allow you to do that. Consider such a scenario:
   #
   #   # config/routes.rb
-  #   MyApplication::Application.routes.draw do
+  #   Rails.application.routes.draw do
   #     mount MyEngine::Engine => "/my_engine", as: "my_engine"
   #     get "/foo" => "foo#index"
   #   end
@@ -445,7 +447,7 @@ module Rails
       self
     end
 
-    # Load rails generators and invoke the registered hooks.
+    # Load Rails generators and invoke the registered hooks.
     # Check <tt>Rails::Railtie.generators</tt> for more info.
     def load_generators(app=self)
       require "rails/generators"
@@ -455,9 +457,9 @@ module Rails
     end
 
     # Eager load the application by loading all ruby
-    # files inside autoload_paths.
+    # files inside eager_load paths.
     def eager_load!
-      config.autoload_paths.each do |load_path|
+      config.eager_load_paths.each do |load_path|
         matcher = /\A#{Regexp.escape(load_path)}\/(.*)\.rb\Z/
         Dir.glob("#{load_path}/**/*.rb").sort.each do |file|
           require_dependency file.sub(matcher, '\1')
@@ -466,7 +468,7 @@ module Rails
     end
 
     def railties
-      @railties ||= self.class::Railties.new
+      @railties ||= Railties.new
     end
 
     # Returns a module with all the helpers defined for the engine.
@@ -551,12 +553,13 @@ module Rails
     #
     # This needs to be an initializer, since it needs to run once
     # per engine and get the engine as a block parameter
-    initializer :set_autoload_paths, before: :bootstrap_hook do |app|
+    initializer :set_autoload_paths, before: :bootstrap_hook do
       ActiveSupport::Dependencies.autoload_paths.unshift(*_all_autoload_paths)
       ActiveSupport::Dependencies.autoload_once_paths.unshift(*_all_autoload_once_paths)
 
       # Freeze so future modifications will fail rather than do nothing mysteriously
       config.autoload_paths.freeze
+      config.eager_load_paths.freeze
       config.autoload_once_paths.freeze
     end
 
@@ -631,15 +634,15 @@ module Rails
       end
     end
 
+    def routes? #:nodoc:
+      @routes
+    end
+
     protected
 
     def run_tasks_blocks(*) #:nodoc:
       super
       paths["lib/tasks"].existent.sort.each { |ext| load(ext) }
-    end
-
-    def routes? #:nodoc:
-      @routes
     end
 
     def has_migrations? #:nodoc:
@@ -669,7 +672,7 @@ module Rails
     end
 
     def _all_autoload_paths #:nodoc:
-      @_all_autoload_paths ||= (config.autoload_paths + config.autoload_once_paths).uniq
+      @_all_autoload_paths ||= (config.autoload_paths + config.eager_load_paths + config.autoload_once_paths).uniq
     end
 
     def _all_load_paths #:nodoc:

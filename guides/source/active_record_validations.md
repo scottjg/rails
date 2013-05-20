@@ -162,8 +162,8 @@ Person.create(name: nil).valid? # => false
 ```
 
 After Active Record has performed validations, any errors found can be accessed
-through the `errors` instance method, which returns a collection of errors. By
-definition, an object is valid if this collection is empty after running
+through the `errors.messages` instance method, which returns a collection of errors.
+By definition, an object is valid if this collection is empty after running
 validations.
 
 Note that an object instantiated with `new` will not report errors even if it's
@@ -176,17 +176,17 @@ end
 
 >> p = Person.new
 #=> #<Person id: nil, name: nil>
->> p.errors
+>> p.errors.messages
 #=> {}
 
 >> p.valid?
 #=> false
->> p.errors
+>> p.errors.messages
 #=> {name:["can't be blank"]}
 
 >> p = Person.create
 #=> #<Person id: nil, name: nil>
->> p.errors
+>> p.errors.messages
 #=> {name:["can't be blank"]}
 
 >> p.save
@@ -434,7 +434,7 @@ end
 
 Note that the default error messages are plural (e.g., "is too short (minimum
 is %{count} characters)"). For this reason, when `:minimum` is 1 you should
-provide a personalized message or use `validates_presence_of` instead. When
+provide a personalized message or use `presence: true` instead. When
 `:in` or `:within` have a lower limit of 1, you should either provide a
 personalized message or call `presence` prior to `length`.
 
@@ -529,6 +529,47 @@ Since `false.blank?` is true, if you want to validate the presence of a boolean
 field you should use `validates :field_name, inclusion: { in: [true, false] }`.
 
 The default error message is _"can't be empty"_.
+
+### `absence`
+
+This helper validates that the specified attributes are absent. It uses the
+`present?` method to check if the value is not either nil or a blank string, that
+is, a string that is either empty or consists of whitespace.
+
+```ruby
+class Person < ActiveRecord::Base
+  validates :name, :login, :email, absence: true
+end
+```
+
+If you want to be sure that an association is absent, you'll need to test
+whether the associated object itself is absent, and not the foreign key used
+to map the association.
+
+```ruby
+class LineItem < ActiveRecord::Base
+  belongs_to :order
+  validates :order, absence: true
+end
+```
+
+In order to validate associated records whose absence is required, you must
+specify the `:inverse_of` option for the association:
+
+```ruby
+class Order < ActiveRecord::Base
+  has_many :line_items, inverse_of: :order
+end
+```
+
+If you validate the absence of an object associated via a `has_one` or
+`has_many` relationship, it will check that the object is neither `present?` nor
+`marked_for_destruction?`.
+
+Since `false.present?` is false, if you want to validate the absence of a boolean
+field you should use `validates :field_name, exclusion: { in: [true, false] }`.
+
+The default error message is _"must be blank"_.
 
 ### `uniqueness`
 
@@ -727,6 +768,7 @@ class Person < ActiveRecord::Base
   validates :name, presence: true, on: :save
 end
 ```
+The last line is in review state and as of now, it is not running in any version of Rails 3.2.x as discussed in this [issue](https://github.com/rails/rails/issues/10248)
 
 Strict Validations
 ------------------
@@ -951,12 +993,12 @@ end
 
 person = Person.new
 person.valid? # => false
-person.errors
+person.errors.messages
  # => {:name=>["can't be blank", "is too short (minimum is 3 characters)"]}
 
 person = Person.new(name: "John Doe")
 person.valid? # => true
-person.errors # => []
+person.errors.messages # => {}
 ```
 
 ### `errors[]`

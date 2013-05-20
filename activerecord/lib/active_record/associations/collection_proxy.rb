@@ -83,16 +83,16 @@ module ActiveRecord
       #   #      #<Pet id: 3, name: "Choo-Choo">
       #   #    ]
       #
-      # Be careful because this also means you’re initializing a model
-      # object with only the fields that you’ve selected. If you attempt
-      # to access a field that is not in the initialized record you’ll
+      # Be careful because this also means you're initializing a model
+      # object with only the fields that you've selected. If you attempt
+      # to access a field that is not in the initialized record you'll
       # receive:
       #
       #   person.pets.select(:name).first.person_id
       #   # => ActiveModel::MissingAttributeError: missing attribute: person_id
       #
       # *Second:* You can pass a block so it can be used just like Array#select.
-      # This build an array of objects from the database for the scope,
+      # This builds an array of objects from the database for the scope,
       # converting them into an array and iterating through them using
       # Array#select.
       #
@@ -228,6 +228,7 @@ module ActiveRecord
       def build(attributes = {}, &block)
         @association.build(attributes, &block)
       end
+      alias_method :new, :build
 
       # Returns a new object of the collection type that has been instantiated with
       # attributes, linked to this object and that has already been saved (if it
@@ -303,7 +304,7 @@ module ActiveRecord
         @association.concat(*records)
       end
 
-      # Replace this collection with +other_array+. This will perform a diff
+      # Replaces this collection with +other_array+. This will perform a diff
       # and delete/add only records that have changed.
       #
       #   class Person < ActiveRecord::Base
@@ -421,9 +422,9 @@ module ActiveRecord
         @association.delete_all
       end
 
-      # Deletes the records of the collection directly from the database.
-      # This will _always_ remove the records ignoring the +:dependent+
-      # option.
+      # Deletes the records of the collection directly from the database
+      # ignoring the +:dependent+ option. It invokes +before_remove+,
+      # +after_remove+ , +before_destroy+ and +after_destroy+ callbacks.
       #
       #   class Person < ActiveRecord::Base
       #     has_many :pets
@@ -649,11 +650,12 @@ module ActiveRecord
       #   #      #<Pet name: "Fancy-Fancy">
       #   #    ]
       #
-      #   person.pets.select(:name).uniq
+      #   person.pets.select(:name).distinct
       #   # => [#<Pet name: "Fancy-Fancy">]
-      def uniq
-        @association.uniq
+      def distinct
+        @association.distinct
       end
+      alias uniq distinct
 
       # Count all records using SQL.
       #
@@ -831,8 +833,6 @@ module ActiveRecord
         @association.include?(record)
       end
 
-      alias_method :new, :build
-
       def proxy_association
         @association
       end
@@ -847,11 +847,7 @@ module ActiveRecord
 
       # Returns a <tt>Relation</tt> object for the records in this association
       def scope
-        association = @association
-
-        @association.scope.extending! do
-          define_method(:proxy_association) { association }
-        end
+        @association.scope
       end
 
       # :nodoc:
@@ -924,7 +920,7 @@ module ActiveRecord
       alias_method :to_a, :to_ary
 
       # Adds one or more +records+ to the collection by setting their foreign keys
-      # to the association‘s primary key. Returns +self+, so several appends may be
+      # to the association's primary key. Returns +self+, so several appends may be
       # chained together.
       #
       #   class Person < ActiveRecord::Base
@@ -947,6 +943,11 @@ module ActiveRecord
         proxy_association.concat(records) && self
       end
       alias_method :push, :<<
+      alias_method :append, :<<
+
+      def prepend(*args)
+        raise NoMethodError, "prepend on association is not defined. Please use << or append"
+      end
 
       # Equivalent to +delete_all+. The difference is that returns +self+, instead
       # of an array with the deleted objects, so methods can be chained. See

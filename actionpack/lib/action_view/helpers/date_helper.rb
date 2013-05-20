@@ -642,6 +642,8 @@ module ActionView
       #     <time datetime="2010-11-03">Yesterday</time>
       #   time_tag Date.today, pubdate: true  # =>
       #     <time datetime="2010-11-04" pubdate="pubdate">November 04, 2010</time>
+      #   time_tag Date.today, datetime: Date.today.strftime('%G-W%V') # =>
+      #     <time datetime="2010-W44">November 04, 2010</time>
       #
       #   <%= time_tag Time.now do %>
       #     <span>Right now</span>
@@ -651,7 +653,7 @@ module ActionView
         options  = args.extract_options!
         format   = options.delete(:format) || :long
         content  = args.first || I18n.l(date_or_time, :format => format)
-        datetime = date_or_time.acts_like?(:time) ? date_or_time.xmlschema : date_or_time.rfc3339
+        datetime = date_or_time.acts_like?(:time) ? date_or_time.xmlschema : date_or_time.iso8601
 
         content_tag(:time, content, options.reverse_merge(:datetime => datetime), &block)
       end
@@ -806,7 +808,7 @@ module ActionView
           options[:max_years_allowed] = @options[:max_years_allowed] || 1000
 
           if (options[:end] - options[:start]).abs > options[:max_years_allowed]
-            raise ArgumentError,  "There're too many years options to be built. Are you sure you haven't mistyped something? You can provide the :max_years_allowed parameter"
+            raise ArgumentError, "There are too many years options to be built. Are you sure you haven't mistyped something? You can provide the :max_years_allowed parameter."
           end
 
           build_options_and_select(:year, val, options)

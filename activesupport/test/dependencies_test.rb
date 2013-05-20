@@ -1,7 +1,7 @@
 require 'abstract_unit'
 require 'pp'
 require 'active_support/dependencies'
-require 'dependecies_test_helpers'
+require 'dependencies_test_helpers'
 
 module ModuleWithMissing
   mattr_accessor :missing_count
@@ -20,7 +20,7 @@ class DependenciesTest < ActiveSupport::TestCase
     ActiveSupport::Dependencies.clear
   end
 
-  include DependeciesTestHelpers
+  include DependenciesTestHelpers
 
   def test_depend_on_path
     skip "LoadError#path does not exist" if RUBY_VERSION < '2.0.0'
@@ -526,7 +526,6 @@ class DependenciesTest < ActiveSupport::TestCase
     m = Module.new
     m.module_eval "def a() CountingLoader; end"
     extend m
-    kls = nil
     with_autoloading_fixtures do
       kls = nil
       assert_nothing_raised { kls = a }
@@ -878,7 +877,7 @@ class DependenciesTest < ActiveSupport::TestCase
   def test_autoload_doesnt_shadow_name_error
     with_autoloading_fixtures do
       Object.send(:remove_const, :RaisesNameError) if defined?(::RaisesNameError)
-      2.times do |i|
+      2.times do
         begin
           ::RaisesNameError::FooBarBaz.object_id
           flunk 'should have raised NameError when autoloaded file referenced FooBarBaz'

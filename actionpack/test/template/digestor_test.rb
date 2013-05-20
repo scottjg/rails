@@ -2,10 +2,11 @@ require 'abstract_unit'
 require 'fileutils'
 
 class FixtureTemplate
-  attr_reader :source
+  attr_reader :source, :handler
 
   def initialize(template_path)
     @source = File.read(template_path)
+    @handler = ActionView::Template.handler_for_extension(:erb)
   rescue Errno::ENOENT
     raise ActionView::MissingTemplate.new([], "", [], true, [])
   end
@@ -78,6 +79,12 @@ class TemplateDigestorTest < ActionView::TestCase
 
   def test_logging_of_missing_template
     assert_logged "Couldn't find template for digesting: messages/something_missing.html" do
+      digest("messages/show")
+    end
+  end
+
+  def test_logging_of_missing_template_ending_with_number
+    assert_logged "Couldn't find template for digesting: messages/something_missing_1.html" do
       digest("messages/show")
     end
   end

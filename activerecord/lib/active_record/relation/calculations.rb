@@ -11,7 +11,7 @@ module ActiveRecord
     #   Person.count(:all)
     #   # => performs a COUNT(*) (:all is an alias for '*')
     #
-    #   Person.count(:age, distinct: true)
+    #   Person.distinct.count(:age)
     #   # => counts the number of different age values
     #
     # If +count+ is used with +group+, it returns a Hash whose keys represent the aggregated column,
@@ -27,7 +27,7 @@ module ActiveRecord
     # Calculates the average value on a given column. Returns +nil+ if there's
     # no row. See +calculate+ for examples with options.
     #
-    #   Person.average('age') # => 35.8
+    #   Person.average(:age) # => 35.8
     def average(column_name, options = {})
       calculate(:average, column_name, options)
     end
@@ -36,7 +36,7 @@ module ActiveRecord
     # with the same data type of the column, or +nil+ if there's no row. See
     # +calculate+ for examples with options.
     #
-    #   Person.minimum('age') # => 7
+    #   Person.minimum(:age) # => 7
     def minimum(column_name, options = {})
       calculate(:minimum, column_name, options)
     end
@@ -45,7 +45,7 @@ module ActiveRecord
     # with the same data type of the column, or +nil+ if there's no row. See
     # +calculate+ for examples with options.
     #
-    #   Person.maximum('age') # => 93
+    #   Person.maximum(:age) # => 93
     def maximum(column_name, options = {})
       calculate(:maximum, column_name, options)
     end
@@ -54,7 +54,7 @@ module ActiveRecord
     # with the same data type of the column, 0 if there's no row. See
     # +calculate+ for examples with options.
     #
-    #   Person.sum('age') # => 4562
+    #   Person.sum(:age) # => 4562
     def sum(*args)
       if block_given?
         ActiveSupport::Deprecation.warn(
@@ -82,7 +82,7 @@ module ActiveRecord
     #       puts values["Drake"]
     #       # => 43
     #
-    #       drake  = Family.find_by_last_name('Drake')
+    #       drake  = Family.find_by(last_name: 'Drake')
     #       values = Person.group(:family).maximum(:age) # Person belongs_to :family
     #       puts values[drake]
     #       # => 43
@@ -100,6 +100,10 @@ module ActiveRecord
     #   Person.sum("2 * age")
     def calculate(operation, column_name, options = {})
       relation = with_default_scope
+
+      if column_name.is_a?(Symbol) && attribute_aliases.key?(column_name.to_s)
+        column_name = attribute_aliases[column_name.to_s].to_sym
+      end
 
       if relation.equal?(self)
         if has_include?(column_name)
@@ -135,7 +139,7 @@ module ActiveRecord
     #   # SELECT people.id, people.name FROM people
     #   # => [[1, 'David'], [2, 'Jeremy'], [3, 'Jose']]
     #
-    #   Person.uniq.pluck(:role)
+    #   Person.pluck('DISTINCT role')
     #   # SELECT DISTINCT role FROM people
     #   # => ['admin', 'member', 'guest']
     #
@@ -149,11 +153,17 @@ module ActiveRecord
     #
     def pluck(*column_names)
       column_names.map! do |column_name|
-        if column_name.is_a?(Symbol) && self.column_names.include?(column_name.to_s)
-          "#{connection.quote_table_name(table_name)}.#{connection.quote_column_name(column_name)}"
-        else
-          column_name
+        if column_name.is_a?(Symbol)
+          if attribute_aliases.key?(column_name.to_s)
+            column_name = attribute_aliases[column_name.to_s].to_sym
+          end
+
+          if self.columns_hash.key?(column_name.to_s)
+            column_name = "#{connection.quote_table_name(table_name)}.#{connection.quote_column_name(column_name)}"
+          end
         end
+
+        column_name
       end
 
       if has_include?(column_names.first)
@@ -198,8 +208,13 @@ module ActiveRecord
     def perform_calculation(operation, column_name, options = {})
       operation = operation.to_s.downcase
 
-      # If #count is used in conjuction with #uniq it is considered distinct. (eg. relation.uniq.count)
-      distinct = options[:distinct] || self.uniq_value
+      # If #count is used with #distinct / #uniq it is considered distinct. (eg. relation.distinct.count)
+      distinct = self.distinct_value
+      if options.has_key?(:distinct)
+        ActiveSupport::Deprecation.warn "The :distinct option for `Relation#count` is deprecated. " \
+          "Please use `Relation#distinct` instead. (eg. `relation.distinct.count`)"
+        distinct = options[:distinct]
+      end
 
       if operation == "count"
         column_name ||= (select_for_count || :all)

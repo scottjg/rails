@@ -5,6 +5,7 @@ aliases = {
   "d"  => "destroy",
   "c"  => "console",
   "s"  => "server",
+  "t"  => "test",
   "db" => "dbconsole",
   "r"  => "runner"
 }
@@ -16,6 +17,7 @@ The most common rails commands are:
  generate    Generate new code (short-cut alias: "g")
  console     Start the Rails console (short-cut alias: "c")
  server      Start the Rails server (short-cut alias: "s")
+ test        Running the test file (short-cut alias: "t")
  dbconsole   Start a console for the database specified in config/database.yml
              (short-cut alias: "db")
  new         Create a new Rails application. "rails new my_app" creates a
@@ -64,7 +66,7 @@ when 'console'
   Rails::Console.start(Rails.application, options)
 
 when 'server'
-  # Change to the application's path if there is no config.ru file in current dir.
+  # Change to the application's path if there is no config.ru file in current directory.
   # This allows us to run `rails server` from other directories, but still get
   # the main config.ru and properly set the tmp directory.
   Dir.chdir(File.expand_path('../../', APP_PATH)) unless File.exists?(File.expand_path("config.ru"))

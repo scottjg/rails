@@ -138,7 +138,7 @@ module ActionView
     # we use a bang in this instrumentation because you don't want to
     # consume this in production. This is only slow if it's being listened to.
     def render(view, locals, buffer=nil, &block)
-      ActiveSupport::Notifications.instrument("!render_template.action_view", :virtual_path => @virtual_path) do
+      instrument("!render_template") do
         compile!(view)
         view.send(method_name, locals, buffer, &block)
       end
@@ -245,7 +245,9 @@ module ActionView
             mod = view.singleton_class
           end
 
-          compile(view, mod)
+          instrument("!compile_template") do
+            compile(view, mod)
+          end
 
           # Just discard the source if we have a virtual path. This
           # means we can get the template back.
@@ -324,7 +326,8 @@ module ActionView
       end
 
       def locals_code #:nodoc:
-        @locals.map { |key| "#{key} = local_assigns[:#{key}];" }.join
+        # Double assign to suppress the dreaded 'assigned but unused variable' warning
+        @locals.map { |key| "#{key} = #{key} = local_assigns[:#{key}];" }.join
       end
 
       def method_name #:nodoc:
@@ -333,6 +336,11 @@ module ActionView
 
       def identifier_method_name #:nodoc:
         inspect.gsub(/[^a-z_]/, '_')
+      end
+
+      def instrument(action, &block)
+        payload = { virtual_path: @virtual_path, identifier: @identifier }
+        ActiveSupport::Notifications.instrument("#{action}.action_view", payload, &block)
       end
   end
 end

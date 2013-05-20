@@ -51,7 +51,7 @@ module ActiveRecord
       # how this "single-table" inheritance mapping is implemented.
       def instantiate(record, column_types = {})
         klass = discriminate_class_for_record(record)
-        column_types = klass.decorate_columns(column_types)
+        column_types = klass.decorate_columns(column_types.dup)
         klass.allocate.init_with('attributes' => record, 'column_types' => column_types)
       end
 
@@ -69,11 +69,13 @@ module ActiveRecord
     # Returns true if this object hasn't been saved yet -- that is, a record
     # for the object doesn't exist in the data store yet; otherwise, returns false.
     def new_record?
+      sync_with_transaction_state
       @new_record
     end
 
     # Returns true if this object has been destroyed, otherwise returns false.
     def destroyed?
+      sync_with_transaction_state
       @destroyed
     end
 
@@ -97,6 +99,9 @@ module ActiveRecord
     # <tt>before_*</tt> callbacks return +false+ the action is cancelled and
     # +save+ returns +false+. See ActiveRecord::Callbacks for further
     # details.
+    #
+    # Attributes marked as readonly are silently ignored if the record is
+    # being updated.
     def save(*)
       create_or_update
     rescue ActiveRecord::RecordInvalid
@@ -116,6 +121,9 @@ module ActiveRecord
     # the <tt>before_*</tt> callbacks return +false+ the action is cancelled
     # and <tt>save!</tt> raises ActiveRecord::RecordNotSaved. See
     # ActiveRecord::Callbacks for further details.
+    #
+    # Attributes marked as readonly are silently ignored if the record is
+    # being updated.
     def save!(*)
       create_or_update || raise(RecordNotSaved)
     end
@@ -202,6 +210,8 @@ module ActiveRecord
     # * updated_at/updated_on column is updated if that column is available.
     # * Updates all the attributes that are dirty in this object.
     #
+    # This method raises an +ActiveRecord::ActiveRecordError+  if the
+    # attribute is marked as readonly.
     def update_attribute(name, value)
       name = name.to_s
       verify_readonly_attribute(name)
@@ -365,7 +375,16 @@ module ActiveRecord
     #
     #   # triggers @brake.car.touch and @brake.car.corporation.touch
     #   @brake.touch
+    #
+    # Note that +touch+ must be used on a persisted object, or else an
+    # ActiveRecordError will be thrown. For example:
+    #
+    #   ball = Ball.new
+    #   ball.touch(:updated_at)   # => raises ActiveRecordError
+    #
     def touch(name = nil)
+      raise ActiveRecordError, "can not touch on a new record object" unless persisted?
+
       attributes = timestamp_attributes_for_update_in_model
       attributes << name if name
 
@@ -399,7 +418,7 @@ module ActiveRecord
     def relation_for_destroy
       pk         = self.class.primary_key
       column     = self.class.columns_hash[pk]
-      substitute = connection.substitute_at(column, 0)
+      substitute = self.class.connection.substitute_at(column, 0)
 
       relation = self.class.unscoped.where(
         self.class.arel_table[pk].eq(substitute))
@@ -417,14 +436,11 @@ module ActiveRecord
     # Updates the associated record with values matching those of the instance attributes.
     # Returns the number of affected rows.
     def update_record(attribute_names = @attributes.keys)
-      attributes_with_values = arel_attributes_with_values_for_update(attribute_names)
-
-      if attributes_with_values.empty?
+      attributes_values = arel_attributes_with_values_for_update(attribute_names)
+      if attributes_values.empty?
         0
       else
-        klass = self.class
-        stmt = klass.unscoped.where(klass.arel_table[klass.primary_key].eq(id)).arel.compile_update(attributes_with_values)
-        klass.connection.update stmt
+        self.class.unscoped.update_record attributes_values, id, id_was
       end
     end
 

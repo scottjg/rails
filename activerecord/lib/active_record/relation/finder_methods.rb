@@ -37,7 +37,7 @@ module ActiveRecord
     end
 
     # Finds the first record matching the specified conditions. There
-    # is no implied ording so if order matters, you should specify it
+    # is no implied ordering so if order matters, you should specify it
     # yourself.
     #
     # If no record is found, returns <tt>nil</tt>.
@@ -58,7 +58,7 @@ module ActiveRecord
     # order. The order will depend on the database implementation.
     # If an order is supplied it will be respected.
     #
-    #   Person.take # returns an object fetched by SELECT * FROM people
+    #   Person.take # returns an object fetched by SELECT * FROM people LIMIT 1
     #   Person.take(5) # returns 5 objects fetched by SELECT * FROM people LIMIT 5
     #   Person.where(["name LIKE '%?'", name]).take
     def take(limit = nil)
@@ -130,8 +130,8 @@ module ActiveRecord
       last or raise RecordNotFound
     end
 
-    # Returns +true+ if a record exists in the table that matches the +id+ or
-    # conditions given, or +false+ otherwise. The argument can take six forms:
+    # Returns truthy if a record exists in the table that matches the +id+ or
+    # conditions given, or falsy otherwise. The argument can take six forms:
     #
     # * Integer - Finds the record with this primary key.
     # * String - Finds the record with a primary key corresponding to this
@@ -160,7 +160,7 @@ module ActiveRecord
       conditions = conditions.id if Base === conditions
       return false if !conditions
 
-      join_dependency = construct_join_dependency_for_association_find
+      join_dependency = construct_join_dependency
       relation = construct_relation_for_association_find(join_dependency)
       relation = relation.except(:select, :order).select("1 AS one").limit(1)
 
@@ -176,10 +176,32 @@ module ActiveRecord
       false
     end
 
+    # This method is called whenever no records are found with either a single
+    # id or multiple ids and raises a +ActiveRecord::RecordNotFound+ exception.
+    #
+    # The error message is different depending on whether a single id or
+    # multiple ids are provided. If multiple ids are provided, then the number
+    # of results obtained should be provided in the +result_size+ argument and
+    # the expected number of results should be provided in the +expected_size+
+    # argument.
+    def raise_record_not_found_exception!(ids, result_size, expected_size) #:nodoc:
+      conditions = arel.where_sql
+      conditions = " [#{conditions}]" if conditions
+
+      if Array(ids).size == 1
+        error = "Couldn't find #{@klass.name} with #{primary_key}=#{ids}#{conditions}"
+      else
+        error = "Couldn't find all #{@klass.name.pluralize} with IDs "
+        error << "(#{ids.join(", ")})#{conditions} (found #{result_size} results, but was looking for #{expected_size})"
+      end
+
+      raise RecordNotFound, error
+    end
+
     protected
 
     def find_with_associations
-      join_dependency = construct_join_dependency_for_association_find
+      join_dependency = construct_join_dependency
       relation = construct_relation_for_association_find(join_dependency)
       rows = connection.select_all(relation, 'SQL', relation.bind_values.dup)
       join_dependency.instantiate(rows)
@@ -187,45 +209,37 @@ module ActiveRecord
       []
     end
 
-    def construct_join_dependency_for_association_find
+    def construct_join_dependency(joins = [])
       including = (eager_load_values + includes_values).uniq
-      ActiveRecord::Associations::JoinDependency.new(@klass, including, [])
+      ActiveRecord::Associations::JoinDependency.new(@klass, including, joins)
     end
 
     def construct_relation_for_association_calculations
-      including = (eager_load_values + includes_values).uniq
-      join_dependency = ActiveRecord::Associations::JoinDependency.new(@klass, including, arel.froms.first)
-      relation = except(:includes, :eager_load, :preload)
-      apply_join_dependency(relation, join_dependency)
+      apply_join_dependency(self, construct_join_dependency(arel.froms.first))
     end
 
     def construct_relation_for_association_find(join_dependency)
-      relation = except(:includes, :eager_load, :preload, :select).select(join_dependency.columns)
+      relation = except(:select).select(join_dependency.columns)
       apply_join_dependency(relation, join_dependency)
     end
 
     def apply_join_dependency(relation, join_dependency)
-      join_dependency.join_associations.each do |association|
-        relation = association.join_relation(relation)
+      relation = relation.except(:includes, :eager_load, :preload)
+      relation = join_dependency.join_relation(relation)
+
+      if using_limitable_reflections?(join_dependency.reflections)
+        relation
+      else
+        relation.where!(construct_limited_ids_condition(relation)) if relation.limit_value
+        relation.except(:limit, :offset)
       end
-
-      limitable_reflections = using_limitable_reflections?(join_dependency.reflections)
-
-      if !limitable_reflections && relation.limit_value
-        limited_id_condition = construct_limited_ids_condition(relation.except(:select))
-        relation = relation.where(limited_id_condition)
-      end
-
-      relation = relation.except(:limit, :offset) unless limitable_reflections
-
-      relation
     end
 
     def construct_limited_ids_condition(relation)
-      orders = relation.order_values.map { |val| val.presence }.compact
-      values = @klass.connection.distinct("#{quoted_table_name}.#{primary_key}", orders)
+      values = @klass.connection.columns_for_distinct(
+        "#{quoted_table_name}.#{quoted_primary_key}", relation.order_values)
 
-      relation = relation.dup.select(values)
+      relation = relation.except(:select).select(values).distinct!
 
       id_rows = @klass.connection.select_all(relation.arel, 'SQL', relation.bind_values)
       ids_array = id_rows.map {|row| row[primary_key]}
@@ -259,11 +273,7 @@ module ActiveRecord
       relation.bind_values += [[column, id]]
       record = relation.take
 
-      unless record
-        conditions = arel.where_sql
-        conditions = " [#{conditions}]" if conditions
-        raise RecordNotFound, "Couldn't find #{@klass.name} with #{primary_key}=#{id}#{conditions}"
-      end
+      raise_record_not_found_exception!(id, 0, 1) unless record
 
       record
     end
@@ -286,12 +296,7 @@ module ActiveRecord
       if result.size == expected_size
         result
       else
-        conditions = arel.where_sql
-        conditions = " [#{conditions}]" if conditions
-
-        error = "Couldn't find all #{@klass.name.pluralize} with IDs "
-        error << "(#{ids.join(", ")})#{conditions} (found #{result.size} results, but was looking for #{expected_size})"
-        raise RecordNotFound, error
+        raise_record_not_found_exception!(ids, result.size, expected_size)
       end
     end
 

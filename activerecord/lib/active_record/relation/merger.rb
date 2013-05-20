@@ -39,7 +39,7 @@ module ActiveRecord
     end
 
     class Merger # :nodoc:
-      attr_reader :relation, :values
+      attr_reader :relation, :values, :other
 
       def initialize(relation, other)
         if other.default_scoped? && other.klass != relation.klass
@@ -48,11 +48,12 @@ module ActiveRecord
 
         @relation = relation
         @values   = other.values
+        @other    = other
       end
 
       NORMAL_VALUES = Relation::SINGLE_VALUE_METHODS +
                       Relation::MULTI_VALUE_METHODS -
-                      [:where, :order, :bind, :reverse_order, :lock, :create_with, :reordering, :from] # :nodoc:
+                      [:joins, :where, :order, :bind, :reverse_order, :lock, :create_with, :reordering, :from] # :nodoc:
 
       def normal_values
         NORMAL_VALUES
@@ -66,11 +67,36 @@ module ActiveRecord
 
         merge_multi_values
         merge_single_values
+        merge_joins
 
         relation
       end
 
       private
+
+      def merge_joins
+        return if values[:joins].blank?
+
+        if other.klass == relation.klass
+          relation.joins!(*values[:joins])
+        else
+          joins_dependency, rest = values[:joins].partition do |join|
+            case join
+            when Hash, Symbol, Array
+              true
+            else
+              false
+            end
+          end
+
+          join_dependency = ActiveRecord::Associations::JoinDependency.new(other.klass,
+                                                                           joins_dependency,
+                                                                           [])
+          relation.joins! rest
+
+          @relation = join_dependency.join_relation(relation)
+        end
+      end
 
       def merge_multi_values
         relation.where_values = merged_wheres
@@ -111,21 +137,20 @@ module ActiveRecord
         if values[:where].empty? || relation.where_values.empty?
           relation.where_values + values[:where]
         else
-          # Remove equalities from the existing relation with a LHS which is
-          # present in the relation being merged in.
+          sanitized_wheres + values[:where]
+        end
+      end
 
-          seen = Set.new
-          values[:where].each { |w|
-            if w.respond_to?(:operator) && w.operator == :==
-              seen << w.left
-            end
-          }
+      # Remove equalities from the existing relation with a LHS which is
+      # present in the relation being merged in.
+      def sanitized_wheres
+        seen = Set.new
+        values[:where].each do |w|
+          seen << w.left if w.respond_to?(:operator) && w.operator == :==
+        end
 
-          relation.where_values.reject { |w|
-            w.respond_to?(:operator) &&
-              w.operator == :== &&
-              seen.include?(w.left)
-          } + values[:where]
+        relation.where_values.reject do |w|
+          w.respond_to?(:operator) && w.operator == :== && seen.include?(w.left)
         end
       end
     end

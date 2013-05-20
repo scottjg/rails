@@ -20,6 +20,8 @@ require 'models/car'
 require 'models/bulb'
 require 'models/engine'
 require 'models/categorization'
+require 'models/minivan'
+require 'models/speedometer'
 
 class HasManyAssociationsTestForCountWithFinderSql < ActiveRecord::TestCase
   class Invoice < ActiveRecord::Base
@@ -753,6 +755,15 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal topic.replies.to_a.size, topic.replies_count
   end
 
+  def test_pushing_association_updates_counter_cache
+    topic = Topic.order("id ASC").first
+    reply = Reply.create!
+
+    assert_difference "topic.reload.replies_count", 1 do
+      topic.replies << reply
+    end
+  end
+
   def test_deleting_updates_counter_cache_without_dependent_option
     post = posts(:welcome)
 
@@ -785,6 +796,37 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_difference "topic.reload.replies_count", -1 do
       topic.approved_replies.clear
     end
+  end
+
+  def test_calling_update_attributes_on_id_changes_the_counter_cache
+    topic = Topic.order("id ASC").first
+    original_count = topic.replies.to_a.size
+    assert_equal original_count, topic.replies_count
+
+    first_reply = topic.replies.first
+    first_reply.update_attributes(:parent_id => nil)
+    assert_equal original_count - 1, topic.reload.replies_count
+
+    first_reply.update_attributes(:parent_id => topic.id)
+    assert_equal original_count, topic.reload.replies_count
+  end
+
+  def test_calling_update_attributes_changing_ids_doesnt_change_counter_cache
+    topic1 = Topic.find(1)
+    topic2 = Topic.find(3)
+    original_count1 = topic1.replies.to_a.size
+    original_count2 = topic2.replies.to_a.size
+
+    reply1 = topic1.replies.first
+    reply2 = topic2.replies.first
+
+    reply1.update_attributes(:parent_id => topic2.id)
+    assert_equal original_count1 - 1, topic1.reload.replies_count
+    assert_equal original_count2 + 1, topic2.reload.replies_count
+
+    reply2.update_attributes(:parent_id => topic1.id)
+    assert_equal original_count1, topic1.reload.replies_count
+    assert_equal original_count2, topic2.reload.replies_count
   end
 
   def test_deleting_a_collection
@@ -1746,5 +1788,13 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_not_equal [], david.posts_with_special_categorizations
     david.posts_with_special_categorizations = []
     assert_equal [], david.posts_with_special_categorizations
+  end
+
+  test "does not duplicate associations when used with natural primary keys" do
+    speedometer = Speedometer.create!(id: '4')
+    speedometer.minivans.create!(minivan_id: 'a-van-red' ,name: 'a van', color: 'red')
+
+    assert_equal 1, speedometer.minivans.to_a.size, "Only one association should be present:\n#{speedometer.minivans.to_a}"
+    assert_equal 1, speedometer.reload.minivans.to_a.size
   end
 end

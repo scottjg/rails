@@ -21,10 +21,10 @@ class FormOptionsHelperTest < ActionView::TestCase
   end
 
   def setup
-    @fake_timezones = %w(A B C D E).inject([]) do |zones, id|
+    @fake_timezones = %w(A B C D E).map do |id|
       tz = TZInfo::Timezone.loaded_zones[id] = stub(:name => id, :to_s => id)
       ActiveSupport::TimeZone.stubs(:[]).with(id).returns(tz)
-      zones << tz
+      tz
     end
     ActiveSupport::TimeZone.stubs(:all).returns(@fake_timezones)
   end
@@ -97,6 +97,13 @@ class FormOptionsHelperTest < ActionView::TestCase
     assert_dom_equal(
       "<option value=\"&lt;Abe&gt;\">&lt;Abe&gt; went home</option>\n<option value=\"Babe\">Babe went home</option>\n<option value=\"Cabe\">Cabe went home</option>",
       options_from_collection_for_select(dummy_posts, "author_name", lambda { |p| p.title })
+    )
+  end
+
+  def test_collection_options_with_element_attributes
+    assert_dom_equal(
+      "<option value=\"USA\" class=\"bold\">USA</option>",
+      options_from_collection_for_select([[ "USA", "USA", { :class => 'bold' } ]], :first, :second)
     )
   end
 
@@ -351,7 +358,7 @@ class FormOptionsHelperTest < ActionView::TestCase
     )
   end
 
-  def test_time_zone_options_no_parms
+  def test_time_zone_options_no_params
     opts = time_zone_options_for_select
     assert_dom_equal "<option value=\"A\">A</option>\n" +
                  "<option value=\"B\">B</option>\n" +
@@ -415,6 +422,13 @@ class FormOptionsHelperTest < ActionView::TestCase
                  "<option value=\"C\" selected=\"selected\">C</option>\n" +
                  "<option value=\"D\">D</option>",
                  opts
+  end
+
+  def test_time_zone_options_with_priority_zones_does_not_mutate_time_zones
+    original_zones = ActiveSupport::TimeZone.all.dup
+    zones = [ ActiveSupport::TimeZone.new( "B" ), ActiveSupport::TimeZone.new( "E" ) ]
+    time_zone_options_for_select(nil, zones)
+    assert_equal original_zones, ActiveSupport::TimeZone.all
   end
 
   def test_time_zone_options_returns_html_safe_string
@@ -562,6 +576,14 @@ class FormOptionsHelperTest < ActionView::TestCase
 
   def test_select_with_multiple_and_without_hidden_input
     output_buffer =  select(:post, :category, "", {:include_hidden => false}, :multiple => true)
+    assert_dom_equal(
+      "<select multiple=\"multiple\" id=\"post_category\" name=\"post[category][]\"></select>",
+      output_buffer
+    )
+  end
+
+  def test_select_with_multiple_and_with_explicit_name_ending_with_brackets
+    output_buffer =  select(:post, :category, [], {include_hidden: false}, multiple: true, name: 'post[category][]')
     assert_dom_equal(
       "<select multiple=\"multiple\" id=\"post_category\" name=\"post[category][]\"></select>",
       output_buffer
@@ -1079,6 +1101,7 @@ class FormOptionsHelperTest < ActionView::TestCase
 
   def test_time_zone_select_with_priority_zones_as_regexp
     @firm = Firm.new("D")
+
     @fake_timezones.each_with_index do |tz, i|
       tz.stubs(:=~).returns(i.zero? || i == 3)
     end
@@ -1095,11 +1118,32 @@ class FormOptionsHelperTest < ActionView::TestCase
                  html
   end
 
+  def test_time_zone_select_with_priority_zones_as_regexp_using_grep_finds_no_zones
+    @firm = Firm.new("D")
+
+    priority_zones = /A|D/
+    @fake_timezones.each do |tz|
+      priority_zones.stubs(:===).with(tz).raises(Exception)
+    end
+
+    html = time_zone_select("firm", "time_zone", priority_zones)
+    assert_dom_equal "<select id=\"firm_time_zone\" name=\"firm[time_zone]\">" +
+                 "<option value=\"\" disabled=\"disabled\">-------------</option>\n" +
+                 "<option value=\"A\">A</option>\n" +
+                 "<option value=\"B\">B</option>\n" +
+                 "<option value=\"C\">C</option>\n" +
+                 "<option value=\"D\" selected=\"selected\">D</option>\n" +
+                 "<option value=\"E\">E</option>" +
+                 "</select>",
+                 html
+  end
+
   def test_time_zone_select_with_default_time_zone_and_nil_value
      @firm = Firm.new()
      @firm.time_zone = nil
-      html = time_zone_select( "firm", "time_zone", nil, :default => 'B' )
-      assert_dom_equal "<select id=\"firm_time_zone\" name=\"firm[time_zone]\">" +
+
+     html = time_zone_select( "firm", "time_zone", nil, :default => 'B' )
+     assert_dom_equal "<select id=\"firm_time_zone\" name=\"firm[time_zone]\">" +
                    "<option value=\"A\">A</option>\n" +
                    "<option value=\"B\" selected=\"selected\">B</option>\n" +
                    "<option value=\"C\">C</option>\n" +
@@ -1110,16 +1154,17 @@ class FormOptionsHelperTest < ActionView::TestCase
   end
 
   def test_time_zone_select_with_default_time_zone_and_value
-     @firm = Firm.new('D')
-      html = time_zone_select( "firm", "time_zone", nil, :default => 'B' )
-      assert_dom_equal "<select id=\"firm_time_zone\" name=\"firm[time_zone]\">" +
-                   "<option value=\"A\">A</option>\n" +
-                   "<option value=\"B\">B</option>\n" +
-                   "<option value=\"C\">C</option>\n" +
-                   "<option value=\"D\" selected=\"selected\">D</option>\n" +
-                   "<option value=\"E\">E</option>" +
-                   "</select>",
-                   html
+    @firm = Firm.new('D')
+
+    html = time_zone_select( "firm", "time_zone", nil, :default => 'B' )
+    assert_dom_equal "<select id=\"firm_time_zone\" name=\"firm[time_zone]\">" +
+                  "<option value=\"A\">A</option>\n" +
+                  "<option value=\"B\">B</option>\n" +
+                  "<option value=\"C\">C</option>\n" +
+                  "<option value=\"D\" selected=\"selected\">D</option>\n" +
+                  "<option value=\"E\">E</option>" +
+                  "</select>",
+                  html
   end
 
   def test_options_for_select_with_element_attributes

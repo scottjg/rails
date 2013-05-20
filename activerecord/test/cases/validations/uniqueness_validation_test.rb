@@ -54,7 +54,7 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert !t2.save, "Shouldn't save t2 as unique"
     assert_equal ["has already been taken"], t2.errors[:title]
 
-    t2.title = "Now Im really also unique"
+    t2.title = "Now I am really also unique"
     assert t2.save, "Should now save t2 as unique"
   end
 
@@ -268,7 +268,7 @@ class UniquenessValidationTest < ActiveRecord::TestCase
   end
 
   def test_validate_case_sensitive_uniqueness_with_attribute_passed_as_integer
-    Topic.validates_uniqueness_of(:title, :case_sensitve => true)
+    Topic.validates_uniqueness_of(:title, :case_sensitive => true)
     Topic.create!('title' => 101)
 
     t2 = Topic.new('title' => 101)
@@ -348,7 +348,7 @@ class UniquenessValidationTest < ActiveRecord::TestCase
   end
 
   def test_validate_uniqueness_with_conditions
-    Topic.validates_uniqueness_of(:title, :conditions => Topic.where('approved = ?', true))
+    Topic.validates_uniqueness_of :title, conditions: -> { where(approved: true) }
     Topic.create("title" => "I'm a topic", "approved" => true)
     Topic.create("title" => "I'm an unapproved topic", "approved" => false)
 
@@ -357,6 +357,12 @@ class UniquenessValidationTest < ActiveRecord::TestCase
 
     t4 = Topic.new("title" => "I'm an unapproved topic", "approved" => false)
     assert t4.valid?, "t4 should be valid"
+  end
+
+  def test_validate_uniqueness_with_non_callable_conditions_is_not_supported
+    assert_raises(ArgumentError) {
+      Topic.validates_uniqueness_of :title, conditions: Topic.where(approved: true)
+    }
   end
 
   def test_validate_uniqueness_with_array_column

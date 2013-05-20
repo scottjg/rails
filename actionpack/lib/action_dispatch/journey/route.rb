@@ -71,6 +71,10 @@ module ActionDispatch
         Visitors::Formatter.new(path_options).accept(path.spec)
       end
 
+      def optimized_path
+        Visitors::OptimizedPath.new.accept(path.spec)
+      end
+
       def optional_parts
         path.optional_names.map { |n| n.to_sym }
       end
@@ -98,6 +102,10 @@ module ActionDispatch
             value === request.send(method).to_s
           when Array
             value.include?(request.send(method))
+          when TrueClass
+            request.send(method).present?
+          when FalseClass
+            request.send(method).blank?
           else
             value === request.send(method)
           end

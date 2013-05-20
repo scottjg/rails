@@ -23,7 +23,7 @@ module ApplicationTests
       assert $:.include?("#{app_path}/app/models")
     end
 
-    test "initializing an application allows to load code on lib path inside application class definitation" do
+    test "initializing an application allows to load code on lib path inside application class definition" do
       app_file "lib/foo.rb", <<-RUBY
         module Foo; end
       RUBY
@@ -64,7 +64,7 @@ module ApplicationTests
 
       add_to_config <<-RUBY
         config.root = "#{app_path}"
-        config.autoload_paths << "#{app_path}/lib"
+        config.eager_load_paths << "#{app_path}/lib"
       RUBY
 
       require "#{app_path}/config/environment"
@@ -72,6 +72,7 @@ module ApplicationTests
     end
 
     test "load environment with global" do
+      $initialize_test_set_from_env = nil
       app_file "config/environments/development.rb", <<-RUBY
         $initialize_test_set_from_env = 'success'
         AppTemplate::Application.configure do

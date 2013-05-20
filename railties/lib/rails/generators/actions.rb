@@ -86,7 +86,7 @@ module Rails
       #   end
       def environment(data=nil, options={}, &block)
         sentinel = /class [a-z_:]+ < Rails::Application/i
-        env_file_sentinel = /::Application\.configure do/
+        env_file_sentinel = /Rails\.application\.configure do/
         data = block.call if !data && block_given?
 
         in_root do
@@ -215,7 +215,7 @@ module Rails
 
       # Make an entry in Rails routing file config/routes.rb
       #
-      #   route "root :to => 'welcome#index'"
+      #   route "root 'welcome#index'"
       def route(routing_code)
         log :route, routing_code
         sentinel = /\.routes\.draw do\s*$/

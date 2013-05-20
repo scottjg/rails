@@ -1,5 +1,6 @@
 require 'thread_safe'
 require 'active_support/core_ext/module/remove_method'
+require 'active_support/core_ext/module/attribute_accessors'
 
 module ActionView
   # = Action View Lookup Context
@@ -43,7 +44,13 @@ module ActionView
     module Accessors #:nodoc:
     end
 
-    register_detail(:locale)  { [I18n.locale, I18n.default_locale].uniq }
+    register_detail(:locale) do
+      locales = [I18n.locale]
+      locales.concat(I18n.fallbacks[I18n.locale]) if I18n.respond_to? :fallbacks
+      locales << I18n.default_locale
+      locales.uniq!
+      locales
+    end
     register_detail(:formats) { ActionView::Base.default_formats || [:html, :text, :js, :css,  :xml, :json] }
     register_detail(:handlers){ Template::Handlers.extensions }
 

@@ -326,6 +326,17 @@ class TimeWithZoneTest < ActiveSupport::TestCase
     assert_equal 946684800, twz.to_i
   end
 
+  def test_to_r
+    result = ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1), ActiveSupport::TimeZone['Hawaii']).to_r
+    assert_equal Rational(946684800, 1), result
+    assert_kind_of Rational, result
+  end
+
+  def test_time_at
+    time = ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1), ActiveSupport::TimeZone['Hawaii'])
+    assert_equal time, Time.at(time)
+  end
+
   def test_to_time
     with_env_tz 'US/Eastern' do
       assert_equal Time, @twz.to_time.class
@@ -537,6 +548,20 @@ class TimeWithZoneTest < ActiveSupport::TestCase
     twz = ActiveSupport::TimeWithZone.new(utc, @time_zone)
     assert_equal "Fri, 31 Dec 1999 19:30:00 EST -05:00", twz.inspect
     assert_equal "Fri, 31 Dec 1999 19:59:59 EST -05:00", twz.end_of_hour.inspect
+  end
+
+  def test_beginning_of_minute
+    utc = Time.utc(2000, 1, 1, 0, 30, 10)
+    twz = ActiveSupport::TimeWithZone.new(utc, @time_zone)
+    assert_equal "Fri, 31 Dec 1999 19:30:10 EST -05:00", twz.inspect
+    assert_equal "Fri, 31 Dec 1999 19:00:00 EST -05:00", twz.beginning_of_hour.inspect
+  end
+
+  def test_end_of_minute
+    utc = Time.utc(2000, 1, 1, 0, 30, 10)
+    twz = ActiveSupport::TimeWithZone.new(utc, @time_zone)
+    assert_equal "Fri, 31 Dec 1999 19:30:10 EST -05:00", twz.inspect
+    assert_equal "Fri, 31 Dec 1999 19:30:59 EST -05:00", twz.end_of_minute.inspect
   end
 
   def test_since
@@ -752,6 +777,14 @@ class TimeWithZoneTest < ActiveSupport::TestCase
     assert_equal "Sun, 15 Jul 2007 10:30:00 EDT -04:00", twz.advance(:years => -1).inspect
     assert_equal "Sun, 15 Jul 2007 10:30:00 EDT -04:00", twz.years_ago(1).inspect
     assert_equal "Sun, 15 Jul 2007 10:30:00 EDT -04:00", (twz - 1.year).inspect
+  end
+
+  def test_no_method_error_has_proper_context
+    e = assert_raises(NoMethodError) {
+      @twz.this_method_does_not_exist
+    }
+    assert_equal "undefined method `this_method_does_not_exist' for Fri, 31 Dec 1999 19:00:00 EST -05:00:Time", e.message
+    assert_no_match "rescue", e.backtrace.first
   end
 
   protected
@@ -1084,14 +1117,4 @@ class TimeWithZoneMethodsForString < ActiveSupport::TestCase
     ensure
       Time.zone = old_tz
     end
-end
-
-class TimeWithZoneExtBehaviorTest < ActiveSupport::TestCase
-  def test_compare_with_infinity
-    time_zone = ActiveSupport::TimeZone['Eastern Time (US & Canada)']
-    twz = ActiveSupport::TimeWithZone.new(Time.now, time_zone)
-
-    assert_equal(-1, twz <=> Float::INFINITY)
-    assert_equal(1, twz <=> -Float::INFINITY)
-  end
 end

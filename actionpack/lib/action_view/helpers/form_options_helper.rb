@@ -380,7 +380,7 @@ module ActionView
       # should produce the desired results.
       def options_from_collection_for_select(collection, value_method, text_method, selected = nil)
         options = collection.map do |element|
-          [value_for_collection(element, text_method), value_for_collection(element, value_method)]
+          [value_for_collection(element, text_method), value_for_collection(element, value_method), option_html_attributes(element)]
         end
         selected, disabled = extract_selected_and_disabled(selected)
         select_deselect = {
@@ -515,7 +515,6 @@ module ActionView
           divider = options[:divider]
         else
           prompt  = options
-          options = {}
           message = "Passing the prompt to grouped_options_for_select as an argument is deprecated. " \
                     "Please use an options hash like `{ prompt: #{prompt.inspect} }`."
           ActiveSupport::Deprecation.warn message
@@ -572,7 +571,7 @@ module ActionView
           zone_options.safe_concat content_tag(:option, '-------------', :value => '', :disabled => 'disabled')
           zone_options.safe_concat "\n"
 
-          zones.reject! { |z| priority_zones.include?(z) }
+          zones = zones - priority_zones
         end
 
         zone_options.safe_concat options_for_select(convert_zones[zones], selected)
@@ -752,7 +751,7 @@ module ActionView
         end
 
         def prompt_text(prompt)
-          prompt = prompt.kind_of?(String) ? prompt : I18n.translate('helpers.select.prompt', :default => 'Please select')
+          prompt.kind_of?(String) ? prompt : I18n.translate('helpers.select.prompt', :default => 'Please select')
         end
     end
 

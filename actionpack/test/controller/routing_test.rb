@@ -456,6 +456,22 @@ class LegacyRouteSetTests < ActiveSupport::TestCase
     assert_equal("/", routes.send(:root_path))
   end
 
+  def test_named_route_root_with_hash
+    rs.draw do
+      root "hello#index", as: :index
+    end
+
+    routes = setup_for_named_route
+    assert_equal("http://test.host/", routes.send(:index_url))
+    assert_equal("/", routes.send(:index_path))
+  end
+
+  def test_root_without_path_raises_argument_error
+    assert_raises ArgumentError do
+      rs.draw { root nil }
+    end
+  end
+
   def test_named_route_root_with_trailing_slash
     rs.draw do
       root "hello#index"
@@ -699,17 +715,13 @@ class LegacyRouteSetTests < ActiveSupport::TestCase
 
   def setup_request_method_routes_for(method)
     rs.draw do
-      match '/match' => 'books#get', :via => :get
-      match '/match' => 'books#post', :via => :post
-      match '/match' => 'books#put', :via => :put
-      match '/match' => 'books#patch', :via => :patch
-      match '/match' => 'books#delete', :via => :delete
+      match '/match' => "books##{method}", :via => method.to_sym
     end
   end
 
   %w(GET PATCH POST PUT DELETE).each do |request_method|
     define_method("test_request_method_recognized_with_#{request_method}") do
-      setup_request_method_routes_for(request_method)
+      setup_request_method_routes_for(request_method.downcase)
       params = rs.recognize_path("/match", :method => request_method)
       assert_equal request_method.downcase, params[:action]
     end
@@ -892,12 +904,13 @@ class RouteSetTest < ActiveSupport::TestCase
     assert_equal set.routes.first, set.named_routes[:hello]
   end
 
-  def test_earlier_named_routes_take_precedence
-    set.draw do
-      get '/hello/world' => 'a#b', :as => 'hello'
-      get '/hello'       => 'a#b', :as => 'hello'
+  def test_duplicate_named_route_raises_rather_than_pick_precedence
+    assert_raise ArgumentError do
+      set.draw do
+        get '/hello/world' => 'a#b', :as => 'hello'
+        get '/hello'       => 'a#b', :as => 'hello'
+      end
     end
-    assert_equal set.routes.first, set.named_routes[:hello]
   end
 
   def setup_named_route_test

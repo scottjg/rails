@@ -6,6 +6,10 @@ module ActiveRecord
       attributes.each do |column, value|
         table = default_table
 
+        if column.is_a?(Symbol) && klass.attribute_aliases.key?(column.to_s)
+          column = klass.attribute_aliases[column.to_s]
+        end
+
         if value.is_a?(Hash)
           if value.empty?
             queries << '1=0'
@@ -48,7 +52,7 @@ module ActiveRecord
         column = reflection.foreign_key
       end
 
-      queries << build(table[column.to_sym], value)
+      queries << build(table[column], value)
       queries
     end
 
@@ -98,11 +102,6 @@ module ActiveRecord
         when Class
           # FIXME: I think we need to deprecate this behavior
           attribute.eq(value.name)
-        when Integer, ActiveSupport::Duration
-          # Arel treats integers as literals, but they should be quoted when compared with strings
-          table = attribute.relation
-          column = table.engine.connection.schema_cache.columns_hash(table.name)[attribute.name.to_s]
-          attribute.eq(Arel::Nodes::SqlLiteral.new(table.engine.connection.quote(value, column)))
         else
           attribute.eq(value)
         end

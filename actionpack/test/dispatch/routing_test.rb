@@ -1102,6 +1102,57 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal 'projects#index', @response.body
   end
 
+  def test_scope_with_format_option
+    draw do
+      get "direct/index", as: :no_format_direct, format: false
+
+      scope format: false do
+        get "scoped/index", as: :no_format_scoped
+      end
+    end
+
+    assert_equal "/direct/index", no_format_direct_path
+    assert_equal "/direct/index?format=html", no_format_direct_path(format: "html")
+
+    assert_equal "/scoped/index", no_format_scoped_path
+    assert_equal "/scoped/index?format=html", no_format_scoped_path(format: "html")
+
+    get '/scoped/index'
+    assert_equal "scoped#index", @response.body
+
+    get '/scoped/index.html'
+    assert_equal "Not Found", @response.body
+  end
+
+  def test_resources_with_format_false_from_scope
+    draw do
+      scope format: false do
+        resources :posts
+        resource :user
+      end
+    end
+
+    get "/posts"
+    assert_response :success
+    assert_equal "posts#index", @response.body
+    assert_equal "/posts", posts_path
+
+    get "/posts.html"
+    assert_response :not_found
+    assert_equal "Not Found", @response.body
+    assert_equal "/posts?format=html", posts_path(format: "html")
+
+    get "/user"
+    assert_response :success
+    assert_equal "users#show", @response.body
+    assert_equal "/user", user_path
+
+    get "/user.html"
+    assert_response :not_found
+    assert_equal "Not Found", @response.body
+    assert_equal "/user?format=html", user_path(format: "html")
+  end
+
   def test_index
     draw do
       get '/info' => 'projects#info', :as => 'info'
@@ -1110,6 +1161,21 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal '/info', info_path
     get '/info'
     assert_equal 'projects#info', @response.body
+  end
+
+  def test_match_with_many_paths_containing_a_slash
+    draw do
+      get 'get/first', 'get/second', 'get/third', :to => 'get#show'
+    end
+
+    get '/get/first'
+    assert_equal 'get#show', @response.body
+
+    get '/get/second'
+    assert_equal 'get#show', @response.body
+
+    get '/get/third'
+    assert_equal 'get#show', @response.body
   end
 
   def test_match_shorthand_with_no_scope
@@ -1134,6 +1200,20 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal 'account#shorthand', @response.body
   end
 
+  def test_match_shorthand_with_multiple_paths_inside_namespace
+    draw do
+      namespace :proposals do
+        put 'activate', 'inactivate'
+      end
+    end
+
+    put '/proposals/activate'
+    assert_equal 'proposals#activate', @response.body
+
+    put '/proposals/inactivate'
+    assert_equal 'proposals#inactivate', @response.body
+  end
+
   def test_match_shorthand_inside_namespace_with_controller
     draw do
       namespace :api do
@@ -1144,6 +1224,33 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal '/api/products/list', api_products_list_path
     get '/api/products/list'
     assert_equal 'api/products#list', @response.body
+  end
+
+  def test_match_shorthand_inside_scope_with_variables_with_controller
+    draw do
+      scope ':locale' do
+        match 'questions/new', via: [:get]
+      end
+    end
+
+    get '/de/questions/new'
+    assert_equal 'questions#new', @response.body
+    assert_equal 'de', @request.params[:locale]
+  end
+
+  def test_match_shorthand_inside_nested_namespaces_and_scopes_with_controller
+    draw do
+      namespace :api do
+        namespace :v3 do
+          scope ':locale' do
+            get "products/list"
+          end
+        end
+      end
+    end
+
+    get '/api/v3/en/products/list'
+    assert_equal 'api/v3/products#list', @response.body
   end
 
   def test_dynamically_generated_helpers_on_collection_do_not_clobber_resources_url_helper
@@ -1319,7 +1426,7 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal 'en', @request.params[:locale]
   end
 
-  def test_default_params
+  def test_default_string_params
     draw do
       get 'inline_pages/(:id)', :to => 'pages#show', :id => 'home'
       get 'default_pages/(:id)', :to => 'pages#show', :defaults => { :id => 'home' }
@@ -1337,6 +1444,26 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     get '/scoped_pages'
     assert_equal 'home', @request.params[:id]
+  end
+
+  def test_default_integer_params
+    draw do
+      get 'inline_pages/(:page)', to: 'pages#show', page: 1
+      get 'default_pages/(:page)', to: 'pages#show', defaults: { page: 1 }
+
+      defaults page: 1 do
+        get 'scoped_pages/(:page)', to: 'pages#show'
+      end
+    end
+
+    get '/inline_pages'
+    assert_equal 1, @request.params[:page]
+
+    get '/default_pages'
+    assert_equal 1, @request.params[:page]
+
+    get '/scoped_pages'
+    assert_equal 1, @request.params[:page]
   end
 
   def test_resource_constraints
@@ -2530,25 +2657,22 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_raises(ActionController::UrlGenerationError){ list_todo_path(:list_id => '2', :id => '1') }
   end
 
-  def test_named_routes_collision_is_avoided_unless_explicitly_given_as
-    draw do
-      scope :as => "routes" do
-        get "/c/:id", :as => :collision, :to => "collision#show"
-        get "/collision", :to => "collision#show"
-        get "/no_collision", :to => "collision#show", :as => nil
-
-        get "/fc/:id", :as => :forced_collision, :to => "forced_collision#show"
-        get "/forced_collision", :as => :forced_collision, :to => "forced_collision#show"
-      end
-    end
-
-    assert_equal "/c/1", routes_collision_path(1)
-    assert_equal "/fc/1", routes_forced_collision_path(1)
-  end
-
   def test_redirect_argument_error
     routes = Class.new { include ActionDispatch::Routing::Redirection }.new
     assert_raises(ArgumentError) { routes.redirect Object.new }
+  end
+
+  def test_named_route_check
+    before, after = nil
+
+    draw do
+      before = has_named_route?(:hello)
+      get "/hello", as: :hello, to: "hello#world"
+      after = has_named_route?(:hello)
+    end
+
+    assert !before, "expected to not have named route :hello before route definition"
+    assert after, "expected to have named route :hello after route definition"
   end
 
   def test_explicitly_avoiding_the_named_route
@@ -2557,9 +2681,6 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         get "/c/:id", :as => :collision, :to => "collision#show"
         get "/collision", :to => "collision#show"
         get "/no_collision", :to => "collision#show", :as => nil
-
-        get "/fc/:id", :as => :forced_collision, :to => "forced_collision#show"
-        get "/forced_collision", :as => :forced_collision, :to => "forced_collision#show"
       end
     end
 
@@ -2607,6 +2728,24 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     assert_raise(ArgumentError) do
       draw { get '/products', :to => 'products#index', :as => '1products' }
+    end
+  end
+
+  def test_duplicate_route_name_raises_error
+    assert_raise(ArgumentError) do
+      draw do
+        get '/collision', :to => 'collision#show', :as => 'collision'
+        get '/duplicate', :to => 'duplicate#show', :as => 'collision'
+      end
+    end
+  end
+
+  def test_duplicate_route_name_via_resources_raises_error
+    assert_raise(ArgumentError) do
+      draw do
+        resources :collisions
+        get '/collision', :to => 'collision#show', :as => 'collision'
+      end
     end
   end
 
@@ -3151,6 +3290,7 @@ class TestOptimizedNamedRoutes < ActionDispatch::IntegrationTest
     app.draw do
       ok = lambda { |env| [200, { 'Content-Type' => 'text/plain' }, []] }
       get '/foo' => ok, as: :foo
+      get '/post(/:action(/:id))' => ok, as: :posts
     end
   end
 
@@ -3167,6 +3307,11 @@ class TestOptimizedNamedRoutes < ActionDispatch::IntegrationTest
 
   test 'named route called on included module' do
     assert_equal '/foo', foo_path
+  end
+
+  test 'nested optional segments are removed' do
+    assert_equal '/post', Routes.url_helpers.posts_path
+    assert_equal '/post', posts_path
   end
 end
 
@@ -3219,6 +3364,10 @@ class TestUrlConstraints < ActionDispatch::IntegrationTest
       end
 
       get '/' => ok, :as => :alternate_root, :constraints => { :port => 8080 }
+
+      get '/search' => ok, :constraints => { :subdomain => false }
+
+      get '/logs' => ok, :constraints => { :subdomain => true }
     end
   end
 
@@ -3244,6 +3393,24 @@ class TestUrlConstraints < ActionDispatch::IntegrationTest
 
     get 'http://www.example.com:8080/'
     assert_response :success
+  end
+
+  test "false constraint expressions check for absence of values" do
+    get 'http://example.com/search'
+    assert_response :success
+    assert_equal 'http://example.com/search', search_url
+
+    get 'http://api.example.com/search'
+    assert_response :not_found
+  end
+
+  test "true constraint expressions check for presence of values" do
+    get 'http://api.example.com/logs'
+    assert_response :success
+    assert_equal 'http://api.example.com/logs', logs_url
+
+    get 'http://example.com/logs'
+    assert_response :not_found
   end
 end
 
@@ -3350,6 +3517,66 @@ class TestPortConstraints < ActionDispatch::IntegrationTest
 
     get 'http://www.example.com:8080/regexp'
     assert_response :success
+  end
+end
+
+class TestFormatConstraints < ActionDispatch::IntegrationTest
+  Routes = ActionDispatch::Routing::RouteSet.new.tap do |app|
+    app.draw do
+      ok = lambda { |env| [200, { 'Content-Type' => 'text/plain' }, []] }
+
+      get '/string', to: ok, constraints: { format: 'json'  }
+      get '/regexp',  to: ok, constraints: { format: /json/ }
+      get '/json_only', to: ok, format: true, constraints: { format: /json/ }
+      get '/xml_only', to: ok, format: 'xml'
+    end
+  end
+
+  include Routes.url_helpers
+  def app; Routes end
+
+  def test_string_format_constraints
+    get 'http://www.example.com/string'
+    assert_response :success
+
+    get 'http://www.example.com/string.json'
+    assert_response :success
+
+    get 'http://www.example.com/string.html'
+    assert_response :not_found
+  end
+
+  def test_regexp_format_constraints
+    get 'http://www.example.com/regexp'
+    assert_response :success
+
+    get 'http://www.example.com/regexp.json'
+    assert_response :success
+
+    get 'http://www.example.com/regexp.html'
+    assert_response :not_found
+  end
+
+  def test_enforce_with_format_true_with_constraint
+    get 'http://www.example.com/json_only.json'
+    assert_response :success
+
+    get 'http://www.example.com/json_only.html'
+    assert_response :not_found
+
+    get 'http://www.example.com/json_only'
+    assert_response :not_found
+  end
+
+  def test_enforce_with_string
+    get 'http://www.example.com/xml_only.xml'
+    assert_response :success
+
+    get 'http://www.example.com/xml_only'
+    assert_response :success
+
+    get 'http://www.example.com/xml_only.json'
+    assert_response :not_found
   end
 end
 

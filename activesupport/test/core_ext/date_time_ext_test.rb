@@ -88,6 +88,14 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal DateTime.civil(2005,2,4,19,59,59), DateTime.civil(2005,2,4,19,30,10).end_of_hour
   end
 
+  def test_beginning_of_minute
+    assert_equal DateTime.civil(2005,2,4,19,30,0), DateTime.civil(2005,2,4,19,30,10).beginning_of_minute
+  end
+
+  def test_end_of_minute
+    assert_equal DateTime.civil(2005,2,4,19,30,59), DateTime.civil(2005,2,4,19,30,10).end_of_minute
+  end
+
   def test_end_of_month
     assert_equal DateTime.civil(2005,3,31,23,59,59), DateTime.civil(2005,3,20,10,10,10).end_of_month
     assert_equal DateTime.civil(2005,2,28,23,59,59), DateTime.civil(2005,2,20,10,10,10).end_of_month
@@ -121,6 +129,9 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal DateTime.civil(2005,2,22,16),       DateTime.civil(2005,2,22,15,15,10).change(:hour => 16)
     assert_equal DateTime.civil(2005,2,22,16,45),    DateTime.civil(2005,2,22,15,15,10).change(:hour => 16, :min => 45)
     assert_equal DateTime.civil(2005,2,22,15,45),    DateTime.civil(2005,2,22,15,15,10).change(:min => 45)
+
+    # datetime with fractions of a second
+    assert_equal DateTime.civil(2005,2,1,15,15,10.7), DateTime.civil(2005,2,22,15,15,10.7).change(:day => 1)
   end
 
   def test_advance
@@ -323,11 +334,4 @@ class DateTimeExtCalculationsTest < ActiveSupport::TestCase
     ensure
       old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
     end
-end
-
-class DateTimeExtBehaviorTest < ActiveSupport::TestCase
-  def test_compare_with_infinity
-    assert_equal(-1, DateTime.now <=> Float::INFINITY)
-    assert_equal(1, DateTime.now <=> -Float::INFINITY)
-  end
 end

@@ -61,6 +61,10 @@ migrations are wrapped in a transaction. If the database does not support this
 then when a migration fails the parts of it that succeeded will not be rolled
 back. You will have to rollback the changes that were made by hand.
 
+NOTE: There are certain queries that can't run inside a transaction. If your
+adapter supports DDL transactions you can use `disable_ddl_transaction!` to
+disable them for a single migration.
+
 If you wish for a migration to do something that Active Record doesn't know how
 to reverse, you can use `reversible`:
 
@@ -146,7 +150,25 @@ class AddPartNumberToProducts < ActiveRecord::Migration
 end
 ```
 
-Similarly,
+If you'd like to add an index on the new column, you can do that as well:
+
+```bash
+$ rails generate migration AddPartNumberToProducts part_number:string:index
+```
+
+will generate
+
+```ruby
+class AddPartNumberToProducts < ActiveRecord::Migration
+  def change
+    add_column :products, :part_number, :string
+    add_index :products, :part_number
+  end
+end
+```
+
+
+Similarly, you can generate a migration to remove a column from the command line:
 
 ```bash
 $ rails generate migration RemovePartNumberFromProducts part_number:string
@@ -175,6 +197,27 @@ class AddDetailsToProducts < ActiveRecord::Migration
   def change
     add_column :products, :part_number, :string
     add_column :products, :price, :decimal
+  end
+end
+```
+
+If the migration name is of the form "CreateXXX" and is
+followed by a list of column names and types then a migration creating the table
+XXX with the columns listed will be generated. For example:
+
+```bash
+$ rails generate migration CreateProducts name:string part_number:string
+```
+
+generates
+
+```ruby
+class CreateProducts < ActiveRecord::Migration
+  def change
+    create_table :products do |t|
+      t.string :name
+      t.string :part_number
+    end
   end
 end
 ```
@@ -344,6 +387,16 @@ create_join_table :products, :categories, column_options: {null: true}
 will create the `product_id` and `category_id` with the `:null` option as
 `true`.
 
+`create_join_table` also accepts a block, which you can use to add indices
+(which are not created by default) or additional columns:
+
+```ruby
+create_join_table :products, :categories do |t|
+  t.index :products
+  t.index :categories
+end
+```
+
 ### Changing Tables
 
 A close cousin of `create_table` is `change_table`, used for changing existing
@@ -444,7 +497,7 @@ class ExampleMigration < ActiveRecord::Migration
   end
 ```
 
-Using `reversible` will insure that the instructions are executed in the
+Using `reversible` will ensure that the instructions are executed in the
 right order too. If the previous example migration is reverted,
 the `down` block will be run after the `home_page_url` column is removed and
 right before the table `products` is dropped.
@@ -796,10 +849,10 @@ end
 ```
 
 ```ruby
-# app/model/product.rb
+# app/models/product.rb
 
 class Product < ActiveRecord::Base
-  validates :flag, presence: true
+  validates :flag, inclusion: { in: [true, false] }
 end
 ```
 
@@ -821,10 +874,11 @@ end
 ```
 
 ```ruby
-# app/model/product.rb
+# app/models/product.rb
 
 class Product < ActiveRecord::Base
-  validates :flag, :fuzz, presence: true
+  validates :flag, inclusion:  { in: [true, false] }
+  validates :fuzz, presence: true
 end
 ```
 
@@ -1011,8 +1065,8 @@ with foreign key constraints in the database.
 
 Although Active Record does not provide any tools for working directly with
 such features, the `execute` method can be used to execute arbitrary SQL. You
-could also use some gem like
-[foreigner](https://github.com/matthuhiggins/foreigner) which add foreign key
+can also use a gem like
+[foreigner](https://github.com/matthuhiggins/foreigner) which adds foreign key
 support to Active Record (including support for dumping foreign keys in
 `db/schema.rb`).
 

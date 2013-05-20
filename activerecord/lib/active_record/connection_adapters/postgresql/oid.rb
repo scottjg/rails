@@ -18,8 +18,19 @@ module ActiveRecord
           end
         end
 
+        class Bit < Type
+          def type_cast(value)
+            if String === value
+              ConnectionAdapters::PostgreSQLColumn.string_to_bit value
+            else
+              value
+            end
+          end
+        end
+
         class Bytea < Type
           def type_cast(value)
+            return if value.nil?
             PGconn.unescape_bytea value
           end
         end
@@ -60,6 +71,16 @@ module ActiveRecord
           # is to just return the string.
           def type_cast(value)
             value
+          end
+        end
+
+        class Point < Type
+          def type_cast(value)
+            if String === value
+              ConnectionAdapters::PostgreSQLColumn.string_to_point value
+            else
+              value
+            end
           end
         end
 
@@ -312,27 +333,25 @@ module ActiveRecord
         # FIXME: why are we keeping these types as strings?
         alias_type 'tsvector', 'text'
         alias_type 'interval', 'text'
-        alias_type 'bit',      'text'
-        alias_type 'varbit',   'text'
         alias_type 'macaddr',  'text'
         alias_type 'uuid',     'text'
-
-        # FIXME: I don't think this is correct. We should probably be returning a parsed date,
-        # but the tests pass with a string returned.
-        register_type 'timestamptz', OID::Identity.new
 
         register_type 'money', OID::Money.new
         register_type 'bytea', OID::Bytea.new
         register_type 'bool', OID::Boolean.new
+        register_type 'bit', OID::Bit.new
+        register_type 'varbit', OID::Bit.new
 
         register_type 'float4', OID::Float.new
         alias_type 'float8', 'float4'
 
         register_type 'timestamp', OID::Timestamp.new
+        register_type 'timestamptz', OID::Timestamp.new
         register_type 'date', OID::Date.new
         register_type 'time', OID::Time.new
 
         register_type 'path', OID::Identity.new
+        register_type 'point', OID::Point.new
         register_type 'polygon', OID::Identity.new
         register_type 'circle', OID::Identity.new
         register_type 'hstore', OID::Hstore.new

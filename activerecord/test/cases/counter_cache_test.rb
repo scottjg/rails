@@ -51,6 +51,18 @@ class CounterCacheTest < ActiveRecord::TestCase
     end
   end
 
+  test 'reset multiple association counters' do
+    Topic.increment_counter(:replies_count, @topic.id)
+    assert_difference '@topic.reload.replies_count', -1 do
+      Topic.reset_counters(@topic.id, :replies, :unique_replies)
+    end
+
+    Topic.increment_counter(:unique_replies_count, @topic.id)
+    assert_difference '@topic.reload.unique_replies_count', -1 do
+      Topic.reset_counters(@topic.id, :replies, :unique_replies)
+    end
+  end
+
   test "reset counters with string argument" do
     Topic.increment_counter('replies_count', @topic.id)
 
@@ -115,10 +127,19 @@ class CounterCacheTest < ActiveRecord::TestCase
     end
   end
 
+  test "update other counters on parent destroy" do
+    david, joanna = dog_lovers(:david, :joanna)
+    joanna = joanna # squelch a warning
+
+    assert_difference 'joanna.reload.dogs_count', -1 do
+      david.destroy
+    end
+  end
+
   test "reset the right counter if two have the same foreign key" do
     michael = people(:michael)
     assert_nothing_raised(ActiveRecord::StatementInvalid) do
-      Person.reset_counters(michael.id, :followers)
+      Person.reset_counters(michael.id, :friends_too)
     end
   end
 
@@ -130,5 +151,12 @@ class CounterCacheTest < ActiveRecord::TestCase
     assert_difference 'subscriber.reload.books_count', -1 do
       Subscriber.reset_counters(subscriber.id, 'books')
     end
+  end
+
+  test "the passed symbol needs to be an association name" do
+    e = assert_raises(ArgumentError) do
+      Topic.reset_counters(@topic.id, :replies_count)
+    end
+    assert_equal "'Topic' has no association called 'replies_count'", e.message
   end
 end

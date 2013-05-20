@@ -1,8 +1,5 @@
 require 'rbconfig'
-begin
-  require 'minitest/parallel_each'
-rescue LoadError
-end
+require 'minitest/parallel_each'
 
 module ActiveSupport
   module Testing
@@ -43,43 +40,14 @@ module ActiveSupport
       def method_missing(name, *args)
         @calls << [name, args]
       end
+
+      def info_signal
+        Signal.list['INFO']
+      end
     end
 
     module Isolation
       require 'thread'
-
-      # Recent versions of MiniTest (such as the one shipped with Ruby 2.0) already define
-      # a ParallelEach class.
-      unless defined? ParallelEach
-        class ParallelEach
-          include Enumerable
-
-          # default to 2 cores
-          CORES = (ENV['TEST_CORES'] || 2).to_i
-
-          def initialize list
-            @list  = list
-            @queue = SizedQueue.new CORES
-          end
-
-          def grep pattern
-            self.class.new super
-          end
-
-          def each
-            threads = CORES.times.map {
-              Thread.new {
-                while job = @queue.pop
-                  yield job
-                end
-              }
-            }
-            @list.each { |i| @queue << i }
-            CORES.times { @queue << nil }
-            threads.each(&:join)
-          end
-        end
-      end
 
       def self.included(klass) #:nodoc:
         klass.extend(Module.new {
@@ -104,16 +72,12 @@ module ActiveSupport
         end
       end
 
-      def run(runner)
-        _run_class_setup
-
-        serialized = run_in_isolation do |isolated_runner|
-          super(isolated_runner)
+      def run
+        serialized = run_in_isolation do
+          super
         end
 
-        retval, proxy = Marshal.load(serialized)
-        proxy.__replay__(runner)
-        retval
+        Marshal.load(serialized)
       end
 
       module Forking
@@ -122,9 +86,8 @@ module ActiveSupport
 
           pid = fork do
             read.close
-            proxy = ProxyTestResult.new
-            retval = yield proxy
-            write.puts [Marshal.dump([retval, proxy])].pack("m")
+            yield
+            write.puts [Marshal.dump(self.dup)].pack("m")
             exit!
           end
 

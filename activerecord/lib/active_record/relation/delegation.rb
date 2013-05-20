@@ -12,16 +12,16 @@ module ActiveRecord
 
     delegate :to_xml, :to_yaml, :length, :collect, :map, :each, :all?, :include?, :to_ary, :to => :to_a
     delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key,
-             :connection, :columns_hash, :auto_explain_threshold_in_seconds, :to => :klass
+             :connection, :columns_hash, :to => :klass
 
-    module ClassSpecificRelation
+    module ClassSpecificRelation # :nodoc:
       extend ActiveSupport::Concern
 
       included do
         @delegation_mutex = Mutex.new
       end
 
-      module ClassMethods
+      module ClassMethods # :nodoc:
         def name
           superclass.name
         end
@@ -37,11 +37,9 @@ module ActiveRecord
                 end
               RUBY
             else
-              module_eval <<-RUBY, __FILE__, __LINE__ + 1
-                def #{method}(*args, &block)
-                  scoping { @klass.send(#{method.inspect}, *args, &block) }
-                end
-              RUBY
+              define_method method do |*args, &block|
+                scoping { @klass.send(method, *args, &block) }
+              end
             end
           end
         end
@@ -72,7 +70,7 @@ module ActiveRecord
       end
     end
 
-    module ClassMethods
+    module ClassMethods # :nodoc:
       @@subclasses = ThreadSafe::Cache.new(:initial_capacity => 2)
 
       def new(klass, *args)
