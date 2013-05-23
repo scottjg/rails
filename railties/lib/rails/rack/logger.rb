@@ -47,11 +47,12 @@ module Rails
 
       # Started GET "/session/new" for 127.0.0.1 at 2012-09-26 14:51:42 -0700
       def started_request_message(request)
-        'Started %s "%s" for %s at %s' % [
+        'Started %s "%s" for %s at %s request_id=%s' % [
           request.request_method,
           request.filtered_path,
           request.ip,
-          Time.now.to_default_s ]
+          Time.now.to_default_s,
+          request.uuid ]
       end
 
       def compute_tags(request)
