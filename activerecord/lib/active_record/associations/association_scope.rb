@@ -8,13 +8,15 @@ module ActiveRecord
       delegate :klass, :owner, :reflection, :interpolate, :to => :association
       delegate :chain, :scope_chain, :options, :source_options, :active_record, :to => :reflection
 
-      def initialize(association)
+      def initialize(association, target_scope = klass.unscoped)
+        @target_scope = target_scope
         @association   = association
         @alias_tracker = AliasTracker.new klass.connection
       end
 
       def scope
-        scope = klass.unscoped
+        #scope = klass.unscoped
+        scope = @target_scope
         scope.extending! Array(options[:extend])
         add_constraints(scope)
       end
@@ -43,6 +45,26 @@ module ActiveRecord
 
         chain.each_with_index do |reflection, i|
           table, foreign_table = tables.shift, tables.first
+
+          # Exclude the scope of the association itself, because that
+          # was already merged in the #scope method.
+          scope_chain[i].each do |scope_chain_item|
+
+            unless scope_chain_item.is_a?(Relation)
+              scope = scope.instance_exec(owner, &scope_chain_item)
+            else
+
+                klass = i == 0 ? self.klass : reflection.klass
+                item  = eval_scope(klass, scope_chain_item)
+                if scope_chain_item == self.reflection.scope
+                  scope.merge! item.except(:where, :includes)
+                end
+                scope.includes! item.includes_values
+                scope.where_values += item.where_values
+                scope.order_values |= item.order_values
+            end
+          end
+
 
           if reflection.source_macro == :has_and_belongs_to_many
             join_table = tables.shift
@@ -88,24 +110,17 @@ module ActiveRecord
 
             scope = scope.joins(join(foreign_table, constraint))
           end
-
-          # Exclude the scope of the association itself, because that
-          # was already merged in the #scope method.
-          scope_chain[i].each do |scope_chain_item|
-            klass = i == 0 ? self.klass : reflection.klass
-            item  = eval_scope(klass, scope_chain_item)
-
-            if scope_chain_item == self.reflection.scope
-              scope.merge! item.except(:where, :includes)
-            end
-
-            scope.includes! item.includes_values
-            scope.where_values += item.where_values
-            scope.order_values |= item.order_values
-          end
         end
 
         scope
+      end
+
+      def eval_scope(klass, scope)
+        if scope.is_a?(Relation)
+          scope
+        else
+          klass.unscoped.instance_exec(owner, &scope)
+        end
       end
 
       def alias_suffix
@@ -123,13 +138,8 @@ module ActiveRecord
         end
       end
 
-      def eval_scope(klass, scope)
-        if scope.is_a?(Relation)
-          scope
-        else
-          klass.unscoped.instance_exec(owner, &scope)
-        end
-      end
+
+
     end
   end
 end

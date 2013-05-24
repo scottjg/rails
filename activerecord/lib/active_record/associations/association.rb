@@ -81,7 +81,8 @@ module ActiveRecord
       end
 
       def scope
-        target_scope.merge(association_scope)
+        #target_scope.merge(association_scope)
+        association_scope(target_scope)
       end
 
       def scoped
@@ -95,9 +96,9 @@ module ActiveRecord
       # scope method is called. This is because at that point the call may be surrounded
       # by scope.scoping { ... } or with_scope { ... } etc, which affects the scope which
       # actually gets built.
-      def association_scope
+      def association_scope(_target_scope = target_scope)
         if klass
-          @association_scope ||= AssociationScope.new(self).scope
+          @association_scope = AssociationScope.new(self, _target_scope).scope
         end
       end
 
