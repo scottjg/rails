@@ -453,7 +453,7 @@ module ActiveRecord
         fixture_is_cached?(connection, fs_name)
       }
 
-      unless files_to_read.empty?
+      if files_to_read.any?
         connection.disable_referential_integrity do
           fixtures_map = {}
 

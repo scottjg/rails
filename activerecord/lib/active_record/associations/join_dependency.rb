@@ -112,7 +112,7 @@ module ActiveRecord
               end
             end
 
-            remove_duplicate_results!(reflection.klass, parent_records, associations[name]) unless parent_records.empty?
+            remove_duplicate_results!(reflection.klass, parent_records, associations[name]) if parent_records.any?
           end
         end
       end

@@ -192,7 +192,7 @@ module ActiveRecord
       assign_attributes(attributes) if attributes
 
       yield self if block_given?
-      run_callbacks :initialize unless _initialize_callbacks.empty?
+      run_callbacks(:initialize) if _initialize_callbacks.any?
     end
 
     # Initialize an empty model object from +coder+. +coder+ must contain
@@ -253,7 +253,7 @@ module ActiveRecord
       @attributes = cloned_attributes
       @attributes[self.class.primary_key] = nil
 
-      run_callbacks(:initialize) unless _initialize_callbacks.empty?
+      run_callbacks(:initialize) if _initialize_callbacks.any?
 
       @changed_attributes = {}
       init_changed_attributes

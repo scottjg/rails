@@ -89,7 +89,7 @@ module ActiveRecord
       end
 
       def run
-        unless records.empty?
+        if records.any?
           associations.each { |association| preload(association) }
         end
       end

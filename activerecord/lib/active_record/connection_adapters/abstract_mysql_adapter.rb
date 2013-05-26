@@ -565,7 +565,7 @@ module ActiveRecord
       # SHOW VARIABLES LIKE 'name'
       def show_variable(name)
         variables = select_all("SHOW VARIABLES LIKE '#{name}'", 'SCHEMA')
-        variables.first['Value'] unless variables.empty?
+        variables.first['Value'] if variables.any?
       end
 
       # Returns a table's primary key and belonging sequence.

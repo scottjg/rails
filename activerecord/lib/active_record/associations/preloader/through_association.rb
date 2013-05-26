@@ -46,7 +46,7 @@ module ActiveRecord
           if options[:source_type]
             through_scope.where! reflection.foreign_type => options[:source_type]
           else
-            unless reflection_scope.where_values.empty?
+            if reflection_scope.where_values.any?
               through_scope.includes_values = Array(reflection_scope.values[:includes] || options[:source])
               through_scope.where_values    = reflection_scope.values[:where]
             end

@@ -31,8 +31,8 @@ module ActiveRecord
         end
       end
 
-      assign_nested_parameter_attributes(nested_parameter_attributes) unless nested_parameter_attributes.empty?
-      assign_multiparameter_attributes(multi_parameter_attributes) unless multi_parameter_attributes.empty?
+      assign_nested_parameter_attributes(nested_parameter_attributes) if nested_parameter_attributes.any?
+      assign_multiparameter_attributes(multi_parameter_attributes) if multi_parameter_attributes.any?
     end
 
     alias attributes= assign_attributes
@@ -75,7 +75,7 @@ module ActiveRecord
           errors << AttributeAssignmentError.new("error on assignment #{values_with_empty_parameters.values.inspect} to #{name} (#{ex.message})", ex, name)
         end
       end
-      unless errors.empty?
+      if errors.any?
         error_descriptions = errors.map { |ex| ex.message }.join(",")
         raise MultiparameterAssignmentErrors.new(errors), "#{errors.size} error(s) on assignment of multiparameter attributes [#{error_descriptions}]"
       end

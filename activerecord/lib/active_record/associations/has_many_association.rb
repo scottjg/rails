@@ -10,10 +10,10 @@ module ActiveRecord
       def handle_dependency
         case options[:dependent]
         when :restrict, :restrict_with_exception
-          raise ActiveRecord::DeleteRestrictionError.new(reflection.name) unless empty?
+          raise ActiveRecord::DeleteRestrictionError.new(reflection.name) if any?
 
         when :restrict_with_error
-          unless empty?
+          if any?
             record = klass.human_attribute_name(reflection.name).downcase
             owner.errors.add(:base, :"restrict_dependent_destroy.many", record: record)
             false

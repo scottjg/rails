@@ -566,7 +566,7 @@ module ActiveRecord
               to_column_names.include?(column)
             end
 
-            unless columns.empty?
+            if columns.any?
               # index name can't be the same
               opts = { name: name.gsub(/(^|_)(#{from})_/, "\\1#{to}_"), internal: true }
               opts[:unique] = true if index.unique

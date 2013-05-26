@@ -156,7 +156,7 @@ module ActiveRecord
 
             column_names = columns.values_at(*indkey).compact
 
-            unless column_names.empty?
+            if column_names.any?
               # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
               desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
               orders = desc_order_columns.any? ? Hash[desc_order_columns.map {|order_column| [order_column, :desc]}] : {}
