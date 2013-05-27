@@ -1,4 +1,15 @@
 ## Rails 4.0.0 (June 25, 2013) ##
+*   Usage of `implicit_readonly` is being removed`. Please use `readonly` method
+    explicitly to mark records as `readonly.
+    Fixes #10615.
+
+    Example:
+
+        user = User.joins(:todos).select("users.*, todos.title as todos_title").readonly(true).first
+        user.todos_title = 'clean pet'
+        user.save! # will raise error
+
+    *Yves Senn*
 
 *   Fix `add_column` with `array` option when using PostgreSQL. Fixes #10432
 
@@ -29,7 +40,6 @@
     the same value on a unique indexed field as that of a record being destroyed.
 
     *Adam Anderson*
-
 
 *   Fix pending migrations error when loading schema and `ActiveRecord::Base.table_name_prefix`
     is not blank.
@@ -2097,6 +2107,5 @@
 *   PostgreSQL hstore types are automatically deserialized from the database.
 
     *Aaron Patterson*
-
 
 Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activerecord/CHANGELOG.md) for previous changes.
