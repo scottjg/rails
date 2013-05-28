@@ -74,7 +74,7 @@ class ErrorsTest < ActiveModel::TestCase
     errors = ActiveModel::Errors.new(self)
     errors.set(:foo, "omg")
 
-    assert_equal({ foo: "omg" }, errors.messages)
+    assert_equal({ foo: ["omg"] }, errors.messages)
   end
 
   test "values returns an array of messages" do
@@ -82,7 +82,7 @@ class ErrorsTest < ActiveModel::TestCase
     errors.set(:foo, "omg")
     errors.set(:baz, "zomg")
 
-    assert_equal ["omg", "zomg"], errors.values
+    assert_equal [["omg"], ["zomg"]], errors.values
   end
 
   test "keys returns the error keys" do

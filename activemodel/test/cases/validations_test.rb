@@ -81,7 +81,7 @@ class ValidationsTest < ActiveModel::TestCase
 
   def test_errors_on_nested_attributes_expands_name
     t = Topic.new
-    t.errors["replies.name"] << "can't be blank"
+    t.errors.add("replies.name", "can't be blank")
     assert_equal ["Replies name can't be blank"], t.errors.full_messages
   end
 

@@ -59,7 +59,7 @@ module ActiveModel
 
     CALLBACKS_OPTIONS = [:if, :unless, :on, :allow_nil, :allow_blank, :strict]
 
-    attr_reader :messages
+    attr_reader :error_datum
 
     # Pass in the instance of the object that is using the errors object.
     #
@@ -69,13 +69,20 @@ module ActiveModel
     #     end
     #   end
     def initialize(base)
-      @base     = base
-      @messages = {}
+      @base        = base
+      @error_datum = []
     end
 
     def initialize_dup(other) # :nodoc:
-      @messages = other.messages.dup
+      @error_datum = other.error_datum.dup
       super
+    end
+
+    def messages
+      @error_datum.inject({}) do |hash, error_data|
+        (hash[error_data.attribute.to_sym] ||= []) << error_data.message
+        hash
+      end
     end
 
     # Clear the error messages.
@@ -84,7 +91,7 @@ module ActiveModel
     #   person.errors.clear
     #   person.errors.full_messages # => []
     def clear
-      messages.clear
+      @error_datum = []
     end
 
     # Returns +true+ if the error messages include an error for the given key
@@ -94,7 +101,9 @@ module ActiveModel
     #   person.errors.include?(:name) # => true
     #   person.errors.include?(:age)  # => false
     def include?(attribute)
-      (v = messages[attribute]) && v.any?
+      @error_datum.
+        select { |error_data| error_data.attribute.to_s == attribute.to_s }.
+        any?
     end
     # aliases include?
     alias :has_key? :include?
@@ -105,7 +114,9 @@ module ActiveModel
     #   person.errors.get(:name) # => ["can not be nil"]
     #   person.errors.get(:age)  # => nil
     def get(key)
-      messages[key]
+      @error_datum.
+        select { |error_data| error_data.attribute.to_s == key.to_s }.
+        map(&:message)
     end
 
     # Set messages for +key+ to +value+.
@@ -114,7 +125,8 @@ module ActiveModel
     #   person.errors.set(:name, ["can't be nil"])
     #   person.errors.get(:name) # => ["can't be nil"]
     def set(key, value)
-      messages[key] = value
+      @error_datum.delete_if { |error_data| error_data.attribute == key }
+      @error_datum << ErrorData.new(attribute: key, message: value)
     end
 
     # Delete messages for +key+. Returns the deleted messages.
@@ -123,7 +135,10 @@ module ActiveModel
     #   person.errors.delete(:name) # => ["can not be nil"]
     #   person.errors.get(:name)    # => nil
     def delete(key)
-      messages.delete(key)
+      error_datum_for_key = @error_datum.
+        select { |error_data| error_data.attribute.to_s == key.to_s }
+      @error_datum.delete_if { |error_data| error_data.attribute.to_s == key.to_s }
+      error_datum_for_key.map(&:message)
     end
 
     # When passed a symbol or a name of a method, returns an array of errors
@@ -132,7 +147,9 @@ module ActiveModel
     #   person.errors[:name]  # => ["can not be nil"]
     #   person.errors['name'] # => ["can not be nil"]
     def [](attribute)
-      get(attribute.to_sym) || set(attribute.to_sym, [])
+      @error_datum.
+        select { |error_data| error_data.attribute.to_s == attribute.to_s }.
+        map(&:message)
     end
 
     # Adds to the supplied attribute the supplied error message.
@@ -140,7 +157,7 @@ module ActiveModel
     #   person.errors[:name] = "must be set"
     #   person.errors[:name] # => ['must be set']
     def []=(attribute, error)
-      self[attribute] << error
+      @error_datum << ErrorData.new(attribute: attribute, message: error)
     end
 
     # Iterates through each error key, value pair in the error messages hash.
@@ -158,8 +175,9 @@ module ActiveModel
     #     # then yield :name and "must be specified"
     #   end
     def each
-      messages.each_key do |attribute|
-        self[attribute].each { |error| yield attribute, error }
+      #Is order of keys/errors important for this?
+      @error_datum.sort.each do |error_data|
+        yield error_data.attribute, error_data.message
       end
     end
 
@@ -170,7 +188,7 @@ module ActiveModel
     #   person.errors.add(:name, "must be specified")
     #   person.errors.size # => 2
     def size
-      values.flatten.size
+      @error_datum.uniq(&:attribute).size
     end
 
     # Returns all message values.
@@ -214,7 +232,7 @@ module ActiveModel
     #   person.errors.full_messages # => ["name can not be nil"]
     #   person.errors.empty?        # => false
     def empty?
-      all? { |k, v| v && v.empty? && !v.is_a?(String) }
+      @error_datum.empty?
     end
     # aliases empty?
     alias_method :blank?, :empty?
@@ -290,13 +308,16 @@ module ActiveModel
     #
     #   person.errors.messages # => {}
     def add(attribute, message = :invalid, options = {})
-      message = normalize_message(attribute, message, options)
+      error_code = message.is_a?(Symbol) ? message : nil
+      error_data = ErrorData.new(attribute: attribute, code: error_code)
+      error_data.message = normalize_message(attribute, message, options)
+
       if exception = options[:strict]
         exception = ActiveModel::StrictValidationFailed if exception == true
-        raise exception, full_message(attribute, message)
+        raise exception, full_message(error_data.attribute, error_data.message)
       end
 
-      self[attribute] << message
+      @error_datum << error_data
     end
 
     # Will add an error message to each of the attributes in +attributes+
@@ -332,8 +353,12 @@ module ActiveModel
     #   person.errors.add :name, :blank
     #   person.errors.added? :name, :blank # => true
     def added?(attribute, message = :invalid, options = {})
-      message = normalize_message(attribute, message, options)
-      self[attribute].include? message
+      #Duplicated code
+      error_code = message.is_a?(Symbol) ? message : nil
+      error_data = ErrorData.new(attribute: attribute, code: error_code)
+      error_data.message = normalize_message(attribute, message, options)
+
+      @error_datum.include?(error_data)
     end
 
     # Returns all the full error messages in an array.
@@ -464,5 +489,28 @@ module ActiveModel
   #   person.valid?
   #   # => ActiveModel::StrictValidationFailed: Name can't be blank
   class StrictValidationFailed < StandardError
+  end
+
+  #TODO: Document
+  class ErrorData
+    attr_accessor :attribute, :message, :code
+
+    def initialize(options)
+      self.attribute = options[:attribute]
+      self.message   = options[:message]
+      self.code      = options[:code]
+    end
+
+    def <=>(other)
+      return 0 if other.nil?
+      self.attribute <=> other.attribute
+    end
+
+    def ==(other)
+      return false if other.nil? || !other.is_a?(ErrorData)
+      self.attribute == other.attribute &&
+        self.message == other.message &&
+        self.code    == other.code
+    end
   end
 end

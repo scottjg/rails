@@ -15,13 +15,13 @@ class ValidatesWithTest < ActiveModel::TestCase
 
   class ValidatorThatAddsErrors < ActiveModel::Validator
     def validate(record)
-      record.errors[:base] << ERROR_MESSAGE
+      record.errors.add(:base, ERROR_MESSAGE)
     end
   end
 
   class OtherValidatorThatAddsErrors < ActiveModel::Validator
     def validate(record)
-      record.errors[:base] << OTHER_ERROR_MESSAGE
+      record.errors.add(:base, OTHER_ERROR_MESSAGE)
     end
   end
 
@@ -33,14 +33,14 @@ class ValidatesWithTest < ActiveModel::TestCase
   class ValidatorThatValidatesOptions < ActiveModel::Validator
     def validate(record)
       if options[:field] == :first_name
-        record.errors[:base] << ERROR_MESSAGE
+        record.errors.add(:base, ERROR_MESSAGE)
       end
     end
   end
 
   class ValidatorPerEachAttribute < ActiveModel::EachValidator
     def validate_each(record, attribute, value)
-      record.errors[attribute] << "Value is #{value}"
+      record.errors.add(attribute, "Value is #{value}")
     end
   end
 
