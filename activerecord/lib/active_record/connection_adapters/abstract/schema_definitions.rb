@@ -271,6 +271,7 @@ module ActiveRecord
 
         column.limit       = limit
         column.precision   = options[:precision]
+        column.array       = options[:array] if column.respond_to?(:array)
         column.scale       = options[:scale]
         column.default     = options[:default]
         column.null        = options[:null]
