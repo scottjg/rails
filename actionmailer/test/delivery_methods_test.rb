@@ -22,27 +22,19 @@ end
 
 class DefaultsDeliveryMethodsTest < ActiveSupport::TestCase
   test "default smtp settings" do
-    settings = { address:              "localhost",
+    ActionMailer::Base.delivery_method = :smtp
+    settings = { address:             "localhost",
                  port:                 25,
                  domain:               'localhost.localdomain',
                  user_name:            nil,
                  password:             nil,
                  authentication:       nil,
-                 enable_starttls_auto: true }
-    assert_equal settings, ActionMailer::Base.smtp_settings
-  end
-
-  test "default file delivery settings" do
-    settings = {location: "#{Dir.tmpdir}/mails"}
-    assert_equal settings, ActionMailer::Base.file_settings
-  end
-
-  test "default sendmail settings" do
-    settings = {location:  '/usr/sbin/sendmail',
-                arguments: '-i -t'}
-    assert_equal settings, ActionMailer::Base.sendmail_settings
+                 enable_starttls_auto: true,
+                 adapter:              :smtp }
+    assert_equal settings, ActionMailer::Base.configuration
   end
 end
+
 
 class CustomDeliveryMethodsTest < ActiveSupport::TestCase
   def setup
@@ -58,24 +50,13 @@ class CustomDeliveryMethodsTest < ActiveSupport::TestCase
   end
 
   test "allow to add custom delivery method" do
-    ActionMailer::Base.delivery_method = :custom
+    ActionMailer::Base.configuration = { adapter: :custom }
     assert_equal :custom, ActionMailer::Base.delivery_method
   end
 
   test "allow to customize custom settings" do
-    ActionMailer::Base.custom_settings = { foo: :bar }
-    assert_equal Hash[foo: :bar], ActionMailer::Base.custom_settings
-  end
-
-  test "respond to custom settings" do
-    assert_respond_to ActionMailer::Base, :custom_settings
-    assert_respond_to ActionMailer::Base, :custom_settings=
-  end
-
-  test "does not respond to unknown settings" do
-    assert_raise NoMethodError do
-      ActionMailer::Base.another_settings
-    end
+    ActionMailer::Base.configuration = { adapter: :custom, foo: :bar }
+    assert_equal({ adapter: :custom, foo: :bar }, ActionMailer::Base.configuration)
   end
 end
 
@@ -83,7 +64,7 @@ class MailDeliveryTest < ActiveSupport::TestCase
   class DeliveryMailer < ActionMailer::Base
     DEFAULT_HEADERS = {
       to: 'mikel@test.lindsaar.net',
-      from: 'jose@test.plataformatec.com'
+      from: 'jose@test.plataformatec.com',
     }
 
     def welcome(hash={})
@@ -144,9 +125,10 @@ class MailDeliveryTest < ActiveSupport::TestCase
                  user_name:            nil,
                  password:             nil,
                  authentication:       nil,
-                 enable_starttls_auto: true }
-    assert_equal settings, ActionMailer::Base.smtp_settings
-    overridden_options = {user_name: "overridden", password: "somethingobtuse"}
+                 enable_starttls_auto: true,
+                 adapter:              :smtp }
+    assert_equal settings, ActionMailer::Base.configuration
+    overridden_options = { user_name: "overridden", password: "somethingobtuse" }
     mail_instance = DeliveryMailer.welcome(delivery_method_options: overridden_options)
     delivery_method_instance = mail_instance.delivery_method
     assert_equal "overridden", delivery_method_instance.settings[:user_name]
