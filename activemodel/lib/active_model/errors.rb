@@ -188,7 +188,7 @@ module ActiveModel
     #   person.errors.add(:name, "must be specified")
     #   person.errors.size # => 2
     def size
-      @error_datum.uniq(&:attribute).size
+      @error_datum.size
     end
 
     # Returns all message values.
@@ -223,6 +223,8 @@ module ActiveModel
     #   person.errors.add(:name, "must be specified")
     #   person.errors.count # => 2
     def count
+      #TODO: Is it necessary to convert to array (and hence to full_messages)
+      #before counting? Why not just call size?
       to_a.size
     end
 
