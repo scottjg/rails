@@ -7,7 +7,7 @@ module ActionMailer
     extend ActiveSupport::Concern
 
     included do
-      class_attribute :delivery_methods, :delivery_method
+      class_attribute :delivery_methods, :delivery_method, :delivery_method_options
 
       # Do not make this inheritable, because we always want it to propagate
       cattr_accessor :raise_delivery_errors
@@ -18,6 +18,7 @@ module ActionMailer
 
       self.delivery_methods = {}.freeze
       self.delivery_method  = :smtp
+      self.delivery_method_options = {}.freeze
 
       add_delivery_method :smtp, Mail::SMTP,
         address:              "localhost",
@@ -50,9 +51,21 @@ module ActionMailer
       #     location:  '/usr/sbin/sendmail',
       #     arguments: '-i -t'
       def add_delivery_method(symbol, klass, default_options={})
-        class_attribute(:"#{symbol}_settings") unless respond_to?(:"#{symbol}_settings")
-        send(:"#{symbol}_settings=", default_options)
+        self.delivery_method_options = delivery_method_options.merge(symbol.to_sym => default_options).freeze
         self.delivery_methods = delivery_methods.merge(symbol.to_sym => klass).freeze
+      end
+
+      def configuration=(options)
+        options = options.dup
+        adapter = options.delete(:adapter)
+        self.delivery_method = adapter if adapter
+        if options.present?
+          self.delivery_method_options = delivery_method_options.merge(delivery_method => options)
+        end
+      end
+
+      def configuration
+        (delivery_method_options[delivery_method] || {}).merge(adapter: delivery_method)
       end
 
       def wrap_delivery_behavior(mail, method=nil, options=nil) # :nodoc:
@@ -64,7 +77,8 @@ module ActionMailer
           raise "Delivery method cannot be nil"
         when Symbol
           if klass = delivery_methods[method]
-            mail.delivery_method(klass,(send(:"#{method}_settings") || {}).merge!(options || {}))
+            options = (delivery_method_options[method] || {}).merge(options || {})
+            mail.delivery_method(klass, options)
           else
             raise "Invalid delivery method #{method.inspect}"
           end
