@@ -160,7 +160,8 @@ module ActiveRecord
 
           singleton_class.send(:define_method, name) do |*args|
             if body.respond_to?(:call)
-              scope = all.scoping { body.call(*args) }
+              t = all
+              scope = t.scoping { body.call(t, *args) }
               scope = scope.extending(extension) if extension
             else
               scope = body
