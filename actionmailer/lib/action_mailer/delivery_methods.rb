@@ -20,6 +20,8 @@ module ActionMailer
       self.delivery_method  = :smtp
       self.delivery_method_options = {}.freeze
 
+      include ActionMailer::DeprecatedDeliveryMethods
+
       add_delivery_method :smtp, Mail::SMTP,
         address:              "localhost",
         port:                 25,

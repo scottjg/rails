@@ -41,6 +41,7 @@ module ActionMailer
 
   autoload :Base
   autoload :DeliveryMethods
+  autoload :DeprecatedDeliveryMethods
   autoload :MailHelper
   autoload :TestCase
   autoload :TestHelper
