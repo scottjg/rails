@@ -606,7 +606,7 @@ module Rails
 
     initializer :load_config_initializers do
       config.paths["config/initializers"].existent.sort.each do |initializer|
-        load(initializer)
+        require(initializer)
       end
     end
 
