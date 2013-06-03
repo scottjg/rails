@@ -170,7 +170,7 @@ module ActiveRecord
       # If this is a StrongParameters hash, and access to inheritance_column is not permitted,
       # this will ignore the inheritance column and return nil
       def subclass_from_attrs(attrs)
-        subclass_name = attrs.with_indifferent_access[inheritance_column]
+        subclass_name = attrs[inheritance_column.to_sym] || attrs[inheritance_column.to_s]
 
         if subclass_name.present? && subclass_name != self.name
           subclass = subclass_name.safe_constantize
