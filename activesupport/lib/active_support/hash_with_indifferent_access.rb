@@ -252,6 +252,12 @@ module ActiveSupport
         end
       end
   end
+
+  class HashWithoutIndifferentAccess < Hash
+    def nested_under_indifferent_access
+      self
+    end
+  end
 end
 
 HashWithIndifferentAccess = ActiveSupport::HashWithIndifferentAccess

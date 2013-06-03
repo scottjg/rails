@@ -1,3 +1,5 @@
+require 'active_support/core_ext/hash/indifferent_access'
+
 module ActiveRecord
   module AttributeMethods
     module Serialization
@@ -106,6 +108,11 @@ module ActiveRecord
 
         def type_cast_attribute_for_write(column, value)
           if column && coder = self.class.serialized_attributes[column.name]
+            if value.instance_of?(Hash)
+              hash = ActiveSupport::HashWithoutIndifferentAccess.new
+              value.each { |k,v| hash[k] = v }
+              value = hash
+            end
             Attribute.new(coder, value, :unserialized)
           else
             super
