@@ -1,5 +1,13 @@
 ## unreleased ##
 
+*   Fix the assert_recognizes test method so that it works when there are
+    constraints on the querystring.
+
+    Issue/Pull Request #9368
+    Backport #5219
+
+    *Brian Hahn*
+
 *   Fix explicit names on multiple file fields. If a file field tag has
     the multiple option, it is turned into an array field (appending `[]`),
     but if an explicit name is passed to `file_field` the `[]` is not
