@@ -4,6 +4,7 @@ require 'models/reply'
 require 'models/person'
 require 'models/traffic_light'
 require 'bcrypt'
+require 'active_support/core_ext/object/deep_dup'
 
 class SerializedAttributeTest < ActiveRecord::TestCase
   fixtures :topics
@@ -248,5 +249,19 @@ class SerializedAttributeTest < ActiveRecord::TestCase
       type = topic.instance_variable_get("@columns_hash")["content"]
       assert !type.instance_variable_get("@column").is_a?(ActiveRecord::AttributeMethods::Serialization::Type)
     end
+  end
+
+  def test_serialized_column_should_not_support_indifferent_access
+    hash = { :a => 0, "b" => 1,
+             :c => { :d => 2, "e" => 3 },
+             "f" => [{ :g => 4, "h" => 5 }] }
+    Topic.serialize(:content, Hash)
+    topic = Topic.create(content: hash.deep_dup)
+    assert_equal hash, topic.content
+
+    topic = Topic.new
+    topic.content = hash.deep_dup
+    assert topic.save
+    assert_equal hash, topic.content
   end
 end
