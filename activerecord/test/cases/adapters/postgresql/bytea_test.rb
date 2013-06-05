@@ -84,4 +84,20 @@ class PostgresqlByteaTest < ActiveRecord::TestCase
     assert_equal(nil, record.payload)
     assert_equal(nil, ByteaDataType.where(id: record.id).first.payload)
   end
+
+  class Serializer
+    def load(str); str; end
+    def dump(str); str; end
+  end
+
+  def test_serialize
+    klass = Class.new(ByteaDataType) {
+      serialize :serialized, Serializer.new
+    }
+    obj = klass.new
+    obj.serialized = "hello world"
+    obj.save!
+    obj.reload
+    assert_equal "hello world", obj.serialized
+  end
 end
