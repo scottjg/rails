@@ -1,4 +1,36 @@
-## Rails 4.0.0 (unreleased) ##
+## unreleased ##
+*   Fix `add_column` with `array` option when using PostgreSQL. Fixes #10432
+
+    *Adam Anderson*
+
+
+*   Fix pending migrations error when loading schema and `ActiveRecord::Base.table_name_prefix`
+    is not blank.
+
+    Call `assume_migrated_upto_version` on connection to prevent it from first
+    being picked up in `method_missing`.
+
+    In the base class, `Migration`, `method_missing` expects the argument to be a
+    table name, and calls `proper_table_name` on the arguments before sending to
+    `connection`. If `table_name_prefix` or `table_name_suffix` is used, the schema
+    version changes to `prefix_version_suffix`, breaking `rake test:prepare`.
+
+    Fixes #10411.
+
+    *Kyle Stevens*
+
+*   Mute `psql` output when running rake db:schema:load.
+
+    *Godfrey Chan*
+
+
+## Rails 4.0.0.rc1 (April 29, 2013) ##
+
+*   Trigger a save on `has_one association=(associate)` when the associate contents have changed.
+
+    Fix #8856.
+
+    *Chris Thompson*
 
 *   Allow to use databases.rake tasks without having `Rails.application`.
 
