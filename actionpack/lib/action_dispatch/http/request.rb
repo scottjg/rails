@@ -232,11 +232,11 @@ module ActionDispatch
     end
     alias :query_parameters :GET
 
+    alias :request_parameters :POST
     # Override Rack's POST method to support indifferent access
     def POST
       @env["action_dispatch.request.request_parameters"] ||= (normalize_parameters(super) || {})
     end
-    alias :request_parameters :POST
 
 
     # Returns the authorization header regardless of whether it was specified directly or through one of the
