@@ -226,11 +226,11 @@ module ActionDispatch
       @env['rack.session.options'] = options
     end
 
+    alias :query_parameters :GET
     # Override Rack's GET method to support indifferent access
     def GET
       @env["action_dispatch.request.query_parameters"] ||= (normalize_parameters(super) || {})
     end
-    alias :query_parameters :GET
 
     alias :request_parameters :POST
     # Override Rack's POST method to support indifferent access
