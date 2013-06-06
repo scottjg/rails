@@ -384,7 +384,8 @@ module ActiveRecord
         }
 
         associated_records(ids) do |some_ids|
-          reflection.klass.scoped.apply_finder_options(find_options.merge(:conditions => [conditions, some_ids])).to_a
+          find_options[:conditions] = [conditions, some_ids]
+          reflection.klass.scoped.apply_finder_options(find_options).to_a
         end
       end
 
