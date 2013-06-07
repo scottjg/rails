@@ -10,6 +10,18 @@ module ActiveRecord
         @connection.exec_query('create table ex(id serial primary key, number integer, data character varying(255))')
       end
 
+      def test_default_value
+        @connection.exec_query("alter table ex add column name character varying(255) default 'Smith'")
+        column = @connection.columns('ex').find { |col| col.name == 'name' }
+        assert_equal 'Smith', column.default
+      end
+
+      def test_default_value_with_single_quotes
+        @connection.exec_query("alter table ex add column name character varying(255) default 'O''Connors'")
+        column = @connection.columns('ex').find { |col| col.name == 'name' }
+        assert_equal "O'Connors", column.default
+      end
+
       def test_valid_column
         column = @connection.columns('ex').find { |col| col.name == 'id' }
         assert @connection.valid_type?(column.type)
