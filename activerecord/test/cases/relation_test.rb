@@ -1,19 +1,18 @@
 require "cases/helper"
 require 'models/post'
 require 'models/comment'
+require 'models/author'
+require 'models/rating'
 
 module ActiveRecord
   class RelationTest < ActiveRecord::TestCase
-    fixtures :posts, :comments
+    fixtures :posts, :comments, :authors
 
     class FakeKlass < Struct.new(:table_name, :name)
     end
 
     def test_construction
-      relation = nil
-      assert_nothing_raised do
-        relation = Relation.new FakeKlass, :b
-      end
+      relation = Relation.new FakeKlass, :b
       assert_equal FakeKlass, relation.klass
       assert_equal :b, relation.table
       assert !relation.loaded, 'relation is not loaded'
@@ -176,6 +175,21 @@ module ActiveRecord
       relation.merge!(where: ['foo = ?', 'bar'])
       assert_equal ['foo = bar'], relation.where_values
     end
+
+    def test_relation_merging_with_merged_joins
+      special_comments_with_ratings = SpecialComment.joins(:ratings)
+      posts_with_special_comments_with_ratings = Post.group("posts.id").joins(:special_comments).merge(special_comments_with_ratings)
+      assert_equal 3, authors(:david).posts.merge(posts_with_special_comments_with_ratings).count.length
+    end
+
+    def test_respond_to_for_non_selected_element
+      post = Post.select(:title).first
+      assert_equal false, post.respond_to?(:body), "post should not respond_to?(:body) since invoking it raises exception"
+
+      silence_warnings { post = Post.select("'title' as post_title").first }
+      assert_equal false, post.respond_to?(:title), "post should not respond_to?(:body) since invoking it raises exception"
+    end
+
   end
 
   class RelationMutationTest < ActiveSupport::TestCase

@@ -138,6 +138,12 @@ Sometimes, you have a resource that clients always look up without referencing a
 get 'profile', to: 'users#show'
 ```
 
+Passing a `String` to `match` will expect a `controller#action` format, while passing a `Symbol` will map directly to an action:
+
+```ruby
+get 'profile', to: :show
+```
+
 This resourceful route:
 
 ```ruby
@@ -851,7 +857,7 @@ resources :user_permissions, controller: 'admin/user_permissions'
 This will route to the `Admin::UserPermissions` controller.
 
 NOTE: Only the directory notation is supported. Specifying the
-controller with ruby constant notation (eg. `:controller =>
+controller with Ruby constant notation (eg. `:controller =>
 'Admin::UserPermissions'`) can lead to routing problems and results in
 a warning.
 

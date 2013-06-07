@@ -299,7 +299,7 @@ module ActionDispatch
           end
       end
 
-      # Invokes Rack::Mount::Utils.normalize path and ensure that
+      # Invokes Journey::Router::Utils.normalize_path and ensure that
       # (:locale) becomes (/:locale) instead of /(:locale). Except
       # for root cases, where the latter is the correct one.
       def self.normalize_path(path)
@@ -513,6 +513,11 @@ module ActionDispatch
           scope(scope) do
             instance_exec(&block)
           end
+        end
+
+        # Query if the following named route was already defined.
+        def has_named_route?(name)
+          @set.named_routes.routes[name.to_sym]
         end
 
         private
@@ -945,6 +950,8 @@ module ActionDispatch
         VALID_ON_OPTIONS  = [:new, :collection, :member]
         RESOURCE_OPTIONS  = [:as, :controller, :path, :only, :except, :param, :concerns]
         CANONICAL_ACTIONS = %w(index create new show update destroy)
+        RESOURCE_METHOD_SCOPES = [:collection, :member, :new]
+        RESOURCE_SCOPES = [:resource, :resources]
 
         class Resource #:nodoc:
           attr_reader :controller, :path, :options, :param
@@ -1499,11 +1506,11 @@ module ActionDispatch
           end
 
           def resource_scope? #:nodoc:
-            [:resource, :resources].include? @scope[:scope_level]
+            RESOURCE_SCOPES.include? @scope[:scope_level]
           end
 
           def resource_method_scope? #:nodoc:
-            [:collection, :member, :new].include? @scope[:scope_level]
+            RESOURCE_METHOD_SCOPES.include? @scope[:scope_level]
           end
 
           def with_exclusive_scope

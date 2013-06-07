@@ -170,9 +170,10 @@ module ActionDispatch
 
             def call(t, args)
               if args.size == arg_size && !args.last.is_a?(Hash) && optimize_routes_generation?(t)
-                @options.merge!(t.url_options) if t.respond_to?(:url_options)
-                @options[:path] = optimized_helper(args)
-                ActionDispatch::Http::URL.url_for(@options)
+                options = @options.dup
+                options.merge!(t.url_options) if t.respond_to?(:url_options)
+                options[:path] = optimized_helper(args)
+                ActionDispatch::Http::URL.url_for(options)
               else
                 super
               end
@@ -217,6 +218,7 @@ module ActionDispatch
                 keys -= t.url_options.keys if t.respond_to?(:url_options)
                 keys -= options.keys
               end
+              keys -= inner_options.keys
               result.merge!(Hash[keys.zip(args)])
             end
 

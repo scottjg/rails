@@ -270,7 +270,7 @@ module RailtiesTest
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get 'foo', :to => 'foo#index'
         end
       RUBY
@@ -416,11 +416,6 @@ YAML
       boot_rails
     end
 
-    test "Rails::Engine itself does not respond to config" do
-      boot_rails
-      assert !Rails::Engine.respond_to?(:config)
-    end
-
     test "initializers are executed after application configuration initializers" do
       @plugin.write "lib/bukkits.rb", <<-RUBY
         module Bukkits
@@ -472,7 +467,7 @@ YAML
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           mount(Bukkits::Engine => "/bukkits")
         end
       RUBY
@@ -607,7 +602,7 @@ YAML
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get "/bar" => "bar#index", as: "bar"
           mount Bukkits::Engine => "/bukkits", as: "bukkits"
         end
@@ -725,7 +720,7 @@ YAML
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           mount Bukkits::Engine => "/bukkits", as: "bukkits"
         end
       RUBY
@@ -769,7 +764,7 @@ YAML
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           mount Bukkits::Awesome::Engine => "/bukkits", :as => "bukkits"
         end
       RUBY
@@ -833,7 +828,7 @@ YAML
       add_to_config "isolate_namespace AppTemplate"
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do end
+        Rails.application.routes.draw do end
       RUBY
 
       boot_rails
@@ -1211,7 +1206,7 @@ YAML
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get '/bar' => 'bar#index', :as => 'bar'
           mount Bukkits::Engine => "/bukkits", :as => "bukkits"
         end

@@ -162,8 +162,8 @@ Person.create(name: nil).valid? # => false
 ```
 
 After Active Record has performed validations, any errors found can be accessed
-through the `errors` instance method, which returns a collection of errors. By
-definition, an object is valid if this collection is empty after running
+through the `errors.messages` instance method, which returns a collection of errors.
+By definition, an object is valid if this collection is empty after running
 validations.
 
 Note that an object instantiated with `new` will not report errors even if it's
@@ -176,17 +176,17 @@ end
 
 >> p = Person.new
 #=> #<Person id: nil, name: nil>
->> p.errors
+>> p.errors.messages
 #=> {}
 
 >> p.valid?
 #=> false
->> p.errors
+>> p.errors.messages
 #=> {name:["can't be blank"]}
 
 >> p = Person.create
 #=> #<Person id: nil, name: nil>
->> p.errors
+>> p.errors.messages
 #=> {name:["can't be blank"]}
 
 >> p.save
@@ -434,7 +434,7 @@ end
 
 Note that the default error messages are plural (e.g., "is too short (minimum
 is %{count} characters)"). For this reason, when `:minimum` is 1 you should
-provide a personalized message or use `validates_presence_of` instead. When
+provide a personalized message or use `presence: true` instead. When
 `:in` or `:within` have a lower limit of 1, you should either provide a
 personalized message or call `presence` prior to `length`.
 
@@ -768,6 +768,7 @@ class Person < ActiveRecord::Base
   validates :name, presence: true, on: :save
 end
 ```
+The last line is in review state and as of now, it is not running in any version of Rails 3.2.x as discussed in this [issue](https://github.com/rails/rails/issues/10248)
 
 Strict Validations
 ------------------
@@ -992,12 +993,12 @@ end
 
 person = Person.new
 person.valid? # => false
-person.errors
+person.errors.messages
  # => {:name=>["can't be blank", "is too short (minimum is 3 characters)"]}
 
 person = Person.new(name: "John Doe")
 person.valid? # => true
-person.errors # => []
+person.errors.messages # => {}
 ```
 
 ### `errors[]`

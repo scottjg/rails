@@ -383,7 +383,7 @@ module ActiveRecord
 
         TYPES = {}
 
-        # Register an MySQL +type_id+ with a typcasting object in
+        # Register an MySQL +type_id+ with a typecasting object in
         # +type+.
         def self.register_type(type_id, type)
           TYPES[type_id] = type
@@ -391,6 +391,14 @@ module ActiveRecord
 
         def self.alias_type(new, old)
           TYPES[new] = TYPES[old]
+        end
+
+        def self.find_type(field)
+          if field.type == Mysql::Field::TYPE_TINY && field.length > 1
+            TYPES[Mysql::Field::TYPE_LONG]
+          else
+            TYPES.fetch(field.type) { Fields::Identity.new }
+          end
         end
 
         register_type Mysql::Field::TYPE_TINY,    Fields::Boolean.new
@@ -425,9 +433,7 @@ module ActiveRecord
               if field.decimals > 0
                 types[field.name] = Fields::Decimal.new
               else
-                types[field.name] = Fields::TYPES.fetch(field.type) {
-                  Fields::Identity.new
-                }
+                types[field.name] = Fields.find_type field
               end
             }
             result_set = ActiveRecord::Result.new(types.keys, result.to_a, types)

@@ -150,7 +150,25 @@ class AddPartNumberToProducts < ActiveRecord::Migration
 end
 ```
 
-Similarly,
+If you'd like to add an index on the new column, you can do that as well:
+
+```bash
+$ rails generate migration AddPartNumberToProducts part_number:string:index
+```
+
+will generate
+
+```ruby
+class AddPartNumberToProducts < ActiveRecord::Migration
+  def change
+    add_column :products, :part_number, :string
+    add_index :products, :part_number
+  end
+end
+```
+
+
+Similarly, you can generate a migration to remove a column from the command line:
 
 ```bash
 $ rails generate migration RemovePartNumberFromProducts part_number:string
@@ -834,7 +852,7 @@ end
 # app/models/product.rb
 
 class Product < ActiveRecord::Base
-  validates :flag, presence: true
+  validates :flag, inclusion: { in: [true, false] }
 end
 ```
 
@@ -859,7 +877,8 @@ end
 # app/models/product.rb
 
 class Product < ActiveRecord::Base
-  validates :flag, :fuzz, presence: true
+  validates :flag, inclusion:  { in: [true, false] }
+  validates :fuzz, presence: true
 end
 ```
 
@@ -1046,8 +1065,8 @@ with foreign key constraints in the database.
 
 Although Active Record does not provide any tools for working directly with
 such features, the `execute` method can be used to execute arbitrary SQL. You
-could also use some gem like
-[foreigner](https://github.com/matthuhiggins/foreigner) which add foreign key
+can also use a gem like
+[foreigner](https://github.com/matthuhiggins/foreigner) which adds foreign key
 support to Active Record (including support for dumping foreign keys in
 `db/schema.rb`).
 

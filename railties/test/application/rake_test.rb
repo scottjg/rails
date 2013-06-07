@@ -34,7 +34,7 @@ module ApplicationTests
           config.middleware.use SuperMiddleware
         end
 
-        AppTemplate::Application.initialize!
+        Rails.application.initialize!
       RUBY
 
       assert_match("SuperMiddleware", Dir.chdir(app_path){ `rake middleware` })
@@ -77,6 +77,23 @@ module ApplicationTests
 
       output = Dir.chdir(app_path){ `rake do_nothing` }
       assert_match "Hello world", output
+    end
+
+    def test_should_not_eager_load_model_path_for_rake
+      add_to_config <<-RUBY
+        config.eager_load = true
+
+        rake_tasks do
+          task do_nothing: :environment do
+          end
+        end
+      RUBY
+
+      app_file "app/models/hello.rb", <<-RUBY
+      raise 'should not be pre-required for rake even `eager_load=true`'
+      RUBY
+
+      Dir.chdir(app_path){ `rake do_nothing` }
     end
 
     def test_code_statistics_sanity
@@ -130,6 +147,19 @@ module ApplicationTests
         end
       RUBY
 
+      output = Dir.chdir(app_path){ `rake routes` }
+      assert_equal "Prefix Verb URI Pattern     Controller#Action\ncart GET /cart(.:format) cart#show\n", output
+    end
+
+    def test_rake_routes_with_controller_environment
+      app_file "config/routes.rb", <<-RUBY
+        AppTemplate::Application.routes.draw do
+          get '/cart', to: 'cart#show'
+          get '/basketball', to: 'basketball#index'
+        end
+      RUBY
+
+      ENV['CONTROLLER'] = 'cart'
       output = Dir.chdir(app_path){ `rake routes` }
       assert_equal "Prefix Verb URI Pattern     Controller#Action\ncart GET /cart(.:format) cart#show\n", output
     end
@@ -197,7 +227,7 @@ module ApplicationTests
          bundle exec rake db:migrate db:test:clone test`
       end
 
-      assert_match(/7 tests, 13 assertions, 0 failures, 0 errors/, output)
+      assert_match(/7 runs, 13 assertions, 0 failures, 0 errors/, output)
       assert_no_match(/Errors running/, output)
     end
 
@@ -207,7 +237,7 @@ module ApplicationTests
          bundle exec rake db:migrate db:test:clone test`
       end
 
-      assert_match(/7 tests, 13 assertions, 0 failures, 0 errors/, output)
+      assert_match(/7 runs, 13 assertions, 0 failures, 0 errors/, output)
       assert_no_match(/Errors running/, output)
     end
 

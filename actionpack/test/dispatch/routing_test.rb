@@ -1124,6 +1124,35 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_equal "Not Found", @response.body
   end
 
+  def test_resources_with_format_false_from_scope
+    draw do
+      scope format: false do
+        resources :posts
+        resource :user
+      end
+    end
+
+    get "/posts"
+    assert_response :success
+    assert_equal "posts#index", @response.body
+    assert_equal "/posts", posts_path
+
+    get "/posts.html"
+    assert_response :not_found
+    assert_equal "Not Found", @response.body
+    assert_equal "/posts?format=html", posts_path(format: "html")
+
+    get "/user"
+    assert_response :success
+    assert_equal "users#show", @response.body
+    assert_equal "/user", user_path
+
+    get "/user.html"
+    assert_response :not_found
+    assert_equal "Not Found", @response.body
+    assert_equal "/user?format=html", user_path(format: "html")
+  end
+
   def test_index
     draw do
       get '/info' => 'projects#info', :as => 'info'
@@ -2633,6 +2662,19 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     assert_raises(ArgumentError) { routes.redirect Object.new }
   end
 
+  def test_named_route_check
+    before, after = nil
+
+    draw do
+      before = has_named_route?(:hello)
+      get "/hello", as: :hello, to: "hello#world"
+      after = has_named_route?(:hello)
+    end
+
+    assert !before, "expected to not have named route :hello before route definition"
+    assert after, "expected to have named route :hello after route definition"
+  end
+
   def test_explicitly_avoiding_the_named_route
     draw do
       scope :as => "routes" do
@@ -3322,6 +3364,10 @@ class TestUrlConstraints < ActionDispatch::IntegrationTest
       end
 
       get '/' => ok, :as => :alternate_root, :constraints => { :port => 8080 }
+
+      get '/search' => ok, :constraints => { :subdomain => false }
+
+      get '/logs' => ok, :constraints => { :subdomain => true }
     end
   end
 
@@ -3347,6 +3393,24 @@ class TestUrlConstraints < ActionDispatch::IntegrationTest
 
     get 'http://www.example.com:8080/'
     assert_response :success
+  end
+
+  test "false constraint expressions check for absence of values" do
+    get 'http://example.com/search'
+    assert_response :success
+    assert_equal 'http://example.com/search', search_url
+
+    get 'http://api.example.com/search'
+    assert_response :not_found
+  end
+
+  test "true constraint expressions check for presence of values" do
+    get 'http://api.example.com/logs'
+    assert_response :success
+    assert_equal 'http://api.example.com/logs', logs_url
+
+    get 'http://example.com/logs'
+    assert_response :not_found
   end
 end
 

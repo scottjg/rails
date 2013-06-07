@@ -755,6 +755,15 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal topic.replies.to_a.size, topic.replies_count
   end
 
+  def test_pushing_association_updates_counter_cache
+    topic = Topic.order("id ASC").first
+    reply = Reply.create!
+
+    assert_difference "topic.reload.replies_count", 1 do
+      topic.replies << reply
+    end
+  end
+
   def test_deleting_updates_counter_cache_without_dependent_option
     post = posts(:welcome)
 
@@ -1463,6 +1472,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal david.essays, Essay.where(writer_id: "David")
   end
 
+  def test_has_many_assignment_with_custom_primary_key
+    david = people(:david)
+
+    assert_equal ["A Modest Proposal"], david.essays.map(&:name)
+    david.essays = [Essay.create!(name: "Remote Work" )]
+    assert_equal ["Remote Work"], david.essays.map(&:name)
+  end
+
   def test_blank_custom_primary_key_on_new_record_should_not_run_queries
     author = Author.new
     assert !author.essays.loaded?
@@ -1728,12 +1745,6 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   test ":counter_sql is deprecated" do
     klass = Class.new(ActiveRecord::Base)
     assert_deprecated { klass.has_many :foo, :counter_sql => 'lol' }
-  end
-
-  test "sum calculation with block for array compatibility is deprecated" do
-    assert_deprecated do
-      posts(:welcome).comments.sum { |c| c.id }
-    end
   end
 
   test "has many associations on new records use null relations" do

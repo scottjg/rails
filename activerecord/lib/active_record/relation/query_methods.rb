@@ -34,7 +34,6 @@ module ActiveRecord
       #
       #    User.where.not(name: "Jon", role: "admin")
       #    # SELECT * FROM users WHERE name != 'Jon' AND role != 'admin'
-      #
       def not(opts, *rest)
         where_value = @scope.send(:build_where, opts, rest).map do |rel|
           case rel
@@ -341,6 +340,9 @@ module ActiveRecord
     #   User.where(name: "John", active: true).unscope(where: :name)
     #       == User.where(active: true)
     #
+    # This method is applied before the default_scope is applied. So the conditions
+    # specified in default_scope will not be removed.
+    #
     # Note that this method is more generalized than ActiveRecord::SpawnMethods#except
     # because #except will only affect a particular relation's values. It won't wipe
     # the order, grouping, etc. when that relation is merged. For example:
@@ -353,7 +355,7 @@ module ActiveRecord
       spawn.unscope!(*args)
     end
 
-    def unscope!(*args)
+    def unscope!(*args) # :nodoc:
       args.flatten!
 
       args.each do |scope|
@@ -552,7 +554,6 @@ module ActiveRecord
     #   Order.having('SUM(price) > 30').group('user_id')
     def having(opts, *rest)
       opts.blank? ? self : spawn.having!(opts, *rest)
-      spawn.having!(opts, *rest)
     end
 
     def having!(opts, *rest) # :nodoc:
@@ -863,8 +864,6 @@ module ActiveRecord
 
       return [] if joins.empty?
 
-      @implicit_readonly = true
-
       joins.map do |join|
         case join
         when Array
@@ -934,9 +933,7 @@ module ActiveRecord
       association_joins         = buckets[:association_join] || []
       stashed_association_joins = buckets[:stashed_join] || []
       join_nodes                = (buckets[:join_node] || []).uniq
-      string_joins              = (buckets[:string_join] || []).map { |x|
-        x.strip
-      }.uniq
+      string_joins              = (buckets[:string_join] || []).map { |x| x.strip }.uniq
 
       join_list = join_nodes + custom_join_ast(manager, string_joins)
 
@@ -947,8 +944,6 @@ module ActiveRecord
       )
 
       join_dependency.graft(*stashed_association_joins)
-
-      @implicit_readonly = true unless association_joins.empty? && stashed_association_joins.empty?
 
       # FIXME: refactor this to build an AST
       join_dependency.join_associations.each do |association|
@@ -962,7 +957,6 @@ module ActiveRecord
 
     def build_select(arel, selects)
       unless selects.empty?
-        @implicit_readonly = false
         arel.project(*selects)
       else
         arel.project(@klass.arel_table[Arel.star])
@@ -1016,7 +1010,7 @@ module ActiveRecord
     end
 
     def validate_order_args(args)
-      args.select { |a| Hash === a  }.each do |h|
+      args.grep(Hash) do |h|
         unless (h.values - [:asc, :desc]).empty?
           raise ArgumentError, 'Direction should be :asc or :desc'
         end

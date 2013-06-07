@@ -1,3 +1,5 @@
+require 'active_support/per_thread_registry'
+
 module ActiveRecord
   module Scoping
     extend ActiveSupport::Concern
@@ -9,11 +11,11 @@ module ActiveRecord
 
     module ClassMethods
       def current_scope #:nodoc:
-        ScopeRegistry.current.value_for(:current_scope, base_class.to_s)
+        ScopeRegistry.value_for(:current_scope, base_class.to_s)
       end
 
       def current_scope=(scope) #:nodoc:
-        ScopeRegistry.current.set_value_for(:current_scope, base_class.to_s, scope)
+        ScopeRegistry.set_value_for(:current_scope, base_class.to_s, scope)
       end
     end
 
@@ -34,22 +36,23 @@ module ActiveRecord
     # to get the current_scope for the +Board+ model, then you would use the
     # following code:
     #
-    #   registry = ActiveRecord::Scoping::ScopeRegistry.current
+    #   registry = ActiveRecord::Scoping::ScopeRegistry
     #   registry.set_value_for(:current_scope, "Board", some_new_scope)
     #
     # Now when you run:
     #
     #   registry.value_for(:current_scope, "Board")
     #
-    # You will obtain whatever was defined in +some_new_scope+.
+    # You will obtain whatever was defined in +some_new_scope+. The +value_for+
+    # and +set_value_for+ methods are delegated to the current +ScopeRegistry+
+    # object, so the above example code can also be called as:
+    #
+    #   ActiveRecord::Scoping::ScopeRegistry.set_value_for(:current_scope,
+    #       "Board", some_new_scope)
     class ScopeRegistry # :nodoc:
-      def self.current
-        Thread.current["scope_registry"] ||= new
-      end
+      extend ActiveSupport::PerThreadRegistry
 
       VALID_SCOPE_TYPES = [:current_scope, :ignore_default_scope]
-
-      attr_accessor :registry
 
       def initialize
         @registry = Hash.new { |hash, key| hash[key] = {} }
