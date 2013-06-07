@@ -747,7 +747,7 @@ module ActiveRecord #:nodoc:
       def reset_column_information
         undefine_attribute_methods
         @column_names = @columns = @columns_hash = @content_columns = @dynamic_methods_hash = @inheritance_column = nil
-        @arel_engine = @relation = @arel_table = nil
+        @arel_sanitize_tables = @arel_engine = @relation = @arel_table = nil
       end
 
       def reset_column_information_and_inheritable_attributes_for_all_subclasses#:nodoc:
@@ -1301,11 +1301,19 @@ MSG
         def sanitize_sql_hash_for_conditions(attrs, default_table_name = self.table_name)
           attrs = expand_hash_conditions_for_aggregates(attrs)
 
-          table = Arel::Table.new(self.table_name, :engine => arel_engine, :as => default_table_name)
+          table = arel_table_for_sanitize(default_table_name)
           builder = PredicateBuilder.new(arel_engine)
           builder.build_from_hash(attrs, table).map{ |b| b.to_sql }.join(' AND ')
         end
         alias_method :sanitize_sql_hash, :sanitize_sql_hash_for_conditions
+
+        def arel_table_for_sanitize(default_table_name)
+          arel_sanitize_tables[default_table_name] ||=  Arel::Table.new(self.table_name, :engine => arel_engine, :as => default_table_name)
+        end
+
+        def arel_sanitize_tables
+          @arel_sanitize_tables ||= {}
+        end
 
         # Sanitizes a hash of attribute/value pairs into SQL conditions for a SET clause.
         #   { :status => nil, :group_id => 1 }
