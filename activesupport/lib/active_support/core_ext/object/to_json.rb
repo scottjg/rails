@@ -1,9 +1,3 @@
-# Hack to load json gem first so we can overwrite its to_json.
-begin
-  require 'json'
-rescue LoadError
-end
-
 # The JSON gem adds a few modules to Ruby core classes containing :to_json definition, overwriting
 # their default behavior. That said, we need to define the basic to_json method in all of them,
 # otherwise they will always use to_json gem implementation, which is backwards incompatible in
@@ -13,7 +7,7 @@ end
   klass.class_eval do
     # Dumps object in JSON (JavaScript Object Notation). See www.json.org for more info.
     def to_json(options = nil)
-      ActiveSupport::JSON.encode(self, options)
+      MultiJson::JSON.encode(self, options)
     end
   end
 end
