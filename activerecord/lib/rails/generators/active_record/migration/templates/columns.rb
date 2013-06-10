@@ -12,14 +12,6 @@ class <%= migration_class_name %> < ActiveRecord::Migration
   <%- end -%>
 <%- end -%>
   end
-<%- elsif migration_action == 'join' -%>
-  def change
-    create_join_table :<%= join_tables.first %>, :<%= join_tables.second %> do |t|
-    <%- attributes.each do |attribute| -%>
-      <%= '# ' unless attribute.has_index? -%>t.index <%= attribute.index_name %><%= attribute.inject_index_options %>
-    <%- end -%>
-    end
-  end
 <%- else -%>
   def change
 <% attributes.each do |attribute| -%>

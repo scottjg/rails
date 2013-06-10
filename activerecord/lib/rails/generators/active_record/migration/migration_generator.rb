@@ -15,26 +15,25 @@ module ActiveRecord
       attr_reader :migration_action, :join_tables
 
       def set_local_assigns!
-        @migration_template = "migration.rb"
+        @migration_template = "columns.rb"
         case file_name
         when /^(add|remove)_(.*)_(?:to|from)_(.*)/
           @migration_action = $1
           @table_name       = $3.pluralize
           @migration_template = 'timestamps.rb' if $2 =~ /^timestamps$/
-        when /^(add|remove)_index(?:es)?_(.*)_(?:on)_(.*)/
+        when /^(add|remove)_index(?:es)?_(.*)_on_(.*)/
           @migration_action = $1
           @table_name       = $3.pluralize
           @migration_template = 'indexes.rb'
-        when /join_table/
-          if attributes.length == 2
+        when /^create_(.+)/
+          @migration_template = "tables.rb"
+          if $1.include?('join_table') and attributes.length == 2
             @migration_action = 'join'
             @join_tables      = attributes.map(&:plural_name)
-
             set_index_names
+          else
+            @table_name = $1.pluralize
           end
-        when /^create_(.+)/
-          @table_name = $1.pluralize
-          @migration_template = "create_table_migration.rb"
         end
       end
 
