@@ -1,6 +1,6 @@
 class <%= migration_class_name %> < ActiveRecord::Migration
-<%- if migration_action == 'add' -%>
   def change
+<%- if migration_action == 'add' -%>
 <% attributes.each do |attribute| -%>
   <%- if attribute.reference? -%>
     add_reference :<%= table_name %>, :<%= attribute.name %><%= attribute.inject_options %>
@@ -11,9 +11,8 @@ class <%= migration_class_name %> < ActiveRecord::Migration
     <%- end -%>
   <%- end -%>
 <%- end -%>
-  end
-<%- else -%>
-  def change
+<%- end -%>
+<%- if migration_action == 'remove' -%>
 <% attributes.each do |attribute| -%>
 <%- if migration_action -%>
   <%- if attribute.reference? -%>
@@ -26,6 +25,12 @@ class <%= migration_class_name %> < ActiveRecord::Migration
   <%- end -%>
 <%- end -%>
 <%- end -%>
-  end
 <%- end -%>
+<%- if migration_action == 'rename' -%>
+<% attributes.each_with_index do |attribute, index| -%>
+  <%- next if index % 2 != 0 %>
+  rename_column :<%= table_name %>, :<%= attribute.name %>, :<%= attributes.at(index+1).name %>
+<%- end -%>
+<%- end -%>
+  end
 end
