@@ -3,7 +3,7 @@ module Rails
     MAJOR = 3
     MINOR = 2
     TINY  = 13
-    PRE   = nil
+    PRE   = 'codeprimate'
 
     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
   end
