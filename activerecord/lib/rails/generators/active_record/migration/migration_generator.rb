@@ -12,7 +12,7 @@ module ActiveRecord
       end
 
       protected
-      attr_reader :migration_action, :join_tables
+      attr_reader :migration_action, :join_tables, :new_table_name
 
       def set_local_assigns!
         @migration_template = "columns.rb"
@@ -25,14 +25,22 @@ module ActiveRecord
           @migration_action = $1
           @table_name       = $3.pluralize
           @migration_template = 'indexes.rb'
-        when /^create_(.+)/
-          @migration_template = "tables.rb"
-          if $1.include?('join_table') and attributes.length == 2
+        when /join_table/
+          if attributes.size == 2
             @migration_action = 'join'
-            @join_tables      = attributes.map(&:plural_name)
+            @join_tables = attributes.map(&:plural_name)
+            @migration_template = 'tables.rb'
             set_index_names
+          end
+        when /^(create|rename)_(.+)/
+          @migration_template = "tables.rb"
+          @migration_action = $1
+          if @migration_action == 'create'
+              @table_name = $2.pluralize
           else
-            @table_name = $1.pluralize
+            @migration_action = 'rename'
+            $2 =~ /(.*)_to_(.*)/
+            @table_name, @new_table_name = $1.pluralize, $2.pluralize
           end
         end
       end

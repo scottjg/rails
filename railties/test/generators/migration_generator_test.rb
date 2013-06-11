@@ -205,6 +205,15 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  def test_rename_table_migration
+    run_generator ["rename_posts_to_articles"]
+    assert_migration "db/migrate/rename_posts_to_articles.rb" do |content|
+      assert_method :change, content do |change|
+        assert_match(/rename_table :posts, :articles/, change)
+      end
+    end
+  end
+
   def test_should_create_migration_to_add_index
     migration = "add_index_author_id_on_books"
     run_generator [migration, "author_id"]

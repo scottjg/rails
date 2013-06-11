@@ -1,5 +1,9 @@
 class <%= migration_class_name %> < ActiveRecord::Migration
-<%- if migration_action == 'join' -%>
+<%- if migration_action == 'rename' -%>
+  def change
+  	rename_table :<%= table_name %>, :<%= new_table_name %>
+  end
+<%- elsif migration_action == 'join' -%>
   def change
     create_join_table :<%= join_tables.first %>, :<%= join_tables.second %> do |t|
     <%- attributes.each do |attribute| -%>
