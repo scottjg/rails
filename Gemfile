@@ -6,6 +6,7 @@ gem "rake",  "0.8.7"
 gem "mocha", "0.9.8"
 gem "rdoc",  "2.5.10"
 gem "horo",  "1.0.2"
+gem "linecache", "0.43"
 
 # for perf tests
 gem "faker", "0.3.1"
