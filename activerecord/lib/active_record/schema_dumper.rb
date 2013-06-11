@@ -196,7 +196,7 @@ HEADER
             '  ' + statement_parts.join(', ')
           end
 
-          stream.puts add_index_statements.sort.join("\n")
+          stream.puts add_index_statements.sort.uniq.join("\n")
           stream.puts
         end
       end
