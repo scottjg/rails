@@ -127,22 +127,24 @@ module ApplicationTests
         end
       end
 
-      test 'rename column from products' do
+      test 'rename columns from products' do
         Dir.chdir(app_path) do
-          `rails generate migration create_products name:string;
-           rails generate migration rename_name_to_title_on_products name title`
+          `rails generate migration create_products name:string number:integer;
+           rails generate migration rename_name_to_title_and_number_to_code_on_products name title number code`
 
            output = `rake db:migrate`
            assert_match(/create_table\(:products\)/, output)
            assert_match(/CreateProducts: migrated/, output)
            assert_match(/rename_column\(:products, :name, :title\)/, output)
-           assert_match(/RenameNameToTitleOnProducts: migrated/, output)
+           assert_match(/rename_column\(:products, :number, :code\)/, output)
+           assert_match(/RenameNameToTitleAndNumberToCodeOnProducts: migrated/, output)
 
            output = `rake db:rollback STEP=2`
            assert_match(/drop_table\(:products\)/, output)
            assert_match(/CreateProducts: reverted/, output)
            assert_match(/rename_column\(:products, :title, :name\)/, output)
-           assert_match(/RenameNameToTitleOnProducts: reverted/, output)
+           assert_match(/rename_column\(:products, :code, :number\)/, output)
+           assert_match(/RenameNameToTitleAndNumberToCodeOnProducts: reverted/, output)
         end
       end
 

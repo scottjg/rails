@@ -32,7 +32,7 @@ module ActiveRecord
             @migration_template = 'tables.rb'
             set_index_names
           end
-        when /^rename_.*_to_.*_on_(.*)$/
+        when /^rename_.*_on_(.*)$/
           @migration_template = 'columns.rb'
           @migration_action = 'rename'
           @table_name = $1
@@ -46,7 +46,6 @@ module ActiveRecord
             $2 =~ /(.*)_to_(.*)/
             @table_name, @new_table_name = $1.pluralize, $2.pluralize
           end
-        else
         end
       end
 

@@ -61,13 +61,14 @@ class MigrationGeneratorTest < Rails::Generators::TestCase
     end
   end
 
-  def test_rename_column
-    migration = "rename_name_to_title_on_posts"
-    run_generator [migration, "name", "title"]
+  def test_rename_columns
+    migration = "rename_name_to_title_and_number_to_code_on_posts"
+    run_generator [migration, "name", "title", "number", "code"]
 
     assert_migration "db/migrate/#{migration}.rb" do |content|
       assert_method :change, content do |change|
         assert_match(/rename_column :posts, :name, :title/, change)
+        assert_match(/rename_column :posts, :number, :code/, change)
       end
     end
   end
