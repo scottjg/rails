@@ -7,11 +7,11 @@ module ActionView
       encode! if encoding_aware?
     end
 
+    alias :append= :<<
+    alias :safe_append= :safe_concat
     def <<(value)
       super(value.to_s)
     end
-    alias :append= :<<
-    alias :safe_append= :safe_concat
   end
 
   class StreamingBuffer #:nodoc:
