@@ -129,6 +129,7 @@ module ActiveSupport #:nodoc:
       self[0, 0]
     end
 
+    alias << concat
     def concat(value)
       if !html_safe? || value.html_safe?
         super(value)
@@ -136,7 +137,6 @@ module ActiveSupport #:nodoc:
         super(ERB::Util.h(value))
       end
     end
-    alias << concat
 
     def +(other)
       dup.concat(other)
