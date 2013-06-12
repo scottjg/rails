@@ -652,7 +652,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_clearing_updates_counter_cache
-    topic = Topic.first
+    topic = Topic.order(:id).first
 
     topic.replies.clear
     topic.reload
