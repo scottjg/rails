@@ -498,7 +498,7 @@ class TextHelperTest < ActionView::TestCase
     pic = "http://example.com/pic.png"
     url = "http://example.com/album?a&b=c"
 
-    assert_equal %(My pic: <a href="#{pic}"><img src="#{pic}" width="160px"></a> -- full album here #{generate_result(url)}), auto_link("My pic: #{pic} -- full album here #{url}") { |link|
+    assert_match %r(My pic: <a href="#{Regexp.quote(pic)}"><img (src="#{Regexp.quote(pic)}" width="160px"|width="160px" src="#{Regexp.quote(pic)}")></a> -- full album here #{Regexp.quote(generate_result(url))}), auto_link("My pic: #{pic} -- full album here #{url}") { |link|
       if link =~ /\.(jpg|gif|png|bmp|tif)$/i
         raw %(<img src="#{link}" width="160px">)
       else
