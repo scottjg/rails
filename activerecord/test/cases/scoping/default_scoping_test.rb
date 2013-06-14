@@ -158,6 +158,12 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal expected, received
   end
 
+  def test_unscope_default_scope
+    expected = Developer.all.collect { |dev| [dev.name, dev.id] }
+    received = DeveloperOrderedBySalary.unscope(:order).collect { |dev| [dev.name, dev.id] }
+    assert_equal expected, received
+  end
+
   def test_unscope_reverse_order
     expected = Developer.all.collect { |dev| dev.name }
     received = Developer.order('salary DESC').reverse_order.unscope(:order).collect { |dev| dev.name }
