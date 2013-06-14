@@ -356,12 +356,14 @@ module ActiveRecord
     end
 
     def unscope!(*args) # :nodoc:
+      default_scope = with_default_scope
+
       args.flatten!
 
       args.each do |scope|
         case scope
         when Symbol
-          symbol_unscoping(scope)
+          symbol_unscoping(scope, default_scope)
         when Hash
           scope.each do |key, target_value|
             if key != :where
@@ -369,7 +371,7 @@ module ActiveRecord
             end
 
             Array(target_value).each do |val|
-              where_unscoping(val)
+              where_unscoping(val, default_scope)
             end
           end
         else
@@ -377,7 +379,7 @@ module ActiveRecord
         end
       end
 
-      self
+      default_scope
     end
 
     # Performs a joins on +args+:
@@ -826,7 +828,7 @@ module ActiveRecord
 
     private
 
-    def symbol_unscoping(scope)
+    def symbol_unscoping(scope, default_scope)
       if !VALID_UNSCOPING_VALUES.include?(scope)
         raise ArgumentError, "Called unscope() with invalid unscoping argument ':#{scope}'. Valid arguments are :#{VALID_UNSCOPING_VALUES.to_a.join(", :")}."
       end
@@ -836,19 +838,30 @@ module ActiveRecord
 
       case scope
       when :order
-        self.send(:reverse_order_value=, false)
+        default_scope.send(:reverse_order_value=, false)
+        remain_default_scoped(default_scope) unless overriding_order_in_default_scope?(default_scope)
         result = []
       else
         result = [] unless single_val_method
       end
 
-      self.send(unscope_code, result)
+      default_scope.send(unscope_code, result)
     end
 
-    def where_unscoping(target_value)
+    def remain_default_scoped(default_scope)
+      default_scope.default_scoped = true
+    end
+
+    def overriding_order_in_default_scope?(default_scope)
+      return false if default_scopes.empty?
+      default_scopes.first.call.order_values.sort ==
+        default_scope.order_values.sort
+    end
+
+    def where_unscoping(target_value, poop)
       target_value_sym = target_value.to_sym
 
-      where_values.reject! do |rel|
+      poop.where_values.reject! do |rel|
         case rel
         when Arel::Nodes::In, Arel::Nodes::Equality
           subrelation = (rel.left.kind_of?(Arel::Attributes::Attribute) ? rel.left : rel.right)
