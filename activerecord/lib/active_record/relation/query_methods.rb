@@ -851,10 +851,10 @@ module ActiveRecord
       scope.send(unscope_code, result)
     end
 
-    def where_unscoping(target_value, default_scope)
+    def where_unscoping(target_value, scope)
       target_value_sym = target_value.to_sym
 
-      default_scope.where_values.reject! do |rel|
+      scope.where_values.reject! do |rel|
         case rel
         when Arel::Nodes::In, Arel::Nodes::Equality
           subrelation = (rel.left.kind_of?(Arel::Attributes::Attribute) ? rel.left : rel.right)
