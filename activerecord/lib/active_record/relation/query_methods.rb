@@ -828,30 +828,27 @@ module ActiveRecord
 
     private
 
-    def symbol_unscoping(value, scope)
-      if !VALID_UNSCOPING_VALUES.include?(value)
-        raise ArgumentError, "Called unscope() with invalid unscoping argument ':#{value}'. Valid arguments are :#{VALID_UNSCOPING_VALUES.to_a.join(", :")}."
+    def symbol_unscoping(clause, scope)
+      if !VALID_UNSCOPING_VALUES.include?(clause)
+        raise ArgumentError, "Called unscope() with invalid unscoping argument ':#{clause}'. Valid arguments are :#{VALID_UNSCOPING_VALUES.to_a.join(", :")}."
       end
 
-      single_val_method = Relation::SINGLE_VALUE_METHODS.include?(value)
-      unscope_code = :"#{value}_value#{'s' unless single_val_method}="
+      single_val_method = Relation::SINGLE_VALUE_METHODS.include?(clause)
+      unscope_code = :"#{clause}_value#{'s' unless single_val_method}="
 
-      case value
+      case clause
       when :order
-        scope.send(:reverse_order_value=, false)
-        scope.default_scoped = true unless unscoping_default_order?(scope)
         result = []
+
+        if scope.send(:reverse_order_value)
+          scope.default_scoped = true
+          scope.send(:reverse_order_value=, false)
+        end
       else
         result = [] unless single_val_method
       end
 
       scope.send(unscope_code, result)
-    end
-
-    def unscoping_default_order?(scope)
-      return false if default_scopes.empty?
-      default_scopes.first.call.order_values.sort ==
-        scope.order_values.sort
     end
 
     def where_unscoping(target_value, default_scope)
