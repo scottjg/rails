@@ -356,22 +356,22 @@ module ActiveRecord
     end
 
     def unscope!(*args) # :nodoc:
-      default_scope = with_default_scope
+      scope = with_default_scope
 
       args.flatten!
 
-      args.each do |scope|
-        case scope
+      args.each do |arg|
+        case arg
         when Symbol
-          symbol_unscoping(scope, default_scope)
+          symbol_unscoping(arg, scope)
         when Hash
-          scope.each do |key, target_value|
+          arg.each do |key, target_value|
             if key != :where
               raise ArgumentError, "Hash arguments in .unscope(*args) must have :where as the key."
             end
 
             Array(target_value).each do |val|
-              where_unscoping(val, default_scope)
+              where_unscoping(val, scope)
             end
           end
         else
@@ -379,7 +379,7 @@ module ActiveRecord
         end
       end
 
-      default_scope
+      scope
     end
 
     # Performs a joins on +args+:
@@ -828,40 +828,36 @@ module ActiveRecord
 
     private
 
-    def symbol_unscoping(scope, default_scope)
-      if !VALID_UNSCOPING_VALUES.include?(scope)
-        raise ArgumentError, "Called unscope() with invalid unscoping argument ':#{scope}'. Valid arguments are :#{VALID_UNSCOPING_VALUES.to_a.join(", :")}."
+    def symbol_unscoping(value, scope)
+      if !VALID_UNSCOPING_VALUES.include?(value)
+        raise ArgumentError, "Called unscope() with invalid unscoping argument ':#{value}'. Valid arguments are :#{VALID_UNSCOPING_VALUES.to_a.join(", :")}."
       end
 
-      single_val_method = Relation::SINGLE_VALUE_METHODS.include?(scope)
-      unscope_code = :"#{scope}_value#{'s' unless single_val_method}="
+      single_val_method = Relation::SINGLE_VALUE_METHODS.include?(value)
+      unscope_code = :"#{value}_value#{'s' unless single_val_method}="
 
-      case scope
+      case value
       when :order
-        default_scope.send(:reverse_order_value=, false)
-        remain_default_scoped(default_scope) unless overriding_order_in_default_scope?(default_scope)
+        scope.send(:reverse_order_value=, false)
+        scope.default_scoped = true unless unscoping_default_order?(scope)
         result = []
       else
         result = [] unless single_val_method
       end
 
-      default_scope.send(unscope_code, result)
+      scope.send(unscope_code, result)
     end
 
-    def remain_default_scoped(default_scope)
-      default_scope.default_scoped = true
-    end
-
-    def overriding_order_in_default_scope?(default_scope)
+    def unscoping_default_order?(scope)
       return false if default_scopes.empty?
       default_scopes.first.call.order_values.sort ==
-        default_scope.order_values.sort
+        scope.order_values.sort
     end
 
-    def where_unscoping(target_value, poop)
+    def where_unscoping(target_value, default_scope)
       target_value_sym = target_value.to_sym
 
-      poop.where_values.reject! do |rel|
+      default_scope.where_values.reject! do |rel|
         case rel
         when Arel::Nodes::In, Arel::Nodes::Equality
           subrelation = (rel.left.kind_of?(Arel::Attributes::Attribute) ? rel.left : rel.right)
