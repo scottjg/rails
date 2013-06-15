@@ -70,15 +70,17 @@ class Array
     end
     options = default_connectors.merge!(options)
 
+    data = reject(&:blank?)
+
     case length
     when 0
       ''
     when 1
-      self[0].to_s.dup
+      data[0].to_s.dup
     when 2
-      "#{self[0]}#{options[:two_words_connector]}#{self[1]}"
+      "#{data[0]}#{options[:two_words_connector]}#{data[1]}"
     else
-      "#{self[0...-1].join(options[:words_connector])}#{options[:last_word_connector]}#{self[-1]}"
+      "#{data[0...-1].join(options[:words_connector])}#{options[:last_word_connector]}#{data[-1]}"
     end
   end
 

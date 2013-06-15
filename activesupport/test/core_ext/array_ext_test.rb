@@ -98,7 +98,7 @@ class ArrayExtToSentenceTests < ActiveSupport::TestCase
   end
 
   def test_with_blank_elements
-    assert_equal ", one, , two, and three", [nil, 'one', '', 'two', 'three'].to_sentence
+    assert_equal "one, two, and three", [nil, 'one', '', 'two', 'three'].to_sentence
   end
 end
 
