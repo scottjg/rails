@@ -366,6 +366,13 @@ module ActiveRecord
         options.key? :polymorphic
       end
 
+      def scope?
+        !!scope
+      end
+
+      VALID_AUTOMATIC_INVERSE_MACROS = [:has_many, :has_one, :belongs_to]
+      INVALID_AUTOMATIC_INVERSE_OPTIONS = [:conditions, :through, :polymorphic, :foreign_key]
+
       private
         def derive_class_name
           class_name = name.to_s.camelize
