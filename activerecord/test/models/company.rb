@@ -96,7 +96,7 @@ class DependentFirm < Company
 end
 
 class RestrictedFirm < Company
-  has_one :account, :foreign_key => "firm_id", :dependent => :nullify
+  has_one :account, :foreign_key => "firm_id", :dependent => :restrict, :order => "id"
   has_many :companies, :foreign_key => 'client_of', :order => "id", :dependent => :restrict
 end
 
