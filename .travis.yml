@@ -1,0 +1,19 @@
+script: 'ci/travis.rb'
+before_install:
+  - gem install bundler
+rvm:
+  - 1.8.7
+  - 1.9.2
+  - 1.9.3
+  - 2.0.0
+env:
+  - "GEM=railties"
+  - "GEM=ap,am,amo,as"
+  - "GEM=ar:mysql"
+  - "GEM=ar:mysql2"
+  - "GEM=ar:sqlite3"
+  - "GEM=ar:postgresql"
+bundler_args: --path vendor/bundle --without test
+branches:
+  only:
+    - takaokouji/v3.0.3
