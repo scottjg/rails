@@ -22,6 +22,8 @@ require 'models/engine'
 require 'models/categorization'
 require 'models/minivan'
 require 'models/speedometer'
+require 'models/interest'
+require 'models/man'
 
 class HasManyAssociationsTestForCountWithFinderSql < ActiveRecord::TestCase
   class Invoice < ActiveRecord::Base
@@ -320,7 +322,7 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
   def test_find_should_prepend_to_association_order
     ordered_clients =  companies(:first_firm).clients_sorted_desc.order('companies.id')
-    assert_equal ['companies.id', 'id DESC'], ordered_clients.order_values
+    assert_equal ['companies.id', 'id DESC'], ordered_clients.order_values.uniq
   end
 
   def test_dynamic_find_should_respect_association_order
@@ -1835,5 +1837,12 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
 
     assert_equal 1, speedometer.minivans.to_a.size, "Only one association should be present:\n#{speedometer.minivans.to_a}"
     assert_equal 1, speedometer.reload.minivans.to_a.size
+  end
+
+  test "unscoped has many association" do
+    man = ManWithUnscopedInterests.create
+    interest = InterestWithCodeScope.create man_with_unscoped_interests_id: man.id, topic: 'SAX'
+
+    assert_equal [interest], man.interests
   end
 end
