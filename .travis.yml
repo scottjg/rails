@@ -17,3 +17,9 @@ bundler_args: --path vendor/bundle --without test
 branches:
   only:
     - takaokouji/v3.0.3
+matrix:
+  allow_failures:
+    - rvm:
+      - 1.9.2
+      - 1.9.3
+      - 2.0.0
