@@ -71,15 +71,15 @@ module Rails
         FileUtils.mkdir_p(File.join(Rails.root, 'tmp', dir_to_make))
       end
 
-      unless options[:daemonize]
-        wrapped_app # touch the app so the logger is set up
+      #unless options[:daemonize]
+        #wrapped_app # touch the app so the logger is set up
 
-        console = ActiveSupport::Logger.new($stdout)
-        console.formatter = Rails.logger.formatter
-        console.level = Rails.logger.level
+        #console = ActiveSupport::Logger.new($stdout)
+        #console.formatter = Rails.logger.formatter
+        #console.level = Rails.logger.level
 
-        Rails.logger.extend(ActiveSupport::Logger.broadcast(console))
-      end
+        #Rails.logger.extend(ActiveSupport::Logger.broadcast(console))
+      #end
 
       super
     ensure
