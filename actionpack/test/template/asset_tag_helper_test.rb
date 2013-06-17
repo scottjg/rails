@@ -194,6 +194,7 @@ class AssetTagHelperTest < ActionView::TestCase
     %(image_tag(".pdf.png")) => %(<img alt=".pdf" src="/images/.pdf.png" />),
     %(image_tag("http://www.rubyonrails.com/images/rails.png")) => %(<img alt="Rails" src="http://www.rubyonrails.com/images/rails.png" />),
     %(image_tag("//www.rubyonrails.com/images/rails.png")) => %(<img alt="Rails" src="//www.rubyonrails.com/images/rails.png" />),
+    %(image_tag("HTTP://www.rubyonrails.com/images/rails.png")) => %(<img alt="Rails" src="HTTP://www.rubyonrails.com/images/rails.png" />),
     %(image_tag("mouse.png", :alt => nil)) => %(<img src="/images/mouse.png" />),
     %(image_tag("data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==", :alt => nil)) => %(<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" />),
     %(image_tag("")) => %(<img src="" />)
@@ -445,8 +446,8 @@ class AssetTagHelperTest < ActionView::TestCase
     [nil, '/', '/foo/bar/', 'foo/bar/'].each do |prefix|
       assert_equal 'Rails', image_alt("#{prefix}rails.png")
       assert_equal 'Rails', image_alt("#{prefix}rails-9c0a079bdd7701d7e729bd956823d153.png")
-      assert_equal 'Long file name with hyphens', image_alt("#{prefix}long-file-name-with-hyphens.png") 
-      assert_equal 'Long file name with underscores', image_alt("#{prefix}long_file_name_with_underscores.png")  
+      assert_equal 'Long file name with hyphens', image_alt("#{prefix}long-file-name-with-hyphens.png")
+      assert_equal 'Long file name with underscores', image_alt("#{prefix}long_file_name_with_underscores.png")
     end
   end
 
