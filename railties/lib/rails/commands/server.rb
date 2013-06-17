@@ -71,7 +71,7 @@ module Rails
         FileUtils.mkdir_p(File.join(Rails.root, 'tmp', dir_to_make))
       end
 
-      unless options[:daemonize]
+      unless (Rails.env.development? || options[:daemonize])
         wrapped_app # touch the app so the logger is set up
 
         console = ActiveSupport::Logger.new($stdout)
