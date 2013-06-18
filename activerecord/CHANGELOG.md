@@ -1,3 +1,14 @@
+*   Log the sql that is actually sent to the database.
+
+    If I have a query that produces sql
+    `WHERE "users"."name" = 'a         b'` then in the log all the
+    whitespace is being squeezed. So the sql that is printed in the
+    log is `WHERE "users"."name" = 'a b'`.
+
+    Do not squeeze whitespace out of sql queries. Fixes #10982.
+
+    *Neeraj Singh*
+
 *   Fixture setup does no longer depend on `ActiveRecord::Base.configurations`.
     This is relevant when `ENV["DATABASE_URL"]` is used in place of a `database.yml`.
 
