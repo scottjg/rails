@@ -46,7 +46,7 @@ module ActiveRecord
         autoload :BelongsTo,           'active_record/associations/preloader/belongs_to'
       end
 
-      attr_reader :records, :associations, :preload_scope, :model
+      attr_reader :records, :associations, :preload_scope, :model, :limit
 
       # Eager loads the named associations for the given Active Record record(s).
       #
@@ -82,10 +82,11 @@ module ActiveRecord
       #   [ :books, :author ]
       #   { author: :avatar }
       #   [ :books, { author: :avatar } ]
-      def initialize(records, associations, preload_scope = nil)
+      def initialize(records, associations, preload_scope = nil, limit = nil)
         @records       = Array.wrap(records).compact.uniq
         @associations  = Array.wrap(associations)
         @preload_scope = preload_scope || Relation.new(nil, nil)
+        @limit = limit
       end
 
       def run
@@ -126,6 +127,10 @@ module ActiveRecord
       def preload_one(association)
         grouped_records(association).each do |reflection, klasses|
           klasses.each do |klass, records|
+            if limit
+              preload_scope.limit!(limit)
+            end
+
             preloader_for(reflection).new(klass, records, reflection, preload_scope).run
           end
         end

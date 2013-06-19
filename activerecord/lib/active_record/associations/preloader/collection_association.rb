@@ -7,6 +7,7 @@ module ActiveRecord
 
         def build_scope
           super.order(preload_scope.values[:order] || reflection_scope.values[:order])
+               .limit(preload_scope.values[:limit] || reflection_scope.values[:limit])
         end
 
         def preload
