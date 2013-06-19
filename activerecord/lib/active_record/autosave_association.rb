@@ -222,7 +222,7 @@ module ActiveRecord
     def changed_for_autosave?
       new_record? || changed? || marked_for_destruction? || nested_records_changed_for_autosave?
     end
-    
+
     private
 
     # Returns the record for an association collection that should be validated
@@ -237,7 +237,7 @@ module ActiveRecord
         association.target.select { |record| record.new_record? }
       end
     end
-    
+
     # go through nested autosave associations that are loaded in memory (without loading
     # any new ones), and return true if is changed for autosave
     def nested_records_changed_for_autosave?
@@ -252,7 +252,7 @@ module ActiveRecord
       end
       false
     end
-    
+
     # Validate the association if <tt>:validate</tt> or <tt>:autosave</tt> is
     # turned on for the association specified by +reflection+.
     def validate_single_association(reflection)
@@ -331,7 +331,7 @@ module ActiveRecord
         end
 
         # reconstruct the SQL queries now that we know the owner's id
-        association.send(:construct_sql) if association.respond_to?(:construct_sql)
+        association.send(:construct_sql) if association.respond_to?(:construct_sql, true)
       end
     end
 
