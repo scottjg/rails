@@ -45,7 +45,7 @@ module ApplicationTests
       app_file "app/assets/javascripts/demo.js.erb", "a = <%= image_path('rails.png').inspect %>;"
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get '*path', to: lambda { |env| [200, { "Content-Type" => "text/html" }, ["Not an asset"]] }
         end
       RUBY
@@ -313,7 +313,7 @@ module ApplicationTests
       app_file "app/assets/javascripts/demo.js.erb", "<%= :alert %>();"
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get '/omg', :to => "omg#index"
         end
       RUBY
@@ -374,18 +374,6 @@ module ApplicationTests
       add_to_config "config.assets.digest = false"
       precompile!
       assert_equal "Post;\n", File.read(Dir["#{app_path}/public/assets/application-*.js"].first)
-    end
-
-    test "assets can't access model information when precompiling if not initializing the app" do
-      app_file "app/models/post.rb", "class Post; end"
-      app_file "app/assets/javascripts/application.js", "//= require_tree ."
-      app_file "app/assets/javascripts/xmlhr.js.erb", "<%= defined?(Post) || :NoPost %>"
-
-      add_to_config "config.assets.digest = false"
-      add_to_config "config.assets.initialize_on_precompile = false"
-
-      precompile!
-      assert_equal "NoPost;\n", File.read(Dir["#{app_path}/public/assets/application-*.js"].first)
     end
 
     test "initialization on the assets group should set assets_dir" do
@@ -475,7 +463,7 @@ module ApplicationTests
       app_file "app/views/posts/index.html.erb", "<%= javascript_include_tag 'application' %>"
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get '/posts', :to => "posts#index"
         end
       RUBY
