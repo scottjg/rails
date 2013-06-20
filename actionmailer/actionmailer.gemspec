@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.email = 'david@loudthinking.com'
   s.homepage = 'http://www.rubyonrails.org'
 
-  s.add_dependency('mail', '2.4.4')
+  s.add_dependency('mail', '2.5.4')
 
   s.require_path = 'lib'
 
