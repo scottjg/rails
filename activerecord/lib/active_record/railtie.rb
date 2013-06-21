@@ -44,9 +44,13 @@ module ActiveRecord
       ActiveRecord::Tasks::DatabaseTasks.migrations_paths = Rails.application.paths['db/migrate'].to_a
       ActiveRecord::Tasks::DatabaseTasks.fixtures_path = File.join Rails.root, 'test', 'fixtures'
 
-      if defined?(APP_RAKEFILE) && engine = Rails::Engine.find(find_engine_path(APP_RAKEFILE))
-        if engine.paths['db/migrate'].existent
-          ActiveRecord::Tasks::DatabaseTasks.migrations_paths += engine.paths['db/migrate'].to_a
+      namespace :db do
+        task :load_config do
+          if defined?(ENGINE_PATH) && engine = Rails::Engine.find(ENGINE_PATH)
+            if engine.paths['db/migrate'].existent
+              ActiveRecord::Tasks::DatabaseTasks.migrations_paths += engine.paths['db/migrate'].to_a
+            end
+          end
         end
       end
 
