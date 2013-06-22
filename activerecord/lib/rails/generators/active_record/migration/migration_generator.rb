@@ -21,7 +21,7 @@ module ActiveRecord
       def set_local_assigns!
         @migration_template = "migration.rb"
         case file_name
-        when /^(add|remove)_.*_(?:to|from)_(.*)/
+        when /^(add|remove)_.*_(?:to|from)_(.*)/, /^(drop)_(.+)/
           @migration_action = $1
           @table_name       = $2.pluralize
         when /join_table/
