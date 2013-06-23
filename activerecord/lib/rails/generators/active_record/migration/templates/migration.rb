@@ -6,10 +6,7 @@ class <%= migration_class_name %> < ActiveRecord::Migration
 	end
 
 	def down
-		<% dumper = ActiveRecord::SchemaDumper.send(:new, ActiveRecord::Base.connection) -%>
-		<% io = StringIO.new -%>
-		<% dumper.send(:table, table_name, io) -%>
-		<%= io.string %>
+		<%= ActiveRecord::SchemaDumper.table_to_string(table_name) %>
 	end
 <%- when 'add' -%>
   def change
