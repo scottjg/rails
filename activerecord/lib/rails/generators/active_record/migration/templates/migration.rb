@@ -6,7 +6,7 @@ class <%= migration_class_name %> < ActiveRecord::Migration
 	end
 
 	def down
-		<%= ActiveRecord::SchemaDumper.table_to_string(table_name) %>
+		<%= ActiveRecord::SchemaDumper.create_table_string(table_name) %>
 	end
 <%- when 'add' -%>
   def change
