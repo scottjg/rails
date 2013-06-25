@@ -11,11 +11,8 @@ module AbstractController
   autoload :Callbacks
   autoload :Collector
   autoload :Helpers
-  autoload :Layouts
   autoload :Logger
-  autoload :Rendering
   autoload :Translation
   autoload :AssetPaths
-  autoload :ViewPaths
   autoload :UrlFor
 end

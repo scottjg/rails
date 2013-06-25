@@ -1,6 +1,7 @@
 require "active_support/core_ext/module/remove_method"
 
-module AbstractController
+
+module ActionView
   # Layouts reverse the common pattern of including shared headers and footers in many templates to isolate changes in
   # repeated setups. The inclusion pattern has pages that look like this:
   #
@@ -200,7 +201,7 @@ module AbstractController
   module Layouts
     extend ActiveSupport::Concern
 
-    include Rendering
+    include ActionView::Rendering
 
     included do
       class_attribute :_layout, :_layout_conditions, :instance_accessor => false

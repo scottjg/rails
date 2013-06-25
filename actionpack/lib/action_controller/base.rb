@@ -1,3 +1,4 @@
+require "action_view/layouts"
 require "action_controller/log_subscriber"
 require "action_controller/metal/params_wrapper"
 
@@ -200,7 +201,7 @@ module ActionController
     end
 
     MODULES = [
-      AbstractController::Layouts,
+      ActionView::Layouts,
       AbstractController::Translation,
       AbstractController::AssetPaths,
 

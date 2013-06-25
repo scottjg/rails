@@ -34,10 +34,13 @@ module ActionView
     autoload :Digestor
     autoload :Helpers
     autoload :LookupContext
+    autoload :Layout
     autoload :PathSet
     autoload :RecordIdentifier
+    autoload :Rendering
     autoload :RoutingUrlFor
     autoload :Template
+    autoload :ViewPaths
 
     autoload_under "renderer" do
       autoload :Renderer
