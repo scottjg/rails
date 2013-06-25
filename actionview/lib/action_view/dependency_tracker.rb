@@ -89,5 +89,6 @@ module ActionView
     end
 
     register_tracker :erb, ERBTracker
+    register_tracker :haml, ERBTracker
   end
 end
