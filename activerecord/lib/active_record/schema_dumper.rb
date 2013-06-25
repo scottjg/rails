@@ -32,7 +32,7 @@ module ActiveRecord
 
 		def self.table_to_string(table, connection=ActiveRecord::Base.connection)
     	io = StringIO.new
-    	dumper = send(:new, connection)
+    	dumper = new(connection)
     	dumper.send(:table, table, io)
     	io.string
     end
