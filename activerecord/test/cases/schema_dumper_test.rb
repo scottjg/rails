@@ -28,6 +28,21 @@ class SchemaDumperTest < ActiveRecord::TestCase
     assert_match "# encoding: #{@stream.external_encoding.name}", standard_dump
   end
 
+  def test_create_table_string_includes_create_table
+  	output = ActiveRecord::SchemaDumper.create_table_string("accounts")
+  	assert_match %r{create_table "accounts"}, output
+  end
+
+  def test_create_table_string_includes_columns
+  	output = ActiveRecord::SchemaDumper.create_table_string("accounts")
+  	assert_match %r{t.integer "credit_limit"}, output
+  end
+
+  def test_create_table_string_includes_indexes
+  	output = ActiveRecord::SchemaDumper.create_table_string("companies")
+  	assert_match %r{add_index "companies", \["firm_id", "type", "rating"\], name: "company_index"}, output
+  end
+
   def test_schema_dump
     output = standard_dump
     assert_match %r{create_table "accounts"}, output
