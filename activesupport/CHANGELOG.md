@@ -1,7 +1,19 @@
+## unreleased ##
+
+*   Fix return value from `BacktraceCleaner#noise` when the cleaner is configured
+    with multiple silencers.
+
+    Fixes #11030
+
+    *Mark J. Titorenko*
+
 *   Fix `ActiveSupport::Dependencies::Loadable#load_dependency` calling
     `#blame_file!` on Exceptions that do not have the Blamable mixin
 
     *Andrew Kreiling*
+
+
+## Rails 4.0.0 (June 25, 2013) ##
 
 *   Override `Time.at` to support the passing of Time-like values when called with a single argument.
 
@@ -14,9 +26,6 @@
 *   Deprecate multiple parameters support of `Object#in?`.
 
     *Brian Morearty + Carlos Antonio da Silva*
-
-
-## Rails 4.0.0.rc1 (April 29, 2013) ##
 
 *   An `ActiveSupport::Subscriber` class has been extracted from
     `ActiveSupport::LogSubscriber`, allowing you to use the event attachment
@@ -45,9 +54,6 @@
 *   Fix deletion of empty directories in `ActiveSupport::Cache::FileStore`.
 
     *Charles Jones*
-
-
-## Rails 4.0.0.beta1 (February 25, 2013) ##
 
 *   Improve singularizing a singular for multiple cases.
     Fixes #2608 #1825 #2395.

@@ -1,11 +1,20 @@
-## unreleased ## 
+## unreleased ##
+
+*   `inclusion` / `exclusion` validations with ranges will only use the faster
+    `Range#cover` for numerical ranges, and the more accurate `Range#include?`
+    for non-numerical ones.
+
+    Fixes range validations like `:a..:f` that used to pass with values like `:be`.
+    Fixes #10593
+
+    *Charles Bergeron*
+
+## Rails 4.0.0 (June 25, 2013) ##
 
 *   Fix regression in has_secure_password. When a password is set, but a
     confirmation is an empty string, it would incorrectly save.
 
     *Steve Klabnik* and *Phillip Calvin*
-
-## Rails 4.0.0.rc1 (April 29, 2013) ##
 
 *   Add `ActiveModel::Errors#full_messages_for`, to return all the error messages
     for a given attribute.
@@ -74,8 +83,6 @@
         end
 
     *Yves Senn*
-
-## Rails 4.0.0.beta1 (February 25, 2013) ##
 
 *   Add `ActiveModel::Validations::AbsenceValidator`, a validator to check the
     absence of attributes.

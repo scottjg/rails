@@ -1,4 +1,5 @@
 ## unreleased ##
+
 *   Fix mysql2 adapter raises the correct exception when executing a query on a
     closed connection.
 
@@ -19,6 +20,61 @@
         User.select("name, username").count(:all) # => SELECT count(*) FROM users
 
     *Yves Senn*
+
+*   Fix the `:primary_key` option for `has_many` associations.
+    Fixes #10693.
+
+    *Yves Senn*
+
+*   Fix bug where tiny types are incorectly coerced as booleand when the length is more than 1.
+
+    Fixes #10620.
+
+    *Aaron Patterson*
+
+*   Also support extensions in PostgreSQL 9.1. This feature has been supported since 9.1.
+
+    *kennyj*
+
+*   Deprecate `ConnectionAdapters::SchemaStatements#distinct`,
+    as it is no longer used by internals.
+
+    *Ben Woosley#
+
+*   Remove not needed bind variables. Port of commit #5082345. Fixes #10958.
+
+    *Neeraj Singh*
+
+*   Confirm a record has not already been destroyed before decrementing counter cache.
+
+    *Ben Tucker*
+
+*   Fixed a bug in `ActiveRecord#sanitize_sql_hash_for_conditions` in which
+    `self.class` is an argument to `PredicateBuilder#build_from_hash`
+    causing `PredicateBuilder` to call non-existent method
+    `Class#reflect_on_association`.
+
+    *Zach Ohlgren*
+
+*   While removing index if column option is missing then raise IrreversibleMigration exception.
+
+    Following code should raise `IrreversibleMigration`. But the code was
+    failing since options is an array and not a hash.
+
+        def change
+          change_table :users do |t|
+            t.remove_index [:name, :email]
+          end
+        end
+
+    Fix was to check if the options is a Hash before operating on it.
+
+    Fixes #10419.
+
+    *Neeraj Singh*
+
+
+## Rails 4.0.0 (June 25, 2013) ##
 
 *   Fix `add_column` with `array` option when using PostgreSQL. Fixes #10432
 
@@ -50,27 +106,6 @@
 
     *Adam Anderson*
 
-
-*   Fix the `:primary_key` option for `has_many` associations.
-    Fixes #10693.
-
-    *Yves Senn*
-
-*   Fix bug where tiny types are incorectly coerced as booleand when the length is more than 1.
-
-    Fixes #10620.
-
-    *Aaron Peterson*
-
-*   Also support extensions in PostgreSQL 9.1. This feature has been supported since 9.1.
-
-    *kennyj*
-
-*   Deprecate `ConnectionAdapters::SchemaStatements#distinct`,
-    as it is no longer used by internals.
-
-    *Ben Woosley#
-
 *   Fix pending migrations error when loading schema and `ActiveRecord::Base.table_name_prefix`
     is not blank.
 
@@ -86,40 +121,9 @@
 
     *Kyle Stevens*
 
-*   Confirm a record has not already been destroyed before decrementing counter cache.
-
-    *Ben Tucker*
-
-*   Fixed a bug in `ActiveRecord#sanitize_sql_hash_for_conditions` in which
-    `self.class` is an argument to `PredicateBuilder#build_from_hash`
-    causing `PredicateBuilder` to call non-existent method
-    `Class#reflect_on_association`.
-
-    *Zach Ohlgren*
-
-*   While removing index if column option is missing then raise IrreversibleMigration exception.
-
-    Following code should raise `IrreversibleMigration`. But the code was
-    failing since options is an array and not a hash.
-
-        def change
-          change_table :users do |t|
-            t.remove_index [:name, :email]
-          end
-        end
-
-    Fix was to check if the options is a Hash before operating on it.
-
-    Fixes #10419.
-
-    *Neeraj Singh*
-
 *   Mute `psql` output when running rake db:schema:load.
 
     *Godfrey Chan*
-
-
-## Rails 4.0.0.rc1 (April 29, 2013) ##
 
 *   Trigger a save on `has_one association=(associate)` when the associate contents have changed.
 
@@ -660,9 +664,6 @@
 
         # This will expand the order :name to "authors".name.
         Author.joins(:books).where('books.published = 1').order(:name)
-
-
-## Rails 4.0.0.beta1 (February 25, 2013) ##
 
 *   Fix overriding of attributes by `default_scope` on `ActiveRecord::Base#dup`.
 
@@ -2120,7 +2121,7 @@
 *   The primary key is always initialized in the @attributes hash to `nil` (unless
     another value has been specified).
 
-    *Aaron Paterson*
+    *Aaron Patterson*
 
 *   In previous releases, the following would generate a single query with
     an `OUTER JOIN comments`, rather than two separate queries:
