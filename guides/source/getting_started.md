@@ -860,7 +860,6 @@ it look as follows:
 
 ```html+erb
 <h1>Editing post</h1>
-#removed a curly brace
 <%= form_for :post, url: post_path(@post.id) ,
 method: :patch do |f| %>
   <% if @post.errors.any? %>
@@ -942,7 +941,7 @@ appear next to the "Show" link:
   <tr>
     <td><%= post.title %></td>
     <td><%= post.text %></td>
-    <td><%= link_to 'Show', post_path(post) %></td> #show routes expects object
+    <td><%= link_to 'Show', post_path(post) %></td> 
     <td><%= link_to 'Edit', edit_post_path(post) %></td>
   </tr>
 <% end %>
