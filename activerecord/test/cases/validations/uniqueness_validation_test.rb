@@ -35,6 +35,10 @@ class Employee < ActiveRecord::Base
   validates_uniqueness_of :nicknames
 end
 
+class NumericData < ActiveRecord::Base
+  self.table_name = 'numeric_data'
+end
+
 class UniquenessValidationTest < ActiveRecord::TestCase
   fixtures :topics, 'warehouse-things', :developers
 
@@ -375,5 +379,16 @@ class UniquenessValidationTest < ActiveRecord::TestCase
     assert !e2.persisted?, "e2 shouldn't be valid"
     assert e2.errors[:nicknames].any?, "Should have errors for nicknames"
     assert_equal ["has already been taken"], e2.errors[:nicknames], "Should have uniqueness message for nicknames"
+  end
+
+  def test_validate_uniqueness_of_float
+    require 'debugger'
+    NumericData.validates_uniqueness_of(:temperature)
+    n1 = NumericData.new(temperature: 1.1)
+    assert n1.save
+
+    n2 = NumericData.new(temperature: n1.temperature)
+    assert_not n2.save
+    assert_equal ["has already been taken"], n2.errors[:temperature]
   end
 end
