@@ -43,6 +43,10 @@ class SchemaDumperTest < ActiveRecord::TestCase
   	assert_match %r{add_index "companies", \["firm_id", "type", "rating"\], name: "company_index"}, output
   end
 
+  def test_create_table_string_does_not_raise_when_table_does_not_exist
+  	ActiveRecord::SchemaDumper.create_table_string("unreal_table")
+  end
+
   def test_schema_dump
     output = standard_dump
     assert_match %r{create_table "accounts"}, output
