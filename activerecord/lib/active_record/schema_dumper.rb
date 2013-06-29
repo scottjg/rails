@@ -31,7 +31,11 @@ module ActiveRecord
     end
 
 		def self.create_table_string(table, connection=ActiveRecord::Base.connection)
-    	new(connection).send(:table, table).string
+			begin
+	    	new(connection).send(:table, table).string
+	    rescue
+	    	"    # Tried and failed to produce a create_table string for #{table}"
+	    end
 		end
 
     private
