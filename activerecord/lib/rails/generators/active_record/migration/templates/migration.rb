@@ -6,7 +6,7 @@ class <%= migration_class_name %> < ActiveRecord::Migration
 	end
 
 	def down
-		<%= ActiveRecord::SchemaDumper.create_table_string(table_name) %>
+<%= ActiveRecord::SchemaDumper.create_table_string(table_name).gsub(/  (\w)/, "    \\1").rstrip %>
 	end
 <%- when 'add' -%>
   def change
