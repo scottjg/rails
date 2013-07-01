@@ -116,7 +116,7 @@ module TMail
 
         begin
           convert_to_without_fallback_on_iso_8859_1(text, to, from)
-        rescue Iconv::InvalidCharacter
+        rescue #Iconv::InvalidCharacter
           unless from == 'iso-8859-1'
             from = 'iso-8859-1'
             retry
@@ -135,11 +135,17 @@ module TMail
       end
 
       begin
-        require 'iconv'
+        require 'iconv' if RUBY_VERSION < '1.9'
         def convert_to(text, to, from)
           return text unless to && from
-          text ? Iconv.iconv(to, from, text).first : ""
-        rescue Iconv::IllegalSequence, Iconv::InvalidEncoding, Errno::EINVAL
+          return "" unless text
+          if RUBY_VERSION < '1.9'
+            Iconv.iconv(to, from, text).first
+          else
+            text.force_encoding(from)
+            text.encode(to, :invalid => :replace, :undef => :replace, :replace => '')
+          end
+        rescue    #Iconv::IllegalSequence, Iconv::InvalidEncoding, Errno::EINVAL
           # the 'from' parameter specifies a charset other than what the text
           # actually is...not much we can do in this case but just return the
           # unconverted text.
