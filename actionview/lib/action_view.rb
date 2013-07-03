@@ -37,10 +37,10 @@ module ActionView
     autoload :Layouts
     autoload :PathSet
     autoload :RecordIdentifier
-    autoload :Rendering
     autoload :RoutingUrlFor
     autoload :Template
     autoload :ViewPaths
+    autoload :ViewRendering
 
     autoload_under "renderer" do
       autoload :Renderer

@@ -19,7 +19,7 @@ module ActionView
     end
   end
 
-  module Rendering
+  module ViewRendering
     extend ActiveSupport::Concern
     include ActionView::ViewPaths
 

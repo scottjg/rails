@@ -201,7 +201,7 @@ module ActionView
   module Layouts
     extend ActiveSupport::Concern
 
-    include ActionView::Rendering
+    include ActionView::ViewRendering
 
     included do
       class_attribute :_layout, :_layout_conditions, :instance_accessor => false

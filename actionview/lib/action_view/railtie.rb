@@ -42,7 +42,7 @@ module ActionView
       end
 
       ActiveSupport.on_load(:abstract_controller) do
-        AbstractController::Base.send(:include, ActionView::Rendering)
+        AbstractController::Base.send(:include, ActionView::ViewRendering)
       end
     end
   end

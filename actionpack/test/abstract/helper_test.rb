@@ -6,7 +6,7 @@ module AbstractController
   module Testing
 
     class ControllerWithHelpers < AbstractController::Base
-      include ActionView::Rendering
+      include ActionView::ViewRendering
       include AbstractController::Helpers
 
       def with_module

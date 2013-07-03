@@ -5,7 +5,7 @@ module AbstractControllerTests
 
     # Base controller for these tests
     class Base < AbstractController::Base
-      include ActionView::Rendering
+      include ActionView::ViewRendering
       include ActionView::Layouts
 
       abstract!
