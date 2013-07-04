@@ -176,6 +176,15 @@ module ActiveRecord
         @explicit_inheritance_column = true
       end
 
+      def inheritance_name=(value)
+        self.store_full_sti_class = false
+        @inheritance_name = value
+      end
+
+      def inheritance_name
+        @inheritance_name ||= nil
+      end
+
       def set_inheritance_column(value = nil, &block) #:nodoc:
         deprecated_property_setter :inheritance_column, value, block
       end

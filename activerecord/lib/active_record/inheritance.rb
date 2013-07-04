@@ -93,26 +93,41 @@ module ActiveRecord
           # the type_name is an absolute reference.
           ActiveSupport::Dependencies.constantize(type_name)
         else
-          # Build a list of candidates to search for
-          candidates = []
-          name.scan(/::|$/) { candidates.unshift "#{$`}::#{type_name}" }
-          candidates << type_name
-
-          candidates.each do |candidate|
-            begin
-              constant = ActiveSupport::Dependencies.constantize(candidate)
-              return constant if candidate == constant.to_s
-            rescue NameError => e
-              # We don't want to swallow NoMethodError < NameError errors
-              raise e unless e.instance_of?(NameError)
-            end
-          end
-
-          raise NameError, "uninitialized constant #{candidates.first}"
+          compute_type_from_inheritance_names(type_name) || compute_type_from_candidates(type_name) 
         end
       end
 
       private
+      
+      def compute_type_from_inheritance_names(type_name)
+        name = (descendants + [self]).select {|model| 
+          model.inheritance_name && type_name == model.inheritance_name 
+        }.first
+
+        unless name.nil? 
+          ActiveSupport::Dependencies.constantize(name)
+        end
+      end
+
+      def compute_type_from_candidates(type_name)
+        # Build a list of candidates to search for
+        candidates = []
+        
+        name.scan(/::|$/) { candidates.unshift "#{$`}::#{type_name}" }
+        candidates << type_name
+
+        candidates.each do |candidate|
+          begin
+            constant = ActiveSupport::Dependencies.constantize(candidate)
+            return constant if candidate == constant.to_s
+          rescue NameError => e
+            # We don't want to swallow NoMethodError < NameError errors
+            raise e unless e.instance_of?(NameError)
+          end
+        end
+
+        raise NameError, "uninitialized constant #{candidates.first}"
+      end
 
       def use_identity_map(sti_class, record_id, record)
         if (column = sti_class.columns_hash[sti_class.primary_key]) && column.number?
@@ -151,7 +166,7 @@ module ActiveRecord
 
       def type_condition(table = arel_table)
         sti_column = table[inheritance_column.to_sym]
-        sti_names  = ([self] + descendants).map { |model| model.sti_name }
+        sti_names  = ([self] + descendants).map { |model| model.inheritance_name || model.sti_name }
 
         sti_column.in(sti_names)
       end
