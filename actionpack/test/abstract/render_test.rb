@@ -4,6 +4,7 @@ module AbstractController
   module Testing
 
     class ControllerRenderer < AbstractController::Base
+      include AbstractController::Rendering
       include ActionView::ViewRendering
 
       def _prefixes

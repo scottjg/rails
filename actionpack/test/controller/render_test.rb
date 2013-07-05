@@ -755,7 +755,9 @@ class TestController < ActionController::Base
 end
 
 class MetalTestController < ActionController::Metal
+  include AbstractController::Rendering
   include ActionController::Rendering
+  include ActionView::ViewRendering
 
   def accessing_logger_in_template
     render :inline =>  "<%= logger.class %>"

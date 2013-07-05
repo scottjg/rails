@@ -29,6 +29,7 @@ module AbstractController
     # Test Render mixin
     # ====
     class RenderingController < AbstractController::Base
+      include AbstractController::Rendering
       include ActionView::ViewRendering
 
       def _prefixes
