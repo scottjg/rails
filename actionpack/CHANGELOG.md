@@ -1,3 +1,11 @@
+## unreleased ##
+
+*   Fix "Stack Level Too Deep" error when redering recursive partials.
+
+    Fixes #11340.
+
+    *Rafael Mendonça França*
+
 ## Rails 4.0.0 (June 25, 2013) ##
 
 *   Merge `:action` from routing scope and assign endpoint if both `:controller`
