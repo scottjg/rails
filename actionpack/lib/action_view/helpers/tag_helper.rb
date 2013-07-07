@@ -137,7 +137,7 @@ module ActionView
                 if BOOLEAN_ATTRIBUTES.include?(key)
                   attrs << %(#{key}="#{key}") if value
                 else
-                  attrs << %(#{key}="#{escape_once(value)}") if !value.nil?
+                  attrs << %(#{key}="#{html_escape(value)}") if !value.nil?
                 end
               end
             else

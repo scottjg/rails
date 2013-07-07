@@ -46,7 +46,6 @@ module ActiveRecord
     # is computed directly through SQL and does not trigger by itself the
     # instantiation of the actual post records.
     class AssociationProxy #:nodoc:
-      alias_method :proxy_respond_to_missing?, :respond_to_missing?
       alias_method :proxy_respond_to?, :respond_to?
       alias_method :proxy_extend, :extend
       delegate :to_param, :to => :proxy_target
@@ -78,11 +77,6 @@ module ActiveRecord
       # Does the proxy or its \target respond to +symbol+?
       def respond_to?(*args)
         proxy_respond_to?(*args) || (load_target && @target.respond_to?(*args))
-      end
-
-      # Does the proxy or its \target respond to +symbol+?
-      def respond_to_missing?(*args)
-        proxy_respond_to_missing?(*args) || (load_target && @target.respond_to_missing?(*args))
       end
 
       # Forwards <tt>===</tt> explicitly to the \target because the instance method
