@@ -5,6 +5,7 @@ require 'models/developer'
 require 'models/book'
 require 'models/author'
 require 'models/post'
+require 'models/save_model'
 
 class TransactionTest < ActiveRecord::TestCase
   self.use_transactional_fixtures = false
@@ -12,6 +13,32 @@ class TransactionTest < ActiveRecord::TestCase
 
   def setup
     @first, @second = Topic.find(1, 2).sort_by { |t| t.id }
+  end
+
+  def test_save_returns_new_record
+    model = SaveModel.new
+
+    begin
+      SaveModel.transaction do
+        model.save
+      end
+    rescue ActiveRecord::StatementInvalid
+    end
+
+    assert model.new_record?, "#{model.inspect} should be new record"
+  end
+
+  def test_save_bang_returns_new_record
+    model = SaveModel.new
+
+    begin
+      SaveModel.transaction do
+        model.save!
+      end
+    rescue ActiveRecord::StatementInvalid
+    end
+
+    assert model.new_record?, "#{model.inspect} should be new record"
   end
 
   def test_raise_after_destroy
