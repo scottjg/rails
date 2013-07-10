@@ -23,6 +23,7 @@
 
 require 'active_support'
 require 'active_support/rails'
+require 'loofah'
 
 module ActionView
   extend ActiveSupport::Autoload
