@@ -2,6 +2,8 @@ module ActiveRecord
   module NestedAttributes #:nodoc:
     class TooManyRecords < ActiveRecordError
     end
+    module NestedAttributesMethods
+    end
 
     def self.included(base)
       base.extend(ClassMethods)
@@ -239,11 +241,12 @@ module ActiveRecord
             # def pirate_attributes=(attributes)
             #   assign_nested_attributes_for_one_to_one_association(:pirate, attributes)
             # end
-            class_eval <<-EOS, __FILE__, __LINE__ + 1
+            NestedAttributesMethods.module_eval <<-EOS, __FILE__, __LINE__ + 1
               def #{association_name}_attributes=(attributes)
                 assign_nested_attributes_for_#{type}_association(:#{association_name}, attributes)
               end
             EOS
+            include NestedAttributesMethods
           else
             raise ArgumentError, "No association found for name `#{association_name}'. Has it been defined yet?"
           end
