@@ -142,7 +142,7 @@ module ActiveRecord
             when NilClass
               nil
             # Numeric types
-            when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+            when /\A\(?(-?\d+(\.\d*)?\)?(::bigint)?)\z/
               $1
             # Character types
             when /\A\(?'(.*)'::.*\b(?:character varying|bpchar|text)\z/m
@@ -1144,7 +1144,9 @@ module ActiveRecord
         UNIQUE_VIOLATION      = "23505"
 
         def translate_exception(exception, message)
-          case exception.result.error_field(PGresult::PG_DIAG_SQLSTATE)
+          return exception unless exception.respond_to?(:result)
+
+          case exception.result.try(:error_field, PGresult::PG_DIAG_SQLSTATE)
           when UNIQUE_VIOLATION
             RecordNotUnique.new(message, exception)
           when FOREIGN_KEY_VIOLATION
@@ -1177,7 +1179,11 @@ module ActiveRecord
             # prepared statements whose return value may have changed is
             # FEATURE_NOT_SUPPORTED.  Check here for more details:
             # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
-            code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
+            begin
+              code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
+            rescue
+              raise e
+            end
             if FEATURE_NOT_SUPPORTED == code
               @statements.delete sql_key(sql)
               retry
