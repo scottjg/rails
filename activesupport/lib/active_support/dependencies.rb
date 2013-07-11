@@ -220,12 +220,21 @@ module ActiveSupport #:nodoc:
         Dependencies.associate_with(file_name)
       end
 
+      require 'lib/restarter'
       def load_dependency(file)
+        Restarter.start_loading(file)
+        result = false
         if Dependencies.load?
-          Dependencies.new_constants_in(Object) { yield }.presence
+          new_constants = Dependencies.new_constants_in(Object) { yield }
+          Restarter.constants_for(file, new_constants)
+          result = new_constants.presence
         else
-          yield
+          new_constants = Dependencies.new_constants_in(Object) { result = yield }
+          Restarter.constants_for(file, new_constants)
+          #result = yield
         end
+        Restarter.end_loading(file)
+        result
       rescue Exception => exception  # errors from loading file
         exception.blame_file! file
         raise
@@ -656,3 +665,4 @@ module ActiveSupport #:nodoc:
 end
 
 ActiveSupport::Dependencies.hook!
+
