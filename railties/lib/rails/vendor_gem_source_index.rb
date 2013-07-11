@@ -97,7 +97,7 @@ module Rails
         end
         vendor_gems[File.basename(d)] = spec
       end
-      @vendor_source_index = Gem::SourceIndex.new(vendor_gems)
+      @vendor_source_index = nil; #Gem::SourceIndex.new(vendor_gems)
     end
 
     def version_for_dir(d)
