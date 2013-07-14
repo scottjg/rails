@@ -87,5 +87,9 @@
 *   Fix removing trailing slash for mounted apps #3215
 
     *Piotr Sarnacki*
+    
+*   Loofah replaces html-scanner in dom assertions
+
+    *Kasper Timm Hansen*
 
 Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/actionpack/CHANGELOG.md) for previous changes.

@@ -138,5 +138,9 @@
 *   First release, ActionView extracted from ActionPack
 
     *Piotr Sarnacki*, *Łukasz Strzałkowski*
+    
+*   Loofah replaces html-scanner in sanitize_helper
+
+    *Kasper Timm Hansen*, *Rafael Mendonça França*
 
 Please check [4-0-stable (ActionPack's CHANGELOG)](https://github.com/rails/rails/blob/4-0-stable/actionpack/CHANGELOG.md) for previous changes.
