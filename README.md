@@ -2,10 +2,8 @@
 
 Gavel.ws is a tool for auctioneering and the conduct of accelerated WIN.WIN.WIN negotiations from multiple actors using the most current information from multiple web-services.  Gavel.ws is about accelerating, optimizing and perfecting multi-party social negotiations ... the very best negotiations and auctions, for ALL parties concerned, are necessarily data-intensive with deep access to all information. 
 
-Since there can be NO deficit in information or data ... facilitating the exploitation of ALL web-service opportunities is especially key to Gavel.ws auctions and negotiations. 
-
-Gavel.ws is a fork of [Rails](https://github.com/rails/rails), the web-application framework based on the [Model-View-Controller (MVC)](http://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller)
-pattern.
+Since there can be NO deficit in information or data ... facilitating the exploitation of ALL web-service opportunities is especially key to Gavel.ws auctions and negotiations.  Gavel.ws is a fork of [Rails](https://github.com/rails/rails), the web-application framework based on the [Model-View-Controller (MVC)](http://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller)
+pattern.  Clean, maintainable, reusable infrastructure is the key to adapting to changing opportunities and the relevant marketplace.
 
 ## Getting Started
 
