@@ -53,7 +53,7 @@ module ActionDispatch
 
         # +attributes_are_equal?+ sorts elements attributes by name and compares
         # each attribute by calling +equal_attribute?+
-        # If those are true the attributes are considered equal
+        # If those are +true+ the attributes are considered equal
         def attributes_are_equal?(element, other_element)
           first_nodes = element.attribute_nodes.sort_by { |a| a.name }
           other_nodes = other_element.attribute_nodes.sort_by { |a| a.name }
