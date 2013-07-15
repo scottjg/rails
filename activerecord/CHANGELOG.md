@@ -1,4 +1,10 @@
 ## unreleased ##
+*   Perform necessary deeper encoding when hstore is inside an array, and return the
+    hstores as HashWithIndifferentAccess to be consistent with other forms.
+
+    Fixes: #11135
+
+    *Josh Goodall*
 
 *   Fix `AR::Relation#merge` sometimes failing to preserve `readonly(false)` flag.
 
