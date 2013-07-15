@@ -11,7 +11,7 @@ pattern.
 
 1.  Begin with end in mind, think about "how" and "why" features matter -- use [BDD and TDD](http://my.safaribooksonline.com/book/software-engineering-and-development/software-testing/9781449372576/4dot-an-introduction-to-test-and-behavior-driven-development/_tdd_and_bdd_with_ruby_html) as you think about testable, executable specifications that document the "rules of the game" and define the features of your negotiation or auction application.
 
-2.  Install the Gavel.ws base to create a starter app to begin developing the ecosystem of web services that your application will utlize. 
+2.  Install the Gavel.ws base to create a starter app to begin developing the ecosystem of web services that your application will utlize.  Put the application to work under load; rather than add more features, radically constrain the to core functionality and load it up. Find the weak spots and eliminate them.
 
 3.  Ditch the unnecessary filler words in your auction chant.  Resist the urge to complexicate with lots of shiny junk.  Perfect practice makes perfect. Review your understanding of the domain; go back to [BDD and TDD](http://my.safaribooksonline.com/book/software-engineering-and-development/software-testing/9781449372576/4dot-an-introduction-to-test-and-behavior-driven-development/_tdd_and_bdd_with_ruby_html).  Instead of just throwing more features and web services at the wall to see what sticks, try to return to the necessary features of your domain per [test-driven infrastructure-as-code](http://my.safaribooksonline.com/book/software-engineering-and-development/software-testing/9781449372576/1dot-the-philosophy-of-test-driven-infrastructure/ch01_html) paradigm as you prune all but the most necessary features and infrastructure.
 
