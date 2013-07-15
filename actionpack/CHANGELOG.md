@@ -1,3 +1,7 @@
+*   Loofah replaces html-scanner in dom assertions
+
+    *Kasper Timm Hansen*
+
 *   Allow REMOTE_ADDR, HTTP_HOST and HTTP_USER_AGENT to be overridden from
     the environment passed into `ActionDispatch::TestRequest.new`.
 
@@ -87,9 +91,5 @@
 *   Fix removing trailing slash for mounted apps #3215
 
     *Piotr Sarnacki*
-    
-*   Loofah replaces html-scanner in dom assertions
-
-    *Kasper Timm Hansen*
 
 Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/actionpack/CHANGELOG.md) for previous changes.
