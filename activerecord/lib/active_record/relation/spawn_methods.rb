@@ -31,19 +31,24 @@ module ActiveRecord
 
       merged_wheres = @where_values + r.where_values
 
-      unless @where_values.empty?
-        # Remove duplicates, last one wins.
-        seen = Hash.new { |h,table| h[table] = {} }
-        merged_wheres = merged_wheres.reverse.reject { |w|
-          nuke = false
-          if w.respond_to?(:operator) && w.operator == :==
-            name              = w.left.name
-            table             = w.left.relation.name
-            nuke              = seen[table][name]
-            seen[table][name] = true
-          end
-          nuke
-        }.reverse
+      # Merge duplicate keys
+      if @where_values.any?
+        nodes = merged_wheres.group_by { |w|
+          next :eq if w.respond_to?(:operator) && w.operator == (:==)
+          next :and if Arel::Nodes::And === w && w.children.all? { |c|
+            c.respond_to?(:operator) && c.operator == (:==)
+          }
+        }
+
+        equalities   = (nodes[:eq] || []).uniq
+        conjunctions = (nodes[:and] || []).flat_map { |w| w.children }.uniq
+        others       = nodes[nil] || []
+
+        equalities = conjunctions + equalities
+        conjunctions = equalities.group_by { |where|
+          [where.left.name, where.left.relation.name]
+        }.values.map { |wheres| wheres.reduce(&:and) }
+        merged_wheres = conjunctions + others
       end
 
       merged_relation.where_values = merged_wheres
@@ -57,7 +62,7 @@ module ActiveRecord
 
       merged_relation = merged_relation.create_with(r.create_with_value) unless r.create_with_value.empty?
 
-      if (r.reordering_value)
+      if r.reordering_value
         # override any order specified in the original relation
         merged_relation.reordering_value = true
         merged_relation.order_values = r.order_values

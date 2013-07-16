@@ -378,6 +378,10 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Developer.find_all_by_name('David').map(&:id).sort, developers
   end
 
+  def test_default_scope_with_conditions_hash_conflict
+    assert_equal [], DeveloperCalledJamis.where(name: 'David').to_a
+  end
+
   def test_loading_with_one_association
     posts = Post.preload(:comments)
     post = posts.find { |p| p.id == 1 }
@@ -666,6 +670,11 @@ class RelationTest < ActiveRecord::TestCase
 
     dev_with_count = Developer.limit(1).merge(Developer.order('id DESC')).merge(Developer.select('developers.*'))
     assert_equal [developers(:poor_jamis)], dev_with_count.to_a
+  end
+
+  def test_relation_merging_with_where_values
+    devs = Developer.where(name: 'David').merge(Developer.where(name: 'Jamis'))
+    assert_equal [], devs.to_a
   end
 
   def test_relation_merging_with_eager_load

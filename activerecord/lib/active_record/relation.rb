@@ -460,8 +460,16 @@ module ActiveRecord
     end
 
     def where_values_hash
-      equalities = with_default_scope.where_values.grep(Arel::Nodes::Equality).find_all { |node|
-        node.left.relation.name == table_name
+      equalities = with_default_scope.where_values.reduce([]) { |eqs, node|
+        case node
+        when Arel::Nodes::Equality
+          eqs << node if node.left.relation.name == table_name
+        when Arel::Nodes::And
+          eqs << node.children.last if node.children.grep(Arel::Nodes::Equality).all? { |node|
+            node.left.relation.name == table_name
+          }
+        end
+        eqs
       }
 
       Hash[equalities.map { |where| [where.left.name, where.right] }].with_indifferent_access
