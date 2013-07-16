@@ -209,12 +209,11 @@ module ActionView
   #     <%- end -%>
   #   <% end %>
   class PartialRenderer < AbstractRenderer
-    PARTIAL_NAMES = Hash.new { |h,k| h[k] = {} }
+    NORMALIZED_PREFIXES = Hash.new { |h,k| h[k] = {} }
 
     def initialize(*)
       super
-      @context_prefix = @lookup_context.prefixes.first
-      @partial_names = PARTIAL_NAMES[@context_prefix]
+      @normalized_object_path_prefixes = {}
     end
 
     def render(context, options, block)
@@ -335,7 +334,7 @@ module ActionView
     end
 
     def find_template(path=@path, locals=@locals.keys)
-      prefixes = path.include?(?/) ? [] : @lookup_context.prefixes
+      prefixes = @normalized_object_path_prefixes[path] || (path.include?(?/) ? [] : @lookup_context.prefixes)
       @lookup_context.find_template(path, prefixes, true, locals, @details)
     end
 
@@ -386,23 +385,34 @@ module ActionView
         end
       end
 
-      @partial_names[path] ||= merge_prefix_into_object_path(@context_prefix, path.dup)
+      path = path.dup
+
+      @normalized_object_path_prefixes[path] ||= normalize_prefixes_for_object_path(path).uniq
+
+      path
     end
 
-    def merge_prefix_into_object_path(prefix, object_path)
-      if prefix.include?(?/) && object_path.include?(?/)
-        prefixes = []
-        prefix_array = File.dirname(prefix).split('/')
-        object_path_array = object_path.split('/')[0..-3] # skip model dir & partial
+    def normalize_prefixes_for_object_path(object_path)
+      prefixes = @lookup_context.prefixes
+      if object_path.include?(?/)
+        prefixes.map do |prefix|
+          NORMALIZED_PREFIXES[prefix][object_path] ||= if prefix.include?(?/)
+            prefix_parts = []
+            prefix_array = File.dirname(prefix).split('/')
+            object_path_array = object_path.split('/')[0..-3] # skip model dir & partial
 
-        prefix_array.each_with_index do |dir, index|
-          break if dir == object_path_array[index]
-          prefixes << dir
+            prefix_array.each_with_index do |dir, index|
+              break if dir == object_path_array[index]
+              prefix_parts << dir
+            end
+
+            prefix_parts.join("/")
+          else
+            prefix
+          end
         end
-
-        (prefixes << object_path).join("/")
       else
-        object_path
+        prefixes
       end
     end
 
