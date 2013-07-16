@@ -101,8 +101,8 @@ module ActiveSupport
         '>'    =>  '\u003E',
         '<'    =>  '\u003C',
         '&'    =>  '\u0026',
-        "#{0xe2.chr}#{0x80.chr}#{0xa8.chr}" => '\u2028',
-        "#{0xe2.chr}#{0x80.chr}#{0xa9.chr}" => '\u2029',
+        "#{0xe2.chr}#{0x80.chr}#{0xa8.chr}" => '',
+        "#{0xe2.chr}#{0x80.chr}#{0xa9.chr}" => '',
       }
 
       class << self
