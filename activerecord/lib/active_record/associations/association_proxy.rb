@@ -49,7 +49,7 @@ module ActiveRecord
       alias_method :proxy_respond_to?, :respond_to?
       alias_method :proxy_extend, :extend
       delegate :to_param, :to => :proxy_target
-      instance_methods.each { |m| undef_method m unless m =~ /(^__|^nil\?$|^send$|proxy_|^object_id$|^respond_to_missing\?$)/ }
+      instance_methods.each { |m| undef_method m unless m.to_s =~ /^(?:nil\?|send|object_id)$|^__|^respond_to_missing|proxy_/ }
 
       def initialize(owner, reflection)
         @owner, @reflection = owner, reflection
@@ -76,14 +76,13 @@ module ActiveRecord
 
       # Does the proxy or its \target respond to +symbol+?
       def respond_to?(*args)
-        proxy_respond_to?(*args) || (load_target && @target.respond_to?(*args))
+        proxy_respond_to?(*args) || (load_target(*args) && @target.respond_to?(*args))
       end
 
       # Forwards <tt>===</tt> explicitly to the \target because the instance method
       # removal above doesn't catch it. Loads the \target if needed.
       def ===(other)
-        load_target
-        other === @target
+        other === load_target
       end
 
       # Returns the name of the table of the related class:
@@ -137,16 +136,14 @@ module ActiveRecord
 
       # Forwards the call to the target. Loads the \target if needed.
       def inspect
-        load_target
-        @target.inspect
+        load_target.inspect
       end
 
       def send(method, *args)
-        if proxy_respond_to?(method)
+        if proxy_respond_to?(method, true)
           super
         else
-          load_target
-          @target.send(method, *args)
+          load_target(method, *args).send(method, *args)
         end
       end
 
@@ -210,8 +207,10 @@ module ActiveRecord
       private
         # Forwards any missing method call to the \target.
         def method_missing(method, *args, &block)
-          if load_target
-            if @target.respond_to?(method)
+          if load_target(method, *args)
+            if method == :to_a
+              Array(@target)
+            elsif @target.respond_to?(method)
               @target.send(method, *args, &block)
             else
               super
@@ -229,9 +228,7 @@ module ActiveRecord
         #
         # ActiveRecord::RecordNotFound is rescued within the method, and it is
         # not reraised. The proxy is \reset and +nil+ is the return value.
-        def load_target
-          return nil unless defined?(@loaded)
-
+        def load_target(*args)
           if !loaded? and (!@owner.new_record? || foreign_key_present)
             @target = find_target
           end
