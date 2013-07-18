@@ -1,5 +1,10 @@
 ## unreleased ##
 
+*   Add respond_to_missing? for TaggedLogging which is best practice when overriding method_missing. This permits
+    wrapping TaggedLogging by another log abstraction such as em-logger.
+
+    *Wolfram Arnold*
+
 *   Make `Time.at_with_coercion` retain the second fraction and return local time.
 
     Fixes #11350
@@ -26,11 +31,6 @@
     Fixes #9678.
 
     *Andrew White*
-
-*   Add respond_to_missing? for TaggedLogging which is best practice when overriding method_missing. This permits
-    wrapping TaggedLogging by another log abstraction such as em-logger.
-
-    *Wolfram Arnold*
 
 ## Rails 3.2.13 (Mar 18, 2013) ##
 
