@@ -152,7 +152,8 @@ module ActiveRecord
       end
 
       def send(method, *args)
-        if proxy_respond_to?(method)
+        include_private = true
+        if proxy_respond_to?(method, include_private)
           super
         else
           load_target
