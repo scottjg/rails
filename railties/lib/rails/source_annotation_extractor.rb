@@ -80,7 +80,7 @@ class SourceAnnotationExtractor
       else
         pattern =
             case item
-            when /\.(builder|rb|coffee|rake)$/
+            when /\.(builder|rb|coffee|rake|jbuilder)$/
               /#\s*(#{tag}):?\s*(.*)$/
             when /\.(css|scss|sass|js)$/
               /\/\/\s*(#{tag}):?\s*(.*)$/
