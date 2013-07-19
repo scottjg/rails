@@ -1,3 +1,7 @@
+*   Fix `rake notes` to look into `*.jbuilder` files
+
+    *Marc Berube*
+
 *   Added generated unit test for generator generator using new
     `test:generators` rake task.
 
