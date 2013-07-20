@@ -1805,4 +1805,10 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, speedometer.minivans.to_a.size, "Only one association should be present:\n#{speedometer.minivans.to_a}"
     assert_equal 1, speedometer.reload.minivans.to_a.size
   end
+
+  test "eager loading an association with a join does not omit the join" do
+    authors = Author.where(name: "David")
+
+    assert authors.includes(:posts_with_comments_sorted_by_comment_id_via_join).first
+  end
 end
