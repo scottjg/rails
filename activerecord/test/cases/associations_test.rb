@@ -20,10 +20,18 @@ require 'models/molecule'
 require 'models/electron'
 require 'models/man'
 require 'models/interest'
+require 'models/star'
+require 'models/galaxy'
 
 class AssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :developers_projects,
-           :computers, :people, :readers
+           :computers, :people, :readers, :galaxies, :stars
+
+  def test_eager_loading_should_work_with_bigdecimal_primary_keys
+    assert_kind_of BigDecimal, Star.first.galaxy_id
+    assert_kind_of BigDecimal, Galaxy.first.id
+    assert_equal Galaxy.find_by_name('Milky Way'), Galaxy.preload(:stars).find_by_name('Milky Way')
+  end
 
   def test_eager_loading_should_not_change_count_of_children
     liquid = Liquid.create(:name => 'salty')

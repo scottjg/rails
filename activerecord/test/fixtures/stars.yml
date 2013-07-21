@@ -1,0 +1,9 @@
+sol:
+  galaxy_id: 1
+  name: Sol
+a_cen_a:
+  galaxy_id: 1
+  name: Alpha Centauri A
+a_cen_b:
+  galaxy_id: 1
+  name: Alpha Centauri B
