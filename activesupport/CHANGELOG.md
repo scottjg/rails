@@ -4,6 +4,10 @@
 
     *Adrian CB*
 
+*   Fixed string comparison of integer 0 and float 0.0 when marking attribute as dirty in `ActiveRecord::AttributeMethods::Dirty`
+
+    *Adrian CB*
+
 ## Rails 3.2.13 (Feb 17, 2013) ##
 
 
