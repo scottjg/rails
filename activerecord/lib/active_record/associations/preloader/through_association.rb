@@ -53,9 +53,13 @@ module ActiveRecord
             through_options[:conditions] = { reflection.foreign_type => options[:source_type] }
           else
             if options[:conditions]
-              through_options[:include]    = options[:include] || options[:source]
               through_options[:conditions] = options[:conditions]
             end
+            
+            if options[:include] || options[:source]
+              through_options[:include] = options[:include] || options[:source]
+            end
+            
             through_options[:order] = options[:order] if options.has_key?(:order)
           end
 
