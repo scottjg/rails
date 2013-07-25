@@ -1,4 +1,5 @@
 require "cases/helper"
+require 'debugger'
 
 class TestAdapterWithInvalidConnection < ActiveRecord::TestCase
   self.use_transactional_fixtures = false
@@ -9,10 +10,12 @@ class TestAdapterWithInvalidConnection < ActiveRecord::TestCase
   def setup
     # Can't just use current adapter; sqlite3 will create a database
     # file on the fly.
-    Bird.establish_connection adapter: 'mysql', database: 'i_do_not_exist'
+    adapter = ActiveRecord::Base.connection_config[:adapter]
+    Bird.establish_connection adapter: adapter, database: 'i_do_not_exist'
   end
 
   def teardown
+    return if in_memory_db?
     Bird.remove_connection
   end
 
