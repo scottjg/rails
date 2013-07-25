@@ -96,6 +96,8 @@ class FormHelperTest < ActionView::TestCase
       end
     end
 
+    resource :post
+
     get "/foo", to: "controller#action"
     root to: "main#index"
   end
@@ -2921,6 +2923,18 @@ class FormHelperTest < ActionView::TestCase
   def test_fields_for_returns_block_result
     output = fields_for(Post.new) { |f| "fields" }
     assert_equal "fields", output
+  end
+
+  def test_form_for_with_new_singular_resource
+    form_for(Post.new) do |f| end
+    expected = whole_form("/post", "new_post", "new_post")
+    assert_equal expected, output_buffer
+  end
+
+  def test_form_for_with_persisted_singular_resource
+    form_for(@post) do |f| end
+    expected = whole_form("/post", "new_post", "new_post")
+    assert_equal expected, output_buffer
   end
 
   def test_form_for_only_instantiates_builder_once
