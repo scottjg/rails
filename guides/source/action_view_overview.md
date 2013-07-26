@@ -407,6 +407,20 @@ Will generate this HTML output:
 </tr>
 ```
 
+#### csrf_helper
+
+Returns meta tags “csrf-param” and “csrf-token” with the name of the cross-site request forgery protection parameter and token, respectively.
+
+```html
+  <%= csrf_meta_tags %>
+```
+
+These are used to generate the dynamic forms that implement non-remote links with :method.
+
+Note that regular forms generate hidden fields, and that Ajax calls are whitelisted, so they do not use these tags.
+
+More detail can be found at the <a href="security.html">Rails Security Guide</a>
+
 #### div_for
 
 This is actually a convenient method which calls `content_tag_for` internally with `:div` as the tag name. You can pass either an Active Record object or a collection of objects. For example:
