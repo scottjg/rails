@@ -1,4 +1,14 @@
-## Rails 3.2.12 (Fev 11, 2013) ##
+## Rails 3.2.14 (Jul 22, 2013) ##
+
+*   No changes.
+
+
+## Rails 3.2.13 (Mar 18, 2013) ##
+
+*   No changes.
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
 
 *   No changes.
 

@@ -14,7 +14,7 @@ gem 'jquery-rails'
 if ENV['JOURNEY']
   gem 'journey', :path => ENV['JOURNEY']
 else
-  gem 'journey', :git => 'git://github.com/rails/journey.git', :branch => '1-0-stable'
+  gem 'journey'
 end
 
 # This needs to be with require false to avoid
@@ -53,7 +53,7 @@ end
 
 platforms :ruby do
   gem 'yajl-ruby'
-  gem 'nokogiri', '>= 1.4.5'
+  gem 'nokogiri', '>= 1.4.5', '< 1.6'
 
   # AR
   gem 'sqlite3', '~> 1.3.5'
@@ -67,7 +67,7 @@ end
 
 platforms :jruby do
   gem 'json'
-  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.0'
+  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.7'
 
   # This is needed by now to let tests work on JRuby
   # TODO: When the JRuby guys merge jruby-openssl in
@@ -75,8 +75,8 @@ platforms :jruby do
   gem 'jruby-openssl'
 
   group :db do
-    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.0'
-    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.0'
+    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.7'
+    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.7'
   end
 end
 
