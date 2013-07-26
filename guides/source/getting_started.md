@@ -644,8 +644,10 @@ Visit <http://localhost:3000/posts/new> and give it a try!
 
 ![Show action for posts](images/getting_started/show_action_for_posts.png)
 
-TIP: Note that `def post_params` is private. This new approach prevents an attacker from
-setting the model's attributes by manipulating the hash passed to the model.
+TIP: Note that `def post_params` is private, this also includes everything below the keyword 'private'. 
+This new approach prevents an attacker from setting the model's attributes by manipulating the hash 
+passed to the model. If you encounter an error about missing parrams trying moving the whole function above
+the 'private' keyword.
 For more information, refer to
 [this blog post about Strong Parameters](http://weblog.rubyonrails.org/2012/3/21/strong-parameters/).
 
@@ -808,6 +810,8 @@ you'll see why that is in just a few moments.
 
 Notice that inside the `create` action we use `render` instead of `redirect_to` when `save`
 returns `false`. The `render` method is used so that the `@post` object is passed back to the `new` template when it is rendered. This rendering is done within the same request as the form submission, whereas the `redirect_to` will tell the browser to issue another request.
+
+
 
 If you reload
 <http://localhost:3000/posts/new> and
