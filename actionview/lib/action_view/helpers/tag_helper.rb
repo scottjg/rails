@@ -146,7 +146,11 @@ module ActionView
                 attrs << data_tag_option(k, v, escape)
               end
             elsif BOOLEAN_ATTRIBUTES.include?(key)
-              attrs << boolean_tag_option(key) if value
+              if value.nil?
+                attrs << key
+              elsif value
+                attrs << boolean_tag_option(key)
+              end
             elsif !value.nil?
               attrs << tag_option(key, value, escape)
             end

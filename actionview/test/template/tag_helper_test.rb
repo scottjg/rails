@@ -25,6 +25,10 @@ class TagHelperTest < ActionView::TestCase
     assert_equal "<p value=\"false\" />", tag("p", :value => false)
   end
 
+  def test_tag_options_accepts_false_option_for_boolean
+  assert_equal "<p />", tag("p", :disabled => false)
+  end
+
   def test_tag_options_accepts_blank_option
     assert_equal "<p included=\"\" />", tag("p", :included => '')
   end
@@ -32,6 +36,10 @@ class TagHelperTest < ActionView::TestCase
   def test_tag_options_converts_boolean_option
     assert_dom_equal '<p disabled="disabled" itemscope="itemscope" multiple="multiple" readonly="readonly" allowfullscreen="allowfullscreen" seamless="seamless" typemustmatch="typemustmatch" sortable="sortable" default="default" inert="inert" truespeed="truespeed" />',
       tag("p", :disabled => true, :itemscope => true, :multiple => true, :readonly => true, :allowfullscreen => true, :seamless => true, :typemustmatch => true, :sortable => true, :default => true, :inert => true, :truespeed => true)
+  end
+
+  def test_tag_options_adds_empty_attribute_if_value_is_nil
+    assert_dom_equal '<p disabled />', tag("p", :disabled => nil)
   end
 
   def test_content_tag
