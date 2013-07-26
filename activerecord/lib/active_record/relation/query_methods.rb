@@ -975,6 +975,10 @@ module ActiveRecord
       end
     end
 
+    REVERT_ORDER_STATEMENT_MAPPING = {
+      'asc' => :desc, 'first' => :last, 'desc' => :asc, 'last' => :first
+    }
+
     def reverse_sql_order(order_query)
       order_query = ["#{quoted_table_name}.#{quoted_primary_key} ASC"] if order_query.empty?
 
@@ -985,7 +989,13 @@ module ActiveRecord
         when String
           o.to_s.split(',').collect do |s|
             s.strip!
-            s.gsub!(/\sasc\Z/i, ' DESC') || s.gsub!(/\sdesc\Z/i, ' ASC') || s.concat(' DESC')
+
+            s.gsub!(/\b(asc|desc)(?:\s+nulls\s+(first|last))?\Z?/i) do |_|
+              nulls_order = $2 ? " nulls #{REVERT_ORDER_STATEMENT_MAPPING[$2.downcase]}" : ''
+              order       = REVERT_ORDER_STATEMENT_MAPPING[$1.downcase]
+
+              [order, nulls_order].join
+            end || s.concat(' DESC')
           end
         when Symbol
           { o => :desc }

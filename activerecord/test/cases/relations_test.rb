@@ -170,6 +170,16 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal topics(:fourth).title, topics.first.title
   end
 
+  def test_finding_with_with_nulls_order
+    topics(:fourth).update_columns(title: nil)
+
+    topics = Topic.order('title ASC nulls last')
+    assert_equal topics(:first).title, topics.first.title
+
+    topics = Topic.order('title ASC nulls last').reverse_order
+    assert_equal nil, topics.first.title
+  end
+
   def test_raising_exception_on_invalid_hash_params
     assert_raise(ArgumentError) { Topic.order(:name, "id DESC", :id => :DeSc) }
   end
