@@ -38,6 +38,9 @@ class SanitizeHelperTest < ActionView::TestCase
     assert_equal("<<<bad html", strip_tags("<<<bad html"))
     assert_equal("<<", strip_tags("<<<bad html>"))
 
+    assert_equal "This has a <-- this is not a\n comment here.",
+                 strip_tags("This has a <-- this is not a\n comment here.")
+
     assert_equal("Weirdos", strip_tags("Wei<<a>a onclick='alert(document.cookie);'</a>/>rdos"))
 
     assert_equal(
@@ -64,6 +67,8 @@ class SanitizeHelperTest < ActionView::TestCase
     assert_equal "This has a  here.", strip_tags("This has a <!-- comment --> here.")
 
     assert_equal "", strip_tags("<script>")
+
+    assert_equal "This has a  here.", strip_tags("This has a <!-- comment --> here.")
   end
 
   def test_sanitize_is_marked_safe
