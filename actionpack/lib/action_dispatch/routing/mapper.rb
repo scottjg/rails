@@ -1079,7 +1079,7 @@ module ActionDispatch
         # Takes same options as +resources+.
         def resource(*resources, &block)
           options = resources.extract_options!.dup
-          
+
           if apply_common_behavior_for(:resource, resources, options, &block)
             return self
           end
