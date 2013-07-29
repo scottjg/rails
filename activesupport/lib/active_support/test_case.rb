@@ -1,5 +1,9 @@
+gem 'debugger'
+require "debugger"
+
 gem 'minitest' # make sure we get the gem, not stdlib
 require 'minitest'
+
 require 'active_support/testing/tagged_logging'
 require 'active_support/testing/setup_and_teardown'
 require 'active_support/testing/assertions'
@@ -23,12 +27,24 @@ module Minitest # :nodoc:
   def self.__run reporter, options # :nodoc:
     # FIXME: MT5's runnables is not ordered. This is needed because
     # we have have tests have cross-class order-dependent bugs.
-    suites = Runnable.runnables.sort_by { |ts| ts.name.to_s }
+    suites = Runnable.runnables.sort_by { |ts| ts.name.to_s }.reverse
+    a,b = suites.partition { |s| s.name.to_s == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::ExplainTest' }
+    c = b
 
-    parallel, serial = suites.partition { |s| s.test_order == :parallel }
+    #debugger
 
-    ParallelEach.new(parallel).map { |suite| suite.run reporter, options } +
-     serial.map { |suite| suite.run reporter, options }
+    c.each_with_index do |suite, i|
+
+      puts i
+      puts suite.name.to_s
+      suite.run reporter, options
+    end
+    if a.first
+      a.first.run reporter, options
+    end
+
+    #parallel, serial = suites.partition { |s| s.test_order == :parallel }
+    #ParallelEach.new(parallel).map { |suite| suite.run reporter, options } + serial.map { |suite| suite.run reporter, options }
   end
 end
 
