@@ -4,8 +4,9 @@ module ActionController
   # by default.
   #
   # In addition to using the standard template helpers provided, creating custom helpers to
-  # extract complicated logic or reusable functionality is strongly encouraged. By default, each controller
-  # will include all helpers.
+  # extract complicated logic or reusable functionality is strongly encouraged.
+  # By default, each controller will include all helpers.
+  # These helpers are only accessible on the controller through <tt>.helpers</tt>
   #
   # In previous versions of \Rails the controller will include a helper whose
   # name matches that of the controller, e.g., <tt>MyController</tt> will automatically
