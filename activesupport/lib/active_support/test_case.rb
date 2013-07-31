@@ -1,5 +1,9 @@
+gem 'debugger'
+require "debugger"
+
 gem 'minitest' # make sure we get the gem, not stdlib
 require 'minitest'
+
 require 'active_support/testing/tagged_logging'
 require 'active_support/testing/setup_and_teardown'
 require 'active_support/testing/assertions'
@@ -23,12 +27,44 @@ module Minitest # :nodoc:
   def self.__run reporter, options # :nodoc:
     # FIXME: MT5's runnables is not ordered. This is needed because
     # we have have tests have cross-class order-dependent bugs.
-    suites = Runnable.runnables.sort_by { |ts| ts.name.to_s }
+    suites = Runnable.runnables.sort_by { |ts| ts.name.to_s }.reverse
+    a,b = suites.partition { |s| s.name.to_s == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::ExplainTest' }
+    c = b
 
-    parallel, serial = suites.partition { |s| s.test_order == :parallel }
+    #debugger
 
-    ParallelEach.new(parallel).map { |suite| suite.run reporter, options } +
-     serial.map { |suite| suite.run reporter, options }
+    c.each_with_index do |suite, i|
+      next if i.odd?
+      next if i < 10
+      next if i > 90
+      next if i > 80
+      next if (i > 40 && i < 50)
+      next if (i > 40 && i < 60)
+      next if (i > 40 && i < 65)
+      next if [16,18].include?(i)
+      next if [12].include?(i)
+      next if [14].include?(i)
+      next if [20].include?(i)
+      next if [22].include?(i)
+      next if [26].include?(i)
+      next if [30].include?(i)
+      next if [74].include?(i)
+      next if [78].include?(i)
+      next if [80].include?(i)
+      next if [70].include?(i)
+      #---
+      # 10,24,28,32,34,36,38,40,66,68,76
+
+      puts i
+      puts suite.name.to_s
+      suite.run reporter, options
+    end
+    if a.first
+      a.first.run reporter, options
+    end
+
+    #parallel, serial = suites.partition { |s| s.test_order == :parallel }
+    #ParallelEach.new(parallel).map { |suite| suite.run reporter, options } + serial.map { |suite| suite.run reporter, options }
   end
 end
 
