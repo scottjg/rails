@@ -42,47 +42,25 @@ module ActiveSupport
         attr_reader :options
 
         def initialize(options = nil)
-          @options = options || {}
+          @options = (options || {}).merge(encoder: self)
           @seen = Set.new
         end
 
-        def encode(value, use_options = true)
-          check_for_circular_references(value) do
-            jsonified = use_options ? value.as_json(options_for(value)) : value.as_json
-            jsonified.encode_json(self)
-          end
-        end
-
-        # like encode, but only calls as_json, without encoding to string.
-        def as_json(value, use_options = true)
-          check_for_circular_references(value) do
-            use_options ? value.as_json(options_for(value)) : value.as_json
-          end
-        end
-
-        def options_for(value)
-          if value.is_a?(Array) || value.is_a?(Hash)
-            # hashes and arrays need to get encoder in the options, so that
-            # they can detect circular references.
-            options.merge(:encoder => self)
-          else
-            options.dup
-          end
+        def encode(value)
+          check_for_circular_references(value)
+          jsonified = value.as_json(options)
+          #encoding to json file goes here, jsonified is json ready
         end
 
         def escape(string)
           Encoding.escape(string)
         end
 
-        private
-          def check_for_circular_references(value)
-            unless @seen.add?(value.__id__)
-              raise CircularReferenceError, 'object references itself'
-            end
-            yield
-          ensure
-            @seen.delete(value.__id__)
+        def check_for_circular_references(value)
+          unless @seen.add?(value.__id__)
+            raise CircularReferenceError, 'object references itself'
           end
+        end
       end
 
 
@@ -155,42 +133,30 @@ class Object
       to_hash
     else
       instance_values
-    end
+    end.as_json(options)
   end
 end
 
 class Struct #:nodoc:
   def as_json(options = nil)
-    Hash[members.zip(values)]
+    Hash[members.map(&:as_json).zip(values.map(&:as_json))]
   end
 end
 
 class TrueClass
   def as_json(options = nil) #:nodoc:
-    self
-  end
-
-  def encode_json(encoder) #:nodoc:
     to_s
   end
 end
 
 class FalseClass
   def as_json(options = nil) #:nodoc:
-    self
-  end
-
-  def encode_json(encoder) #:nodoc:
     to_s
   end
 end
 
 class NilClass
   def as_json(options = nil) #:nodoc:
-    self
-  end
-
-  def encode_json(encoder) #:nodoc:
     'null'
   end
 end
@@ -198,10 +164,6 @@ end
 class String
   def as_json(options = nil) #:nodoc:
     self
-  end
-
-  def encode_json(encoder) #:nodoc:
-    encoder.escape(self)
   end
 end
 
@@ -214,10 +176,6 @@ end
 class Numeric
   def as_json(options = nil) #:nodoc:
     self
-  end
-
-  def encode_json(encoder) #:nodoc:
-    to_s
   end
 end
 
@@ -271,45 +229,35 @@ end
 
 class Array
   def as_json(options = nil) #:nodoc:
-    # use encoder as a proxy to call as_json on all elements, to protect from circular references
-    encoder = options && options[:encoder] || ActiveSupport::JSON::Encoding::Encoder.new(options)
-    map { |v| encoder.as_json(v, options) }
-  end
+    options ||= {}
+    encoder = options[:encoder] ||= ActiveSupport::JSON::Encoding::Encoder.new(options)
 
-  def encode_json(encoder) #:nodoc:
-    # we assume here that the encoder has already run as_json on self and the elements, so we run encode_json directly
-    "[#{map { |v| v.encode_json(encoder) } * ','}]"
+    map { |v|
+      #actively check for circular references with encoder
+      encoder.check_for_circular_references(v)
+      v.as_json(options)
+    }
   end
 end
 
 class Hash
   def as_json(options = nil) #:nodoc:
+    options ||= {}
+    encoder = options[:encoder] ||= ActiveSupport::JSON::Encoding::Encoder.new(options)
     # create a subset of the hash by applying :only or :except
-    subset = if options
-      if attrs = options[:only]
-        slice(*Array(attrs))
-      elsif attrs = options[:except]
-        except(*Array(attrs))
-      else
-        self
-      end
+    subset = if attrs = options[:only]
+      slice(*Array(attrs))
+    elsif attrs = options[:except]
+      except(*Array(attrs))
     else
       self
     end
 
-    # use encoder as a proxy to call as_json on all values in the subset, to protect from circular references
-    encoder = options && options[:encoder] || ActiveSupport::JSON::Encoding::Encoder.new(options)
-    Hash[subset.map { |k, v| [k.to_s, encoder.as_json(v, options)] }]
-  end
-
-  def encode_json(encoder) #:nodoc:
-    # values are encoded with use_options = false, because we don't want hash representations from ActiveModel to be
-    # processed once again with as_json with options, as this could cause unexpected results (i.e. missing fields);
-
-    # on the other hand, we need to run as_json on the elements, because the model representation may contain fields
-    # like Time/Date in their original (not jsonified) form, etc.
-
-    "{#{map { |k,v| "#{encoder.encode(k.to_s)}:#{encoder.encode(v, false)}" } * ','}}"
+    Hash[subset.map { |k, v|
+      #actively check for circular references with encoder
+      encoder.check_for_circular_references(v)
+      [k.to_s, v.as_json(options)]
+    }]
   end
 end
 

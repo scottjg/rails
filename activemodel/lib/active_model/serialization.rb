@@ -105,9 +105,9 @@ module ActiveModel
       end
 
       hash = {}
-      attribute_names.each { |n| hash[n] = read_attribute_for_serialization(n) }
+      attribute_names.each { |n| hash[n] = read_attribute_for_serialization(n).as_json(options) }
 
-      Array(options[:methods]).each { |m| hash[m.to_s] = send(m) if respond_to?(m) }
+      Array(options[:methods]).each { |m| hash[m.to_s] = send(m).as_json(options) if respond_to?(m) }
 
       serializable_add_includes(options) do |association, records, opts|
         hash[association.to_s] = if records.respond_to?(:to_ary)
