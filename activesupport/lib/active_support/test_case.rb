@@ -34,26 +34,26 @@ module Minitest # :nodoc:
     #debugger
 
     c.each_with_index do |suite, i|
-      next if i.odd?
-      next if i < 10
-      next if i > 90
-      next if i > 80
-      next if (i > 40 && i < 50)
-      next if (i > 40 && i < 60)
-      next if (i > 40 && i < 65)
-      next if [16,18].include?(i)
-      next if [12].include?(i)
-      next if [14].include?(i)
-      next if [20].include?(i)
-      next if [22].include?(i)
-      next if [26].include?(i)
-      next if [30].include?(i)
-      next if [74].include?(i)
-      next if [78].include?(i)
-      next if [80].include?(i)
-      next if [70].include?(i)
-      #---
-      # 10,24,28,32,34,36,38,40,66,68,76
+      #next if i.odd?
+      #next if i < 10
+      #next if i > 90
+      #next if i > 80
+      #next if (i > 40 && i < 50)
+      #next if (i > 40 && i < 60)
+      #next if (i > 40 && i < 65)
+      #next if [16,18].include?(i)
+      #next if [12].include?(i)
+      #next if [14].include?(i)
+      #next if [20].include?(i)
+      #next if [22].include?(i)
+      #next if [26].include?(i)
+      #next if [30].include?(i)
+      #next if [74].include?(i)
+      #next if [78].include?(i)
+      #next if [80].include?(i)
+      #next if [70].include?(i)
+      ##---
+      ## 10,24,28,32,34,36,38,40,66,68,76
 
       puts i
       puts suite.name.to_s
