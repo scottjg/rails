@@ -1,3 +1,9 @@
+*   Make sure that `ActionController::Parameters#fetch` does not overwrite
+    any `KeyError` raised by the `super` call with an
+    `ActionController::ParameterMissing` exception.
+
+    *Jonas Schubert Erlandsson*
+
 *   Allow REMOTE_ADDR, HTTP_HOST and HTTP_USER_AGENT to be overridden from
     the environment passed into `ActionDispatch::TestRequest.new`.
 
