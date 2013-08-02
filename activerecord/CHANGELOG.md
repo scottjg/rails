@@ -1,3 +1,12 @@
+*   Added `ActiveRecord::Relation#outer_joins`.
+
+    Example:
+        User.outer_joins(:posts)
+        => SELECT "users".* FROM "users" LEFT OUTER JOIN "posts" ON
+           "posts"."user_id" = "users"."id"
+
+    *Florian Thomas*
+
 *   Test that PostgreSQL adapter includes `usec` when quoting `DateTime` objects
 
     *Ben Cherry*

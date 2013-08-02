@@ -415,6 +415,21 @@ module ActiveRecord
       self
     end
 
+    # Performs a left outer joins on +args+:
+    #
+    #   User.outer_joins(:posts)
+    #   => SELECT "users".* FROM "users" LEFT OUTER JOIN "posts" ON "posts"."user_id" = "users"."id"
+    #
+    def outer_joins(*args)
+      check_if_method_has_arguments!("outer_joins", args)
+      spawn.outer_joins!(*args.compact.flatten)
+    end
+
+    def outer_joins!(*args) # :nodoc:
+      self.outer_joins_values += args
+      self
+    end
+
     def bind(value)
       spawn.bind!(value)
     end
@@ -821,6 +836,8 @@ module ActiveRecord
 
       build_joins(arel, joins_values.flatten) unless joins_values.empty?
 
+      build_outer_joins(arel, outer_joins_values.flatten) unless outer_joins_values.empty?
+
       collapse_wheres(arel, (where_values - ['']).uniq)
 
       arel.having(*having_values.uniq.reject(&:blank?)) unless having_values.empty?
@@ -932,6 +949,24 @@ module ActiveRecord
       end
     end
 
+    def build_outer_joins(manager, outer_joins)
+      buckets = outer_joins.group_by do |join|
+        case join
+        when Hash, Symbol, Array
+          :association_join
+        when ActiveRecord::Associations::JoinDependency::JoinAssociation
+          :stashed_join
+        when Arel::Nodes::Join
+          :join_node
+        else
+          raise 'unknown class: %s' % join.class.name
+        end
+      end
+
+      build_join_query(manager, buckets, Arel::OuterJoin)
+
+    end
+
     def build_joins(manager, joins)
       buckets = joins.group_by do |join|
         case join
@@ -948,6 +983,11 @@ module ActiveRecord
         end
       end
 
+      build_join_query(manager, buckets, Arel::InnerJoin)
+
+    end
+
+    def build_join_query(manager, buckets, join_type=nil)
       association_joins         = buckets[:association_join] || []
       stashed_association_joins = buckets[:stashed_join] || []
       join_nodes                = (buckets[:join_node] || []).uniq
@@ -958,8 +998,10 @@ module ActiveRecord
       join_dependency = ActiveRecord::Associations::JoinDependency.new(
         @klass,
         association_joins,
-        join_list
+        join_list,
+        join_type
       )
+
 
       join_dependency.graft(*stashed_association_joins)
 
