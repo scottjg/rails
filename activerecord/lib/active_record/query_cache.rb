@@ -39,7 +39,7 @@ module ActiveRecord
       end
 
       response
-    rescue Exception => e
+    rescue => e
       restore_query_cache_settings(connection_id, enabled)
       raise e
     end

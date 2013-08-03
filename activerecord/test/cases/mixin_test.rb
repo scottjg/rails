@@ -87,7 +87,7 @@ class TouchTest < ActiveRecord::TestCase
 
   # Make sure Mixin.record_timestamps gets reset, even if this test fails,
   # so that other tests do not fail because Mixin.record_timestamps == false
-  rescue Exception => e
+  rescue => e
     raise e
   ensure
     Mixin.record_timestamps = true

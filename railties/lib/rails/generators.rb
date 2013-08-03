@@ -281,7 +281,7 @@ module Rails
               return
             rescue LoadError => e
               raise unless e.message =~ /#{Regexp.escape(path)}$/
-            rescue Exception => e
+            rescue => e
               warn "[WARNING] Could not load generator #{path.inspect}. Error: #{e.message}.\n#{e.backtrace.join("\n")}"
             end
           end

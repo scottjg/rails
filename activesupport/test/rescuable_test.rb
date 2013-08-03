@@ -31,7 +31,7 @@ class Stargate
 
   def dispatch(method)
     send(method)
-  rescue Exception => e
+  rescue => e
     rescue_with_handler(e)
   end
 

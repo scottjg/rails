@@ -18,7 +18,7 @@ module ActionView
       def each(&block)
         begin
           @start.call(block)
-        rescue Exception => exception
+        rescue => exception
           log_error(exception)
           block.call ActionView::Base.streaming_completion_on_exception
         end

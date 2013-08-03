@@ -65,7 +65,7 @@ class DependenciesTest < ActiveSupport::TestCase
         begin
           require_dependency filename
           flunk 'should have loaded dependencies/raises_exception which raises an exception'
-        rescue Exception => e
+        rescue => e
           assert_equal 'Loading me failed, so do not add to loaded or history.', e.message
         end
         assert_equal count + 1, $raises_exception_load_count

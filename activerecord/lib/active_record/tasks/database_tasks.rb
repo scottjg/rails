@@ -68,7 +68,7 @@ module ActiveRecord
         class_for_adapter(configuration['adapter']).new(*arguments).create
       rescue DatabaseAlreadyExists
         $stderr.puts "#{configuration['database']} already exists"
-      rescue Exception => error
+      rescue => error
         $stderr.puts error, *(error.backtrace)
         $stderr.puts "Couldn't create database for #{configuration.inspect}"
       end
@@ -91,7 +91,7 @@ module ActiveRecord
       def drop(*arguments)
         configuration = arguments.first
         class_for_adapter(configuration['adapter']).new(*arguments).drop
-      rescue Exception => error
+      rescue => error
         $stderr.puts error, *(error.backtrace)
         $stderr.puts "Couldn't drop #{configuration['database']}"
       end

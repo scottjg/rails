@@ -28,7 +28,7 @@ module ActionDispatch
 
     def call(env)
       @app.call(env)
-    rescue Exception => exception
+    rescue => exception
       raise exception if env['action_dispatch.show_exceptions'] == false
       render_exception(env, exception)
     end
@@ -42,7 +42,7 @@ module ActionDispatch
       env["PATH_INFO"] = "/#{status}"
       response = @exceptions_app.call(env)
       response[1]['X-Cascade'] == 'pass' ? pass_response(status) : response
-    rescue Exception => failsafe_error
+    rescue => failsafe_error
       $stderr.puts "Error during failsafe response: #{failsafe_error}\n  #{failsafe_error.backtrace * "\n  "}"
       FAILSAFE_RESPONSE
     end

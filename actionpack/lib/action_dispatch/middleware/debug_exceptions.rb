@@ -22,7 +22,7 @@ module ActionDispatch
       end
 
       response
-    rescue Exception => exception
+    rescue => exception
       raise exception if env['action_dispatch.show_exceptions'] == false
       render_exception(env, exception)
     end

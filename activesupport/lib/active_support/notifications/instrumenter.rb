@@ -18,7 +18,7 @@ module ActiveSupport
         start name, payload
         begin
           yield payload
-        rescue Exception => e
+        rescue => e
           payload[:exception] = [e.class.name, e.message]
           raise e
         ensure

@@ -206,7 +206,7 @@ module ActiveRecord
       def within_new_transaction(options = {}) #:nodoc:
         transaction = begin_transaction(options)
         yield
-      rescue Exception => error
+      rescue => error
         rollback_transaction if transaction
         raise
       ensure

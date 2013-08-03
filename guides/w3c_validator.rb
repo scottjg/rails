@@ -40,7 +40,7 @@ module RailsGuides
       guides_to_validate.each do |f|
         begin
           results = validator.validate_file(f)
-        rescue Exception => e
+        rescue => e
           puts "\nCould not validate #{f} because of #{e}"
           next
         end
