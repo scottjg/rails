@@ -4,7 +4,7 @@ include FileUtils
 
 commands = [
   'sudo service mysql start',
-  'sudo service postgresql start'
+  'sudo service postgresql start',
   'mysql -e "create database activerecord_unittest;" -u rails',
   'mysql -e "create database activerecord_unittest2;" -u rails',
   'psql  -c "create database activerecord_unittest;" -U postgres',
