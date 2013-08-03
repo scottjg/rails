@@ -6,7 +6,7 @@ module ActiveRecord
 
       def handle_dependency
         case options[:dependent]
-        when :restrict, :restrict_with_exception
+        when :restrict_with_exception
           raise ActiveRecord::DeleteRestrictionError.new(reflection.name) if load_target
 
         when :restrict_with_error
@@ -22,13 +22,12 @@ module ActiveRecord
       end
 
       def replace(record, save = true)
-        raise_on_type_mismatch(record) if record
+        raise_on_type_mismatch!(record) if record
         load_target
 
-        # If target and record are nil, or target is equal to record,
-        # we don't need to have transaction.
-        if (target || record) && target != record
-          reflection.klass.transaction do
+        return self.target if !(target || record)
+        if (target != record) || record.changed?
+          transaction_if(save) do
             remove_target!(options[:dependent]) if target && !target.destroyed?
 
             if record
@@ -89,6 +88,14 @@ module ActiveRecord
 
         def nullify_owner_attributes(record)
           record[reflection.foreign_key] = nil
+        end
+
+        def transaction_if(value)
+          if value
+            reflection.klass.transaction { yield }
+          else
+            yield
+          end
         end
     end
   end

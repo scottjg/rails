@@ -10,7 +10,7 @@ class ActionController::Base
 
     def before_filters
       filters = _process_action_callbacks.select { |c| c.kind == :before }
-      filters.map! { |c| c.instance_variable_get(:@raw_filter) }
+      filters.map! { |c| c.raw_filter }
     end
   end
 
@@ -211,6 +211,14 @@ class FilterTest < ActionController::TestCase
   class ConditionalOptionsFilter < ConditionalFilterController
     before_filter :ensure_login, :if => Proc.new { |c| true }
     before_filter :clean_up_tmp, :if => Proc.new { |c| false }
+  end
+
+  class ConditionalOptionsSkipFilter < ConditionalFilterController
+    before_filter :ensure_login
+    before_filter :clean_up_tmp
+
+    skip_before_filter :ensure_login, if: -> { false }
+    skip_before_filter :clean_up_tmp, if: -> { true }
   end
 
   class PrependingController < TestController
@@ -450,11 +458,9 @@ class FilterTest < ActionController::TestCase
 
   class RescuingAroundFilterWithBlock
     def around(controller)
-      begin
-        yield
-      rescue ErrorToRescue => ex
-        controller.__send__ :render, :text => "I rescued this: #{ex.inspect}"
-      end
+      yield
+    rescue ErrorToRescue => ex
+      controller.__send__ :render, :text => "I rescued this: #{ex.inspect}"
     end
   end
 
@@ -499,18 +505,6 @@ class FilterTest < ActionController::TestCase
 
   end
 
-  class ::AppSweeper < ActionController::Caching::Sweeper; end
-  class SweeperTestController < ActionController::Base
-    cache_sweeper :app_sweeper
-    def show
-      render :text => 'hello world'
-    end
-
-    def error
-      raise StandardError.new
-    end
-  end
-
   class ImplicitActionsController < ActionController::Base
     before_filter :find_only, :only => :edit
     before_filter :find_except, :except => :edit
@@ -524,35 +518,6 @@ class FilterTest < ActionController::TestCase
     def find_except
       @except = 'Except'
     end
-  end
-
-  def test_sweeper_should_not_ignore_no_method_error
-    sweeper = ActionController::Caching::Sweeper.send(:new)
-    assert_raise NoMethodError do
-      sweeper.send_not_defined
-    end
-  end
-
-  def test_sweeper_should_not_block_rendering
-    response = test_process(SweeperTestController)
-    assert_equal 'hello world', response.body
-  end
-
-  def test_sweeper_should_clean_up_if_exception_is_raised
-    assert_raise StandardError do
-      test_process(SweeperTestController, 'error')
-    end
-    assert_nil AppSweeper.instance.controller
-  end
-
-  def test_before_method_of_sweeper_should_always_return_true
-    sweeper = ActionController::Caching::Sweeper.send(:new)
-    assert sweeper.before(TestController.new)
-  end
-
-  def test_after_method_of_sweeper_should_always_return_nil
-    sweeper = ActionController::Caching::Sweeper.send(:new)
-    assert_nil sweeper.after(TestController.new)
   end
 
   def test_non_yielding_around_filters_not_returning_false_do_not_raise
@@ -633,6 +598,11 @@ class FilterTest < ActionController::TestCase
 
   def test_running_conditional_options
     test_process(ConditionalOptionsFilter)
+    assert_equal %w( ensure_login ), assigns["ran_filter"]
+  end
+
+  def test_running_conditional_skip_options
+    test_process(ConditionalOptionsSkipFilter)
     assert_equal %w( ensure_login ), assigns["ran_filter"]
   end
 

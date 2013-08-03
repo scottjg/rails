@@ -25,15 +25,13 @@ class Array
       # subtracting from number gives how many to add;
       # modulo number ensures we don't add group of just fill.
       padding = (number - size % number) % number
-      collection = dup.concat([fill_with] * padding)
+      collection = dup.concat(Array.new(padding, fill_with))
     end
 
     if block_given?
       collection.each_slice(number) { |slice| yield(slice) }
     else
-      groups = []
-      collection.each_slice(number) { |group| groups << group }
-      groups
+      collection.each_slice(number).to_a
     end
   end
 
@@ -58,7 +56,7 @@ class Array
     # size / number gives minor group size;
     # size % number gives how many objects need extra accommodation;
     # each group hold either division or division + 1 items.
-    division = size / number
+    division = size.div number
     modulo = size % number
 
     # create a new array avoiding dup
@@ -67,9 +65,9 @@ class Array
 
     number.times do |index|
       length = division + (modulo > 0 && modulo > index ? 1 : 0)
-      padding = fill_with != false &&
-        modulo > 0 && length == division ? 1 : 0
-      groups << slice(start, length).concat([fill_with] * padding)
+      groups << last_group = slice(start, length)
+      last_group << fill_with if fill_with != false &&
+        modulo > 0 && length == division
       start += length
     end
 
@@ -83,16 +81,30 @@ class Array
   # Divides the array into one or more subarrays based on a delimiting +value+
   # or the result of an optional block.
   #
-  #   [1, 2, 3, 4, 5].split(3)                # => [[1, 2], [4, 5]]
-  #   (1..10).to_a.split { |i| i % 3 == 0 }   # => [[1, 2], [4, 5], [7, 8], [10]]
+  #   [1, 2, 3, 4, 5].split(3)              # => [[1, 2], [4, 5]]
+  #   (1..10).to_a.split { |i| i % 3 == 0 } # => [[1, 2], [4, 5], [7, 8], [10]]
   def split(value = nil, &block)
-    inject([[]]) do |results, element|
-      if block && block.call(element) || value == element
-        results << []
-      else
-        results.last << element
-      end
+    if block
+      inject([[]]) do |results, element|
+        if block.call(element)
+          results << []
+        else
+          results.last << element
+        end
 
+        results
+      end
+    else
+      results, arr = [[]], self
+      until arr.empty?
+        if (idx = index(value))
+          results.last.concat(arr.shift(idx))
+          arr.shift
+          results << []
+        else
+          results.last.concat(arr.shift(arr.size))
+        end
+      end
       results
     end
   end

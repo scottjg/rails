@@ -2,6 +2,7 @@ require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/statement_pool'
 require 'active_record/connection_adapters/postgresql/oid'
 require 'active_record/connection_adapters/postgresql/cast'
+require 'active_record/connection_adapters/postgresql/array_parser'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/database_statements'
@@ -15,22 +16,25 @@ require 'pg'
 require 'ipaddr'
 
 module ActiveRecord
-  module ConnectionHandling
+  module ConnectionHandling # :nodoc:
+    VALID_CONN_PARAMS = [:host, :hostaddr, :port, :dbname, :user, :password, :connect_timeout,
+                         :client_encoding, :options, :application_name, :fallback_application_name,
+                         :keepalives, :keepalives_idle, :keepalives_interval, :keepalives_count,
+                         :tty, :sslmode, :requiressl, :sslcompression, :sslcert, :sslkey,
+                         :sslrootcert, :sslcrl, :requirepeer, :krbsrvname, :gsslib, :service]
+
     # Establishes a connection to the database that's used by all Active Record objects
-    def postgresql_connection(config) # :nodoc:
+    def postgresql_connection(config)
       conn_params = config.symbolize_keys
 
-      # Forward any unused config params to PGconn.connect.
-      [:statement_limit, :encoding, :min_messages, :schema_search_path,
-       :schema_order, :adapter, :pool, :checkout_timeout, :template,
-       :reaping_frequency, :insert_returning].each do |key|
-        conn_params.delete key
-      end
-      conn_params.delete_if { |k,v| v.nil? }
+      conn_params.delete_if { |_, v| v.nil? }
 
       # Map ActiveRecords param names to PGs.
       conn_params[:user] = conn_params.delete(:username) if conn_params[:username]
       conn_params[:dbname] = conn_params.delete(:database) if conn_params[:database]
+
+      # Forward only valid config params to PGconn.connect.
+      conn_params.keep_if { |k, _| VALID_CONN_PARAMS.include?(k) }
 
       # The postgres drivers don't allow the creation of an unconnected PGconn object,
       # so just pass a nil connection object for the time being.
@@ -41,16 +45,23 @@ module ActiveRecord
   module ConnectionAdapters
     # PostgreSQL-specific extensions to column definitions in a table.
     class PostgreSQLColumn < Column #:nodoc:
+      attr_accessor :array
       # Instantiates a new PostgreSQL column definition in a table.
       def initialize(name, default, oid_type, sql_type = nil, null = true)
         @oid_type = oid_type
-        super(name, self.class.extract_value_from_default(default), sql_type, null)
+        if sql_type =~ /\[\]$/
+          @array = true
+          super(name, self.class.extract_value_from_default(default), sql_type[0..sql_type.length - 3], null)
+        else
+          @array = false
+          super(name, self.class.extract_value_from_default(default), sql_type, null)
+        end
       end
 
       # :stopdoc:
       class << self
         include ConnectionAdapters::PostgreSQLColumn::Cast
-
+        include ConnectionAdapters::PostgreSQLColumn::ArrayParser
         attr_accessor :money_precision
       end
       # :startdoc:
@@ -66,15 +77,14 @@ module ActiveRecord
         return default unless default
 
         case default
+          when /\A'(.*)'::(num|date|tstz|ts|int4|int8)range\z/m
+            $1
           # Numeric types
-          when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+          when /\A\(?(-?\d+(\.\d*)?\)?(::bigint)?)\z/
             $1
           # Character types
-          when /\A'(.*)'::(?:character varying|bpchar|text)\z/m
-            $1
-          # Character types (8.1 formatting)
-          when /\AE'(.*)'::(?:character varying|bpchar|text)\z/m
-            $1.gsub(/\\(\d\d\d)/) { $1.oct.chr }
+          when /\A\(?'(.*)'::.*\b(?:character varying|bpchar|text)\z/m
+            $1.gsub(/''/, "'")
           # Binary data types
           when /\A'(.*)'::bytea\z/m
             $1
@@ -165,6 +175,8 @@ module ActiveRecord
             :decimal
           when 'hstore'
             :hstore
+          when 'ltree'
+            :ltree
           # Network address types
           when 'inet'
             :inet
@@ -204,12 +216,14 @@ module ActiveRecord
           # UUID type
           when 'uuid'
             :uuid
-        # JSON type
-        when 'json'
-          :json
+          # JSON type
+          when 'json'
+            :json
           # Small and big integer types
           when /^(?:small|big)int$/
             :integer
+          when /(num|date|tstz|ts|int4|int8)range$/
+            field_type.to_sym
           # Pass through all types that are not specific to PostgreSQL.
           else
             super
@@ -233,7 +247,9 @@ module ActiveRecord
     #   <encoding></tt> call on the connection.
     # * <tt>:min_messages</tt> - An optional client min messages that is used in a
     #   <tt>SET client_min_messages TO <min_messages></tt> call on the connection.
-    # * <tt>:insert_returning</tt> - An optional boolean to control the use or <tt>RETURNING</tt> for <tt>INSERT<tt> statements
+    # * <tt>:variables</tt> - An optional hash of additional parameters that
+    #   will be used in <tt>SET SESSION key = val</tt> calls on the connection.
+    # * <tt>:insert_returning</tt> - An optional boolean to control the use or <tt>RETURNING</tt> for <tt>INSERT</tt> statements
     #   defaults to true.
     #
     # Any further options are used as connection parameters to libpq. See
@@ -243,7 +259,11 @@ module ActiveRecord
     # In addition, default connection parameters of libpq can be set per environment variables.
     # See http://www.postgresql.org/docs/9.1/static/libpq-envars.html .
     class PostgreSQLAdapter < AbstractAdapter
-      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+      class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
+        attr_accessor :array
+      end
+
+      module ColumnMethods
         def xml(*args)
           options = args.extract_options!
           column(args[0], 'xml', options)
@@ -254,8 +274,36 @@ module ActiveRecord
           column(args[0], 'tsvector', options)
         end
 
+        def int4range(name, options = {})
+          column(name, 'int4range', options)
+        end
+
+        def int8range(name, options = {})
+          column(name, 'int8range', options)
+        end
+
+        def tsrange(name, options = {})
+          column(name, 'tsrange', options)
+        end
+
+        def tstzrange(name, options = {})
+          column(name, 'tstzrange', options)
+        end
+
+        def numrange(name, options = {})
+          column(name, 'numrange', options)
+        end
+
+        def daterange(name, options = {})
+          column(name, 'daterange', options)
+        end
+
         def hstore(name, options = {})
           column(name, 'hstore', options)
+        end
+
+        def ltree(name, options = {})
+          column(name, 'ltree', options)
         end
 
         def inet(name, options = {})
@@ -279,6 +327,63 @@ module ActiveRecord
         end
       end
 
+      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+        include ColumnMethods
+
+        # Defines the primary key field.
+        # Use of the native PostgreSQL UUID type is supported, and can be used
+        # by defining your tables as such:
+        #
+        #   create_table :stuffs, id: :uuid do |t|
+        #     t.string :content
+        #     t.timestamps
+        #   end
+        #
+        # By default, this will use the +uuid_generate_v4()+ function from the
+        # +uuid-ossp+ extension, which MUST be enabled on your database. To enable
+        # the +uuid-ossp+ extension, you can use the +enable_extension+ method in your
+        # migrations. To use a UUID primary key without +uuid-ossp+ enabled, you can
+        # set the +:default+ option to +nil+:
+        #
+        #   create_table :stuffs, id: false do |t|
+        #     t.primary_key :id, :uuid, default: nil
+        #     t.uuid :foo_id
+        #     t.timestamps
+        #   end
+        #
+        # You may also pass a different UUID generation function from +uuid-ossp+
+        # or another library.
+        #
+        # Note that setting the UUID primary key default value to +nil+ will
+        # require you to assure that you always provide a UUID value before saving
+        # a record (as primary keys cannot be +nil+). This might be done via the
+        # +SecureRandom.uuid+ method and a +before_save+ callback, for instance.
+        def primary_key(name, type = :primary_key, options = {})
+          return super unless type == :uuid
+          options[:default] = options.fetch(:default, 'uuid_generate_v4()')
+          options[:primary_key] = true
+          column name, type, options
+        end
+
+        def column(name, type = nil, options = {})
+          super
+          column = self[name]
+          column.array = options[:array]
+
+          self
+        end
+
+        private
+
+          def create_column_definition(name, type)
+            ColumnDefinition.new name, type
+          end
+      end
+
+      class Table < ActiveRecord::ConnectionAdapters::Table
+        include ColumnMethods
+      end
+
       ADAPTER_NAME = 'PostgreSQL'
 
       NATIVE_DATABASE_TYPES = {
@@ -292,6 +397,12 @@ module ActiveRecord
         timestamp:   { name: "timestamp" },
         time:        { name: "time" },
         date:        { name: "date" },
+        daterange:   { name: "daterange" },
+        numrange:    { name: "numrange" },
+        tsrange:     { name: "tsrange" },
+        tstzrange:   { name: "tstzrange" },
+        int4range:   { name: "int4range" },
+        int8range:   { name: "int8range" },
         binary:      { name: "bytea" },
         boolean:     { name: "boolean" },
         xml:         { name: "xml" },
@@ -301,7 +412,8 @@ module ActiveRecord
         cidr:        { name: "cidr" },
         macaddr:     { name: "macaddr" },
         uuid:        { name: "uuid" },
-        json:        { name: "json" }
+        json:        { name: "json" },
+        ltree:       { name: "ltree" }
       }
 
       include Quoting
@@ -312,6 +424,19 @@ module ActiveRecord
       # Returns 'PostgreSQL' as adapter name for identification purposes.
       def adapter_name
         ADAPTER_NAME
+      end
+
+      # Adds `:array` option to the default set provided by the
+      # AbstractAdapter
+      def prepare_column_options(column, types)
+        spec = super
+        spec[:array] = 'true' if column.respond_to?(:array) && column.array
+        spec
+      end
+
+      # Adds `:array` as a valid migration key
+      def migration_keys
+        super + [:array]
       end
 
       # Returns +true+, since this connection adapter supports prepared statement
@@ -326,6 +451,14 @@ module ActiveRecord
 
       def supports_partial_index?
         true
+      end
+
+      def supports_transaction_isolation?
+        true
+      end
+
+      def index_algorithms
+        { concurrently: 'CONCURRENTLY' }
       end
 
       class StatementPool < ConnectionAdapters::StatementPool
@@ -389,13 +522,11 @@ module ActiveRecord
       def initialize(connection, logger, connection_parameters, config)
         super(connection, logger)
 
-        if config.fetch(:prepared_statements) { true }
+        if self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements) { true })
           @visitor = Arel::Visitors::PostgreSQL.new self
         else
-          @visitor = BindSubstitution.new self
+          @visitor = unprepared_visitor
         end
-
-        connection_parameters.delete :prepared_statements
 
         @connection_parameters, @config = connection_parameters, config
 
@@ -405,7 +536,7 @@ module ActiveRecord
 
         connect
         @statements = StatementPool.new @connection,
-                                        config.fetch(:statement_limit) { 1000 }
+                                        self.class.type_cast_config_to_integer(config.fetch(:statement_limit) { 1000 })
 
         if postgresql_version < 80200
           raise "Your version of PostgreSQL (#{postgresql_version}) is too old, please upgrade!"
@@ -413,7 +544,7 @@ module ActiveRecord
 
         initialize_type_map
         @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
-        @use_insert_returning = @config.key?(:insert_returning) ? @config[:insert_returning] : true
+        @use_insert_returning = @config.key?(:insert_returning) ? self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
       end
 
       # Clears the prepared statements cache.
@@ -423,8 +554,7 @@ module ActiveRecord
 
       # Is this connection alive and ready for queries?
       def active?
-        @connection.query 'SELECT 1'
-        true
+        @connection.connect_poll != PG::PGRES_POLLING_FAILED
       rescue PGError
         false
       end
@@ -488,6 +618,45 @@ module ActiveRecord
         true
       end
 
+      # Returns true if pg > 9.1
+      def supports_extensions?
+        postgresql_version >= 90100
+      end
+
+      # Range datatypes weren't introduced until PostgreSQL 9.2
+      def supports_ranges?
+        postgresql_version >= 90200
+      end
+
+      def enable_extension(name)
+        exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"").tap {
+          reload_type_map
+        }
+      end
+
+      def disable_extension(name)
+        exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE").tap {
+          reload_type_map
+        }
+      end
+
+      def extension_enabled?(name)
+        if supports_extensions?
+          res = exec_query "SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL) as enabled",
+            'SCHEMA'
+          res.column_types['enabled'].type_cast res.rows.first.first
+        end
+      end
+
+      def extensions
+        if supports_extensions?
+          res = exec_query "SELECT extname from pg_extension", "SCHEMA"
+          res.rows.map { |r| res.column_types['extname'].type_cast r.first }
+        else
+          super
+        end
+      end
+
       # Returns the configured supported identifier length supported by PostgreSQL
       def table_alias_length
         @table_alias_length ||= query('SHOW max_identifier_length', 'SCHEMA')[0][0].to_i
@@ -522,6 +691,10 @@ module ActiveRecord
         @use_insert_returning
       end
 
+      def valid_type?(type)
+        !native_database_types[type].nil?
+      end
+
       protected
 
         # Returns the version of the connected PostgreSQL server.
@@ -534,6 +707,8 @@ module ActiveRecord
         UNIQUE_VIOLATION      = "23505"
 
         def translate_exception(exception, message)
+          return exception unless exception.respond_to?(:result)
+
           case exception.result.try(:error_field, PGresult::PG_DIAG_SQLSTATE)
           when UNIQUE_VIOLATION
             RecordNotUnique.new(message, exception)
@@ -546,8 +721,13 @@ module ActiveRecord
 
       private
 
+        def reload_type_map
+          OID::TYPE_MAP.clear
+          initialize_type_map
+        end
+
         def initialize_type_map
-          result = execute('SELECT oid, typname, typelem, typdelim FROM pg_type', 'SCHEMA')
+          result = execute('SELECT oid, typname, typelem, typdelim, typinput FROM pg_type', 'SCHEMA')
           leaves, nodes = result.partition { |row| row['typelem'] == '0' }
 
           # populate the leaf nodes
@@ -555,10 +735,25 @@ module ActiveRecord
             OID::TYPE_MAP[row['oid'].to_i] = OID::NAMES[row['typname']]
           end
 
+          arrays, nodes = nodes.partition { |row| row['typinput'] == 'array_in' }
+
           # populate composite types
           nodes.find_all { |row| OID::TYPE_MAP.key? row['typelem'].to_i }.each do |row|
-            vector = OID::Vector.new row['typdelim'], OID::TYPE_MAP[row['typelem'].to_i]
+            if OID.registered_type? row['typname']
+              # this composite type is explicitly registered
+              vector = OID::NAMES[row['typname']]
+            else
+              # use the default for composite types
+              vector = OID::Vector.new row['typdelim'], OID::TYPE_MAP[row['typelem'].to_i]
+            end
+
             OID::TYPE_MAP[row['oid'].to_i] = vector
+          end
+
+          # populate array types
+          arrays.find_all { |row| OID::TYPE_MAP.key? row['typelem'].to_i }.each do |row|
+            array = OID::Array.new  OID::TYPE_MAP[row['typelem'].to_i]
+            OID::TYPE_MAP[row['oid'].to_i] = array
           end
         end
 
@@ -569,32 +764,30 @@ module ActiveRecord
         end
 
         def exec_cache(sql, binds)
-          begin
-            stmt_key = prepare_statement sql
+          stmt_key = prepare_statement(sql)
 
-            # Clear the queue
-            @connection.get_last_result
-            @connection.send_query_prepared(stmt_key, binds.map { |col, val|
-              type_cast(val, col)
-            })
-            @connection.block
-            @connection.get_last_result
-          rescue PGError => e
-            # Get the PG code for the failure.  Annoyingly, the code for
-            # prepared statements whose return value may have changed is
-            # FEATURE_NOT_SUPPORTED.  Check here for more details:
-            # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
-            begin
-              code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
-            rescue
-              raise e
-            end
-            if FEATURE_NOT_SUPPORTED == code
-              @statements.delete sql_key(sql)
-              retry
-            else
-              raise e
-            end
+          # Clear the queue
+          @connection.get_last_result
+          @connection.send_query_prepared(stmt_key, binds.map { |col, val|
+            type_cast(val, col)
+          })
+          @connection.block
+          @connection.get_last_result
+        rescue PGError => e
+          # Get the PG code for the failure.  Annoyingly, the code for
+          # prepared statements whose return value may have changed is
+          # FEATURE_NOT_SUPPORTED.  Check here for more details:
+          # http://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
+          begin
+            code = e.result.result_error_field(PGresult::PG_DIAG_SQLSTATE)
+          rescue
+            raise e
+          end
+          if FEATURE_NOT_SUPPORTED == code
+            @statements.delete sql_key(sql)
+            retry
+          else
+            raise e
           end
         end
 
@@ -648,10 +841,23 @@ module ActiveRecord
 
           # If using Active Record's time zone support configure the connection to return
           # TIMESTAMP WITH ZONE types in UTC.
+          # (SET TIME ZONE does not use an equals sign like other SET variables)
           if ActiveRecord::Base.default_timezone == :utc
             execute("SET time zone 'UTC'", 'SCHEMA')
           elsif @local_tz
             execute("SET time zone '#{@local_tz}'", 'SCHEMA')
+          end
+
+          # SET statements from :variables config hash
+          # http://www.postgresql.org/docs/8.3/static/sql-set.html
+          variables = @config[:variables] || {}
+          variables.map do |k, v|
+            if v == ':default' || v == :default
+              # Sets the value to the global or compile default
+              execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
+            elsif !v.nil?
+              execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
+            end
           end
         end
 
@@ -702,12 +908,13 @@ module ActiveRecord
         #  - ::regclass is a function that gives the id for a table name
         def column_definitions(table_name) #:nodoc:
           exec_query(<<-end_sql, 'SCHEMA').rows
-            SELECT a.attname, format_type(a.atttypid, a.atttypmod), d.adsrc, a.attnotnull, a.atttypid, a.atttypmod
-              FROM pg_attribute a LEFT JOIN pg_attrdef d
-                ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-             WHERE a.attrelid = '#{quote_table_name(table_name)}'::regclass
-               AND a.attnum > 0 AND NOT a.attisdropped
-             ORDER BY a.attnum
+              SELECT a.attname, format_type(a.atttypid, a.atttypmod),
+                     pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod
+                FROM pg_attribute a LEFT JOIN pg_attrdef d
+                  ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+               WHERE a.attrelid = '#{quote_table_name(table_name)}'::regclass
+                 AND a.attnum > 0 AND NOT a.attisdropped
+               ORDER BY a.attnum
           end_sql
         end
 
@@ -726,8 +933,12 @@ module ActiveRecord
           $1.strip if $1
         end
 
-        def table_definition
-          TableDefinition.new(self)
+        def create_table_definition(name, temporary, options)
+          TableDefinition.new native_database_types, name, temporary, options
+        end
+
+        def update_table_definition(table_name, base)
+          Table.new(table_name, base)
         end
     end
   end

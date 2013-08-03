@@ -1,86 +1,77 @@
-## Rails 4.0.0 (unreleased) ##
+*   Changed stylesheet load order in the stylesheet manifest generator.
+    Fixes #11639.
 
-*   Change `rails new` and `rails plugin new` generators to name the `.gitkeep` files
-    as `.keep` in a more SCM-agnostic way.
+    *Pawel Janiak*
 
-    Change `--skip-git` option to only skip the `.gitignore` file and still generate
-    the `.keep` files.
+*   Added generated unit test for generator generator using new
+    `test:generators` rake task.
 
-    Add `--skip-keeps` option to skip the `.keep` files.
+    *Josef Šimánek*
 
-    *Derek Prior & Francesco Rodriguez*
+*   Removed `update:application_controller` rake task.
 
-*   Fixed support for DATABASE_URL environment variable for rake db tasks. *Grace Liu*
+    *Josef Šimánek*
 
-*   rails dbconsole now can use SSL for MySQL. The database.yml options sslca, sslcert, sslcapath, sslcipher,
-    and sslkey now affect rails dbconsole. *Jim Kingdon and Lars Petrus*
+*   Fix `rake environment` to do not eager load modules
 
-*   Correctly handle SCRIPT_NAME when generating routes to engine in application
-    that's mounted at a sub-uri. With this behavior, you *should not* use
-    default_url_options[:script_name] to set proper application's mount point by
-    yourself. *Piotr Sarnacki*
+    *Paul Nikitochkin*
 
-*   `config.threadsafe!` is deprecated in favor of `config.eager_load` which provides a more fine grained control on what is eager loaded *José Valim*
+*   Fix `rake notes` to look into `*.sass` files
 
-*   The migration generator will now produce AddXXXToYYY/RemoveXXXFromYYY migrations with references statements, for instance
+    *Yuri Artemev*
 
-        rails g migration AddReferencesToProducts user:references supplier:references{polymorphic}
+*   Removed deprecated `Rails.application.railties.engines`.
 
-    will generate the migration with:
+    *Arun Agrawal*
 
-        add_reference :products, :user, index: true
-        add_reference :products, :supplier, polymorphic: true, index: true
+*   Removed deprecated threadsafe! from Rails Config.
 
-    *Aleksey Magusev*
+    *Paul Nikitochkin*
 
-*   Allow scaffold/model/migration generators to accept a `polymorphic` modifier
-    for `references`/`belongs_to`, for instance
+*   Remove deprecated `ActiveRecord::Generators::ActiveModel#update_attributes` in
+    favor of `ActiveRecord::Generators::ActiveModel#update`
 
-        rails g model Product supplier:references{polymorphic}
+    *Vipul A M*
 
-    will generate the model with `belongs_to :supplier, polymorphic: true`
-    association and appropriate migration.
+*   Remove deprecated `config.whiny_nils` option
 
-    *Aleksey Magusev*
+    *Vipul A M*
 
-*   Set `config.active_record.migration_error` to `:page_load` for development *Richard Schneeman*
+*   Rename `commands/plugin_new.rb` to `commands/plugin.rb` and fix references
 
-*   Add runner to Rails::Railtie as a hook called just after runner starts. *José Valim & kennyj*
+    *Richard Schneeman*
 
-*   Add `/rails/info/routes` path, displays same information as `rake routes` *Richard Schneeman & Andrew White*
+*   Fix `rails plugin --help` command.
 
-*   Improved `rake routes` output for redirects *Łukasz Strzałkowski & Andrew White*
+    *Richard Schneeman*
 
-*   Load all environments available in `config.paths["config/environments"]`. *Piotr Sarnacki*
+*   Omit turbolinks configuration completely on skip_javascript generator option.
 
-*   Add `config.queue_consumer` to allow the default consumer to be configurable. *Carlos Antonio da Silva*
+    *Nikita Fedyashev*
 
-*   Add Rails.queue as an interface with a default implementation that consumes jobs in a separate thread. *Yehuda Katz*
+*   Removed deprecated rake tasks for running tests: `rake test:uncommitted` and
+    `rake test:recent`.
 
-*   Remove Rack::SSL in favour of ActionDispatch::SSL. *Rafael Mendonça França*
+    *John Wang*
 
-*   Remove Active Resource from Rails framework. *Prem Sichangrist*
+*   Clearing autoloaded constants triggers routes reloading.
+    Fixes #10685.
 
-*   Allow to set class that will be used to run as a console, other than IRB, with `Rails.application.config.console=`. It's best to add it to `console` block. *Piotr Sarnacki*
+    *Xavier Noria*
 
-    Example:
+*   Fixes bug with scaffold generator with `--assets=false --resource-route=false`.
+    Fixes #9525.
 
-        # it can be added to config/application.rb
-        console do
-          # this block is called only when running console,
-          # so we can safely require pry here
-          require "pry"
-          config.console = Pry
-        end
+    *Arun Agrawal*
 
-*   Add convenience `hide!` method to Rails generators to hide current generator
-    namespace from showing when running `rails generate`. *Carlos Antonio da Silva*
+*   Rails::Railtie no longer forces the Rails::Configurable module on everything
+    that subclasses it. Instead, the methods from Rails::Configurable have been
+    moved to class methods in Railtie and the Railtie has been made abstract.
 
-*   Scaffold now uses `content_tag_for` in index.html.erb *José Valim*
+    *John Wang*
 
-*   Rails::Plugin has gone. Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies. *Santiago Pastorino*
+*   Changes repetitive th tags to use colspan attribute in `index.html.erb` template.
 
-*   Set config.action_mailer.async = true to turn on asynchronous
-    message delivery *Brian Cardarella*
+    *Sıtkı Bağdat*
 
-Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/railties/CHANGELOG.md) for previous changes.
+Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/railties/CHANGELOG.md) for previous changes.

@@ -231,6 +231,14 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert_equal "2", categories(:sti_test).authors_with_select.first.post_id.to_s
   end
 
+  def test_create_through_has_many_with_piggyback
+    category = categories(:sti_test)
+    ernie = category.authors_with_select.create(:name => 'Ernie')
+    assert_nothing_raised do
+      assert_equal ernie, category.authors_with_select.detect {|a| a.name == 'Ernie'}
+    end
+  end
+
   def test_include_has_many_through
     posts              = Post.all.merge!(:order => 'posts.id').to_a
     posts_with_authors = Post.all.merge!(:includes => :authors, :order => 'posts.id').to_a
@@ -389,14 +397,14 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_polymorphic_has_many
-    assert_equal taggings(:welcome_general, :thinking_general), authors(:david).taggings.uniq.sort_by { |t| t.id }
+    assert_equal taggings(:welcome_general, :thinking_general), authors(:david).taggings.distinct.sort_by { |t| t.id }
   end
 
   def test_include_has_many_through_polymorphic_has_many
     author            = Author.includes(:taggings).find authors(:david).id
     expected_taggings = taggings(:welcome_general, :thinking_general)
     assert_no_queries do
-      assert_equal expected_taggings, author.taggings.uniq.sort_by { |t| t.id }
+      assert_equal expected_taggings, author.taggings.distinct.sort_by { |t| t.id }
     end
   end
 
@@ -435,8 +443,8 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
 
   def test_has_many_through_uses_conditions_specified_on_the_has_many_association
     author = Author.first
-    assert_present author.comments
-    assert_blank author.nonexistant_comments
+    assert author.comments.present?
+    assert author.nonexistant_comments.blank?
   end
 
   def test_has_many_through_uses_correct_attributes
@@ -456,7 +464,7 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     assert saved_post.reload.tags(true).include?(new_tag)
 
 
-    new_post = Post.new(:title => "Association replacmenet works!", :body => "You best believe it.")
+    new_post = Post.new(:title => "Association replacement works!", :body => "You best believe it.")
     saved_tag = tags(:general)
 
     new_post.tags << saved_tag

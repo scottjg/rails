@@ -15,14 +15,14 @@ module ActiveRecord
 
       def scope
         scope = klass.unscoped
-        scope.merge! eval_scope(klass, reflection.scope) if reflection.scope
+        scope.extending! Array(options[:extend])
         add_constraints(scope)
       end
 
       private
 
       def column_for(table_name, column_name)
-        columns = alias_tracker.connection.schema_cache.columns_hash[table_name]
+        columns = alias_tracker.connection.schema_cache.columns_hash(table_name)
         columns[column_name]
       end
 
@@ -58,7 +58,7 @@ module ActiveRecord
 
           if reflection.source_macro == :belongs_to
             if reflection.options[:polymorphic]
-              key = reflection.association_primary_key(klass)
+              key = reflection.association_primary_key(self.klass)
             else
               key = reflection.association_primary_key
             end
@@ -82,20 +82,28 @@ module ActiveRecord
             constraint = table[key].eq(foreign_table[foreign_key])
 
             if reflection.type
-              type = chain[i + 1].klass.base_class.name
-              constraint = constraint.and(table[reflection.type].eq(type))
+              value    = chain[i + 1].klass.base_class.name
+              bind_val = bind scope, table.table_name, reflection.type.to_s, value
+              scope    = scope.where(table[reflection.type].eq(bind_val))
             end
 
             scope = scope.joins(join(foreign_table, constraint))
           end
 
+          klass = i == 0 ? self.klass : reflection.klass
+
           # Exclude the scope of the association itself, because that
           # was already merged in the #scope method.
-          (scope_chain[i] - [self.reflection.scope]).each do |scope_chain_item|
-            item = eval_scope(reflection.klass, scope_chain_item)
+          scope_chain[i].each do |scope_chain_item|
+            item  = eval_scope(klass, scope_chain_item)
+
+            if scope_chain_item == self.reflection.scope
+              scope.merge! item.except(:where, :includes, :bind)
+            end
 
             scope.includes! item.includes_values
             scope.where_values += item.where_values
+            scope.order_values |= item.order_values
           end
         end
 
@@ -113,7 +121,7 @@ module ActiveRecord
           # the owner
           klass.table_name
         else
-          reflection.table_name
+          super
         end
       end
 

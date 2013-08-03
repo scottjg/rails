@@ -1,185 +1,171 @@
-## Rails 4.0.0 (unreleased) ##
+*   Remove 'cow' => 'kine' irregular inflection from default inflections.
 
-*   ActiveSupport::Benchmarkable#silence has been deprecated due to its lack of
-    thread safety. It will be removed without replacement in Rails 4.1. *Steve
-    Klabnik*
+    *Andrew White*
 
-*   An optional block can be passed to `Hash#deep_merge`. The block will be invoked for each duplicated key
-    and used to resolve the conflict. *Pranas Kiziela*
+*   Add `DateTime#to_s(:iso8601)` and `Date#to_s(:iso8601)` for consistency.
 
-*   ActiveSupport::Deprecation is now a class. It is possible to create an instance
-    of deprecator. Backwards compatibility has been preserved.
+    *Andrew White*
 
-    You can choose which instance of the deprecator will be used.
-
-        deprecate :method_name, :deprecator => deprecator_instance
-
-    You can use ActiveSupport::Deprecation in your gem.
-
-        require 'active_support/deprecation'
-        require 'active_support/core_ext/module/deprecation'
-
-        class MyGem
-          def self.deprecator
-            ActiveSupport::Deprecation.new('2.0', 'MyGem')
-          end
-
-          def old_method
-          end
-
-          def new_method
-          end
-
-          deprecate :old_method => :new_method, :deprecator => deprecator
-        end
-
-        MyGem.new.old_method
-        # => DEPRECATION WARNING: old_method is deprecated and will be removed from MyGem 2.0 (use new_method instead). (called from <main> at file.rb:18)
-
-    *Piotr Niełacny & Robert Pankowecki*
-
-*   `ERB::Util.html_escape` encodes single quote as `#39`. Decimal form has better support in old browsers. *Kalys Osmonov*
-
-*   `ActiveSupport::Callbacks`: deprecate monkey patch of object callbacks.
-    Using the #filter method like this:
-
-        before_filter MyFilter.new
-
-        class MyFilter
-          def filter(controller)
-          end
-        end
-
-    Is now deprecated with recommendation to use the corresponding filter type
-    (`#before`, `#after` or `#around`):
-
-        before_filter MyFilter.new
-
-        class MyFilter
-          def before(controller)
-          end
-        end
-
-    *Bogdan Gusiev*
-
-*   An optional block can be passed to `HashWithIndifferentAccess#update` and `#merge`.
-    The block will be invoked for each duplicated key, and used to resolve the conflict,
-    thus replicating the behaviour of the corresponding methods on the `Hash` class.
-
-    *Leo Cassarani*
-
-*   Remove `j` alias for `ERB::Util#json_escape`.
-    The `j` alias is already used for `ActionView::Helpers::JavaScriptHelper#escape_javascript`
-    and both modules are included in the view context that would confuse the developers.
-
-    *Akira Matsuda*
-
-*   Replace deprecated `memcache-client` gem with `dalli` in ActiveSupport::Cache::MemCacheStore
-
-    *Guillermo Iguaran*
-
-*   Add default values to all `ActiveSupport::NumberHelper` methods, to avoid
-    errors with empty locales or missing values.
-
-    *Carlos Antonio da Silva*
-
-*   `ActiveSupport::JSON::Variable` is deprecated. Define your own `#as_json` and
-    `#encode_json` methods for custom JSON string literals.
-
-    *Erich Menge*
-
-*   Add String#indent. *fxn & Ace Suares*
-
-*   Inflections can now be defined per locale. `singularize` and `pluralize`
-    accept locale as an extra argument.
-
-    *David Celis*
-
-*   `Object#try` will now return nil instead of raise a NoMethodError if the
-    receiving object does not implement the method, but you can still get the
-    old behavior by using the new `Object#try!`.
+*   Add `Time#to_s(:iso8601)` for easy conversion of times to the iso8601 format for easy Javascript date parsing.
 
     *DHH*
 
-*   `ERB::Util.html_escape` now escapes single quotes. *Santiago Pastorino*
+*   Improve `ActiveSupport::Cache::MemoryStore` cache size calculation.
+    The memory used by a key/entry pair is calculated via `#cached_size`:
 
-*   `Time#change` now works with time values with offsets other than UTC or the local time zone. *Andrew White*
-
-*   `ActiveSupport::Callbacks`: deprecate usage of filter object with `#before` and `#after` methods as `around` callback. *Bogdan Gusiev*
-
-*   Add `Time#prev_quarter` and `Time#next_quarter` short-hands for `months_ago(3)` and `months_since(3)`. *SungHee Kang*
-
-*   Remove obsolete and unused `require_association` method from dependencies. *fxn*
-
-*   Add `:instance_accessor` option for `config_accessor`.
-
-        class User
-          include ActiveSupport::Configurable
-          config_accessor :allowed_access, instance_accessor: false
+        def cached_size(key, entry)
+          key.to_s.bytesize + entry.size + PER_ENTRY_OVERHEAD
         end
 
-        User.new.allowed_access = true # => NoMethodError
-        User.new.allowed_access        # => NoMethodError
+    The value of `PER_ENTRY_OVERHEAD` is 240 bytes based on an [empirical
+    estimation](https://gist.github.com/ssimeonov/6047200) for 64-bit MRI on
+    1.9.3 and 2.0. GH#11512
 
-    *Francesco Rodriguez*
+    *Simeon Simeonov*
 
-*   ActionView::Helpers::NumberHelper methods have been moved to ActiveSupport::NumberHelper and are now available via
-    Numeric#to_s.  Numeric#to_s now accepts the formatting  options :phone, :currency, :percentage, :delimited,
-    :rounded, :human, and :human_size. *Andrew Mutz*
+*   Only raise `Module::DelegationError` if it's the source of the exception.
 
-*   Add `Hash#transform_keys`, `Hash#transform_keys!`, `Hash#deep_transform_keys`, and `Hash#deep_transform_keys!`. *Mark McSpadden*
+    Fixes #10559
 
-*   Changed xml type `datetime` to `dateTime` (with upper case letter `T`). *Angelo Capilleri*
+    *Andrew White*
 
-*   Add `:instance_accessor` option for `class_attribute`. *Alexey Vakhov*
+*   Make `Time.at_with_coercion` retain the second fraction and return local time.
 
-*   `constantize` now looks in the ancestor chain. *Marc-Andre Lafortune & Andrew White*
+    Fixes #11350
 
-*   Adds `Hash#deep_stringify_keys` and `Hash#deep_stringify_keys!` to convert all keys from a +Hash+ instance into strings *Lucas Húngaro*
+    *Neer Friedman*, *Andrew White*
 
-*   Adds `Hash#deep_symbolize_keys` and `Hash#deep_symbolize_keys!` to convert all keys from a +Hash+ instance into symbols *Lucas Húngaro*
+*   Make `HashWithIndifferentAccess#select` always return the hash, even when
+    `Hash#select!` returns `nil`, to allow further chaining.
 
-*   `Object#try` can't call private methods. *Vasiliy Ermolovich*
+    *Marc Schütz*
 
-*   `AS::Callbacks#run_callbacks` remove `key` argument. *Francesco Rodriguez*
+*   Remove deprecated `String#encoding_aware?` core extensions (`core_ext/string/encoding`).
 
-*   `deep_dup` works more expectedly now and duplicates also values in +Hash+ instances and elements in +Array+ instances. *Alexey Gaziev*
+    *Arun Agrawal*
 
-*   Inflector no longer applies ice -> ouse to words like slice, police, ets *Wes Morgan*
+*   Remove deprecated `Module#local_constant_names` in favor of `Module#local_constants`.
 
-*   Add `ActiveSupport::Deprecations.behavior = :silence` to completely ignore Rails runtime deprecations *twinturbo*
+    *Arun Agrawal*
 
-*   Make Module#delegate stop using `send` - can no longer delegate to private methods. *dasch*
+*   Remove deprecated `DateTime.local_offset` in favor of `DateTime.civil_from_fromat`.
 
-*   AS::Callbacks: deprecate `:rescuable` option. *Bogdan Gusiev*
+    *Arun Agrawal*
 
-*   Adds Integer#ordinal to get the ordinal suffix string of an integer. *Tim Gildea*
+*   Remove deprecated `Logger` core extensions (`core_ext/logger.rb`).
 
-*   AS::Callbacks: `:per_key` option is no longer supported
+    *Carlos Antonio da Silva*
 
-*   `AS::Callbacks#define_callbacks`: add `:skip_after_callbacks_if_terminated` option.
+*   Remove deprecated `Time#time_with_datetime_fallback`, `Time#utc_time`
+    and `Time#local_time` in favor of `Time#utc` and `Time#local`.
 
-*   Add html_escape_once to ERB::Util, and delegate escape_once tag helper to it. *Carlos Antonio da Silva*
+    *Vipul A M*
 
-*   Remove ActiveSupport::TestCase#pending method, use `skip` instead. *Carlos Antonio da Silva*
+*   Remove deprecated `Hash#diff` with no replacement.
 
-*   Deprecates the compatibility method Module#local_constant_names,
-    use Module#local_constants instead (which returns symbols). *fxn*
+    If you're using it to compare hashes for the purpose of testing, please use
+    MiniTest's `assert_equal` instead.
 
-*   Deletes the compatibility method Module#method_names,
-    use Module#methods from now on (which returns symbols). *fxn*
+    *Carlos Antonio da Silva*
 
-*   Deletes the compatibility method Module#instance_method_names,
-    use Module#instance_methods from now on (which returns symbols). *fxn*
+*   Remove deprecated `Date#to_time_in_current_zone` in favor of `Date#in_time_zone`.
 
-*   BufferedLogger is deprecated.  Use ActiveSupport::Logger, or the logger
-    from Ruby stdlib.
+    *Vipul A M*
 
-*   Unicode database updated to 6.1.0.
+*   Remove deprecated `Proc#bind` with no replacement.
 
-*   Adds `encode_big_decimal_as_string` option to force JSON serialization of BigDecimals as numeric instead
-    of wrapping them in strings for safety.
+    *Carlos Antonio da Silva*
 
-*   Remove deprecated ActiveSupport::JSON::Variable. *Erich Menge*
+*   Remove deprecated `Array#uniq_by` and `Array#uniq_by!`, use native
+    `Array#uniq` and `Array#uniq!` instead.
 
-Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activesupport/CHANGELOG.md) for previous changes.
+    *Carlos Antonio da Silva*
+
+*   Remove deprecated `ActiveSupport::BasicObject`, use `ActiveSupport::ProxyObject` instead.
+
+    *Carlos Antonio da Silva*
+
+*   Remove deprecated `BufferedLogger`.
+
+    *Yves Senn*
+
+*   Remove deprecated `assert_present` and `assert_blank` methods.
+
+    *Yves Senn*
+
+*   Fix return value from `BacktraceCleaner#noise` when the cleaner is configured
+    with multiple silencers.
+
+    Fixes #11030
+
+    *Mark J. Titorenko*
+
+*   `HashWithIndifferentAccess#select` now returns a `HashWithIndifferentAccess`
+    instance instead of a `Hash` instance.
+
+    Fixes #10723
+
+    *Albert Llop*
+
+*   Add `DateTime#usec` and `DateTime#nsec` so that `ActiveSupport::TimeWithZone` keeps
+    sub-second resolution when wrapping a `DateTime` value.
+
+    Fixes #10855
+
+    *Andrew White*
+
+*   Fix `ActiveSupport::Dependencies::Loadable#load_dependency` calling
+    `#blame_file!` on Exceptions that do not have the Blamable mixin
+
+    *Andrew Kreiling*
+
+*   Override `Time.at` to support the passing of Time-like values when called with a single argument.
+
+    *Andrew White*
+
+*   Prevent side effects to hashes inside arrays when
+    `Hash#with_indifferent_access` is called.
+
+    Fixes #10526
+
+    *Yves Senn*
+
+*   Raise an error when multiple `included` blocks are defined for a Concern.
+    The old behavior would silently discard previously defined blocks, running
+    only the last one.
+
+    *Mike Dillon*
+
+*   Replace `multi_json` with `json`.
+
+    Since Rails requires Ruby 1.9 and since Ruby 1.9 includes `json` in the standard library,
+    `multi_json` is no longer necessary.
+
+    *Erik Michaels-Ober*
+
+*   Added escaping of U+2028 and U+2029 inside the json encoder.
+    These characters are legal in JSON but break the Javascript interpreter.
+    After escaping them, the JSON is still legal and can be parsed by Javascript.
+
+    *Mario Caropreso + Viktor Kelemen + zackham*
+
+*   Fix skipping object callbacks using metadata fetched via callback chain
+    inspection methods (`_*_callbacks`)
+
+    *Sean Walbran*
+
+*   Add a `fetch_multi` method to the cache stores. The method provides
+    an easy to use API for fetching multiple values from the cache.
+
+    Example:
+
+        # Calculating scores is expensive, so we only do it for posts
+        # that have been updated. Cache keys are automatically extracted
+        # from objects that define a #cache_key method.
+        scores = Rails.cache.fetch_multi(*posts) do |post|
+          calculate_score(post)
+        end
+
+    *Daniel Schierbeck*
+
+Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/activesupport/CHANGELOG.md) for previous changes.

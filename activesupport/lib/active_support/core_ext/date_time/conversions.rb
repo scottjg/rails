@@ -1,3 +1,4 @@
+require 'date'
 require 'active_support/inflector/methods'
 require 'active_support/core_ext/time/conversions'
 require 'active_support/core_ext/date_time/calculations'
@@ -18,6 +19,7 @@ class DateTime
   #   datetime.to_formatted_s(:long)          # => "December 04, 2007 00:00"
   #   datetime.to_formatted_s(:long_ordinal)  # => "December 4th, 2007 00:00"
   #   datetime.to_formatted_s(:rfc822)        # => "Tue, 04 Dec 2007 00:00:00 +0000"
+  #   datetime.to_formatted_s(:iso8601)       # => "2007-12-04T00:00:00+00:00"
   #
   # == Adding your own datetime formats to to_formatted_s
   # DateTime formats are shared with Time. You can add your own to the
@@ -53,7 +55,8 @@ class DateTime
   alias_method :default_inspect, :inspect
   alias_method :inspect, :readable_inspect
 
-  # Returns DateTime with local offset for given year if format is local else offset is zero
+  # Returns DateTime with local offset for given year if format is local else
+  # offset is zero.
   #
   #   DateTime.civil_from_format :local, 2012
   #   # => Sun, 01 Jan 2012 00:00:00 +0300
@@ -68,14 +71,24 @@ class DateTime
     civil(year, month, day, hour, min, sec, offset)
   end
 
-  # Converts self to a floating-point number of seconds since the Unix epoch.
+  # Converts +self+ to a floating-point number of seconds since the Unix epoch.
   def to_f
     seconds_since_unix_epoch.to_f
   end
 
-  # Converts self to an integer number of seconds since the Unix epoch.
+  # Converts +self+ to an integer number of seconds since the Unix epoch.
   def to_i
     seconds_since_unix_epoch.to_i
+  end
+
+  # Returns the fraction of a second as microseconds
+  def usec
+    (sec_fraction * 1_000_000).to_i
+  end
+
+  # Returns the fraction of a second as nanoseconds
+  def nsec
+    (sec_fraction * 1_000_000_000).to_i
   end
 
   private

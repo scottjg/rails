@@ -1,6 +1,6 @@
 module ActiveModel
 
-  # == Active Model Translation
+  # == Active \Model \Translation
   #
   # Provides integration between your object and the Rails internationalization
   # (i18n) framework.
@@ -41,7 +41,7 @@ module ActiveModel
     #
     # Specify +options+ with additional translating options.
     def human_attribute_name(attribute, options = {})
-      options   = { :count => 1 }.merge!(options)
+      options   = { count: 1 }.merge!(options)
       parts     = attribute.to_s.split(".")
       attribute = parts.pop
       namespace = parts.join("/") unless parts.empty?

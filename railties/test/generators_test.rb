@@ -43,8 +43,8 @@ class GeneratorsTest < Rails::Generators::TestCase
   end
 
   def test_invoke_with_config_values
-    Rails::Generators::ModelGenerator.expects(:start).with(["Account"], :behavior => :skip)
-    Rails::Generators.invoke :model, ["Account"], :behavior => :skip
+    Rails::Generators::ModelGenerator.expects(:start).with(["Account"], behavior: :skip)
+    Rails::Generators.invoke :model, ["Account"], behavior: :skip
   end
 
   def test_find_by_namespace
@@ -106,7 +106,7 @@ class GeneratorsTest < Rails::Generators::TestCase
   def test_rails_generators_help_does_not_include_app_nor_plugin_new
     output = capture(:stdout){ Rails::Generators.help }
     assert_no_match(/app/, output)
-    assert_no_match(/plugin_new/, output)
+    assert_no_match(/[^:]plugin/, output)
   end
 
   def test_rails_generators_with_others_information
@@ -164,8 +164,8 @@ class GeneratorsTest < Rails::Generators::TestCase
     Rails::Generators.invoke "super_shoulda:model", ["Account"]
   end
 
-  def test_developer_options_are_overwriten_by_user_options
-    Rails::Generators.options[:with_options] = { :generate => false }
+  def test_developer_options_are_overwritten_by_user_options
+    Rails::Generators.options[:with_options] = { generate: false }
 
     self.class.class_eval(<<-end_eval, __FILE__, __LINE__ + 1)
       class WithOptionsGenerator < Rails::Generators::Base
@@ -186,7 +186,7 @@ class GeneratorsTest < Rails::Generators::TestCase
     File.open(template, 'w'){ |f| f.write "empty" }
 
     capture(:stdout) do
-      Rails::Generators.invoke :model, ["user"], :destination_root => destination_root
+      Rails::Generators.invoke :model, ["user"], destination_root: destination_root
     end
 
     assert_file "app/models/user.rb" do |content|

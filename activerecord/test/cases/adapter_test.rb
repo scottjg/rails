@@ -1,9 +1,23 @@
 require "cases/helper"
+require "models/book"
 
 module ActiveRecord
   class AdapterTest < ActiveRecord::TestCase
     def setup
       @connection = ActiveRecord::Base.connection
+    end
+
+    ##
+    # PostgreSQL does not support null bytes in strings
+    unless current_adapter?(:PostgreSQLAdapter)
+      def test_update_prepared_statement
+        b = Book.create(name: "my \x00 book")
+        b.reload
+        assert_equal "my \x00 book", b.name
+        b.update_attributes(name: "my other \x00 book")
+        b.reload
+        assert_equal "my other \x00 book", b.name
+      end
     end
 
     def test_tables
@@ -69,16 +83,16 @@ module ActiveRecord
       def test_not_specifying_database_name_for_cross_database_selects
         begin
           assert_nothing_raised do
-            ActiveRecord::Model.establish_connection(ActiveRecord::Base.configurations['arunit'].except(:database))
+            ActiveRecord::Base.establish_connection(ActiveRecord::Base.configurations['arunit'].except(:database))
 
             config = ARTest.connection_config
-            ActiveRecord::Model.connection.execute(
+            ActiveRecord::Base.connection.execute(
               "SELECT #{config['arunit']['database']}.pirates.*, #{config['arunit2']['database']}.courses.* " \
               "FROM #{config['arunit']['database']}.pirates, #{config['arunit2']['database']}.courses"
             )
           end
         ensure
-          ActiveRecord::Model.establish_connection 'arunit'
+          ActiveRecord::Base.establish_connection 'arunit'
         end
       end
     end
@@ -100,7 +114,7 @@ module ActiveRecord
       end
     end
 
-    # test resetting sequences in odd tables in postgreSQL
+    # test resetting sequences in odd tables in PostgreSQL
     if ActiveRecord::Base.connection.respond_to?(:reset_pk_sequence!)
       require 'models/movie'
       require 'models/subscriber'
@@ -153,25 +167,32 @@ module ActiveRecord
           else
             @connection.execute "INSERT INTO fk_test_has_fk (fk_id) VALUES (0)"
           end
-          # should deleted created record as otherwise disable_referential_integrity will try to enable contraints after executed block
+          # should delete created record as otherwise disable_referential_integrity will try to enable constraints after executed block
           # and will fail (at least on Oracle)
           @connection.execute "DELETE FROM fk_test_has_fk"
         end
       end
+    end
+
+    def test_select_all_always_return_activerecord_result
+      result = @connection.select_all "SELECT * FROM posts"
+      assert result.is_a?(ActiveRecord::Result)
     end
   end
 
   class AdapterTestWithoutTransaction < ActiveRecord::TestCase
     self.use_transactional_fixtures = false
 
+    class Klass < ActiveRecord::Base
+    end
+
     def setup
-      @klass = Class.new(ActiveRecord::Base)
-      @klass.establish_connection 'arunit'
-      @connection = @klass.connection
+      Klass.establish_connection 'arunit'
+      @connection = Klass.connection
     end
 
     def teardown
-      @klass.remove_connection
+      Klass.remove_connection
     end
 
     test "transaction state is reset after a reconnect" do

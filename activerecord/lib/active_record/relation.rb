@@ -10,28 +10,32 @@ module ActiveRecord
                             :extending]
 
     SINGLE_VALUE_METHODS = [:limit, :offset, :lock, :readonly, :from, :reordering,
-                            :reverse_order, :uniq, :create_with]
+                            :reverse_order, :distinct, :create_with, :uniq]
 
     VALUE_METHODS = MULTI_VALUE_METHODS + SINGLE_VALUE_METHODS
 
     include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches, Explain, Delegation
 
     attr_reader :table, :klass, :loaded
-    attr_accessor :default_scoped
     alias :model :klass
     alias :loaded? :loaded
-    alias :default_scoped? :default_scoped
 
     def initialize(klass, table, values = {})
-      @klass             = klass
-      @table             = table
-      @values            = values
-      @implicit_readonly = nil
-      @loaded            = false
-      @default_scoped    = false
+      @klass  = klass
+      @table  = table
+      @values = values
+      @loaded = false
     end
 
-    def insert(values)
+    def initialize_copy(other)
+      # This method is a hot spot, so for now, use Hash[] to dup the hash.
+      #   https://bugs.ruby-lang.org/issues/7166
+      @values        = Hash[@values]
+      @values[:bind] = @values[:bind].dup if @values.key? :bind
+      reset
+    end
+
+    def insert(values) # :nodoc:
       primary_key_value = nil
 
       if primary_key && Hash === values
@@ -48,16 +52,7 @@ module ActiveRecord
       im = arel.create_insert
       im.into @table
 
-      conn = @klass.connection
-
-      substitutes = values.sort_by { |arel_attr,_| arel_attr.name }
-      binds       = substitutes.map do |arel_attr, value|
-        [@klass.columns_hash[arel_attr.name], value]
-      end
-
-      substitutes.each_with_index do |tuple, i|
-        tuple[1] = conn.substitute_at(binds[i][0], i)
-      end
+      substitutes, binds = substitute_values values
 
       if values.empty? # empty insert
         im.values = Arel.sql(connection.empty_insert_statement_value)
@@ -65,13 +60,36 @@ module ActiveRecord
         im.insert substitutes
       end
 
-      conn.insert(
+      @klass.connection.insert(
         im,
         'SQL',
         primary_key,
         primary_key_value,
         nil,
         binds)
+    end
+
+    def update_record(values, id, id_was) # :nodoc:
+      substitutes, binds = substitute_values values
+      um = @klass.unscoped.where(@klass.arel_table[@klass.primary_key].eq(id_was || id)).arel.compile_update(substitutes)
+
+      @klass.connection.update(
+        um,
+        'SQL',
+        binds)
+    end
+
+    def substitute_values(values) # :nodoc:
+      substitutes = values.sort_by { |arel_attr,_| arel_attr.name }
+      binds       = substitutes.map do |arel_attr, value|
+        [@klass.columns_hash[arel_attr.name], value]
+      end
+
+      substitutes.each_with_index do |tuple, i|
+        tuple[1] = @klass.connection.substitute_at(binds[i][0], i)
+      end
+
+      [substitutes, binds]
     end
 
     # Initializes new record from relation while maintaining the current
@@ -88,12 +106,6 @@ module ActiveRecord
     #   user.name # => Oscar
     def new(*args, &block)
       scoping { @klass.new(*args, &block) }
-    end
-
-    def initialize_copy(other)
-      @values        = @values.dup
-      @values[:bind] = @values[:bind].dup if @values[:bind]
-      reset
     end
 
     alias build new
@@ -127,46 +139,77 @@ module ActiveRecord
       scoping { @klass.create!(*args, &block) }
     end
 
-    # Tries to load the first record; if it fails, then <tt>create</tt> is called with the same arguments as this method.
+    def first_or_create(attributes = nil, &block) # :nodoc:
+      first || create(attributes, &block)
+    end
+
+    def first_or_create!(attributes = nil, &block) # :nodoc:
+      first || create!(attributes, &block)
+    end
+
+    def first_or_initialize(attributes = nil, &block) # :nodoc:
+      first || new(attributes, &block)
+    end
+
+    # Finds the first record with the given attributes, or creates a record
+    # with the attributes if one is not found:
     #
-    # Expects arguments in the same format as +Base.create+.
+    #   # Find the first user named "Penélope" or create a new one.
+    #   User.find_or_create_by(first_name: 'Penélope')
+    #   # => #<User id: 1, first_name: "Penélope", last_name: nil>
     #
-    # ==== Examples
-    #   # Find the first user named Penélope or create a new one.
-    #   User.where(:first_name => 'Penélope').first_or_create
-    #   # => <User id: 1, first_name: 'Penélope', last_name: nil>
-    #
-    #   # Find the first user named Penélope or create a new one.
+    #   # Find the first user named "Penélope" or create a new one.
     #   # We already have one so the existing record will be returned.
-    #   User.where(:first_name => 'Penélope').first_or_create
-    #   # => <User id: 1, first_name: 'Penélope', last_name: nil>
+    #   User.find_or_create_by(first_name: 'Penélope')
+    #   # => #<User id: 1, first_name: "Penélope", last_name: nil>
     #
-    #   # Find the first user named Scarlett or create a new one with a particular last name.
-    #   User.where(:first_name => 'Scarlett').first_or_create(:last_name => 'Johansson')
-    #   # => <User id: 2, first_name: 'Scarlett', last_name: 'Johansson'>
+    #   # Find the first user named "Scarlett" or create a new one with
+    #   # a particular last name.
+    #   User.create_with(last_name: 'Johansson').find_or_create_by(first_name: 'Scarlett')
+    #   # => #<User id: 2, first_name: "Scarlett", last_name: "Johansson">
     #
-    #   # Find the first user named Scarlett or create a new one with a different last name.
-    #   # We already have one so the existing record will be returned.
-    #   User.where(:first_name => 'Scarlett').first_or_create do |user|
-    #     user.last_name = "O'Hara"
+    # This method accepts a block, which is passed down to +create+. The last example
+    # above can be alternatively written this way:
+    #
+    #   # Find the first user named "Scarlett" or create a new one with a
+    #   # different last name.
+    #   User.find_or_create_by(first_name: 'Scarlett') do |user|
+    #     user.last_name = 'Johansson'
     #   end
-    #   # => <User id: 2, first_name: 'Scarlett', last_name: 'Johansson'>
-    def first_or_create(attributes = nil, options = {}, &block)
-      first || create(attributes, options, &block)
+    #   # => #<User id: 2, first_name: "Scarlett", last_name: "Johansson">
+    #
+    # This method always returns a record, but if creation was attempted and
+    # failed due to validation errors it won't be persisted, you get what
+    # +create+ returns in such situation.
+    #
+    # Please note *this method is not atomic*, it runs first a SELECT, and if
+    # there are no results an INSERT is attempted. If there are other threads
+    # or processes there is a race condition between both calls and it could
+    # be the case that you end up with two similar records.
+    #
+    # Whether that is a problem or not depends on the logic of the
+    # application, but in the particular case in which rows have a UNIQUE
+    # constraint an exception may be raised, just retry:
+    #
+    #  begin
+    #    CreditAccount.find_or_create_by(user_id: user.id)
+    #  rescue ActiveRecord::RecordNotUnique
+    #    retry
+    #  end
+    #
+    def find_or_create_by(attributes, &block)
+      find_by(attributes) || create(attributes, &block)
     end
 
-    # Like <tt>first_or_create</tt> but calls <tt>create!</tt> so an exception is raised if the created record is invalid.
-    #
-    # Expects arguments in the same format as <tt>Base.create!</tt>.
-    def first_or_create!(attributes = nil, options = {}, &block)
-      first || create!(attributes, options, &block)
+    # Like <tt>find_or_create_by</tt>, but calls <tt>create!</tt> so an exception
+    # is raised if the created record is invalid.
+    def find_or_create_by!(attributes, &block)
+      find_by(attributes) || create!(attributes, &block)
     end
 
-    # Like <tt>first_or_create</tt> but calls <tt>new</tt> instead of <tt>create</tt>.
-    #
-    # Expects arguments in the same format as <tt>Base.new</tt>.
-    def first_or_initialize(attributes = nil, options = {}, &block)
-      first || new(attributes, options, &block)
+    # Like <tt>find_or_create_by</tt>, but calls <tt>new</tt> instead of <tt>create</tt>.
+    def find_or_initialize_by(attributes, &block)
+      find_by(attributes) || new(attributes, &block)
     end
 
     # Runs EXPLAIN on the query or queries triggered by this relation and
@@ -179,8 +222,7 @@ module ActiveRecord
     # Please see further details in the
     # {Active Record Query Interface guide}[http://guides.rubyonrails.org/active_record_querying.html#running-explain].
     def explain
-      _, queries = collecting_queries_for_explain { exec_queries }
-      exec_explain(queries)
+      exec_explain(collecting_queries_for_explain { exec_queries })
     end
 
     # Converts relation objects to Array.
@@ -202,7 +244,7 @@ module ActiveRecord
     def empty?
       return @records.empty? if loaded?
 
-      c = count
+      c = count(:all)
       c.respond_to?(:zero?) ? c.zero? : c.empty?
     end
 
@@ -226,9 +268,10 @@ module ActiveRecord
 
     # Scope all queries to the current scope.
     #
-    #   Comment.where(:post_id => 1).scoping do
-    #     Comment.first # SELECT * FROM comments WHERE post_id = 1
+    #   Comment.where(post_id: 1).scoping do
+    #     Comment.first
     #   end
+    #   # => SELECT "comments".* FROM "comments" WHERE "comments"."post_id" = 1 ORDER BY "comments"."id" ASC LIMIT 1
     #
     # Please check unscoped if you want to remove all previous scopes (including
     # the default_scope) during the execution of a block.
@@ -257,7 +300,7 @@ module ActiveRecord
     #   Book.where('title LIKE ?', '%Rails%').update_all(author: 'David')
     #
     #   # Update all books that match conditions, but limit it to 5 ordered by date
-    #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).update_all(:author => 'David')
+    #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).update_all(author: 'David')
     def update_all(updates)
       raise ArgumentError, "Empty list of attributes to change" if updates.blank?
 
@@ -299,18 +342,16 @@ module ActiveRecord
         id.map.with_index { |one_id, idx| update(one_id, attributes[idx]) }
       else
         object = find(id)
-        object.update_attributes(attributes)
+        object.update(attributes)
         object
       end
     end
 
     # Destroys the records matching +conditions+ by instantiating each
     # record and calling its +destroy+ method. Each object's callbacks are
-    # executed (including <tt>:dependent</tt> association options and
-    # +before_destroy+/+after_destroy+ Observer methods). Returns the
+    # executed (including <tt>:dependent</tt> association options). Returns the
     # collection of objects that were destroyed; each will be frozen, to
-    # reflect that no changes should be made (since they can't be
-    # persisted).
+    # reflect that no changes should be made (since they can't be persisted).
     #
     # Note: Instantiation, callback execution, and deletion of each
     # record can be time consuming when you're removing many records at
@@ -330,7 +371,7 @@ module ActiveRecord
     #
     #   Person.destroy_all("last_login < '2004-04-04'")
     #   Person.destroy_all(status: "inactive")
-    #   Person.where(:age => 0..18).destroy_all
+    #   Person.where(age: 0..18).destroy_all
     def destroy_all(conditions = nil)
       if conditions
         where(conditions).destroy_all
@@ -375,7 +416,7 @@ module ActiveRecord
     #
     #   Post.delete_all("person_id = 5 AND (category = 'Something' OR category = 'Else')")
     #   Post.delete_all(["person_id = ? AND (category = ? OR category = ?)", 5, 'Something', 'Else'])
-    #   Post.where(:person_id => 5).where(:category => ['Something', 'Else']).delete_all
+    #   Post.where(person_id: 5).where(category: ['Something', 'Else']).delete_all
     #
     # Both calls delete the affected posts all at once with a single DELETE statement.
     # If you need to destroy dependent associations or call your <tt>before_*</tt> or
@@ -410,8 +451,7 @@ module ActiveRecord
     # Deletes the row with a primary key matching the +id+ argument, using a
     # SQL +DELETE+ statement, and returns the number of rows deleted. Active
     # Record objects are not instantiated, so the object's callbacks are not
-    # executed, including any <tt>:dependent</tt> association options or
-    # Observer methods.
+    # executed, including any <tt>:dependent</tt> association options.
     #
     # You can delete multiple rows at once by passing an Array of <tt>id</tt>s.
     #
@@ -438,17 +478,7 @@ module ActiveRecord
     #
     #   Post.where(published: true).load # => #<ActiveRecord::Relation>
     def load
-      unless loaded?
-        # We monitor here the entire execution rather than individual SELECTs
-        # because from the point of view of the user fetching the records of a
-        # relation is a single unit of work. You want to know if this call takes
-        # too long, not if the individual queries take too long.
-        #
-        # It could be the case that none of the queries involved surpass the
-        # threshold, and at the same time the sum of them all does. The user
-        # should get a query plan logged in that case.
-        logging_query_plan { exec_queries }
-      end
+      exec_queries unless loaded?
 
       self
     end
@@ -468,22 +498,38 @@ module ActiveRecord
 
     # Returns sql statement for the relation.
     #
-    #   Users.where(name: 'Oscar').to_sql
+    #   User.where(name: 'Oscar').to_sql
     #   # => SELECT "users".* FROM "users"  WHERE "users"."name" = 'Oscar'
     def to_sql
-      @to_sql ||= klass.connection.to_sql(arel, bind_values.dup)
+      @to_sql ||= begin
+                    relation   = self
+                    connection = klass.connection
+                    visitor    = connection.visitor
+
+                    if eager_loading?
+                      join_dependency = construct_join_dependency
+                      relation        = construct_relation_for_association_find(join_dependency)
+                    end
+
+                    ast   = relation.arel.ast
+                    binds = relation.bind_values.dup
+                    visitor.accept(ast) do
+                      connection.quote(*binds.shift.reverse)
+                    end
+                  end
     end
 
-    # Returns a hash of where conditions
+    # Returns a hash of where conditions.
     #
-    #   Users.where(name: 'Oscar').where_values_hash
-    #   # => {:name=>"oscar"}
+    #   User.where(name: 'Oscar').where_values_hash
+    #   # => {name: "Oscar"}
     def where_values_hash
-      equalities = with_default_scope.where_values.grep(Arel::Nodes::Equality).find_all { |node|
+      equalities = where_values.grep(Arel::Nodes::Equality).find_all { |node|
         node.left.relation.name == table_name
       }
 
       binds = Hash[bind_values.find_all(&:first).map { |column, v| [column.name, v] }]
+      binds.merge!(Hash[bind_values.find_all(&:first).map { |column, v| [column.name, v] }])
 
       Hash[equalities.map { |where|
         name = where.left.name
@@ -505,9 +551,15 @@ module ActiveRecord
     # Joins that are also marked for preloading. In which case we should just eager load them.
     # Note that this is a naive implementation because we could have strings and symbols which
     # represent the same association, but that aren't matched by this. Also, we could have
-    # nested hashes which partially match, e.g. { :a => :b } & { :a => [:b, :c] }
+    # nested hashes which partially match, e.g. { a: :b } & { a: [:b, :c] }
     def joined_includes_values
       includes_values & joins_values
+    end
+
+    # +uniq+ and +uniq!+ are silently deprecated. +uniq_value+ delegates to +distinct_value+
+    # to maintain backwards compatibility. Use +distinct_value+ instead.
+    def uniq_value
+      distinct_value
     end
 
     # Compares two relations for equality.
@@ -524,23 +576,13 @@ module ActiveRecord
       q.pp(self.to_a)
     end
 
-    def with_default_scope #:nodoc:
-      if default_scoped? && default_scope = klass.send(:build_default_scope)
-        default_scope = default_scope.merge(self)
-        default_scope.default_scoped = false
-        default_scope
-      else
-        self
-      end
-    end
-
     # Returns true if relation is blank.
     def blank?
       to_a.blank?
     end
 
     def values
-      @values.dup
+      Hash[@values]
     end
 
     def inspect
@@ -553,24 +595,15 @@ module ActiveRecord
     private
 
     def exec_queries
-      default_scoped = with_default_scope
+      @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel, bind_values)
 
-      if default_scoped.equal?(self)
-        @records = eager_loading? ? find_with_associations : @klass.find_by_sql(arel, bind_values)
-
-        preload = preload_values
-        preload +=  includes_values unless eager_loading?
-        preload.each do |associations|
-          ActiveRecord::Associations::Preloader.new(@records, associations).run
-        end
-
-        # @readonly_value is true only if set explicitly. @implicit_readonly is true if there
-        # are JOINS and no explicit SELECT.
-        readonly = readonly_value.nil? ? @implicit_readonly : readonly_value
-        @records.each { |record| record.readonly! } if readonly
-      else
-        @records = default_scoped.to_a
+      preload = preload_values
+      preload +=  includes_values unless eager_loading?
+      preload.each do |associations|
+        ActiveRecord::Associations::Preloader.new(@records, associations).run
       end
+
+      @records.each { |record| record.readonly! } if readonly_value
 
       @loaded = true
       @records
@@ -578,9 +611,7 @@ module ActiveRecord
 
     def references_eager_loaded_tables?
       joined_tables = arel.join_sources.map do |join|
-        if join.is_a?(Arel::Nodes::StringJoin)
-          tables_in_string(join.left)
-        else
+        unless join.is_a?(Arel::Nodes::StringJoin)
           [join.left.table_name, join.left.table_alias]
         end
       end
@@ -589,37 +620,8 @@ module ActiveRecord
 
       # always convert table names to downcase as in Oracle quoted table names are in uppercase
       joined_tables = joined_tables.flatten.compact.map { |t| t.downcase }.uniq
-      string_tables = tables_in_string(to_sql)
 
-      if (references_values - joined_tables).any?
-        true
-      elsif (string_tables - joined_tables).any?
-        ActiveSupport::Deprecation.warn(
-          "It looks like you are eager loading table(s) (one of: #{string_tables.join(', ')}) " \
-          "that are referenced in a string SQL snippet. For example: \n" \
-          "\n" \
-          "    Post.includes(:comments).where(\"comments.title = 'foo'\")\n" \
-          "\n" \
-          "Currently, Active Record recognises the table in the string, and knows to JOIN the " \
-          "comments table to the query, rather than loading comments in a separate query. " \
-          "However, doing this without writing a full-blown SQL parser is inherently flawed. " \
-          "Since we don't want to write an SQL parser, we are removing this functionality. " \
-          "From now on, you must explicitly tell Active Record when you are referencing a table " \
-          "from a string:\n" \
-          "\n" \
-          "    Post.includes(:comments).where(\"comments.title = 'foo'\").references(:comments)\n\n"
-        )
-        true
-      else
-        false
-      end
-    end
-
-    def tables_in_string(string)
-      return [] if string.blank?
-      # always convert table names to downcase as in Oracle quoted table names are in uppercase
-      # ignore raw_sql_ that is used by Oracle adapter as alias for limit/offset subqueries
-      string.scan(/([a-zA-Z_][.\w]+).?\./).flatten.map{ |s| s.downcase }.uniq - ['raw_sql_']
+      (references_values - joined_tables).any?
     end
   end
 end

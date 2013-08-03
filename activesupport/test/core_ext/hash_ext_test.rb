@@ -8,7 +8,7 @@ require 'active_support/core_ext/object/deep_dup'
 require 'active_support/inflections'
 
 class HashExtTest < ActiveSupport::TestCase
-  class IndifferentHash < HashWithIndifferentAccess
+  class IndifferentHash < ActiveSupport::HashWithIndifferentAccess
   end
 
   class SubclassingArray < Array
@@ -428,6 +428,18 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal 2, hash['b']
   end
 
+  def test_indifferent_replace
+    hash = HashWithIndifferentAccess.new
+    hash[:a] = 42
+
+    replaced = hash.replace(b: 12)
+
+    assert hash.key?('b')
+    assert !hash.key?(:a)
+    assert_equal 12, hash[:b]
+    assert_same hash, replaced
+  end
+
   def test_indifferent_merging_with_block
     hash = HashWithIndifferentAccess.new
     hash[:a] = 1
@@ -468,6 +480,42 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal hash.delete('a'), nil
   end
 
+  def test_indifferent_select
+    hash = ActiveSupport::HashWithIndifferentAccess.new(@strings).select {|k,v| v == 1}
+
+    assert_equal({ 'a' => 1 }, hash)
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, hash
+  end
+
+  def test_indifferent_select_returns_a_hash_when_unchanged
+    hash = ActiveSupport::HashWithIndifferentAccess.new(@strings).select {|k,v| true}
+
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, hash
+  end
+
+  def test_indifferent_select_bang
+    indifferent_strings = ActiveSupport::HashWithIndifferentAccess.new(@strings)
+    indifferent_strings.select! {|k,v| v == 1}
+
+    assert_equal({ 'a' => 1 }, indifferent_strings)
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, indifferent_strings
+  end
+
+  def test_indifferent_reject
+    hash = ActiveSupport::HashWithIndifferentAccess.new(@strings).reject {|k,v| v != 1}
+
+    assert_equal({ 'a' => 1 }, hash)
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, hash
+  end
+
+  def test_indifferent_reject_bang
+    indifferent_strings = ActiveSupport::HashWithIndifferentAccess.new(@strings)
+    indifferent_strings.reject! {|k,v| v != 1}
+
+    assert_equal({ 'a' => 1 }, indifferent_strings)
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, indifferent_strings
+  end
+
   def test_indifferent_to_hash
     # Should convert to a Hash with String keys.
     assert_equal @strings, @mixed.with_indifferent_access.to_hash
@@ -478,6 +526,10 @@ class HashExtTest < ActiveSupport::TestCase
     roundtrip = mixed_with_default.with_indifferent_access.to_hash
     assert_equal @strings, roundtrip
     assert_equal '1234', roundtrip.default
+    new_to_hash = @nested_mixed.with_indifferent_access.to_hash
+    assert_not new_to_hash.instance_of?(HashWithIndifferentAccess)
+    assert_not new_to_hash["a"].instance_of?(HashWithIndifferentAccess)
+    assert_not new_to_hash["a"]["b"].instance_of?(HashWithIndifferentAccess)
   end
 
   def test_lookup_returns_the_same_object_that_is_stored_in_hash_indifferent_access
@@ -487,9 +539,21 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal [1], hash[:a]
   end
 
+  def test_with_indifferent_access_has_no_side_effects_on_existing_hash
+    hash = {content: [{:foo => :bar, 'bar' => 'baz'}]}
+    hash.with_indifferent_access
+
+    assert_equal [:foo, "bar"], hash[:content].first.keys
+  end
+
   def test_indifferent_hash_with_array_of_hashes
     hash = { "urls" => { "url" => [ { "address" => "1" }, { "address" => "2" } ] }}.with_indifferent_access
     assert_equal "1", hash[:urls][:url].first[:address]
+
+    hash = hash.to_hash
+    assert_not hash.instance_of?(HashWithIndifferentAccess)
+    assert_not hash["urls"].instance_of?(HashWithIndifferentAccess)
+    assert_not hash["urls"]["url"].first.instance_of?(HashWithIndifferentAccess)
   end
 
   def test_should_preserve_array_subclass_when_value_is_array
@@ -643,10 +707,6 @@ class HashExtTest < ActiveSupport::TestCase
     assert_equal expected, merged
   end
 
-  def test_diff
-    assert_equal({ :a => 2 }, { :a => 2, :b => 5 }.diff({ :a => 1, :b => 5 }))
-  end
-
   def test_slice
     original = { :a => 'x', :b => 'y', :c => 10 }
     expected = { :a => 'x', :b => 'y' }
@@ -724,8 +784,32 @@ class HashExtTest < ActiveSupport::TestCase
   def test_extract
     original = {:a => 1, :b => 2, :c => 3, :d => 4}
     expected = {:a => 1, :b => 2}
+    remaining = {:c => 3, :d => 4}
 
-    assert_equal expected, original.extract!(:a, :b)
+    assert_equal expected, original.extract!(:a, :b, :x)
+    assert_equal remaining, original
+  end
+
+  def test_extract_nils
+    original = {:a => nil, :b => nil}
+    expected = {:a => nil}
+    extracted = original.extract!(:a, :x)
+
+    assert_equal expected, extracted
+    assert_equal nil, extracted[:a]
+    assert_equal nil, extracted[:x]
+  end
+
+  def test_indifferent_extract
+    original = {:a => 1, 'b' => 2, :c => 3, 'd' => 4}.with_indifferent_access
+    expected = {:a => 1, :b => 2}.with_indifferent_access
+    remaining = {:c => 3, :d => 4}.with_indifferent_access
+
+    [['a', 'b'], [:a, :b]].each do |keys|
+      copy = original.dup
+      assert_equal expected, copy.extract!(*keys)
+      assert_equal remaining, copy
+    end
   end
 
   def test_except
@@ -977,12 +1061,10 @@ class HashToXmlTest < ActiveSupport::TestCase
         <replies-close-in type="integer">2592000000</replies-close-in>
         <written-on type="date">2003-07-16</written-on>
         <viewed-at type="datetime">2003-07-16T09:28:00+0000</viewed-at>
-        <content type="yaml">--- \n1: should be an integer\n:message: Have a nice day\narray: \n- should-have-dashes: true\n  should_have_underscores: true\n</content>
         <author-email-address>david@loudthinking.com</author-email-address>
         <parent-id></parent-id>
         <ad-revenue type="decimal">1.5</ad-revenue>
         <optimum-viewing-angle type="float">135</optimum-viewing-angle>
-        <resident type="symbol">yes</resident>
       </topic>
     EOT
 
@@ -995,12 +1077,10 @@ class HashToXmlTest < ActiveSupport::TestCase
       :replies_close_in => 2592000000,
       :written_on => Date.new(2003, 7, 16),
       :viewed_at => Time.utc(2003, 7, 16, 9, 28),
-      :content => { :message => "Have a nice day", 1 => "should be an integer", "array" => [{ "should-have-dashes" => true, "should_have_underscores" => true }] },
       :author_email_address => "david@loudthinking.com",
       :parent_id => nil,
       :ad_revenue => BigDecimal("1.50"),
       :optimum_viewing_angle => 135.0,
-      :resident => :yes
     }.stringify_keys
 
     assert_equal expected_topic_hash, Hash.from_xml(topic_xml)["topic"]
@@ -1014,7 +1094,6 @@ class HashToXmlTest < ActiveSupport::TestCase
         <approved type="boolean"></approved>
         <written-on type="date"></written-on>
         <viewed-at type="datetime"></viewed-at>
-        <content type="yaml"></content>
         <parent-id></parent-id>
       </topic>
     EOT
@@ -1025,7 +1104,6 @@ class HashToXmlTest < ActiveSupport::TestCase
       :approved   => nil,
       :written_on => nil,
       :viewed_at  => nil,
-      :content    => nil,
       :parent_id  => nil
     }.stringify_keys
 
@@ -1252,6 +1330,28 @@ class HashToXmlTest < ActiveSupport::TestCase
     assert_equal expected_product_hash, Hash.from_xml(product_xml)["product"]
   end
 
+  def test_from_xml_raises_on_disallowed_type_attributes
+    assert_raise ActiveSupport::XMLConverter::DisallowedType do
+      Hash.from_xml '<product><name type="foo">value</name></product>', %w(foo)
+    end
+  end
+
+  def test_from_xml_disallows_symbol_and_yaml_types_by_default
+    assert_raise ActiveSupport::XMLConverter::DisallowedType do
+      Hash.from_xml '<product><name type="symbol">value</name></product>'
+    end
+
+    assert_raise ActiveSupport::XMLConverter::DisallowedType do
+      Hash.from_xml '<product><name type="yaml">value</name></product>'
+    end
+  end
+
+  def test_from_trusted_xml_allows_symbol_and_yaml_types
+    expected = { 'product' => { 'name' => :value }}
+    assert_equal expected, Hash.from_trusted_xml('<product><name type="symbol">value</name></product>')
+    assert_equal expected, Hash.from_trusted_xml('<product><name type="yaml">:value</name></product>')
+  end
+
   def test_should_use_default_value_for_unknown_key
     hash_wia = HashWithIndifferentAccess.new(3)
     assert_equal 3, hash_wia[:new_key]
@@ -1292,7 +1392,7 @@ class HashToXmlTest < ActiveSupport::TestCase
 
   def test_empty_string_works_for_typecast_xml_value
     assert_nothing_raised do
-      Hash.__send__(:typecast_xml_value, "")
+      ActiveSupport::XMLConverter.new("").to_h
     end
   end
 

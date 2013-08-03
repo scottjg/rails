@@ -5,6 +5,7 @@ require 'models/reference'
 require 'models/job'
 require 'models/reader'
 require 'models/comment'
+require 'models/rating'
 require 'models/tag'
 require 'models/tagging'
 require 'models/author'
@@ -19,7 +20,6 @@ require 'models/book'
 require 'models/subscription'
 require 'models/essay'
 require 'models/category'
-require 'models/owner'
 require 'models/categorization'
 require 'models/member'
 require 'models/membership'
@@ -58,19 +58,45 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert post.reload.people(true).include?(person)
   end
 
-  def test_associate_existing_with_strict_mass_assignment_sanitizer
-    SecureReader.mass_assignment_sanitizer = :strict
-
-    SecureReader.new
-
-    post   = posts(:thinking)
+  def test_delete_all_for_with_dependent_option_destroy
     person = people(:david)
+    assert_equal 1, person.jobs_with_dependent_destroy.count
 
-    assert_queries(1) do
-      post.secure_people << person
+    assert_no_difference 'Job.count' do
+      assert_difference 'Reference.count', -1 do
+        person.reload.jobs_with_dependent_destroy.delete_all
+      end
     end
-  ensure
-    SecureReader.mass_assignment_sanitizer = :logger
+  end
+
+  def test_delete_all_for_with_dependent_option_nullify
+    person = people(:david)
+    assert_equal 1, person.jobs_with_dependent_nullify.count
+
+    assert_no_difference 'Job.count' do
+      assert_no_difference 'Reference.count' do
+        person.reload.jobs_with_dependent_nullify.delete_all
+      end
+    end
+  end
+
+  def test_delete_all_for_with_dependent_option_delete_all
+    person = people(:david)
+    assert_equal 1, person.jobs_with_dependent_delete_all.count
+
+    assert_no_difference 'Job.count' do
+      assert_difference 'Reference.count', -1 do
+        person.reload.jobs_with_dependent_delete_all.delete_all
+      end
+    end
+  end
+
+  def test_concat
+    person = people(:david)
+    post   = posts(:thinking)
+    post.people.concat [person]
+    assert_equal 1, post.people.size
+    assert_equal 1, post.people(true).size
   end
 
   def test_associate_existing_record_twice_should_add_to_target_twice
@@ -346,6 +372,17 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_update_counter_caches_on_replace_association
+    post = posts(:welcome)
+    tag  = post.tags.create!(:name => 'doomed')
+    tag.tagged_posts << posts(:thinking)
+
+    tag.tagged_posts = []
+    post.reload
+
+    assert_equal(post.taggings.count, post.taggings_count)
+  end
+
   def test_replace_association
     assert_queries(4){posts(:welcome);people(:david);people(:michael); posts(:welcome).people(true)}
 
@@ -587,8 +624,13 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal post.author.author_favorites, post.author_favorites
   end
 
+  def test_merge_join_association_with_has_many_through_association_proxy
+    author = authors(:mary)
+    assert_nothing_raised { author.comments.ratings.to_sql }
+  end
+
   def test_has_many_association_through_a_has_many_association_with_nonstandard_primary_keys
-    assert_equal 1, owners(:blackbeard).toys.count
+    assert_equal 2, owners(:blackbeard).toys.count
   end
 
   def test_find_on_has_many_association_collection_with_include_and_conditions
@@ -612,7 +654,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     sarah = Person.create!(:first_name => 'Sarah', :primary_contact_id => people(:susan).id, :gender => 'F', :number1_fan_id => 1)
     john = Person.create!(:first_name => 'John', :primary_contact_id => sarah.id, :gender => 'M', :number1_fan_id => 1)
     assert_equal sarah.agents, [john]
-    assert_equal people(:susan).agents.map(&:agents).flatten, people(:susan).agents_of_agents
+    assert_equal people(:susan).agents.flat_map(&:agents), people(:susan).agents_of_agents
   end
 
   def test_associate_existing_with_nonstandard_primary_key_on_belongs_to
@@ -711,7 +753,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
   def test_can_update_through_association
     assert_nothing_raised do
-      people(:michael).posts.first.update_attributes!(:title => "Can write")
+      people(:michael).posts.first.update!(title: "Can write")
     end
   end
 
@@ -838,6 +880,11 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
   end
 
+  def test_assign_array_to_new_record_builds_join_records
+    c = Category.new(:name => 'Fishing', :authors => [Author.first])
+    assert_equal 1, c.categorizations.size
+  end
+
   def test_create_bang_should_raise_exception_when_join_record_has_errors
     repair_validations(Categorization) do
       Categorization.validate { |r| r.errors[:base] << 'Invalid Categorization' }
@@ -880,5 +927,31 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_with_polymorphic_source
     post = tags(:general).tagged_posts.create! :title => "foo", :body => "bar"
     assert_equal [tags(:general)], post.reload.tags
+  end
+
+  def test_has_many_through_obeys_order_on_through_association
+    owner = owners(:blackbeard)
+    assert owner.toys.to_sql.include?("pets.name desc")
+    assert_equal ["parrot", "bulbul"], owner.toys.map { |r| r.pet.name }
+  end
+
+  test "has many through associations on new records use null relations" do
+    person = Person.new
+
+    assert_no_queries do
+      assert_equal [], person.posts
+      assert_equal [], person.posts.where(body: 'omg')
+      assert_equal [], person.posts.pluck(:body)
+      assert_equal 0,  person.posts.sum(:tags_count)
+      assert_equal 0,  person.posts.count
+    end
+  end
+
+  test "has many through with default scope on the target" do
+    person = people(:michael)
+    assert_equal [posts(:thinking)], person.first_posts
+
+    readers(:michael_authorless).update(first_post_id: 1)
+    assert_equal [posts(:thinking)], person.reload.first_posts
   end
 end

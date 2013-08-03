@@ -2,11 +2,11 @@ require 'base64'
 require 'active_support/core_ext/object/blank'
 
 module ActiveSupport
-  # +MessageVerifier+ makes it easy to generate and verify messages which are signed
-  # to prevent tampering.
+  # +MessageVerifier+ makes it easy to generate and verify messages which are
+  # signed to prevent tampering.
   #
-  # This is useful for cases like remember-me tokens and auto-unsubscribe links where the
-  # session store isn't suitable or available.
+  # This is useful for cases like remember-me tokens and auto-unsubscribe links
+  # where the session store isn't suitable or available.
   #
   # Remember Me:
   #   cookies[:remember_me] = @verifier.generate([@user.id, 2.weeks.from_now])
@@ -18,11 +18,11 @@ module ActiveSupport
   #     self.current_user = User.find(id)
   #   end
   #
-  # By default it uses Marshal to serialize the message. If you want to use another
-  # serialization method, you can set the serializer attribute to something that responds
-  # to dump and load, e.g.:
+  # By default it uses Marshal to serialize the message. If you want to use
+  # another serialization method, you can set the serializer in the options
+  # hash upon initialization:
   #
-  #   @verifier.serializer = YAML
+  #   @verifier = ActiveSupport::MessageVerifier.new('s3Krit', serializer: YAML)
   class MessageVerifier
     class InvalidSignature < StandardError; end
 

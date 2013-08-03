@@ -3,9 +3,9 @@ require 'action_controller'
 
 class AssetHostMailer < ActionMailer::Base
   def email_with_asset
-    mail :to => 'test@localhost',
-      :subject => 'testing email containing asset path while asset_host is set',
-      :from => 'tester@example.com'
+    mail to: 'test@localhost',
+      subject: 'testing email containing asset path while asset_host is set',
+      from: 'tester@example.com'
   end
 end
 
@@ -16,7 +16,6 @@ class AssetHostTest < ActiveSupport::TestCase
     ActionMailer::Base.deliveries.clear
     AssetHostMailer.configure do |c|
       c.asset_host = "http://www.example.com"
-      c.assets_dir = ''
     end
   end
 

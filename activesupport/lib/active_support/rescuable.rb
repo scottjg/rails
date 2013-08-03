@@ -1,6 +1,5 @@
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
-require 'active_support/core_ext/proc'
 require 'active_support/core_ext/string/inflections'
 require 'active_support/core_ext/array/extract_options'
 
@@ -31,11 +30,11 @@ module ActiveSupport
       # any.
       #
       #   class ApplicationController < ActionController::Base
-      #     rescue_from User::NotAuthorized, :with => :deny_access # self defined exception
-      #     rescue_from ActiveRecord::RecordInvalid, :with => :show_errors
+      #     rescue_from User::NotAuthorized, with: :deny_access # self defined exception
+      #     rescue_from ActiveRecord::RecordInvalid, with: :show_errors
       #
       #     rescue_from 'MyAppError::Base' do |exception|
-      #       render :xml => exception, :status => 500
+      #       render xml: exception, status: 500
       #     end
       #
       #     protected

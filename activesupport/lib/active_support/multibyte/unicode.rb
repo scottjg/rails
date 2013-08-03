@@ -5,15 +5,17 @@ module ActiveSupport
 
       extend self
 
-      # A list of all available normalization forms. See http://www.unicode.org/reports/tr15/tr15-29.html for more
+      # A list of all available normalization forms.
+      # See http://www.unicode.org/reports/tr15/tr15-29.html for more
       # information about normalization.
       NORMALIZATION_FORMS = [:c, :kc, :d, :kd]
 
       # The Unicode version that is supported by the implementation
-      UNICODE_VERSION = '6.1.0'
+      UNICODE_VERSION = '6.2.0'
 
-      # The default normalization used for operations that require normalization. It can be set to any of the
-      # normalizations in NORMALIZATION_FORMS.
+      # The default normalization used for operations that require
+      # normalization. It can be set to any of the normalizations
+      # in NORMALIZATION_FORMS.
       #
       #   ActiveSupport::Multibyte::Unicode.default_normalization_form = :c
       attr_accessor :default_normalization_form
@@ -49,19 +51,22 @@ module ActiveSupport
         0x3000,                # White_Space # Zs       IDEOGRAPHIC SPACE
       ].flatten.freeze
 
-      # BOM (byte order mark) can also be seen as whitespace, it's a non-rendering character used to distinguish
-      # between little and big endian. This is not an issue in utf-8, so it must be ignored.
+      # BOM (byte order mark) can also be seen as whitespace, it's a
+      # non-rendering character used to distinguish between little and big
+      # endian. This is not an issue in utf-8, so it must be ignored.
       LEADERS_AND_TRAILERS = WHITESPACE + [65279] # ZERO-WIDTH NO-BREAK SPACE aka BOM
 
-      # Returns a regular expression pattern that matches the passed Unicode codepoints
+      # Returns a regular expression pattern that matches the passed Unicode
+      # codepoints.
       def self.codepoints_to_pattern(array_of_codepoints) #:nodoc:
         array_of_codepoints.collect{ |e| [e].pack 'U*' }.join('|')
       end
       TRAILERS_PAT = /(#{codepoints_to_pattern(LEADERS_AND_TRAILERS)})+\Z/u
       LEADERS_PAT = /\A(#{codepoints_to_pattern(LEADERS_AND_TRAILERS)})+/u
 
-      # Detect whether the codepoint is in a certain character class. Returns +true+ when it's in the specified
-      # character class and +false+ otherwise. Valid character classes are: <tt>:cr</tt>, <tt>:lf</tt>, <tt>:l</tt>,
+      # Detect whether the codepoint is in a certain character class. Returns
+      # +true+ when it's in the specified character class and +false+ otherwise.
+      # Valid character classes are: <tt>:cr</tt>, <tt>:lf</tt>, <tt>:l</tt>,
       # <tt>:v</tt>, <tt>:lv</tt>, <tt>:lvt</tt> and <tt>:t</tt>.
       #
       # Primarily used by the grapheme cluster support.
@@ -69,7 +74,8 @@ module ActiveSupport
         classes.detect { |c| database.boundary[c] === codepoint } ? true : false
       end
 
-      # Unpack the string at grapheme boundaries. Returns a list of character lists.
+      # Unpack the string at grapheme boundaries. Returns a list of character
+      # lists.
       #
       #   Unicode.unpack_graphemes('क्षि') # => [[2325, 2381], [2359], [2367]]
       #   Unicode.unpack_graphemes('Café') # => [[67], [97], [102], [233]]
@@ -139,7 +145,7 @@ module ActiveSupport
             ncp << (HANGUL_TBASE + tindex) unless tindex == 0
             decomposed.concat ncp
           # if the codepoint is decomposable in with the current decomposition type
-          elsif (ncp = database.codepoints[cp].decomp_mapping) and (!database.codepoints[cp].decomp_type || type == :compatability)
+          elsif (ncp = database.codepoints[cp].decomp_mapping) and (!database.codepoints[cp].decomp_type || type == :compatibility)
             decomposed.concat decompose(type, ncp.dup)
           else
             decomposed << cp
@@ -206,64 +212,47 @@ module ActiveSupport
         codepoints
       end
 
-      # Replaces all ISO-8859-1 or CP1252 characters by their UTF-8 equivalent resulting in a valid UTF-8 string.
+      # Replaces all ISO-8859-1 or CP1252 characters by their UTF-8 equivalent
+      # resulting in a valid UTF-8 string.
       #
-      # Passing +true+ will forcibly tidy all bytes, assuming that the string's encoding is entirely CP1252 or ISO-8859-1.
+      # Passing +true+ will forcibly tidy all bytes, assuming that the string's
+      # encoding is entirely CP1252 or ISO-8859-1.
       def tidy_bytes(string, force = false)
+        return string if string.empty?
+
         if force
-          return string.unpack("C*").map do |b|
-            tidy_byte(b)
-          end.flatten.compact.pack("C*").unpack("U*").pack("U*")
+          return string.encode(Encoding::UTF_8, Encoding::Windows_1252, invalid: :replace, undef: :replace)
         end
 
-        bytes = string.unpack("C*")
-        conts_expected = 0
-        last_lead = 0
+        # We can't transcode to the same format, so we choose a nearly-identical encoding.
+        # We're going to 'transcode' bytes from UTF-8 when possible, then fall back to
+        # CP1252 when we get errors. The final string will be 'converted' back to UTF-8
+        # before returning.
+        reader = Encoding::Converter.new(Encoding::UTF_8, Encoding::UTF_8_MAC)
 
-        bytes.each_index do |i|
+        source = string.dup
+        out = ''.force_encoding(Encoding::UTF_8_MAC)
 
-          byte          = bytes[i]
-          is_cont       = byte > 127 && byte < 192
-          is_lead       = byte > 191 && byte < 245
-          is_unused     = byte > 240
-          is_restricted = byte > 244
-
-          # Impossible or highly unlikely byte? Clean it.
-          if is_unused || is_restricted
-            bytes[i] = tidy_byte(byte)
-          elsif is_cont
-            # Not expecting continuation byte? Clean up. Otherwise, now expect one less.
-            conts_expected == 0 ? bytes[i] = tidy_byte(byte) : conts_expected -= 1
-          else
-            if conts_expected > 0
-              # Expected continuation, but got ASCII or leading? Clean backwards up to
-              # the leading byte.
-              (1..(i - last_lead)).each {|j| bytes[i - j] = tidy_byte(bytes[i - j])}
-              conts_expected = 0
-            end
-            if is_lead
-              # Final byte is leading? Clean it.
-              if i == bytes.length - 1
-                bytes[i] = tidy_byte(bytes.last)
-              else
-                # Valid leading byte? Expect continuations determined by position of
-                # first zero bit, with max of 3.
-                conts_expected = byte < 224 ? 1 : byte < 240 ? 2 : 3
-                last_lead = i
-              end
-            end
-          end
+        loop do
+          reader.primitive_convert(source, out)
+          _, _, _, error_bytes, _ = reader.primitive_errinfo
+          break if error_bytes.nil?
+          out << error_bytes.encode(Encoding::UTF_8_MAC, Encoding::Windows_1252, invalid: :replace, undef: :replace)
         end
-        bytes.empty? ? "" : bytes.flatten.compact.pack("C*").unpack("U*").pack("U*")
+
+        reader.finish
+
+        out.encode!(Encoding::UTF_8)
       end
 
-      # Returns the KC normalization of the string by default. NFKC is considered the best normalization form for
-      # passing strings to databases and validations.
+      # Returns the KC normalization of the string by default. NFKC is
+      # considered the best normalization form for passing strings to databases
+      # and validations.
       #
       # * <tt>string</tt> - The string to perform normalization on.
-      # * <tt>form</tt> - The form you want to normalize in. Should be one of the following:
-      #   <tt>:c</tt>, <tt>:kc</tt>, <tt>:d</tt>, or <tt>:kd</tt>. Default is
-      #   ActiveSupport::Multibyte.default_normalization_form
+      # * <tt>form</tt> - The form you want to normalize in. Should be one of
+      #   the following: <tt>:c</tt>, <tt>:kc</tt>, <tt>:d</tt>, or <tt>:kd</tt>.
+      #   Default is ActiveSupport::Multibyte.default_normalization_form.
       def normalize(string, form=nil)
         form ||= @default_normalization_form
         # See http://www.unicode.org/reports/tr15, Table 1
@@ -274,9 +263,9 @@ module ActiveSupport
           when :c
             compose(reorder_characters(decompose(:canonical, codepoints)))
           when :kd
-            reorder_characters(decompose(:compatability, codepoints))
+            reorder_characters(decompose(:compatibility, codepoints))
           when :kc
-            compose(reorder_characters(decompose(:compatability, codepoints)))
+            compose(reorder_characters(decompose(:compatibility, codepoints)))
           else
             raise ArgumentError, "#{form} is not a valid normalization variant", caller
         end.pack('U*')
@@ -294,7 +283,7 @@ module ActiveSupport
         apply_mapping string, :swapcase_mapping
       end
 
-      # Holds data about a codepoint in the Unicode database
+      # Holds data about a codepoint in the Unicode database.
       class Codepoint
         attr_accessor :code, :combining_class, :decomp_type, :decomp_mapping, :uppercase_mapping, :lowercase_mapping
 
@@ -303,7 +292,7 @@ module ActiveSupport
         end
       end
 
-      # Holds static data from the Unicode database
+      # Holds static data from the Unicode database.
       class UnicodeDatabase
         ATTRIBUTES = :codepoints, :composition_exclusion, :composition_map, :boundary, :cp1252
 
@@ -327,7 +316,8 @@ module ActiveSupport
           EOS
         end
 
-        # Loads the Unicode database and returns all the internal objects of UnicodeDatabase.
+        # Loads the Unicode database and returns all the internal objects of
+        # UnicodeDatabase.
         def load
           begin
             @codepoints, @composition_exclusion, @composition_map, @boundary, @cp1252 = File.open(self.class.filename, 'rb') { |f| Marshal.load f.read }
@@ -350,12 +340,12 @@ module ActiveSupport
           end
         end
 
-        # Returns the directory in which the data files are stored
+        # Returns the directory in which the data files are stored.
         def self.dirname
           File.dirname(__FILE__) + '/../values/'
         end
 
-        # Returns the filename for the data file for this version
+        # Returns the filename for the data file for this version.
         def self.filename
           File.expand_path File.join(dirname, "unicode_tables.dat")
         end

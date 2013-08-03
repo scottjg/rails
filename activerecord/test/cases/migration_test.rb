@@ -24,15 +24,19 @@ class MigrationTest < ActiveRecord::TestCase
 
   def setup
     super
-    %w(reminders people_reminders prefix_reminders_suffix).each do |table|
+    %w(reminders people_reminders prefix_reminders_suffix p_things_s).each do |table|
       Reminder.connection.drop_table(table) rescue nil
     end
     Reminder.reset_column_information
     ActiveRecord::Migration.verbose = true
     ActiveRecord::Migration.message_count = 0
+    ActiveRecord::Base.connection.schema_cache.clear!
   end
 
   def teardown
+    ActiveRecord::Base.table_name_prefix = ""
+    ActiveRecord::Base.table_name_suffix = ""
+
     ActiveRecord::Base.connection.initialize_schema_migrations_table
     ActiveRecord::Base.connection.execute "DELETE FROM #{ActiveRecord::Migrator.schema_migrations_table_name}"
 
@@ -44,6 +48,7 @@ class MigrationTest < ActiveRecord::TestCase
     %w(reminders people_reminders prefix_reminders_suffix).each do |table|
       Reminder.connection.drop_table(table) rescue nil
     end
+    Reminder.reset_table_name
     Reminder.reset_column_information
 
     %w(last_name key bio age height wealth birthday favorite_day
@@ -172,20 +177,18 @@ class MigrationTest < ActiveRecord::TestCase
   end
 
   def test_filtering_migrations
-    assert !Person.column_methods_hash.include?(:last_name)
+    assert_no_column Person, :last_name
     assert !Reminder.table_exists?
 
     name_filter = lambda { |migration| migration.name == "ValidPeopleHaveLastNames" }
     ActiveRecord::Migrator.up(MIGRATIONS_ROOT + "/valid", &name_filter)
 
-    Person.reset_column_information
-    assert Person.column_methods_hash.include?(:last_name)
+    assert_column Person, :last_name
     assert_raise(ActiveRecord::StatementInvalid) { Reminder.first }
 
     ActiveRecord::Migrator.down(MIGRATIONS_ROOT + "/valid", &name_filter)
 
-    Person.reset_column_information
-    assert !Person.column_methods_hash.include?(:last_name)
+    assert_no_column Person, :last_name
     assert_raise(ActiveRecord::StatementInvalid) { Reminder.first }
   end
 
@@ -232,11 +235,15 @@ class MigrationTest < ActiveRecord::TestCase
       skip "not supported on #{ActiveRecord::Base.connection.class}"
     end
 
-    refute Person.column_methods_hash.include?(:last_name)
+    assert_no_column Person, :last_name
 
-    migration = Struct.new(:name, :version) {
-      def migrate(x); raise 'Something broke'; end
-    }.new('zomg', 100)
+    migration = Class.new(ActiveRecord::Migration) {
+      def version; 100 end
+      def migrate(x)
+        add_column "people", "last_name", :string
+        raise 'Something broke'
+      end
+    }.new
 
     migrator = ActiveRecord::Migrator.new(:up, [migration], 100)
 
@@ -244,8 +251,63 @@ class MigrationTest < ActiveRecord::TestCase
 
     assert_equal "An error has occurred, this and all later migrations canceled:\n\nSomething broke", e.message
 
+    assert_no_column Person, :last_name,
+     "On error, the Migrator should revert schema changes but it did not."
+  end
+
+  def test_migrator_one_up_with_exception_and_rollback_using_run
+    unless ActiveRecord::Base.connection.supports_ddl_transactions?
+      skip "not supported on #{ActiveRecord::Base.connection.class}"
+    end
+
+    assert_no_column Person, :last_name
+
+    migration = Class.new(ActiveRecord::Migration) {
+      def version; 100 end
+      def migrate(x)
+        add_column "people", "last_name", :string
+        raise 'Something broke'
+      end
+    }.new
+
+    migrator = ActiveRecord::Migrator.new(:up, [migration], 100)
+
+    e = assert_raise(StandardError) { migrator.run }
+
+    assert_equal "An error has occurred, this migration was canceled:\n\nSomething broke", e.message
+
+    assert_no_column Person, :last_name,
+      "On error, the Migrator should revert schema changes but it did not."
+  end
+
+  def test_migration_without_transaction
+    unless ActiveRecord::Base.connection.supports_ddl_transactions?
+      skip "not supported on #{ActiveRecord::Base.connection.class}"
+    end
+
+    assert_no_column Person, :last_name
+
+    migration = Class.new(ActiveRecord::Migration) {
+      self.disable_ddl_transaction!
+
+      def version; 101 end
+      def migrate(x)
+        add_column "people", "last_name", :string
+        raise 'Something broke'
+      end
+    }.new
+
+    migrator = ActiveRecord::Migrator.new(:up, [migration], 101)
+    e = assert_raise(StandardError) { migrator.migrate }
+    assert_equal "An error has occurred, all later migrations canceled:\n\nSomething broke", e.message
+
+    assert_column Person, :last_name,
+     "without ddl transactions, the Migrator should not rollback on error but it did."
+  ensure
     Person.reset_column_information
-    refute Person.column_methods_hash.include?(:last_name)
+    if Person.column_names.include?('last_name')
+      Person.connection.remove_column('people', 'last_name')
+    end
   end
 
   def test_schema_migrations_table_name
@@ -257,9 +319,6 @@ class MigrationTest < ActiveRecord::TestCase
     ActiveRecord::Base.table_name_suffix = ""
     Reminder.reset_table_name
     assert_equal "schema_migrations", ActiveRecord::Migrator.schema_migrations_table_name
-  ensure
-    ActiveRecord::Base.table_name_prefix = ""
-    ActiveRecord::Base.table_name_suffix = ""
   end
 
   def test_proper_table_name
@@ -286,9 +345,6 @@ class MigrationTest < ActiveRecord::TestCase
     Reminder.reset_table_name
     assert_equal "prefix_table_suffix", ActiveRecord::Migrator.proper_table_name('table')
     assert_equal "prefix_table_suffix", ActiveRecord::Migrator.proper_table_name(:table)
-    ActiveRecord::Base.table_name_prefix = ""
-    ActiveRecord::Base.table_name_suffix = ""
-    Reminder.reset_table_name
   end
 
   def test_rename_table_with_prefix_and_suffix
@@ -307,8 +363,6 @@ class MigrationTest < ActiveRecord::TestCase
 
     assert_equal "hello world", Thing.first.content
   ensure
-    ActiveRecord::Base.table_name_prefix = ''
-    ActiveRecord::Base.table_name_suffix = ''
     Thing.reset_table_name
     Thing.reset_sequence_name
   end
@@ -326,9 +380,6 @@ class MigrationTest < ActiveRecord::TestCase
     WeNeedReminders.down
     assert_raise(ActiveRecord::StatementInvalid) { Reminder.first }
   ensure
-    ActiveRecord::Base.table_name_prefix = ''
-    ActiveRecord::Base.table_name_suffix = ''
-    Reminder.reset_table_name
     Reminder.reset_sequence_name
   end
 
@@ -344,11 +395,7 @@ class MigrationTest < ActiveRecord::TestCase
     columns = Person.connection.columns(:binary_testings)
     data_column = columns.detect { |c| c.name == "data" }
 
-    if current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
-      assert_equal '', data_column.default
-    else
-      assert_nil data_column.default
-    end
+    assert_nil data_column.default
 
     Person.connection.drop_table :binary_testings rescue nil
   end
@@ -436,11 +483,29 @@ class ReservedWordsMigrationTest < ActiveRecord::TestCase
   end
 end
 
+class ExplicitlyNamedIndexMigrationTest < ActiveRecord::TestCase
+  def test_drop_index_by_name
+    connection = Person.connection
+    connection.create_table :values, force: true do |t|
+      t.integer :value
+    end
+
+    assert_nothing_raised ArgumentError do
+      connection.add_index :values, :value, name: 'a_different_name'
+      connection.remove_index :values, column: :value, name: 'a_different_name'
+    end
+
+    connection.drop_table :values rescue nil
+  end
+end
+
 if ActiveRecord::Base.connection.supports_bulk_alter?
   class BulkAlterTableMigrationsTest < ActiveRecord::TestCase
     def setup
       @connection = Person.connection
       @connection.create_table(:delete_me, :force => true) {|t| }
+      Person.reset_column_information
+      Person.reset_sequence_name
     end
 
     def teardown
@@ -694,6 +759,26 @@ class CopyMigrationsTest < ActiveRecord::TestCase
     clear
   end
 
+  def test_copying_migrations_preserving_magic_comments
+    ActiveRecord::Base.timestamped_migrations = false
+    @migrations_path = MIGRATIONS_ROOT + "/valid"
+    @existing_migrations = Dir[@migrations_path + "/*.rb"]
+
+    copied = ActiveRecord::Migration.copy(@migrations_path, {:bukkits => MIGRATIONS_ROOT + "/magic"})
+    assert File.exists?(@migrations_path + "/4_currencies_have_symbols.bukkits.rb")
+    assert_equal [@migrations_path + "/4_currencies_have_symbols.bukkits.rb"], copied.map(&:filename)
+
+    expected = "# coding: ISO-8859-15\n# This migration comes from bukkits (originally 1)"
+    assert_equal expected, IO.readlines(@migrations_path + "/4_currencies_have_symbols.bukkits.rb")[0..1].join.chomp
+
+    files_count = Dir[@migrations_path + "/*.rb"].length
+    copied = ActiveRecord::Migration.copy(@migrations_path, {:bukkits => MIGRATIONS_ROOT + "/magic"})
+    assert_equal files_count, Dir[@migrations_path + "/*.rb"].length
+    assert copied.empty?
+  ensure
+    clear
+  end
+
   def test_skipping_migrations
     @migrations_path = MIGRATIONS_ROOT + "/valid_with_timestamps"
     @existing_migrations = Dir[@migrations_path + "/*.rb"]
@@ -758,5 +843,14 @@ class CopyMigrationsTest < ActiveRecord::TestCase
     end
   ensure
     clear
+  end
+
+  def test_check_pending_with_stdlib_logger
+    old, ActiveRecord::Base.logger = ActiveRecord::Base.logger, ::Logger.new($stdout)
+    quietly do
+      assert_nothing_raised { ActiveRecord::Migration::CheckPending.new(Proc.new {}).call({}) }
+    end
+  ensure
+    ActiveRecord::Base.logger = old
   end
 end

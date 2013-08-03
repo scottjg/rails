@@ -21,15 +21,13 @@ module ActionController #:nodoc:
   # supports fibers (fibers are supported since version 1.9.2 of the main
   # Ruby implementation).
   #
-  # == Examples
-  #
   # Streaming can be added to a given template easily, all you need to do is
   # to pass the :stream option.
   #
   #   class PostsController
   #     def index
-  #       @posts = Post.scoped
-  #       render :stream => true
+  #       @posts = Post.all
+  #       render stream: true
   #     end
   #   end
   #
@@ -53,10 +51,10 @@ module ActionController #:nodoc:
   #
   #   def dashboard
   #     # Allow lazy execution of the queries
-  #     @posts = Post.scoped
-  #     @pages = Page.scoped
-  #     @articles = Article.scoped
-  #     render :stream => true
+  #     @posts = Post.all
+  #     @pages = Page.all
+  #     @articles = Article.all
+  #     render stream: true
   #   end
   #
   # Notice that :stream only works with templates. Rendering :json
@@ -176,7 +174,7 @@ module ActionController #:nodoc:
   # need to create a config file as follow:
   #
   #   # unicorn.config.rb
-  #   listen 3000, :tcp_nopush => false
+  #   listen 3000, tcp_nopush: false
   #
   # And use it on initialization:
   #

@@ -9,9 +9,9 @@ module ActiveRecord
         def dirties_query_cache(base, *method_names)
           method_names.each do |method_name|
             base.class_eval <<-end_code, __FILE__, __LINE__ + 1
-              def #{method_name}(*)                         # def update_with_query_dirty(*args)
+              def #{method_name}(*)                         # def update_with_query_dirty(*)
                 clear_query_cache if @query_cache_enabled   #   clear_query_cache if @query_cache_enabled
-                super                                       #   update_without_query_dirty(*args)
+                super                                       #   super
               end                                           # end
             end_code
           end
@@ -19,6 +19,12 @@ module ActiveRecord
       end
 
       attr_reader :query_cache, :query_cache_enabled
+
+      def initialize(*)
+        super
+        @query_cache         = Hash.new { |h,sql| h[sql] = {} }
+        @query_cache_enabled = false
+      end
 
       # Enable the query cache within the block.
       def cache
@@ -85,6 +91,8 @@ module ActiveRecord
         end
       end
 
+      # If arel is locked this is a SELECT ... FOR UPDATE or somesuch. Such
+      # queries should not be cached.
       def locked?(arel)
         arel.respond_to?(:locked) && arel.locked
       end

@@ -1,8 +1,6 @@
-require 'active_support/callbacks'
-
 module ActiveModel
   module Validations
-    # == Active Model Validation callbacks
+    # == Active \Model Validation Callbacks
     #
     # Provides an interface for any class to have +before_validation+ and
     # +after_validation+ callbacks.
@@ -24,7 +22,10 @@ module ActiveModel
 
       included do
         include ActiveSupport::Callbacks
-        define_callbacks :validation, :terminator => "result == false", :skip_after_callbacks_if_terminated => true, :scope => [:kind, :name]
+        define_callbacks :validation,
+                         terminator: ->(_,result) { result == false },
+                         skip_after_callbacks_if_terminated: true,
+                         scope: [:kind, :name]
       end
 
       module ClassMethods
@@ -56,7 +57,10 @@ module ActiveModel
           options = args.last
           if options.is_a?(Hash) && options[:on]
             options[:if] = Array(options[:if])
-            options[:if].unshift("self.validation_context == :#{options[:on]}")
+            options[:on] = Array(options[:on])
+            options[:if].unshift lambda { |o|
+              options[:on].include? o.validation_context
+            }
           end
           set_callback(:validation, :before, *args, &block)
         end
@@ -84,15 +88,18 @@ module ActiveModel
         #   person = Person.new
         #   person.name = ''
         #   person.valid? # => false
-        #   person.status # => false
-        #   person.name = 'bob'
+        #   person.status # => false
+        #   person.name = 'bob'
         #   person.valid? # => true
         #   person.status # => true
         def after_validation(*args, &block)
           options = args.extract_options!
           options[:prepend] = true
           options[:if] = Array(options[:if])
-          options[:if].unshift("self.validation_context == :#{options[:on]}") if options[:on]
+          if options[:on]
+            options[:on] = Array(options[:on])
+            options[:if].unshift("#{options[:on]}.include? self.validation_context")
+          end
           set_callback(:validation, :after, *(args << options), &block)
         end
       end

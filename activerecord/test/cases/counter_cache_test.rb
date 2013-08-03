@@ -10,9 +10,12 @@ require 'models/dog'
 require 'models/dog_lover'
 require 'models/person'
 require 'models/friendship'
+require 'models/subscriber'
+require 'models/subscription'
+require 'models/book'
 
 class CounterCacheTest < ActiveRecord::TestCase
-  fixtures :topics, :categories, :categorizations, :cars, :dogs, :dog_lovers, :people, :friendships
+  fixtures :topics, :categories, :categorizations, :cars, :dogs, :dog_lovers, :people, :friendships, :subscribers, :subscriptions, :books
 
   class ::SpecialTopic < ::Topic
     has_many :special_replies, :foreign_key => 'parent_id'
@@ -45,6 +48,13 @@ class CounterCacheTest < ActiveRecord::TestCase
     # check that it gets reset
     assert_difference '@topic.reload.replies_count', -1 do
       Topic.reset_counters(@topic.id, :replies)
+    end
+  end
+
+  test 'reset multiple counters' do
+    Topic.update_counters @topic.id, replies_count: 1, unique_replies_count: 1
+    assert_difference ['@topic.reload.replies_count', '@topic.reload.unique_replies_count'], -1 do
+      Topic.reset_counters(@topic.id, :replies, :unique_replies)
     end
   end
 
@@ -112,10 +122,42 @@ class CounterCacheTest < ActiveRecord::TestCase
     end
   end
 
+  test 'update multiple counters' do
+    assert_difference ['@topic.reload.replies_count', '@topic.reload.unique_replies_count'], 2 do
+      Topic.update_counters @topic.id, replies_count: 2, unique_replies_count: 2
+    end
+  end
+
+  test "update other counters on parent destroy" do
+    david, joanna = dog_lovers(:david, :joanna)
+    joanna = joanna # squelch a warning
+
+    assert_difference 'joanna.reload.dogs_count', -1 do
+      david.destroy
+    end
+  end
+
   test "reset the right counter if two have the same foreign key" do
     michael = people(:michael)
     assert_nothing_raised(ActiveRecord::StatementInvalid) do
-      Person.reset_counters(michael.id, :followers)
+      Person.reset_counters(michael.id, :friends_too)
     end
+  end
+
+  test "reset counter of has_many :through association" do
+    subscriber = subscribers('second')
+    Subscriber.reset_counters(subscriber.id, 'books')
+    Subscriber.increment_counter('books_count', subscriber.id)
+
+    assert_difference 'subscriber.reload.books_count', -1 do
+      Subscriber.reset_counters(subscriber.id, 'books')
+    end
+  end
+
+  test "the passed symbol needs to be an association name" do
+    e = assert_raises(ArgumentError) do
+      Topic.reset_counters(@topic.id, :replies_count)
+    end
+    assert_equal "'Topic' has no association called 'replies_count'", e.message
   end
 end

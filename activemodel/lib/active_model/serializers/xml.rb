@@ -2,13 +2,18 @@ require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/core_ext/array/conversions'
 require 'active_support/core_ext/hash/conversions'
 require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/time/acts_like'
 
 module ActiveModel
-  # == Active Model XML Serializer
   module Serializers
+    # == Active Model XML Serializer
     module Xml
       extend ActiveSupport::Concern
       include ActiveModel::Serialization
+
+      included do
+        extend ActiveModel::Naming
+      end
 
       class Serializer #:nodoc:
         class Attribute #:nodoc:
@@ -16,7 +21,11 @@ module ActiveModel
 
           def initialize(name, serializable, value)
             @name, @serializable = name, serializable
-            value  = value.in_time_zone if value.respond_to?(:in_time_zone)
+
+            if value.acts_like?(:time) && value.respond_to?(:in_time_zone)
+              value  = value.in_time_zone
+            end
+
             @value = value
             @type  = compute_type
           end
@@ -70,7 +79,7 @@ module ActiveModel
           require 'builder' unless defined? ::Builder
 
           options[:indent]  ||= 2
-          options[:builder] ||= ::Builder::XmlMarkup.new(:indent => options[:indent])
+          options[:builder] ||= ::Builder::XmlMarkup.new(indent: options[:indent])
 
           @builder = options[:builder]
           @builder.instruct! unless options[:skip_instruct]
@@ -79,8 +88,8 @@ module ActiveModel
           root = ActiveSupport::XmlMini.rename_key(root, options)
 
           args = [root]
-          args << {:xmlns => options[:namespace]} if options[:namespace]
-          args << {:type => options[:type]} if options[:type] && !options[:skip_types]
+          args << { xmlns: options[:namespace] } if options[:namespace]
+          args << { type: options[:type] } if options[:type] && !options[:skip_types]
 
           @builder.tag!(*args) do
             add_attributes_and_methods
@@ -123,7 +132,7 @@ module ActiveModel
             records = records.to_ary
 
             tag  = ActiveSupport::XmlMini.rename_key(association.to_s, options)
-            type = options[:skip_types] ? { } : {:type => "array"}
+            type = options[:skip_types] ? { } : { type: "array" }
             association_name = association.to_s.singularize
             merged_options[:root] = association_name
 
@@ -136,7 +145,7 @@ module ActiveModel
                     record_type = {}
                   else
                     record_class = (record.class.to_s.underscore == association_name) ? nil : record.class.name
-                    record_type = {:type => record_class}
+                    record_type = { type: record_class }
                   end
 
                   record.to_xml merged_options.merge(record_type)
@@ -145,7 +154,12 @@ module ActiveModel
             end
           else
             merged_options[:root] = association.to_s
-            records.to_xml(merged_options)
+
+            unless records.class.to_s.underscore == association.to_s
+              merged_options[:type] = records.class.name
+            end
+
+            records.to_xml merged_options
           end
         end
 
@@ -191,7 +205,7 @@ module ActiveModel
         Serializer.new(self, options).serialize(&block)
       end
 
-      # Sets the model +attributes+ from a JSON string. Returns +self+.
+      # Sets the model +attributes+ from an XML string. Returns +self+.
       #
       #   class Person
       #     include ActiveModel::Serializers::Xml

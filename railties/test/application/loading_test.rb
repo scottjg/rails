@@ -19,15 +19,14 @@ class LoadingTest < ActiveSupport::TestCase
   test "constants in app are autoloaded" do
     app_file "app/models/post.rb", <<-MODEL
       class Post < ActiveRecord::Base
-        validates_acceptance_of :title, :accept => "omg"
-        attr_accessible :title
+        validates_acceptance_of :title, accept: "omg"
       end
     MODEL
 
     require "#{rails_root}/config/environment"
     setup_ar!
 
-    p = Post.create(:title => 'omg')
+    p = Post.create(title: 'omg')
     assert_equal 1, Post.count
     assert_equal 'omg', p.title
     p = Post.first
@@ -37,7 +36,7 @@ class LoadingTest < ActiveSupport::TestCase
   test "models without table do not panic on scope definitions when loaded" do
     app_file "app/models/user.rb", <<-MODEL
       class User < ActiveRecord::Base
-        default_scope where(:published => true)
+        default_scope { where(published: true) }
       end
     MODEL
 
@@ -49,7 +48,7 @@ class LoadingTest < ActiveSupport::TestCase
 
   test "load config/environments/environment before Bootstrap initializers" do
     app_file "config/environments/development.rb", <<-RUBY
-      AppTemplate::Application.configure do
+      Rails.application.configure do
         config.development_environment_loaded = true
       end
     RUBY
@@ -61,7 +60,7 @@ class LoadingTest < ActiveSupport::TestCase
     RUBY
 
     require "#{app_path}/config/environment"
-    assert ::AppTemplate::Application.config.loaded
+    assert ::Rails.application.config.loaded
   end
 
   test "descendants loaded after framework initialization are cleaned on each request without cache classes" do
@@ -76,9 +75,9 @@ class LoadingTest < ActiveSupport::TestCase
     MODEL
 
     app_file 'config/routes.rb', <<-RUBY
-      AppTemplate::Application.routes.draw do
-        get '/load',   :to => lambda { |env| [200, {}, Post.all] }
-        get '/unload', :to => lambda { |env| [200, {}, []] }
+      Rails.application.routes.draw do
+        get '/load',   to: lambda { |env| [200, {}, Post.all] }
+        get '/unload', to: lambda { |env| [200, {}, []] }
       end
     RUBY
 
@@ -97,7 +96,7 @@ class LoadingTest < ActiveSupport::TestCase
 
   test "initialize cant be called twice" do
     require "#{app_path}/config/environment"
-    assert_raise(RuntimeError) { ::AppTemplate::Application.initialize! }
+    assert_raise(RuntimeError) { Rails.application.initialize! }
   end
 
   test "reload constants on development" do
@@ -106,8 +105,8 @@ class LoadingTest < ActiveSupport::TestCase
     RUBY
 
     app_file 'config/routes.rb', <<-RUBY
-      AppTemplate::Application.routes.draw do
-        get '/c', :to => lambda { |env| [200, {"Content-Type" => "text/plain"}, [User.counter.to_s]] }
+      Rails.application.routes.draw do
+        get '/c', to: lambda { |env| [200, {"Content-Type" => "text/plain"}, [User.counter.to_s]] }
       end
     RUBY
 
@@ -145,8 +144,8 @@ class LoadingTest < ActiveSupport::TestCase
     RUBY
 
     app_file 'config/routes.rb', <<-RUBY
-      AppTemplate::Application.routes.draw do
-        get '/c', :to => lambda { |env| [200, {"Content-Type" => "text/plain"}, [User.counter.to_s]] }
+      Rails.application.routes.draw do
+        get '/c', to: lambda { |env| [200, {"Content-Type" => "text/plain"}, [User.counter.to_s]] }
       end
     RUBY
 
@@ -180,9 +179,9 @@ class LoadingTest < ActiveSupport::TestCase
     RUBY
 
     app_file 'config/routes.rb', <<-RUBY
-      $counter = 0
-      AppTemplate::Application.routes.draw do
-        get '/c', :to => lambda { |env| User; [200, {"Content-Type" => "text/plain"}, [$counter.to_s]] }
+      $counter ||= 0
+      Rails.application.routes.draw do
+        get '/c', to: lambda { |env| User; [200, {"Content-Type" => "text/plain"}, [$counter.to_s]] }
       end
     RUBY
 
@@ -206,15 +205,48 @@ class LoadingTest < ActiveSupport::TestCase
     assert_equal "2", last_response.body
   end
 
+  test "dependencies reloading is followed by routes reloading" do
+    add_to_config <<-RUBY
+      config.cache_classes = false
+    RUBY
+
+    app_file 'config/routes.rb', <<-RUBY
+      $counter ||= 1
+      $counter  *= 2
+      Rails.application.routes.draw do
+        get '/c', to: lambda { |env| User; [200, {"Content-Type" => "text/plain"}, [$counter.to_s]] }
+      end
+    RUBY
+
+    app_file "app/models/user.rb", <<-MODEL
+      class User
+        $counter += 1
+      end
+    MODEL
+
+    require 'rack/test'
+    extend Rack::Test::Methods
+
+    require "#{rails_root}/config/environment"
+
+    get "/c"
+    assert_equal "3", last_response.body
+
+    app_file "db/schema.rb", ""
+
+    get "/c"
+    assert_equal "7", last_response.body
+  end
+
   test "columns migrations also trigger reloading" do
     add_to_config <<-RUBY
       config.cache_classes = false
     RUBY
 
     app_file 'config/routes.rb', <<-RUBY
-      AppTemplate::Application.routes.draw do
-        get '/title', :to => lambda { |env| [200, {"Content-Type" => "text/plain"}, [Post.new.title]] }
-        get '/body',  :to => lambda { |env| [200, {"Content-Type" => "text/plain"}, [Post.new.body]] }
+      Rails.application.routes.draw do
+        get '/title', to: lambda { |env| [200, {"Content-Type" => "text/plain"}, [Post.new.title]] }
+        get '/body',  to: lambda { |env| [200, {"Content-Type" => "text/plain"}, [Post.new.body]] }
       end
     RUBY
 
@@ -230,7 +262,7 @@ class LoadingTest < ActiveSupport::TestCase
       class CreatePosts < ActiveRecord::Migration
         def change
           create_table :posts do |t|
-            t.string :title, :default => "TITLE"
+            t.string :title, default: "TITLE"
           end
         end
       end
@@ -245,7 +277,7 @@ class LoadingTest < ActiveSupport::TestCase
     app_file "db/migrate/2_add_body_to_posts.rb", <<-MIGRATION
       class AddBodyToPosts < ActiveRecord::Migration
         def change
-          add_column :posts, :body, :text, :default => "BODY"
+          add_column :posts, :body, :text, default: "BODY"
         end
       end
     MIGRATION
@@ -271,7 +303,7 @@ class LoadingTest < ActiveSupport::TestCase
     RUBY
 
     app_file "config/routes.rb", <<-RUBY
-      AppTemplate::Application.routes.draw do
+      Rails.application.routes.draw do
         get "/:controller(/:action)"
       end
     RUBY
@@ -289,18 +321,18 @@ class LoadingTest < ActiveSupport::TestCase
     require "#{app_path}/config/application"
 
     assert !Rails.initialized?
-    assert !AppTemplate::Application.initialized?
+    assert !Rails.application.initialized?
     Rails.initialize!
     assert Rails.initialized?
-    assert AppTemplate::Application.initialized?
+    assert Rails.application.initialized?
   end
 
   protected
 
   def setup_ar!
-    ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :database => ":memory:")
+    ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
     ActiveRecord::Migration.verbose = false
-    ActiveRecord::Schema.define(:version => 1) do
+    ActiveRecord::Schema.define(version: 1) do
       create_table :posts do |t|
         t.string :title
       end

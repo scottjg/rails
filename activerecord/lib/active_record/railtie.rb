@@ -10,7 +10,7 @@ require "action_controller/railtie"
 
 module ActiveRecord
   # = Active Record Railtie
-  class Railtie < Rails::Railtie
+  class Railtie < Rails::Railtie # :nodoc:
     config.active_record = ActiveSupport::OrderedOptions.new
 
     config.app_generators.orm :active_record, :migration => true,
@@ -36,6 +36,25 @@ module ActiveRecord
 
     rake_tasks do
       require "active_record/base"
+
+      ActiveRecord::Tasks::DatabaseTasks.seed_loader = Rails.application
+      ActiveRecord::Tasks::DatabaseTasks.env = Rails.env
+
+      namespace :db do
+        task :load_config do
+          ActiveRecord::Tasks::DatabaseTasks.db_dir = Rails.application.config.paths["db"].first
+          ActiveRecord::Tasks::DatabaseTasks.database_configuration = Rails.application.config.database_configuration
+          ActiveRecord::Tasks::DatabaseTasks.migrations_paths = Rails.application.paths['db/migrate'].to_a
+          ActiveRecord::Tasks::DatabaseTasks.fixtures_path = File.join Rails.root, 'test', 'fixtures'
+
+          if defined?(ENGINE_PATH) && engine = Rails::Engine.find(ENGINE_PATH)
+            if engine.paths['db/migrate'].existent
+              ActiveRecord::Tasks::DatabaseTasks.migrations_paths += engine.paths['db/migrate'].to_a
+            end
+          end
+        end
+      end
+
       load "active_record/railties/databases.rake"
     end
 
@@ -49,7 +68,7 @@ module ActiveRecord
       Rails.logger.extend ActiveSupport::Logger.broadcast console
     end
 
-    runner do |app|
+    runner do
       require "active_record/base"
     end
 
@@ -64,7 +83,7 @@ module ActiveRecord
       ActiveSupport.on_load(:active_record) { self.logger ||= ::Rails.logger }
     end
 
-    initializer "active_record.migration_error" do |app|
+    initializer "active_record.migration_error" do
       if config.active_record.delete(:migration_error) == :page_load
         config.app_middleware.insert_after "::ActionDispatch::Callbacks",
           "ActiveRecord::Migration::CheckPending"
@@ -76,13 +95,13 @@ module ActiveRecord
         config.after_initialize do |app|
           ActiveSupport.on_load(:active_record) do
             filename = File.join(app.config.paths["db"].first, "schema_cache.dump")
-    
+
             if File.file?(filename)
               cache = Marshal.load File.binread filename
               if cache.version == ActiveRecord::Migrator.current_version
-                ActiveRecord::Model.connection.schema_cache = cache
+                self.connection.schema_cache = cache
               else
-                warn "schema_cache.dump is expired. Current version is #{ActiveRecord::Migrator.current_version}, but cache version is #{cache.version}."
+                warn "Ignoring db/schema_cache.dump because it has expired. The current schema version is #{ActiveRecord::Migrator.current_version}, but the one in the cache is #{cache.version}."
               end
             end
           end
@@ -102,15 +121,13 @@ module ActiveRecord
     # and then establishes the connection.
     initializer "active_record.initialize_database" do |app|
       ActiveSupport.on_load(:active_record) do
-        unless ENV['DATABASE_URL']
-          self.configurations = app.config.database_configuration
-        end
+        self.configurations = app.config.database_configuration || {}
         establish_connection
       end
     end
 
     # Expose database runtime to controller for logging.
-    initializer "active_record.log_runtime" do |app|
+    initializer "active_record.log_runtime" do
       require "active_record/railties/controller_runtime"
       ActiveSupport.on_load(:action_controller) do
         include ActiveRecord::Railties::ControllerRuntime
@@ -122,25 +139,17 @@ module ActiveRecord
 
       ActiveSupport.on_load(:active_record) do
         ActionDispatch::Reloader.send(hook) do
-          ActiveRecord::Model.clear_reloadable_connections!
-          ActiveRecord::Model.clear_cache!
+          if ActiveRecord::Base.connected?
+            ActiveRecord::Base.clear_reloadable_connections!
+            ActiveRecord::Base.clear_cache!
+          end
         end
       end
     end
 
     initializer "active_record.add_watchable_files" do |app|
-      config.watchable_files.concat ["#{app.root}/db/schema.rb", "#{app.root}/db/structure.sql"]
-    end
-
-    config.after_initialize do |app|
-      ActiveSupport.on_load(:active_record) do
-        ActiveRecord::Model.instantiate_observers
-
-        ActionDispatch::Reloader.to_prepare do
-          ActiveRecord::Model.instantiate_observers
-        end
-      end
-
+      path = app.paths["db"].first
+      config.watchable_files.concat ["#{path}/schema.rb", "#{path}/structure.sql"]
     end
   end
 end

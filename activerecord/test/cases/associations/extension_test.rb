@@ -40,9 +40,12 @@ class AssociationsExtensionsTest < ActiveRecord::TestCase
     assert_equal projects(:action_controller), david.projects.find_most_recent
 
     marshalled = Marshal.dump(david)
-    david      = Marshal.load(marshalled)
 
-    assert_equal projects(:action_controller), david.projects.find_most_recent
+    # Marshaling an association shouldn't make it unusable by wiping its reflection.
+    assert_not_nil david.association(:projects).reflection
+
+    david_too  = Marshal.load(marshalled)
+    assert_equal projects(:action_controller), david_too.projects.find_most_recent
   end
 
   def test_marshalling_named_extensions
@@ -56,9 +59,11 @@ class AssociationsExtensionsTest < ActiveRecord::TestCase
   end
 
   def test_extension_name
-    assert_equal 'DeveloperAssociationNameAssociationExtension', extension_name(Developer)
-    assert_equal 'MyApplication::Business::DeveloperAssociationNameAssociationExtension', extension_name(MyApplication::Business::Developer)
-    assert_equal 'MyApplication::Business::DeveloperAssociationNameAssociationExtension', extension_name(MyApplication::Business::Developer)
+    extend!(Developer)
+    extend!(MyApplication::Business::Developer)
+
+    assert Object.const_get 'DeveloperAssociationNameAssociationExtension'
+    assert MyApplication::Business.const_get 'DeveloperAssociationNameAssociationExtension'
   end
 
   def test_proxy_association_after_scoped
@@ -69,9 +74,8 @@ class AssociationsExtensionsTest < ActiveRecord::TestCase
 
   private
 
-    def extension_name(model)
-      builder = ActiveRecord::Associations::Builder::HasMany.new(model, :association_name, nil, {}) { }
-      builder.send(:wrap_block_extension)
-      builder.extension_module.name
+    def extend!(model)
+      builder = ActiveRecord::Associations::Builder::HasMany.new(:association_name, nil, {}) { }
+      builder.define_extensions(model)
     end
 end

@@ -1,8 +1,7 @@
 module ActiveModel
 
-  # == Active Model Format Validator
   module Validations
-    class FormatValidator < EachValidator #:nodoc:
+    class FormatValidator < EachValidator # :nodoc:
       def validate_each(record, attribute, value)
         if options[:with]
           regexp = option_call(record, :with)
@@ -30,7 +29,7 @@ module ActiveModel
       end
 
       def record_error(record, attribute, name, value)
-        record.errors.add(attribute, :invalid, options.except(name).merge!(:value => value))
+        record.errors.add(attribute, :invalid, options.except(name).merge!(value: value))
       end
 
       def regexp_using_multiline_anchors?(regexp)

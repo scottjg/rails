@@ -1,6 +1,7 @@
 require 'abstract_unit'
 require 'pp'
 require 'active_support/dependencies'
+require 'dependencies_test_helpers'
 
 module ModuleWithMissing
   mattr_accessor :missing_count
@@ -19,25 +20,7 @@ class DependenciesTest < ActiveSupport::TestCase
     ActiveSupport::Dependencies.clear
   end
 
-  def with_loading(*from)
-    old_mechanism, ActiveSupport::Dependencies.mechanism = ActiveSupport::Dependencies.mechanism, :load
-    this_dir = File.dirname(__FILE__)
-    parent_dir = File.dirname(this_dir)
-    path_copy = $LOAD_PATH.dup
-    $LOAD_PATH.unshift(parent_dir) unless $LOAD_PATH.include?(parent_dir)
-    prior_autoload_paths = ActiveSupport::Dependencies.autoload_paths
-    ActiveSupport::Dependencies.autoload_paths = from.collect { |f| "#{this_dir}/#{f}" }
-    yield
-  ensure
-    $LOAD_PATH.replace(path_copy)
-    ActiveSupport::Dependencies.autoload_paths = prior_autoload_paths
-    ActiveSupport::Dependencies.mechanism = old_mechanism
-    ActiveSupport::Dependencies.explicitly_unloadable_constants = []
-  end
-
-  def with_autoloading_fixtures(&block)
-    with_loading 'autoloading_fixtures', &block
-  end
+  include DependenciesTestHelpers
 
   def test_depend_on_path
     skip "LoadError#path does not exist" if RUBY_VERSION < '2.0.0'
@@ -90,6 +73,14 @@ class DependenciesTest < ActiveSupport::TestCase
         assert !ActiveSupport::Dependencies.loaded.include?(filename)
         assert !ActiveSupport::Dependencies.history.include?(filename)
       end
+    end
+  end
+
+  def test_dependency_which_raises_doesnt_blindly_call_blame_file!
+    with_loading do
+      filename = 'dependencies/raises_exception_without_blame_file'
+
+      assert_raises(Exception) { require_dependency filename }
     end
   end
 
@@ -147,7 +138,8 @@ class DependenciesTest < ActiveSupport::TestCase
 
   def test_circular_autoloading_detection
     with_autoloading_fixtures do
-      assert_raise(RuntimeError, "Circular dependency detected while autoloading constant Circular1") { Circular1 }
+      e = assert_raise(RuntimeError) { Circular1 }
+      assert_equal "Circular dependency detected while autoloading constant Circular1", e.message
     end
   end
 
@@ -379,12 +371,10 @@ class DependenciesTest < ActiveSupport::TestCase
   end
 
   def test_smart_name_error_strings
-    begin
-      Object.module_eval "ImaginaryObject"
-      flunk "No raise!!"
-    rescue NameError => e
-      assert e.message.include?("uninitialized constant ImaginaryObject")
-    end
+    Object.module_eval "ImaginaryObject"
+    flunk "No raise!!"
+  rescue NameError => e
+    assert e.message.include?("uninitialized constant ImaginaryObject")
   end
 
   def test_loadable_constants_for_path_should_handle_empty_autoloads
@@ -544,7 +534,6 @@ class DependenciesTest < ActiveSupport::TestCase
     m = Module.new
     m.module_eval "def a() CountingLoader; end"
     extend m
-    kls = nil
     with_autoloading_fixtures do
       kls = nil
       assert_nothing_raised { kls = a }
@@ -896,7 +885,7 @@ class DependenciesTest < ActiveSupport::TestCase
   def test_autoload_doesnt_shadow_name_error
     with_autoloading_fixtures do
       Object.send(:remove_const, :RaisesNameError) if defined?(::RaisesNameError)
-      2.times do |i|
+      2.times do
         begin
           ::RaisesNameError::FooBarBaz.object_id
           flunk 'should have raised NameError when autoloaded file referenced FooBarBaz'
@@ -927,10 +916,30 @@ class DependenciesTest < ActiveSupport::TestCase
     assert ! defined?(DeleteMe)
   end
 
+  def test_remove_constant_does_not_trigger_loading_autoloads
+    constant = 'ShouldNotBeAutoloaded'
+    Object.class_eval do
+      autoload constant, File.expand_path('../autoloading_fixtures/should_not_be_required', __FILE__)
+    end
+
+    assert_nil ActiveSupport::Dependencies.remove_constant(constant), "Kernel#autoload has been triggered by remove_constant"
+    assert !defined?(ShouldNotBeAutoloaded)
+  end
+
+  def test_remove_constant_does_not_autoload_already_removed_parents_as_a_side_effect
+    with_autoloading_fixtures do
+      _ = ::A    # assignment to silence parse-time warning "possibly useless use of :: in void context"
+      _ = ::A::B # assignment to silence parse-time warning "possibly useless use of :: in void context"
+      ActiveSupport::Dependencies.remove_constant('A')
+      ActiveSupport::Dependencies.remove_constant('A::B')
+      assert !defined?(A)
+    end
+  end
+
   def test_load_once_constants_should_not_be_unloaded
     with_autoloading_fixtures do
       ActiveSupport::Dependencies.autoload_once_paths = ActiveSupport::Dependencies.autoload_paths
-      ::A.to_s
+      _ = ::A # assignment to silence parse-time warning "possibly useless use of :: in void context"
       assert defined?(A)
       ActiveSupport::Dependencies.clear
       assert defined?(A)

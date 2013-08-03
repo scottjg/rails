@@ -1,7 +1,7 @@
 require 'abstract_unit'
 require 'active_support/ordered_hash'
 require 'active_support/core_ext/object/to_query'
-require 'active_support/core_ext/string/output_safety.rb'
+require 'active_support/core_ext/string/output_safety'
 
 class ToQueryTest < ActiveSupport::TestCase
   def test_simple_conversion
@@ -47,7 +47,7 @@ class ToQueryTest < ActiveSupport::TestCase
   end
 
   private
-    def assert_query_equal(expected, actual, message = nil)
+    def assert_query_equal(expected, actual)
       assert_equal expected.split('&'), actual.to_query.split('&')
     end
 end

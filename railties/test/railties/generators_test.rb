@@ -44,9 +44,9 @@ module RailtiesTests
       Dir.chdir(engine_path) do
         File.open("Gemfile", "w") do |f|
           f.write <<-GEMFILE.gsub(/^ {12}/, '')
-            source "http://rubygems.org"
+            source "https://rubygems.org"
 
-            gem 'rails', :path => '#{RAILS_FRAMEWORK_ROOT}'
+            gem 'rails', path: '#{RAILS_FRAMEWORK_ROOT}'
             gem 'sqlite3'
           GEMFILE
         end

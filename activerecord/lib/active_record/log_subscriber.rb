@@ -1,11 +1,13 @@
 module ActiveRecord
   class LogSubscriber < ActiveSupport::LogSubscriber
+    IGNORE_PAYLOAD_NAMES = ["SCHEMA", "EXPLAIN"]
+
     def self.runtime=(value)
-      Thread.current["active_record_sql_runtime"] = value
+      ActiveRecord::RuntimeRegistry.sql_runtime = value
     end
 
     def self.runtime
-      Thread.current["active_record_sql_runtime"] ||= 0
+      ActiveRecord::RuntimeRegistry.sql_runtime ||= 0
     end
 
     def self.reset_runtime
@@ -18,21 +20,33 @@ module ActiveRecord
       @odd_or_even = false
     end
 
+    def render_bind(column, value)
+      if column
+        if column.binary?
+          value = "<#{value.bytesize} bytes of binary data>"
+        end
+
+        [column.name, value]
+      else
+        [nil, value]
+      end
+    end
+
     def sql(event)
       self.class.runtime += event.duration
       return unless logger.debug?
 
       payload = event.payload
 
-      return if 'SCHEMA' == payload[:name]
+      return if IGNORE_PAYLOAD_NAMES.include?(payload[:name])
 
-      name  = '%s (%.1fms)' % [payload[:name], event.duration]
-      sql   = payload[:sql].squeeze(' ')
+      name  = "#{payload[:name]} (#{event.duration.round(1)}ms)"
+      sql   = payload[:sql]
       binds = nil
 
       unless (payload[:binds] || []).empty?
         binds = "  " + payload[:binds].map { |col,v|
-          [col.name, v]
+          render_bind(col, v)
         }.inspect
       end
 

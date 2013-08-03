@@ -1,16 +1,18 @@
 require 'active_support/xml_mini'
 require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/string/inflections'
+require 'active_support/core_ext/object/to_param'
+require 'active_support/core_ext/object/to_query'
 
 class Array
   # Converts the array to a comma-separated sentence where the last element is
   # joined by the connector word.
   #
-  # You can pass the following options to change the default behaviour. If you
+  # You can pass the following options to change the default behavior. If you
   # pass an option key that doesn't exist in the list below, it will raise an
   # <tt>ArgumentError</tt>.
   #
-  # Options:
+  # ==== Options
   #
   # * <tt>:words_connector</tt> - The sign or word used to join the elements
   #   in arrays with two or more elements (default: ", ").
@@ -22,9 +24,11 @@ class Array
   #   the connector options defined on the 'support.array' namespace in the
   #   corresponding dictionary file.
   #
+  # ==== Examples
+  #
   #   [].to_sentence                      # => ""
   #   ['one'].to_sentence                 # => "one"
-  #   ['one', 'two'].to_sentence          # => "one and two"
+  #   ['one', 'two'].to_sentence          # => "one and two"
   #   ['one', 'two', 'three'].to_sentence # => "one, two, and three"
   #
   #   ['one', 'two'].to_sentence(passing: 'invalid option')
@@ -36,10 +40,10 @@ class Array
   #   ['one', 'two', 'three'].to_sentence(words_connector: ' or ', last_word_connector: ' or at least ')
   #   # => "one or two or at least three"
   #
-  # Examples using <tt>:locale</tt> option:
+  # Using <tt>:locale</tt> option:
   #
   #   # Given this locale dictionary:
-  #   # 
+  #   #
   #   #   es:
   #   #     support:
   #   #       array:
@@ -51,7 +55,7 @@ class Array
   #   # => "uno y dos"
   #
   #   ['uno', 'dos', 'tres'].to_sentence(locale: :es)
-  #   # => "uno o dos o al menos tres"
+  #   # => "uno o dos o al menos tres"
   def to_sentence(options = {})
     options.assert_valid_keys(:words_connector, :two_words_connector, :last_word_connector, :locale)
 
@@ -78,23 +82,8 @@ class Array
     end
   end
 
-  # Converts a collection of elements into a formatted string by calling
-  # <tt>to_s</tt> on all elements and joining them. Having this model:
-  #
-  #   class Blog < ActiveRecord::Base
-  #     def to_s
-  #       title
-  #     end
-  #   end
-  #
-  #   Blog.all.map(&:title) #=> ["First Post", "Second Post", "Third post"]
-  #
-  # <tt>to_formatted_s</tt> shows us:
-  #
-  #   Blog.all.to_formatted_s # => "First PostSecond PostThird Post"
-  #
-  # Adding in the <tt>:db</tt> argument as the format yields a comma separated
-  # id list:
+  # Extends <tt>Array#to_s</tt> to convert a collection of elements into a
+  # comma separated id list if <tt>:db</tt> argument is given as the format.
   #
   #   Blog.all.to_formatted_s(:db) # => "1,2,3"
   def to_formatted_s(format = :default)
@@ -142,7 +131,7 @@ class Array
   #
   # Otherwise the root element is "objects":
   #
-  #   [{:foo => 1, :bar => 2}, {:baz => 3}].to_xml
+  #   [{ foo: 1, bar: 2}, { baz: 3}].to_xml
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <objects type="array">
@@ -164,7 +153,7 @@ class Array
   #
   # To ensure a meaningful root element use the <tt>:root</tt> option:
   #
-  #   customer_with_no_projects.projects.to_xml(:root => "projects")
+  #   customer_with_no_projects.projects.to_xml(root: 'projects')
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <projects type="array"/>
@@ -174,7 +163,7 @@ class Array
   #
   # The +options+ hash is passed downwards:
   #
-  #   Message.all.to_xml(:skip_types => true)
+  #   Message.all.to_xml(skip_types: true)
   #
   #   <?xml version="1.0" encoding="UTF-8"?>
   #   <messages>
@@ -192,7 +181,7 @@ class Array
 
     options = options.dup
     options[:indent]  ||= 2
-    options[:builder] ||= Builder::XmlMarkup.new(:indent => options[:indent])
+    options[:builder] ||= Builder::XmlMarkup.new(indent: options[:indent])
     options[:root]    ||= \
       if first.class != Hash && all? { |e| e.is_a?(first.class) }
         underscored = ActiveSupport::Inflector.underscore(first.class.name)
@@ -206,12 +195,12 @@ class Array
 
     root = ActiveSupport::XmlMini.rename_key(options[:root].to_s, options)
     children = options.delete(:children) || root.singularize
-    attributes = options[:skip_types] ? {} : {:type => 'array'}
+    attributes = options[:skip_types] ? {} : { type: 'array' }
 
     if empty?
       builder.tag!(root, attributes)
     else
-      builder.__send__(:method_missing, root, attributes) do
+      builder.tag!(root, attributes) do
         each { |value| ActiveSupport::XmlMini.to_tag(children, value, options) }
         yield builder if block_given?
       end

@@ -1,7 +1,7 @@
 require 'rails/generators/app_base'
 
 module Rails
-  module ActionMethods
+  module ActionMethods # :nodoc:
     attr_reader :options
 
     def initialize(generator)
@@ -38,7 +38,7 @@ module Rails
     end
 
     def readme
-      copy_file "README", "README.rdoc"
+      copy_file "README.rdoc", "README.rdoc"
     end
 
     def gemfile
@@ -55,8 +55,20 @@ module Rails
 
     def app
       directory 'app'
+
+      keep_file  'app/assets/images'
       keep_file  'app/mailers'
       keep_file  'app/models'
+
+      keep_file  'app/controllers/concerns'
+      keep_file  'app/models/concerns'
+    end
+
+    def bin
+      directory "bin" do |content|
+        "#{shebang}\n" + content
+      end
+      chmod "bin", 0755, verbose: false
     end
 
     def config
@@ -81,10 +93,6 @@ module Rails
       directory "db"
     end
 
-    def doc
-      directory "doc"
-    end
-
     def lib
       empty_directory 'lib'
       empty_directory_with_keep_file 'lib/tasks'
@@ -96,28 +104,17 @@ module Rails
     end
 
     def public_directory
-      directory "public", "public", :recursive => false
-      if options[:skip_index_html]
-        remove_file "public/index.html"
-        remove_file 'app/assets/images/rails.png'
-        keep_file 'app/assets/images'
-      end
-    end
-
-    def script
-      directory "script" do |content|
-        "#{shebang}\n" + content
-      end
-      chmod "script", 0755, :verbose => false
+      directory "public", "public", recursive: false
     end
 
     def test
       empty_directory_with_keep_file 'test/fixtures'
-      empty_directory_with_keep_file 'test/functional'
+      empty_directory_with_keep_file 'test/controllers'
+      empty_directory_with_keep_file 'test/mailers'
+      empty_directory_with_keep_file 'test/models'
+      empty_directory_with_keep_file 'test/helpers'
       empty_directory_with_keep_file 'test/integration'
-      empty_directory_with_keep_file 'test/unit'
 
-      template 'test/performance/browsing_test.rb'
       template 'test/test_helper.rb'
     end
 
@@ -144,17 +141,25 @@ module Rails
     # We need to store the RAILS_DEV_PATH in a constant, otherwise the path
     # can change in Ruby 1.8.7 when we FileUtils.cd.
     RAILS_DEV_PATH = File.expand_path("../../../../../..", File.dirname(__FILE__))
-    RESERVED_NAMES = %w[application destroy benchmarker profiler plugin runner test]
+    RESERVED_NAMES = %w[application destroy plugin runner test]
 
-    class AppGenerator < AppBase
+    class AppGenerator < AppBase # :nodoc:
       add_shared_options_for "application"
 
       # Add bin/rails options
-      class_option :version, :type => :boolean, :aliases => "-v", :group => :rails,
-                             :desc => "Show Rails version number and quit"
+      class_option :version, type: :boolean, aliases: "-v", group: :rails,
+                             desc: "Show Rails version number and quit"
 
       def initialize(*args)
-        raise Error, "Options should be given after the application name. For details run: rails --help" if args[0].blank?
+        if args[0].blank?
+          if args[1].blank?
+            # rails new
+            raise Error, "Application name should be provided in arguments. For details run: rails --help"
+          else
+            # rails new --skip-bundle my_new_application
+            raise Error, "Options should be given after the application name. For details run: rails --help"
+          end
+        end
 
         super
 
@@ -177,6 +182,10 @@ module Rails
         build(:app)
       end
 
+      def create_bin_files
+        build(:bin)
+      end
+
       def create_config_files
         build(:config)
       end
@@ -194,10 +203,6 @@ module Rails
         build(:db)
       end
 
-      def create_doc_files
-        build(:doc)
-      end
-
       def create_lib_files
         build(:lib)
       end
@@ -208,10 +213,6 @@ module Rails
 
       def create_public_files
         build(:public_directory)
-      end
-
-      def create_script_files
-        build(:script)
       end
 
       def create_test_files
@@ -244,7 +245,7 @@ module Rails
       end
 
       def app_name
-        @app_name ||= defined_app_const_base? ? defined_app_name : File.basename(destination_root)
+        @app_name ||= (defined_app_const_base? ? defined_app_name : File.basename(destination_root)).tr(".", "_")
       end
 
       def defined_app_name
@@ -298,6 +299,68 @@ module Rails
       def get_builder_class
         defined?(::AppBuilder) ? ::AppBuilder : Rails::AppBuilder
       end
+    end
+
+    # This class handles preparation of the arguments before the AppGenerator is
+    # called. The class provides version or help information if they were
+    # requested, and also constructs the railsrc file (used for extra configuration
+    # options).
+    #
+    # This class should be called before the AppGenerator is required and started
+    # since it configures and mutates ARGV correctly.
+    class AppPreparer # :nodoc
+      attr_reader :argv
+
+      def initialize(argv = ARGV)
+        @argv = argv
+      end
+
+      def prepare!
+        handle_version_request!(argv.first)
+        unless handle_invalid_command!(argv.first)
+          argv.shift
+          handle_rails_rc!
+        end
+      end
+
+      private
+
+        def handle_version_request!(argument)
+          if ['--version', '-v'].include?(argv.first)
+            require 'rails/version'
+            puts "Rails #{Rails::VERSION::STRING}"
+            exit(0)
+          end
+        end
+
+        def handle_invalid_command!(argument)
+          if argument != "new"
+            argv[0] = "--help"
+          end
+        end
+
+        def handle_rails_rc!
+          unless argv.delete("--no-rc")
+            insert_railsrc(railsrc)
+          end
+        end
+
+        def railsrc
+          if (customrc = argv.index{ |x| x.include?("--rc=") })
+            File.expand_path(argv.delete_at(customrc).gsub(/--rc=/, ""))
+          else
+            File.join(File.expand_path("~"), '.railsrc')
+          end
+        end
+
+        def insert_railsrc(railsrc)
+          if File.exist?(railsrc)
+            extra_args_string = File.read(railsrc)
+            extra_args = extra_args_string.split(/\n+/).map {|l| l.split}.flatten
+            puts "Using #{extra_args.join(" ")} from #{railsrc}"
+            argv.insert(1, *extra_args)
+          end
+        end
     end
   end
 end

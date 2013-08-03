@@ -61,9 +61,7 @@ class InflectorTest < ActiveSupport::TestCase
       assert_equal(plural, ActiveSupport::Inflector.pluralize(plural))
       assert_equal(plural.capitalize, ActiveSupport::Inflector.pluralize(plural.capitalize))
     end
-  end
 
-  SingularToPlural.each do |singular, plural|
     define_method "test_singularize_singular_#{singular}" do
       assert_equal(singular, ActiveSupport::Inflector.singularize(singular))
       assert_equal(singular.capitalize, ActiveSupport::Inflector.singularize(singular.capitalize))
@@ -326,7 +324,7 @@ class InflectorTest < ActiveSupport::TestCase
   end
 
   def test_underscore_as_reverse_of_dasherize
-    UnderscoresToDashes.each do |underscored, dasherized|
+    UnderscoresToDashes.each_key do |underscored|
       assert_equal(underscored, ActiveSupport::Inflector.underscore(ActiveSupport::Inflector.dasherize(underscored)))
     end
   end
@@ -361,7 +359,7 @@ class InflectorTest < ActiveSupport::TestCase
 
       inflect.singular(/s$/, '')
       inflect.singular(/es$/, '')
-      
+
       inflect.irregular('el', 'los')
     end
 
@@ -421,33 +419,36 @@ class InflectorTest < ActiveSupport::TestCase
     end
   end
 
-  Irregularities.each do |irregularity|
-    singular, plural = *irregularity
-    ActiveSupport::Inflector.inflections do |inflect|
-      define_method("test_irregularity_between_#{singular}_and_#{plural}") do
-        inflect.irregular(singular, plural)
-        assert_equal singular, ActiveSupport::Inflector.singularize(plural)
-        assert_equal plural, ActiveSupport::Inflector.pluralize(singular)
+  Irregularities.each do |singular, plural|
+    define_method("test_irregularity_between_#{singular}_and_#{plural}") do
+      with_dup do
+        ActiveSupport::Inflector.inflections do |inflect|
+          inflect.irregular(singular, plural)
+          assert_equal singular, ActiveSupport::Inflector.singularize(plural)
+          assert_equal plural, ActiveSupport::Inflector.pluralize(singular)
+        end
       end
     end
   end
 
-  Irregularities.each do |irregularity|
-    singular, plural = *irregularity
-    ActiveSupport::Inflector.inflections do |inflect|
-      define_method("test_pluralize_of_irregularity_#{plural}_should_be_the_same") do
-        inflect.irregular(singular, plural)
-        assert_equal plural, ActiveSupport::Inflector.pluralize(plural)
+  Irregularities.each do |singular, plural|
+    define_method("test_pluralize_of_irregularity_#{plural}_should_be_the_same") do
+      with_dup do
+        ActiveSupport::Inflector.inflections do |inflect|
+          inflect.irregular(singular, plural)
+          assert_equal plural, ActiveSupport::Inflector.pluralize(plural)
+        end
       end
     end
   end
 
-  Irregularities.each do |irregularity|
-    singular, plural = *irregularity
-    ActiveSupport::Inflector.inflections do |inflect|
-      define_method("test_singularize_of_irregularity_#{singular}_should_be_the_same") do
-        inflect.irregular(singular, plural)
-        assert_equal singular, ActiveSupport::Inflector.singularize(singular)
+  Irregularities.each do |singular, plural|
+    define_method("test_singularize_of_irregularity_#{singular}_should_be_the_same") do
+      with_dup do
+        ActiveSupport::Inflector.inflections do |inflect|
+          inflect.irregular(singular, plural)
+          assert_equal singular, ActiveSupport::Inflector.singularize(singular)
+        end
       end
     end
   end

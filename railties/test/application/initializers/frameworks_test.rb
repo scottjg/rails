@@ -41,7 +41,7 @@ module ApplicationTests
 
     test "allows me to configure default url options for ActionMailer" do
       app_file "config/environments/development.rb", <<-RUBY
-        AppTemplate::Application.configure do
+        Rails.application.configure do
           config.action_mailer.default_url_options = { :host => "test.rails" }
         end
       RUBY
@@ -50,26 +50,9 @@ module ApplicationTests
       assert_equal "test.rails", ActionMailer::Base.default_url_options[:host]
     end
 
-    test "uses the default queue for ActionMailer" do
-      require "#{app_path}/config/environment"
-      assert_kind_of ActiveSupport::QueueContainer, ActionMailer::Base.queue
-    end
-
-    test "allows me to configure queue for ActionMailer" do
-      app_file "config/environments/development.rb", <<-RUBY
-        AppTemplate::Application.configure do
-          Rails.queue[:mailer] = ActiveSupport::TestQueue.new
-          config.action_mailer.queue = Rails.queue[:mailer]
-        end
-      RUBY
-
-      require "#{app_path}/config/environment"
-      assert_kind_of ActiveSupport::TestQueue, ActionMailer::Base.queue
-    end
-
     test "does not include url helpers as action methods" do
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get "/foo", :to => lambda { |env| [200, {}, []] }, :as => :foo
         end
       RUBY
@@ -132,7 +115,7 @@ module ApplicationTests
       RUBY
 
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get "/:controller(/:action)"
         end
       RUBY
@@ -175,7 +158,7 @@ module ApplicationTests
 
       Dir.chdir("#{app_path}/app") do
         require "#{app_path}/config/environment"
-        assert_raises(NoMethodError) { [1,2,3].forty_two }
+        assert_raises(NoMethodError) { "hello".exclude? "lo" }
       end
     end
 
@@ -199,7 +182,7 @@ module ApplicationTests
       end
       require "#{app_path}/config/environment"
       ActiveRecord::Base.connection.drop_table("posts") # force drop posts table for test.
-      assert ActiveRecord::Base.connection.schema_cache.tables["posts"]
+      assert ActiveRecord::Base.connection.schema_cache.tables("posts")
     end
 
     test "expire schema cache dump" do
@@ -209,7 +192,7 @@ module ApplicationTests
       end
       silence_warnings {
         require "#{app_path}/config/environment"
-        assert !ActiveRecord::Base.connection.schema_cache.tables["posts"]
+        assert !ActiveRecord::Base.connection.schema_cache.tables("posts")
       }
     end
 
@@ -220,7 +203,7 @@ module ApplicationTests
         orig_rails_env, Rails.env = Rails.env, 'development'
         ActiveRecord::Base.establish_connection
         assert ActiveRecord::Base.connection
-        assert_match /#{ActiveRecord::Base.configurations[Rails.env]['database']}/, ActiveRecord::Base.connection_config[:database]
+        assert_match(/#{ActiveRecord::Base.configurations[Rails.env]['database']}/, ActiveRecord::Base.connection_config[:database])
       ensure
         ActiveRecord::Base.remove_connection
         ENV["DATABASE_URL"] = orig_database_url if orig_database_url
@@ -237,7 +220,7 @@ module ApplicationTests
         ENV["DATABASE_URL"] = "sqlite3://:@localhost/#{database_url_db_name}"
         ActiveRecord::Base.establish_connection
         assert ActiveRecord::Base.connection
-        assert_match /#{database_url_db_name}/, ActiveRecord::Base.connection_config[:database]
+        assert_match(/#{database_url_db_name}/, ActiveRecord::Base.connection_config[:database])
       ensure
         ActiveRecord::Base.remove_connection
         ENV["DATABASE_URL"] = orig_database_url if orig_database_url

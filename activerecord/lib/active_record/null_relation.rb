@@ -39,19 +39,27 @@ module ActiveRecord
     end
 
     def to_sql
-      @to_sql ||= ""
+      ""
     end
 
     def where_values_hash
       {}
     end
 
-    def count
+    def count(*)
+      0
+    end
+
+    def sum(*)
       0
     end
 
     def calculate(_operation, _column_name, _options = {})
-      nil
+      if _operation == :count
+        0
+      else
+        nil
+      end
     end
 
     def exists?(_id = false)

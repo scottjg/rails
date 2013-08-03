@@ -31,7 +31,8 @@ module ActiveRecord
             through_records = Array.wrap(owner.send(through_reflection.name))
 
             # Dont cache the association - we would only be caching a subset
-            if reflection.options[:source_type] && through_reflection.collection?
+            if (through_scope != through_reflection.klass.unscoped) ||
+               (reflection.options[:source_type] && through_reflection.collection?)
               owner.association(through_reflection.name).reset
             end
 
@@ -40,21 +41,21 @@ module ActiveRecord
         end
 
         def through_scope
-          through_scope = through_reflection.klass.unscoped
+          scope = through_reflection.klass.unscoped
 
           if options[:source_type]
-            through_scope.where! reflection.foreign_type => options[:source_type]
+            scope.where! reflection.foreign_type => options[:source_type]
           else
             unless reflection_scope.where_values.empty?
-              through_scope.includes_values = reflection_scope.values[:includes] || options[:source]
-              through_scope.where_values    = reflection_scope.values[:where]
+              scope.includes_values = Array(reflection_scope.values[:includes] || options[:source])
+              scope.where_values    = reflection_scope.values[:where]
             end
 
-            through_scope.order!      reflection_scope.values[:order]
-            through_scope.references! reflection_scope.values[:references]
+            scope.references! reflection_scope.values[:references]
+            scope.order! reflection_scope.values[:order] if scope.eager_loading?
           end
 
-          through_scope
+          scope
         end
       end
     end

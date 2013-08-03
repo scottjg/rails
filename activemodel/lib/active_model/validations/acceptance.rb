@@ -1,10 +1,10 @@
 module ActiveModel
 
-  # == Active Model Acceptance Validator
   module Validations
-    class AcceptanceValidator < EachValidator #:nodoc:
+    class AcceptanceValidator < EachValidator # :nodoc:
       def initialize(options)
-        super({ :allow_nil => true, :accept => "1" }.merge!(options))
+        super({ allow_nil: true, accept: "1" }.merge!(options))
+        setup!(options[:class])
       end
 
       def validate_each(record, attribute, value)
@@ -13,7 +13,8 @@ module ActiveModel
         end
       end
 
-      def setup(klass)
+      private
+      def setup!(klass)
         attr_readers = attributes.reject { |name| klass.attribute_method?(name) }
         attr_writers = attributes.reject { |name| klass.attribute_method?("#{name}=") }
         klass.send(:attr_reader, *attr_readers)
@@ -27,7 +28,7 @@ module ActiveModel
       #
       #   class Person < ActiveRecord::Base
       #     validates_acceptance_of :terms_of_service
-      #     validates_acceptance_of :eula, message: "must be abided"
+      #     validates_acceptance_of :eula, message: 'must be abided'
       #   end
       #
       # If the database column does not exist, the +terms_of_service+ attribute

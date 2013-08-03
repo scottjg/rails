@@ -3,6 +3,8 @@ class String
   # the string, and then changing remaining consecutive whitespace
   # groups into one space each.
   #
+  # Note that it handles both ASCII and Unicode whitespace like mongolian vowel separator (U+180E).
+  #
   #   %{ Multi-line
   #      string }.squish                   # => "Multi-line string"
   #   " foo   bar    \n   \t   boo".squish # => "foo bar boo"
@@ -12,8 +14,9 @@ class String
 
   # Performs a destructive squish. See String#squish.
   def squish!
-    strip!
-    gsub!(/\s+/, ' ')
+    gsub!(/\A[[:space:]]+/, '')
+    gsub!(/[[:space:]]+\z/, '')
+    gsub!(/[[:space:]]+/, ' ')
     self
   end
 
@@ -24,22 +27,22 @@ class String
   #
   # Pass a string or regexp <tt>:separator</tt> to truncate +text+ at a natural break:
   #
-  #   'Once upon a time in a world far far away'.truncate(27, :separator => ' ')
+  #   'Once upon a time in a world far far away'.truncate(27, separator: ' ')
   #   # => "Once upon a time in a..."
   #
-  #   'Once upon a time in a world far far away'.truncate(27, :separator => /\s/)
+  #   'Once upon a time in a world far far away'.truncate(27, separator: /\s/)
   #   # => "Once upon a time in a..."
   #
   # The last characters will be replaced with the <tt>:omission</tt> string (defaults to "...")
   # for a total length not exceeding <tt>length</tt>:
   #
-  #   'And they found that many people were sleeping better.'.truncate(25, :omission => '... (continued)')
+  #   'And they found that many people were sleeping better.'.truncate(25, omission: '... (continued)')
   #   # => "And they f... (continued)"
   def truncate(truncate_at, options = {})
     return dup unless length > truncate_at
 
-    options[:omission] ||= '...'
-    length_with_room_for_omission = truncate_at - options[:omission].length
+    omission = options[:omission] || '...'
+    length_with_room_for_omission = truncate_at - omission.length
     stop = \
       if options[:separator]
         rindex(options[:separator], length_with_room_for_omission) || length_with_room_for_omission
@@ -47,6 +50,6 @@ class String
         length_with_room_for_omission
       end
 
-    self[0...stop] + options[:omission]
+    "#{self[0, stop]}#{omission}"
   end
 end

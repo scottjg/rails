@@ -1,22 +1,52 @@
-module ActiveRecord
-  ActiveSupport.on_load(:active_record_config) do
-    mattr_accessor :attribute_types_cached_by_default, instance_accessor: false
-  end
+require 'active_support/core_ext/module/method_transplanting'
 
+module ActiveRecord
   module AttributeMethods
     module Read
+      ReaderMethodCache = Class.new(AttributeMethodCache) {
+        private
+        # We want to generate the methods via module_eval rather than
+        # define_method, because define_method is slower on dispatch.
+        # Evaluating many similar methods may use more memory as the instruction
+        # sequences are duplicated and cached (in MRI).  define_method may
+        # be slower on dispatch, but if you're careful about the closure
+        # created, then define_method will consume much less memory.
+        #
+        # But sometimes the database might return columns with
+        # characters that are not allowed in normal method names (like
+        # 'my_column(omg)'. So to work around this we first define with
+        # the __temp__ identifier, and then use alias method to rename
+        # it to what we want.
+        #
+        # We are also defining a constant to hold the frozen string of
+        # the attribute name. Using a constant means that we do not have
+        # to allocate an object on each call to the attribute method.
+        # Making it frozen means that it doesn't get duped when used to
+        # key the @attributes_cache in read_attribute.
+        def method_body(method_name, const_name)
+          <<-EOMETHOD
+          def #{method_name}
+            name = ::ActiveRecord::AttributeMethods::AttrNames::ATTR_#{const_name}
+            read_attribute(name) { |n| missing_attribute(n, caller) }
+          end
+          EOMETHOD
+        end
+      }.new
+
       extend ActiveSupport::Concern
 
       ATTRIBUTE_TYPES_CACHED_BY_DEFAULT = [:datetime, :timestamp, :time, :date]
 
       included do
-        config_attribute :attribute_types_cached_by_default
+        class_attribute :attribute_types_cached_by_default, instance_writer: false
+        self.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
       end
 
       module ClassMethods
-        # +cache_attributes+ allows you to declare which converted attribute values should
-        # be cached. Usually caching only pays off for attributes with expensive conversion
-        # methods, like time related columns (e.g. +created_at+, +updated_at+).
+        # +cache_attributes+ allows you to declare which converted attribute
+        # values should be cached. Usually caching only pays off for attributes
+        # with expensive conversion methods, like time related columns (e.g.
+        # +created_at+, +updated_at+).
         def cache_attributes(*attribute_names)
           cached_attributes.merge attribute_names.map { |attr| attr.to_s }
         end
@@ -34,22 +64,30 @@ module ActiveRecord
 
         protected
 
-        # We want to generate the methods via module_eval rather than define_method,
-        # because define_method is slower on dispatch and uses more memory (because it
-        # creates a closure).
-        #
-        # But sometimes the database might return columns with characters that are not
-        # allowed in normal method names (like 'my_column(omg)'. So to work around this
-        # we first define with the __temp__ identifier, and then use alias method to
-        # rename it to what we want.
-        def define_method_attribute(attr_name)
-          generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
-            def __temp__
-              read_attribute(:'#{attr_name}') { |n| missing_attribute(n, caller) }
+        if Module.methods_transplantable?
+          def define_method_attribute(name)
+            method = ReaderMethodCache[name]
+            generated_attribute_methods.module_eval { define_method name, method }
+          end
+        else
+          def define_method_attribute(name)
+            safe_name = name.unpack('h*').first
+            temp_method = "__temp__#{safe_name}"
+
+            ActiveRecord::AttributeMethods::AttrNames.set_name_cache safe_name, name
+
+            generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
+              def #{temp_method}
+                name = ::ActiveRecord::AttributeMethods::AttrNames::ATTR_#{safe_name}
+                read_attribute(name) { |n| missing_attribute(n, caller) }
+              end
+            STR
+
+            generated_attribute_methods.module_eval do
+              alias_method name, temp_method
+              undef_method temp_method
             end
-            alias_method '#{attr_name}', :__temp__
-            undef_method :__temp__
-          STR
+          end
         end
 
         private
@@ -63,22 +101,17 @@ module ActiveRecord
         end
       end
 
-      ActiveRecord::Model.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
-
-      # Returns the value of the attribute identified by <tt>attr_name</tt> after it has been typecast (for example,
-      # "2004-12-12" in a data column is cast to a date object, like Date.new(2004, 12, 12)).
+      # Returns the value of the attribute identified by <tt>attr_name</tt> after
+      # it has been typecast (for example, "2004-12-12" in a data column is cast
+      # to a date object, like Date.new(2004, 12, 12)).
       def read_attribute(attr_name)
-        return unless attr_name
-        name_sym = attr_name.to_sym
-
         # If it's cached, just return it
-        # We use #[] first as a perf optimization for non-nil values. See https://gist.github.com/3552829.
-        @attributes_cache[name_sym] || @attributes_cache.fetch(name_sym) {
-          name = attr_name.to_s
-
+        # We use #[] first as a perf optimization for non-nil values. See https://gist.github.com/jonleighton/3552829.
+        name = attr_name.to_s
+        @attributes_cache[name] || @attributes_cache.fetch(name) {
           column = @columns_hash.fetch(name) {
             return @attributes.fetch(name) {
-              if name_sym == :id && self.class.primary_key != name
+              if name == 'id' && self.class.primary_key != name
                 read_attribute(self.class.primary_key)
               end
             }
@@ -89,7 +122,7 @@ module ActiveRecord
           }
 
           if self.class.cache_attribute?(name)
-            @attributes_cache[name_sym] = column.type_cast(value)
+            @attributes_cache[name] = column.type_cast(value)
           else
             column.type_cast value
           end

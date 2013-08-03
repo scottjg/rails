@@ -1,6 +1,7 @@
+#encoding: us-ascii
+
 require 'active_support/core_ext/object/to_json'
 require 'active_support/core_ext/module/delegation'
-require 'active_support/json/variable'
 
 require 'bigdecimal'
 require 'active_support/core_ext/big_decimal/conversions' # for #to_s
@@ -25,9 +26,10 @@ module ActiveSupport
     # matches YAML-formatted dates
     DATE_REGEX = /^(?:\d{4}-\d{2}-\d{2}|\d{4}-\d{1,2}-\d{1,2}[T \t]+\d{1,2}:\d{2}:\d{2}(\.[0-9]*)?(([ \t]*)Z|[-+]\d{2}?(:\d{2})?))$/
 
-    # Dumps objects in JSON (JavaScript Object Notation). See www.json.org for more info.
+    # Dumps objects in JSON (JavaScript Object Notation).
+    # See www.json.org for more info.
     #
-    #   ActiveSupport::JSON.encode({team: 'rails', players: '36'})
+    #   ActiveSupport::JSON.encode({ team: 'rails', players: '36' })
     #   # => "{\"team\":\"rails\",\"players\":\"36\"}"
     def self.encode(value, options = nil)
       Encoding::Encoder.new(options).encode(value)
@@ -51,7 +53,7 @@ module ActiveSupport
           end
         end
 
-        # like encode, but only calls as_json, without encoding to string
+        # like encode, but only calls as_json, without encoding to string.
         def as_json(value, use_options = true)
           check_for_circular_references(value) do
             use_options ? value.as_json(options_for(value)) : value.as_json
@@ -60,10 +62,11 @@ module ActiveSupport
 
         def options_for(value)
           if value.is_a?(Array) || value.is_a?(Hash)
-            # hashes and arrays need to get encoder in the options, so that they can detect circular references
+            # hashes and arrays need to get encoder in the options, so that
+            # they can detect circular references.
             options.merge(:encoder => self)
           else
-            options
+            options.dup
           end
         end
 
@@ -96,19 +99,26 @@ module ActiveSupport
         "\010" =>  '\b',
         "\f"   =>  '\f',
         "\n"   =>  '\n',
+        "\xe2\x80\xa8" => '\u2028',
+        "\xe2\x80\xa9" => '\u2029',
         "\r"   =>  '\r',
         "\t"   =>  '\t',
         '"'    =>  '\"',
         '\\'   =>  '\\\\',
         '>'    =>  '\u003E',
         '<'    =>  '\u003C',
-        '&'    =>  '\u0026' }
+        '&'    =>  '\u0026',
+        "#{0xe2.chr}#{0x80.chr}#{0xa8.chr}" => '\u2028',
+        "#{0xe2.chr}#{0x80.chr}#{0xa9.chr}" => '\u2029',
+        }
 
       class << self
-        # If true, use ISO 8601 format for dates and times. Otherwise, fall back to the Active Support legacy format.
+        # If true, use ISO 8601 format for dates and times. Otherwise, fall back
+        # to the Active Support legacy format.
         attr_accessor :use_standard_json_time_format
 
-        # If false, serializes BigDecimal objects as numeric instead of wrapping them in a string
+        # If false, serializes BigDecimal objects as numeric instead of wrapping
+        # them in a string.
         attr_accessor :encode_big_decimal_as_string
 
         attr_accessor :escape_regex
@@ -117,21 +127,15 @@ module ActiveSupport
         def escape_html_entities_in_json=(value)
           self.escape_regex = \
             if @escape_html_entities_in_json = value
-              /[\x00-\x1F"\\><&]/
+              /\xe2\x80\xa8|\xe2\x80\xa9|[\x00-\x1F"\\><&]/
             else
-              /[\x00-\x1F"\\]/
+              /\xe2\x80\xa8|\xe2\x80\xa9|[\x00-\x1F"\\]/
             end
         end
 
         def escape(string)
           string = string.encode(::Encoding::UTF_8, :undef => :replace).force_encoding(::Encoding::BINARY)
-          json = string.
-            gsub(escape_regex) { |s| ESCAPED_CHARS[s] }.
-            gsub(/([\xC0-\xDF][\x80-\xBF]|
-                   [\xE0-\xEF][\x80-\xBF]{2}|
-                   [\xF0-\xF7][\x80-\xBF]{3})+/nx) { |s|
-            s.unpack("U*").pack("n*").unpack("H*")[0].gsub(/.{4}/n, '\\\\u\&')
-          }
+          json = string.gsub(escape_regex) { |s| ESCAPED_CHARS[s] }
           json = %("#{json}")
           json.force_encoding(::Encoding::UTF_8)
           json
@@ -231,11 +235,13 @@ class BigDecimal
   # those libraries would get in general a wrong number and no way to recover
   # other than manually inspecting the string with the JSON code itself.
   #
-  # That's why a JSON string is returned. The JSON literal is not numeric, but if
-  # the other end knows by contract that the data is supposed to be a BigDecimal,
-  # it still has the chance to post-process the string and get the real value.
+  # That's why a JSON string is returned. The JSON literal is not numeric, but
+  # if the other end knows by contract that the data is supposed to be a
+  # BigDecimal, it still has the chance to post-process the string and get the
+  # real value.
   #
-  # Use ActiveSupport.use_standard_json_big_decimal_format = true to override this behaviour
+  # Use <tt>ActiveSupport.use_standard_json_big_decimal_format = true</tt> to
+  # override this behavior.
   def as_json(options = nil) #:nodoc:
     if finite?
       ActiveSupport.encode_big_decimal_as_string ? to_s : self

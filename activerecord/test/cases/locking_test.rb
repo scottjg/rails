@@ -8,6 +8,7 @@ require 'models/legacy_thing'
 require 'models/reference'
 require 'models/string_key_object'
 require 'models/car'
+require 'models/bulb'
 require 'models/engine'
 require 'models/wheel'
 require 'models/treasure'
@@ -16,6 +17,7 @@ class LockWithoutDefault < ActiveRecord::Base; end
 
 class LockWithCustomColumnWithoutDefault < ActiveRecord::Base
   self.table_name = :lock_without_defaults_cust
+  self.column_defaults # to test @column_defaults caching.
   self.locking_column = :custom_lock_version
 end
 
@@ -25,6 +27,18 @@ end
 
 class OptimisticLockingTest < ActiveRecord::TestCase
   fixtures :people, :legacy_things, :references, :string_key_objects, :peoples_treasures
+
+  def test_quote_value_passed_lock_col
+    p1 = Person.find(1)
+    assert_equal 0, p1.lock_version
+
+    Person.expects(:quote_value).with(0, Person.columns_hash[Person.locking_column]).returns('0').once
+
+    p1.first_name = 'anika2'
+    p1.save!
+
+    assert_equal 1, p1.lock_version
+  end
 
   def test_non_integer_lock_existing
     s1 = StringKeyObject.find("record1")
@@ -193,10 +207,18 @@ class OptimisticLockingTest < ActiveRecord::TestCase
   def test_lock_without_default_sets_version_to_zero
     t1 = LockWithoutDefault.new
     assert_equal 0, t1.lock_version
+
+    t1.save
+    t1 = LockWithoutDefault.find(t1.id)
+    assert_equal 0, t1.lock_version
   end
 
   def test_lock_with_custom_column_without_default_sets_version_to_zero
     t1 = LockWithCustomColumnWithoutDefault.new
+    assert_equal 0, t1.custom_lock_version
+
+    t1.save
+    t1 = LockWithCustomColumnWithoutDefault.find(t1.id)
     assert_equal 0, t1.custom_lock_version
   end
 
@@ -207,7 +229,7 @@ class OptimisticLockingTest < ActiveRecord::TestCase
     s.reload
     assert_equal "unchangeable name", s.name
 
-    s.update_attributes(:name => "changed name")
+    s.update(name: "changed name")
     s.reload
     assert_equal "unchangeable name", s.name
   end
@@ -234,7 +256,7 @@ class OptimisticLockingTest < ActiveRecord::TestCase
     car = Car.create!
 
     assert_difference 'car.wheels.count'  do
-    	car.wheels << Wheel.create!
+      car.wheels << Wheel.create!
     end
     assert_difference 'car.wheels.count', -1  do
       car.destroy
@@ -341,9 +363,6 @@ end
 # is so cumbersome. Will deadlock Ruby threads if the underlying db.execute
 # blocks, so separate script called by Kernel#system is needed.
 # (See exec vs. async_exec in the PostgreSQL adapter.)
-
-# TODO: The Sybase, and OpenBase adapters currently have no support for pessimistic locking
-
 unless current_adapter?(:SybaseAdapter, :OpenBaseAdapter) || in_memory_db?
   class PessimisticLockingTest < ActiveRecord::TestCase
     self.use_transactional_fixtures = false

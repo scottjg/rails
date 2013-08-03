@@ -1,14 +1,13 @@
+require 'active_support/concern'
+
 module Rails
   module Generators
     # Holds common methods for migrations. It assumes that migrations has the
     # [0-9]*_name format and can be used by another frameworks (like Sequel)
     # just by implementing the next migration version method.
     module Migration
+      extend ActiveSupport::Concern
       attr_reader :migration_number, :migration_file_name, :migration_class_name
-
-      def self.included(base) #:nodoc:
-        base.extend ClassMethods
-      end
 
       module ClassMethods
         def migration_lookup_at(dirname) #:nodoc:
@@ -52,7 +51,7 @@ module Rails
           if destination && options.force?
             remove_file(destination)
           elsif destination
-            raise Error, "Another migration is already named #{@migration_file_name}: #{destination}"
+            raise Error, "Another migration is already named #{@migration_file_name}: #{destination}. Use --force to remove the old migration file and replace it."
           end
           destination = File.join(migration_dir, "#{@migration_number}_#{@migration_file_name}.rb")
         end

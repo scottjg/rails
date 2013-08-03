@@ -15,6 +15,17 @@ class AssertDifferenceTest < ActiveSupport::TestCase
     @object.num = 0
   end
 
+  def test_assert_not
+    assert_equal true, assert_not(nil)
+    assert_equal true, assert_not(false)
+
+    e = assert_raises(MiniTest::Assertion) { assert_not true }
+    assert_equal 'Expected true to be nil or false', e.message
+
+    e = assert_raises(MiniTest::Assertion) { assert_not true, 'custom' }
+    assert_equal 'custom', e.message
+  end
+
   def test_assert_no_difference
     assert_no_difference '@object.num' do
       # ...
@@ -76,58 +87,18 @@ class AssertDifferenceTest < ActiveSupport::TestCase
   end
 end
 
-class AssertBlankTest < ActiveSupport::TestCase
-  BLANK = [ EmptyTrue.new, nil, false, '', '   ', "  \n\t  \r ", [], {} ]
-  NOT_BLANK = [ EmptyFalse.new, Object.new, true, 0, 1, 'x', [nil], { nil => 0 } ]
-
-  def test_assert_blank_true
-    BLANK.each { |v| assert_blank v }
-  end
-
-  def test_assert_blank_false
-    NOT_BLANK.each { |v|
-      begin
-        assert_blank v
-        fail 'should not get to here'
-      rescue Exception => e
-        assert_match(/is not blank/, e.message)
-      end
-    }
-  end
-end
-
-class AssertPresentTest < ActiveSupport::TestCase
-  BLANK = [ EmptyTrue.new, nil, false, '', '   ', "  \n\t  \r ", [], {} ]
-  NOT_BLANK = [ EmptyFalse.new, Object.new, true, 0, 1, 'x', [nil], { nil => 0 } ]
-
-  def test_assert_blank_true
-    NOT_BLANK.each { |v| assert_present v }
-  end
-
-  def test_assert_blank_false
-    BLANK.each { |v|
-      begin
-        assert_present v
-        fail 'should not get to here'
-      rescue Exception => e
-        assert_match(/is blank/, e.message)
-      end
-    }
-  end
-end
-
 class AlsoDoingNothingTest < ActiveSupport::TestCase
 end
 
 # Setup and teardown callbacks.
 class SetupAndTeardownTest < ActiveSupport::TestCase
   setup :reset_callback_record, :foo
-  teardown :foo, :sentinel, :foo
+  teardown :foo, :sentinel
 
   def test_inherited_setup_callbacks
     assert_equal [:reset_callback_record, :foo], self.class._setup_callbacks.map(&:raw_filter)
     assert_equal [:foo], @called_back
-    assert_equal [:foo, :sentinel, :foo], self.class._teardown_callbacks.map(&:raw_filter)
+    assert_equal [:foo, :sentinel], self.class._teardown_callbacks.map(&:raw_filter)
   end
 
   def setup
@@ -147,7 +118,7 @@ class SetupAndTeardownTest < ActiveSupport::TestCase
     end
 
     def sentinel
-      assert_equal [:foo, :foo], @called_back
+      assert_equal [:foo], @called_back
     end
 end
 
@@ -159,7 +130,7 @@ class SubclassSetupAndTeardownTest < SetupAndTeardownTest
   def test_inherited_setup_callbacks
     assert_equal [:reset_callback_record, :foo, :bar], self.class._setup_callbacks.map(&:raw_filter)
     assert_equal [:foo, :bar], @called_back
-    assert_equal [:foo, :sentinel, :foo, :bar], self.class._teardown_callbacks.map(&:raw_filter)
+    assert_equal [:foo, :sentinel, :bar], self.class._teardown_callbacks.map(&:raw_filter)
   end
 
   protected
@@ -168,6 +139,20 @@ class SubclassSetupAndTeardownTest < SetupAndTeardownTest
     end
 
     def sentinel
-      assert_equal [:foo, :bar, :bar, :foo], @called_back
+      assert_equal [:foo, :bar, :bar], @called_back
     end
+end
+
+
+class TestCaseTaggedLoggingTest < ActiveSupport::TestCase
+  def before_setup
+    require 'stringio'
+    @out = StringIO.new
+    self.tagged_logger = ActiveSupport::TaggedLogging.new(Logger.new(@out))
+    super
+  end
+
+  def test_logs_tagged_with_current_test_case
+    assert_match "#{self.class}: #{name}\n", @out.string
+  end
 end

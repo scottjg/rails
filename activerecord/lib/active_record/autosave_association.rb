@@ -16,8 +16,9 @@ module ActiveRecord
   # Note that it also means that associations marked for destruction won't
   # be destroyed directly. They will however still be marked for destruction.
   #
-  # Note that <tt>:autosave => false</tt> is not same as not declaring <tt>:autosave</tt>.
-  # When the <tt>:autosave</tt> option is not present new associations are saved.
+  # Note that <tt>autosave: false</tt> is not same as not declaring <tt>:autosave</tt>.
+  # When the <tt>:autosave</tt> option is not present then new association records are
+  # saved but the updated association records are not saved.
   #
   # == Validation
   #
@@ -32,12 +33,10 @@ module ActiveRecord
   # autosave callbacks are executed. Placing your callbacks after
   # associations is usually a good practice.
   #
-  # == Examples
-  #
   # === One-to-one Example
   #
   #   class Post
-  #     has_one :author, :autosave => true
+  #     has_one :author, autosave: true
   #   end
   #
   # Saving changes to the parent and its associated model can now be performed
@@ -64,14 +63,14 @@ module ActiveRecord
   # Note that the model is _not_ yet removed from the database:
   #
   #   id = post.author.id
-  #   Author.find_by_id(id).nil? # => false
+  #   Author.find_by(id: id).nil? # => false
   #
   #   post.save
   #   post.reload.author # => nil
   #
   # Now it _is_ removed from the database:
   #
-  #   Author.find_by_id(id).nil? # => true
+  #   Author.find_by(id: id).nil? # => true
   #
   # === One-to-many Example
   #
@@ -81,27 +80,27 @@ module ActiveRecord
   #     has_many :comments # :autosave option is not declared
   #   end
   #
-  #   post = Post.new(:title => 'ruby rocks')
-  #   post.comments.build(:body => 'hello world')
+  #   post = Post.new(title: 'ruby rocks')
+  #   post.comments.build(body: 'hello world')
   #   post.save # => saves both post and comment
   #
-  #   post = Post.create(:title => 'ruby rocks')
-  #   post.comments.build(:body => 'hello world')
+  #   post = Post.create(title: 'ruby rocks')
+  #   post.comments.build(body: 'hello world')
   #   post.save # => saves both post and comment
   #
-  #   post = Post.create(:title => 'ruby rocks')
-  #   post.comments.create(:body => 'hello world')
+  #   post = Post.create(title: 'ruby rocks')
+  #   post.comments.create(body: 'hello world')
   #   post.save # => saves both post and comment
   #
   # When <tt>:autosave</tt> is true all children are saved, no matter whether they
   # are new records or not:
   #
   #   class Post
-  #     has_many :comments, :autosave => true
+  #     has_many :comments, autosave: true
   #   end
   #
-  #   post = Post.create(:title => 'ruby rocks')
-  #   post.comments.create(:body => 'hello world')
+  #   post = Post.create(title: 'ruby rocks')
+  #   post.comments.create(body: 'hello world')
   #   post.comments[0].body = 'hi everyone'
   #   post.save # => saves both post and comment, with 'hi everyone' as body
   #
@@ -115,30 +114,30 @@ module ActiveRecord
   # Note that the model is _not_ yet removed from the database:
   #
   #   id = post.comments.last.id
-  #   Comment.find_by_id(id).nil? # => false
+  #   Comment.find_by(id: id).nil? # => false
   #
   #   post.save
   #   post.reload.comments.length # => 1
   #
   # Now it _is_ removed from the database:
   #
-  #   Comment.find_by_id(id).nil? # => true
+  #   Comment.find_by(id: id).nil? # => true
 
   module AutosaveAssociation
     extend ActiveSupport::Concern
 
     module AssociationBuilderExtension #:nodoc:
-      def build
+      def self.build(model, reflection)
         model.send(:add_autosave_association_callbacks, reflection)
-        super
+      end
+
+      def self.valid_options
+        [ :autosave ]
       end
     end
 
     included do
-      Associations::Builder::Association.class_eval do
-        self.valid_options << :autosave
-        include AssociationBuilderExtension
-      end
+      Associations::Builder::Association.extensions << AssociationBuilderExtension
     end
 
     module ClassMethods
@@ -214,6 +213,7 @@ module ActiveRecord
     # Reloads the attributes of the object as usual and clears <tt>marked_for_destruction</tt> flag.
     def reload(options = nil)
       @marked_for_destruction = false
+      @destroyed_by_association = nil
       super
     end
 
@@ -231,6 +231,19 @@ module ActiveRecord
     # Only useful if the <tt>:autosave</tt> option on the parent is enabled for this associated model.
     def marked_for_destruction?
       @marked_for_destruction
+    end
+
+    # Records the association that is being destroyed and destroying this
+    # record in the process.
+    def destroyed_by_association=(reflection)
+      @destroyed_by_association = reflection
+    end
+
+    # Returns the association for the parent being destroyed.
+    #
+    # Used to avoid updating the counter cache unnecessarily.
+    def destroyed_by_association
+      @destroyed_by_association
     end
 
     # Returns whether or not this record has been changed in any way (including whether
@@ -288,7 +301,7 @@ module ActiveRecord
     def association_valid?(reflection, record)
       return true if record.destroyed? || record.marked_for_destruction?
 
-      unless valid = record.valid?(validation_context)
+      unless valid = record.valid?
         if reflection.options[:autosave]
           record.errors.each do |attribute, message|
             attribute = "#{reflection.name}.#{attribute}"
@@ -322,15 +335,19 @@ module ActiveRecord
         autosave = reflection.options[:autosave]
 
         if records = associated_records_to_validate_or_save(association, @new_record_before_save, autosave)
-          records_to_destroy = []
+
+          if autosave
+            records_to_destroy = records.select(&:marked_for_destruction?)
+            records_to_destroy.each { |record| association.destroy(record) }
+            records -= records_to_destroy
+          end
+
           records.each do |record|
             next if record.destroyed?
 
             saved = true
 
-            if autosave && record.marked_for_destruction?
-              records_to_destroy << record
-            elsif autosave != false && (@new_record_before_save || record.new_record?)
+            if autosave != false && (@new_record_before_save || record.new_record?)
               if autosave
                 saved = association.insert_record(record, false)
               else
@@ -342,14 +359,10 @@ module ActiveRecord
 
             raise ActiveRecord::Rollback unless saved
           end
-
-          records_to_destroy.each do |record|
-            association.destroy(record)
-          end
         end
 
         # reconstruct the scope now that we know the owner's id
-        association.send(:reset_scope) if association.respond_to?(:reset_scope)
+        association.reset_scope if association.respond_to?(:reset_scope)
       end
     end
 
@@ -394,6 +407,7 @@ module ActiveRecord
         autosave = reflection.options[:autosave]
 
         if autosave && record.marked_for_destruction?
+          self[reflection.foreign_key] = nil
           record.destroy
         elsif autosave != false
           saved = record.save(:validate => !autosave) if record.new_record? || (autosave && record.changed_for_autosave?)

@@ -1,5 +1,6 @@
 # coding:utf-8
 require "isolation/abstract_unit"
+require "active_support/core_ext/string/strip"
 
 module ApplicationTests
   class RakeTest < ActiveSupport::TestCase
@@ -8,7 +9,6 @@ module ApplicationTests
     def setup
       build_app
       boot_rails
-      FileUtils.rm_rf("#{app_path}/config/environments")
     end
 
     def teardown
@@ -29,11 +29,11 @@ module ApplicationTests
       app_file "config/environment.rb", <<-RUBY
         SuperMiddleware = Struct.new(:app)
 
-        AppTemplate::Application.configure do
+        Rails.application.configure do
           config.middleware.use SuperMiddleware
         end
 
-        AppTemplate::Application.initialize!
+        Rails.application.initialize!
       RUBY
 
       assert_match("SuperMiddleware", Dir.chdir(app_path){ `rake middleware` })
@@ -46,7 +46,7 @@ module ApplicationTests
         end
 
         rake_tasks do
-          task :do_nothing => :environment do
+          task do_nothing: :environment do
           end
         end
       RUBY
@@ -55,27 +55,47 @@ module ApplicationTests
       assert_match "Doing something...", output
     end
 
-    def test_does_not_explode_when_accessing_a_model_with_eager_load
+    def test_does_not_explode_when_accessing_a_model
       add_to_config <<-RUBY
-        config.eager_load = true
-
         rake_tasks do
-          task :do_nothing => :environment do
+          task do_nothing: :environment do
             Hello.new.world
           end
         end
       RUBY
 
-      app_file "app/models/hello.rb", <<-RUBY
-      class Hello
-        def world
-          puts "Hello world"
+      app_file 'app/models/hello.rb', <<-RUBY
+        class Hello
+          def world
+            puts 'Hello world'
+          end
         end
-      end
       RUBY
 
-      output = Dir.chdir(app_path){ `rake do_nothing` }
-      assert_match "Hello world", output
+      output = Dir.chdir(app_path) { `rake do_nothing` }
+      assert_match 'Hello world', output
+    end
+
+    def test_should_not_eager_load_model_for_rake
+      add_to_config <<-RUBY
+        rake_tasks do
+          task do_nothing: :environment do
+          end
+        end
+      RUBY
+
+      add_to_env_config 'production', <<-RUBY
+        config.eager_load = true
+      RUBY
+
+      app_file 'app/models/hello.rb', <<-RUBY
+        raise 'should not be pre-required for rake even eager_load=true'
+      RUBY
+
+      Dir.chdir(app_path) do
+        assert system('rake do_nothing RAILS_ENV=production'),
+               'should not be pre-required for rake even eager_load=true'
+      end
     end
 
     def test_code_statistics_sanity
@@ -83,42 +103,49 @@ module ApplicationTests
         Dir.chdir(app_path){ `rake stats` }
     end
 
-    def test_rake_test_error_output
-      Dir.chdir(app_path){ `rake db:migrate` }
-
-      app_file "test/unit/one_unit_test.rb", <<-RUBY
-        raise 'unit'
-      RUBY
-
-      app_file "test/functional/one_functional_test.rb", <<-RUBY
-        raise 'functional'
-      RUBY
-
-      app_file "test/integration/one_integration_test.rb", <<-RUBY
-        raise 'integration'
-      RUBY
-
-      silence_stderr do
-        output = Dir.chdir(app_path) { `rake test 2>&1` }
-        assert_match 'unit', output
-        assert_match 'functional', output
-        assert_match 'integration', output
-      end
-    end
-
     def test_rake_routes_calls_the_route_inspector
       app_file "config/routes.rb", <<-RUBY
-        AppTemplate::Application.routes.draw do
-          get '/cart', :to => 'cart#show'
+        Rails.application.routes.draw do
+          get '/cart', to: 'cart#show'
         end
       RUBY
-      assert_equal "cart GET /cart(.:format) cart#show\n", Dir.chdir(app_path){ `rake routes` }
+
+      output = Dir.chdir(app_path){ `rake routes` }
+      assert_equal "Prefix Verb URI Pattern     Controller#Action\ncart GET /cart(.:format) cart#show\n", output
+    end
+
+    def test_rake_routes_with_controller_environment
+      app_file "config/routes.rb", <<-RUBY
+        Rails.application.routes.draw do
+          get '/cart', to: 'cart#show'
+          get '/basketball', to: 'basketball#index'
+        end
+      RUBY
+
+      ENV['CONTROLLER'] = 'cart'
+      output = Dir.chdir(app_path){ `rake routes` }
+      assert_equal "Prefix Verb URI Pattern     Controller#Action\ncart GET /cart(.:format) cart#show\n", output
+    end
+
+    def test_rake_routes_displays_message_when_no_routes_are_defined
+      app_file "config/routes.rb", <<-RUBY
+        Rails.application.routes.draw do
+        end
+      RUBY
+
+      assert_equal <<-MESSAGE.strip_heredoc, Dir.chdir(app_path){ `rake routes` }
+        You don't have any routes defined!
+
+        Please add some routes in config/routes.rb.
+
+        For more information about routes, see the Rails guide: http://guides.rubyonrails.org/routing.html.
+      MESSAGE
     end
 
     def test_logger_is_flushed_when_exiting_production_rake_tasks
       add_to_config <<-RUBY
         rake_tasks do
-          task :log_something => :environment do
+          task log_something: :environment do
             Rails.logger.error("Sample log message")
           end
         end
@@ -163,7 +190,17 @@ module ApplicationTests
          bundle exec rake db:migrate db:test:clone test`
       end
 
-      assert_match(/7 tests, 13 assertions, 0 failures, 0 errors/, output)
+      assert_match(/7 runs, 13 assertions, 0 failures, 0 errors/, output)
+      assert_no_match(/Errors running/, output)
+    end
+
+    def test_scaffold_with_references_columns_tests_pass_by_default
+      output = Dir.chdir(app_path) do
+        `rails generate scaffold LineItems product:references cart:belongs_to;
+         bundle exec rake db:migrate db:test:clone test`
+      end
+
+      assert_match(/7 runs, 13 assertions, 0 failures, 0 errors/, output)
       assert_no_match(/Errors running/, output)
     end
 
@@ -219,28 +256,6 @@ module ApplicationTests
         `bundle exec rake db:schema:cache:dump db:schema:cache:clear`
       end
       assert !File.exists?(File.join(app_path, 'db', 'schema_cache.dump'))
-    end
-
-    def test_load_activerecord_base_when_we_use_observers
-      Dir.chdir(app_path) do
-        `bundle exec rails g model user;
-         bundle exec rake db:migrate;
-         bundle exec rails g observer user;`
-
-        add_to_config "config.active_record.observers = :user_observer"
-
-        assert_equal "0", `bundle exec rails r "puts User.count"`.strip
-
-        app_file "lib/tasks/count_user.rake", <<-RUBY
-          namespace :user do
-            task :count => :environment do
-              puts User.count
-            end
-          end
-        RUBY
-
-        assert_equal "0", `bundle exec rake user:count`.strip
-      end
     end
 
     def test_copy_templates

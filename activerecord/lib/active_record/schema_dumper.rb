@@ -24,6 +24,7 @@ module ActiveRecord
 
     def dump(stream)
       header(stream)
+      extensions(stream)
       tables(stream)
       trailer(stream)
       stream
@@ -66,6 +67,18 @@ HEADER
         stream.puts "end"
       end
 
+      def extensions(stream)
+        return unless @connection.supports_extensions?
+        extensions = @connection.extensions
+        if extensions.any?
+          stream.puts "  # These are extensions that must be enabled in order to support this database"
+          extensions.each do |extension|
+            stream.puts "  enable_extension #{extension.inspect}"
+          end
+          stream.puts
+        end
+      end
+
       def tables(stream)
         @connection.tables.sort.each do |tbl|
           next if ['schema_migrations', ignore_tables].flatten.any? do |ignored|
@@ -93,9 +106,12 @@ HEADER
           end
 
           tbl.print "  create_table #{remove_prefix_and_suffix(table).inspect}"
-          if columns.detect { |c| c.name == pk }
+          pkcol = columns.detect { |c| c.name == pk }
+          if pkcol
             if pk != 'id'
               tbl.print %Q(, primary_key: "#{pk}")
+            elsif pkcol.sql_type == 'uuid'
+              tbl.print ", id: :uuid"
             end
           else
             tbl.print ", id: false"
@@ -105,29 +121,13 @@ HEADER
 
           # then dump all non-primary key columns
           column_specs = columns.map do |column|
-            raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" if @types[column.type].nil?
+            raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" unless @connection.valid_type?(column.type)
             next if column.name == pk
-            spec = {}
-            spec[:name]      = column.name.inspect
-
-            # AR has an optimization which handles zero-scale decimals as integers. This
-            # code ensures that the dumper still dumps the column as a decimal.
-            spec[:type]      = if column.type == :integer && /^(numeric|decimal)/ =~ column.sql_type
-                                 'decimal'
-                               else
-                                 column.type.to_s
-                               end
-            spec[:limit]     = column.limit.inspect if column.limit != @types[column.type][:limit] && spec[:type] != 'decimal'
-            spec[:precision] = column.precision.inspect if column.precision
-            spec[:scale]     = column.scale.inspect if column.scale
-            spec[:null]      = 'false' unless column.null
-            spec[:default]   = default_string(column.default) if column.has_default?
-            (spec.keys - [:name, :type]).each{ |k| spec[k].insert(0, "#{k.to_s}: ")}
-            spec
+            @connection.column_spec(column, @types)
           end.compact
 
           # find all migration keys used in this table
-          keys = [:name, :limit, :precision, :scale, :default, :null]
+          keys = @connection.migration_keys
 
           # figure out the lengths for each column based on above keys
           lengths = keys.map { |key|
@@ -170,17 +170,6 @@ HEADER
         stream
       end
 
-      def default_string(value)
-        case value
-        when BigDecimal
-          value.to_s
-        when Date, DateTime, Time
-          "'#{value.to_s(:db)}'"
-        else
-          value.inspect
-        end
-      end
-
       def indexes(table, stream)
         if (indexes = @connection.indexes(table)).any?
           add_index_statements = indexes.map do |index|
@@ -198,6 +187,10 @@ HEADER
             statement_parts << ('order: ' + index.orders.inspect) unless index_orders.empty?
 
             statement_parts << ('where: ' + index.where.inspect) if index.where
+
+            statement_parts << ('using: ' + index.using.inspect) if index.using
+
+            statement_parts << ('type: ' + index.type.inspect) if index.type
 
             '  ' + statement_parts.join(', ')
           end

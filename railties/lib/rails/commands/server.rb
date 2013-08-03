@@ -42,8 +42,12 @@ module Rails
       set_environment
     end
 
+    # TODO: this is no longer required but we keep it for the moment to support older config.ru files.
     def app
-      @app ||= super.respond_to?(:to_app) ? super.to_app : super
+      @app ||= begin
+        app = super
+        app.respond_to?(:to_app) ? app.to_app : app
+      end
     end
 
     def opt_parser
@@ -58,7 +62,10 @@ module Rails
       url = "#{options[:SSLEnable] ? 'https' : 'http'}://#{options[:Host]}:#{options[:Port]}"
       puts "=> Booting #{ActiveSupport::Inflector.demodulize(server)}"
       puts "=> Rails #{Rails.version} application starting in #{Rails.env} on #{url}"
-      puts "=> Call with -d to detach" unless options[:daemonize]
+      puts "=> Run `rails server -h` for more startup options"
+      if options[:Host].to_s.match(/0\.0\.0\.0/)
+        puts "=> Notice: server is listening on all interfaces (#{options[:Host]}). Consider using 127.0.0.1 (--binding option)"
+      end
       trap(:INT) { exit }
       puts "=> Ctrl-C to shutdown server" unless options[:daemonize]
 
@@ -72,6 +79,7 @@ module Rails
 
         console = ActiveSupport::Logger.new($stdout)
         console.formatter = Rails.logger.formatter
+        console.level = Rails.logger.level
 
         Rails.logger.extend(ActiveSupport::Logger.broadcast(console))
       end
@@ -105,13 +113,13 @@ module Rails
 
     def default_options
       super.merge({
-        :Port        => 3000,
-        :DoNotReverseLookup => true,
-        :environment => (ENV['RAILS_ENV'] || "development").dup,
-        :daemonize   => false,
-        :debugger    => false,
-        :pid         => File.expand_path("tmp/pids/server.pid"),
-        :config      => File.expand_path("config.ru")
+        Port:         3000,
+        DoNotReverseLookup:  true,
+        environment:  (ENV['RAILS_ENV'] || ENV['RACK_ENV'] || "development").dup,
+        daemonize:    false,
+        debugger:     false,
+        pid:          File.expand_path("tmp/pids/server.pid"),
+        config:       File.expand_path("config.ru")
       })
     end
   end

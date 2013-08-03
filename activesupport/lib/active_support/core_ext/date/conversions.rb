@@ -1,7 +1,6 @@
 require 'date'
 require 'active_support/inflector/methods'
 require 'active_support/core_ext/date/zones'
-require 'active_support/core_ext/module/remove_method'
 
 class Date
   DATE_FORMATS = {
@@ -13,14 +12,15 @@ class Date
       day_format = ActiveSupport::Inflector.ordinalize(date.day)
       date.strftime("%B #{day_format}, %Y") # => "April 25th, 2007"
     },
-    :rfc822       => '%e %b %Y'
+    :rfc822       => '%e %b %Y',
+    :iso8601      => lambda { |date| date.iso8601 }
   }
 
   # Ruby 1.9 has Date#to_time which converts to localtime only.
-  remove_possible_method :to_time
+  remove_method :to_time
 
   # Ruby 1.9 has Date#xmlschema which converts to a string without the time component.
-  remove_possible_method :xmlschema
+  remove_method :xmlschema
 
   # Convert to a formatted string. See DATE_FORMATS for predefined formats.
   #
@@ -35,6 +35,7 @@ class Date
   #   date.to_formatted_s(:long)          # => "November 10, 2007"
   #   date.to_formatted_s(:long_ordinal)  # => "November 10th, 2007"
   #   date.to_formatted_s(:rfc822)        # => "10 Nov 2007"
+  #   date.to_formatted_s(:iso8601)       # => "2007-11-10"
   #
   # == Adding your own time formats to to_formatted_s
   # You can add your own formats to the Date::DATE_FORMATS hash.
@@ -43,7 +44,7 @@ class Date
   #
   #   # config/initializers/time_formats.rb
   #   Date::DATE_FORMATS[:month_and_year] = '%B %Y'
-  #   Date::DATE_FORMATS[:short_ordinal] = lambda { |date| date.strftime("%B #{date.day.ordinalize}") }
+  #   Date::DATE_FORMATS[:short_ordinal] = ->(date) { date.strftime("%B #{date.day.ordinalize}") }
   def to_formatted_s(format = :default)
     if formatter = DATE_FORMATS[format]
       if formatter.respond_to?(:call)
@@ -75,10 +76,10 @@ class Date
   #
   #   date.to_time(:utc)             # => Sat Nov 10 00:00:00 UTC 2007
   def to_time(form = :local)
-    ::Time.send("#{form}_time", year, month, day)
+    ::Time.send(form, year, month, day)
   end
 
   def xmlschema
-    to_time_in_current_zone.xmlschema
+    in_time_zone.xmlschema
   end
 end

@@ -29,16 +29,21 @@ module ActiveRecord
   # ActiveRecord::Schema is only supported by database adapters that also
   # support migrations, the two features being very similar.
   class Schema < Migration
+
+    # Returns the migrations paths.
+    #
+    #   ActiveRecord::Schema.new.migrations_paths
+    #   # => ["db/migrate"] # Rails migration path by default.
     def migrations_paths
       ActiveRecord::Migrator.migrations_paths
     end
 
-    def define(info, &block)
+    def define(info, &block) # :nodoc:
       instance_eval(&block)
 
       unless info[:version].blank?
         initialize_schema_migrations_table
-        assume_migrated_upto_version(info[:version], migrations_paths)
+        connection.assume_migrated_upto_version(info[:version], migrations_paths)
       end
     end
 
