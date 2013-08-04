@@ -149,3 +149,11 @@ module InTimeZone
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
   end
 end
+
+
+def test_raj
+  explain = Developer.where(:id => 1).explain
+  assert_match %(EXPLAIN for: SELECT "developers".* FROM "developers"  WHERE "developers"."id" = 1), explain
+  assert_match %(QUERY PLAN), explain
+  assert_match %(Index Scan using developers_pkey on developers), explain
+end
