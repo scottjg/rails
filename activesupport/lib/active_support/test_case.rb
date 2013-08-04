@@ -28,7 +28,11 @@ module Minitest # :nodoc:
     parallel, serial = suites.partition { |s| s.test_order == :parallel }
 
     ParallelEach.new(parallel).map { |suite| suite.run reporter, options } +
-     serial.map { |suite| suite.run reporter, options }
+     serial.map { |suite| 
+      puts '------->'
+      puts suite.name.to_s
+      suite.run reporter, options 
+    }
   end
 end
 
