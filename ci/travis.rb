@@ -3,6 +3,7 @@ require 'fileutils'
 include FileUtils
 
 commands = [
+  'sudo sysctl -w kernel.shmmax=268435456',
   'sudo service mysql start',
   'sudo service postgresql start',
   'mysql -e "create database activerecord_unittest;" -u rails',
