@@ -23,7 +23,7 @@ module Minitest # :nodoc:
   def self.__run reporter, options # :nodoc:
     # FIXME: MT5's runnables is not ordered. This is needed because
     # we have have tests have cross-class order-dependent bugs.
-    suites = Runnable.runnables.sort_by { |ts| ts.name.to_s }
+    suites = Runnable.runnables.sort_by { |ts| ts.name.to_s }.reverse
 
     parallel, serial = suites.partition { |s| s.test_order == :parallel }
 
