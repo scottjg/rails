@@ -4,7 +4,7 @@ include FileUtils
 
 commands = [
   'sudo sysctl -w kernel.shmmax=268435456',
-  'sudo service mysql start',
+  'sudo /usr/bin/mysql_safe &',
   'sudo service postgresql start',
   'mysql -e "create database activerecord_unittest;" -u rails',
   'mysql -e "create database activerecord_unittest2;" -u rails',
