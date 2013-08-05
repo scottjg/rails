@@ -305,7 +305,6 @@ class LastModifiedRenderTest < ActionController::TestCase
 
   def setup
     super
-    @request.host = "www.nextangle.com"
     @last_modified = Time.now.utc.beginning_of_day.httpdate
   end
 
@@ -390,7 +389,6 @@ class EtagRenderTest < ActionController::TestCase
 
   def setup
     super
-    @request.host = "www.nextangle.com"
   end
 
   def test_multiple_etags
