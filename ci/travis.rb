@@ -4,6 +4,7 @@ include FileUtils
 
 commands = [
   'sudo sysctl -w kernel.shmmax=268435456',
+  'sudo mysql_install_db'
   'sudo /usr/bin/mysqld_safe &',
   'sleep 3',
   'sudo cat /etc/mysql/mysql_grants.sql | sudo /usr/bin/mysql -u root',
