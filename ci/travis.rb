@@ -3,12 +3,6 @@ require 'fileutils'
 include FileUtils
 
 commands = [
-  'sudo sysctl -w kernel.shmmax=268435456',
-  'sudo mysql_install_db',
-  'sudo /usr/bin/mysqld_safe &',
-  'sleep 3',
-  'sudo cat /etc/mysql/mysql_grants.sql | sudo /usr/bin/mysql -u root',
-  'sudo service postgresql start',
   'mysql -e "create database activerecord_unittest;" -u rails',
   'mysql -e "create database activerecord_unittest2;" -u rails',
   'psql  -c "create database activerecord_unittest;" -U postgres',
