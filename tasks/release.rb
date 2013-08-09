@@ -42,9 +42,10 @@ directory "pkg"
     end
 
     task gem => %w(update_version_rb pkg) do
+      move_cmd = RbConfig::CONFIG['host_os'] =~ /mswin|mingw/ ? 'move' : 'mv'
       cmd = ""
       cmd << "cd #{framework} && " unless framework == "rails"
-      cmd << "gem build #{gemspec} && mv #{framework}-#{version}.gem #{root}/pkg/"
+      cmd << "gem build #{gemspec} && #{move_cmd} #{framework}-#{version}.gem \"#{root}/pkg/\""
       sh cmd
     end
 

@@ -6,7 +6,7 @@ namespace :assets do
     groups = ENV['RAILS_GROUPS'] || 'assets'
     args   = [$0, task,"RAILS_ENV=#{env}","RAILS_GROUPS=#{groups}"]
     args << "--trace" if Rake.application.options.trace
-    if $0 =~ /rake\.bat\Z/i
+    if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
       Kernel.exec $0, *args
     else  
       fork ? ruby(*args) : Kernel.exec(FileUtils::RUBY, *args)
