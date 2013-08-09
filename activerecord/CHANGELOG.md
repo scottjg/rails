@@ -570,4 +570,11 @@
 
     *Slava Markevich*
 
+*   Fixes bug when using includes combined with select, the select statement was overwritten.
+
+    Fixes #11773
+
+    *Edo Balvers*
+
+
 Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/activerecord/CHANGELOG.md) for previous changes.
