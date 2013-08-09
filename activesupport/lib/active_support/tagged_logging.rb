@@ -44,7 +44,14 @@ module ActiveSupport
     deprecate :silence
 
     def add(severity, message = nil, progname = nil, &block)
-      message = (block_given? ? block.call : progname) if message.nil?
+      if message.nil?
+        if block_given?
+          message = block.call
+        else
+          message = progname
+          progname = nil #No instance variable for this like Logger
+        end
+      end
       @logger.add(severity, "#{tags_text}#{message}", progname)
     end
 
@@ -63,6 +70,10 @@ module ActiveSupport
 
     def method_missing(method, *args)
       @logger.send(method, *args)
+    end
+
+    def respond_to_missing?(*args)
+      @logger.respond_to? *args
     end
 
     private
