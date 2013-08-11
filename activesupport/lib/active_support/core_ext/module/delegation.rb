@@ -144,7 +144,8 @@ class Module
       raise ArgumentError, 'Delegation needs a target. Supply an options hash with a :to key as the last argument (e.g. delegate :hello, to: :greeter).'
     end
 
-    prefix, allow_nil = options.values_at(:prefix, :allow_nil)
+    prefix, allow_nil, return_value = options.values_at(:prefix, :allow_nil, :return_value_of)
+    return_value ||= false
 
     if prefix == true && to =~ /^[^a-z_]/
       raise ArgumentError, 'Can only automatically set the delegation prefix when delegating to a method.'
@@ -177,22 +178,26 @@ class Module
       # be doing one call.
       if allow_nil
         module_eval(<<-EOS, file, line - 3)
-          def #{method_prefix}#{method}(#{definition})        # def customer_name(*args, &block)
+          def #{method_prefix}#{method}(#{definition})        # def customer_name(*args, &block) # return_value is self
             _ = #{to}                                         #   _ = client
             if !_.nil? || nil.respond_to?(:#{method})         #   if !_.nil? || nil.respond_to?(:name)
-              _.#{method}(#{definition})                      #     _.name(*args, &block)
+              result = _.#{method}(#{definition})             #     result = _.name(*args, &block)
+            else                                              #   else
+              result = nil                                    #     result = nil
             end                                               #   end
+            #{return_value} ? #{return_value} : result        #   self ? self : result
           end                                                 # end
         EOS
       else
         exception = %(raise DelegationError, "#{self}##{method_prefix}#{method} delegated to #{to}.#{method}, but #{to} is nil: \#{self.inspect}")
 
         module_eval(<<-EOS, file, line - 2)
-          def #{method_prefix}#{method}(#{definition})                                          # def customer_name(*args, &block)
+          def #{method_prefix}#{method}(#{definition})                                          # def customer_name(*args, &block) # return_value is self
             _ = #{to}                                                                           #   _ = client
-            _.#{method}(#{definition})                                                          #   _.name(*args, &block)
+            result = _.#{method}(#{definition})                                                 #   result =  _.name(*args, &block)
+            #{return_value} ? #{return_value} : result                                          #   self ? self : result
           rescue NoMethodError => e                                                             # rescue NoMethodError => e
-            location = "%s:%d:in `%s'" % [__FILE__, __LINE__ - 2, '#{method_prefix}#{method}']  #   location = "%s:%d:in `%s'" % [__FILE__, __LINE__ - 2, 'customer_name']
+            location = "%s:%d:in `%s'" % [__FILE__, __LINE__ - 3, '#{method_prefix}#{method}']  #   location = "%s:%d:in `%s'" % [__FILE__, __LINE__ - 3, 'customer_name']
             if _.nil? && e.backtrace.first == location                                          #   if _.nil? && e.backtrace.first == location
               #{exception}                                                                      #     # add helpful message to the exception
             else                                                                                #   else

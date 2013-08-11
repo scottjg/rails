@@ -114,6 +114,14 @@ class SideEffect
   end
 end
 
+ProxyContainer = Struct.new(:array) do
+  delegate :<<, to: :array, return_value_of: :self
+end
+
+NilContainer = Struct.new(:array) do
+  delegate :<<, to: :array, return_value_of: :self, allow_nil: true
+end
+
 class ModuleTest < ActiveSupport::TestCase
   def setup
     @david = Someone.new("David", Somewhere.new("Paulina", "Chicago"))
@@ -235,6 +243,22 @@ class ModuleTest < ActiveSupport::TestCase
   def test_delegation_to_method_that_exists_on_nil_when_allowing_nil
     nil_project = Project.new(nil)
     assert_equal 0.0, nil_project.to_f
+  end
+
+  def test_delegate_with_return_self_returns_container
+    container = ProxyContainer.new([:a, :b, :c])
+    assert_kind_of ProxyContainer, container << :d
+  end
+
+  def test_delegate_with_return_self_changes_value
+    container = ProxyContainer.new([:a, :b, :c])
+    container << :d
+    assert_equal container.array.sort.join, 'abcd'
+  end
+
+  def test_delegate_with_return_self_and_allow_nil
+    container = NilContainer.new(nil)
+    assert_kind_of NilContainer, container << 4
   end
 
   def test_delegation_does_not_raise_error_when_removing_singleton_instance_methods
