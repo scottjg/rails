@@ -1,4 +1,4 @@
-require "action_mailer"
+require_relative '../action_mailer'
 require "rails"
 require "abstract_controller/railties/routes_helpers"
 
