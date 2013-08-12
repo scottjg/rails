@@ -377,4 +377,6 @@ module ActiveModel
   end
 end
 
-Dir[File.dirname(__FILE__) + "/validations/*.rb"].each { |file| require file }
+Dir.chdir(File.dirname(__FILE__)) do
+  Dir['validations/*.rb'].each { |file| require_relative file }
+end
