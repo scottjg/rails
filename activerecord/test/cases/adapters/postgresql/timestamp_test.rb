@@ -93,6 +93,13 @@ class TimestampTest < ActiveRecord::TestCase
     assert_equal date, Developer.find_by_name("aaron").updated_at
   end
 
+  def test_default_sql_type_time_with_time_zone
+    ActiveRecord::Base.connection.create_table(:foos) do |t|
+      t.timestamps
+    end
+    assert_equal 'timestamps with time zone', activerecord_column_option('foos', 'created_at', 'sql_type')
+  end
+
   private
 
     def pg_datetime_precision(table_name, column_name)
