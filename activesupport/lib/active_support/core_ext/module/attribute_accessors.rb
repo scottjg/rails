@@ -1,4 +1,4 @@
-require 'active_support/core_ext/array/extract_options'
+require_relative '../array/extract_options'
 
 class Module
   def mattr_reader(*syms)

@@ -1,4 +1,4 @@
-require 'active_support/inflector/inflections'
+require_relative 'inflector/inflections'
 
 module ActiveSupport
   Inflector.inflections(:en) do |inflect|

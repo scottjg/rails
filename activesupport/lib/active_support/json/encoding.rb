@@ -1,17 +1,17 @@
 #encoding: us-ascii
 
-require 'active_support/core_ext/object/to_json'
-require 'active_support/core_ext/module/delegation'
+require_relative '../core_ext/object/to_json'
+require_relative '../core_ext/module/delegation'
 
 require 'bigdecimal'
-require 'active_support/core_ext/big_decimal/conversions' # for #to_s
-require 'active_support/core_ext/hash/except'
-require 'active_support/core_ext/hash/slice'
-require 'active_support/core_ext/object/instance_variables'
+require_relative '../core_ext/big_decimal/conversions' # for #to_s
+require_relative '../core_ext/hash/except'
+require_relative '../core_ext/hash/slice'
+require_relative '../core_ext/object/instance_variables'
 require 'time'
-require 'active_support/core_ext/time/conversions'
-require 'active_support/core_ext/date_time/conversions'
-require 'active_support/core_ext/date/conversions'
+require_relative '../core_ext/time/conversions'
+require_relative '../core_ext/date_time/conversions'
+require_relative '../core_ext/date/conversions'
 require 'set'
 
 module ActiveSupport

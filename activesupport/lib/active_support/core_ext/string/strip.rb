@@ -1,4 +1,4 @@
-require 'active_support/core_ext/object/try'
+require_relative '../object/try'
 
 class String
   # Strips indentation in heredocs.

@@ -1,5 +1,5 @@
-require 'active_support/values/time_zone'
-require 'active_support/core_ext/object/acts_like'
+require_relative 'values/time_zone'
+require_relative 'core_ext/object/acts_like'
 
 module ActiveSupport
   # A Time-like class that can represent a time in any time zone. Necessary

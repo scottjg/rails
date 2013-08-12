@@ -1,4 +1,4 @@
-require 'active_support/deprecation'
+require_relative '../deprecation'
 
 module ActiveSupport
   module Testing

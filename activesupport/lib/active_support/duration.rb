@@ -1,6 +1,6 @@
-require 'active_support/proxy_object'
-require 'active_support/core_ext/array/conversions'
-require 'active_support/core_ext/object/acts_like'
+require_relative 'proxy_object'
+require_relative 'core_ext/array/conversions'
+require_relative 'core_ext/object/acts_like'
 
 module ActiveSupport
   # Provides accurate date and time measurements using Date#advance and

@@ -1,5 +1,5 @@
 # encoding: utf-8
-require 'active_support/multibyte'
+require_relative '../../multibyte'
 
 class String
   # == Multibyte proxy

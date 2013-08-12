@@ -1,5 +1,5 @@
-require 'active_support/core_ext/class/attribute_accessors'
-require 'active_support/logger_silence'
+require_relative 'core_ext/class/attribute_accessors'
+require_relative 'logger_silence'
 require 'logger'
 
 module ActiveSupport

@@ -1,4 +1,4 @@
-require "active_support/notifications"
+require_relative '../notifications'
 
 module ActiveSupport
   class Deprecation
@@ -13,7 +13,7 @@ module ActiveSupport
             if defined?(Rails) && Rails.logger
               Rails.logger
             else
-              require 'active_support/logger'
+              require_relative '../logger'
               ActiveSupport::Logger.new($stderr)
             end
         logger.warn message

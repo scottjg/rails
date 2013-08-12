@@ -1,5 +1,5 @@
-require "active_support"
-require "active_support/i18n_railtie"
+require_relative '../active_support'
+require_relative 'i18n_railtie'
 
 module ActiveSupport
   class Railtie < Rails::Railtie # :nodoc:
@@ -16,7 +16,7 @@ module ActiveSupport
     # Sets the default value for Time.zone
     # If assigned value cannot be matched to a TimeZone, an exception will be raised.
     initializer "active_support.initialize_time_zone" do |app|
-      require 'active_support/core_ext/time/zones'
+      require_relative 'core_ext/time/zones'
       zone_default = Time.find_zone!(app.config.time_zone)
 
       unless zone_default
@@ -30,7 +30,7 @@ module ActiveSupport
     # Sets the default week start
     # If assigned value is not a valid day symbol (e.g. :sunday, :monday, ...), an exception will be raised.
     initializer "active_support.initialize_beginning_of_week" do |app|
-      require 'active_support/core_ext/date/calculations'
+      require_relative 'core_ext/date/calculations'
       beginning_of_week_default = Date.find_beginning_of_week!(app.config.beginning_of_week)
 
       Date.beginning_of_week_default = beginning_of_week_default

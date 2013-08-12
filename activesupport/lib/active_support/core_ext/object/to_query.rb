@@ -1,4 +1,4 @@
-require 'active_support/core_ext/object/to_param'
+require_relative '../object/to_param'
 
 class Object
   # Converts an object into a string suitable for use as a URL query string, using the given <tt>key</tt> as the

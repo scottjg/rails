@@ -1,4 +1,4 @@
-require 'active_support'
-require 'active_support/deprecation'
-require 'active_support/time'
-require 'active_support/core_ext'
+require_relative '../active_support'
+require_relative 'deprecation'
+require_relative 'time'
+require_relative 'core_ext'

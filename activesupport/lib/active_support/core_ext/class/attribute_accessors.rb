@@ -1,4 +1,4 @@
-require 'active_support/core_ext/array/extract_options'
+require_relative '../array/extract_options'
 
 # Extends the class object with class and instance accessors for class attributes,
 # just like the native attr* accessors for instance attributes.

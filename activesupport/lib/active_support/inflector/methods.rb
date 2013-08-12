@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-require 'active_support/inflections'
+require_relative '../inflections'
 
 module ActiveSupport
   # The Inflector transforms words from singular to plural, class names to table

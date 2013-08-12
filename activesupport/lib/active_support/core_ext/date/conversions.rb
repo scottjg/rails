@@ -1,6 +1,6 @@
 require 'date'
-require 'active_support/inflector/methods'
-require 'active_support/core_ext/date/zones'
+require_relative '../../inflector/methods'
+require_relative 'zones'
 
 class Date
   DATE_FORMATS = {

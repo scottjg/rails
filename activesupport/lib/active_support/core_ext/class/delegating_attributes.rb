@@ -1,5 +1,5 @@
-require 'active_support/core_ext/kernel/singleton_class'
-require 'active_support/core_ext/module/remove_method'
+require_relative '../kernel/singleton_class'
+require_relative '../module/remove_method'
 
 class Class
   def superclass_delegating_accessor(name, options = {})

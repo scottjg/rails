@@ -9,19 +9,19 @@
 # Rails and can change anytime.
 
 # Defines Object#blank? and Object#present?.
-require 'active_support/core_ext/object/blank'
+require_relative 'core_ext/object/blank'
 
 # Rails own autoload, eager_load, etc.
-require 'active_support/dependencies/autoload'
+require_relative 'dependencies/autoload'
 
 # Support for ClassMethods and the included macro.
-require 'active_support/concern'
+require_relative 'concern'
 
 # Defines Class#class_attribute.
-require 'active_support/core_ext/class/attribute'
+require_relative 'core_ext/class/attribute'
 
 # Defines Module#delegate.
-require 'active_support/core_ext/module/delegation'
+require_relative 'core_ext/module/delegation'
 
 # Defines ActiveSupport::Deprecation.
-require 'active_support/deprecation'
+require_relative 'deprecation'

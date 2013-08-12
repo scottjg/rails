@@ -1,7 +1,7 @@
 require 'time'
 require 'base64'
-require 'active_support/core_ext/module/delegation'
-require 'active_support/core_ext/string/inflections'
+require_relative 'core_ext/module/delegation'
+require_relative 'core_ext/string/inflections'
 
 module ActiveSupport
   # = XmlMini
@@ -179,7 +179,7 @@ module ActiveSupport
         if name.is_a?(Module)
           name
         else
-          require "active_support/xml_mini/#{name.downcase}"
+          require_relative "xml_mini/#{name.downcase}"
           ActiveSupport.const_get("XmlMini_#{name}")
         end
       end

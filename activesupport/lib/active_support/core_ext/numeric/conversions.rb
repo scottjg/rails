@@ -1,5 +1,5 @@
-require 'active_support/core_ext/big_decimal/conversions'
-require 'active_support/number_helper'
+require_relative '../big_decimal/conversions'
+require_relative '../../number_helper'
 
 class Numeric
 

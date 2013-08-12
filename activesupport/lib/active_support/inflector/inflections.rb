@@ -1,6 +1,6 @@
 require 'thread_safe'
-require 'active_support/core_ext/array/prepend_and_append'
-require 'active_support/i18n'
+require_relative '../core_ext/array/prepend_and_append'
+require_relative '../i18n'
 
 module ActiveSupport
   module Inflector

@@ -1,4 +1,4 @@
-require 'active_support/core_ext/class/attribute'
-require 'active_support/core_ext/class/attribute_accessors'
-require 'active_support/core_ext/class/delegating_attributes'
-require 'active_support/core_ext/class/subclasses'
+require_relative 'class/attribute'
+require_relative 'class/attribute_accessors'
+require_relative 'class/delegating_attributes'
+require_relative 'class/subclasses'

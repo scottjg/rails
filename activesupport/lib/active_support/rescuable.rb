@@ -1,7 +1,7 @@
-require 'active_support/concern'
-require 'active_support/core_ext/class/attribute'
-require 'active_support/core_ext/string/inflections'
-require 'active_support/core_ext/array/extract_options'
+require_relative 'concern'
+require_relative 'core_ext/class/attribute'
+require_relative 'core_ext/string/inflections'
+require_relative 'core_ext/array/extract_options'
 
 module ActiveSupport
   # Rescuable module adds support for easier exception handling.

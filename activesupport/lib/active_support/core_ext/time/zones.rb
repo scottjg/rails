@@ -1,5 +1,5 @@
-require 'active_support/time_with_zone'
-require 'active_support/core_ext/date_and_time/zones'
+require_relative '../../time_with_zone'
+require_relative '../date_and_time/zones'
 
 class Time
   include DateAndTime::Zones

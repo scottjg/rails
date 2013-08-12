@@ -1,4 +1,4 @@
-require 'active_support/core_ext/hash/keys'
+require_relative 'core_ext/hash/keys'
 
 module ActiveSupport
   # Implements a hash where keys <tt>:foo</tt> and <tt>"foo"</tt> are considered

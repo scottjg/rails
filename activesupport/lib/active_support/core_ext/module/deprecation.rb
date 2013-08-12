@@ -1,4 +1,4 @@
-require 'active_support/deprecation/method_wrappers'
+require_relative '../../deprecation/method_wrappers'
 
 class Module
   #   deprecate :foo

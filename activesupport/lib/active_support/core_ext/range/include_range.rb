@@ -1,4 +1,4 @@
-require 'active_support/core_ext/module/aliasing'
+require_relative '../module/aliasing'
 
 class Range
   # Extends the default Range#include? to support range comparisons.
