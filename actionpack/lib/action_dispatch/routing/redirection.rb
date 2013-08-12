@@ -1,4 +1,4 @@
-require 'action_dispatch/http/request'
+require_relative '../http/request'
 require 'active_support/core_ext/uri'
 require 'active_support/core_ext/array/extract_options'
 require 'rack/utils'

@@ -311,4 +311,4 @@ module Mime
   end
 end
 
-require 'action_dispatch/http/mime_types'
+require_relative 'mime_types'

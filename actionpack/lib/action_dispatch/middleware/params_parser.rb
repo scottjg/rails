@@ -1,5 +1,5 @@
 require 'active_support/core_ext/hash/conversions'
-require 'action_dispatch/http/request'
+require_relative '../http/request'
 require 'active_support/core_ext/hash/indifferent_access'
 
 module ActionDispatch

@@ -1,4 +1,4 @@
-require "action_dispatch"
+require_relative '../action_dispatch'
 
 module ActionDispatch
   class Railtie < Rails::Railtie # :nodoc:

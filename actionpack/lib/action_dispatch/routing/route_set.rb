@@ -1,4 +1,4 @@
-require 'action_dispatch/journey'
+require_relative '../journey'
 require 'forwardable'
 require 'thread_safe'
 require 'active_support/core_ext/object/to_query'
