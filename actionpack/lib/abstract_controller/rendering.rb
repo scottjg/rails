@@ -1,4 +1,4 @@
-require "abstract_controller/base"
+require_relative 'base'
 require "action_view"
 
 module AbstractController
