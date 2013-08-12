@@ -1,7 +1,7 @@
 require 'active_support/core_ext/module/remove_method'
 require 'action_controller'
 require 'action_controller/test_case'
-require 'action_view'
+require_relative '../action_view'
 
 module ActionView
   # = Action View Test Case

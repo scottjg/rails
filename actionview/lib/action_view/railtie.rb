@@ -1,4 +1,4 @@
-require "action_view"
+require_relative '../action_view'
 require "rails"
 
 module ActionView

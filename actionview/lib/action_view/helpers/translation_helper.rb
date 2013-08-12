@@ -1,4 +1,4 @@
-require 'action_view/helpers/tag_helper'
+require_relative 'tag_helper'
 require 'i18n/exceptions'
 
 module I18n

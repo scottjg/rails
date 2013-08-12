@@ -1,5 +1,5 @@
 require 'active_support/core_ext/object/try'
-require 'action_view/vendor/html-scanner'
+require_relative '../vendor/html-scanner'
 
 module ActionView
   # = Action View Sanitize Helpers

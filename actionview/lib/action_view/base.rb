@@ -1,7 +1,7 @@
 require 'active_support/core_ext/module/attr_internal'
 require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/ordered_options'
-require 'action_view/log_subscriber'
+require_relative 'log_subscriber'
 
 module ActionView #:nodoc:
   # = Action View Base
