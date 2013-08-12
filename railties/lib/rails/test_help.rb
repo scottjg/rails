@@ -6,10 +6,10 @@ require 'active_support/testing/autorun'
 require 'active_support/test_case'
 require 'action_controller/test_case'
 require 'action_dispatch/testing/integration'
-require 'rails/generators/test_case'
+require_relative 'generators/test_case'
 
 # Config Rails backtrace in tests.
-require 'rails/backtrace_cleaner'
+require_relative 'backtrace_cleaner'
 MiniTest.backtrace_filter = Rails.backtrace_cleaner
 
 if defined?(ActiveRecord::Base)

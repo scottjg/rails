@@ -1,4 +1,4 @@
-require 'rails/generators/app_base'
+require_relative '../../app_base'
 
 module Rails
   module ActionMethods # :nodoc:

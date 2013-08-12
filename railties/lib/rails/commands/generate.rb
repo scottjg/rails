@@ -1,4 +1,4 @@
-require 'rails/generators'
+require_relative '../generators'
 
 if [nil, "-h", "--help"].include?(ARGV.first)
   Rails::Generators.help 'generate'

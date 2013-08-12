@@ -3,7 +3,7 @@ require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/hash/reverse_merge'
 require 'active_support/core_ext/kernel/reporting'
 require 'active_support/concern'
-require 'rails/generators'
+require_relative '../../generators'
 
 module Rails
   module Generators

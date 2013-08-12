@@ -1,4 +1,4 @@
-require 'rails/ruby_version_check'
+require_relative 'rails/ruby_version_check'
 
 require 'pathname'
 
@@ -8,8 +8,8 @@ require 'active_support/core_ext/kernel/reporting'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/core_ext/array/extract_options'
 
-require 'rails/application'
-require 'rails/version'
+require_relative 'rails/application'
+require_relative 'rails/version'
 
 require 'active_support/railtie'
 require 'action_dispatch/railtie'
@@ -40,7 +40,7 @@ module Rails
     def backtrace_cleaner
       @backtrace_cleaner ||= begin
         # Relies on Active Support, so we have to lazy load to postpone definition until AS has been loaded
-        require 'rails/backtrace_cleaner'
+        require_relative 'rails/backtrace_cleaner'
         Rails::BacktraceCleaner.new
       end
     end

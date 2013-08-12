@@ -12,6 +12,6 @@ aliases = {
 command = ARGV.shift
 command = aliases[command] || command
 
-require 'rails/commands/commands_tasks'
+require_relative 'commands/commands_tasks'
 
 Rails::CommandsTasks.new(ARGV).run_command!(command)

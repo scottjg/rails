@@ -1,4 +1,4 @@
-require "rails/generators/named_base"
+require_relative '../../../generators/named_base'
 
 module Css # :nodoc:
   module Generators # :nodoc:

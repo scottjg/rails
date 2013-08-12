@@ -1,4 +1,4 @@
-require "rails"
+require_relative '../rails'
 
 %w(
   active_record

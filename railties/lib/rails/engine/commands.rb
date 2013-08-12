@@ -13,14 +13,14 @@ engine = ::Rails::Engine.find(ENGINE_ROOT)
 
 case command
 when 'generate', 'destroy'
-  require 'rails/generators'
+  require_relative '../generators'
   Rails::Generators.namespace = engine.railtie_namespace
   engine.load_generators
-  require "rails/commands/#{command}"
+  require_relative "../commands/#{command}"
 
 when '--version', '-v'
   ARGV.unshift '--version'
-  require 'rails/commands/application'
+  require_relative '../commands/application'
 
 else
   puts "Error: Command not recognized" unless %w(-h --help).include?(command)

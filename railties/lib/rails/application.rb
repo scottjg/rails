@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'active_support/core_ext/object/blank'
 require 'active_support/key_generator'
-require 'rails/engine'
+require_relative 'engine'
 
 module Rails
   # In Rails 3.0, a Rails::Application object was introduced which is nothing more than
@@ -288,7 +288,7 @@ module Rails
     def run_tasks_blocks(app) #:nodoc:
       railties.each { |r| r.run_tasks_blocks(app) }
       super
-      require "rails/tasks"
+      require_relative 'tasks'
       task :environment do
         ActiveSupport.on_load(:before_initialize) { config.eager_load = false }
 

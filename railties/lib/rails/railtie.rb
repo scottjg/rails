@@ -1,5 +1,5 @@
-require 'rails/initializable'
-require 'rails/configuration'
+require_relative 'initializable'
+require_relative 'configuration'
 require 'active_support/inflector'
 require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/module/delegation'

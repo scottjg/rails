@@ -40,7 +40,7 @@ EOS
             $stderr.puts(BUNDLER_WARNING)
             Object.const_set(:APP_PATH, File.expand_path('config/application', Dir.pwd))
             require File.expand_path('../boot', APP_PATH)
-            require 'rails/commands'
+            require_relative 'commands'
             break
           end
         end

@@ -121,14 +121,14 @@ EOT
       end
 
       def require_command!(command)
-        require "rails/commands/#{command}"
+        require_relative command
       end
 
       def generate_or_destroy(command)
-        require 'rails/generators'
+        require_relative '../generators'
         require_application_and_environment!
         Rails.application.load_generators
-        require "rails/commands/#{command}"
+        require_relative command
       end
 
       # Change to the application's path if there is no config.ru file in current directory.
