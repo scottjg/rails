@@ -1,4 +1,4 @@
-require 'active_record/migration/join_table'
+require_relative '../../migration/join_table'
 
 module ActiveRecord
   module ConnectionAdapters # :nodoc:

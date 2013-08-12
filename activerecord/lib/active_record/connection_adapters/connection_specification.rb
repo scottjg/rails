@@ -51,13 +51,13 @@ module ActiveRecord
 
           raise(AdapterNotSpecified, "database configuration does not specify adapter") unless spec.key?(:adapter)
 
-          path_to_adapter = "active_record/connection_adapters/#{spec[:adapter]}_adapter"
+          adapter_filename = "#{spec[:adapter]}_adapter"
           begin
-            require path_to_adapter
+            require_relative adapter_filename
           rescue Gem::LoadError => e
             raise Gem::LoadError, "Specified '#{spec[:adapter]}' for database adapter, but the gem is not loaded. Add `gem '#{e.name}'` to your Gemfile."
           rescue LoadError => e
-            raise LoadError, "Could not load '#{path_to_adapter}'. Make sure that the adapter in config/database.yml is valid. If you use an adapter other than 'mysql', 'mysql2', 'postgresql' or 'sqlite3' add the necessary adapter gem to the Gemfile.", e.backtrace
+            raise LoadError, "Could not load '#{adapter_filename}'. Make sure that the adapter in config/database.yml is valid. If you use an adapter other than 'mysql', 'mysql2', 'postgresql' or 'sqlite3' add the necessary adapter gem to the Gemfile.", e.backtrace
           end
 
           adapter_method = "#{spec[:adapter]}_connection"

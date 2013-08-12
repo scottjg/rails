@@ -1,4 +1,4 @@
-require 'active_record/connection_adapters/abstract_mysql_adapter'
+require_relative 'abstract_mysql_adapter'
 
 gem 'mysql2', '~> 0.3.13'
 require 'mysql2'

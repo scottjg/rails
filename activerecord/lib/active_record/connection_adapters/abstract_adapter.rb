@@ -2,8 +2,8 @@ require 'date'
 require 'bigdecimal'
 require 'bigdecimal/util'
 require 'active_support/core_ext/benchmark'
-require 'active_record/connection_adapters/schema_cache'
-require 'active_record/connection_adapters/abstract/schema_dumper'
+require_relative 'schema_cache'
+require_relative 'abstract/schema_dumper'
 require 'monitor'
 
 module ActiveRecord

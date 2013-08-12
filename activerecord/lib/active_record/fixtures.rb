@@ -2,8 +2,8 @@ require 'erb'
 require 'yaml'
 require 'zlib'
 require 'active_support/dependencies'
-require 'active_record/fixture_set/file'
-require 'active_record/errors'
+require_relative 'fixture_set/file'
+require_relative 'errors'
 
 module ActiveRecord
   class FixtureClassNotFound < ActiveRecord::ActiveRecordError #:nodoc:

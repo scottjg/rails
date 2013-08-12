@@ -1,4 +1,4 @@
-require 'active_record/connection_adapters/abstract_adapter'
+require_relative '../abstract_adapter'
 
 module ActiveRecord
   module ConnectionAdapters

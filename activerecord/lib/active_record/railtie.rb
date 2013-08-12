@@ -1,4 +1,4 @@
-require "active_record"
+require_relative '../active_record'
 require "rails"
 require "active_model/railtie"
 
@@ -35,7 +35,7 @@ module ActiveRecord
     config.eager_load_namespaces << ActiveRecord
 
     rake_tasks do
-      require "active_record/base"
+      require_relative 'base'
 
       ActiveRecord::Tasks::DatabaseTasks.seed_loader = Rails.application
       ActiveRecord::Tasks::DatabaseTasks.env = Rails.env
@@ -62,14 +62,14 @@ module ActiveRecord
     # to avoid cross references when loading a constant for the
     # first time. Also, make it output to STDERR.
     console do |app|
-      require "active_record/railties/console_sandbox" if app.sandbox?
-      require "active_record/base"
+      require_relative 'railties/console_sandbox' if app.sandbox?
+      require_relative 'base'
       console = ActiveSupport::Logger.new(STDERR)
       Rails.logger.extend ActiveSupport::Logger.broadcast console
     end
 
     runner do
-      require "active_record/base"
+      require_relative 'base'
     end
 
     initializer "active_record.initialize_timezone" do
@@ -128,7 +128,7 @@ module ActiveRecord
 
     # Expose database runtime to controller for logging.
     initializer "active_record.log_runtime" do
-      require "active_record/railties/controller_runtime"
+      require_relative 'railties/controller_runtime'
       ActiveSupport.on_load(:action_controller) do
         include ActiveRecord::Railties::ControllerRuntime
       end

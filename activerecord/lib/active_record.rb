@@ -26,7 +26,7 @@ require 'active_support/rails'
 require 'active_model'
 require 'arel'
 
-require 'active_record/version'
+require_relative 'active_record/version'
 
 module ActiveRecord
   extend ActiveSupport::Autoload

@@ -1,5 +1,5 @@
-require 'active_record/connection_adapters/abstract_adapter'
-require 'active_record/connection_adapters/statement_pool'
+require_relative 'abstract_adapter'
+require_relative 'statement_pool'
 require 'arel/visitors/bind_visitor'
 
 gem 'sqlite3', '~> 1.3.6'

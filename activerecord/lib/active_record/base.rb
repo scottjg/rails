@@ -15,9 +15,9 @@ require 'active_support/core_ext/module/introspection'
 require 'active_support/core_ext/object/duplicable'
 require 'active_support/core_ext/class/subclasses'
 require 'arel'
-require 'active_record/errors'
-require 'active_record/log_subscriber'
-require 'active_record/explain_subscriber'
+require_relative 'errors'
+require_relative 'log_subscriber'
+require_relative 'explain_subscriber'
 
 module ActiveRecord #:nodoc:
   # = Active Record

@@ -1,6 +1,6 @@
-require 'active_record/scoping/default'
-require 'active_record/scoping/named'
-require 'active_record/base'
+require_relative 'scoping/default'
+require_relative 'scoping/named'
+require_relative 'base'
 
 module ActiveRecord
   class SchemaMigration < ActiveRecord::Base
