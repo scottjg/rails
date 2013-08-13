@@ -1,3 +1,8 @@
+*   When a field is a +datetime+ or +timestamp+ attribute, don't raise on assignment
+    if the value is a string and the conversion raises an error.
+
+    *Adrien Siami*
+
 *   `add_to_target` now accepts a second optional `skip_callbacks` argument
 
     If truthy, it will skip the :before_add and :after_add callbacks.
