@@ -138,7 +138,7 @@ module ActiveRecord
       hook = app.config.reload_classes_only_on_change ? :to_prepare : :to_cleanup
 
       ActiveSupport.on_load(:active_record) do
-        ActionDispatch::Reloader.send(hook) do
+        ActionDispatch::Reloader.send(hook, unless: ->{app.sandbox?} ) do
           if ActiveRecord::Base.connected?
             ActiveRecord::Base.clear_reloadable_connections!
             ActiveRecord::Base.clear_cache!
