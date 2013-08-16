@@ -1,5 +1,5 @@
 require "cases/helper"
-require 'ipaddr'
+require 'active_support/core_ext/ipaddr'
 
 module ActiveRecord
   module ConnectionAdapters

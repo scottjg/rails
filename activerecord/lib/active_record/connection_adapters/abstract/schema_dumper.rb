@@ -1,4 +1,4 @@
-require 'ipaddr'
+require 'active_support/core_ext/ipaddr'
 
 module ActiveRecord
   module ConnectionAdapters # :nodoc:

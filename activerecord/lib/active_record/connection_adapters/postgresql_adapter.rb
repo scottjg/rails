@@ -13,7 +13,7 @@ require 'arel/visitors/bind_visitor'
 gem 'pg', '~> 0.11'
 require 'pg'
 
-require 'ipaddr'
+require 'active_support/core_ext/ipaddr'
 
 module ActiveRecord
   module ConnectionHandling # :nodoc:
