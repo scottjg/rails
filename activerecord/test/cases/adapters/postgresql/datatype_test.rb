@@ -558,6 +558,13 @@ _SQL
     assert_raise(ActiveRecord::StatementInvalid) { assert @first_bit_string.save }
   end
 
+  def test_compare_with_invalid_network_address
+    assert_nothing_raised do
+      @first_network_address.cidr_address == 'invalid addr'
+      @first_network_address.inet_address == 'invalid addr'
+    end
+  end
+
   def test_invalid_network_address
     @first_network_address.cidr_address = 'invalid addr'
     assert_nil @first_network_address.cidr_address
