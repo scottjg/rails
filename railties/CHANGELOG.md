@@ -1,3 +1,25 @@
+## unreleased ##
+
+*   Fix the event name of action_dispatch requests.
+
+    *Rafael Mendonça França*
+
+*   Make `config.log_level` work with custom loggers.
+
+    *Max Shytikov*
+
+*   Fix `rake environment` to do not eager load modules
+
+    *Paul Nikitochkin*
+
+*   Fix `rails plugin --help` command.
+
+    *Richard Schneeman*
+
+*   Omit turbolinks configuration completely on skip_javascript generator option.
+
+    *Nikita Fedyashev*
+
 ## Rails 4.0.0 (June 25, 2013) ##
 
 *   Clearing autoloaded constants triggers routes reloading [Fixes #10685].

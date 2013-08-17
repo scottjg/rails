@@ -592,7 +592,7 @@ def index
 end
 
 def show
-  @book = Book.find_by_id(params[:id])
+  @book = Book.find_by(id: params[:id])
   if @book.nil?
     render action: "index"
   end
@@ -607,7 +607,7 @@ def index
 end
 
 def show
-  @book = Book.find_by_id(params[:id])
+  @book = Book.find_by(id: params[:id])
   if @book.nil?
     redirect_to action: :index
   end
@@ -626,10 +626,10 @@ def index
 end
 
 def show
-  @book = Book.find_by_id(params[:id])
+  @book = Book.find_by(id: params[:id])
   if @book.nil?
     @books = Book.all
-    flash[:alert] = "Your book was not found"
+    flash.now[:alert] = "Your book was not found"
     render "index"
   end
 end

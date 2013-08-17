@@ -33,8 +33,11 @@ module ActiveRecord
         protected
 
         # We want to generate the methods via module_eval rather than
-        # define_method, because define_method is slower on dispatch and
-        # uses more memory (because it creates a closure).
+        # define_method, because define_method is slower on dispatch.
+        # Evaluating many similar methods may use more memory as the instruction
+        # sequences are duplicated and cached (in MRI).  define_method may
+        # be slower on dispatch, but if you're careful about the closure
+        # created, then define_method will consume much less memory.
         #
         # But sometimes the database might return columns with
         # characters that are not allowed in normal method names (like
@@ -49,6 +52,8 @@ module ActiveRecord
         # key the @attributes_cache in read_attribute.
         def define_method_attribute(name)
           safe_name = name.unpack('h*').first
+          generated_attribute_methods::AttrNames.set_name_cache safe_name, name
+
           generated_attribute_methods.module_eval <<-STR, __FILE__, __LINE__ + 1
             def __temp__#{safe_name}
               read_attribute(AttrNames::ATTR_#{safe_name}) { |n| missing_attribute(n, caller) }

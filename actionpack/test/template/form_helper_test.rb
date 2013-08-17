@@ -676,6 +676,13 @@ class FormHelperTest < ActionView::TestCase
     )
   end
 
+  def test_text_area_with_nil_alternate_value
+    assert_dom_equal(
+      %{<textarea id="post_body" name="post[body]">\n</textarea>},
+      text_area("post", "body", value: nil)
+    )
+  end
+
   def test_text_area_with_html_entities
     @post.body = "The HTML Entity for & is &amp;"
     assert_dom_equal(
@@ -700,6 +707,11 @@ class FormHelperTest < ActionView::TestCase
     expected = %{<input id="car_color" name="car[color]" type="color" value="#000000" />}
     @car.color = "#1234TR"
     assert_dom_equal(expected, color_field("car", "color"))
+  end
+
+  def test_color_field_with_value_attr
+    expected = %{<input id="car_color" name="car[color]" type="color" value="#00FF00" />}
+    assert_dom_equal(expected, color_field("car", "color", value: "#00FF00"))
   end
 
   def test_search_field
@@ -730,6 +742,12 @@ class FormHelperTest < ActionView::TestCase
     max_value = DateTime.new(2010, 8, 15)
     step = 2
     assert_dom_equal(expected, date_field("post", "written_on", min: min_value, max: max_value, step: step))
+  end
+
+  def test_date_field_with_value_attr
+    expected = %{<input id="post_written_on" name="post[written_on]" type="date" value="2013-06-29" />}
+    value = Date.new(2013,6,29)
+    assert_dom_equal(expected, date_field("post", "written_on", value: value))
   end
 
   def test_date_field_with_timewithzone_value
@@ -800,6 +818,12 @@ class FormHelperTest < ActionView::TestCase
     max_value = DateTime.new(2010, 8, 15, 10, 25, 00)
     step = 60
     assert_dom_equal(expected, datetime_field("post", "written_on", min: min_value, max: max_value, step: step))
+  end
+
+  def test_datetime_field_with_value_attr
+    expected = %{<input id="post_written_on" name="post[written_on]" type="datetime" value="2013-06-29T13:37:00+00:00" />}
+    value = DateTime.new(2013,6,29,13,37)
+    assert_dom_equal(expected, datetime_field("post", "written_on", value: value))
   end
 
   def test_datetime_field_with_timewithzone_value

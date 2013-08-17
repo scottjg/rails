@@ -52,7 +52,7 @@ Major Features
 
 TODO. Give a list and then talk about each of them briefly. We can point to relevant code commits or documentation from these sections.
 
-![Rails 4.0](images/rails4_features.png)
+[![Rails 4.0](images/rails4_features.png)](http://guides.rubyonrails.org/images/rails4_features.png)
 
 Extraction of features to gems
 ---------------------------
@@ -88,6 +88,10 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railt
 * Your app's executables now live in the `bin/` dir. Run `rake rails:update:bin` to get `bin/bundle`, `bin/rails`, and `bin/rake`.
 
 * Threadsafe on by default
+
+* Ability to use a custom builder by passing `--builder` (or `-b`) to
+  `rails new` has been removed. Consider using application templates
+  instead. ([Pull Request](https://github.com/rails/rails/pull/9401))
 
 ### Deprecations
 
@@ -132,6 +136,19 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
 *   Inflections can now be defined per locale. `singularize` and `pluralize` accept locale as an extra argument.
 
 *   `Object#try` will now return nil instead of raise a NoMethodError if the receiving object does not implement the method, but you can still get the old behavior by using the new `Object#try!`.
+
+* `String#to_date` now raises `Argument Error: invalid date` instead of `NoMethodError: undefined method 'div' for nil:NilClass`
+  when given an invalid date. It is now the same as `Date.parse`, and it accepts more invalid dates than 3.x, such as:
+
+  ```
+  # ActiveSupport 3.x
+  "asdf".to_date # => NoMethodError: undefined method `div' for nil:NilClass
+  "333".to_date # => NoMethodError: undefined method `div' for nil:NilClass
+
+  # ActiveSupport 4
+  "asdf".to_date # => ArgumentError: invalid date
+  "333".to_date # => Fri, 29 Nov 2013
+  ```
 
 ### Deprecations
 

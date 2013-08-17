@@ -1,5 +1,103 @@
 ## unreleased ##
 
+*   Load fixtures from linked folders.
+
+    *Kassio Borges*
+
+*   Create a directory for sqlite3 file if not present on the system.
+
+    *Richard Schneeman*
+
+*   Removed redundant override of `xml` column definition for PG,
+    in order to use `xml` column type instead of `text`.
+
+    *Paul Nikitochkin*, *Michael Nikitochkin*
+
+*   Revert `ActiveRecord::Relation#order` change that make new order
+    prepend the old one.
+
+    Before:
+
+        User.order("name asc").order("created_at desc")
+        # SELECT * FROM users ORDER BY created_at desc, name asc
+
+    After:
+
+        User.order("name asc").order("created_at desc")
+        # SELECT * FROM users ORDER BY name asc, created_at desc
+
+    This also affects order defined in `default_scope` or any kind of associations.
+
+*   When using optimistic locking, `update` was not passing the column to `quote_value`
+    to allow the connection adapter to properly determine how to quote the value. This was
+    affecting certain databases that use specific column types.
+
+    Fixes: #6763
+
+    *Alfred Wong*
+
+*   `change_column` for PostgreSQL adapter respects the `:array` option.
+
+    *Yves Senn*
+
+*   fixes bug introduced by #3329.  Now, when autosaving associations,
+    deletions happen before inserts and saves.  This prevents a 'duplicate
+    unique value' database error that would occur if a record being created had
+    the same value on a unique indexed field as that of a record being destroyed.
+
+    *Johnny Holton*
+
+*   Flatten merged join_values before building the joins.
+
+    While joining_values special treatment is given to string values.
+    By flattening the array it ensures that string values are detected
+    as strings and not arrays.
+
+    Fixes #10669.
+
+    *Neeraj Singh and iwiznia*
+
+*   Remove extra select and update queries on save/touch/destroy ActiveRecord model
+    with belongs to reflection with option `touch: true`.
+
+    Fixes: #11288
+
+    *Paul Nikitochkin*
+
+*   Support array as root element in JSON fields.
+
+    *Alexey Noskov & Francesco Rodriguez*
+
+*   Apply default scope when joining associations. For example:
+
+        class Post < ActiveRecord::Base
+          default_scope -> { where published: true }
+        end
+
+        class Comment
+          belongs_to :post
+        end
+
+    When calling `Comment.joins(:post)`, we expect to receive only
+    comments on published posts, since that is the default scope for
+    posts.
+
+    Before this change, the default scope from `Post` was not applied,
+    so we'd get comments on unpublished posts.
+
+    *Jon Leighton*
+
+*   `inspect` on Active Record model classes does not initiate a
+    new connection. This means that calling `inspect`, when the
+    database is missing, will no longer raise an exception.
+    Fixes #10936.
+
+    Example:
+
+        Author.inspect # => "Author(no database connection)"
+
+    *Yves Senn*
+
 *   Fix mysql2 adapter raises the correct exception when executing a query on a
     closed connection.
 

@@ -155,7 +155,7 @@ To begin with, let's get some text up on screen quickly. To do this, you need to
 
 ### Starting up the Web Server
 
-You actually have a functional Rails application already. To see it, you need to start a web server on your development machine. You can do this by running:
+You actually have a functional Rails application already. To see it, you need to start a web server on your development machine. You can do this by running the following in the root directory of your rails application:
 
 ```bash
 $ rails server
@@ -531,28 +531,19 @@ and change the `create` action to look like this:
 
 ```ruby
 def create
-  @post = Post.new(post_params)
+  @post = Post.new(params[:post])
   @post.save
   redirect_to @post
 end
-
-private
-  def post_params
-    params.require(:post).permit(:title, :text)
-  end
 ```
 
 Here's what's going on: every Rails model can be initialized with its
 respective attributes, which are automatically mapped to the respective
 database columns. In the first line we do just that (remember that
-`post_params` contains the attributes we're interested in). Then,
+`params[:post]` contains the attributes we're interested in). Then,
 `@post.save` is responsible for saving the model in the database.
 Finally, we redirect the user to the `show` action,
 which we'll define later.
-
-TIP: Note that `def post_params` is private. This new approach prevents an
-attacker from setting the model's attributes by manipulating the hash passed
-to the model. For more information, refer to [this blog post about Strong Parameters](http://weblog.rubyonrails.org/2012/3/21/strong-parameters/).
 
 TIP: As we'll see later, `@post.save` returns a boolean indicating
 whether the model was saved or not.
@@ -607,9 +598,9 @@ it! You should get an error that looks like this:
 
 Rails has several security features that help you write secure applications,
 and you're running into one of them now. This one is called
-'strong_parameters,' which requires us to tell Rails exactly which parameters
+`strong_parameters`, which requires us to tell Rails exactly which parameters
 we want to accept in our controllers. In this case, we want to allow the
-'title' and 'text' parameters, so change your `create` controller action to
+`title` and `text` parameters, so change your `create` controller action to
 look like this:
 
 ```
@@ -622,10 +613,14 @@ look like this:
 ```
 
 See the `permit`? It allows us to accept both `title` and `text` in this
-action. With this change, you should finally be able to create new `Post`s.
+action. With this change, you should finally be able to create new posts.
 Visit <http://localhost:3000/posts/new> and give it a try!
 
 ![Show action for posts](images/getting_started/show_action_for_posts.png)
+
+TIP: Note that `def post_params` is private. This new approach prevents an
+attacker from setting the model's attributes by manipulating the hash passed
+to the model. For more information, refer to [this blog post about Strong Parameters](http://weblog.rubyonrails.org/2012/3/21/strong-parameters/).
 
 ### Listing all posts
 
@@ -861,8 +856,7 @@ it look as follows:
 ```html+erb
 <h1>Editing post</h1>
 
-<%= form_for :post, url: post_path(@post.id) },
-method: :patch do |f| %>
+<%= form_for :post, url: post_path(@post), method: :patch do |f| %>
   <% if @post.errors.any? %>
   <div id="error_explanation">
     <h2><%= pluralize(@post.errors.count, "error") %> prohibited
@@ -942,7 +936,7 @@ appear next to the "Show" link:
   <tr>
     <td><%= post.title %></td>
     <td><%= post.text %></td>
-    <td><%= link_to 'Show', post_path %></td>
+    <td><%= link_to 'Show', post %></td>
     <td><%= link_to 'Edit', edit_post_path(post) %></td>
   </tr>
 <% end %>
@@ -1084,7 +1078,7 @@ together.
   <tr>
     <td><%= post.title %></td>
     <td><%= post.text %></td>
-    <td><%= link_to 'Show', post_path %></td>
+    <td><%= link_to 'Show', post_path(post) %></td>
     <td><%= link_to 'Edit', edit_post_path(post) %></td>
     <td><%= link_to 'Destroy', post_path(post),
                     method: :delete, data: { confirm: 'Are you sure?' } %></td>

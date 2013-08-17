@@ -1,5 +1,98 @@
 ## unreleased ##
 
+*   Fix an issue where :if and :unless controller action procs were being run
+    before checking for the correct action in the :only and :unless options.
+
+    Fixes #11799
+
+    *Nicholas Jakobsen*
+
+*   Fix an issue where `assert_dom_equal` and `assert_dom_not_equal` were
+    ignoring the passed failure message argument.
+
+    Fixes #11751
+
+    *Ryan McGeary*
+
+*   Fix `current_page?` when the URL contains escaped characters and the
+    original URL is using the hexadecimal lowercased.
+
+    *Rafael Mendonça França*
+
+*   Allow REMOTE_ADDR, HTTP_HOST and HTTP_USER_AGENT to be overridden from
+    the environment passed into `ActionDispatch::TestRequest.new`.
+
+    Fixes #11590
+
+    *Andrew White*
+
+*   Fix `text_area` to behave like `text_field` when `nil` is given as
+    value.
+
+    Before:
+
+        f.text_field :field, value: nil #=> <input value="">
+        f.text_area :field, value: nil  #=> <textarea>value of field</textarea>
+
+    After:
+
+        f.text_area :field, value: nil  #=> <textarea></textarea>
+
+    *Joel Cogen*
+
+*   Fix an issue where Journey was failing to clear the named routes hash when the
+    routes were reloaded and since it doesn't overwrite existing routes then if a
+    route changed but wasn't renamed it kept the old definition. This was being
+    masked by the optimised url helpers so it only became apparent when passing an
+    options hash to the url helper.
+
+    *Andrew White*
+
+*   Skip routes pointing to a redirect or mounted application when generating urls
+    using an options hash as they aren't relevant and generate incorrect urls.
+
+    Fixes #8018
+
+    *Andrew White*
+
+*   Fix default rendered format problem when calling `render` without :content_type option.
+    It should return :html.
+
+    Fixes #11393
+
+    *Gleb Mazovetskiy* *Oleg* *kennyj*
+
+*   Fix `ActionDispatch::ParamsParser#parse_formatted_parameters` to rewind body input stream on
+    parsing json params.
+
+    Fixes #11345
+
+    *Yuri Bol*, *Paul Nikitochkin*
+
+*   Fix `link_to` with block and url hashes.
+
+    Before:
+
+        link_to(action: 'bar', controller: 'foo') { content_tag(:span, 'Example site') }
+        # => "<a action=\"bar\" controller=\"foo\"><span>Example site</span></a>"
+
+    After:
+
+        link_to(action: 'bar', controller: 'foo') { content_tag(:span, 'Example site') }
+        # => "<a href=\"/foo/bar\"><span>Example site</span></a>"
+
+    *Murahashi Sanemat Kenichi*
+
+*   Fix "Stack Level Too Deep" error when redering recursive partials.
+
+    Fixes #11340.
+
+    *Rafael Mendonça França*
+
+*   Pick `DateField` `DateTimeField` and `ColorField` values from stringified options allowing use of symbol keys with helpers.
+
+    *Jon Rowe*
+
 *   Fix `Mime::Type.parse` when bad accepts header is looked up. Previously it
     was setting `request.formats` with an array containing a `nil` value, which
     raised an error when setting the controller formats.
