@@ -314,7 +314,7 @@ will produce a migration that looks like this
 class AddDetailsToProducts < ActiveRecord::Migration
   def change
     add_column :products, :price, precision: 5, scale: 2
-    add_reference :products, :user, polymorphic: true, index: true
+    add_reference :products, :supplier, polymorphic: true, index: true
   end
 end
 ```
@@ -376,7 +376,7 @@ create_join_table :products, :categories, column_options: {null: true}
 will create the `product_id` and `category_id` with the `:null` option as
 `true`.
 
-You can pass the option `:table_name` with you want to customize the table
+You can pass the option `:table_name` when you want to customize the table
 name. For example,
 
 ```ruby
@@ -829,8 +829,7 @@ which contains a `Product` model:
 Bob goes on vacation.
 
 Alice creates a migration for the `products` table which adds a new column and
-initializes it. She also adds a validation to the `Product` model for the new
-column.
+initializes it:
 
 ```ruby
 # db/migrate/20100513121110_add_flag_to_product.rb
@@ -841,10 +840,11 @@ class AddFlagToProduct < ActiveRecord::Migration
     reversible do |dir|
       dir.up { Product.update_all flag: false }
     end
-    Product.update_all flag: false
   end
 end
 ```
+
+She also adds a validation to the `Product` model for the new column:
 
 ```ruby
 # app/models/product.rb
@@ -854,9 +854,8 @@ class Product < ActiveRecord::Base
 end
 ```
 
-Alice adds a second migration which adds and initializes another column to the
-`products` table and also adds a validation to the `Product` model for the new
-column.
+Alice adds a second migration which adds another column to the `products`
+table and initializes it:
 
 ```ruby
 # db/migrate/20100515121110_add_fuzz_to_product.rb
@@ -870,6 +869,8 @@ class AddFuzzToProduct < ActiveRecord::Migration
   end
 end
 ```
+
+She also adds a validation to the `Product` model for the new column:
 
 ```ruby
 # app/models/product.rb
@@ -904,7 +905,7 @@ A fix for this is to create a local model within the migration. This keeps
 Rails from running the validations, so that the migrations run to completion.
 
 When using a local model, it's a good idea to call
-`Product.reset_column_information` to refresh the `ActiveRecord` cache for the
+`Product.reset_column_information` to refresh the Active Record cache for the
 `Product` model prior to updating data in the database.
 
 If Alice had done this instead, there would have been no problem:
@@ -957,7 +958,7 @@ other product attributes.
 These migrations run just fine, but when Bob comes back from his vacation
 and calls `rake db:migrate` to run all the outstanding migrations, he gets a
 subtle bug: The descriptions have defaults, and the `fuzz` column is present,
-but `fuzz` is nil on all products.
+but `fuzz` is `nil` on all products.
 
 The solution is again to use `Product.reset_column_information` before
 referencing the Product model in a migration, ensuring the Active Record's

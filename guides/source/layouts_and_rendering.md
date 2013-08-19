@@ -88,7 +88,7 @@ If we want to display the properties of all the books in our view, we can do so 
 <% end %>
 </table>
 
-<br />
+<br>
 
 <%= link_to "New book", new_book_path %>
 ```
@@ -375,9 +375,9 @@ Rails understands both numeric status codes and the corresponding symbols shown 
 |                     | 423              | :locked                          |
 |                     | 424              | :failed_dependency               |
 |                     | 426              | :upgrade_required                |
-|                     | 423              | :precondition_required           |
-|                     | 424              | :too_many_requests               |
-|                     | 426              | :request_header_fields_too_large |
+|                     | 428              | :precondition_required           |
+|                     | 429              | :too_many_requests               |
+|                     | 431              | :request_header_fields_too_large |
 | **Server Error**    | 500              | :internal_server_error           |
 |                     | 501              | :not_implemented                 |
 |                     | 502              | :bad_gateway                     |
@@ -592,7 +592,7 @@ def index
 end
 
 def show
-  @book = Book.find_by_id(params[:id])
+  @book = Book.find_by(id: params[:id])
   if @book.nil?
     render action: "index"
   end
@@ -607,7 +607,7 @@ def index
 end
 
 def show
-  @book = Book.find_by_id(params[:id])
+  @book = Book.find_by(id: params[:id])
   if @book.nil?
     redirect_to action: :index
   end
@@ -626,10 +626,10 @@ def index
 end
 
 def show
-  @book = Book.find_by_id(params[:id])
+  @book = Book.find_by(id: params[:id])
   if @book.nil?
     @books = Book.all
-    flash[:alert] = "Your book was not found"
+    flash.now[:alert] = "Your book was not found"
     render "index"
   end
 end
@@ -1026,7 +1026,7 @@ You can also pass local variables into partials, making them even more powerful 
     ```html+erb
     <%= form_for(zone) do |f| %>
       <p>
-        <b>Zone name</b><br />
+        <b>Zone name</b><br>
         <%= f.text_field :name %>
       </p>
       <p>

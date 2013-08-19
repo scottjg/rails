@@ -104,7 +104,7 @@ At the root of this brand new engine's directory lives a `blorgh.gemspec` file. 
 gem 'blorgh', path: "vendor/engines/blorgh"
 ```
 
-By specifying it as a gem within the `Gemfile`, Bundler will load it as such, parsing this `blorgh.gemspec` file and requiring a file within the `lib` directory called `lib/blorgh.rb`. This file requires the `blorgh/engine.rb` file (located at `lib/blorgh/engine.rb`) and defines a base module called `Blorgh`.
+Don't forget to run `bundle install` as usual. By specifying it as a gem within the `Gemfile`, Bundler will load it as such, parsing this `blorgh.gemspec` file and requiring a file within the `lib` directory called `lib/blorgh.rb`. This file requires the `blorgh/engine.rb` file (located at `lib/blorgh/engine.rb`) and defines a base module called `Blorgh`.
 
 ```ruby
 require "blorgh/engine"
@@ -346,7 +346,7 @@ Next, the partial that this line will render needs to exist. Create a new direct
 <h3>New comment</h3>
 <%= form_for [@post, @post.comments.build] do |f| %>
   <p>
-    <%= f.label :text %><br />
+    <%= f.label :text %><br>
     <%= f.text_area :text %>
   </p>
   <%= f.submit %>
@@ -393,9 +393,14 @@ The form will be making a `POST` request to `/posts/:post_id/comments`, which wi
 ```ruby
 def create
   @post = Post.find(params[:post_id])
-  @comment = @post.comments.create(params[:comment])
+  @comment = @post.comments.create(comment_params)
   flash[:notice] = "Comment has been created!"
   redirect_to posts_path
+end
+
+private
+def comment_params
+  params.require(:comment).permit(:text)
 end
 ```
 
@@ -461,7 +466,7 @@ NOTE: Other engines, such as Devise, handle this a little differently by making 
 The engine contains migrations for the `blorgh_posts` and `blorgh_comments` table which need to be created in the application's database so that the engine's models can query them correctly. To copy these migrations into the application use this command:
 
 ```bash
-$ rake blorgh_engine:install:migrations
+$ rake blorgh:install:migrations
 ```
 
 If you have multiple engines that need migrations copied over, use `railties:install:migrations` instead:
@@ -515,9 +520,17 @@ First, the `author_name` text field needs to be added to the `app/views/blorgh/p
 
 ```html+erb
 <div class="field">
-  <%= f.label :author_name %><br />
+  <%= f.label :author_name %><br>
   <%= f.text_field :author_name %>
 </div>
+```
+
+Next, we need to update our `Blorgh::PostController#post_params` method to permit the new form parameter:
+
+```ruby
+def post_params
+  params.require(:post).permit(:title, :text, :author_name)
+end
 ```
 
 The `Blorgh::Post` model should then have some code to convert the `author_name` field into an actual `User` object and associate it as that post's `author` before the post is saved. It will also need to have an `attr_accessor` setup for this field so that the setter and getter methods are defined for it.

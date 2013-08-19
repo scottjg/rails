@@ -95,8 +95,6 @@ module ActiveRecord
         @last_use            = false
         @logger              = logger
         @pool                = pool
-        @query_cache         = Hash.new { |h,sql| h[sql] = {} }
-        @query_cache_enabled = false
         @schema_cache        = SchemaCache.new self
         @visitor             = nil
       end
@@ -293,6 +291,14 @@ module ActiveRecord
         false
       end
 
+      # This is meant to be implemented by the adapters that support extensions
+      def disable_extension(name)
+      end
+
+      # This is meant to be implemented by the adapters that support extensions
+      def enable_extension(name)
+      end
+
       # A list of extensions, to be filled in by adapters that support them. At
       # the moment only postgresql does.
       def extensions
@@ -307,8 +313,8 @@ module ActiveRecord
 
       # QUOTING ==================================================
 
-      # Returns a bind substitution value given a +column+ and list of current
-      # +binds+.
+      # Returns a bind substitution value given a bind +index+ and +column+
+      # NOTE: The column param is currently being used by the sqlserver-adapter
       def substitute_at(column, index)
         Arel::Nodes::BindParam.new '?'
       end
@@ -385,20 +391,6 @@ module ActiveRecord
 
       def open_transactions
         @transaction.number
-      end
-
-      def increment_open_transactions
-        ActiveSupport::Deprecation.warn "#increment_open_transactions is deprecated and has no effect"
-      end
-
-      def decrement_open_transactions
-        ActiveSupport::Deprecation.warn "#decrement_open_transactions is deprecated and has no effect"
-      end
-
-      def transaction_joinable=(joinable)
-        message = "#transaction_joinable= is deprecated. Please pass the :joinable option to #begin_transaction instead."
-        ActiveSupport::Deprecation.warn message
-        @transaction.joinable = joinable
       end
 
       def create_savepoint

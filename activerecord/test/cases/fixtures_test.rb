@@ -493,10 +493,6 @@ class CustomConnectionFixturesTest < ActiveRecord::TestCase
   fixtures :courses
   self.use_transactional_fixtures = false
 
-  def test_connection_instance_method_deprecation
-    assert_deprecated { courses(:ruby).connection }
-  end
-
   def test_leaky_destroy
     assert_nothing_raised { courses(:ruby) }
     courses(:ruby).destroy
@@ -588,7 +584,7 @@ class LoadAllFixturesTest < ActiveRecord::TestCase
   fixtures :all
 
   def test_all_there
-    assert_equal %w(developers people tasks), fixture_table_names.sort
+    assert_equal %w(admin/accounts admin/users developers people tasks), fixture_table_names.sort
   end
 end
 
@@ -597,7 +593,7 @@ class LoadAllFixturesWithPathnameTest < ActiveRecord::TestCase
   fixtures :all
 
   def test_all_there
-    assert_equal %w(developers people tasks), fixture_table_names.sort
+    assert_equal %w(admin/accounts admin/users developers people tasks), fixture_table_names.sort
   end
 end
 

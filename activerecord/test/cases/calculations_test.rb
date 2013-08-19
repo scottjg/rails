@@ -172,7 +172,7 @@ class CalculationsTest < ActiveRecord::TestCase
       Account.select("credit_limit, firm_name").count
     }
 
-    assert_match "accounts", e.message
+    assert_match %r{accounts}i, e.message
     assert_match "credit_limit, firm_name", e.message
   end
 
@@ -349,16 +349,6 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_count_with_column_parameter
     assert_equal 5, Account.count(:firm_id)
-  end
-
-  def test_count_distinct_option_is_deprecated
-    assert_deprecated do
-      assert_equal 4, Account.select(:credit_limit).count(distinct: true)
-    end
-
-    assert_deprecated do
-      assert_equal 6, Account.select(:credit_limit).count(distinct: false)
-    end
   end
 
   def test_count_with_distinct

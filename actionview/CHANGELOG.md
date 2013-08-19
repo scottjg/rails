@@ -1,3 +1,108 @@
+*   Added an `extname` hash option for `javascript_include_tag` method.
+
+    Before:
+
+        javascript_include_tag('templates.jst')
+        # => <script src="/javascripts/templates.jst.js"></script>
+
+    After:
+
+        javascript_include_tag('templates.jst', extname: false )
+        # => <script src="/javascripts/templates.jst"></script>
+
+    *Nathan Stitt*
+
+*   Fix `current_page?` when the URL contains escaped characters and the
+    original URL is using the hexadecimal lowercased.
+
+    *Rafael Mendonça França*
+
+*   Fix `text_area` to behave like `text_field` when `nil` is given as
+    value.
+
+    Before:
+
+        f.text_field :field, value: nil #=> <input value="">
+        f.text_area :field, value: nil  #=> <textarea>value of field</textarea>
+
+    After:
+
+        f.text_area :field, value: nil  #=> <textarea></textarea>
+
+    *Joel Cogen*
+
+*   Element of the `grouped_options_for_select` can
+    optionally contain html attributes as the last element of the array.
+
+        grouped_options_for_select(
+          [["North America", [['United States','US'],"Canada"], data: { foo: 'bar' }]]
+        )
+
+    *Vasiliy Ermolovich*
+
+*   Fix default rendered format problem when calling `render` without :content_type option.
+    It should return :html. Fix #11393.
+
+    *Gleb Mazovetskiy* *Oleg* *kennyj*
+
+*   Fix `link_to` with block and url hashes.
+
+    Before:
+
+        link_to(action: 'bar', controller: 'foo') { content_tag(:span, 'Example site') }
+        # => "<a action=\"bar\" controller=\"foo\"><span>Example site</span></a>"
+
+    After:
+
+        link_to(action: 'bar', controller: 'foo') { content_tag(:span, 'Example site') }
+        # => "<a href=\"/foo/bar\"><span>Example site</span></a>"
+
+    *Murahashi Sanemat Kenichi*
+
+*   Fix "Stack Level Too Deep" error when redering recursive partials.
+
+    Fixes #11340.
+
+    *Rafael Mendonça França*
+
+*   Added an `enforce_utf8` hash option for `form_tag` method.
+
+    Control to output a hidden input tag with name `utf8` without monkey
+    patching.
+
+    Before:
+
+        form_tag
+        # => '<form>..<input name="utf8" type="hidden" value="&#x2713;" />..</form>'
+
+    After:
+
+        form_tag
+        # => '<form>..<input name="utf8" type="hidden" value="&#x2713;" />..</form>'
+
+        form_tag({}, { :enforce_utf8 => false })
+        # => '<form>....</form>'
+
+    *ma2gedev*
+
+*   Remove the deprecated `include_seconds` argument from `distance_of_time_in_words`,
+    pass in an `:include_seconds` hash option to use this feature.
+
+    *Carlos Antonio da Silva*
+
+*   Remove deprecated block passing to `FormBuilder#new`.
+
+    *Vipul A M*
+
+*   Pick `DateField` `DateTimeField` and `ColorField` values from stringified options allowing use of symbol keys with helpers.
+
+    *Jon Rowe*
+
+*   Remove the deprecated `prompt` argument from `grouped_options_for_select`,
+    pass in a `:prompt` hash option to use this feature.
+
+    *kennyj*
+
 *   Always escape the result of `link_to_unless` method.
 
     Before:

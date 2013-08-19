@@ -57,6 +57,21 @@ If you are on Fedora or CentOS, you can run
 $ sudo yum install libxml2 libxml2-devel libxslt libxslt-devel
 ```
 
+If you are running Arch Linux, you're done with:
+
+```bash
+$ sudo pacman -S libxml2 libxslt
+```
+
+On FreeBSD, you just have to run:
+
+```bash
+# pkg_add -r libxml2 libxslt
+```
+
+Alternatively, you can install the `textproc/libxml2` and `textproc/libxslt`
+ports.
+
 If you have any problems with these libraries, you can install them manually by compiling the source code. Just follow the instructions at the [Red Hat/CentOS section of the Nokogiri tutorials](http://nokogiri.org/tutorials/installing_nokogiri.html#red_hat__centos) .
 
 Also, SQLite3 and its development files for the `sqlite3-ruby` gem — in Ubuntu you're done with just
@@ -71,6 +86,23 @@ And if you are on Fedora or CentOS, you're done with
 $ sudo yum install sqlite3 sqlite3-devel
 ```
 
+<<<<<<< HEAD
+If you are on Arch Linux, you will need to run:
+
+```bash
+$ sudo pacman -S sqlite
+```
+
+For FreeBSD users, you're done with:
+
+```bash
+# pkg_add -r sqlite3
+```
+
+Or compile the `databases/sqlite3` port.
+
+=======
+>>>>>>> ec8ef1e1055c4e1598da13f49d30261f07f4a9b4
 Get a recent version of [Bundler](http://gembundler.com/)
 
 ```bash
@@ -84,7 +116,29 @@ and run:
 $ bundle install --without db
 ```
 
-This command will install all dependencies except the MySQL and PostgreSQL Ruby drivers. We will come back to these soon. With dependencies installed, you can run the test suite with:
+This command will install all dependencies except the MySQL and PostgreSQL Ruby drivers. We will come back to these soon.
+
+NOTE: If you would like to run the tests that use memcached, you need to ensure that you have it installed and running.
+
+You can use homebrew to install memcached on OSX:
+
+```bash
+$ brew install memcached
+```
+
+On Ubuntu you can install it with apt-get:
+
+```bash
+$ sudo apt-get install memcached
+```
+
+Or use yum on Fedora or CentOS:
+
+```bash
+$ sudo yum install memcached
+```
+
+With the dependencies now installed, you can run the test suite with:
 
 ```bash
 $ bundle exec rake test
@@ -137,6 +191,28 @@ $ sudo yum install mysql-server mysql-devel
 $ sudo yum install postgresql-server postgresql-devel
 ```
 
+<<<<<<< HEAD
+If you are running Arch Linux, MySQL isn't supported anymore so you will need to
+use MariaDB instead (see [this announcement](https://www.archlinux.org/news/mariadb-replaces-mysql-in-repositories/)):
+
+```bash
+$ sudo pacman -S mariadb libmariadbclient mariadb-clients
+$ sudo pacman -S postgresql postgresql-libs
+```
+
+FreeBSD users will have to run the following:
+
+```bash
+# pkg_add -r mysql56-client mysql56-server
+# pkg_add -r postgresql92-client postgresql92-server
+```
+
+Or install them through ports (they are located under the `databases` folder).
+If you run into troubles during the installation of MySQL, please see
+[the MySQL documentation](http://dev.mysql.com/doc/refman/5.1/en/freebsd-installation.html).
+
+=======
+>>>>>>> ec8ef1e1055c4e1598da13f49d30261f07f4a9b4
 After that, run:
 
 ```bash

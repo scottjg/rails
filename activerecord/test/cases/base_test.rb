@@ -1,4 +1,7 @@
+# encoding: utf-8
+
 require "cases/helper"
+require 'active_support/concurrency/latch'
 require 'models/post'
 require 'models/author'
 require 'models/topic'
@@ -579,6 +582,11 @@ class BasicsTest < ActiveRecord::TestCase
     post.reload
     assert_equal "cannot change this", post.title
     assert_equal "changed", post.body
+  end
+
+  def test_unicode_column_name
+    weird = Weird.create(:なまえ => 'たこ焼き仮面')
+    assert_equal 'たこ焼き仮面', weird.なまえ
   end
 
   def test_non_valid_identifier_column_name
@@ -1458,21 +1466,20 @@ class BasicsTest < ActiveRecord::TestCase
     orig_handler = klass.connection_handler
     new_handler = ActiveRecord::ConnectionAdapters::ConnectionHandler.new
     after_handler = nil
-    is_set = false
+    latch1 = ActiveSupport::Concurrency::Latch.new
+    latch2 = ActiveSupport::Concurrency::Latch.new
 
     t = Thread.new do
       klass.connection_handler = new_handler
-      is_set = true
-      Thread.stop
+      latch1.release
+      latch2.await
       after_handler = klass.connection_handler
     end
 
-    while(!is_set)
-      Thread.pass
-    end
+    latch1.await
 
     klass.connection_handler = orig_handler
-    t.wakeup
+    latch2.release
     t.join
 
     assert_equal after_handler, new_handler

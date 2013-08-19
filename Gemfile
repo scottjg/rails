@@ -8,7 +8,7 @@ gemspec
 gem 'mocha', '~> 0.14', require: false
 
 gem 'rack-cache', '~> 1.2'
-gem 'bcrypt-ruby', '~> 3.0.0'
+gem 'bcrypt-ruby', '~> 3.1.0'
 gem 'jquery-rails', '~> 2.2.0'
 gem 'turbolinks'
 gem 'coffee-rails', '~> 4.0.0'
@@ -56,17 +56,18 @@ platforms :ruby do
   group :db do
     gem 'pg', '>= 0.11.0'
     gem 'mysql', '>= 2.9.0'
-    gem 'mysql2', '>= 0.3.10'
+    gem 'mysql2', '>= 0.3.13'
   end
 end
 
 platforms :jruby do
-  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.7'
-
-  group :db do
-    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.7'
-    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.7'
-  end
+    git 'git://github.com/jruby/activerecord-jdbc-adapter.git' do
+      gem 'activerecord-jdbcsqlite3-adapter'
+      group :db do
+        gem 'activerecord-jdbcmysql-adapter'
+        gem 'activerecord-jdbcpostgresql-adapter'
+      end
+    end
 end
 
 # gems that are necessary for ActiveRecord tests with Oracle database

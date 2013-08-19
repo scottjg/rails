@@ -12,15 +12,19 @@ module ActiveRecord::Associations::Builder
       !options[:polymorphic]
     end
 
-    def build
-      reflection = super
-      add_counter_cache_callbacks(reflection) if options[:counter_cache]
-      add_touch_callbacks(reflection)         if options[:touch]
-      reflection
-    end
-
     def valid_dependent_options
       [:destroy, :delete]
+    end
+
+    def define_callbacks(model, reflection)
+      super
+      add_counter_cache_callbacks(model, reflection) if options[:counter_cache]
+      add_touch_callbacks(model, reflection)         if options[:touch]
+    end
+
+    def define_accessors(mixin)
+      super
+      add_counter_cache_methods mixin
     end
 
     private
@@ -70,9 +74,8 @@ module ActiveRecord::Associations::Builder
       end
     end
 
-    def add_counter_cache_callbacks(reflection)
+    def add_counter_cache_callbacks(model, reflection)
       cache_column = reflection.counter_cache_column
-      add_counter_cache_methods mixin
       association = self
 
       model.after_create lambda { |record|
@@ -92,7 +95,7 @@ module ActiveRecord::Associations::Builder
     end
 
     def self.touch_record(o, foreign_key, name, touch) # :nodoc:
-      old_foreign_id = o.attribute_was(foreign_key)
+      old_foreign_id = o.changed_attributes[foreign_key]
 
       if old_foreign_id
         klass      = o.association(name).klass
@@ -117,7 +120,7 @@ module ActiveRecord::Associations::Builder
       end
     end
 
-    def add_touch_callbacks(reflection)
+    def add_touch_callbacks(model, reflection)
       foreign_key = reflection.foreign_key
       n           = name
       touch       = options[:touch]

@@ -16,7 +16,7 @@ module ActionView
       # provided here will only work in the context of a request
       # (link_to_unless_current, for instance), which must be provided
       # as a method called #request on the context.
-
+      BUTTON_TAG_METHOD_VERBS = %w{patch put delete}
       extend ActiveSupport::Concern
 
       include TagHelper
@@ -172,7 +172,7 @@ module ActionView
       #   link_to "Visit Other Site", "http://www.rubyonrails.org/", data: { confirm: "Are you sure?" }
       #   # => <a href="http://www.rubyonrails.org/" data-confirm="Are you sure?">Visit Other Site</a>
       def link_to(name = nil, options = nil, html_options = nil, &block)
-        html_options, options = options, name if block_given?
+        html_options, options, name = options, name, block if block_given?
         options ||= {}
 
         html_options = convert_options_to_data_attributes(options, html_options)
@@ -289,7 +289,7 @@ module ActionView
         remote = html_options.delete('remote')
 
         method     = html_options.delete('method').to_s
-        method_tag = %w{patch put delete}.include?(method) ? method_tag(method) : ''.html_safe
+        method_tag = BUTTON_TAG_METHOD_VERBS.include?(method) ? method_tag(method) : ''.html_safe
 
         form_method  = method == 'get' ? 'get' : 'post'
         form_options = html_options.delete('form') || {}
@@ -528,12 +528,13 @@ module ActionView
 
         return false unless request.get? || request.head?
 
-        url_string = url_for(options)
+        url_string = URI.parser.unescape(url_for(options)).force_encoding(Encoding::BINARY)
 
         # We ignore any extra parameters in the request_uri if the
         # submitted url doesn't have any either. This lets the function
         # work with things like ?order=asc
         request_uri = url_string.index("?") ? request.fullpath : request.path
+        request_uri = URI.parser.unescape(request_uri).force_encoding(Encoding::BINARY)
 
         if url_string =~ /^\w+:\/\//
           url_string == "#{request.protocol}#{request.host_with_port}#{request_uri}"
