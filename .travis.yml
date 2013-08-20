@@ -6,10 +6,10 @@ rvm:
 env:
   - "GEM=railties"
   - "GEM=ap,am,amo,as,av"
-  - "GEM=ar:mysql"
-  - "GEM=ar:mysql2"
-  - "GEM=ar:sqlite3"
-  - "GEM=ar:postgresql"
+#  - "GEM=ar:mysql"
+#  - "GEM=ar:mysql2"
+#  - "GEM=ar:sqlite3"
+#  - "GEM=ar:postgresql"
 matrix:
   allow_failures:
     - rvm: jruby-head
