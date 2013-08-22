@@ -72,6 +72,7 @@ We encourage you to contribute to Ruby on Rails! Please check out the
 
 * [![Build Status](https://api.travis-ci.org/rails/rails.png)](https://travis-ci.org/rails/rails)
 * [![Dependencies](https://gemnasium.com/rails/rails.png?travis)](https://gemnasium.com/rails/rails)
+[![Code Climate](https://codeclimate.com/github/pensivearchitect/rails.png)](https://codeclimate.com/github/pensivearchitect/rails)
 
 ## License
 
