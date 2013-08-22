@@ -1,3 +1,8 @@
+*   Removed circular reference protection in JSON encoder, deprecated 
+    ActiveSupport::JSON::Encoding::CircularReferenceError.
+
+    *Godfrey Chan*, *Sergio Campamá*
+
 *   Add `Date#middle_of_day`, `DateTime#middle_of_day` and `Time#middle_of_day` methods.
 
     Also added `midday`, `noon`, `at_midday`, `at_noon` and `at_middle_of_day` as aliases.
