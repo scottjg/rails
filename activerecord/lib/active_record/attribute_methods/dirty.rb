@@ -70,11 +70,11 @@ module ActiveRecord
         super(attr, value)
       end
 
-      def update_record(*)
+      def update(*)
         partial_writes? ? super(keys_for_partial_write) : super
       end
 
-      def create_record(*)
+      def create(*)
         partial_writes? ? super(keys_for_partial_write) : super
       end
 
