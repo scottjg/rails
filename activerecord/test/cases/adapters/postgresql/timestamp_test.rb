@@ -37,19 +37,24 @@ class TimestampTest < ActiveRecord::TestCase
     assert_equal(-1.0 / 0.0, d.updated_at)
   end
 
-  def test_default_datetime_precision
+  def test_default_datetime_and_timestamp_precision
     ActiveRecord::Base.connection.create_table(:foos)
-    ActiveRecord::Base.connection.add_column :foos, :created_at, :datetime
-    ActiveRecord::Base.connection.add_column :foos, :updated_at, :datetime
+    ActiveRecord::Base.connection.add_column :foos, :created_at, :timestamp
+    ActiveRecord::Base.connection.add_column :foos, :birth_date, :datetime
     assert_nil activerecord_column_option('foos', 'created_at', 'precision')
+    assert_nil activerecord_column_option('foos', 'birth_date', 'precision')
   end
 
-  def test_timestamp_data_type_with_precision
+  def test_datetime_and_timestamp_with_precision
     ActiveRecord::Base.connection.create_table(:foos)
-    ActiveRecord::Base.connection.add_column :foos, :created_at, :datetime, :precision => 0
-    ActiveRecord::Base.connection.add_column :foos, :updated_at, :datetime, :precision => 5
-    assert_equal 0, activerecord_column_option('foos', 'created_at', 'precision')
-    assert_equal 5, activerecord_column_option('foos', 'updated_at', 'precision')
+    ActiveRecord::Base.connection.add_column :foos, :created_at,  :timestamp, :precision => 0
+    ActiveRecord::Base.connection.add_column :foos, :updated_at,  :timestamp, :precision => 5
+    ActiveRecord::Base.connection.add_column :foos, :birth_date,  :datetime,  :precision => 0
+    ActiveRecord::Base.connection.add_column :foos, :anniversary, :datetime,  :precision => 5
+    assert_equal 0, activerecord_column_option('foos', 'created_at',  'precision')
+    assert_equal 5, activerecord_column_option('foos', 'updated_at',  'precision')
+    assert_equal 0, activerecord_column_option('foos', 'birth_date',  'precision')
+    assert_equal 5, activerecord_column_option('foos', 'anniversary', 'precision')
   end
 
   def test_timestamps_helper_with_custom_precision
@@ -64,14 +69,22 @@ class TimestampTest < ActiveRecord::TestCase
     ActiveRecord::Base.connection.create_table(:foos) do |t|
       t.timestamps :precision => 4
     end
-    assert_nil activerecord_column_option("foos", "created_at", "limit")
-    assert_nil activerecord_column_option("foos", "updated_at", "limit")
+    assert_nil activerecord_column_option('foos', 'created_at', 'limit')
+    assert_nil activerecord_column_option('foos', 'updated_at', 'limit')
   end
 
   def test_invalid_timestamp_precision_raises_error
     assert_raises ActiveRecord::ActiveRecordError do
       ActiveRecord::Base.connection.create_table(:foos) do |t|
-        t.timestamps :precision => 7
+        t.timestamp :created_at, :precision => 7
+      end
+    end
+  end
+
+  def test_invalid_datetime_precision_raises_error
+    assert_raises ActiveRecord::ActiveRecordError do
+      ActiveRecord::Base.connection.create_table(:foos) do |t|
+        t.datetime :birth_date, :precision => 7
       end
     end
   end
@@ -80,8 +93,8 @@ class TimestampTest < ActiveRecord::TestCase
     ActiveRecord::Base.connection.create_table(:foos) do |t|
       t.timestamps :precision => 4
     end
-    assert_equal '4', pg_datetime_precision('foos', 'created_at')
-    assert_equal '4', pg_datetime_precision('foos', 'updated_at')
+    assert_equal '4', pg_datetime_precision("foos", "created_at")
+    assert_equal '4', pg_datetime_precision("foos", "updated_at")
   end
 
   def test_bc_timestamp
@@ -91,6 +104,14 @@ class TimestampTest < ActiveRecord::TestCase
     date = Date.new(0) - 1.second
     Developer.create!(:name => "aaron", :updated_at => date)
     assert_equal date, Developer.find_by_name("aaron").updated_at
+  end
+
+  def test_datetime_and_timestamp_types
+    ActiveRecord::Base.connection.create_table(:foos)
+    ActiveRecord::Base.connection.add_column :foos, :birth_date, :datetime
+    ActiveRecord::Base.connection.add_column :foos, :created_at, :timestamp
+    assert_equal :datetime,  activerecord_column_option('foos', 'birth_date', 'type')
+    assert_equal :timestamp, activerecord_column_option('foos', 'created_at', 'type')
   end
 
   private

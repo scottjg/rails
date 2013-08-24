@@ -4,11 +4,19 @@
 
     *Roderick van Domburg*
 
-*   Test that PostgreSQL adapter includes `usec` when quoting `DateTime` objects
+*   Fix handling of timestamp and datetime columns on PostgreSQL.
 
-    *Ben Cherry*
+    Timestamp columns are defined as `timestamp with time zone`,
+    datetime columns as `timestamp without time zone`. PostgreSQL
+    converts timestamp values from the local time zone to UTC for
+    storage and back; datetime values are treated as-is. This is in
+    line with MySQL.
+
+    *Roderick van Domburg*
 
 *   Re-use `order` argument pre-processing for `reorder`.
+
+*   Test that PostgreSQL adapter includes `usec` when quoting `DateTime` objects
 
     *Paul Nikitochkin*
 
