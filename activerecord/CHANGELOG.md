@@ -1,5 +1,4 @@
 *   Auto-generate stable fixture UUIDs on PostgreSQL.
-    Optionally install the `uuidtools` gem for better performance.
 
     Fixes: #11524
 
@@ -14,6 +13,10 @@
     line with MySQL.
 
     *Roderick van Domburg*
+
+*   Test that PostgreSQL adapter includes `usec` when quoting `DateTime` objects
+
+    *Ben Cherry*
 
 *   Re-use `order` argument pre-processing for `reorder`.
 

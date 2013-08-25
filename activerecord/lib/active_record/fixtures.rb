@@ -700,6 +700,10 @@ module ActiveRecord
         @primary_key_name ||= model_class && model_class.primary_key
       end
 
+      def primary_key_type_for(model_class)
+        model_class.column_types[model_class.primary_key].type
+      end
+
       def add_join_records(rows, row, association)
         # This is the case when the join table has no fixtures file
         if (targets = row.delete(association.name.to_s))
@@ -708,9 +712,10 @@ module ActiveRecord
           rhs_key    = association.rhs_key
 
           targets = targets.is_a?(Array) ? targets : targets.split(/\s*,\s*/)
+          column_type = primary_key_type_for(association.klass)
           rows[table_name].concat targets.map { |target|
             { lhs_key => row[primary_key_name],
-              rhs_key => ActiveRecord::FixtureSet.identify(target) }
+              rhs_key => ActiveRecord::FixtureSet.identify(target, column_type) }
           }
         end
       end

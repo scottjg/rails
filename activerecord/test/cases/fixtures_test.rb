@@ -684,9 +684,12 @@ class FoxyFixturesTest < ActiveRecord::TestCase
   def test_identifies_consistently
     assert_equal 207281424, ActiveRecord::FixtureSet.identify(:ruby)
     assert_equal 1066363776, ActiveRecord::FixtureSet.identify(:sapphire_2)
-
-    assert_equal 'f92b6bda-0d0d-5fe1-9124-502b18badded', ActiveRecord::FixtureSet.identify(:daddy, :uuid)
-    assert_equal 'b4b10018-ad47-595d-b42f-d8bdaa6d01bf', ActiveRecord::FixtureSet.identify(:sonny, :uuid)
+    
+    # Test stable UUIDs on PostgreSQL with the uuid-ossp extension enabled.
+    if enable_uuid_ossp!(ActiveRecord::Base.connection)
+      assert_equal '8cad4fb9-ae58-5492-80dc-e491d0d99e6e', ActiveRecord::FixtureSet.identify(:daddy, :uuid)
+      assert_equal 'aa07ea84-f2f5-5ecf-a249-51ad75ea2ae2', ActiveRecord::FixtureSet.identify(:sonny, :uuid)
+    end
   end
 
   TIMESTAMP_COLUMNS = %w(created_at created_on updated_at updated_on)
