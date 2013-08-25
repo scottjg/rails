@@ -2,8 +2,6 @@
 
     Fixes: #11524
 
-    *Roderick van Domburg*
-
 *   Fix handling of timestamp and datetime columns on PostgreSQL.
 
     Timestamp columns are defined as `timestamp with time zone`,
