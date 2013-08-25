@@ -1,3 +1,13 @@
+*   Auto-generate stable fixture UUIDs on PostgreSQL.
+
+    Fixes: #11524
+    
+    *Roderick van Domburg*
+
+*   Test that PostgreSQL adapter includes `usec` when quoting `DateTime` objects
+
+    *Ben Cherry*
+
 *   Re-use `order` argument pre-processing for `reorder`.
 
     *Paul Nikitochkin*

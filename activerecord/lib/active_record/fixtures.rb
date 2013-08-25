@@ -532,9 +532,13 @@ module ActiveRecord
     end
 
     # Returns a consistent, platform-independent identifier for +label+.
-    # Identifiers are positive integers less than 2^32.
-    def self.identify(label)
-      Zlib.crc32(label.to_s) % MAX_ID
+    # Integer identifiers are values less than 2^32. UUIDs are RFC 4122 version 5 SHA-1 hashes.
+    def self.identify(label, column_type = :integer)
+      if column_type == :uuid
+        ActiveRecord::Base.connection.select_value("SELECT uuid_generate_v5(uuid_nil(), #{ActiveRecord::Base.connection.quote(label.to_s)})")
+      else
+        Zlib.crc32(label.to_s) % MAX_ID
+      end
     end
 
     attr_reader :table_name, :name, :fixtures, :model_class, :config
@@ -610,7 +614,7 @@ module ActiveRecord
 
           # generate a primary key if necessary
           if has_primary_key_column? && !row.include?(primary_key_name)
-            row[primary_key_name] = ActiveRecord::FixtureSet.identify(label)
+            row[primary_key_name] = ActiveRecord::FixtureSet.identify(label, primary_key_type_for(model_class))
           end
 
           # If STI is used, find the correct subclass for association reflection
@@ -633,7 +637,8 @@ module ActiveRecord
                   row[association.foreign_type] = $1
                 end
 
-                row[fk_name] = ActiveRecord::FixtureSet.identify(value)
+                fk_type = association.send(:active_record).columns_hash[association.foreign_key].type
+                row[fk_name] = ActiveRecord::FixtureSet.identify(value, fk_type)
               end
             when :has_many
               if association.options[:through]

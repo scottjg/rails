@@ -666,6 +666,12 @@ end
 class FoxyFixturesTest < ActiveRecord::TestCase
   fixtures :parrots, :parrots_pirates, :pirates, :treasures, :mateys, :ships, :computers, :developers, :"admin/accounts", :"admin/users"
 
+  if ActiveRecord::Base.connection.adapter_name == 'PostgreSQL'
+    require 'models/uuid_parent'
+    require 'models/uuid_child'
+    fixtures :uuid_parents, :uuid_children 
+  end
+
   def test_identifies_strings
     assert_equal(ActiveRecord::FixtureSet.identify("foo"), ActiveRecord::FixtureSet.identify("foo"))
     assert_not_equal(ActiveRecord::FixtureSet.identify("foo"), ActiveRecord::FixtureSet.identify("FOO"))
@@ -678,6 +684,12 @@ class FoxyFixturesTest < ActiveRecord::TestCase
   def test_identifies_consistently
     assert_equal 207281424, ActiveRecord::FixtureSet.identify(:ruby)
     assert_equal 1066363776, ActiveRecord::FixtureSet.identify(:sapphire_2)
+    
+    # Test stable UUIDs on PostgreSQL with the uuid-ossp extension enabled.
+    if enable_uuid_ossp!(ActiveRecord::Base.connection)
+      assert_equal '8cad4fb9-ae58-5492-80dc-e491d0d99e6e', ActiveRecord::FixtureSet.identify(:daddy, :uuid)
+      assert_equal 'aa07ea84-f2f5-5ecf-a249-51ad75ea2ae2', ActiveRecord::FixtureSet.identify(:sonny, :uuid)
+    end
   end
 
   TIMESTAMP_COLUMNS = %w(created_at created_on updated_at updated_on)
