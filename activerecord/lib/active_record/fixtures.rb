@@ -370,6 +370,11 @@ module ActiveRecord
   #     <<: *DEFAULTS
   #
   # Any fixture labeled "DEFAULTS" is safely ignored.
+  #
+  # == Support for UUID columns
+  #
+  # Stable RFC 4122 version 5 UUIDs are generated in the OID namespace.
+  # Optionally install the `uuidtools` gem for faster UUID generation.
   class FixtureSet
     #--
     # An instance of FixtureSet is normally stored in a single YAML file and possibly in a folder with the same name.
@@ -535,7 +540,11 @@ module ActiveRecord
     # Integer identifiers are values less than 2^32. UUIDs are RFC 4122 version 5 SHA-1 hashes.
     def self.identify(label, column_type = :integer)
       if column_type == :uuid
-        ActiveRecord::Base.connection.select_value("SELECT uuid_generate_v5(uuid_nil(), #{ActiveRecord::Base.connection.quote(label.to_s)})")
+        if defined?(UUIDTools)
+          UUIDTools::UUID.sha1_create(UUIDTools::UUID_OID_NAMESPACE, label.to_s).to_s
+        else
+          ActiveRecord::Base.connection.select_value("SELECT uuid_generate_v5(uuid_ns_oid(), #{ActiveRecord::Base.connection.quote(label.to_s)})")
+        end
       else
         Zlib.crc32(label.to_s) % MAX_ID
       end
