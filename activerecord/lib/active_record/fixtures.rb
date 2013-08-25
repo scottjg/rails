@@ -371,6 +371,11 @@ module ActiveRecord
   #     <<: *DEFAULTS
   #
   # Any fixture labeled "DEFAULTS" is safely ignored.
+  #
+  # == Support for UUID columns
+  #
+  # Stable RFC 4122 version 5 UUIDs are generated in the OID namespace.
+  # Optionally install the `uuidtools` gem for faster UUID generation.
   class FixtureSet
     #--
     # An instance of FixtureSet is normally stored in a single YAML file and possibly in a folder with the same name.
