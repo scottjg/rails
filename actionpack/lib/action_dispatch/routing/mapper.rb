@@ -955,6 +955,7 @@ module ActionDispatch
 
         class Resource #:nodoc:
           attr_reader :controller, :path, :options, :param
+          attr_reader :collection_routing
 
           def initialize(entities, options = {})
             @name       = entities.to_s
@@ -963,6 +964,11 @@ module ActionDispatch
             @as         = options[:as]
             @param      = (options[:param] || :id).to_sym
             @options    = options
+            @collection_routing = @options[:collection]
+          end
+
+          def collection_routing?
+            @collection_routing == true
           end
 
           def default_actions
@@ -1252,14 +1258,12 @@ module ActionDispatch
               actions = parent_resource.actions
               get    :index, options if actions.include?(:index)
               post   :create, options if actions.include?(:create)
-              if collection_routing?(options)
+              if parent_resource.collection_routing?
                 put    :replace, options if actions.include?(:replace)
                 patch  :update_many, options if actions.include?(:update_many)
                 delete :destroy_many, options if actions.include?(:destroy_many)
               end
             end
-            
-
 
             # get    '/posts',             to: 'posts#index',        as: 'posts_index'
             # post   '/posts',             to: 'posts#create',       as:  nil
@@ -1283,10 +1287,6 @@ module ActionDispatch
           end
 
           self
-        end
-
-        def collection_routing?(options)
-          options[:collection] == true
         end
 
         # To add a route to the collection:
