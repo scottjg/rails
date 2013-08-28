@@ -12,13 +12,13 @@ require 'time'
 require 'active_support/core_ext/time/conversions'
 require 'active_support/core_ext/date_time/conversions'
 require 'active_support/core_ext/date/conversions'
-require 'json'
 
 module ActiveSupport
   class << self
     delegate :use_standard_json_time_format, :use_standard_json_time_format=,
       :escape_html_entities_in_json, :escape_html_entities_in_json=,
       :encode_big_decimal_as_string, :encode_big_decimal_as_string=,
+      :default_json_encoder, :default_json_encoder=,
       :to => :'ActiveSupport::JSON::Encoding'
   end
 
@@ -32,7 +32,7 @@ module ActiveSupport
     #   ActiveSupport::JSON.encode({ team: 'rails', players: '36' })
     #   # => "{\"team\":\"rails\",\"players\":\"36\"}"
     def self.encode(value, options = nil)
-      Encoding::Encoder.new(options).encode(value)
+      Encoding.default_json_encoder.new(options).encode(value)
     end
 
     module Encoding #:nodoc:
@@ -44,35 +44,31 @@ module ActiveSupport
         end
 
         def encode(value)
-          json = ::JSON.generate(jsonify(value, true), max_nesting: false, quirks_mode: true)
-
-          if Encoding.escape_html_entities_in_json
-            escape_regex = /[><&\u2028\u2029]/
-          else
-            escape_regex = /[\u2028\u2029]/
-          end
-
-          json.gsub(escape_regex, Encoding::ESCAPED_CHARS)
-        end
-
-        def jsonify(value, use_options = false)
-          if value.respond_to?(:as_json)
-            value = value.as_json(use_options ? options.dup : nil)
-          end
-
-          case value
-          when TrueClass, FalseClass, NilClass, String, Numeric
-            jsonify_scalar(value)
-          when Hash
-            jsonify_hash(value)
-          when Array
-            jsonify_array(value)
-          else
-            jsonify_other(value)
-          end
+          encode_jsonified(jsonify(value, true))
         end
 
         protected
+          def encode_jsonified(jsonified)
+            raise NotImplementedError
+          end
+
+          def jsonify(value, use_options = false)
+            if value.respond_to?(:as_json)
+              value = value.as_json(use_options ? options.dup : nil)
+            end
+
+            case value
+            when TrueClass, FalseClass, NilClass, String, Numeric
+              jsonify_scalar(value)
+            when Hash
+              jsonify_hash(value)
+            when Array
+              jsonify_array(value)
+            else
+              jsonify_other(value)
+            end
+          end
+
           def jsonify_scalar(value)
             value
           end
@@ -87,6 +83,56 @@ module ActiveSupport
 
           def jsonify_other(value)
             raise TypeError, "Don't know how to jsonify #{value.inspect}"
+          end
+
+        class << self
+          def circular_reference_error
+            SystemStackError
+          end
+        end
+      end
+
+      class JSONGemEncoder < Encoder
+        def initialize(options = nil)
+          require 'json'
+          super
+        end
+
+        protected
+          def encode_jsonified(jsonified)
+            json = ::JSON.generate(jsonified, max_nesting: false, quirks_mode: true)
+
+            if Encoding.escape_html_entities_in_json
+              escape_regex = /[><&\u2028\u2029]/
+            else
+              escape_regex = /[\u2028\u2029]/
+            end
+
+            json.gsub(escape_regex, Encoding::ESCAPED_CHARS)
+          end
+
+          def jsonify_scalar(value)
+            if !Encoding.encode_big_decimal_as_string && value.is_a?(BigDecimal)
+              BigDecimalProxy.new(value)
+            else
+              super
+            end
+          end
+
+        private
+          class BigDecimalProxy
+            def initialize(value)
+              @value = value
+            end
+
+            def as_json(options = nil)
+              as_json_value = @value.as_json(options)
+              as_json_value == @value ? self : as_json_value
+            end
+
+            def to_json(options = nil)
+              @value.to_s
+            end
           end
       end
 
@@ -108,6 +154,9 @@ module ActiveSupport
         attr_accessor :encode_big_decimal_as_string
         attr_accessor :escape_html_entities_in_json
 
+        # Set the default encoder to use for AS::JSON.encode and Object#to_json
+        attr_accessor :default_json_encoder
+
         # Deprecate CircularReferenceError
         def const_missing(name)
           if name == :CircularReferenceError
@@ -117,7 +166,7 @@ module ActiveSupport
 
             ActiveSupport::Deprecation.warn message
 
-            SystemStackError
+            default_json_encoder.circular_reference_error
           else
             super
           end
@@ -127,6 +176,8 @@ module ActiveSupport
       self.use_standard_json_time_format = true
       self.escape_html_entities_in_json  = true
       self.encode_big_decimal_as_string  = true
+
+      self.default_json_encoder = JSONGemEncoder
     end
   end
 end
@@ -209,14 +260,6 @@ class BigDecimal
       ActiveSupport.encode_big_decimal_as_string ? to_s : self
     else
       nil
-    end
-  end
-
-  def to_json(options = nil) #:nodoc:
-    if finite?
-      ActiveSupport.encode_big_decimal_as_string ? %("#{to_s}") : to_s
-    else
-      "null"
     end
   end
 end
