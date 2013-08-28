@@ -1,5 +1,7 @@
 require "cases/helper"
 require "models/book"
+require "models/post"
+require "models/comment"
 
 module ActiveRecord
   class AdapterTest < ActiveRecord::TestCase
@@ -176,6 +178,17 @@ module ActiveRecord
 
     def test_select_all_always_return_activerecord_result
       result = @connection.select_all "SELECT * FROM posts"
+      assert result.is_a?(ActiveRecord::Result)
+
+      post = Post.create(body: "lorem", title: "ipsum")
+      Comment.create(post_id: post.id, body: "dolor")
+      arel = post.comments.joins(:children).\
+        where('children_comments.children_count > ?', 11).\
+        select('distinct comments.id')
+
+      result = @connection.select_all(arel.to_sql)
+      assert result.is_a?(ActiveRecord::Result)
+      result = @connection.select_all(arel)
       assert result.is_a?(ActiveRecord::Result)
     end
   end
