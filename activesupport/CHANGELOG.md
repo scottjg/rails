@@ -1,3 +1,17 @@
+*   Added the option `ActiveSupport.default_json_encoder`
+
+    This option allows you to swap out the default JSON encoder used by
+    ActiveSupport::JSON.encode and Object#to_json. This allows you to
+    write custom JSON encoders to provide additional functionailities
+    (such as encode_json support and caching), or to use alternative JSON
+    libaries. The default is ActiveSupport::JSON::Encoding::JSONGemEncoder
+    which uses the built-in JSON gem.
+
+*   Removed support for encode_json in ActiveSupport::JSON.encode. If your application requires
+    this feature, you can install the {INSERT_GEM_NAME_HERE} gem.
+
+    *Godfrey Chan*
+
 *   Removed circular reference protection in JSON encoder, deprecated 
     ActiveSupport::JSON::Encoding::CircularReferenceError.
 
