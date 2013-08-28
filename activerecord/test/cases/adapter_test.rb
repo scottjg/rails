@@ -181,7 +181,6 @@ module ActiveRecord
       assert result.is_a?(ActiveRecord::Result)
 
       post = Post.create(body: "lorem", title: "ipsum")
-      Comment.create(post_id: post.id, body: "dolor")
       arel = post.comments.joins(:children).\
         where('children_comments.children_count > ?', 11).\
         select('distinct comments.id')
