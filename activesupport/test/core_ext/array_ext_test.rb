@@ -434,6 +434,36 @@ class ArrayWrapperTests < ActiveSupport::TestCase
   end
 end
 
+class ArrayUnwrapperTest < ActiveSupport::TestCase
+  class FakeCollection
+    def to_ary
+      %w(foo bar baz)
+    end
+  end
+
+  def test_array
+    ary = %w(foo)
+    assert_equal "foo", Array.unwrap(ary)
+  end
+
+  def test_many_objects_in_array
+    ary = %w(foo bar)
+    assert_equal "foo", Array.unwrap(ary)
+  end
+
+  def test_empty_array
+    assert_equal nil, Array.unwrap([])
+  end
+
+  def test_single_object
+    assert_equal 'foo', Array.unwrap('foo')
+  end
+
+  def test_to_ary_object
+    assert_equal 'foo', Array.unwrap(FakeCollection.new)
+  end
+end
+
 class ArrayPrependAppendTest < ActiveSupport::TestCase
   def test_append
     assert_equal [1, 2], [1].append(2)
