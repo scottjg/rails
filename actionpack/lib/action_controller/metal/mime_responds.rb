@@ -325,7 +325,7 @@ module ActionController #:nodoc:
             "controller responds to in the class level" if self.class.mimes_for_respond_to.empty?
 
       if collector = retrieve_collector_from_mimes(&block)
-        options = resources.size == 1 ? {} : resources.extract_options!
+        options = resources.size == 1 ? {} : resources.extract_options!.clone
         options[:default_response] = collector.response
         (options.delete(:responder) || self.class.responder).call(self, resources, options)
       end

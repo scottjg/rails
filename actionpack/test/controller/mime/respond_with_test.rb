@@ -65,6 +65,14 @@ class RespondWithController < ActionController::Base
     respond_with(resource, :responder => responder)
   end
 
+  def not_modifying_options
+    options = {:foo => 'bar', :bar => 'baz', :baz => 'foo'}
+    responder = proc { |c, r, o| c.render :text => options.to_json }
+    options[:responder] = responder
+
+    respond_with(resource, options)
+  end
+
 protected
 
   def resource
@@ -560,6 +568,12 @@ class RespondWithControllerTest < ActionController::TestCase
     get :using_resource_with_status_and_location
     assert_equal 201, @response.status
   end
+
+  def test_not_modifying_options
+    get :not_modifying_options
+    assert_equal "{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"foo\",\"responder\":{}}", @response.body
+  end
+
 
   def test_using_resource_with_status_and_location_with_invalid_resource
     errors = { :name => :invalid }
