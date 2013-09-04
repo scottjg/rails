@@ -57,10 +57,6 @@ platforms :ruby do
     gem 'pg', '>= 0.11.0'
     gem 'mysql', '>= 2.9.0'
     gem 'mysql2', '>= 0.3.13'
-
-    # Defer requiring to the fixtures test so that the fallback mechanism
-    # for generating UUIDs can be tested first.
-    gem 'uuidtools', require: false
   end
 end
 
