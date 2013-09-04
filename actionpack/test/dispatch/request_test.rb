@@ -622,6 +622,19 @@ class RequestTest < ActiveSupport::TestCase
     assert_equal request.format.json?, false
   end
 
+  test "formats without xhr request" do
+    request = stub_request 'HTTP_ACCEPT' => '*/*;q=0.5, text/javascript, application/javascript'
+
+    request.expects(:parameters).at_least_once.returns({})
+    assert_equal [ Mime::JS, Mime::ALL ], request.formats
+
+    request = stub_request 'HTTP_ACCEPT' => 'text/javascript, application/javascript, */*; q=0.01'
+
+    request.expects(:parameters).at_least_once.returns({})
+    assert_equal [ Mime::JS, Mime::ALL ], request.formats
+
+  end
+
   test "formats with xhr request" do
     request = stub_request 'HTTP_X_REQUESTED_WITH' => "XMLHttpRequest"
     request.expects(:parameters).at_least_once.returns({})
