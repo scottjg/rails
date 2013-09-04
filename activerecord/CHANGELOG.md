@@ -1,3 +1,7 @@
+*   Return HashWithIndifferentAccess instance when calling `attributes` method.
+
+    *kennyj*
+
 *   Deprecate the delegation of Array bang methods for associations.
     To use them, instead first call `#to_a` on the association to access the
     array to be acted on.
