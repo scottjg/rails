@@ -1,5 +1,4 @@
 *   Auto-generate stable fixture UUIDs on PostgreSQL.
-    Optionally install the `uuidtools` gem for better performance.
 
     Fixes: #11524
 
