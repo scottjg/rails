@@ -18,10 +18,11 @@ module AbstractController
       self.protected_instance_variables = []
     end
 
-    # Normalize arguments, options and then delegates render_to_body and
-    # sticks the result in self.response_body.
+    # Render template to response_body
     # :api: public
     def render(*args, &block)
+      options = _normalize_render(*args, &block)
+      self.response_body = render_to_body(options)
     end
 
     # Raw rendering of a template to a string.
@@ -44,7 +45,6 @@ module AbstractController
     # :api: public
     def render_to_body(options = {})
       _process_options(options)
-      _render_template(options)
     end
 
     # Return Content-Type of rendered content

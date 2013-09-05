@@ -77,11 +77,11 @@ module ActionView
       @_view_renderer ||= ActionView::Renderer.new(lookup_context)
     end
 
-    # Render template to response_body
+    # Raw rendering of a template.
     # :api: public
-    def render(*args, &block)
-      options = _normalize_render(*args, &block)
-      self.response_body = render_to_body(options)
+    def render_to_body(options = {})
+      _process_options(options)
+      _render_template(options)
     end
 
     # Find and renders a template based on the options given.

@@ -93,6 +93,11 @@ module ActionController
       end
     end
 
+    add :text do |text, options|
+      self.content_type ||= Mime::TEXT
+      text
+    end
+
     add :json do |json, options|
       json = json.to_json(options) unless json.kind_of?(String)
 

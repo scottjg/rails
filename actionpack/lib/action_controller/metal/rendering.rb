@@ -42,14 +42,6 @@ module ActionController
 
     # Normalize both text and status options.
     def _normalize_options(options) #:nodoc:
-      if options.key?(:text) && options[:text].respond_to?(:to_text)
-        options[:text] = options[:text].to_text
-      end
-
-      if options.delete(:nothing) || (options.key?(:text) && options[:text].nil?)
-        options[:text] = " "
-      end
-
       if options[:status]
         options[:status] = Rack::Utils.status_code(options[:status])
       end
