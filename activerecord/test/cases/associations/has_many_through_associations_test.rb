@@ -5,6 +5,7 @@ require 'models/reference'
 require 'models/job'
 require 'models/reader'
 require 'models/comment'
+require 'models/rating'
 require 'models/tag'
 require 'models/tagging'
 require 'models/author'
@@ -27,12 +28,48 @@ require 'models/club'
 class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :posts, :readers, :people, :comments, :authors, :categories, :taggings, :tags,
            :owners, :pets, :toys, :jobs, :references, :companies, :members, :author_addresses,
-           :subscribers, :books, :subscriptions, :developers, :categorizations, :essays
+           :subscribers, :books, :subscriptions, :developers, :categorizations, :essays,
+           :categories_posts
 
   # Dummies to force column loads so query counts are clean.
   def setup
     Person.create :first_name => 'gummy'
     Reader.create :person_id => 0, :post_id => 0
+  end
+
+  def make_model(name)
+    Class.new(ActiveRecord::Base) { define_singleton_method(:name) { name } }
+  end
+
+  def test_singleton_has_many_through
+    book         = make_model "Book"
+    subscription = make_model "Subscription"
+    subscriber   = make_model "Subscriber"
+
+    subscriber.primary_key = 'nick'
+    subscription.belongs_to :book,       class: book
+    subscription.belongs_to :subscriber, class: subscriber
+
+    book.has_many :subscriptions, class: subscription
+    book.has_many :subscribers, through: :subscriptions, class: subscriber
+
+    anonbook = book.first
+    namebook = Book.find anonbook.id
+
+    assert_operator anonbook.subscribers.count, :>, 0
+    anonbook.subscribers.each do |s|
+      assert_instance_of subscriber, s
+    end
+    assert_equal namebook.subscribers.map(&:id).sort,
+                 anonbook.subscribers.map(&:id).sort
+  end
+
+  def test_pk_is_not_required_for_join
+    post  = Post.includes(:scategories).first
+    post2 = Post.includes(:categories).first
+
+    assert_operator post.categories.length, :>, 0
+    assert_equal post2.categories, post.categories
   end
 
   def test_include?
@@ -55,6 +92,47 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     end
 
     assert post.reload.people(true).include?(person)
+  end
+
+  def test_delete_all_for_with_dependent_option_destroy
+    person = people(:david)
+    assert_equal 1, person.jobs_with_dependent_destroy.count
+
+    assert_no_difference 'Job.count' do
+      assert_difference 'Reference.count', -1 do
+        person.reload.jobs_with_dependent_destroy.delete_all
+      end
+    end
+  end
+
+  def test_delete_all_for_with_dependent_option_nullify
+    person = people(:david)
+    assert_equal 1, person.jobs_with_dependent_nullify.count
+
+    assert_no_difference 'Job.count' do
+      assert_no_difference 'Reference.count' do
+        person.reload.jobs_with_dependent_nullify.delete_all
+      end
+    end
+  end
+
+  def test_delete_all_for_with_dependent_option_delete_all
+    person = people(:david)
+    assert_equal 1, person.jobs_with_dependent_delete_all.count
+
+    assert_no_difference 'Job.count' do
+      assert_difference 'Reference.count', -1 do
+        person.reload.jobs_with_dependent_delete_all.delete_all
+      end
+    end
+  end
+
+  def test_concat
+    person = people(:david)
+    post   = posts(:thinking)
+    post.people.concat [person]
+    assert_equal 1, post.people.size
+    assert_equal 1, post.people(true).size
   end
 
   def test_associate_existing_record_twice_should_add_to_target_twice
@@ -582,8 +660,13 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal post.author.author_favorites, post.author_favorites
   end
 
+  def test_merge_join_association_with_has_many_through_association_proxy
+    author = authors(:mary)
+    assert_nothing_raised { author.comments.ratings.to_sql }
+  end
+
   def test_has_many_association_through_a_has_many_association_with_nonstandard_primary_keys
-    assert_equal 1, owners(:blackbeard).toys.count
+    assert_equal 2, owners(:blackbeard).toys.count
   end
 
   def test_find_on_has_many_association_collection_with_include_and_conditions
@@ -880,6 +963,12 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_with_polymorphic_source
     post = tags(:general).tagged_posts.create! :title => "foo", :body => "bar"
     assert_equal [tags(:general)], post.reload.tags
+  end
+
+  def test_has_many_through_obeys_order_on_through_association
+    owner = owners(:blackbeard)
+    assert owner.toys.to_sql.include?("pets.name desc")
+    assert_equal ["parrot", "bulbul"], owner.toys.map { |r| r.pet.name }
   end
 
   test "has many through associations on new records use null relations" do

@@ -25,7 +25,7 @@ Write in present tense: "Returns a hash that...", rather than "Returned a hash t
 Start comments in upper case. Follow regular punctuation rules:
 
 ```ruby
-# Declares an attribute reader backed by an internally-named 
+# Declares an attribute reader backed by an internally-named
 # instance variable.
 def attr_internal_reader(*attrs)
   ...
@@ -57,7 +57,7 @@ Use two spaces to indent chunks of code--that is, for markup purposes, two space
 Short docs do not need an explicit "Examples" label to introduce snippets; they just follow paragraphs:
 
 ```ruby
-# Converts a collection of elements into a formatted string by 
+# Converts a collection of elements into a formatted string by
 # calling +to_s+ on all elements and joining them.
 #
 #   Blog.all.to_formatted_s # => "First PostSecond PostThird Post"
@@ -141,7 +141,7 @@ class Array
 end
 ```
 
-WARNING: Using a pair of `+...+` for fixed-width font only works with **words**; that is: anything matching `\A\w+\z`. For anything else  use `<tt>...</tt>`, notably symbols, setters, inline snippets, etc.
+WARNING: Using a pair of `+...+` for fixed-width font only works with **words**; that is: anything matching `\A\w+\z`. For anything else use `<tt>...</tt>`, notably symbols, setters, inline snippets, etc.
 
 ### Regular Font
 
@@ -172,7 +172,7 @@ In lists of options, parameters, etc. use a hyphen between the item and its desc
 # * <tt>:allow_nil</tt> - Skip validation if attribute is +nil+.
 ```
 
-The description starts in upper case and ends with a full stop—it's standard English.
+The description starts in upper case and ends with a full stop-it's standard English.
 
 Dynamically Generated Methods
 -----------------------------

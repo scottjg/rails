@@ -12,7 +12,6 @@ module ActiveModel
   # A minimal implementation could be:
   #
   #   class Person
-  #
   #     # Required dependency for ActiveModel::Errors
   #     extend ActiveModel::Naming
   #
@@ -40,7 +39,6 @@ module ActiveModel
   #     def Person.lookup_ancestors
   #       [self]
   #     end
-  #
   #   end
   #
   # The last three methods are required in your object for Errors to be
@@ -52,7 +50,7 @@ module ActiveModel
   #
   # The above allows you to do:
   #
-  #   p = Person.new
+  #   person = Person.new
   #   person.validate!            # => ["can not be nil"]
   #   person.errors.full_messages # => ["name can not be nil"]
   #   # etc..
@@ -233,15 +231,15 @@ module ActiveModel
     #   #    <error>name must be specified</error>
     #   #  </errors>
     def to_xml(options={})
-      to_a.to_xml({ :root => "errors", :skip_types => true }.merge!(options))
+      to_a.to_xml({ root: "errors", skip_types: true }.merge!(options))
     end
 
     # Returns a Hash that can be used as the JSON representation for this
     # object. You can pass the <tt>:full_messages</tt> option. This determines
     # if the json object should contain full messages or not (false by default).
     #
-    #   person.as_json                      # => {:name=>["can not be nil"]}
-    #   person.as_json(full_messages: true) # => {:name=>["name can not be nil"]}
+    #   person.errors.as_json                      # => {:name=>["can not be nil"]}
+    #   person.errors.as_json(full_messages: true) # => {:name=>["name can not be nil"]}
     def as_json(options=nil)
       to_hash(options && options[:full_messages])
     end
@@ -249,8 +247,8 @@ module ActiveModel
     # Returns a Hash of attributes with their error messages. If +full_messages+
     # is +true+, it will contain full messages (see +full_message+).
     #
-    #   person.to_hash       # => {:name=>["can not be nil"]}
-    #   person.to_hash(true) # => {:name=>["name can not be nil"]}
+    #   person.errors.to_hash       # => {:name=>["can not be nil"]}
+    #   person.errors.to_hash(true) # => {:name=>["name can not be nil"]}
     def to_hash(full_messages = false)
       if full_messages
         messages = {}
@@ -291,7 +289,7 @@ module ActiveModel
     #   # => NameIsInvalid: name is invalid
     #
     #   person.errors.messages # => {}
-    def add(attribute, message = nil, options = {})
+    def add(attribute, message = :invalid, options = {})
       message = normalize_message(attribute, message, options)
       if exception = options[:strict]
         exception = ActiveModel::StrictValidationFailed if exception == true
@@ -333,7 +331,7 @@ module ActiveModel
     #
     #   person.errors.add :name, :blank
     #   person.errors.added? :name, :blank # => true
-    def added?(attribute, message = nil, options = {})
+    def added?(attribute, message = :invalid, options = {})
       message = normalize_message(attribute, message, options)
       self[attribute].include? message
     end
@@ -352,17 +350,31 @@ module ActiveModel
       map { |attribute, message| full_message(attribute, message) }
     end
 
+    # Returns all the full error messages for a given attribute in an array.
+    #
+    #   class Person
+    #     validates_presence_of :name, :email
+    #     validates_length_of :name, in: 5..30
+    #   end
+    #
+    #   person = Person.create()
+    #   person.errors.full_messages_for(:name)
+    #   # => ["Name is too short (minimum is 5 characters)", "Name can't be blank"]
+    def full_messages_for(attribute)
+      (get(attribute) || []).map { |message| full_message(attribute, message) }
+    end
+
     # Returns a full message for a given attribute.
     #
     #   person.errors.full_message(:name, 'is invalid') # => "Name is invalid"
     def full_message(attribute, message)
       return message if attribute == :base
       attr_name = attribute.to_s.tr('.', '_').humanize
-      attr_name = @base.class.human_attribute_name(attribute, :default => attr_name)
+      attr_name = @base.class.human_attribute_name(attribute, default: attr_name)
       I18n.t(:"errors.format", {
-        :default   => "%{attribute} %{message}",
-        :attribute => attr_name,
-        :message   => message
+        default:  "%{attribute} %{message}",
+        attribute: attr_name,
+        message:   message
       })
     end
 
@@ -414,10 +426,10 @@ module ActiveModel
       value = (attribute != :base ? @base.send(:read_attribute_for_validation, attribute) : nil)
 
       options = {
-        :default => defaults,
-        :model => @base.class.model_name.human,
-        :attribute => @base.class.human_attribute_name(attribute),
-        :value => value
+        default: defaults,
+        model: @base.class.model_name.human,
+        attribute: @base.class.human_attribute_name(attribute),
+        value: value
       }.merge!(options)
 
       I18n.translate(key, options)
@@ -425,8 +437,6 @@ module ActiveModel
 
   private
     def normalize_message(attribute, message, options)
-      message ||= :invalid
-
       case message
       when Symbol
         generate_message(attribute, message, options.except(*CALLBACKS_OPTIONS))

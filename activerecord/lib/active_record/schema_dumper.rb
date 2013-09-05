@@ -106,9 +106,12 @@ HEADER
           end
 
           tbl.print "  create_table #{remove_prefix_and_suffix(table).inspect}"
-          if columns.detect { |c| c.name == pk }
+          pkcol = columns.detect { |c| c.name == pk }
+          if pkcol
             if pk != 'id'
               tbl.print %Q(, primary_key: "#{pk}")
+            elsif pkcol.sql_type == 'uuid'
+              tbl.print ", id: :uuid"
             end
           else
             tbl.print ", id: false"
@@ -118,7 +121,7 @@ HEADER
 
           # then dump all non-primary key columns
           column_specs = columns.map do |column|
-            raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" if @types[column.type].nil?
+            raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" unless @connection.valid_type?(column.type)
             next if column.name == pk
             @connection.column_spec(column, @types)
           end.compact
@@ -184,6 +187,10 @@ HEADER
             statement_parts << ('order: ' + index.orders.inspect) unless index_orders.empty?
 
             statement_parts << ('where: ' + index.where.inspect) if index.where
+
+            statement_parts << ('using: ' + index.using.inspect) if index.using
+
+            statement_parts << ('type: ' + index.type.inspect) if index.type
 
             '  ' + statement_parts.join(', ')
           end

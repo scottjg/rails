@@ -5,7 +5,8 @@ module ActiveRecord
 
       included do
         # Stores the default scope for the class.
-        class_attribute :default_scopes, instance_writer: false
+        class_attribute :default_scopes, instance_writer: false, instance_predicate: false
+
         self.default_scopes = []
       end
 
@@ -27,14 +28,6 @@ module ActiveRecord
         #   Post.unscoped {
         #     Post.limit(10) # Fires "SELECT * FROM posts LIMIT 10"
         #   }
-        #
-        # It is recommended that you use the block form of unscoped because
-        # chaining unscoped with +scope+ does not work. Assuming that
-        # +published+ is a +scope+, the following two statements
-        # are equal: the +default_scope+ is applied on both.
-        #
-        #   Post.unscoped.published
-        #   Post.published
         def unscoped
           block_given? ? relation.scoping { yield } : relation
         end
@@ -90,12 +83,11 @@ module ActiveRecord
           scope = Proc.new if block_given?
 
           if scope.is_a?(Relation) || !scope.respond_to?(:call)
-            ActiveSupport::Deprecation.warn(
-              "Calling #default_scope without a block is deprecated. For example instead " \
+            raise ArgumentError,
+              "Support for calling #default_scope without a block is removed. For example instead " \
               "of `default_scope where(color: 'red')`, please use " \
               "`default_scope { where(color: 'red') }`. (Alternatively you can just redefine " \
               "self.default_scope.)"
-            )
           end
 
           self.default_scopes += [scope]
@@ -108,22 +100,18 @@ module ActiveRecord
           elsif default_scopes.any?
             evaluate_default_scope do
               default_scopes.inject(relation) do |default_scope, scope|
-                if !scope.is_a?(Relation) && scope.respond_to?(:call)
-                  default_scope.merge(unscoped { scope.call })
-                else
-                  default_scope.merge(scope)
-                end
+                default_scope.merge(unscoped { scope.call })
               end
             end
           end
         end
 
         def ignore_default_scope? # :nodoc:
-          Thread.current["#{self}_ignore_default_scope"]
+          ScopeRegistry.value_for(:ignore_default_scope, self)
         end
 
         def ignore_default_scope=(ignore) # :nodoc:
-          Thread.current["#{self}_ignore_default_scope"] = ignore
+          ScopeRegistry.set_value_for(:ignore_default_scope, self, ignore)
         end
 
         # The ignore_default_scope flag is used to prevent an infinite recursion

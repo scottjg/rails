@@ -1,6 +1,8 @@
 require 'cases/helper'
 require 'models/topic'
+require 'models/reply'
 require 'models/person'
+require 'models/traffic_light'
 require 'bcrypt'
 
 class SerializedAttributeTest < ActiveRecord::TestCase
@@ -15,12 +17,6 @@ class SerializedAttributeTest < ActiveRecord::TestCase
 
   def test_list_of_serialized_attributes
     assert_equal %w(content), Topic.serialized_attributes.keys
-  end
-
-  def test_serialized_attributes_are_class_level_settings
-    topic = Topic.new
-    assert_raise(NoMethodError) { topic.serialized_attributes = [] }
-    assert_deprecated { topic.serialized_attributes }
   end
 
   def test_serialized_attribute
@@ -233,5 +229,24 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     assert person.save
     person = person.reload
     assert_equal(insures, person.insures)
+  end
+
+  def test_regression_serialized_default_on_text_column_with_null_false
+    light = TrafficLight.new
+    assert_equal [], light.state
+    assert_equal [], light.long_state
+  end
+
+  def test_serialized_column_should_not_be_wrapped_twice
+    Topic.serialize(:content, MyObject)
+
+    myobj = MyObject.new('value1', 'value2')
+    Topic.create(content: myobj)
+    Topic.create(content: myobj)
+
+    Topic.all.each do |topic|
+      type = topic.instance_variable_get("@columns_hash")["content"]
+      assert !type.instance_variable_get("@column").is_a?(ActiveRecord::AttributeMethods::Serialization::Type)
+    end
   end
 end

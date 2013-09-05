@@ -107,30 +107,6 @@ module ActiveRecord
         end
       end
 
-      def type_cast_code(var_name)
-        message = "Column#type_cast_code is deprecated in favor of using Column#type_cast only, " \
-                  "and it is going to be removed in future Rails versions."
-        ActiveSupport::Deprecation.warn message
-
-        klass = self.class.name
-
-        case type
-        when :string, :text        then var_name
-        when :integer              then "#{klass}.value_to_integer(#{var_name})"
-        when :float                then "#{var_name}.to_f"
-        when :decimal              then "#{klass}.value_to_decimal(#{var_name})"
-        when :datetime, :timestamp then "#{klass}.string_to_time(#{var_name})"
-        when :time                 then "#{klass}.string_to_dummy_time(#{var_name})"
-        when :date                 then "#{klass}.value_to_date(#{var_name})"
-        when :binary               then "#{klass}.binary_to_string(#{var_name})"
-        when :boolean              then "#{klass}.value_to_boolean(#{var_name})"
-        when :hstore               then "#{klass}.string_to_hstore(#{var_name})"
-        when :inet, :cidr          then "#{klass}.string_to_cidr(#{var_name})"
-        when :json                 then "#{klass}.string_to_json(#{var_name})"
-        else var_name
-        end
-      end
-
       # Returns the human name of the column name.
       #
       # ===== Examples
@@ -143,17 +119,7 @@ module ActiveRecord
         type_cast(default)
       end
 
-      # Used to convert from Strings to BLOBs
-      def string_to_binary(value)
-        self.class.string_to_binary(value)
-      end
-
       class << self
-        # Used to convert from Strings to BLOBs
-        def string_to_binary(value)
-          value
-        end
-
         # Used to convert from BLOBs to Strings
         def binary_to_string(value)
           value
@@ -161,7 +127,7 @@ module ActiveRecord
 
         def value_to_date(value)
           if value.is_a?(String)
-            return nil if value.blank?
+            return nil if value.empty?
             fast_string_to_date(value) || fallback_string_to_date(value)
           elsif value.respond_to?(:to_date)
             value.to_date
@@ -172,14 +138,14 @@ module ActiveRecord
 
         def string_to_time(string)
           return string unless string.is_a?(String)
-          return nil if string.blank?
+          return nil if string.empty?
 
           fast_string_to_time(string) || fallback_string_to_time(string)
         end
 
         def string_to_dummy_time(string)
           return string unless string.is_a?(String)
-          return nil if string.blank?
+          return nil if string.empty?
 
           dummy_time_string = "2000-01-01 #{string}"
 
@@ -192,7 +158,7 @@ module ActiveRecord
 
         # convert something to a boolean
         def value_to_boolean(value)
-          if value.is_a?(String) && value.blank?
+          if value.is_a?(String) && value.empty?
             nil
           else
             TRUE_VALUES.include?(value)
@@ -306,7 +272,7 @@ module ActiveRecord
             :text
           when /blob/i, /binary/i
             :binary
-          when /char/i, /string/i
+          when /char/i
             :string
           when /boolean/i
             :boolean

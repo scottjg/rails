@@ -29,6 +29,10 @@ module ActiveRecord
         end
 
         def records_for(ids)
+          query_scope(ids)
+        end
+
+        def query_scope(ids)
           scope.where(association_key.in(ids))
         end
 
@@ -52,12 +56,9 @@ module ActiveRecord
           raise NotImplementedError
         end
 
-        # We're converting to a string here because postgres will return the aliased association
-        # key in a habtm as a string (for whatever reason)
         def owners_by_key
           @owners_by_key ||= owners.group_by do |owner|
-            key = owner[owner_key_name]
-            key && key.to_s
+            owner[owner_key_name]
           end
         end
 
@@ -71,25 +72,32 @@ module ActiveRecord
           owners_map = owners_by_key
           owner_keys = owners_map.keys.compact
 
-          if klass.nil? || owner_keys.empty?
-            records = []
-          else
+          # Each record may have multiple owners, and vice-versa
+          records_by_owner = Hash[owners.map { |owner| [owner, []] }]
+
+          if klass && owner_keys.any?
             # Some databases impose a limit on the number of ids in a list (in Oracle it's 1000)
             # Make several smaller queries if necessary or make one query if the adapter supports it
             sliced  = owner_keys.each_slice(klass.connection.in_clause_length || owner_keys.size)
-            records = sliced.map { |slice| records_for(slice).to_a }.flatten
+            sliced.each { |slice|
+              records = records_for(slice)
+              caster = type_caster(records, association_key_name)
+              records.each do |record|
+                owner_key = caster.call record[association_key_name]
+
+                owners_map[owner_key].each do |owner|
+                  records_by_owner[owner] << record
+                end
+              end
+            }
           end
 
-          # Each record may have multiple owners, and vice-versa
-          records_by_owner = Hash[owners.map { |owner| [owner, []] }]
-          records.each do |record|
-            owner_key = record[association_key_name].to_s
-
-            owners_map[owner_key].each do |owner|
-              records_by_owner[owner] << record
-            end
-          end
           records_by_owner
+        end
+
+        IDENTITY = lambda { |value| value }
+        def type_caster(results, name)
+          IDENTITY
         end
 
         def reflection_scope
@@ -98,7 +106,6 @@ module ActiveRecord
 
         def build_scope
           scope = klass.unscoped
-          scope.default_scoped = true
 
           values         = reflection_scope.values
           preload_values = preload_scope.values
@@ -113,7 +120,7 @@ module ActiveRecord
             scope.where!(klass.table_name => { reflection.type => model.base_class.sti_name })
           end
 
-          scope
+          klass.default_scoped.merge(scope)
         end
       end
     end

@@ -8,7 +8,7 @@ module ActiveRecord
       end
 
       def replace(record)
-        raise_on_type_mismatch(record) if record
+        raise_on_type_mismatch!(record) if record
 
         update_counters(record)
         replace_keys(record)
@@ -50,8 +50,8 @@ module ActiveRecord
 
         # Checks whether record is different to the current target, without loading it
         def different_target?(record)
-          if record.nil? 
-            owner[reflection.foreign_key] 
+          if record.nil?
+            owner[reflection.foreign_key]
           else
             record.id != owner[reflection.foreign_key]
           end

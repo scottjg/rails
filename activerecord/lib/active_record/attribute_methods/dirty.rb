@@ -14,17 +14,6 @@ module ActiveRecord
 
         class_attribute :partial_writes, instance_writer: false
         self.partial_writes = true
-
-        def self.partial_updates=(v); self.partial_writes = v; end
-        def self.partial_updates?; partial_writes?; end
-        def self.partial_updates; partial_writes; end
-
-        ActiveSupport::Deprecation.deprecate_methods(
-          singleton_class,
-          :partial_updates= => :partial_writes=,
-          :partial_updates? => :partial_writes?,
-          :partial_updates  => :partial_writes
-        )
       end
 
       # Attempts to +save+ the record and clears changed attributes if successful.
@@ -107,7 +96,11 @@ module ActiveRecord
 
       def changes_from_zero_to_string?(old, value)
         # For columns with old 0 and value non-empty string
-        old == 0 && value.is_a?(String) && value.present? && value != '0'
+        old == 0 && value.is_a?(String) && value.present? && non_zero?(value)
+      end
+
+      def non_zero?(value)
+        value !~ /\A0+(\.0+)?\z/
       end
     end
   end

@@ -139,7 +139,8 @@ module ActiveRecord
                                     exec_cache(sql, binds)
 
             types = {}
-            result.fields.each_with_index do |fname, i|
+            fields = result.fields
+            fields.each_with_index do |fname, i|
               ftype = result.ftype i
               fmod  = result.fmod i
               types[fname] = OID::TYPE_MAP.fetch(ftype, fmod) { |oid, mod|
@@ -148,7 +149,7 @@ module ActiveRecord
               }
             end
 
-            ret = ActiveRecord::Result.new(result.fields, result.values, types)
+            ret = ActiveRecord::Result.new(fields, result.values, types)
             result.clear
             return ret
           end
@@ -216,13 +217,6 @@ module ActiveRecord
         # Aborts a transaction.
         def rollback_db_transaction
           execute "ROLLBACK"
-        end
-
-        def outside_transaction?
-          message = "#outside_transaction? is deprecated. This method was only really used " \
-                    "internally, but you can use #transaction_open? instead."
-          ActiveSupport::Deprecation.warn message
-          @connection.transaction_status == PGconn::PQTRANS_IDLE
         end
 
         def create_savepoint

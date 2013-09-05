@@ -27,35 +27,34 @@ module ActiveRecord
         def through_records_by_owner
           Preloader.new(owners, through_reflection.name, through_scope).run
 
-          Hash[owners.map do |owner|
-            through_records = Array.wrap(owner.send(through_reflection.name))
+          should_reset = (through_scope != through_reflection.klass.unscoped) ||
+             (reflection.options[:source_type] && through_reflection.collection?)
+
+          owners.each_with_object({}) do |owner, h|
+            association = owner.association through_reflection.name
+            h[owner] = Array(association.reader)
 
             # Dont cache the association - we would only be caching a subset
-            if (through_scope != through_reflection.klass.unscoped) ||
-               (reflection.options[:source_type] && through_reflection.collection?)
-              owner.association(through_reflection.name).reset
-            end
-
-            [owner, through_records]
-          end]
+            association.reset if should_reset
+          end
         end
 
         def through_scope
-          through_scope = through_reflection.klass.unscoped
+          scope = through_reflection.klass.unscoped
 
           if options[:source_type]
-            through_scope.where! reflection.foreign_type => options[:source_type]
+            scope.where! reflection.foreign_type => options[:source_type]
           else
             unless reflection_scope.where_values.empty?
-              through_scope.includes_values = Array(reflection_scope.values[:includes] || options[:source])
-              through_scope.where_values    = reflection_scope.values[:where]
+              scope.includes_values = Array(reflection_scope.values[:includes] || options[:source])
+              scope.where_values    = reflection_scope.values[:where]
             end
 
-            through_scope.references! reflection_scope.values[:references]
-            through_scope.order! reflection_scope.values[:order] if through_scope.eager_loading?
+            scope.references! reflection_scope.values[:references]
+            scope.order! reflection_scope.values[:order] if scope.eager_loading?
           end
 
-          through_scope
+          scope
         end
       end
     end

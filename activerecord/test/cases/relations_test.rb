@@ -170,6 +170,10 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal topics(:fourth).title, topics.first.title
   end
 
+  def test_order_with_hash_and_symbol_generates_the_same_sql
+    assert_equal Topic.order(:id).to_sql, Topic.order(:id => :asc).to_sql
+  end
+
   def test_raising_exception_on_invalid_hash_params
     assert_raise(ArgumentError) { Topic.order(:name, "id DESC", :id => :DeSc) }
   end
@@ -180,7 +184,7 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_finding_with_order_concatenated
-    topics = Topic.order('title').order('author_name')
+    topics = Topic.order('author_name').order('title')
     assert_equal 4, topics.to_a.size
     assert_equal topics(:fourth).title, topics.first.title
   end
@@ -278,8 +282,9 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_null_relation_calculations_methods
     assert_no_queries do
-      assert_equal 0,     Developer.none.count
-      assert_equal nil,   Developer.none.calculate(:average, 'salary')
+      assert_equal 0, Developer.none.count
+      assert_equal 0, Developer.none.calculate(:count, nil, {})
+      assert_equal nil, Developer.none.calculate(:average, 'salary')
     end
   end
 
@@ -367,7 +372,7 @@ class RelationTest < ActiveRecord::TestCase
   def test_respond_to_dynamic_finders
     relation = Topic.all
 
-    ["find_by_title", "find_by_title_and_author_name", "find_or_create_by_title", "find_or_initialize_by_title_and_author_name"].each do |method|
+    ["find_by_title", "find_by_title_and_author_name"].each do |method|
       assert_respond_to relation, method, "Topic.all should respond to #{method.inspect}"
     end
   end
@@ -480,6 +485,14 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Post.find(1).last_comment, post.last_comment
   end
 
+  def test_to_sql_on_eager_join
+    expected = assert_sql {
+      Post.eager_load(:last_comment).order('comments.id DESC').to_a
+    }.first
+    actual = Post.eager_load(:last_comment).order('comments.id DESC').to_sql
+    assert_equal expected, actual
+  end
+
   def test_loading_with_one_association_with_non_preload
     posts = Post.eager_load(:last_comment).order('comments.id DESC')
     post = posts.find { |p| p.id == 1 }
@@ -492,6 +505,7 @@ class RelationTest < ActiveRecord::TestCase
     expected_taggings = taggings(:welcome_general, :thinking_general)
 
     assert_no_queries do
+      assert_equal expected_taggings, author.taggings.distinct.sort_by { |t| t.id }
       assert_equal expected_taggings, author.taggings.uniq.sort_by { |t| t.id }
     end
 
@@ -714,6 +728,13 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal [developers(:poor_jamis)], dev_with_count.to_a
   end
 
+  def test_relation_to_sql
+    sql = Post.connection.unprepared_statement do
+      Post.first.comments.to_sql
+    end
+    assert_no_match(/\?/, sql)
+  end
+
   def test_relation_merging_with_arel_equalities_keeps_last_equality
     devs = Developer.where(Developer.arel_table[:salary].eq(80000)).merge(
       Developer.where(Developer.arel_table[:salary].eq(9000))
@@ -782,11 +803,11 @@ class RelationTest < ActiveRecord::TestCase
   def test_count_with_distinct
     posts = Post.all
 
-    assert_equal 3, posts.count(:comments_count, :distinct => true)
-    assert_equal 11, posts.count(:comments_count, :distinct => false)
+    assert_equal 3, posts.distinct(true).count(:comments_count)
+    assert_equal 11, posts.distinct(false).count(:comments_count)
 
-    assert_equal 3, posts.select(:comments_count).count(:distinct => true)
-    assert_equal 11, posts.select(:comments_count).count(:distinct => false)
+    assert_equal 3, posts.distinct(true).select(:comments_count).count
+    assert_equal 11, posts.distinct(false).select(:comments_count).count
   end
 
   def test_count_explicit_columns
@@ -1166,20 +1187,20 @@ class RelationTest < ActiveRecord::TestCase
   end
 
   def test_default_scope_order_with_scope_order
-    assert_equal 'honda', CoolCar.order_using_new_style.limit(1).first.name
-    assert_equal 'honda', FastCar.order_using_new_style.limit(1).first.name
+    assert_equal 'zyke', CoolCar.order_using_new_style.limit(1).first.name
+    assert_equal 'zyke', FastCar.order_using_new_style.limit(1).first.name
   end
 
   def test_order_using_scoping
     car1 = CoolCar.order('id DESC').scoping do
-      CoolCar.all.merge!(:order => 'id asc').first
+      CoolCar.all.merge!(order: 'id asc').first
     end
-    assert_equal 'honda', car1.name
+    assert_equal 'zyke', car1.name
 
     car2 = FastCar.order('id DESC').scoping do
-      FastCar.all.merge!(:order => 'id asc').first
+      FastCar.all.merge!(order: 'id asc').first
     end
-    assert_equal 'honda', car2.name
+    assert_equal 'zyke', car2.name
   end
 
   def test_unscoped_block_style
@@ -1199,20 +1220,9 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal "id", Post.all.primary_key
   end
 
-  def test_eager_loading_with_conditions_on_joins
-    scope = Post.includes(:comments)
-
-    # This references the comments table, and so it should cause the comments to be eager
-    # loaded via a JOIN, rather than by subsequent queries.
-    scope = scope.joins(
-      Post.arel_table.create_join(
-        Post.arel_table,
-        Post.arel_table.create_on(Comment.arel_table[:id].eq(3))
-      )
-    )
-
+  def test_disable_implicit_join_references_is_deprecated
     assert_deprecated do
-      assert scope.eager_loading?
+      ActiveRecord::Base.disable_implicit_join_references = true
     end
   end
 
@@ -1262,7 +1272,7 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal posts(:welcome),  comments(:greetings).post
   end
 
-  def test_uniq
+  def test_distinct
     tag1 = Tag.create(:name => 'Foo')
     tag2 = Tag.create(:name => 'Foo')
 
@@ -1270,12 +1280,23 @@ class RelationTest < ActiveRecord::TestCase
 
     assert_equal ['Foo', 'Foo'], query.map(&:name)
     assert_sql(/DISTINCT/) do
+      assert_equal ['Foo'], query.distinct.map(&:name)
       assert_equal ['Foo'], query.uniq.map(&:name)
     end
     assert_sql(/DISTINCT/) do
+      assert_equal ['Foo'], query.distinct(true).map(&:name)
       assert_equal ['Foo'], query.uniq(true).map(&:name)
     end
+    assert_equal ['Foo', 'Foo'], query.distinct(true).distinct(false).map(&:name)
     assert_equal ['Foo', 'Foo'], query.uniq(true).uniq(false).map(&:name)
+  end
+
+  def test_doesnt_add_having_values_if_options_are_blank
+    scope = Post.having('')
+    assert_equal [], scope.having_values
+
+    scope = Post.having([])
+    assert_equal [], scope.having_values
   end
 
   def test_references_triggers_eager_loading
@@ -1320,6 +1341,24 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal ['comments'], scope.references_values
 
     scope = Post.order('foo(comments.body)')
+    assert_equal [], scope.references_values
+  end
+
+  def test_automatically_added_reorder_references
+    scope = Post.reorder('comments.body')
+    assert_equal %w(comments), scope.references_values
+
+    scope = Post.reorder('comments.body', 'yaks.body')
+    assert_equal %w(comments yaks), scope.references_values
+
+    # Don't infer yaks, let's not go down that road again...
+    scope = Post.reorder('comments.body, yaks.body')
+    assert_equal %w(comments), scope.references_values
+
+    scope = Post.reorder('comments.body asc')
+    assert_equal %w(comments), scope.references_values
+
+    scope = Post.reorder('foo(comments.body)')
     assert_equal [], scope.references_values
   end
 
@@ -1516,5 +1555,44 @@ class RelationTest < ActiveRecord::TestCase
     assert !merged.to_sql.include?("omg")
     assert merged.to_sql.include?("wtf")
     assert merged.to_sql.include?("bbq")
+  end
+
+  def test_merging_removes_rhs_bind_parameters
+    left  = Post.where(id: Arel::Nodes::BindParam.new('?'))
+    column = Post.columns_hash['id']
+    left.bind_values += [[column, 20]]
+    right   = Post.where(id: 10)
+
+    merged = left.merge(right)
+    assert_equal [], merged.bind_values
+  end
+
+  def test_merging_keeps_lhs_bind_parameters
+    column = Post.columns_hash['id']
+    binds = [[column, 20]]
+
+    right  = Post.where(id: Arel::Nodes::BindParam.new('?'))
+    right.bind_values += binds
+    left   = Post.where(id: 10)
+
+    merged = left.merge(right)
+    assert_equal binds, merged.bind_values
+  end
+
+  def test_merging_reorders_bind_params
+    post         = Post.first
+    id_column    = Post.columns_hash['id']
+    title_column = Post.columns_hash['title']
+
+    bv = Post.connection.substitute_at id_column, 0
+
+    right  = Post.where(id: bv)
+    right.bind_values += [[id_column, post.id]]
+
+    left   = Post.where(title: bv)
+    left.bind_values += [[title_column, post.title]]
+
+    merged = left.merge(right)
+    assert_equal post, merged.first
   end
 end

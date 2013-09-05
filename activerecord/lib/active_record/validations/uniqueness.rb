@@ -2,12 +2,12 @@ module ActiveRecord
   module Validations
     class UniquenessValidator < ActiveModel::EachValidator # :nodoc:
       def initialize(options)
+        if options[:conditions] && !options[:conditions].respond_to?(:call)
+          raise ArgumentError, "#{options[:conditions]} was passed as :conditions but is not callable. " \
+                               "Pass a callable instead: `conditions: -> { where(approved: true) }`"
+        end
         super({ case_sensitive: true }.merge!(options))
-      end
-
-      # Unfortunately, we have to tie Uniqueness validators to a class.
-      def setup(klass)
-        @klass = klass
+        @klass = options[:class]
       end
 
       def validate_each(record, attribute, value)
@@ -19,7 +19,7 @@ module ActiveRecord
         relation = relation.and(table[finder_class.primary_key.to_sym].not_eq(record.id)) if record.persisted?
         relation = scope_relation(record, table, relation)
         relation = finder_class.unscoped.where(relation)
-        relation.merge!(options[:conditions]) if options[:conditions]
+        relation = relation.merge(options[:conditions]) if options[:conditions]
 
         if relation.exists?
           error_options = options.except(:case_sensitive, :scope, :conditions)
@@ -30,7 +30,6 @@ module ActiveRecord
       end
 
     protected
-
       # The check for an existing value should be run from a class that
       # isn't abstract. This means working down from the current class
       # (self), to the first non-abstract class. Since classes don't know
@@ -116,7 +115,7 @@ module ActiveRecord
       # of the title attribute:
       #
       #   class Article < ActiveRecord::Base
-      #     validates_uniqueness_of :title, conditions: where('status != ?', 'archived')
+      #     validates_uniqueness_of :title, conditions: -> { where.not(status: 'archived') }
       #   end
       #
       # When the record is created, a check is performed to make sure that no
@@ -132,7 +131,7 @@ module ActiveRecord
       #   the uniqueness constraint.
       # * <tt>:conditions</tt> - Specify the conditions to be included as a
       #   <tt>WHERE</tt> SQL fragment to limit the uniqueness constraint lookup
-      #   (e.g. <tt>conditions: where('status = ?', 'active')</tt>).
+      #   (e.g. <tt>conditions: -> { where(status: 'active') }</tt>).
       # * <tt>:case_sensitive</tt> - Looks for an exact match. Ignored by
       #   non-text columns (+true+ by default).
       # * <tt>:allow_nil</tt> - If set to +true+, skips this validation if the
@@ -198,8 +197,8 @@ module ActiveRecord
       # will result in the default Rails exception page being shown), or you
       # can catch it and restart the transaction (e.g. by telling the user
       # that the title already exists, and asking him to re-enter the title).
-      # This technique is also known as optimistic concurrency control:
-      # http://en.wikipedia.org/wiki/Optimistic_concurrency_control.
+      # This technique is also known as
+      # {optimistic concurrency control}[http://en.wikipedia.org/wiki/Optimistic_concurrency_control].
       #
       # The bundled ActiveRecord::ConnectionAdapters distinguish unique index
       # constraint errors from other types of database errors by throwing an

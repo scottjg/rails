@@ -16,15 +16,15 @@ require 'pg'
 require 'ipaddr'
 
 module ActiveRecord
-  module ConnectionHandling
+  module ConnectionHandling # :nodoc:
     VALID_CONN_PARAMS = [:host, :hostaddr, :port, :dbname, :user, :password, :connect_timeout,
                          :client_encoding, :options, :application_name, :fallback_application_name,
                          :keepalives, :keepalives_idle, :keepalives_interval, :keepalives_count,
-                         :tty, :sslmode, :requiressl, :sslcert, :sslkey, :sslrootcert, :sslcrl,
-                         :requirepeer, :krbsrvname, :gsslib, :service]
+                         :tty, :sslmode, :requiressl, :sslcompression, :sslcert, :sslkey,
+                         :sslrootcert, :sslcrl, :requirepeer, :krbsrvname, :gsslib, :service]
 
     # Establishes a connection to the database that's used by all Active Record objects
-    def postgresql_connection(config) # :nodoc:
+    def postgresql_connection(config)
       conn_params = config.symbolize_keys
 
       conn_params.delete_if { |_, v| v.nil? }
@@ -80,11 +80,11 @@ module ActiveRecord
           when /\A'(.*)'::(num|date|tstz|ts|int4|int8)range\z/m
             $1
           # Numeric types
-          when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+          when /\A\(?(-?\d+(\.\d*)?\)?(::bigint)?)\z/
             $1
           # Character types
           when /\A\(?'(.*)'::.*\b(?:character varying|bpchar|text)\z/m
-            $1
+            $1.gsub(/''/, "'")
           # Binary data types
           when /\A'(.*)'::bytea\z/m
             $1
@@ -126,6 +126,14 @@ module ActiveRecord
             # Anything else is blank, some user type, or some function
             # and we can't know the value of that, so return nil.
             nil
+        end
+      end
+
+      def type_cast_for_write(value)
+        if @oid_type.respond_to?(:type_cast_for_write)
+          @oid_type.type_cast_for_write(value)
+        else
+          super
         end
       end
 
@@ -330,6 +338,41 @@ module ActiveRecord
       class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
         include ColumnMethods
 
+        # Defines the primary key field.
+        # Use of the native PostgreSQL UUID type is supported, and can be used
+        # by defining your tables as such:
+        #
+        #   create_table :stuffs, id: :uuid do |t|
+        #     t.string :content
+        #     t.timestamps
+        #   end
+        #
+        # By default, this will use the +uuid_generate_v4()+ function from the
+        # +uuid-ossp+ extension, which MUST be enabled on your database. To enable
+        # the +uuid-ossp+ extension, you can use the +enable_extension+ method in your
+        # migrations. To use a UUID primary key without +uuid-ossp+ enabled, you can
+        # set the +:default+ option to +nil+:
+        #
+        #   create_table :stuffs, id: false do |t|
+        #     t.primary_key :id, :uuid, default: nil
+        #     t.uuid :foo_id
+        #     t.timestamps
+        #   end
+        #
+        # You may also pass a different UUID generation function from +uuid-ossp+
+        # or another library.
+        #
+        # Note that setting the UUID primary key default value to +nil+ will
+        # require you to assure that you always provide a UUID value before saving
+        # a record (as primary keys cannot be +nil+). This might be done via the
+        # +SecureRandom.uuid+ method and a +before_save+ callback, for instance.
+        def primary_key(name, type = :primary_key, options = {})
+          return super unless type == :uuid
+          options[:default] = options.fetch(:default, 'uuid_generate_v4()')
+          options[:primary_key] = true
+          column name, type, options
+        end
+
         def column(name, type = nil, options = {})
           super
           column = self[name]
@@ -340,12 +383,9 @@ module ActiveRecord
 
         private
 
-        def new_column_definition(base, name, type)
-          definition = ColumnDefinition.new base, name, type
-          @columns << definition
-          @columns_hash[name] = definition
-          definition
-        end
+          def create_column_definition(name, type)
+            ColumnDefinition.new name, type
+          end
       end
 
       class Table < ActiveRecord::ConnectionAdapters::Table
@@ -425,6 +465,10 @@ module ActiveRecord
         true
       end
 
+      def index_algorithms
+        { concurrently: 'CONCURRENTLY' }
+      end
+
       class StatementPool < ConnectionAdapters::StatementPool
         def initialize(connection, max)
           super
@@ -489,7 +533,7 @@ module ActiveRecord
         if self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements) { true })
           @visitor = Arel::Visitors::PostgreSQL.new self
         else
-          @visitor = BindSubstitution.new self
+          @visitor = unprepared_visitor
         end
 
         @connection_parameters, @config = connection_parameters, config
@@ -518,8 +562,7 @@ module ActiveRecord
 
       # Is this connection alive and ready for queries?
       def active?
-        @connection.query 'SELECT 1'
-        true
+        @connection.connect_poll != PG::PGRES_POLLING_FAILED
       rescue PGError
         false
       end
@@ -583,9 +626,9 @@ module ActiveRecord
         true
       end
 
-      # Returns true if pg > 9.2
+      # Returns true if pg > 9.1
       def supports_extensions?
-        postgresql_version >= 90200
+        postgresql_version >= 90100
       end
 
       # Range datatypes weren't introduced until PostgreSQL 9.2
@@ -594,22 +637,22 @@ module ActiveRecord
       end
 
       def enable_extension(name)
-        exec_query("CREATE EXTENSION IF NOT EXISTS #{name}").tap {
+        exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"").tap {
           reload_type_map
         }
       end
 
       def disable_extension(name)
-        exec_query("DROP EXTENSION IF EXISTS #{name} CASCADE").tap {
+        exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE").tap {
           reload_type_map
         }
       end
 
       def extension_enabled?(name)
         if supports_extensions?
-          res = exec_query "SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)",
+          res = exec_query "SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL) as enabled",
             'SCHEMA'
-          res.column_types['exists'].type_cast res.rows.first.first
+          res.column_types['enabled'].type_cast res.rows.first.first
         end
       end
 
@@ -625,13 +668,6 @@ module ActiveRecord
       # Returns the configured supported identifier length supported by PostgreSQL
       def table_alias_length
         @table_alias_length ||= query('SHOW max_identifier_length', 'SCHEMA')[0][0].to_i
-      end
-
-      def add_column_options!(sql, options)
-        if options[:array] || options[:column].try(:array)
-          sql << '[]'
-        end
-        super
       end
 
       # Set the authorized user for this session
@@ -661,6 +697,10 @@ module ActiveRecord
 
       def use_insert_returning?
         @use_insert_returning
+      end
+
+      def valid_type?(type)
+        !native_database_types[type].nil?
       end
 
       protected
@@ -707,7 +747,14 @@ module ActiveRecord
 
           # populate composite types
           nodes.find_all { |row| OID::TYPE_MAP.key? row['typelem'].to_i }.each do |row|
-            vector = OID::Vector.new row['typdelim'], OID::TYPE_MAP[row['typelem'].to_i]
+            if OID.registered_type? row['typname']
+              # this composite type is explicitly registered
+              vector = OID::NAMES[row['typname']]
+            else
+              # use the default for composite types
+              vector = OID::Vector.new row['typdelim'], OID::TYPE_MAP[row['typelem'].to_i]
+            end
+
             OID::TYPE_MAP[row['oid'].to_i] = vector
           end
 
@@ -725,7 +772,7 @@ module ActiveRecord
         end
 
         def exec_cache(sql, binds)
-          stmt_key = prepare_statement sql
+          stmt_key = prepare_statement(sql)
 
           # Clear the queue
           @connection.get_last_result
@@ -894,8 +941,8 @@ module ActiveRecord
           $1.strip if $1
         end
 
-        def create_table_definition
-          TableDefinition.new(self)
+        def create_table_definition(name, temporary, options)
+          TableDefinition.new native_database_types, name, temporary, options
         end
 
         def update_table_definition(table_name, base)

@@ -5,6 +5,7 @@ require 'models/treasure'
 require 'models/post'
 require 'models/comment'
 require 'models/edge'
+require 'models/topic'
 
 module ActiveRecord
   class WhereTest < ActiveRecord::TestCase
@@ -76,6 +77,38 @@ module ActiveRecord
 
       expected = Treasure.where(price_estimates: { estimate_of_type: 'Treasure', estimate_of_id: 1 }).joins(:price_estimates)
       actual   = Treasure.where(price_estimates: { estimate_of: treasure }).joins(:price_estimates)
+
+      assert_equal expected.to_sql, actual.to_sql
+    end
+
+    def test_decorated_polymorphic_where
+      treasure_decorator = Struct.new(:model) do
+        def self.method_missing(method, *args, &block)
+          Treasure.send(method, *args, &block)
+        end
+
+        def is_a?(klass)
+          model.is_a?(klass)
+        end
+
+        def method_missing(method, *args, &block)
+          model.send(method, *args, &block)
+        end
+      end
+
+      treasure = Treasure.new
+      treasure.id = 1
+      decorated_treasure = treasure_decorator.new(treasure)
+
+      expected = PriceEstimate.where(estimate_of_type: 'Treasure', estimate_of_id: 1)
+      actual   = PriceEstimate.where(estimate_of: decorated_treasure)
+
+      assert_equal expected.to_sql, actual.to_sql
+    end
+
+    def test_aliased_attribute
+      expected = Topic.where(heading: 'The First Topic')
+      actual   = Topic.where(title: 'The First Topic')
 
       assert_equal expected.to_sql, actual.to_sql
     end

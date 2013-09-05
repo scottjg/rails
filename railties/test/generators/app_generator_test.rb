@@ -53,9 +53,10 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_assets
     run_generator
-    assert_file "app/views/layouts/application.html.erb", /stylesheet_link_tag\s+"application"/
-    assert_file "app/views/layouts/application.html.erb", /javascript_include_tag\s+"application"/
-    assert_file "app/assets/stylesheets/application.css"
+
+    assert_file("app/views/layouts/application.html.erb", /stylesheet_link_tag\s+"application", media: "all", "data-turbolinks-track" => true/)
+    assert_file("app/views/layouts/application.html.erb", /javascript_include_tag\s+"application", "data-turbolinks-track" => true/)
+    assert_file("app/assets/stylesheets/application.css")
   end
 
   def test_invalid_application_name_raises_an_error
@@ -65,7 +66,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_invalid_application_name_is_fixed
     run_generator [File.join(destination_root, "things-43")]
-    assert_file "things-43/config/environment.rb", /Things43::Application\.initialize!/
+    assert_file "things-43/config/environment.rb", /Rails\.application\.initialize!/
     assert_file "things-43/config/application.rb", /^module Things43$/
   end
 
@@ -111,7 +112,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
                                                                destination_root: app_moved_root, shell: @shell
     generator.send(:app_const)
     quietly { generator.send(:create_config_files) }
-    assert_file "myapp_moved/config/environment.rb", /Myapp::Application\.initialize!/
+    assert_file "myapp_moved/config/environment.rb", /Rails\.application\.initialize!/
     assert_file "myapp_moved/config/initializers/session_store.rb", /_myapp_session/
   end
 
@@ -131,7 +132,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
 
   def test_application_names_are_not_singularized
     run_generator [File.join(destination_root, "hats")]
-    assert_file "hats/config/environment.rb", /Hats::Application\.initialize!/
+    assert_file "hats/config/environment.rb", /Rails\.application\.initialize!/
   end
 
   def test_gemfile_has_no_whitespace_errors
@@ -183,9 +184,6 @@ class AppGeneratorTest < Rails::Generators::TestCase
     run_generator([destination_root, "-d", "jdbcmysql"])
     assert_file "config/database.yml", /mysql/
     assert_gem "activerecord-jdbcmysql-adapter"
-    # TODO: When the JRuby guys merge jruby-openssl in
-    # jruby this will be removed
-    assert_gem "jruby-openssl" if defined?(JRUBY_VERSION)
   end
 
   def test_config_jdbcsqlite3_database
@@ -224,6 +222,11 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  def test_generator_if_skip_action_view_is_given
+    run_generator [destination_root, "--skip-action-view"]
+    assert_file "config/application.rb", /#\s+require\s+["']action_view\/railtie["']/
+  end
+
   def test_generator_if_skip_sprockets_is_given
     run_generator [destination_root, "--skip-sprockets"]
     assert_file "config/application.rb" do |content|
@@ -232,8 +235,8 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
     assert_file "Gemfile" do |content|
       assert_no_match(/sass-rails/, content)
-      assert_no_match(/coffee-rails/, content)
       assert_no_match(/uglifier/, content)
+      assert_match(/coffee-rails/, content)
     end
     assert_file "config/environments/development.rb" do |content|
       assert_no_match(/config\.assets\.debug = true/, content)
@@ -260,6 +263,11 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file 'test'
   end
 
+  def test_creation_of_app_assets_images_directory
+    run_generator
+    assert_file "app/assets/images"
+  end
+
   def test_creation_of_vendor_assets_javascripts_directory
     run_generator
     assert_file "vendor/assets/javascripts"
@@ -276,7 +284,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
       assert_match %r{^//= require jquery}, contents
       assert_match %r{^//= require jquery_ujs}, contents
     end
-    assert_gem "jquery-rails"
+    assert_file "Gemfile", /^gem 'jquery-rails'/
   end
 
   def test_other_javascript_libraries
@@ -293,11 +301,23 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "app/assets/javascripts/application.js" do |contents|
       assert_no_match %r{^//=\s+require\s}, contents
     end
+    assert_file "app/views/layouts/application.html.erb" do |contents|
+      assert_match(/stylesheet_link_tag\s+"application", media: "all" %>/, contents)
+      assert_match(/javascript_include_tag\s+"application" \%>/, contents)
+    end
+    assert_file "Gemfile" do |content|
+      assert_match(/coffee-rails/, content)
+    end
   end
 
   def test_inclusion_of_debugger
     run_generator
     assert_file "Gemfile", /# gem 'debugger'/
+  end
+
+  def test_inclusion_of_lazy_loaded_sdoc
+    run_generator
+    assert_file 'Gemfile', /gem 'sdoc', require: false/
   end
 
   def test_template_from_dir_pwd
@@ -338,7 +358,7 @@ class AppGeneratorTest < Rails::Generators::TestCase
   def test_new_hash_style
     run_generator [destination_root]
     assert_file "config/initializers/session_store.rb" do |file|
-      assert_match(/config.session_store :encrypted_cookie_store, key: '_.+_session'/, file)
+      assert_match(/config.session_store :cookie_store, key: '_.+_session'/, file)
     end
   end
 

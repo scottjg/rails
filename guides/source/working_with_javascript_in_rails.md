@@ -185,7 +185,7 @@ $(document).ready ->
 ```
 
 Obviously, you'll want to be a bit more sophisticated than that, but it's a
-start.
+start. You can see more about the events [in the jquery-ujs wiki](https://github.com/rails/jquery-ujs/wiki/ajax).
 
 ### form_tag
 
@@ -278,9 +278,7 @@ The index view (`app/views/users/index.html.erb`) contains:
 <b>Users</b>
 
 <ul id="users">
-<% @users.each do |user| %>
-  <%= render user %>
-<% end %>
+<%= render @users %>
 </ul>
 
 <br>
@@ -394,3 +392,4 @@ Here are some helpful links to help you learn even more:
 * [jquery-ujs list of external articles](https://github.com/rails/jquery-ujs/wiki/External-articles)
 * [Rails 3 Remote Links and Forms: A Definitive Guide](http://www.alfajango.com/blog/rails-3-remote-links-and-forms/)
 * [Railscasts: Unobtrusive JavaScript](http://railscasts.com/episodes/205-unobtrusive-javascript)
+* [Railscasts: Turbolinks](http://railscasts.com/episodes/390-turbolinks)

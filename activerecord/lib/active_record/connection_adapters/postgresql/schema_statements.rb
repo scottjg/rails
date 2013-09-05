@@ -1,6 +1,42 @@
 module ActiveRecord
   module ConnectionAdapters
     class PostgreSQLAdapter < AbstractAdapter
+      class SchemaCreation < AbstractAdapter::SchemaCreation
+        private
+
+        def visit_AddColumn(o)
+          sql_type = type_to_sql(o.type.to_sym, o.limit, o.precision, o.scale)
+          sql = "ADD COLUMN #{quote_column_name(o.name)} #{sql_type}"
+          add_column_options!(sql, column_options(o))
+        end
+
+        def visit_ColumnDefinition(o)
+          sql = super
+          if o.primary_key? && o.type == :uuid
+            sql << " PRIMARY KEY "
+            add_column_options!(sql, column_options(o))
+          end
+          sql
+        end
+
+        def add_column_options!(sql, options)
+          if options[:array] || options[:column].try(:array)
+            sql << '[]'
+          end
+
+          column = options.fetch(:column) { return super }
+          if column.type == :uuid && options[:default] =~ /\(\)/
+            sql << " DEFAULT #{options[:default]}"
+          else
+            super
+          end
+        end
+      end
+
+      def schema_creation
+        SchemaCreation.new self
+      end
+
       module SchemaStatements
         # Drops the database specified on the +name+ attribute
         # and creates it again using the provided +options+.
@@ -120,12 +156,15 @@ module ActiveRecord
 
             column_names = columns.values_at(*indkey).compact
 
-            # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
-            desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
-            orders = desc_order_columns.any? ? Hash[desc_order_columns.map {|order_column| [order_column, :desc]}] : {}
-            where = inddef.scan(/WHERE (.+)$/).flatten[0]
+            unless column_names.empty?
+              # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
+              desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
+              orders = desc_order_columns.any? ? Hash[desc_order_columns.map {|order_column| [order_column, :desc]}] : {}
+              where = inddef.scan(/WHERE (.+)$/).flatten[0]
+              using = inddef.scan(/USING (.+?) /).flatten[0].to_sym
 
-            column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names, [], orders, where)
+              IndexDefinition.new(table_name, index_name, unique, column_names, [], orders, where, nil, using)
+            end
           end.compact
         end
 
@@ -282,6 +321,7 @@ module ActiveRecord
             result = query(<<-end_sql, 'SCHEMA')[0]
               SELECT attr.attname,
                 CASE
+                  WHEN pg_get_expr(def.adbin, def.adrelid) !~* 'nextval' THEN NULL
                   WHEN split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2) ~ '.' THEN
                     substr(split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2),
                            strpos(split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2), '.')+1)
@@ -293,7 +333,7 @@ module ActiveRecord
               JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
               WHERE t.oid = '#{quote_table_name(table)}'::regclass
                 AND cons.contype = 'p'
-                AND pg_get_expr(def.adbin, def.adrelid) ~* 'nextval'
+                AND pg_get_expr(def.adbin, def.adrelid) ~* 'nextval|uuid_generate'
             end_sql
           end
 
@@ -337,18 +377,16 @@ module ActiveRecord
         # See TableDefinition#column for details of the options you can use.
         def add_column(table_name, column_name, type, options = {})
           clear_cache!
-          add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-          add_column_options!(add_column_sql, options)
-
-          execute add_column_sql
+          super
         end
 
         # Changes the column of a table.
         def change_column(table_name, column_name, type, options = {})
           clear_cache!
           quoted_table_name = quote_table_name(table_name)
-
-          execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+          sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
+          sql_type << "[]" if options[:array]
+          execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{sql_type}"
 
           change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
           change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
@@ -373,6 +411,11 @@ module ActiveRecord
           clear_cache!
           execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
           rename_column_indexes(table_name, column_name, new_column_name)
+        end
+
+        def add_index(table_name, column_name, options = {}) #:nodoc:
+          index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
+          execute "CREATE #{index_type} INDEX #{index_algorithm} #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} #{index_using} (#{index_columns})#{index_options}"
         end
 
         def remove_index!(table_name, index_name) #:nodoc:
@@ -425,22 +468,17 @@ module ActiveRecord
           end
         end
 
-        # Returns a SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
-        #
         # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
         # requires that the ORDER BY include the distinct column.
-        #
-        #   distinct("posts.id", ["posts.created_at desc"])
-        #   # => "DISTINCT posts.id, posts.created_at AS alias_0"
-        def distinct(columns, orders) #:nodoc:
-          order_columns = orders.map{ |s|
+        def columns_for_distinct(columns, orders) #:nodoc:
+          order_columns = orders.reject(&:blank?).map{ |s|
               # Convert Arel node to string
               s = s.to_sql unless s.is_a?(String)
               # Remove any ASC/DESC modifiers
               s.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '')
             }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
 
-          [super].concat(order_columns).join(', ')
+          [super, *order_columns].join(', ')
         end
       end
     end

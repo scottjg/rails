@@ -2,16 +2,36 @@ module ActiveRecord
   module ConnectionAdapters
     class PostgreSQLColumn < Column
       module Cast
+        def point_to_string(point)
+          "(#{point[0]},#{point[1]})"
+        end
+
+        def string_to_point(string)
+          if string[0] == '(' && string[-1] == ')'
+            string = string[1...-1]
+          end
+          string.split(',').map{ |v| Float(v) }
+        end
+
         def string_to_time(string)
           return string unless String === string
 
           case string
-          when 'infinity'; 1.0 / 0.0
-          when '-infinity'; -1.0 / 0.0
+          when 'infinity'; Float::INFINITY
+          when '-infinity'; -Float::INFINITY
           when / BC$/
             super("-" + string.sub(/ BC$/, ""))
           else
             super
+          end
+        end
+
+        def string_to_bit(value)
+          case value
+          when /^0x/i
+            value[2..-1].hex.to_s(2) # Hexadecimal notation
+          else
+            value                    # Bit-string notation
           end
         end
 
@@ -30,8 +50,8 @@ module ActiveRecord
             nil
           elsif String === string
             Hash[string.scan(HstorePair).map { |k,v|
-              v = v.upcase == 'NULL' ? nil : v.gsub(/^"(.*)"$/,'\1').gsub(/\\(.)/, '\1')
-              k = k.gsub(/^"(.*)"$/,'\1').gsub(/\\(.)/, '\1')
+              v = v.upcase == 'NULL' ? nil : v.gsub(/\A"(.*)"\Z/m,'\1').gsub(/\\(.)/, '\1')
+              k = k.gsub(/\A"(.*)"\Z/m,'\1').gsub(/\\(.)/, '\1')
               [k,v]
             }]
           else
@@ -40,7 +60,7 @@ module ActiveRecord
         end
 
         def json_to_string(object)
-          if Hash === object
+          if Hash === object || Array === object
             ActiveSupport::JSON.encode(object)
           else
             object
@@ -80,7 +100,11 @@ module ActiveRecord
           if string.nil?
             nil
           elsif String === string
-            IPAddr.new(string)
+            begin
+              IPAddr.new(string)
+            rescue ArgumentError
+              nil
+            end
           else
             string
           end
@@ -95,7 +119,7 @@ module ActiveRecord
         end
 
         def string_to_array(string, oid)
-          parse_pg_array(string).map{|val| oid.type_cast val}
+          parse_pg_array(string).map {|val| type_cast_array(oid, val)}
         end
 
         private
@@ -124,6 +148,14 @@ module ActiveRecord
               value
             else
               "\"#{value.gsub(/"/,"\\\"")}\""
+            end
+          end
+
+          def type_cast_array(oid, value)
+            if ::Array === value
+              value.map {|item| type_cast_array(oid, item)}
+            else
+              oid.type_cast value
             end
           end
       end

@@ -186,7 +186,9 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     members = assert_queries(4) { Member.includes(:organization_member_details_2).to_a.sort_by(&:id) }
     groucho_details, other_details = member_details(:groucho), member_details(:some_other_guy)
 
-    assert_no_queries do
+    # postgresql test if randomly executed then executes "SHOW max_identifier_length". Hence
+    # the need to ignore certain predefined sqls that deal with system calls.
+    assert_no_queries(ignore_none: false) do
       assert_equal [groucho_details, other_details], members.first.organization_member_details_2.sort_by(&:id)
     end
   end
@@ -369,7 +371,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     prev_default_scope = Club.default_scopes
 
     [:includes, :preload, :joins, :eager_load].each do |q|
-      Club.default_scopes = [Club.send(q, :category)]
+      Club.default_scopes = [proc { Club.send(q, :category) }]
       assert_equal categories(:general), members(:groucho).reload.club_category
     end
   ensure
@@ -410,7 +412,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
 
     # Mary and Bob both have posts in misc, but they are the only ones.
     authors = Author.joins(:similar_posts).where('posts.id' => posts(:misc_by_bob).id)
-    assert_equal [authors(:mary), authors(:bob)], authors.uniq.sort_by(&:id)
+    assert_equal [authors(:mary), authors(:bob)], authors.distinct.sort_by(&:id)
 
     # Check the polymorphism of taggings is being observed correctly (in both joins)
     authors = Author.joins(:similar_posts).where('taggings.taggable_type' => 'FakeModel')

@@ -1,8 +1,33 @@
-require 'thread'
-require 'thread_safe'
+require 'active_support/concern'
 
 module ActiveRecord
   module Delegation # :nodoc:
+    module DelegateCache
+      def relation_delegate_class(klass) # :nodoc:
+        @relation_delegate_cache[klass]
+      end
+
+      def initialize_relation_delegate_cache # :nodoc:
+        @relation_delegate_cache = cache = {}
+        [
+          ActiveRecord::Relation,
+          ActiveRecord::Associations::CollectionProxy,
+          ActiveRecord::AssociationRelation
+        ].each do |klass|
+          delegate = Class.new(klass) {
+            include ClassSpecificRelation
+          }
+          const_set klass.name.gsub('::', '_'), delegate
+          cache[klass] = delegate
+        end
+      end
+
+      def inherited(child_class)
+        child_class.initialize_relation_delegate_cache
+        super
+      end
+    end
+
     extend ActiveSupport::Concern
 
     # This module creates compiled delegation methods dynamically at runtime, which makes
@@ -14,14 +39,14 @@ module ActiveRecord
     delegate :table_name, :quoted_table_name, :primary_key, :quoted_primary_key,
              :connection, :columns_hash, :to => :klass
 
-    module ClassSpecificRelation
+    module ClassSpecificRelation # :nodoc:
       extend ActiveSupport::Concern
 
       included do
         @delegation_mutex = Mutex.new
       end
 
-      module ClassMethods
+      module ClassMethods # :nodoc:
         def name
           superclass.name
         end
@@ -37,11 +62,9 @@ module ActiveRecord
                 end
               RUBY
             else
-              module_eval <<-RUBY, __FILE__, __LINE__ + 1
-                def #{method}(*args, &block)
-                  scoping { @klass.send(#{method.inspect}, *args, &block) }
-                end
-              RUBY
+              define_method method do |*args, &block|
+                scoping { @klass.send(method, *args, &block) }
+              end
             end
           end
         end
@@ -72,35 +95,15 @@ module ActiveRecord
       end
     end
 
-    module ClassMethods
-      @@subclasses = ThreadSafe::Cache.new(:initial_capacity => 2)
-
-      def new(klass, *args)
-        relation = relation_class_for(klass).allocate
-        relation.__send__(:initialize, klass, *args)
-        relation
-      end
-
-      # This doesn't have to be thread-safe. relation_class_for guarantees that this will only be
-      # called exactly once for a given const name.
-      def const_missing(name)
-        const_set(name, Class.new(self) { include ClassSpecificRelation })
+    module ClassMethods # :nodoc:
+      def create(klass, *args)
+        relation_class_for(klass).new(klass, *args)
       end
 
       private
-      # Cache the constants in @@subclasses because looking them up via const_get
-      # make instantiation significantly slower.
+
       def relation_class_for(klass)
-        if klass && (klass_name = klass.name)
-          my_cache = @@subclasses.compute_if_absent(self) { ThreadSafe::Cache.new }
-          # This hash is keyed by klass.name to avoid memory leaks in development mode
-          my_cache.compute_if_absent(klass_name) do
-            # Cache#compute_if_absent guarantees that the block will only executed once for the given klass_name
-            const_get("#{name.gsub('::', '_')}_#{klass_name.gsub('::', '_')}", false)
-          end
-        else
-          ActiveRecord::Relation
-        end
+        klass.relation_delegate_class(self)
       end
     end
 
