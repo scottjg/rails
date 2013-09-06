@@ -42,6 +42,7 @@ module AbstractController
     # overridden in order to still return a string.
     # :api: plugin
     def render_to_string(*args, &block)
+      puts "#render-to-string #{args}"
       options = _normalize_render(*args, &block)
       render_to_body(options)
     end
@@ -49,6 +50,7 @@ module AbstractController
     # Raw rendering of a template.
     # :api: public
     def render_to_body(options = {})
+      puts "Abstract#render-to-body #{options}"
       _process_options(options)
       raise UnprocessableRenderOptionsError
     end
@@ -80,12 +82,18 @@ module AbstractController
     # render "foo/bar" to render :file => "foo/bar".
     # :api: plugin
     def _normalize_args(action=nil, options={})
+      puts "Abstract#normalize-args action:#{action} options:#{options}"
+      case action
+      when Hash
+        options = action
+      end
       options
     end
 
     # Normalize options.
     # :api: plugin
     def _normalize_options(options = {})
+      puts "AbsC#normalize-options #{options}"
       options
     end
 

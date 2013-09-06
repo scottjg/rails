@@ -101,13 +101,30 @@ module ActionView
       # render "foo/bar" to render :file => "foo/bar".
       # :api: private
       def _normalize_args(action=nil, options={})
-        super
+        puts "AV::Rendering#normalize-args (1) action:#{action} options:#{options}"
+        options = super
+        puts "AV::Rendering#normalize-args (2) action:#{action} options:#{options}"
+        case action
+        when NilClass
+        when Hash
+          options = action
+        when String, Symbol
+          action = action.to_s
+          key = action.include?(?/) ? :file : :action
+          options[key] = action
+        else
+          options[:partial] = action
+        end
+        puts "AV::Rendering#normalize-args (3) options:#{options}"
+        options
       end
 
       # Normalize options.
       # :api: private
       def _normalize_options(options)
+        puts "AV::Rendering#normalize-opts (1) options:#{options} "
         options = super
+        puts "AV::Rendering#normalize-opts (2) options:#{options} "
         if options[:partial] == true
           options[:partial] = action_name
         end
@@ -117,6 +134,7 @@ module ActionView
         end
 
         options[:template] ||= (options[:action] || action_name).to_s
+        puts "AV::Rendering#normalize-opts (3) options:#{options} "
         options
       end
   end

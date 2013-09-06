@@ -30,6 +30,7 @@ module ActionController
     end
 
     def render_to_body(options)
+      puts "Renderer#render-to-body options:#{options}"
       _handle_render_options(options) || super
     end
 
@@ -44,7 +45,7 @@ module ActionController
     end
 
     # Hash of available renderers, mapping a renderer name to its proc.
-    # Default keys are :json, :js, :xml.
+    # Default keys are :text, :json, :js, :xml.
     RENDERERS = Set.new
 
     # Adds a new renderer to call within controller actions.
@@ -94,7 +95,7 @@ module ActionController
     end
 
     add :text do |text, options|
-      self.content_type ||= Mime::TEXT
+      self.content_type ||= Mime::HTML
       text
     end
 
