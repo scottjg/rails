@@ -30,7 +30,6 @@ module ActionController
     end
 
     def render_to_body(options)
-      puts "Renderer#render-to-body options:#{options}"
       _handle_render_options(options) || super
     end
 
