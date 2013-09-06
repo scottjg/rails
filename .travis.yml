@@ -10,12 +10,16 @@ rvm:
   # - rbx-19mode
 
 env:
-  - "GEM=railties"
-  - "GEM=ap,am,amo,as,av"
-  - "GEM=ar:mysql"
-  - "GEM=ar:mysql2"
-  - "GEM=ar:sqlite3"
-  - "GEM=ar:postgresql"
+  global:
+    - RUBY_GC_MALLOC_LIMIT=90000000
+    - RUBY_FREE_MIN=200000
+  matrix:
+    - "GEM=railties"
+    - "GEM=ap,am,amo,as,av"
+    - "GEM=ar:mysql"
+    - "GEM=ar:mysql2"
+    - "GEM=ar:sqlite3"
+    - "GEM=ar:postgresql"
 
 matrix:
   allow_failures:
