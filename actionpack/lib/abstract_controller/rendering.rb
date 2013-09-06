@@ -10,6 +10,12 @@ module AbstractController
     end
   end
 
+  class UnprocessableRenderOptionsError < StandardError
+    def initialize
+      super "Unsupported render operation. BasicRendering supports only :text and :nothing options. For more, you need to include ActionView."
+    end
+  end
+
   module Rendering
     extend ActiveSupport::Concern
 
@@ -44,6 +50,7 @@ module AbstractController
     # :api: public
     def render_to_body(options = {})
       _process_options(options)
+      raise UnprocessableRenderOptionsError
     end
 
     # Return Content-Type of rendered content
