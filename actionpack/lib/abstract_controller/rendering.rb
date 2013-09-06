@@ -21,8 +21,7 @@ module AbstractController
     # Render template to response_body
     # :api: public
     def render(*args, &block)
-      options = _normalize_render(*args, &block)
-      self.response_body = render_to_body(options)
+      self.response_body = render_to_string(*args, &block)
     end
 
     # Raw rendering of a template to a string.
