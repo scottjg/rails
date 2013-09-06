@@ -436,9 +436,35 @@ module ActiveRecord
     cattr_accessor :all_loaded_fixtures
     self.all_loaded_fixtures = {}
 
+    class ClassCache
+      def initialize(class_names, config)
+        @class_names = class_names.stringify_keys
+        @config      = config
+      end
+
+      def [](fs_name)
+        @class_names.fetch(fs_name) {
+          klass = default_fixture_model(fs_name, @config).safe_constantize
+
+          # We only want to deal with AR objects.
+          if klass && klass < ActiveRecord::Base
+            @class_names[fs_name] = klass
+          else
+            @class_names[fs_name] = nil
+          end
+        }
+      end
+
+      private
+
+      def default_fixture_model(fs_name, config)
+        ActiveRecord::FixtureSet.default_fixture_model_name(fs_name, config)
+      end
+    end
+
     def self.create_fixtures(fixtures_directory, fixture_set_names, class_names = {}, config = ActiveRecord::Base)
       fixture_set_names = Array(fixture_set_names).map(&:to_s)
-      class_names = class_names.stringify_keys
+      class_names = ClassCache.new class_names, config
 
       # FIXME: Apparently JK uses this.
       connection = block_given? ? yield : ActiveRecord::Base.connection
@@ -452,10 +478,12 @@ module ActiveRecord
           fixtures_map = {}
 
           fixture_sets = files_to_read.map do |fs_name|
+            klass = class_names[fs_name]
+            conn = klass ? klass.connection : connection
             fixtures_map[fs_name] = new( # ActiveRecord::FixtureSet.new
-              connection,
+              conn,
               fs_name,
-              class_names[fs_name] || (default_fixture_model_name(fs_name, config).safe_constantize),
+              klass,
               ::File.join(fixtures_directory, fs_name))
           end
 
@@ -515,8 +543,7 @@ module ActiveRecord
         @model_class = class_name.safe_constantize if class_name
       end
 
-      @connection  = ( model_class.respond_to?(:connection) ?
-                       model_class.connection : connection )
+      @connection  = connection
 
       @table_name = ( model_class.respond_to?(:table_name) ?
                       model_class.table_name :
@@ -556,7 +583,7 @@ module ActiveRecord
       rows[table_name] = fixtures.map do |label, fixture|
         row = fixture.to_hash
 
-        if model_class && model_class < ActiveRecord::Base
+        if model_class
           # fill in timestamp columns if they aren't specified and the model is set to record_timestamps
           if model_class.record_timestamps
             timestamp_column_names.each do |c_name|
@@ -613,6 +640,7 @@ module ActiveRecord
       end
 
       def handle_habtm(rows, row, association)
+        # This is the case when the join table has no fixtures file
         if (targets = row.delete(association.name.to_s))
           targets = targets.is_a?(Array) ? targets : targets.split(/\s*,\s*/)
           table_name = association.join_table
