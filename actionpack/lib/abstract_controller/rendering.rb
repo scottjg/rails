@@ -85,21 +85,22 @@ module AbstractController
 
     # Normalize options.
     # :api: plugin
-    def _normalize_options(options)
+    def _normalize_options(options = {})
       options
     end
 
     # Process extra options.
     # :api: plugin
-    def _process_options(options)
+    def _process_options(options = {})
       options
     end
 
     # Normalize args and options.
     # :api: private
     def _normalize_render(*args, &block)
+      options = {}
       options = _normalize_args(*args, &block)
-      _normalize_options(options)
+      options = _normalize_options(options)
       options
     end
   end

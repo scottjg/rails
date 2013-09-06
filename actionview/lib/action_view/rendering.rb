@@ -101,26 +101,13 @@ module ActionView
       # render "foo/bar" to render :file => "foo/bar".
       # :api: private
       def _normalize_args(action=nil, options={})
-        options = super(action, options)
-        case action
-        when NilClass
-        when Hash
-          options = action
-        when String, Symbol
-          action = action.to_s
-          key = action.include?(?/) ? :file : :action
-          options[key] = action
-        else
-          options[:partial] = action
-        end
-
-        options
+        super
       end
 
       # Normalize options.
       # :api: private
       def _normalize_options(options)
-        options = super(options)
+        options = super
         if options[:partial] == true
           options[:partial] = action_name
         end

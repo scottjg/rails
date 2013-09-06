@@ -35,13 +35,31 @@ module ActionController
 
     # Normalize arguments by catching blocks and setting them on :update.
     def _normalize_args(action=nil, options={}, &blk) #:nodoc:
-      options = super
+      case action
+      when NilClass
+      when Hash
+        options = action
+      when String, Symbol
+        action = action.to_s
+        key = action.include?(?/) ? :file : :action
+        options[key] = action
+      else
+        options[:partial] = action
+      end
       options[:update] = blk if block_given?
       options
     end
 
     # Normalize both text and status options.
     def _normalize_options(options) #:nodoc:
+      if options.key?(:text) && options[:text].respond_to?(:to_text)
+        options[:text] = options[:text].to_text
+      end
+
+      if options.delete(:nothing) || (options.key?(:text) && options[:text].nil?)
+        options[:text] = " "
+      end
+
       if options[:status]
         options[:status] = Rack::Utils.status_code(options[:status])
       end
