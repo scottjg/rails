@@ -173,6 +173,19 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
 
 * `Object#try` will now return nil instead of raise a NoMethodError if the receiving object does not implement the method, but you can still get the old behavior by using the new `Object#try!`.
 
+* `String#to_date` now raises `Argument Error: invalid date` instead of `NoMethodError: undefined method 'div' for nil:NilClass`
+  when given an invalid date. It is now the same as `Date.parse`, and it accepts more invalid dates than 3.x, such as:
+
+  ```
+  # ActiveSupport 3.x
+  "asdf".to_date # => NoMethodError: undefined method `div' for nil:NilClass
+  "333".to_date # => NoMethodError: undefined method `div' for nil:NilClass
+
+  # ActiveSupport 4
+  "asdf".to_date # => ArgumentError: invalid date
+  "333".to_date # => Fri, 29 Nov 2013
+  ```
+
 ### Deprecations
 
 * Deprecate `ActiveSupport::TestCase#pending` method, use `skip` from MiniTest instead.
@@ -253,9 +266,9 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
       * `find_all_by_...` can be rewritten using `where(...)`.
       * `find_last_by_...` can be rewritten using `where(...).last`.
       * `scoped_by_...` can be rewritten using `where(...)`.
-      * `find_or_initialize_by_...` can be rewritten using `where(...).first_or_initialize`.
-      * `find_or_create_by_...` can be rewritten using `find_or_create_by(...)` or `where(...).first_or_create`.
-      * `find_or_create_by_...!` can be rewritten using `find_or_create_by!(...)` or `where(...).first_or_create!`.
+      * `find_or_initialize_by_...` can be rewritten using `find_or_initialize_by(...)`.
+      * `find_or_create_by_...` can be rewritten using `find_or_create_by(...)`.
+      * `find_or_create_by_...!` can be rewritten using `find_or_create_by!(...)`. 
 
 Credits
 -------

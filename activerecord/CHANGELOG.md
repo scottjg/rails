@@ -1,3 +1,68 @@
+*   Re-use `order` argument pre-processing for `reorder`.
+
+    *Paul Nikitochkin*
+
+*   Fix PredicateBuilder so polymorhic association keys in `where` clause can
+    also accept not only `ActiveRecord::Base` direct descendances (decorated
+    models, for example).
+
+    *Mikhail Dieterle*
+
+*   PostgreSQL adapter recognizes negative money values formatted with
+    parentheses (eg. `($1.25) # => -1.25`)).
+    Fixes #11899.
+
+    *Yves Senn*
+
+*   Stop interpreting SQL 'string' columns as :string type because there is no
+    common STRING datatype in SQL.
+
+    *Ben Woosley*
+
+*   `ActiveRecord::FinderMethods#exists?` returns `true`/`false` in all cases.
+
+    *Xavier Noria*
+
+*   Assign inet/cidr attribute with `nil` value for invalid address.
+
+    Example:
+
+        record = User.new
+        record.logged_in_from_ip # is type of an inet or a cidr
+
+        # Before:
+        record.logged_in_from_ip = 'bad ip address' # raise exception
+
+        # After:
+        record.logged_in_from_ip = 'bad ip address' # do not raise exception
+        record.logged_in_from_ip # => nil
+        record.logged_in_from_ip_before_type_cast # => 'bad ip address'
+
+    *Paul Nikitochkin*
+
+*   `add_to_target` now accepts a second optional `skip_callbacks` argument
+
+    If truthy, it will skip the :before_add and :after_add callbacks.
+
+    *Ben Woosley*
+
+*   Fix interactions between `:before_add` callbacks and nested attributes
+    assignment of `has_many` associations, when the association was not
+    yet loaded:
+
+    - A `:before_add` callback was being called when a nested attributes
+      assignment assigned to an existing record.
+
+    - Nested Attributes assignment did not affect the record in the
+      association target when a `:before_add` callback triggered the
+      loading of the association
+
+    *Jörg Schray*
+
+*   Allow enable_extension migration method to be revertible.
+
+    *Eric Tipton*
+
 *   Type cast hstore values on write, so that the value is consistent
     with reading from the database.
 

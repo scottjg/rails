@@ -28,12 +28,48 @@ require 'models/club'
 class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :posts, :readers, :people, :comments, :authors, :categories, :taggings, :tags,
            :owners, :pets, :toys, :jobs, :references, :companies, :members, :author_addresses,
-           :subscribers, :books, :subscriptions, :developers, :categorizations, :essays
+           :subscribers, :books, :subscriptions, :developers, :categorizations, :essays,
+           :categories_posts
 
   # Dummies to force column loads so query counts are clean.
   def setup
     Person.create :first_name => 'gummy'
     Reader.create :person_id => 0, :post_id => 0
+  end
+
+  def make_model(name)
+    Class.new(ActiveRecord::Base) { define_singleton_method(:name) { name } }
+  end
+
+  def test_singleton_has_many_through
+    book         = make_model "Book"
+    subscription = make_model "Subscription"
+    subscriber   = make_model "Subscriber"
+
+    subscriber.primary_key = 'nick'
+    subscription.belongs_to :book,       class: book
+    subscription.belongs_to :subscriber, class: subscriber
+
+    book.has_many :subscriptions, class: subscription
+    book.has_many :subscribers, through: :subscriptions, class: subscriber
+
+    anonbook = book.first
+    namebook = Book.find anonbook.id
+
+    assert_operator anonbook.subscribers.count, :>, 0
+    anonbook.subscribers.each do |s|
+      assert_instance_of subscriber, s
+    end
+    assert_equal namebook.subscribers.map(&:id).sort,
+                 anonbook.subscribers.map(&:id).sort
+  end
+
+  def test_pk_is_not_required_for_join
+    post  = Post.includes(:scategories).first
+    post2 = Post.includes(:categories).first
+
+    assert_operator post.categories.length, :>, 0
+    assert_equal post2.categories, post.categories
   end
 
   def test_include?
@@ -654,7 +690,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     sarah = Person.create!(:first_name => 'Sarah', :primary_contact_id => people(:susan).id, :gender => 'F', :number1_fan_id => 1)
     john = Person.create!(:first_name => 'John', :primary_contact_id => sarah.id, :gender => 'M', :number1_fan_id => 1)
     assert_equal sarah.agents, [john]
-    assert_equal people(:susan).agents.flat_map(&:agents), people(:susan).agents_of_agents
+    assert_equal people(:susan).agents.map(&:agents).flatten, people(:susan).agents_of_agents
   end
 
   def test_associate_existing_with_nonstandard_primary_key_on_belongs_to

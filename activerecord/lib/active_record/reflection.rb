@@ -121,6 +121,7 @@ module ActiveRecord
         @scope         = scope
         @options       = options
         @active_record = active_record
+        @klass         = options[:class]
         @plural_name   = active_record.pluralize_table_names ?
                             name.to_s.pluralize : name.to_s
       end
@@ -394,7 +395,7 @@ module ActiveRecord
         # returns either nil or the inverse association name that it finds.
         def automatic_inverse_of
           if can_find_inverse_of_automatically?(self)
-            inverse_name = active_record.name.downcase.to_sym
+            inverse_name = ActiveSupport::Inflector.underscore(active_record.name).to_sym
 
             begin
               reflection = klass.reflect_on_association(inverse_name)
@@ -413,7 +414,7 @@ module ActiveRecord
         end
 
         # Checks if the inverse reflection that is returned from the
-        # +set_automatic_inverse_of+ method is a valid reflection. We must
+        # +automatic_inverse_of+ method is a valid reflection. We must
         # make sure that the reflection's active_record name matches up
         # with the current reflection's klass name.
         #
@@ -422,7 +423,6 @@ module ActiveRecord
         def valid_inverse_reflection?(reflection)
           reflection &&
             klass.name == reflection.active_record.name &&
-            klass.primary_key == reflection.active_record_primary_key &&
             can_find_inverse_of_automatically?(reflection)
         end
 

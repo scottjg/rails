@@ -1,3 +1,24 @@
+*   Ensure that autoloaded constants in all-caps nestings are marked as
+    autoloaded.
+
+    *Simon Coffey*
+
+*   Add String#remove(pattern) as a short-hand for the common pattern of String#gsub(pattern, '')
+
+    *DHH*
+
+*   Adds a new deprecation behaviour that raises an exception. Throwing this
+    line into +config/environments/development.rb+
+
+        ActiveSupport::Deprecation.behavior = :raise
+
+    will cause the application to raise an +ActiveSupport::DeprecationException+
+    on deprecations.
+
+    Use this for aggressive deprecation cleanups.
+
+    *Xavier Noria*
+
 *   Remove 'cow' => 'kine' irregular inflection from default inflections.
 
     *Andrew White*

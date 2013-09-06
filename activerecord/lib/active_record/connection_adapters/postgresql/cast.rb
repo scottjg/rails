@@ -17,8 +17,8 @@ module ActiveRecord
           return string unless String === string
 
           case string
-          when 'infinity'; 1.0 / 0.0
-          when '-infinity'; -1.0 / 0.0
+          when 'infinity'; Float::INFINITY
+          when '-infinity'; -Float::INFINITY
           when / BC$/
             super("-" + string.sub(/ BC$/, ""))
           else
@@ -100,7 +100,11 @@ module ActiveRecord
           if string.nil?
             nil
           elsif String === string
-            IPAddr.new(string)
+            begin
+              IPAddr.new(string)
+            rescue ArgumentError
+              nil
+            end
           else
             string
           end

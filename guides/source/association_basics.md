@@ -40,7 +40,7 @@ end
 @customer.destroy
 ```
 
-With Active Record associations, we can streamline these — and other — operations by declaratively telling Rails that there is a connection between the two models. Here's the revised code for setting up customers and orders:
+With Active Record associations, we can streamline these - and other - operations by declaratively telling Rails that there is a connection between the two models. Here's the revised code for setting up customers and orders:
 
 ```ruby
 class Customer < ActiveRecord::Base
@@ -69,7 +69,7 @@ To learn more about the different types of associations, read the next section o
 The Types of Associations
 -------------------------
 
-In Rails, an _association_ is a connection between two Active Record models. Associations are implemented using macro-style calls, so that you can declaratively add features to your models. For example, by declaring that one model `belongs_to` another, you instruct Rails to maintain Primary Key–Foreign Key information between instances of the two models, and you also get a number of utility methods added to your model. Rails supports six types of associations:
+In Rails, an _association_ is a connection between two Active Record models. Associations are implemented using macro-style calls, so that you can declaratively add features to your models. For example, by declaring that one model `belongs_to` another, you instruct Rails to maintain Primary Key-Foreign Key information between instances of the two models, and you also get a number of utility methods added to your model. Rails supports six types of associations:
 
 * `belongs_to`
 * `has_one`
@@ -1136,6 +1136,12 @@ Controls what happens to the associated object when its owner is destroyed:
 * `:nullify` causes the foreign key to be set to `NULL`. Callbacks are not executed.
 * `:restrict_with_exception` causes an exception to be raised if there is an associated record
 * `:restrict_with_error` causes an error to be added to the owner if there is an associated object
+
+It's necessary not to set or leave `:nullify` option for those associations 
+that have `NOT NULL` database constraints. If you don't set `dependent` to 
+destroy such associations you won't be able to change the associated object 
+because initial associated object foreign key will be set to unallowed `NULL` 
+value.
 
 ##### `:foreign_key`
 

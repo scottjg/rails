@@ -61,11 +61,12 @@ platforms :ruby do
 end
 
 platforms :jruby do
-  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.2.7'
+  gem 'json'
+  gem 'activerecord-jdbcsqlite3-adapter', '>= 1.3.0'
 
   group :db do
-    gem 'activerecord-jdbcmysql-adapter', '>= 1.2.7'
-    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.2.7'
+    gem 'activerecord-jdbcmysql-adapter', '>= 1.3.0'
+    gem 'activerecord-jdbcpostgresql-adapter', '>= 1.3.0'
   end
 end
 
