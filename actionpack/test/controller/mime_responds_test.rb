@@ -284,6 +284,27 @@ class RespondToControllerTest < ActionController::TestCase
     end
   end
 
+  def test_json_or_yaml
+    get :json_or_yaml
+    assert_equal 'JSON', @response.body
+
+    get :json_or_yaml, :format => 'json'
+    assert_equal 'JSON', @response.body
+
+    get :json_or_yaml, :format => 'yaml'
+    assert_equal 'YAML', @response.body
+
+    { 'YAML' => %w(text/yaml),
+      'JSON' => %w(application/json text/x-json)
+    }.each do |body, content_types|
+      content_types.each do |content_type|
+        @request.env['HTTP_ACCEPT'] = content_type
+        get :json_or_yaml
+        assert_equal body, @response.body
+      end
+    end
+  end
+
   def test_js_or_anything
     @request.accept = "text/javascript, */*"
     xhr :get, :js_or_html

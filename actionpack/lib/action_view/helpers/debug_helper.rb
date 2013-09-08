@@ -26,6 +26,16 @@ module ActionView
       #
       #   new_record: true
       #   </pre>
+      #  my_hash = {'first' => 1, 'second' => 'two', 'third' => [1,2,3]}
+      #  debug(my_hash)
+      #  => <pre class='debug_dump'>--- 
+      #  first: 1
+      #  second: two
+      #  third: 
+      #  - 1
+      #  - 2
+      #  - 3
+      #  </pre>
       def debug(object)
         Marshal::dump(object)
         object = ERB::Util.html_escape(object.to_yaml).gsub("  ", "&nbsp; ").html_safe

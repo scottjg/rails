@@ -73,6 +73,8 @@ class LayoutAutoDiscoveryTest < ActionController::TestCase
     @controller = MultipleExtensions.new
     get :hello
     assert_equal 'multiple_extensions.html.erb hello.erb', @response.body.strip
+    @request    = ActionController::TestRequest.new
+    @response   = ActionController::TestResponse.new
   end
 end
 
@@ -98,6 +100,15 @@ class PrependsViewPathController < LayoutTest
   def hello
     prepend_view_path File.dirname(__FILE__) + '/../fixtures/layout_tests/alt/'
     render :layout => 'alt'
+  end
+
+  def test_rhtml_exempt_from_layout_status_should_prevent_layout_render
+    ActionController::Base.exempt_from_layout :rhtml
+    assert @controller.send(:template_exempt_from_layout?, 'test.rhtml')
+
+    get :hello
+    assert_equal 'hello.rhtml', @response.body
+    ActionController::Base.exempt_from_layout.delete(/\.rhtml$/)
   end
 end
 

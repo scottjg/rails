@@ -238,6 +238,10 @@ class ModuleTest < ActiveSupport::TestCase
     assert_equal [Yz::Zy, Yz, Object], Yz::Zy::Cd.parents
     assert_equal [Yz, Object], Yz::Zy.parents
   end
+  
+  def test_local_constants
+    assert_equal %w(Constant1 Constant3), Ab.local_constants.sort
+  end
 
   def test_local_constants
     assert_equal %w(Constant1 Constant3), Ab.local_constants.sort.map(&:to_s)
