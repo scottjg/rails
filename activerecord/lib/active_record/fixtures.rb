@@ -615,7 +615,7 @@ module ActiveRecord
 
           # generate a primary key if necessary
           if has_primary_key_column? && !row.include?(primary_key_name)
-            row[primary_key_name] = ActiveRecord::FixtureSet.identify(label, primary_key_type_for(model_class))
+            row[primary_key_name] = ActiveRecord::FixtureSet.identify(label, primary_key_type)
           end
 
           # If STI is used, find the correct subclass for association reflection
@@ -668,6 +668,10 @@ module ActiveRecord
       def name
         @association.name
       end
+
+      def primary_key_type
+        @association.klass.column_types[@association.klass.primary_key].type
+      end
     end
 
     class HasManyThroughProxy < ReflectionProxy # :nodoc:
@@ -695,19 +699,19 @@ module ActiveRecord
         @primary_key_name ||= model_class && model_class.primary_key
       end
 
-      def primary_key_type_for(model_class)
-        model_class.column_types[model_class.primary_key].type
+      def primary_key_type
+        @primary_key_type ||= model_class && model_class.column_types[model_class.primary_key].type
       end
 
       def add_join_records(rows, row, association)
         # This is the case when the join table has no fixtures file
         if (targets = row.delete(association.name.to_s))
-          table_name = association.join_table
-          lhs_key    = association.lhs_key
-          rhs_key    = association.rhs_key
+          table_name  = association.join_table
+          column_type = association.primary_key_type
+          lhs_key     = association.lhs_key
+          rhs_key     = association.rhs_key
 
           targets = targets.is_a?(Array) ? targets : targets.split(/\s*,\s*/)
-          column_type = primary_key_type_for(association.klass)
           rows[table_name].concat targets.map { |target|
             { lhs_key => row[primary_key_name],
               rhs_key => ActiveRecord::FixtureSet.identify(target, column_type) }
