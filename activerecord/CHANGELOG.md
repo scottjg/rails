@@ -1,3 +1,9 @@
+*   Allow relations with bind values to be passed to Relation#from.
+    Also, allow passing a relation to Relation#where in the case where
+    both relations have bind values.
+
+    *Ryan Wallace*
+
 *   Re-use `order` argument pre-processing for `reorder`.
 
     *Paul Nikitochkin*

@@ -900,8 +900,10 @@ module ActiveRecord
         opts = PredicateBuilder.resolve_column_aliases(klass, opts)
         attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
 
-        attributes.values.grep(ActiveRecord::Relation) do |rel|
-          self.bind_values += rel.bind_values
+        attributes.each do |column, value|
+          next unless ActiveRecord::Relation === value
+
+          attributes[column] = merge_bind_values(value)
         end
 
         PredicateBuilder.build_from_hash(klass, attributes, table)
@@ -914,6 +916,7 @@ module ActiveRecord
       opts, name = from_value
       case opts
       when Relation
+        opts = merge_bind_values(opts)
         name ||= 'subquery'
         opts.arel.as(name.to_s)
       else
@@ -968,6 +971,26 @@ module ActiveRecord
       else
         arel.project(@klass.arel_table[Arel.star])
       end
+    end
+
+    # FIXME: Doesn't support multiple levels of nesting
+    def merge_bind_values(rel)
+      rel = rel.spawn
+
+      bv_index = 0
+      rel.where_values.map! do |node|
+        if Arel::Nodes::Equality === node && Arel::Nodes::BindParam === node.right
+          substitute = connection.substitute_at(rel.bind_values[bv_index].first, self.bind_values.length + bv_index)
+          bv_index += 1
+          Arel::Nodes::Equality.new(node.left, substitute)
+        else
+          node
+        end
+      end
+
+      self.bind_values += rel.bind_values
+
+      return rel
     end
 
     def reverse_sql_order(order_query)
