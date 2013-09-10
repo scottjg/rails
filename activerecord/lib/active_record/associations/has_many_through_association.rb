@@ -61,9 +61,11 @@ module ActiveRecord
             return unless record.save(:validate => validate)
           end
         end
-
-        save_through_record(record)
-        update_counter(1)
+	
+	if(through_records_for(record).empty?)
+	  save_through_record(record)
+          update_counter(1)
+	end
         record
       end
 
