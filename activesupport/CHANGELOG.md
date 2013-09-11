@@ -1,3 +1,8 @@
+*   Add `SecureRandom::uuid_v3` and `SecureRandom::uuid_v5` to support stable
+    UUID fixtures on PostgreSQL.
+
+    *Roderick van Domburg*
+
 *   Ensure that autoloaded constants in all-caps nestings are marked as
     autoloaded.
 
