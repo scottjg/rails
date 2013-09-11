@@ -84,6 +84,12 @@ class FixturesTest < ActiveRecord::TestCase
     assert fixtures.detect { |f| f.name == 'collections' }, "no fixtures named 'collections' in #{fixtures.map(&:name).inspect}"
   end
 
+  def test_create_symbol_fixtures_is_deprecated
+    assert_deprecated do
+      ActiveRecord::FixtureSet.create_fixtures(FIXTURES_ROOT, :collections, :collections => 'Course') { Course.connection }
+    end
+  end
+
   def test_attributes
     topics = create_fixtures("topics").first
     assert_equal("The First Topic", topics["first"]["title"])
@@ -260,6 +266,41 @@ class FixturesTest < ActiveRecord::TestCase
     result = test_case.new(:test_fixtures).run
 
     assert result.passed?, "Expected #{result.name} to pass:\n#{result}"
+  end
+end
+
+class HasManyThroughFixture < ActiveSupport::TestCase
+  def make_model(name)
+    Class.new(ActiveRecord::Base) { define_singleton_method(:name) { name } }
+  end
+
+  def test_has_many_through
+    pt = make_model "ParrotTreasure"
+    parrot = make_model "Parrot"
+    treasure = make_model "Treasure"
+
+    pt.table_name = "parrots_treasures"
+    pt.belongs_to :parrot, :class => parrot
+    pt.belongs_to :treasure, :class => treasure
+
+    parrot.has_many :parrot_treasures, :class => pt
+    parrot.has_many :treasures, :through => :parrot_treasures
+
+    parrots = File.join FIXTURES_ROOT, 'parrots'
+
+    fs = ActiveRecord::FixtureSet.new parrot.connection, "parrots", parrot, parrots
+    rows = fs.table_rows
+    assert_equal load_has_and_belongs_to_many['parrots_treasures'], rows['parrots_treasures']
+  end
+
+  def load_has_and_belongs_to_many
+    parrot = make_model "Parrot"
+    parrot.has_and_belongs_to_many :treasures
+
+    parrots = File.join FIXTURES_ROOT, 'parrots'
+
+    fs = ActiveRecord::FixtureSet.new parrot.connection, "parrots", parrot, parrots
+    fs.table_rows
   end
 end
 

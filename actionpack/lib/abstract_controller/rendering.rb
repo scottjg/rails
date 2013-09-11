@@ -22,6 +22,10 @@ module AbstractController
     # sticks the result in self.response_body.
     # :api: public
     def render(*args, &block)
+      options = _normalize_render(*args, &block)
+      self.response_body = render_to_body(options)
+      _process_format(rendered_format)
+      self.response_body
     end
 
     # Raw rendering of a template to a string.
@@ -40,11 +44,9 @@ module AbstractController
       render_to_body(options)
     end
 
-    # Raw rendering of a template.
+    # Performs the actual template rendering.
     # :api: public
     def render_to_body(options = {})
-      _process_options(options)
-      _render_template(options)
     end
 
     # Return Content-Type of rendered content
@@ -74,7 +76,11 @@ module AbstractController
     # render "foo/bar" to render :file => "foo/bar".
     # :api: plugin
     def _normalize_args(action=nil, options={})
-      options
+      if action.is_a? Hash
+        action
+      else
+        options
+      end
     end
 
     # Normalize options.
@@ -89,40 +95,17 @@ module AbstractController
       options
     end
 
+    # Process the rendered format.
+    # :api: private
+    def _process_format(format)
+    end
+
     # Normalize args and options.
     # :api: private
     def _normalize_render(*args, &block)
       options = _normalize_args(*args, &block)
       _normalize_options(options)
       options
-    end
-  end
-
-  # Basic rendering implements the most minimal rendering layer.
-  # It only supports rendering :text and :nothing. Passing any other option will
-  # result in `UnsupportedOperationError` exception. For more functionality like
-  # different formats, layouts etc. you should use `ActionView` gem.
-  module BasicRendering
-    extend ActiveSupport::Concern
-
-    # Render text or nothing (empty string) to response_body
-    # :api: public
-    def render(*args, &block)
-      super(*args, &block)
-      opts = args.first
-      if opts.has_key?(:text) && opts[:text].present?
-        self.response_body = opts[:text]
-      elsif opts.has_key?(:nothing) && opts[:nothing]
-        self.response_body = " "
-      else
-        raise UnsupportedOperationError
-      end
-    end
-
-    class UnsupportedOperationError < StandardError
-      def initialize
-        super "Unsupported render operation. BasicRendering supports only :text and :nothing options. For more, you need to include ActionView."
-      end
     end
   end
 end
