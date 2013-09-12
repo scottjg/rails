@@ -272,15 +272,13 @@ module ActiveSupport
         # Remove leading/trailing separator.
         parameterized_string.gsub!(/^#{re_sep}|#{re_sep}$/i, '')
       end
-      parameterized_string.downcase
+      parameterized_string.downcase.to_s
     end
 
 
     # Replaces accented characters with their ascii equivalents.
     def transliterate(string, replacement = "?")
-      I18n.transliterate(ActiveSupport::Multibyte::Unicode.normalize(
-        ActiveSupport::Multibyte::Unicode.tidy_bytes(string), :c),
-          :replacement => replacement)
+      I18n.transliterate(ActiveSupport::Multibyte::Chars.new(ActiveSupport::Multibyte::Chars.new(string).tidy_bytes)).normalize
     end
 
     # if RUBY_VERSION >= '1.9'
