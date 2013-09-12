@@ -253,7 +253,7 @@ module ActiveRecord
 
       # Drops a table from the database.
       def drop_table(table_name, options = {})
-        execute "DROP TABLE #{quote_table_name(table_name)}"
+        execute "DROP TABLE #{quote_table_name(table_name)} CASCADE"
       end
 
       # Adds a new column to the named table.
