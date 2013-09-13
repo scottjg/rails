@@ -31,6 +31,18 @@ class Numeric
   # Date[http://ruby-doc.org/stdlib/libdoc/date/rdoc/Date.html] and
   # Time[http://ruby-doc.org/stdlib/libdoc/time/rdoc/Time.html] should be used for precision
   # date and time arithmetic.
+
+  alias :numeric_equal :==
+  def ==(other)
+    if other.is_a?(ActiveSupport::Duration)
+      other == self	
+    else
+      self.numeric_equal(other)
+    end
+  end
+  alias :equal? :==
+  alias :eql? :==
+
   def seconds
     ActiveSupport::Duration.new(self, [[:seconds, self]])
   end
