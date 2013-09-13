@@ -48,7 +48,6 @@ module ActiveSupport
         other == value
       end
     end
-    alias :equal? :==
     alias :eql? :==
 
     def self.===(other) #:nodoc:

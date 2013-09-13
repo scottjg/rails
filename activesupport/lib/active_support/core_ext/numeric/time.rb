@@ -40,7 +40,6 @@ class Numeric
       self.numeric_equal(other)
     end
   end
-  alias :equal? :==
   alias :eql? :==
 
   def seconds
