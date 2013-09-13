@@ -2,7 +2,6 @@
 
 *   No changes.
 
-
 ## Rails 3.2.13 (Feb 17, 2013) ##
 
 *   Fix incorrectly appended square brackets to a multiple select box
