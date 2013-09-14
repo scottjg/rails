@@ -11,7 +11,9 @@ end
 # and consequently classes as ActiveSupport::OrderedHash cannot be serialized to json.
 [Object, Array, FalseClass, Float, Hash, Integer, NilClass, String, TrueClass].each do |klass|
   klass.class_eval do
-    # Dumps object in JSON (JavaScript Object Notation). See www.json.org for more info.
+    # Preserve the to_json added by JSON gem, in case the encoder needs it
+    alias_method :__to_json__, :to_json if method_defined? :to_json
+
     def to_json(options = nil)
       ActiveSupport::JSON.encode(self, options)
     end

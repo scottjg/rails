@@ -98,6 +98,24 @@ module ActiveSupport
       end
 
       class JSONGemEncoder < Encoder
+        def initialize(option_or_state = nil)
+          if option_or_state.is_a?(::JSON::State)
+            @state = option_or_state
+            super(nil)
+          else
+            @state = nil
+            super
+          end
+        end
+
+        def encode(value)
+          if called_by_json_gem?
+            value.__to_json__(@state)
+          else
+            super
+          end
+        end
+
         protected
           def encode_jsonified(jsonified)
             json = ::JSON.generate(jsonified, max_nesting: false, quirks_mode: true)
@@ -120,6 +138,10 @@ module ActiveSupport
           end
 
         private
+          def called_by_json_gem?
+            @state
+          end
+
           class BigDecimalProxy
             def initialize(value)
               @value = value
