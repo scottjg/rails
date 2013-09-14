@@ -112,6 +112,7 @@ class InflectorTest < ActiveSupport::TestCase
     #  camelize             underscore            humanize              titleize
     [
       ["API",               "api",                "API",                "API"],
+      ["Module::APIFoo",    "module/api_foo",     "Module/API foo",     "Module/API Foo"],
       ["APIController",     "api_controller",     "API controller",     "API Controller"],
       ["Nokogiri::HTML",    "nokogiri/html",      "Nokogiri/HTML",      "Nokogiri/HTML"],
       ["HTTPAPI",           "http_api",           "HTTP API",           "HTTP API"],
