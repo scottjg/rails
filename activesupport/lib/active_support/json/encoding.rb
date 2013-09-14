@@ -93,11 +93,6 @@ module ActiveSupport
       end
 
       class JSONGemEncoder < Encoder
-        def initialize(options = nil)
-          require 'json'
-          super
-        end
-
         protected
           def encode_jsonified(jsonified)
             json = ::JSON.generate(jsonified, max_nesting: false, quirks_mode: true)
