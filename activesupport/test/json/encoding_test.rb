@@ -141,6 +141,11 @@ class TestJSONEncoding < ActiveSupport::TestCase
     assert_equal "𐒑", decoded_hash['string']
   end
 
+  def test_exception_raised_when_encoding_with_wrong_arguments_type
+    assert_raise(ArgumentError) { ActiveSupport::JSON.encode({a: "json"}, :not_a_hash) }
+    assert_raise(ArgumentError) { {a: "json"}.to_json(:not_a_hash) }
+  end
+
   def test_exception_raised_when_encoding_circular_reference_in_array
     a = [1]
     a << a

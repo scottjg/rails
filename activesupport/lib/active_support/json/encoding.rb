@@ -40,7 +40,12 @@ module ActiveSupport
         attr_reader :options
 
         def initialize(options = nil)
-          @options = options || {}
+          if options.nil? || options.is_a?(Hash)
+            @options = options || {}
+          else
+            raise ArgumentError, "Expected a Hash for options, got '#{options.inspect}' instead. " \
+              "This is likely a bug in your JSON encoder (#{self.class.to_s})."
+          end
         end
 
         def encode(value)

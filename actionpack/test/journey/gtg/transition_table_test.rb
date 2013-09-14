@@ -13,7 +13,7 @@ module ActionDispatch
             /articles/:id(.:format)
           }
 
-          json = JSON.load table.to_json
+          json = JSON.parse table.to_json
           assert json['regexp_states']
           assert json['string_states']
           assert json['accepting']
