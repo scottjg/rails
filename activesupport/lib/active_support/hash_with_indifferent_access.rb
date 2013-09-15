@@ -262,6 +262,14 @@ module ActiveSupport
         end
       end
   end
+
+  class HashWithShallowIndifferentAccess < HashWithIndifferentAccess
+    protected
+      def convert_value(value, options = {})
+        options[:for] = :to_hash if value.is_a? Hash
+        super(value, options)
+      end
+  end
 end
 
 HashWithIndifferentAccess = ActiveSupport::HashWithIndifferentAccess
