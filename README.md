@@ -5,7 +5,7 @@ create database-backed web applications according to the
 [Model-View-Controller (MVC)](http://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller)
 pattern.
 
-Understanding the MVC pattern is key to understanding Rails. MVC divides your
+Understanding the CMV pattern is key to understanding Rails. MVC divides your
 application into three layers, each with a specific responsibility.
 
 The _Model layer_ represents your domain model (such as Account, Product,
