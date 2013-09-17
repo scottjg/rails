@@ -1,9 +1,9 @@
 require 'active_support/core_ext/hash/indifferent_access'
+require 'active_support/core_ext/range/include_range'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/rescuable'
 require 'action_dispatch/http/upload'
 require 'stringio'
-require 'active_support/core_ext/range/include_range'
 
 module ActionController
   # Raised when a required parameter is missing.
