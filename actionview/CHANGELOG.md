@@ -1,3 +1,14 @@
+*   Fix `form_for` when both `namespace` and `as` options are present
+
+    `as` option no longer overwrites `namespace` option when generating
+    html id attribute of the form element
+
+    *Adam Niedzielski*
+
+*   Fix `excerpt` when `:separator` is `nil`.
+
+    *Paul Nikitochkin*
+
 *   Only cache template digests if `config.cache_template_loading` id true.
 
     *Josh Lauer*, *Justin Ridgewell*

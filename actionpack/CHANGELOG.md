@@ -1,3 +1,16 @@
+*   Fix custom flash type definition. Misusage of the `_flash_types` class variable
+    caused an error when reloading controllers with custom flash types.
+
+    Fixes #12057
+
+    *Ricardo de Cillo*
+
+*   Do not break params filtering on `nil` values.
+
+    Fixes #12149.
+
+    *Vasiliy Ermolovich*
+
 *   Separate Action View completely from Action Pack.
 
     *Łukasz Strzałkowski*

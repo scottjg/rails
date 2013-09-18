@@ -116,7 +116,7 @@ Documentation
 Railties
 --------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railties/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/4-0-stable/railties/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 
@@ -139,7 +139,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/railt
 Action Mailer
 -------------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/actionmailer/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/4-0-stable/actionmailer/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 
@@ -148,7 +148,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/actio
 Active Model
 ------------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activemodel/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/4-0-stable/activemodel/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 
@@ -161,7 +161,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
 Active Support
 --------------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activesupport/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/4-0-stable/activesupport/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 
@@ -190,20 +190,20 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activ
 
 * Deprecate `ActiveSupport::TestCase#pending` method, use `skip` from MiniTest instead.
 
-* ActiveSupport::Benchmarkable#silence has been deprecated due to its lack of thread safety. It will be removed without replacement in Rails 4.1.
+* `ActiveSupport::Benchmarkable#silence` has been deprecated due to its lack of thread safety. It will be removed without replacement in Rails 4.1.
 
 * `ActiveSupport::JSON::Variable` is deprecated. Define your own `#as_json` and `#encode_json` methods for custom JSON string literals.
 
-* Deprecates the compatibility method Module#local_constant_names, use Module#local_constants instead (which returns symbols).
+* Deprecates the compatibility method `Module#local_constant_names`, use `Module#local_constants` instead (which returns symbols).
 
-* BufferedLogger is deprecated. Use ActiveSupport::Logger, or the logger from Ruby standard library.
+* `BufferedLogger` is deprecated. Use `ActiveSupport::Logger`, or the logger from Ruby standard library.
 
 * Deprecate `assert_present` and `assert_blank` in favor of `assert object.blank?` and `assert object.present?`
 
 Action Pack
 -----------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/actionpack/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/4-0-stable/actionpack/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 
@@ -215,7 +215,7 @@ Please refer to the [Changelog](https://github.com/rails/rails/blob/master/actio
 Active Record
 -------------
 
-Please refer to the [Changelog](https://github.com/rails/rails/blob/master/activerecord/CHANGELOG.md) for detailed changes.
+Please refer to the [Changelog](https://github.com/rails/rails/blob/4-0-stable/activerecord/CHANGELOG.md) for detailed changes.
 
 ### Notable changes
 

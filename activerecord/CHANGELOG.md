@@ -1,3 +1,45 @@
+*   Fix: joins association, with defined in the scope block constraints by using several
+    where constraints and at least of them is not `Arel::Nodes::Equality`,
+    generates invalid SQL expression.
+
+    Fixes: #11963
+
+    *Paul Nikitochkin*
+
+*   Deprecate the delegation of Array bang methods for associations.
+    To use them, instead first call `#to_a` on the association to access the
+    array to be acted on.
+
+    *Ben Woosley*
+
+*   `CollectionAssociation#first`/`#last` (e.g. `has_many`) use a `LIMIT`ed
+    query to fetch results rather than loading the entire collection.
+
+    *Lann Martin*
+
+*   Make possible to run SQLite rake tasks without the `Rails` constant defined.
+
+    *Damien Mathieu*
+
+*   Allow Relation#from to accept other relations with bind values.
+
+    *Ryan Wallace*
+
+*   Fix inserts with prepared statements disabled.
+
+    Fixes #12023.
+
+    *Rafael Mendonça França*
+
+*   Setting a has_one association on a new record no longer causes an empty
+    transaction.
+
+    *Dylan Thacker-Smith*
+
+*   Fix `AR::Relation#merge` sometimes failing to preserve `readonly(false)` flag.
+
+    *thedarkone*
+
 *   Re-use `order` argument pre-processing for `reorder`.
 
     *Paul Nikitochkin*
