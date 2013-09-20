@@ -90,6 +90,24 @@ module ActiveRecord
 
           spec
         end
+
+        def connection_hash_to_url(connection_hash) # :nodoc:
+          url = "#{connection_hash.delete(:adapter).gsub('postgresql', 'postgres')}://" +
+          "#{connection_hash.delete(:username)}:" +
+          "#{connection_hash.delete(:password)}@" +
+          "#{connection_hash.delete(:host)}:" +
+          "#{connection_hash.delete(:port)}/" +
+          "#{connection_hash.delete(:database)}"
+
+          url << "?" unless connection_hash.empty?
+
+          connection_hash.each do |key, _|
+            url << "#{key}=#{connection_hash.delete(key)}"
+            url << "&" unless connection_hash.empty?
+          end
+
+          url
+        end
       end
     end
   end
