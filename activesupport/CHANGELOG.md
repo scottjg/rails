@@ -1,3 +1,9 @@
+*   Moved core extensions used for JSON encoding into core_ext/object/json.rb to solve
+    an autoload issue. Requiring core_ext/object/to_json.rb directly now generates a
+    deprecation warnning.
+
+    *Godfrey Chan*
+
 *   Disable the ability to iterate over Range of AS::TimeWithZone 
     due to significant performance issues.
 

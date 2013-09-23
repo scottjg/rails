@@ -424,7 +424,7 @@ Active Support provides a better implementation of `to_json` than the +json+ gem
 
 Active Support also provides an implementation of `as_json` for the <tt>Process::Status</tt> class.
 
-NOTE: Defined in `active_support/core_ext/object/to_json.rb`.
+NOTE: Defined in `active_support/core_ext/object/json.rb`.
 
 ### Instance Variables
 
