@@ -1,3 +1,8 @@
+*   Removed circular reference protection in JSON encoder, deprecated
+    ActiveSupport::JSON::Encoding::CircularReferenceError.
+
+    *Godfrey Chan*, *Sergio Campamá*
+
 *   Fixed Object#as_json and Struct#as_json not working properly with options. They now take
     the same options as Hash#as_json:
 
