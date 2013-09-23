@@ -217,7 +217,7 @@ class TestJSONEncoding < ActiveSupport::TestCase
     h = Hashlike.new
     json = h.to_json :only => [:foo]
 
-    assert_equal({"foo"=>"hello"}, JSON.parse(json))
+    assert_equal({"foo"=>"hello"}, ActiveSupport::JSON.decode(json))
   end
 
   def test_object_to_json_with_options
@@ -226,7 +226,7 @@ class TestJSONEncoding < ActiveSupport::TestCase
     obj.instance_variable_set :@bar, "world"
     json = obj.to_json :only => ["foo"]
 
-    assert_equal({"foo"=>"hello"}, JSON.parse(json))
+    assert_equal({"foo"=>"hello"}, ActiveSupport::JSON.decode(json))
   end
 
   def test_struct_to_json_with_options
@@ -235,7 +235,7 @@ class TestJSONEncoding < ActiveSupport::TestCase
     struct.bar = "world"
     json = struct.to_json :only => [:foo]
 
-    assert_equal({"foo"=>"hello"}, JSON.parse(json))
+    assert_equal({"foo"=>"hello"}, ActiveSupport::JSON.decode(json))
   end
 
   def test_hash_should_pass_encoding_options_to_children_in_as_json
@@ -319,7 +319,7 @@ class TestJSONEncoding < ActiveSupport::TestCase
 
     hash = {"foo" => f, "other_hash" => {"foo" => "other_foo", "test" => "other_test"}}
     assert_equal({"foo"=>{"foo"=>"hello","bar"=>"world"},
-                  "other_hash" => {"foo"=>"other_foo","test"=>"other_test"}}, JSON.parse(hash.to_json))
+                  "other_hash" => {"foo"=>"other_foo","test"=>"other_test"}}, ActiveSupport::JSON.decode(hash.to_json))
   end
 
   def test_array_to_json_should_not_keep_options_around
@@ -328,7 +328,7 @@ class TestJSONEncoding < ActiveSupport::TestCase
     f.bar = "world"
 
     array = [f, {"foo" => "other_foo", "test" => "other_test"}]
-    assert_equal([{"foo"=>"hello","bar"=>"world"},{"foo"=>"other_foo","test"=>"other_test"}], JSON.parse(array.to_json))
+    assert_equal([{"foo"=>"hello","bar"=>"world"},{"foo"=>"other_foo","test"=>"other_test"}], ActiveSupport::JSON.decode(array.to_json))
   end
 
   def test_struct_encoding
@@ -353,13 +353,13 @@ class TestJSONEncoding < ActiveSupport::TestCase
     assert_equal({"name" => "David",
                   "sub" => {
                     "name" => "David",
-                    "date" => "2010-01-01" }}, JSON.parse(json_custom))
+                    "date" => "2010-01-01" }}, ActiveSupport::JSON.decode(json_custom))
 
     assert_equal({"name" => "David", "email" => "sample@example.com"},
-                 JSON.parse(json_strings))
+                 ActiveSupport::JSON.decode(json_strings))
 
     assert_equal({"name" => "David", "date" => "2010-01-01"},
-                 JSON.parse(json_string_and_date))
+                 ActiveSupport::JSON.decode(json_string_and_date))
   end
 
   def test_opt_out_big_decimal_string_serialization
