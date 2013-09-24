@@ -402,6 +402,7 @@ module ActionMailer
       # Either a class or a string can be passed in as the Observer. If a string is passed in
       # it will be +constantize+d.
       def register_observer(observer)
+        debugger
         delivery_observer = (observer.is_a?(String) ? observer.constantize : observer)
         Mail.register_observer(delivery_observer)
       end
