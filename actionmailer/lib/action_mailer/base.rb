@@ -410,6 +410,7 @@ module ActionMailer
       # Either a class or a string can be passed in as the Interceptor. If a string is passed in
       # it will be <tt>constantize</tt>d.
       def register_interceptor(interceptor)
+        debugger
         delivery_interceptor = (interceptor.is_a?(String) ? interceptor.constantize : interceptor)
         Mail.register_interceptor(delivery_interceptor)
       end
