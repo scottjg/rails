@@ -41,8 +41,7 @@ module ActionView
     # templates, i.e. view paths and details. Check ActionView::LookupContext for more
     # information.
     def lookup_context
-      @_lookup_context ||=
-        ActionView::LookupContext.new(self.class._view_paths, details_for_lookup, _prefixes)
+      @_lookup_context ||= build_lookup_context
     end
 
     def details_for_lookup
@@ -55,6 +54,14 @@ module ActionView
 
     def prepend_view_path(path)
       lookup_context.view_paths.unshift(*path)
+    end
+
+    private
+
+    def build_lookup_context
+      details = details_for_lookup rescue {}
+
+      ActionView::LookupContext.new(self.class._view_paths, details, _prefixes)
     end
 
     module ClassMethods

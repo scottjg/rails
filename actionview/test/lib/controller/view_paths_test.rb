@@ -15,6 +15,13 @@ class ViewLoadPathsTest < ActionController::TestCase
       end
   end
 
+  class ErroneousDetailsController < TestController
+    private
+      def details_for_lookup
+        raise "DINGO"
+      end
+  end
+
   module Test
     class SubController < ActionController::Base
       layout 'test/sub'
@@ -40,6 +47,15 @@ class ViewLoadPathsTest < ActionController::TestCase
   def assert_paths(*paths)
     controller = paths.first.is_a?(Class) ? paths.shift : @controller
     assert_equal expand(paths), controller.view_paths.map { |p| p.to_s }
+  end
+
+  def test_handles_exception_in_details_for_lookup
+    @controller = ErroneousDetailsController.new
+    @paths = ErroneousDetailsController.view_paths
+
+    get :hello_world
+    assert_response :success
+    assert_equal "Hello world!", @response.body
   end
 
   def test_template_load_path_was_set_correctly
