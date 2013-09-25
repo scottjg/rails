@@ -91,7 +91,7 @@ module ActionView
           polymorphic_path(options)
         end
 
-        escape ? escape_once(url).html_safe : url
+        false && escape ? escape_once(url).html_safe : url
       end
 
       # Creates a link tag of the given +name+ using a URL created by the set
