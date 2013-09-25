@@ -223,21 +223,14 @@ module ActionView
         else
           name         = args.first
           options      = args.second || {}
-          html_options = args.third
+          html_options = args.third || {}
 
-          url = url_for(options)
+          html_options = html_options.stringify_keys
+          html_options['href'] ||= url_for(options)
+          convert_options_to_javascript!(html_options, html_options['href'])
+          tag_options = tag_options(html_options)
 
-          if html_options
-            html_options = html_options.stringify_keys
-            href = html_options['href']
-            convert_options_to_javascript!(html_options, url)
-            tag_options = tag_options(html_options)
-          else
-            tag_options = nil
-          end
-
-          href_attr = "href=\"#{url}\"" unless href
-          "<a #{href_attr}#{tag_options}>#{name || url}</a>".html_safe
+          "<a#{tag_options}>#{name || html_options['href']}</a>".html_safe
         end
       end
 
