@@ -321,6 +321,44 @@ module ActiveRecord
       @klass.connection.update stmt, 'SQL', bind_values
     end
 
+    # Update the updated_at/on column to records that match a set of conditions supplied.
+    # Updates the updated_at /on attributes This method utilizes update_all in order to perform a single 
+    # SQL UPDATE statement, sending it straight to the database. It will not instantiate the involved models 
+    # and it does not trigger Active Record callbacks. touch_all is useful for key based cache expiration 
+    # allowing you to expire a set of caches at once. If an attribute name is passed as an argument,
+    # that attribute will also be updated as part of the query.
+    #
+    # ==== Paramters
+    #
+    # ==== Examples
+    #
+    #   # Touch all customers with the given attributes
+    #   Customer.touch_all
+    #
+    #   # Touch all boosk with 'Rails' in their title
+    #   Book.where('title LIKE ?', '%Rails').touch_all
+    #
+    #   # Touch all books that match conditions, but limit it to 5 ordered by date
+    #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).touch_all
+    def touch_all(name = nil)
+
+      attributes = self.timestamp_attributes_for_update_in_model
+      attributes << name if name
+
+      unless attributes.empty?
+        current_time = self.current_time_form_proper_timezone
+        changes = {}
+
+        attributes.each do |column|
+          column = column.to_s
+          changes[column] = current_time
+        end
+
+        update_all(changes)
+      end
+
+    end
+
     # Updates an object (or multiple objects) and saves it to the database, if validations pass.
     # The resulting object is returned whether the object was saved successfully to the database or not.
     #

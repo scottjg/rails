@@ -41,11 +41,27 @@ module ActiveRecord
       super
     end
 
+    module ClassMethods
+
+      def timestamp_attributes_for_update_in_model
+        timestamp_attributes_for_update.select { |c| self.column_names.include?(c.to_s) }
+      end
+
+      def current_time_from_proper_timezone
+        self.default_timezone == :utc ? Time.now.utc : Time.now
+      end
+
+      def timestamp_attributes_for_update
+        [:updated_at, :updated_on]
+      end
+
+    end
+
   private
 
     def create_record
       if self.record_timestamps
-        current_time = current_time_from_proper_timezone
+        current_time = self.class.current_time_from_proper_timezone
 
         all_timestamp_attributes.each do |column|
           if respond_to?(column) && respond_to?("#{column}=") && self.send(column).nil?
@@ -59,9 +75,9 @@ module ActiveRecord
 
     def update_record(*args)
       if should_record_timestamps?
-        current_time = current_time_from_proper_timezone
+        current_time = self.class.current_time_from_proper_timezone
 
-        timestamp_attributes_for_update_in_model.each do |column|
+        self.class.timestamp_attributes_for_update_in_model.each do |column|
           column = column.to_s
           next if attribute_changed?(column)
           write_attribute(column, current_time)
@@ -78,16 +94,8 @@ module ActiveRecord
       timestamp_attributes_for_create.select { |c| self.class.column_names.include?(c.to_s) }
     end
 
-    def timestamp_attributes_for_update_in_model
-      timestamp_attributes_for_update.select { |c| self.class.column_names.include?(c.to_s) }
-    end
-
     def all_timestamp_attributes_in_model
-      timestamp_attributes_for_create_in_model + timestamp_attributes_for_update_in_model
-    end
-
-    def timestamp_attributes_for_update
-      [:updated_at, :updated_on]
+      timestamp_attributes_for_create_in_model + self.class.timestamp_attributes_for_update_in_model
     end
 
     def timestamp_attributes_for_create
@@ -95,17 +103,13 @@ module ActiveRecord
     end
 
     def all_timestamp_attributes
-      timestamp_attributes_for_create + timestamp_attributes_for_update
+      timestamp_attributes_for_create + self.class.timestamp_attributes_for_update
     end
 
     def max_updated_column_timestamp
-      if (timestamps = timestamp_attributes_for_update.map { |attr| self[attr] }.compact).present?
+      if (timestamps = self.class.timestamp_attributes_for_update.map { |attr| self[attr] }.compact).present?
         timestamps.map { |ts| ts.to_time }.max
       end
-    end
-
-    def current_time_from_proper_timezone
-      self.class.default_timezone == :utc ? Time.now.utc : Time.now
     end
 
     # Clear attributes and changed_attributes

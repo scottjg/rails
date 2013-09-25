@@ -806,4 +806,14 @@ class PersistenceTest < ActiveRecord::TestCase
     end
   end
 
+  def test_touch_all
+    Topic.update_all(updated_at: Time.now.prev_month)
+    previously_updated_at = Topic.first.updated_at
+
+    assert_equal Topic.count, Topic.touch_all
+
+    assert_not_equal previously_updated_at, Topic.find(1).updated_at
+    assert_not_equal previously_updated_at, Topic.find(2).updated_at
+  end
+
 end

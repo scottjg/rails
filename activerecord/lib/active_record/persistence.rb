@@ -420,11 +420,11 @@ module ActiveRecord
     def touch(name = nil)
       raise ActiveRecordError, "can not touch on a new record object" unless persisted?
 
-      attributes = timestamp_attributes_for_update_in_model
+      attributes = self.class.timestamp_attributes_for_update_in_model
       attributes << name if name
 
       unless attributes.empty?
-        current_time = current_time_from_proper_timezone
+        current_time = self.class.current_time_from_proper_timezone
         changes = {}
 
         attributes.each do |column|
