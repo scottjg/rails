@@ -342,11 +342,11 @@ module ActiveRecord
     #   Book.where('title LIKE ?', '%Rails%').order(:created_at).limit(5).touch_all
     def touch_all(name = nil)
 
-      attributes = self.timestamp_attributes_for_update_in_model
+      attributes = @klass.timestamp_attributes_for_update_in_model
       attributes << name if name
 
       unless attributes.empty?
-        current_time = self.current_time_form_proper_timezone
+        current_time = @klass.current_time_from_proper_timezone
         changes = {}
 
         attributes.each do |column|
