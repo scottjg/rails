@@ -1,0 +1,8 @@
+box: wercker/ubuntu12.04-ruby2.0.0@0.3.0
+build:
+    steps:
+        - bundle-install
+        - script:
+            name: Execute smoke
+            code: |
+                bundle exec rake smoke
