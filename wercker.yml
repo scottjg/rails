@@ -7,4 +7,4 @@ build:
         - script:
             name: Execute smoke
             code: |
-                bundle exec rake smoke
+                rake parallel:rake\[smoke\]
