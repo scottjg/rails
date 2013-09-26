@@ -149,7 +149,7 @@ module ActiveSupport
       #   sleep(6)
       #   cache.fetch("foo")  # => nil
       def fetch(key, options = {})
-        if !options[:force] && value = read(key, options)
+        if !options[:force] && (value = read(key, options)) != nil
           instrument(:hit, key, options) { |payload| }
           value
         elsif block_given?

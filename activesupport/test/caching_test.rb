@@ -65,6 +65,12 @@ class CacheStoreTest < ActiveSupport::TestCase
     @cache = ActiveSupport::Cache.lookup_store(:memory_store)
   end
 
+  def test_fetch_of_boolean_false_without_cache_miss
+    @cache.stubs(:read).with('foo', {}).returns(false)
+    @cache.expects(:write).never
+    assert_equal false, @cache.fetch('foo') { 'unused' }
+  end
+
   def test_fetch_without_cache_miss
     @cache.stubs(:read).with('foo', {}).returns('bar')
     @cache.expects(:write).never
