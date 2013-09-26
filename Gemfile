@@ -41,6 +41,7 @@ group :test do
   end
 
   gem 'benchmark-ips'
+  gem 'parallel_tests'
 end
 
 platforms :ruby do
