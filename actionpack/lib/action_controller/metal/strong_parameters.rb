@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 require 'active_support/core_ext/hash/indifferent_access'
 require 'active_support/core_ext/array/wrap'
 require 'active_support/rescuable'
@@ -283,12 +284,14 @@ module ActionController
     #   params.fetch(:none, 'Francesco')    # => "Francesco"
     #   params.fetch(:none) { 'Francesco' } # => "Francesco"
     def fetch(key, *args)
-      convert_hashes_to_parameters(key, super)
-    rescue KeyError => e
-      if e.message =~ /(:#{key}|"#{key}")$/
-        raise ActionController::ParameterMissing.new(key)
-      else
-        raise
+      super(key) do
+        if block_given?
+          yield
+        else
+          args.fetch(0) do
+            raise ActionController::ParameterMissing.new(key)
+          end
+        end
       end
     end
 
