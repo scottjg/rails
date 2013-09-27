@@ -392,7 +392,7 @@ module ActiveRecord
       end
 
       def open_transactions
-        @transaction.number
+        current_transaction.number
       end
 
       def create_savepoint

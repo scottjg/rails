@@ -219,33 +219,35 @@ module ActiveRecord
       end
 
       def current_transaction #:nodoc:
-        @transaction
+        @transaction[Fiber.current.object_id] || @closed_transaction
       end
 
       def transaction_open?
-        @transaction.open?
+        current_transaction.open?
       end
 
       def begin_transaction(options = {}) #:nodoc:
-        @transaction = @transaction.begin(options)
+        @transaction[Fiber.current.object_id] =
+          current_transaction.begin(options)
       end
 
       def commit_transaction #:nodoc:
-        @transaction = @transaction.commit
+        set_current_transaction(current_transaction.commit)
       end
 
       def rollback_transaction #:nodoc:
-        @transaction = @transaction.rollback
+        set_current_transaction(current_transaction.rollback)
       end
 
       def reset_transaction #:nodoc:
-        @transaction = ClosedTransaction.new(self)
+        @transaction = {}
+        @closed_transaction = ClosedTransaction.new(self)
       end
 
       # Register a record with the current transaction so that its after_commit and after_rollback callbacks
       # can be called.
       def add_transaction_record(record)
-        @transaction.add_record(record)
+        current_transaction.add_record(record)
       end
 
       # Begins the transaction (and turns off auto-committing).
@@ -381,6 +383,14 @@ module ActiveRecord
         def last_inserted_id(result)
           row = result.rows.first
           row && row.first
+        end
+
+        def set_current_transaction(t)
+          if t == @closed_transaction
+            @transaction.delete(Fiber.current.object_id)
+          else
+            @transaction[Fiber.current.object_id] = t
+          end
         end
     end
   end
