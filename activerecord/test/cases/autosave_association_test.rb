@@ -959,6 +959,21 @@ class TestAutosaveAssociationOnAHasOneAssociation < ActiveRecord::TestCase
     assert @pirate.errors[:"ship.name"].any?
   end
 
+  def test_should_automatically_save_the_associated_model_even_if_primary_keys_are_manually_set
+    pirate2    = Pirate.new(catchphrase: 'Arrrrrghhh')
+    pirate2.id = 10
+
+    ship2    = Ship.new(name: 'Strongest pirate ship')
+    ship2.id = 15
+    ship2.save!
+
+    pirate2.ship = ship2
+    pirate2.save!
+    pirate2.reload
+
+    assert pirate2.ship != nil
+  end
+
   def test_should_merge_errors_on_the_associated_models_onto_the_parent_even_if_it_is_not_valid
     @pirate.ship.name   = nil
     @pirate.catchphrase = nil
