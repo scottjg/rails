@@ -66,8 +66,9 @@ when /^mysql/
 
 when /postgresql/
   ENV['PGUSER']     = config["username"] if config["username"]
-  ENV['PGHOST']     = config["host"] if config["host"]
-  ENV['PGPORT']     = config["port"].to_s if config["port"]
+  host, port = config["hosts"].sample.split(':')
+  ENV['PGHOST']     = host
+  ENV['PGPORT']     = port
   ENV['PGPASSWORD'] = config["password"].to_s if config["password"] && include_password
   exec(find_cmd('psql'), config["database"])
 
