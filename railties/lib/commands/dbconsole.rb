@@ -64,7 +64,7 @@ when /^mysql/
 
   exec(find_cmd('mysql', 'mysql5'), *args)
 
-when "postgresql"
+when /postgresql/
   ENV['PGUSER']     = config["username"] if config["username"]
   ENV['PGHOST']     = config["host"] if config["host"]
   ENV['PGPORT']     = config["port"].to_s if config["port"]
