@@ -30,6 +30,7 @@ ActiveRecord::Schema.define do
     char3 text default 'a text field',
     positive_integer integer default 1,
     negative_integer integer default -1,
+    bigint_default bigint default 0::bigint,
     decimal_number decimal(3,2) default 2.78,
     multiline_default text DEFAULT '--- []
 
@@ -131,6 +132,11 @@ _SQL
     );
 _SQL
 rescue #This version of PostgreSQL either has no XML support or is was not compiled with XML support: skipping table
+  end
+
+  create_table :limitless_fields, :force => true do |t|
+    t.binary :binary, :limit => 100_000
+    t.text :text, :limit => 100_000
   end
 end
 

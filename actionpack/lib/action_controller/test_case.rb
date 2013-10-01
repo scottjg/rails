@@ -14,13 +14,18 @@ module ActionController
     end
 
     def setup_subscriptions
-      @_partials = Hash.new(0)
-      @_templates = Hash.new(0)
-      @_layouts = Hash.new(0)
+      @partials = Hash.new(0)
+      @templates = Hash.new(0)
+      @layouts = Hash.new(0)
 
       ActiveSupport::Notifications.subscribe("render_template.action_view") do |name, start, finish, id, payload|
         path = payload[:layout]
-        @_layouts[path] += 1
+        if path
+          @layouts[path] += 1
+          if path =~ /^layouts\/(.*)/
+            @layouts[$1] += 1
+          end
+        end
       end
 
       ActiveSupport::Notifications.subscribe("!render_template.action_view") do |name, start, finish, id, payload|
@@ -28,11 +33,11 @@ module ActionController
         next unless path
         partial = path =~ /^.*\/_[^\/]*$/
         if partial
-          @_partials[path] += 1
-          @_partials[path.split("/").last] += 1
-          @_templates[path] += 1
+          @partials[path] += 1
+          @partials[path.split("/").last] += 1
+          @templates[path] += 1
         else
-          @_templates[path] += 1
+          @templates[path] += 1
         end
       end
     end
@@ -43,9 +48,9 @@ module ActionController
     end
 
     def process(*args)
-      @_partials = Hash.new(0)
-      @_templates = Hash.new(0)
-      @_layouts = Hash.new(0)
+      @partials = Hash.new(0)
+      @templates = Hash.new(0)
+      @layouts = Hash.new(0)
       super
     end
 
@@ -55,6 +60,15 @@ module ActionController
     #
     #   # assert that the "new" view template was rendered
     #   assert_template "new"
+    #
+    #   # assert that the layout 'admin' was rendered
+    #   assert_template :layout => 'admin'
+    #   assert_template :layout => 'layouts/admin'
+    #   assert_template :layout => :admin
+    #
+    #   # assert that no layout was rendered
+    #   assert_template :layout => nil
+    #   assert_template :layout => false
     #
     #   # assert that the "_customer" partial was rendered twice
     #   assert_template :partial => '_customer', :count => 2
@@ -70,41 +84,37 @@ module ActionController
     #
     def assert_template(options = {}, message = nil)
       validate_request!
+      # Force body to be read in case the template is being streamed
+      response.body
 
       case options
-      when NilClass, Regexp, String, Symbol
+      when NilClass, String, Symbol
         options = options.to_s if Symbol === options
-        rendered = @_templates
+        rendered = @templates
         msg = build_message(message,
                 "expecting <?> but rendering with <?>",
                 options, rendered.keys.join(', '))
-        matches_template =
-          case options
-          when String
-            rendered.any? do |t, num|
-              options_splited = options.split(File::SEPARATOR)
-              t_splited = t.split(File::SEPARATOR)
-              t_splited.last(options_splited.size) == options_splited
-            end
-          when Regexp
+        assert_block(msg) do
+          if options
             rendered.any? { |t,num| t.match(options) }
-          when NilClass
-            rendered.blank?
+          else
+            @templates.blank?
           end
-        assert matches_template, msg
+        end
       when Hash
-        if expected_layout = options[:layout]
+        if options.key?(:layout)
+          expected_layout = options[:layout]
           msg = build_message(message,
                   "expecting layout <?> but action rendered <?>",
-                  expected_layout, @_layouts.keys)
+                  expected_layout, @layouts.keys)
 
           case expected_layout
-          when String
-            assert(@_layouts.keys.include?(expected_layout), msg)
+          when String, Symbol
+            assert(@layouts.keys.include?(expected_layout.to_s), msg)
           when Regexp
-            assert(@_layouts.keys.any? {|l| l =~ expected_layout }, msg)
-          when nil
-            assert(@_layouts.empty?, msg)
+            assert(@layouts.keys.any? {|l| l =~ expected_layout }, msg)
+          when nil, false
+            assert(@layouts.empty?, msg)
           end
         end
 
@@ -119,7 +129,7 @@ module ActionController
               warn "the :locals option to #assert_template is only supported in a ActionView::TestCase"
             end
           elsif expected_count = options[:count]
-            actual_count = @_partials[expected_partial]
+            actual_count = @partials[expected_partial]
             msg = build_message(message,
                     "expecting ? to be rendered ? time(s) but rendered ? time(s)",
                      expected_partial, expected_count, actual_count)
@@ -127,11 +137,11 @@ module ActionController
           else
             msg = build_message(message,
                     "expecting partial <?> but action rendered <?>",
-                    options[:partial], @_partials.keys)
-            assert(@_partials.include?(expected_partial), msg)
+                    options[:partial], @partials.keys)
+            assert(@partials.include?(expected_partial), msg)
           end
-        else
-          assert @_partials.empty?,
+        elsif options.key?(:partial)
+          assert @partials.empty?,
             "Expected no partials to be rendered"
         end
       end
@@ -465,7 +475,7 @@ module ActionController
         parameters ||= {}
         controller_class_name = @controller.class.anonymous? ?
           "anonymous_controller" :
-          @controller.class.name.underscore.sub(/_controller$/, '')
+          @controller.class.controller_path
 
         @request.assign_parameters(@routes, controller_class_name, action.to_s, parameters)
 

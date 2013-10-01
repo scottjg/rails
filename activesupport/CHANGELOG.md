@@ -1,4 +1,92 @@
-## Rails 3.2.9 (unreleased)
+## unreleased ##
+
+*   Fix ActiveSupport::Cache::FileStore#cleanup to no longer rely on missing each_key method.
+
+    *Murray Steele*
+
+*   Add respond_to_missing? for TaggedLogging which is best practice when overriding method_missing. This permits
+    wrapping TaggedLogging by another log abstraction such as em-logger.
+
+    *Wolfram Arnold*
+
+
+## Rails 3.2.14 (Jul 22, 2013) ##
+
+*   Make `Time.at_with_coercion` retain the second fraction and return local time.
+
+    Fixes #11350
+
+    *Neer Friedman*, *Andrew White*
+
+*   Fix `ActiveSupport::TaggedLogging` incorrectly providing program name the same as log message
+    even when block is not provided.
+
+    *Carson Reinke*
+
+*   Override `Time.at` to support the passing of Time-like values when called with a single argument.
+
+    *Andrew White*
+
+*   Revert the changes on unicode character encoding from `ActiveSupport::JSON.encode`.
+    This was causing a regression where the resulting string is always returning UTF-8.
+    Also it changes the behavior of this method on a stable release.
+    Fixes #9498.
+
+    *Rafael Mendonça França*
+
+*   Fix `ActiveSupport::TimeZone.parse` when time is at a local DST jump.
+    Fixes #9678.
+
+    *Andrew White*
+
+
+## Rails 3.2.13 (Mar 18, 2013) ##
+
+*   Fix DateTime comparison with DateTime::Infinity object.
+
+    *Dan Kubb*
+
+*   Remove surrogate unicode character encoding from ActiveSupport::JSON.encode
+    The encoding scheme was broken for unicode characters outside the basic
+    multilingual plane; since json is assumed to be UTF-8, and we already force the
+    encoding to UTF-8 simply pass through the un-encoded characters.
+
+    *Brett Carter*
+
+*   Fix mocha v0.13.0 compatibility. *James Mead*
+
+*   `#as_json` isolates options when encoding a hash. [Backport #8185]
+    Fix #8182
+
+    *Yves Senn*
+
+*   Handle the possible Permission Denied errors atomic.rb might trigger due to
+    its chown and chmod calls. [Backport #8027]
+
+    *Daniele Sluijters*
+
+
+## Rails 3.2.12 (Feb 11, 2013) ##
+
+*   No changes.
+
+
+## Rails 3.2.11 (Jan 8, 2012) ##
+
+*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
+    Use Hash.from_trusted_xml to parse this XML.
+
+    CVE-2013-0156
+
+    *Jeremy Kemper*
+
+
+## Rails 3.2.10 (Jan 2, 2013) ##
+
+*   No changes.
+
+
+## Rails 3.2.9 (Nov 12, 2012) ##
 
 *   Add logger.push_tags and .pop_tags to complement logger.tagged:
 
@@ -16,6 +104,7 @@
 
 *  Add %:z and %::z format string support to ActiveSupport::TimeWithZone#strftime. [fixes #6962] *kennyj*
 
+
 ## Rails 3.2.8 (Aug 9, 2012) ##
 
 *   Fix ActiveSupport integration with Mocha > 0.12.1. *Mike Gunderloy*
@@ -23,6 +112,7 @@
 *   Reverted the deprecation of ActiveSupport::JSON::Variable. *Rafael Mendonça França*
 
 *   ERB::Util.html_escape now escapes single quotes. *Santiago Pastorino*
+
 
 ## Rails 3.2.7 (Jul 26, 2012) ##
 
@@ -36,9 +126,11 @@
 
 *   bump AS deprecation_horizon to 4.0
 
+
 ## Rails 3.2.6 (Jun 12, 2012) ##
 
 *   No changes.
+
 
 ## Rails 3.2.5 (Jun 1, 2012) ##
 

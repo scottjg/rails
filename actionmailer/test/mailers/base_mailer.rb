@@ -38,7 +38,7 @@ class BaseMailer < ActionMailer::Base
   end
 
   def attachment_with_hash
-    attachments['invoice.jpg'] = { :data => "\312\213\254\232)b",
+    attachments['invoice.jpg'] = { :data => ::Base64.encode64("\312\213\254\232)b"),
                                    :mime_type => "image/x-jpg",
                                    :transfer_encoding => "base64" }
     mail
@@ -114,5 +114,13 @@ class BaseMailer < ActionMailer::Base
 
   def email_with_translations
     mail :body => render("email_with_translations", :formats => [:html])
+  end
+
+  def without_mail_call
+  end
+
+  def with_nil_as_return_value(hash = {})
+    mail(:template_name => "welcome")
+    nil
   end
 end

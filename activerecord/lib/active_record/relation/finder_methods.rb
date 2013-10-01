@@ -134,8 +134,8 @@ module ActiveRecord
     def last(*args)
       if args.any?
         if args.first.kind_of?(Integer) || (loaded? && !args.first.kind_of?(Hash))
-          if order_values.empty?
-            order("#{primary_key} DESC").limit(*args).reverse
+          if order_values.empty? && primary_key
+            order("#{quoted_table_name}.#{quoted_primary_key} DESC").limit(*args).reverse
           else
             to_a.last(*args)
           end
@@ -253,9 +253,12 @@ module ActiveRecord
       orders = relation.order_values.map { |val| val.presence }.compact
       values = @klass.connection.distinct("#{@klass.connection.quote_table_name table_name}.#{primary_key}", orders)
 
-      relation = relation.dup
+      relation = relation.dup.select(values)
+      relation.uniq_value = nil
 
-      ids_array = relation.select(values).collect {|row| row[primary_key]}
+      id_rows = @klass.connection.select_all(relation.arel, 'SQL', relation.bind_values)
+      ids_array = id_rows.map {|row| row[primary_key]}
+
       ids_array.empty? ? raise(ThrowResult) : table[primary_key].in(ids_array)
     end
 
@@ -263,7 +266,7 @@ module ActiveRecord
       conditions = Hash[attributes.map {|a| [a, args[attributes.index(a)]]}]
       result = where(conditions).send(match.finder)
 
-      if match.bang? && result.blank?
+      if match.bang? && result.nil?
         raise RecordNotFound, "Couldn't find #{@klass.name} with #{conditions.to_a.collect {|p| p.join(' = ')}.join(', ')}"
       else
         yield(result) if block_given?

@@ -43,7 +43,7 @@ module ActiveRecord
 
       # Implements the ids reader method, e.g. foo.item_ids for Foo.has_many :items
       def ids_reader
-        if loaded? || options[:finder_sql]
+        if owner.new_record? || loaded? || options[:finder_sql]
           load_target.map do |record|
             record.send(reflection.association_primary_key)
           end
@@ -350,7 +350,6 @@ module ActiveRecord
         end
 
         callback(:after_add, record)
-        set_inverse_instance(record)
 
         record
       end
@@ -571,7 +570,9 @@ module ActiveRecord
           args.shift if args.first.is_a?(Hash) && args.first.empty?
 
           collection = fetch_first_or_last_using_find?(args) ? scoped : load_target
-          collection.send(type, *args).tap {|it| set_inverse_instance it }
+          collection.send(type, *args).tap do |record|
+            set_inverse_instance record if record.is_a? ActiveRecord::Base
+          end
         end
     end
   end

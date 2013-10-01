@@ -109,49 +109,49 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
   end
 
   def test_end_of_day
-    assert_equal Time.local(2007,8,12,23,59,59,999999.999), Time.local(2007,8,12,10,10,10).end_of_day
+    assert_equal Time.local(2007,8,12,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,12,10,10,10).end_of_day
     with_env_tz 'US/Eastern' do
-      assert_equal Time.local(2007,4,2,23,59,59,999999.999), Time.local(2007,4,2,10,10,10).end_of_day, 'start DST'
-      assert_equal Time.local(2007,10,29,23,59,59,999999.999), Time.local(2007,10,29,10,10,10).end_of_day, 'ends DST'
+      assert_equal Time.local(2007,4,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,4,2,10,10,10).end_of_day, 'start DST'
+      assert_equal Time.local(2007,10,29,23,59,59,Rational(999999999, 1000)), Time.local(2007,10,29,10,10,10).end_of_day, 'ends DST'
     end
     with_env_tz 'NZ' do
-      assert_equal Time.local(2006,3,19,23,59,59,999999.999), Time.local(2006,3,19,10,10,10).end_of_day, 'ends DST'
-      assert_equal Time.local(2006,10,1,23,59,59,999999.999), Time.local(2006,10,1,10,10,10).end_of_day, 'start DST'
+      assert_equal Time.local(2006,3,19,23,59,59,Rational(999999999, 1000)), Time.local(2006,3,19,10,10,10).end_of_day, 'ends DST'
+      assert_equal Time.local(2006,10,1,23,59,59,Rational(999999999, 1000)), Time.local(2006,10,1,10,10,10).end_of_day, 'start DST'
     end
   end
 
   def test_end_of_week
-    assert_equal Time.local(2008,1,6,23,59,59,999999.999), Time.local(2007,12,31,10,10,10).end_of_week
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,8,27,0,0,0).end_of_week #monday
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,8,28,0,0,0).end_of_week #tuesday
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,8,29,0,0,0).end_of_week #wednesday
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,8,30,0,0,0).end_of_week #thursday
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,8,31,0,0,0).end_of_week #friday
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,9,01,0,0,0).end_of_week #saturday
-    assert_equal Time.local(2007,9,2,23,59,59,999999.999), Time.local(2007,9,02,0,0,0).end_of_week #sunday
+    assert_equal Time.local(2008,1,6,23,59,59,Rational(999999999, 1000)), Time.local(2007,12,31,10,10,10).end_of_week
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,27,0,0,0).end_of_week #monday
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,28,0,0,0).end_of_week #tuesday
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,29,0,0,0).end_of_week #wednesday
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,30,0,0,0).end_of_week #thursday
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,8,31,0,0,0).end_of_week #friday
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,9,01,0,0,0).end_of_week #saturday
+    assert_equal Time.local(2007,9,2,23,59,59,Rational(999999999, 1000)), Time.local(2007,9,02,0,0,0).end_of_week #sunday
   end
 
   def test_end_of_hour
-    assert_equal Time.local(2005,2,4,19,59,59,999999.999), Time.local(2005,2,4,19,30,10).end_of_hour
+    assert_equal Time.local(2005,2,4,19,59,59,Rational(999999999, 1000)), Time.local(2005,2,4,19,30,10).end_of_hour
   end
 
   def test_end_of_month
-    assert_equal Time.local(2005,3,31,23,59,59,999999.999), Time.local(2005,3,20,10,10,10).end_of_month
-    assert_equal Time.local(2005,2,28,23,59,59,999999.999), Time.local(2005,2,20,10,10,10).end_of_month
-    assert_equal Time.local(2005,4,30,23,59,59,999999.999), Time.local(2005,4,20,10,10,10).end_of_month
+    assert_equal Time.local(2005,3,31,23,59,59,Rational(999999999, 1000)), Time.local(2005,3,20,10,10,10).end_of_month
+    assert_equal Time.local(2005,2,28,23,59,59,Rational(999999999, 1000)), Time.local(2005,2,20,10,10,10).end_of_month
+    assert_equal Time.local(2005,4,30,23,59,59,Rational(999999999, 1000)), Time.local(2005,4,20,10,10,10).end_of_month
   end
 
   def test_end_of_quarter
-    assert_equal Time.local(2007,3,31,23,59,59,999999.999), Time.local(2007,2,15,10,10,10).end_of_quarter
-    assert_equal Time.local(2007,3,31,23,59,59,999999.999), Time.local(2007,3,31,0,0,0).end_of_quarter
-    assert_equal Time.local(2007,12,31,23,59,59,999999.999), Time.local(2007,12,21,10,10,10).end_of_quarter
-    assert_equal Time.local(2007,6,30,23,59,59,999999.999), Time.local(2007,4,1,0,0,0).end_of_quarter
-    assert_equal Time.local(2008,6,30,23,59,59,999999.999), Time.local(2008,5,31,0,0,0).end_of_quarter
+    assert_equal Time.local(2007,3,31,23,59,59,Rational(999999999, 1000)), Time.local(2007,2,15,10,10,10).end_of_quarter
+    assert_equal Time.local(2007,3,31,23,59,59,Rational(999999999, 1000)), Time.local(2007,3,31,0,0,0).end_of_quarter
+    assert_equal Time.local(2007,12,31,23,59,59,Rational(999999999, 1000)), Time.local(2007,12,21,10,10,10).end_of_quarter
+    assert_equal Time.local(2007,6,30,23,59,59,Rational(999999999, 1000)), Time.local(2007,4,1,0,0,0).end_of_quarter
+    assert_equal Time.local(2008,6,30,23,59,59,Rational(999999999, 1000)), Time.local(2008,5,31,0,0,0).end_of_quarter
   end
 
   def test_end_of_year
-    assert_equal Time.local(2007,12,31,23,59,59,999999.999), Time.local(2007,2,22,10,10,10).end_of_year
-    assert_equal Time.local(2007,12,31,23,59,59,999999.999), Time.local(2007,12,31,10,10,10).end_of_year
+    assert_equal Time.local(2007,12,31,23,59,59,Rational(999999999, 1000)), Time.local(2007,2,22,10,10,10).end_of_year
+    assert_equal Time.local(2007,12,31,23,59,59,Rational(999999999, 1000)), Time.local(2007,12,31,10,10,10).end_of_year
   end
 
   def test_beginning_of_year
@@ -538,14 +538,16 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
   end
 
   def test_to_s
-    time = Time.utc(2005, 2, 21, 17, 44, 30)
-    assert_equal time.to_default_s,                 time.to_s
-    assert_equal time.to_default_s,                 time.to_s(:doesnt_exist)
-    assert_equal "2005-02-21 17:44:30",             time.to_s(:db)
-    assert_equal "21 Feb 17:44",                    time.to_s(:short)
-    assert_equal "17:44",                           time.to_s(:time)
-    assert_equal "February 21, 2005 17:44",         time.to_s(:long)
-    assert_equal "February 21st, 2005 17:44",       time.to_s(:long_ordinal)
+    time = Time.utc(2005, 2, 21, 17, 44, 30.12345678901)
+    assert_equal time.to_default_s,           time.to_s
+    assert_equal time.to_default_s,           time.to_s(:doesnt_exist)
+    assert_equal "2005-02-21 17:44:30",       time.to_s(:db)
+    assert_equal "21 Feb 17:44",              time.to_s(:short)
+    assert_equal "17:44",                     time.to_s(:time)
+    assert_equal "20050221174430",            time.to_s(:number)
+    assert_equal "20050221174430123456789",   time.to_s(:nsec) if RUBY_VERSION >= '1.9'
+    assert_equal "February 21, 2005 17:44",   time.to_s(:long)
+    assert_equal "February 21st, 2005 17:44", time.to_s(:long_ordinal)
     with_env_tz "UTC" do
       assert_equal "Mon, 21 Feb 2005 17:44:30 +0000", time.to_s(:rfc822)
     end
@@ -772,6 +774,82 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
     assert_equal(-1, Time.utc(2000) <=> ActiveSupport::TimeWithZone.new( Time.utc(2000, 1, 1, 0, 0, 1), ActiveSupport::TimeZone['UTC'] ))
   end
 
+  def test_at_with_datetime
+    assert_equal Time.utc(2000, 1, 1, 0, 0, 0), Time.at(DateTime.civil(2000, 1, 1, 0, 0, 0))
+
+    # Only test this if the underlying Time.at raises a TypeError
+    begin
+      Time.at_without_coercion(Time.now, 0)
+    rescue TypeError
+      assert_raise(TypeError) { assert_equal(Time.utc(2000, 1, 1, 0, 0, 0), Time.at(DateTime.civil(2000, 1, 1, 0, 0, 0), 0)) }
+    end
+  end
+
+  def test_at_with_datetime_returns_local_time
+    with_env_tz 'US/Eastern' do
+      dt = DateTime.civil(2000, 1, 1, 0, 0, 0, '+0')
+      assert_equal Time.local(1999, 12, 31, 19, 0, 0), Time.at(dt)
+      assert_equal 'EST', Time.at(dt).zone
+      assert_equal(-18000, Time.at(dt).utc_offset)
+
+      # Daylight savings
+      dt = DateTime.civil(2000, 7, 1, 1, 0, 0, '+1')
+      assert_equal Time.local(2000, 6, 30, 20, 0, 0), Time.at(dt)
+      assert_equal 'EDT', Time.at(dt).zone
+      assert_equal(-14400, Time.at(dt).utc_offset)
+    end
+  end
+
+  def test_at_with_time_with_zone
+    assert_equal Time.utc(2000, 1, 1, 0, 0, 0), Time.at(ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1, 0, 0, 0), ActiveSupport::TimeZone['UTC']))
+
+    # Only test this if the underlying Time.at raises a TypeError
+    begin
+      Time.at_without_coercion(Time.now, 0)
+    rescue TypeError
+      assert_raise(TypeError) { assert_equal(Time.utc(2000, 1, 1, 0, 0, 0), Time.at(ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1, 0, 0, 0), ActiveSupport::TimeZone['UTC']), 0)) }
+    end
+  end
+
+  def test_at_with_time_with_zone_returns_local_time
+    with_env_tz 'US/Eastern' do
+      twz = ActiveSupport::TimeWithZone.new(Time.utc(2000, 1, 1, 0, 0, 0), ActiveSupport::TimeZone['London'])
+      assert_equal Time.local(1999, 12, 31, 19, 0, 0), Time.at(twz)
+      assert_equal 'EST', Time.at(twz).zone
+      assert_equal(-18000, Time.at(twz).utc_offset)
+
+      # Daylight savings
+      twz = ActiveSupport::TimeWithZone.new(Time.utc(2000, 7, 1, 0, 0, 0), ActiveSupport::TimeZone['London'])
+      assert_equal Time.local(2000, 6, 30, 20, 0, 0), Time.at(twz)
+      assert_equal 'EDT', Time.at(twz).zone
+      assert_equal(-14400, Time.at(twz).utc_offset)
+    end
+  end
+
+  def test_at_with_time_microsecond_precision
+    assert_equal Time.at(Time.utc(2000, 1, 1, 0, 0, 0, 111)).to_f, Time.utc(2000, 1, 1, 0, 0, 0, 111).to_f
+  end
+
+  def test_at_with_utc_time
+    with_env_tz 'US/Eastern' do
+      assert_equal Time.utc(2000), Time.at(Time.utc(2000))
+      assert_equal 'UTC', Time.at(Time.utc(2000)).zone
+      assert_equal(0, Time.at(Time.utc(2000)).utc_offset)
+    end
+  end
+
+  def test_at_with_local_time
+    with_env_tz 'US/Eastern' do
+      assert_equal Time.local(2000), Time.at(Time.local(2000))
+      assert_equal 'EST', Time.at(Time.local(2000)).zone
+      assert_equal(-18000, Time.at(Time.local(2000)).utc_offset)
+
+      assert_equal Time.local(2000, 7, 1), Time.at(Time.local(2000, 7, 1))
+      assert_equal 'EDT', Time.at(Time.local(2000, 7, 1)).zone
+      assert_equal(-14400, Time.at(Time.local(2000, 7, 1)).utc_offset)
+    end
+  end
+
   def test_eql?
     assert_equal true, Time.utc(2000).eql?( ActiveSupport::TimeWithZone.new(Time.utc(2000), ActiveSupport::TimeZone['UTC']) )
     assert_equal true, Time.utc(2000).eql?( ActiveSupport::TimeWithZone.new(Time.utc(2000), ActiveSupport::TimeZone["Hawaii"]) )
@@ -805,24 +883,32 @@ class TimeExtCalculationsTest < ActiveSupport::TestCase
   end
 
   def test_all_day
-    assert_equal Time.local(2011,6,7,0,0,0)..Time.local(2011,6,7,23,59,59,999999.999), Time.local(2011,6,7,10,10,10).all_day
+    assert_equal Time.local(2011,6,7,0,0,0)..Time.local(2011,6,7,23,59,59,Rational(999999999, 1000)), Time.local(2011,6,7,10,10,10).all_day
+  end
+
+  def test_all_day_with_timezone
+    beginning_of_day = ActiveSupport::TimeWithZone.new(nil, ActiveSupport::TimeZone["Hawaii"], Time.local(2011,6,7,0,0,0))
+    end_of_day = ActiveSupport::TimeWithZone.new(nil, ActiveSupport::TimeZone["Hawaii"], Time.local(2011,6,7,23,59,59,Rational(999999999, 1000)))
+
+    assert_equal beginning_of_day, ActiveSupport::TimeWithZone.new(Time.local(2011,6,7,10,10,10), ActiveSupport::TimeZone["Hawaii"]).all_day.begin
+    assert_equal end_of_day, ActiveSupport::TimeWithZone.new(Time.local(2011,6,7,10,10,10), ActiveSupport::TimeZone["Hawaii"]).all_day.end
   end
 
   def test_all_week
-    assert_equal Time.local(2011,6,6,0,0,0)..Time.local(2011,6,12,23,59,59,999999.999), Time.local(2011,6,7,10,10,10).all_week
-    assert_equal Time.local(2011,6,5,0,0,0)..Time.local(2011,6,11,23,59,59,999999.999), Time.local(2011,6,7,10,10,10).all_week(:sunday)
+    assert_equal Time.local(2011,6,6,0,0,0)..Time.local(2011,6,12,23,59,59,Rational(999999999, 1000)), Time.local(2011,6,7,10,10,10).all_week
+    assert_equal Time.local(2011,6,5,0,0,0)..Time.local(2011,6,11,23,59,59,Rational(999999999, 1000)), Time.local(2011,6,7,10,10,10).all_week(:sunday)
   end
 
   def test_all_month
-    assert_equal Time.local(2011,6,1,0,0,0)..Time.local(2011,6,30,23,59,59,999999.999), Time.local(2011,6,7,10,10,10).all_month
+    assert_equal Time.local(2011,6,1,0,0,0)..Time.local(2011,6,30,23,59,59,Rational(999999999, 1000)), Time.local(2011,6,7,10,10,10).all_month
   end
 
   def test_all_quarter
-    assert_equal Time.local(2011,4,1,0,0,0)..Time.local(2011,6,30,23,59,59,999999.999), Time.local(2011,6,7,10,10,10).all_quarter
+    assert_equal Time.local(2011,4,1,0,0,0)..Time.local(2011,6,30,23,59,59,Rational(999999999, 1000)), Time.local(2011,6,7,10,10,10).all_quarter
   end
 
   def test_all_year
-    assert_equal Time.local(2011,1,1,0,0,0)..Time.local(2011,12,31,23,59,59,999999.999), Time.local(2011,6,7,10,10,10).all_year
+    assert_equal Time.local(2011,1,1,0,0,0)..Time.local(2011,12,31,23,59,59,Rational(999999999, 1000)), Time.local(2011,6,7,10,10,10).all_year
   end
 
   protected

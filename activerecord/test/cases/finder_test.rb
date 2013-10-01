@@ -15,8 +15,27 @@ require 'models/toy'
 class FinderTest < ActiveRecord::TestCase
   fixtures :companies, :topics, :entrants, :developers, :developers_projects, :posts, :comments, :accounts, :authors, :customers, :categories, :categorizations
 
+  def test_find_by_id_with_hash
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Post.find_by_id(:limit => 1)
+    end
+  end
+
+  def test_find_by_title_and_id_with_hash
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Post.find_by_title_and_id('foo', :limit => 1)
+    end
+  end
+
   def test_find
     assert_equal(topics(:first).title, Topic.find(1).title)
+  end
+
+  def test_symbols_table_ref
+    Post.first # warm up
+    x = Symbol.all_symbols.count
+    Post.where("title" => {"xxxqqqq" => "bar"})
+    assert_equal x, Symbol.all_symbols.count
   end
 
   # find should handle strings that come from URLs
@@ -72,6 +91,18 @@ class FinderTest < ActiveRecord::TestCase
   def test_exists_with_includes_limit_and_empty_result
     assert !Topic.includes(:replies).limit(0).exists?
     assert !Topic.includes(:replies).limit(1).where('0 = 1').exists?
+  end
+
+  def test_exists_with_distinct_association_includes_and_limit
+    author = Author.first
+    assert !author.unique_categorized_posts.includes(:special_comments).limit(0).exists?
+    assert author.unique_categorized_posts.includes(:special_comments).limit(1).exists?
+  end
+
+  def test_exists_with_distinct_association_includes_limit_and_order
+    author = Author.first
+    assert !author.unique_categorized_posts.includes(:special_comments).order('comments.taggings_count DESC').limit(0).exists?
+    assert author.unique_categorized_posts.includes(:special_comments).order('comments.taggings_count DESC').limit(1).exists?
   end
 
   def test_exists_with_empty_table_and_no_args_given
@@ -274,8 +305,22 @@ class FinderTest < ActiveRecord::TestCase
     assert_sql(/LIMIT 5|ROWNUM <= 5/) { Topic.last(5).entries }
   end
 
+  def test_last_should_use_default_order
+    assert_sql(/ORDER BY .topics.\..id. DESC/) { Topic.last }
+  end
+
+  def test_last_with_integer_should_use_default_order
+    assert_sql(/ORDER BY .topics.\..id. DESC/) { Topic.last(5).entries }
+  end
+
   def test_last_with_integer_and_order_should_keep_the_order
     assert_equal Topic.order("title").to_a.last(2), Topic.order("title").last(2)
+  end
+
+  def test_last_with_integer_should_work_with_joins
+    assert_nothing_raised do
+      Post.joins(:comments).last(2)
+    end
   end
 
   def test_last_with_integer_and_order_should_not_use_sql_limit
@@ -650,6 +695,11 @@ class FinderTest < ActiveRecord::TestCase
   def test_find_by_one_attribute_bang
     assert_equal topics(:first), Topic.find_by_title!("The First Topic")
     assert_raise(ActiveRecord::RecordNotFound) { Topic.find_by_title!("The First Topic!") }
+  end
+
+  def test_find_by_one_attribute_bang_with_blank_defined
+    blank_topic = BlankTopic.create(:title => "The Blank One")
+    assert_equal blank_topic, BlankTopic.find_by_title!("The Blank One")
   end
 
   def test_find_by_one_attribute_with_order_option

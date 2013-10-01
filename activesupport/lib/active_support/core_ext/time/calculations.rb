@@ -45,6 +45,23 @@ class Time
     def current
       ::Time.zone ? ::Time.zone.now : ::Time.now
     end
+
+    # Layers additional behavior on Time.at so that ActiveSupport::TimeWithZone and DateTime
+    # instances can be used when called with a single argument
+    def at_with_coercion(*args)
+      return at_without_coercion(*args) if args.size != 1
+
+      # Time.at can be called with a time or numerical value
+      time_or_number = args.first
+
+      if time_or_number.is_a?(ActiveSupport::TimeWithZone) || time_or_number.is_a?(DateTime)
+        at_without_coercion(time_or_number.to_f).getlocal
+      else
+        at_without_coercion(time_or_number)
+      end
+    end
+    alias_method :at_without_coercion, :at
+    alias_method :at, :at_with_coercion
   end
 
   # Tells whether the Time object's time lies in the past
@@ -217,7 +234,7 @@ class Time
 
   # Returns a new Time representing the end of the day, 23:59:59.999999 (.999999999 in ruby1.9)
   def end_of_day
-    change(:hour => 23, :min => 59, :sec => 59, :usec => 999999.999)
+    change(:hour => 23, :min => 59, :sec => 59, :usec => Rational(999999999, 1000))
   end
 
   # Returns a new Time representing the start of the hour (x:00)
@@ -228,11 +245,7 @@ class Time
 
   # Returns a new Time representing the end of the hour, x:59:59.999999 (.999999999 in ruby1.9)
   def end_of_hour
-    change(
-      :min => 59,
-      :sec => 59,
-      :usec => 999999.999
-    )
+    change(:min => 59, :sec => 59, :usec => Rational(999999999, 1000))
   end
 
   # Returns a new Time representing the start of the month (1st of the month, 0:00)
@@ -246,7 +259,7 @@ class Time
   def end_of_month
     #self - ((self.mday-1).days + self.seconds_since_midnight)
     last_day = ::Time.days_in_month(month, year)
-    change(:day => last_day, :hour => 23, :min => 59, :sec => 59, :usec => 999999.999)
+    change(:day => last_day, :hour => 23, :min => 59, :sec => 59, :usec => Rational(999999999, 1000))
   end
   alias :at_end_of_month :end_of_month
 
@@ -270,7 +283,7 @@ class Time
 
   # Returns a new Time representing the end of the year (end of the 31st of december)
   def end_of_year
-    change(:month => 12, :day => 31, :hour => 23, :min => 59, :sec => 59, :usec => 999999.999)
+    change(:month => 12, :day => 31, :hour => 23, :min => 59, :sec => 59, :usec => Rational(999999999, 1000))
   end
   alias :at_end_of_year :end_of_year
 

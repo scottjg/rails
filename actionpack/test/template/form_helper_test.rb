@@ -301,6 +301,16 @@ class FormHelperTest < ActionView::TestCase
     assert_dom_equal expected, file_field("user", "avatar")
   end
 
+  def test_file_field_with_multiple_behavior
+    expected = '<input id="import_file" multiple="multiple" name="import[file][]" type="file" />'
+    assert_dom_equal expected, file_field("import", "file", :multiple => true)
+  end
+
+  def test_file_field_with_multiple_behavior_and_explicit_name
+    expected = '<input id="import_file" multiple="multiple" name="custom" type="file" />'
+    assert_dom_equal expected, file_field("import", "file", :multiple => true, :name => "custom")
+  end
+
   def test_hidden_field
     assert_dom_equal '<input id="post_title" name="post[title]" type="hidden" value="Hello World" />',
       hidden_field("post", "title")
@@ -391,6 +401,19 @@ class FormHelperTest < ActionView::TestCase
       '<input name="post[comment_ids][]" type="hidden" value="0" /><input checked="checked" id="post_comment_ids_3" name="post[comment_ids][]" type="checkbox" value="3" />',
       check_box("post", "comment_ids", { :multiple => true }, 3)
     )
+  end
+
+  def test_check_box_with_multiple_behavior_and_index
+    @post.comment_ids = [2,3]
+    assert_dom_equal(
+      '<input name="post[foo][comment_ids][]" type="hidden" value="0" /><input id="post_foo_comment_ids_1" name="post[foo][comment_ids][]" type="checkbox" value="1" />',
+      check_box("post", "comment_ids", { :multiple => true, :index => "foo" }, 1)
+    )
+    assert_dom_equal(
+      '<input name="post[bar][comment_ids][]" type="hidden" value="0" /><input checked="checked" id="post_bar_comment_ids_3" name="post[bar][comment_ids][]" type="checkbox" value="3" />',
+      check_box("post", "comment_ids", { :multiple => true, :index => "bar" }, 3)
+    )
+
   end
 
   def test_checkbox_disabled_disables_hidden_field
@@ -741,7 +764,6 @@ class FormHelperTest < ActionView::TestCase
 
     assert_dom_equal expected, output_buffer
   end
-
 
   def test_form_for_with_format
     form_for(@post, :format => :json, :html => { :id => "edit_post_123", :class => "edit_post" }) do |f|
@@ -2202,6 +2224,19 @@ class FormHelperTest < ActionView::TestCase
   def test_fields_for_returns_block_result
     output = fields_for(Post.new) { |f| "fields" }
     assert_equal "fields", output
+  end
+
+  def test_form_for_only_instantiates_builder_once
+    initialization_count = 0
+    builder_class = Class.new(ActionView::Helpers::FormBuilder) do
+      define_method :initialize do |*args|
+        super(*args)
+        initialization_count += 1
+      end
+    end
+
+    form_for(@post, :builder => builder_class) { }
+    assert_equal 1, initialization_count, 'form builder instantiated more than once'
   end
 
   protected

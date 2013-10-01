@@ -9,7 +9,7 @@ module ActiveSupport
   module Testing
     module Performance
       DEFAULTS.merge!(
-        if ARGV.include?('--benchmark')
+        if ENV["BENCHMARK_TESTS"]
           { :metrics => [:wall_time, :memory, :objects, :gc_runs, :gc_time] }
         else
           { :min_percent => 0.01,
@@ -142,7 +142,7 @@ module ActiveSupport
   end
 end
 
-if RUBY_VERSION.between?('1.9.2', '2.0')
+if RUBY_VERSION.between?('1.9.2', '2.0.0')
   require 'active_support/testing/performance/ruby/yarv'
 elsif RUBY_VERSION.between?('1.8.6', '1.9')
   require 'active_support/testing/performance/ruby/mri'

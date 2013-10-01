@@ -1,6 +1,7 @@
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/object/inclusion'
+require 'active_support/core_ext/enumerable'
 require 'active_support/inflector'
 require 'action_dispatch/routing/redirection'
 
@@ -51,7 +52,6 @@ module ActionDispatch
       class Mapping #:nodoc:
         IGNORE_OPTIONS = [:to, :as, :via, :on, :constraints, :defaults, :only, :except, :anchor, :shallow, :shallow_path, :shallow_prefix]
         ANCHOR_CHARACTERS_REGEX = %r{\A(\\A|\^)|(\\Z|\\z|\$)\Z}
-        SHORTHAND_REGEX = %r{/[\w/]+$}
         WILDCARD_PATH = %r{\*([^/\)]+)\)?$}
 
         def initialize(set, scope, path, options)
@@ -68,14 +68,7 @@ module ActionDispatch
         private
 
           def normalize_options!
-            path_without_format = @path.sub(/\(\.:format\)$/, '')
-
-            if using_match_shorthand?(path_without_format, @options)
-              to_shorthand    = @options[:to].blank?
-              @options[:to] ||= path_without_format.gsub(/\(.*\)/, "")[1..-1].sub(%r{/([^/]*)$}, '#\1')
-            end
-
-            @options.merge!(default_controller_and_action(to_shorthand))
+            @options.merge!(default_controller_and_action)
 
             requirements.each do |name, requirement|
               # segment_keys.include?(k.to_s) || k == :controller
@@ -153,7 +146,7 @@ module ActionDispatch
             end
           end
 
-          def default_controller_and_action(to_shorthand=nil)
+          def default_controller_and_action
             if to.respond_to?(:call)
               { }
             else
@@ -451,7 +444,7 @@ module ActionDispatch
                 # we must actually delete prefix segment keys to avoid passing them to next url_for
                 _route.segment_keys.each { |k| options.delete(k) }
                 prefix = _routes.url_helpers.send("#{name}_path", prefix_options)
-                prefix = '' if prefix == '/'
+                prefix = prefix.gsub(%r{/\z}, '')
                 prefix
               end
             end
@@ -784,6 +777,10 @@ module ActionDispatch
           end
 
           def merge_controller_scope(parent, child) #:nodoc:
+            child
+          end
+
+          def merge_action_scope(parent, child) #:nodoc:
             child
           end
 
@@ -1261,6 +1258,15 @@ module ActionDispatch
             paths = [path] + rest
           end
 
+          if @scope[:controller] && @scope[:action]
+            options[:to] ||= "#{@scope[:controller]}##{@scope[:action]}"
+          end
+
+          path_without_format = path.to_s.sub(/\(\.:format\)$/, '')
+          if using_match_shorthand?(path_without_format, options)
+            options[:to] ||= path_without_format.gsub(%r{^/}, "").sub(%r{/([^/]*)$}, '#\1')
+          end
+
           options[:anchor] = true unless options.key?(:anchor)
 
           if options[:on] && !VALID_ON_OPTIONS.include?(options[:on])
@@ -1269,6 +1275,10 @@ module ActionDispatch
 
           paths.each { |_path| decomposed_match(_path, options.dup) }
           self
+        end
+
+        def using_match_shorthand?(path, options)
+          path && (options[:to] || options[:action]).nil? && path =~ %r{/[\w/]+$}
         end
 
         def decomposed_match(path, options) # :nodoc:
@@ -1288,9 +1298,10 @@ module ActionDispatch
 
         def add_route(action, options) # :nodoc:
           path = path_for_action(action, options.delete(:path))
+          action = action.to_s.dup
 
-          if action.to_s =~ /^[\w\/]+$/
-            options[:action] ||= action unless action.to_s.include?("/")
+          if action =~ /^[\w\/]+$/
+            options[:action] ||= action unless action.include?("/")
           else
             action = nil
           end

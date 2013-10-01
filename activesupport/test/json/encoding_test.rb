@@ -22,6 +22,15 @@ class TestJSONEncoding < Test::Unit::TestCase
     end
   end
 
+  class CustomWithOptions
+    attr_accessor :foo, :bar
+
+    def as_json(options={})
+      options[:only] = %w(foo bar)
+      super(options)
+    end
+  end
+
   TrueTests     = [[ true,  %(true)  ]]
   FalseTests    = [[ false, %(false) ]]
   NilTests      = [[ nil,   %(null)  ]]
@@ -106,6 +115,20 @@ class TestJSONEncoding < Test::Unit::TestCase
       result = ActiveSupport::JSON.encode(s)
       assert_equal '"\\u4e8c"', result
       assert_equal Encoding::UTF_8, result.encoding
+    end
+
+    def test_utf8_hash_key_does_not_change_the_encoding
+      w = { '𠜎' => 'a' }
+      result = ActiveSupport::JSON.encode(w)
+      assert_equal '{"\\u070e":"a"}', result
+
+      if RUBY_VERSION >= '2.0'
+        expected_encoding = Encoding::UTF_8
+      else
+        expected_encoding = Encoding::US_ASCII
+      end
+
+      assert_equal expected_encoding, result.encoding
     end
   end
 
@@ -237,6 +260,16 @@ class TestJSONEncoding < Test::Unit::TestCase
     json = people.each.to_json :only => [:address, :city]
 
     assert_equal(%([{"address":{"city":"London"}},{"address":{"city":"Paris"}}]), json)
+  end
+
+  def test_to_json_should_not_keep_options_around
+    f = CustomWithOptions.new
+    f.foo = "hello"
+    f.bar = "world"
+
+    hash = {"foo" => f, "other_hash" => {"foo" => "other_foo", "test" => "other_test"}}
+    assert_equal({ "foo" => { "foo" => "hello", "bar" => "world" }, "other_hash" => { "foo" => "other_foo", "test" => "other_test"} },
+                 JSON.parse(hash.to_json))
   end
 
   def test_struct_encoding

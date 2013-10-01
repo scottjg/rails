@@ -80,7 +80,7 @@ module ActiveRecord
 
             stmt = relation.where(
               relation.table[self.class.primary_key].eq(id).and(
-                relation.table[lock_col].eq(quote_value(previous_lock_value))
+                relation.table[lock_col].eq(quote_value(previous_lock_value, self.class.columns_hash[lock_col]))
               )
             ).arel.compile_update(arel_attributes_values(false, false, attribute_names))
 
@@ -101,6 +101,8 @@ module ActiveRecord
 
         def destroy #:nodoc:
           return super unless locking_enabled?
+
+          destroy_associations
 
           if persisted?
             table = self.class.arel_table

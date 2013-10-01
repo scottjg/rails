@@ -280,6 +280,8 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         scope(':version', :version => /.+/) do
           resources :users, :id => /.+?/, :format => /json|xml/
         end
+
+        get "products/list"
       end
 
       match 'sprockets.js' => ::TestRoutingMapper::SprocketsApp
@@ -362,7 +364,6 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         resources :errors, :shallow => true do
           resources :notices
         end
-        get 'api/version'
       end
 
       scope :path => 'api' do
@@ -513,6 +514,26 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
         match '/writers', :to => 'italians#writers', :constraints => ::TestRoutingMapper::IpRestrictor
         match '/sculptors', :to => 'italians#sculptors'
         match '/painters/:painter', :to => 'italians#painters', :constraints => {:painter => /michelangelo/}
+      end
+
+      get 'search' => 'search'
+
+      scope ':locale' do
+        match 'questions/new', :via => :get
+      end
+
+      namespace :api do
+        namespace :v3 do
+          scope ':locale' do
+            get "products/list"
+          end
+        end
+      end
+
+      scope '/job', :controller => 'job' do
+        scope ':id', :action => 'manage_applicant' do
+          get "/active"
+        end
       end
     end
   end
@@ -884,6 +905,15 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
 
     # verify that the options passed in have not changed from the original ones
     assert_equal original_options, options
+  end
+
+  def test_url_for_does_not_modify_controller
+    controller = '/projects'
+    options = {:controller => controller, :action => 'status', :only_path => true}
+    url = url_for(options)
+
+    assert_equal '/projects/status', url
+    assert_equal '/projects', controller
   end
 
   # tests the arguments modification free version of define_hash_access
@@ -1397,10 +1427,34 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     end
   end
 
-  def test_match_shorthand_with_module
-    assert_equal '/api/version', api_version_path
-    get '/api/version'
-    assert_equal 'api/api#version', @response.body
+  def test_match_shorthand_inside_namespace_with_controller
+    with_test_routes do
+      assert_equal '/api/products/list', api_products_list_path
+      get '/api/products/list'
+      assert_equal 'api/products#list', @response.body
+    end
+  end
+
+  def test_match_shorthand_inside_scope_with_variables_with_controller
+    with_test_routes do
+      get '/de/questions/new'
+      assert_equal 'questions#new', @response.body
+      assert_equal 'de', @request.params[:locale]
+    end
+  end
+
+  def test_match_shorthand_inside_nested_namespaces_and_scopes_with_controller
+    with_test_routes do
+      get '/api/v3/en/products/list'
+      assert_equal 'api/v3/products#list', @response.body
+    end
+  end
+
+  def test_controller_option_with_nesting_and_leading_slash
+    with_test_routes do
+      get '/job/5/active'
+      assert_equal 'job#manage_applicant', @response.body
+    end
   end
 
   def test_dynamically_generated_helpers_on_collection_do_not_clobber_resources_url_helper
@@ -2463,6 +2517,11 @@ class TestRoutingMapper < ActionDispatch::IntegrationTest
     get "/posts/1/admin"
     assert_equal "admin/index#index", @response.body
     assert_equal "/posts/1/admin", post_admin_root_path(:post_id => '1')
+  end
+
+  def test_action_from_path_is_not_frozen
+    get '/search'
+    assert !@request.params[:action].frozen?
   end
 
 private

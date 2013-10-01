@@ -61,6 +61,13 @@ module RenderTestCases
     end
   end
 
+  def test_render_using_context_format_as_default
+    @view.lookup_context.formats = [:html]
+    assert_equal "partial html", @view.render('test/partial')
+    assert_equal "partial js", @view.render(:partial => 'test/partial', :formats => :js)
+    assert_equal "partial html", @view.render('test/partial')
+  end
+
   def test_render_file_with_locale
     assert_equal "<h1>Kein Kommentar</h1>", @view.render(:file => "comments/empty", :locale => [:de])
     assert_equal "<h1>Kein Kommentar</h1>", @view.render(:file => "comments/empty", :locale => :de)
@@ -336,7 +343,7 @@ module RenderTestCases
     ActionView::Template.register_template_handler :foo, CustomHandler
     assert_equal 'source: "Hello, <%= name %>!"', @view.render(:inline => "Hello, <%= name %>!", :locals => { :name => "Josh" }, :type => :foo)
   end
-  
+
   def test_render_knows_about_types_registered_when_extensions_are_checked_earlier_in_initialization
     ActionView::Template::Handlers.extensions
     ActionView::Template.register_template_handler :foo, CustomHandler
@@ -404,6 +411,11 @@ module RenderTestCases
   def test_render_layout_with_a_nested_render_layout_call_using_block_with_render_content
     assert_equal %(Before (Foo!)\nBefore (Bar!)\n\n  Content from inside layout!\n\nAfterpartial with layout\n\nAfter),
       @view.render(:partial => 'test/partial_with_layout_block_content', :layout => 'test/layout_for_partial', :locals => { :name => 'Foo!'})
+  end
+
+  def test_render_partial_with_layout_raises_descriptive_error
+    e = assert_raises(ActionView::MissingTemplate) { @view.render(:partial => 'test/partial', :layout => true) }
+    assert_match "Missing partial /true with", e.message
   end
 
   def test_render_with_nested_layout

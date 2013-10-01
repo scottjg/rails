@@ -1,10 +1,11 @@
 require "cases/helper"
+require 'models/club'
 require 'models/company'
 require "models/contract"
-require 'models/topic'
 require 'models/edge'
-require 'models/club'
 require 'models/organization'
+require 'models/possession'
+require 'models/topic'
 
 Company.has_many :accounts
 
@@ -368,6 +369,10 @@ class CalculationsTest < ActiveRecord::TestCase
     assert_equal 5, Account.count(:firm_id)
   end
 
+  def test_count_with_uniq
+    assert_equal 4, Account.select(:credit_limit).uniq.count
+  end
+
   def test_count_with_column_and_options_parameter
     assert_equal 2, Account.count(:firm_id, :conditions => "credit_limit = 50 AND firm_id IS NOT NULL")
   end
@@ -486,5 +491,27 @@ class CalculationsTest < ActiveRecord::TestCase
 
   def test_pluck_with_qualified_column_name
     assert_equal [1,2,3,4], Topic.order(:id).pluck("topics.id")
+  end
+
+  def test_pluck_does_not_replace_select_clause
+    taks_relation = Topic.select("approved, id, id AS foo_id").order('foo_id DESC')
+    assert_equal [4,3,2,1], taks_relation.pluck(:id)
+    assert_equal [true, true, true, false], taks_relation.pluck(:approved)
+  end
+
+  def test_pluck_auto_table_name_prefix
+    c = Company.create!(:name => "test", :contracts => [Contract.new])
+    assert_equal [c.id], Company.joins(:contracts).pluck(:id)
+  end
+
+  def test_pluck_not_auto_table_name_prefix_if_column_joined
+    Company.create!(:name => "test", :contracts => [Contract.new(:developer_id => 7)])
+    assert_equal [7], Company.joins(:contracts).pluck(:developer_id).map(&:to_i)
+  end
+
+  def test_pluck_with_reserved_words
+    Possession.create!(:where => "Over There")
+
+    assert_equal ["Over There"], Possession.pluck(:where)
   end
 end

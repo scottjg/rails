@@ -61,7 +61,7 @@ if ActiveRecord::Base.connection.supports_migrations?
       ActiveRecord::Base.connection.initialize_schema_migrations_table
       ActiveRecord::Base.connection.execute "DELETE FROM #{ActiveRecord::Migrator.schema_migrations_table_name}"
 
-      %w(things awesome_things prefix_things_suffix prefix_awesome_things_suffix).each do |table|
+      %w(things awesome_things prefix_things_suffix p_awesome_things_s).each do |table|
         Thing.connection.drop_table(table) rescue nil
       end
       Thing.reset_column_information
@@ -874,8 +874,6 @@ if ActiveRecord::Base.connection.supports_migrations?
     end
 
     def test_remove_column_with_array_as_an_argument_is_deprecated
-      return skip "remove_column with array as argument is not supported with OracleAdapter" if current_adapter? :OracleAdapter
-
       ActiveRecord::Base.connection.create_table(:hats) do |table|
         table.column :hat_name, :string, :limit => 100
         table.column :hat_size, :integer
@@ -886,7 +884,21 @@ if ActiveRecord::Base.connection.supports_migrations?
         Person.connection.remove_column("hats", ["hat_name", "hat_size"])
       end
     ensure
-      ActiveRecord::Base.connection.drop_table(:hats) rescue nil
+      ActiveRecord::Base.connection.drop_table(:hats)
+    end
+
+    def test_removing_and_renaming_column_preserves_custom_primary_key
+      ActiveRecord::Base.connection.create_table "my_table", :primary_key => "my_table_id", :force => true do |t|
+        t.integer "col_one"
+        t.string "col_two", :limit => 128, :null => false
+      end
+
+      ActiveRecord::Base.connection.remove_column("my_table", "col_two")
+      ActiveRecord::Base.connection.rename_column("my_table", "col_one", "col_three")
+
+      assert_equal 'my_table_id', ActiveRecord::Base.connection.primary_key('my_table')
+    ensure
+      ActiveRecord::Base.connection.drop_table(:my_table) rescue nil
     end
 
     def test_change_type_of_not_null_column
@@ -1049,6 +1061,18 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert !Person.new.administrator?
     ensure
       Person.connection.remove_column("people", "administrator") rescue nil
+    end
+
+    def test_change_column_with_custom_index_name
+      Person.connection.add_column "people", "category", :string, :default => 'human'
+      Person.connection.add_index :people, :category, :name => 'people_categories_idx'
+
+      assert_equal ['people_categories_idx'], Person.connection.indexes('people').map(&:name)
+      Person.connection.change_column "people", "category", :string, :null => false, :default => 'article'
+
+      assert_equal ['people_categories_idx'], Person.connection.indexes('people').map(&:name)
+    ensure
+      Person.connection.remove_column("people", "category") rescue nil
     end
 
     def test_change_column_default
@@ -1430,6 +1454,12 @@ if ActiveRecord::Base.connection.supports_migrations?
       end
     end
 
+    def test_finds_migrations_in_numbered_directory
+      migrations = ActiveRecord::Migrator.migrations [MIGRATIONS_ROOT + '/10_urban']
+      assert_equal 9, migrations[0].version
+      assert_equal 'AddExpressions', migrations[0].name
+    end
+
     def test_dump_schema_information_outputs_lexically_ordered_versions
       migration_path = MIGRATIONS_ROOT + '/valid_with_timestamps'
       ActiveRecord::Migrator.run(:up, migration_path, 20100301010101)
@@ -1615,8 +1645,8 @@ if ActiveRecord::Base.connection.supports_migrations?
 
     def test_rename_table_with_prefix_and_suffix
       assert !Thing.table_exists?
-      ActiveRecord::Base.table_name_prefix = 'prefix_'
-      ActiveRecord::Base.table_name_suffix = '_suffix'
+      ActiveRecord::Base.table_name_prefix = 'p_'
+      ActiveRecord::Base.table_name_suffix = '_s'
       Thing.reset_table_name
       Thing.reset_sequence_name
       WeNeedThings.up
@@ -1625,7 +1655,7 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert_equal "hello world", Thing.find(:first).content
 
       RenameThings.up
-      Thing.table_name = "prefix_awesome_things_suffix"
+      Thing.table_name = "p_awesome_things_s"
 
       assert_equal "hello world", Thing.find(:first).content
     ensure
