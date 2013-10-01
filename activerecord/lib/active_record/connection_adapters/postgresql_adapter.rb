@@ -890,7 +890,11 @@ module ActiveRecord
 
         # Construct a clean list of column names from the ORDER BY clause, removing
         # any ASC/DESC modifiers
-        order_columns = order_by.split(',').collect { |s| s.split.first }
+        if order_by.include?("(")
+          order_columns = [order_by].collect{|s| s.gsub(/ASC|DESC|NULLS LAST/, '')}
+        else
+          order_columns = order_by.split(',').collect { |s| s.split.first }
+        end
         order_columns.delete_if &:blank?
         order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
@@ -907,7 +911,11 @@ module ActiveRecord
       def add_order_by_for_association_limiting!(sql, options) #:nodoc:
         return sql if options[:order].blank?
 
-        order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
+        if options[:order].include?('(')
+          order = [options[:order]]
+        else
+          order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
+        end
         order.map! { |s| 'DESC' if s =~ /\bdesc$/i }
         order = order.zip((0...order.size).to_a).map { |s,i| "id_list.alias_#{i} #{s}" }.join(', ')
 

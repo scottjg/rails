@@ -1055,6 +1055,7 @@ class FinderTest < ActiveRecord::TestCase
   end
 
   def test_find_with_order_on_included_associations_with_construct_finder_sql_for_association_limiting_and_is_distinct
+    assert_equal 2, Post.find(:all, :include => { :authors => :author_address }, :order => ' to_char(author_addresses.id, \'99\') DESC ', :limit => 2).size
     assert_equal 2, Post.find(:all, :include => { :authors => :author_address }, :order => ' author_addresses.id DESC ', :limit => 2).size
 
     assert_equal 3, Post.find(:all, :include => { :author => :author_address, :authors => :author_address},
