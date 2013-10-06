@@ -27,7 +27,7 @@ module ActiveRecord
       #    associations #=> [:appointments]
       #    joins #=>  []
       #
-      def initialize(base, associations, joins)
+      def initialize(base, associations, joins = Arel::InnerJoin)
         @base_klass    = base
         @table_joins   = joins
         @join_parts    = [JoinBase.new(base)]
@@ -35,7 +35,7 @@ module ActiveRecord
         @reflections   = []
         @alias_tracker = AliasTracker.new(base.connection, joins)
         @alias_tracker.aliased_name_for(base.table_name) # Updates the count for base.table_name to 1
-        build(associations, join_parts.last, Arel::InnerJoin)
+        build(associations, join_parts.last, joins)
       end
 
       def graft(*associations)
