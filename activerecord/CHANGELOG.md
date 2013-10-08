@@ -199,6 +199,13 @@
 
     *Yves Senn*
 
+=======
+*   Fixes bug when using includes combined with select, the select statement was overwritten.
+
+    Fixes #11773
+
+    *Edo Balvers*
+    
 *   Load fixtures from linked folders.
 
     *Kassio Borges*
@@ -770,5 +777,6 @@
 *   rake:db:test:prepare falls back to original environment after execution.
 
     *Slava Markevich*
+
 
 Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/activerecord/CHANGELOG.md) for previous changes.
