@@ -16,6 +16,8 @@ require 'models/essay'
 require 'models/toy'
 require 'models/invoice'
 require 'models/line_item'
+require 'models/face'
+require 'models/man'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
@@ -829,5 +831,14 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     assert post.save
     assert_equal post.author_id, author2.id
+  end
+
+  def test_inverse_does_not_reload_after_save
+    face = Face.new
+    man = Man.new(:face => face)
+
+    assert_same man, face.man
+    assert man.save
+    assert_same man, face.man
   end
 end
