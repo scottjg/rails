@@ -1,4 +1,9 @@
-## unreleased ##
+## Rails 3.2.14.rc2 (Jun 16, 2013) ##
+
+*   No changes.
+
+
+## Rails 3.2.14.rc1 (Jul 12, 2013) ##
 
 *   No changes.
 
