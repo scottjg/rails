@@ -37,7 +37,9 @@ module ActiveRecord
             through_records = Array.wrap(owner.send(through_reflection.name))
 
             # Dont cache the association - we would only be caching a subset
-            if (preload_options != through_options) ||
+            through_options_without_select = through_options.clone
+            through_options_without_select.delete(:select)
+            if (preload_options != through_options_without_select) ||
                (reflection.options[:source_type] && through_reflection.collection?)
               owner.association(through_reflection.name).reset
             end
@@ -47,7 +49,13 @@ module ActiveRecord
         end
 
         def through_options
-          through_options = {}
+          if source_reflection.options[:polymorphic] || source_reflection.options[:through] || through_reflection.options[:polymorphic]
+            through_options = {}
+          else
+            through_column = through_reflection.macro == :belongs_to ? through_reflection.association_primary_key : through_reflection.foreign_key
+            source_column = source_reflection.macro == :belongs_to ? source_reflection.foreign_key : source_reflection.association_primary_key
+            through_options = {:select => [through_column, source_column]}
+          end
 
           if options[:source_type]
             through_options[:conditions] = { reflection.foreign_type => options[:source_type] }
