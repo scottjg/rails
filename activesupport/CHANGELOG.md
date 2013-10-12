@@ -1,15 +1,3 @@
-## unreleased ##
-
-*   Fix ActiveSupport::Cache::FileStore#cleanup to no longer rely on missing each_key method.
-
-    *Murray Steele*
-
-*   Add respond_to_missing? for TaggedLogging which is best practice when overriding method_missing. This permits
-    wrapping TaggedLogging by another log abstraction such as em-logger.
-
-    *Wolfram Arnold*
-
-
 ## Rails 3.2.14 (Jul 22, 2013) ##
 
 *   Make `Time.at_with_coercion` retain the second fraction and return local time.
@@ -41,6 +29,7 @@
 
 
 ## Rails 3.2.13 (Mar 18, 2013) ##
+
 
 *   Fix DateTime comparison with DateTime::Infinity object.
 
