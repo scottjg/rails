@@ -16,6 +16,8 @@ require 'models/essay'
 require 'models/toy'
 require 'models/invoice'
 require 'models/line_item'
+require 'models/team'
+require 'models/player'
 
 class BelongsToAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :topics,
@@ -828,5 +830,37 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
     assert post.save
     assert_equal post.author_id, author2.id
+  end
+end
+
+class BelongsToWithForeignKeyTest < ActiveRecord::TestCase
+  def setup
+    ActiveRecord::Schema.define do
+      create_table :teams do |t|
+      end
+
+      exec_query  <<-eos
+        create table players(
+          id int,
+          team_id int,
+          PRIMARY KEY (id),
+          FOREIGN KEY (team_id) REFERENCES teams(id)
+        );
+      eos
+    end
+  end
+
+  def teardown
+    ActiveRecord::Schema.define do
+      drop_table :players, if_exists: true
+      drop_table :teams,   if_exists: true
+    end
+  end
+
+  def test_destroy_linked_models
+    team = Team.create!
+    player = Player.create! id: 1, team_id: team.id
+
+    player.destroy!
   end
 end

@@ -92,13 +92,13 @@ module ActiveRecord::Associations::Builder
         )
       end
 
-      mixin.class_eval <<-CODE, __FILE__, __LINE__ + 1
-        def #{macro}_dependent_for_#{name}
-          association(:#{name}).handle_dependency
-        end
-      CODE
+      if options[:dependent]
+        add_destroy_callbacks(model, name)
+      end
+    end
 
-      model.before_destroy "#{macro}_dependent_for_#{name}"
+    def add_destroy_callbacks(model, name)
+      model.before_destroy lambda { |o| o.association(name).handle_dependency }
     end
 
     def valid_dependent_options

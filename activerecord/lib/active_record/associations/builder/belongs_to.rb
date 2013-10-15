@@ -93,6 +93,10 @@ module ActiveRecord::Associations::Builder
       model.after_destroy "belongs_to_touch_after_save_or_destroy_for_#{name}"
     end
 
+    def add_destroy_callbacks(model, name)
+      model.after_destroy lambda { |o| o.association(name).handle_dependency }
+    end
+
     def valid_dependent_options
       [:destroy, :delete]
     end
