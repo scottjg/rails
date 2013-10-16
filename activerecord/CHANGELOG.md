@@ -1,4 +1,19 @@
-## unreleased ##
+## Rails 3.2.15 (Oct 16, 2013) ##
+
+*   When calling the method .find_or_initialize_by_* from a collection_proxy
+    it should set the inverse_of relation even when the entry was found on the db.
+
+    *arthurnn*
+
+*   Callbacks on has_many should access the in memory parent if a inverse_of is set.
+
+    *arthurnn*
+
+*   Fix `FinderMethods#last` unscoped primary key.
+
+    Fixes #11917.
+
+    *Eugene Kalenkovich*
 
 *   Load fixtures from linked folders.
 

@@ -1,4 +1,24 @@
-## unreleased ##
+## Rails 3.2.15 (Oct 16, 2013) ##
+
+*   Fix `ActionDispatch::RemoteIp::GetIp#calculate_ip` to only check for spoofing
+    attacks if both `HTTP_CLIENT_IP` and `HTTP_X_FORWARDED_FOR` are set.
+
+    Fixes #12410
+    Backports #10844
+
+    *Tamir Duberstein*
+
+*   Fix the assert_recognizes test method so that it works when there are
+    constraints on the querystring.
+
+    Issue/Pull Request #9368
+    Backport #5219
+
+    *Brian Hahn*
+
+*   Fix to render partial by context(#11605).
+
+    *Kassio Borges*
 
 *   Fix `ActionDispatch::Assertions::ResponseAssertions#assert_redirected_to`
     does not show user-supplied message.
