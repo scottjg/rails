@@ -34,4 +34,13 @@ class SafeBufferTest < ActiveSupport::TestCase
     new_buffer = @buffer.to_s
     assert_equal ActiveSupport::SafeBuffer, new_buffer.class
   end
+  
+  test "Should disable safety checks" do
+    $disable_active_support_safe_buffer = true
+    @buffer << "<script>"
+    @buffer.capitalize!
+    assert @buffer.html_safe?
+    $disable_active_support_safe_buffer = false
+  end
+  
 end

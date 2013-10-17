@@ -95,7 +95,7 @@ end
 
 class Object
   def html_safe?
-    false
+    $disable_active_support_safe_buffer || false
   end
 end
 
@@ -180,7 +180,7 @@ module ActiveSupport #:nodoc:
     end
 
     def html_safe?
-      defined?(@html_safe) && @html_safe
+      $disable_active_support_safe_buffer || (defined?(@html_safe) && @html_safe)
     end
 
     def to_s
