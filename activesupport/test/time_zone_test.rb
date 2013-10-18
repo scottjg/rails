@@ -248,6 +248,14 @@ class TimeZoneTest < ActiveSupport::TestCase
     end
   end
 
+  def test_year_is_parsed_properly
+    with_env_tz 'US/Eastern' do
+      zone = ActiveSupport::TimeZone['Eastern Time (US & Canada)']
+      twz = zone.parse('10/10/13 02:00:00')
+      assert_equal Time.utc(2013, 10, 10, 0, 0), twz.time
+    end
+  end
+
   def test_utc_offset_lazy_loaded_from_tzinfo_when_not_passed_in_to_initialize
     tzinfo = TZInfo::Timezone.get('America/New_York')
     zone = ActiveSupport::TimeZone.create(tzinfo.name, nil, tzinfo)
