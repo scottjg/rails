@@ -251,8 +251,8 @@ class TimeZoneTest < ActiveSupport::TestCase
   def test_year_is_parsed_properly
     with_env_tz 'US/Eastern' do
       zone = ActiveSupport::TimeZone['Eastern Time (US & Canada)']
-      twz = zone.parse('03/10/13 00:00:00')
-      assert_equal Time.utc(2013, 3, 10, 0, 0, 0), twz.time
+      twz = zone.parse('11/11/11 00:00:00')
+      assert_equal Time.utc(2011, 11, 11, 0, 0, 0), twz.time
     end
   end
 
