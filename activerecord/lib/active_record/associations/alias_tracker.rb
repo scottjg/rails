@@ -14,13 +14,13 @@ module ActiveRecord
         @connection  = connection
       end
 
-      def aliased_table_for(table_name, aliased_name = nil)
+      def aliased_table_for(table_name, aliased_name = nil, table_engine = Arel::Table.engine)
         table_alias = aliased_name_for(table_name, aliased_name)
 
         if table_alias == table_name
           Arel::Table.new(table_name)
         else
-          Arel::Table.new(table_name).alias(table_alias)
+          Arel::Table.new(table_name, table_engine).alias(table_alias)
         end
       end
 

@@ -14,7 +14,8 @@ module ActiveRecord
         chain.each do |reflection|
           tables << alias_tracker.aliased_table_for(
             table_name_for(reflection),
-            table_alias_for(reflection, reflection != self.reflection)
+            table_alias_for(reflection, reflection != self.reflection),
+            reflection.klass
           )
 
           if reflection.source_macro == :has_and_belongs_to_many

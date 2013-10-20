@@ -79,6 +79,7 @@ module ActiveRecord
 
         if other.klass == relation.klass
           relation.joins!(*values[:joins])
+          alias_relations
         else
           joins_dependency, rest = values[:joins].partition do |join|
             case join
@@ -95,6 +96,22 @@ module ActiveRecord
           relation.joins! rest
 
           @relation = join_dependency.join_relation(relation)
+        end
+      end
+
+      def aliase_relations
+        values[:joins].each do |join|
+          table_alias = join.left
+          next unless Arel::Nodes::TableAlias === table_alias
+
+          relation.values[:where].each do |where_condition|
+            attribute = where_condition.left
+            next unless Arel::Attributes::Attribute === attribute && Arel::Table === attribute.relation
+
+            if attribute.relation.engine == table_alias.engine
+              attribute.relation = table_alias
+            end
+          end
         end
       end
 
