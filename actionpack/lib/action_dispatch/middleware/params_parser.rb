@@ -51,7 +51,7 @@ module ActionDispatch
         else
           false
         end
-      rescue Exception => e # YAML, XML or Ruby code block errors
+      rescue => e # YAML, XML or Ruby code block errors
         logger(env).debug "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
 
         raise e
