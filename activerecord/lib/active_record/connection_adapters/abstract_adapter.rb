@@ -243,7 +243,7 @@ module ActiveRecord
             :name          => name,
             :connection_id => object_id,
             :binds         => binds) { yield }
-        rescue Exception => e
+        rescue => e
           message = "#{e.class.name}: #{e.message}: #{sql}"
           @logger.debug message if @logger
           exception = translate_exception(e, message)
