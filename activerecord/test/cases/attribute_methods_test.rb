@@ -351,6 +351,16 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "yet another topic: part 4", topic.title
   end
 
+  def test_overridden_attribute_calling_super
+    Topic.class_eval do
+      def title=(title)
+        super("Super #{title}")
+      end
+    end
+
+    assert_equal 'Super Test', Topic.new(:title => 'Test').title
+  end
+
   def test_overridden_read_attribute
     topic = Topic.new
     topic.title = "Stop changing the topic"
