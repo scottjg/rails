@@ -16,6 +16,8 @@ module ActiveRecord
     # If you need to work on all current children, new and existing records,
     # +load_target+ and the +loaded+ flag are your friends.
     class AssociationCollection < AssociationProxy #:nodoc:
+      class TooManyRecordsError < StandardError; end
+
       def initialize(owner, reflection)
         super
         construct_sql
@@ -342,6 +344,12 @@ module ActiveRecord
         super || @reflection.klass.respond_to?(method, include_private)
       end
 
+      def respond_to?(*args)
+        super
+      rescue TooManyRecordsError => e
+        raise "#{e.message}. Here's more info. args: #{args.inspect}, @reflection.class: #{@reflection.class}, @reflection.klass: #{@reflection.klass}"
+      end
+
       protected
         def construct_find_options!(options)
         end
@@ -417,7 +425,7 @@ module ActiveRecord
 
         def find_target(*args)
           if count > 2000
-            raise "We have more than 2000 records! #{args}"
+            raise TooManyRecordsError.new("We have more than 2000 records! #{args}")
           end
 
           records =
