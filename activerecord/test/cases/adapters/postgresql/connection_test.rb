@@ -7,14 +7,14 @@ module ActiveRecord
 
     def setup
       super
+      @subscriber = SQLSubscriber.new
+      ActiveSupport::Notifications.subscribe('sql.active_record', @subscriber)
       @connection = ActiveRecord::Base.connection
-      @connection.extend(LogIntercepter)
-      @connection.intercepted = true
     end
 
     def teardown
-      @connection.intercepted = false
-      @connection.logged = []
+      ActiveSupport::Notifications.unsubscribe(@subscriber)
+      super
     end
 
     def test_encoding
@@ -47,74 +47,48 @@ module ActiveRecord
 
     def test_tables_logs_name
       @connection.tables('hello')
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_indexes_logs_name
       @connection.indexes('items', 'hello')
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_table_exists_logs_name
       @connection.table_exists?('items')
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_table_alias_length_logs_name
       @connection.instance_variable_set("@table_alias_length", nil)
       @connection.table_alias_length
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_current_database_logs_name
       @connection.current_database
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_encoding_logs_name
       @connection.encoding
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
     def test_schema_names_logs_name
       @connection.schema_names
-      assert_equal 'SCHEMA', @connection.logged[0][1]
+      assert_equal 'SCHEMA', @subscriber.logged[0][1]
     end
 
-    def test_reconnection_after_simulated_disconnection_with_verify
-      assert @connection.active?
-      original_connection_pid = @connection.query('select pg_backend_pid()')
-
-      # Fail with bad connection on next query attempt.
-      raw_connection = @connection.raw_connection
-      raw_connection_class = class << raw_connection ; self ; end
-      raw_connection_class.class_eval <<-CODE, __FILE__, __LINE__ + 1
-        def query_fake(*args)
-          if !( @called ||= false )
-            self.stubs(:status).returns(PGconn::CONNECTION_BAD)
-            @called = true
-            raise PGError
-          else
-            self.unstub(:status)
-            query_unfake(*args)
-          end
-        end
-
-        alias query_unfake query
-        alias query        query_fake
-      CODE
-
-      begin
-        @connection.verify!
-        new_connection_pid = @connection.query('select pg_backend_pid()')
-      ensure
-        raw_connection_class.class_eval <<-CODE, __FILE__, __LINE__ + 1
-          alias query query_unfake
-          undef query_fake
-        CODE
-      end
-
-      assert_not_equal original_connection_pid, new_connection_pid, "Should have a new underlying connection pid"
+    def test_statement_key_is_logged
+      bindval = 1
+      @connection.exec_query('SELECT $1::integer', 'SQL', [[nil, bindval]])
+      name = @subscriber.payloads.last[:statement_name]
+      assert name
+      res = @connection.exec_query("EXPLAIN (FORMAT JSON) EXECUTE #{name}(#{bindval})")
+      plan = res.column_types['QUERY PLAN'].type_cast res.rows.first.first
+      assert_operator plan.length, :>, 0
     end
 
     # Must have with_manual_interventions set to true for this

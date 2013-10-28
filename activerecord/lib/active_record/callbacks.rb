@@ -23,11 +23,14 @@ module ActiveRecord
   # Check out <tt>ActiveRecord::Transactions</tt> for more details about <tt>after_commit</tt> and
   # <tt>after_rollback</tt>.
   #
+  # Additionally, an <tt>after_touch</tt> callback is triggered whenever an
+  # object is touched.
+  #
   # Lastly an <tt>after_find</tt> and <tt>after_initialize</tt> callback is triggered for each object that
   # is found and instantiated by a finder, with <tt>after_initialize</tt> being triggered after new objects
   # are instantiated as well.
   #
-  # That's a total of twelve callbacks, which gives you immense power to react and prepare for each state in the
+  # There are nineteen callbacks in total, which give you immense power to react and prepare for each state in the
   # Active Record life cycle. The sequence for calling <tt>Base#save</tt> for an existing record is similar,
   # except that each <tt>_create</tt> callback is replaced by the corresponding <tt>_update</tt> callback.
   #
@@ -83,7 +86,7 @@ module ActiveRecord
   #
   # In that case, <tt>Reply#destroy</tt> would only run +destroy_readers+ and _not_ +destroy_author+.
   # So, use the callback macros when you want to ensure that a certain callback is called for the entire
-  # hierarchy, and use the regular overwriteable methods when you want to leave it up to each descendant
+  # hierarchy, and use the regular overwritable methods when you want to leave it up to each descendant
   # to decide whether they want to call +super+ and trigger the inherited callbacks.
   #
   # *IMPORTANT:* In order for inheritance to work for the callback queues, you must specify the

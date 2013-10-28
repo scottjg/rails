@@ -1,25 +1,21 @@
 module ActiveRecord::Associations::Builder
   class HasOne < SingularAssociation #:nodoc:
-    def macro
+    def self.macro
       :has_one
     end
 
-    def valid_options
+    def self.valid_options(options)
       valid = super + [:order, :as]
       valid += [:through, :source, :source_type] if options[:through]
       valid
     end
 
-    def constructable?
-      !options[:through]
+    def self.valid_dependent_options
+      [:destroy, :delete, :nullify, :restrict_with_error, :restrict_with_exception]
     end
 
-    def configure_dependency
-      super unless options[:through]
-    end
-
-    def valid_dependent_options
-      [:destroy, :delete, :nullify, :restrict, :restrict_with_error, :restrict_with_exception]
+    def self.add_before_destroy_callbacks(model, reflection)
+      super unless reflection.options[:through]
     end
   end
 end

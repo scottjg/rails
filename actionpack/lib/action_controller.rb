@@ -40,29 +40,13 @@ module ActionController
     autoload :UrlFor
   end
 
-  autoload :Integration,        'action_controller/deprecated/integration_test'
-  autoload :IntegrationTest,    'action_controller/deprecated/integration_test'
-  autoload :Routing,            'action_controller/deprecated'
   autoload :TestCase,           'action_controller/test_case'
   autoload :TemplateAssertions, 'action_controller/test_case'
-
-  eager_autoload do
-    autoload :RecordIdentifier
-  end
 
   def self.eager_load!
     super
     ActionController::Caching.eager_load!
-    HTML.eager_load!
   end
-end
-
-# All of these simply register additional autoloads
-require 'action_view'
-require 'action_view/vendor/html-scanner'
-
-ActiveSupport.on_load(:action_view) do
-  ActionView::RoutingUrlFor.send(:include, ActionDispatch::Routing::UrlFor)
 end
 
 # Common Active Support usage in Action Controller

@@ -21,13 +21,26 @@ module ActiveRecord
           )
         eosql
 
-        @conn.extend(LogIntercepter)
-        @conn.intercepted = true
+        @subscriber = SQLSubscriber.new
+        ActiveSupport::Notifications.subscribe('sql.active_record', @subscriber)
+      end
+
+      def test_valid_column
+        column = @conn.columns('items').find { |col| col.name == 'id' }
+        assert @conn.valid_type?(column.type)
+      end
+
+      # sqlite databases should be able to support any type and not
+      # just the ones mentioned in the native_database_types.
+      # Therefore test_invalid column should always return true
+      # even if the type is not valid.
+      def test_invalid_column
+        assert @conn.valid_type?(:foobar)
       end
 
       def teardown
-        @conn.intercepted = false
-        @conn.logged = []
+        ActiveSupport::Notifications.unsubscribe(@subscriber)
+        super
       end
 
       def test_column_types
@@ -243,7 +256,7 @@ module ActiveRecord
       def test_tables_logs_name
         assert_logged [['SCHEMA', []]] do
           @conn.tables('hello')
-          assert_not_nil @conn.logged.first.shift
+          assert_not_nil @subscriber.logged.first.shift
         end
       end
 
@@ -255,7 +268,7 @@ module ActiveRecord
 
       def test_table_exists_logs_name
         assert @conn.table_exists?('items')
-        assert_equal 'SCHEMA', @conn.logged[0][1]
+        assert_equal 'SCHEMA', @subscriber.logged[0][1]
       end
 
       def test_columns
@@ -293,10 +306,10 @@ module ActiveRecord
       end
 
       def test_indexes_logs
-        assert_difference('@conn.logged.length') do
+        assert_difference('@subscriber.logged.length') do
           @conn.indexes('items')
         end
-        assert_match(/items/, @conn.logged.last.first)
+        assert_match(/items/, @subscriber.logged.last.first)
       end
 
       def test_no_indexes
@@ -341,11 +354,23 @@ module ActiveRecord
         assert_nil @conn.primary_key('failboat')
       end
 
+      def test_supports_extensions
+        assert_not @conn.supports_extensions?, 'does not support extensions'
+      end
+
+      def test_respond_to_enable_extension
+        assert @conn.respond_to?(:enable_extension)
+      end
+
+      def test_respond_to_disable_extension
+        assert @conn.respond_to?(:disable_extension)
+      end
+
       private
 
       def assert_logged logs
         yield
-        assert_equal logs, @conn.logged
+        assert_equal logs, @subscriber.logged
       end
 
     end

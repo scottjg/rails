@@ -5,7 +5,7 @@ A Rails plugin is either an extension or a modification of the core framework. P
 
 * a way for developers to share bleeding-edge ideas without hurting the stable code base
 * a segmented architecture so that units of code can be fixed or updated on their own release schedule
-* an outlet for the core developers so that they don’t have to include every cool new feature under the sun
+* an outlet for the core developers so that they don't have to include every cool new feature under the sun
 
 After reading this guide, you will know:
 
@@ -15,7 +15,7 @@ After reading this guide, you will know:
 This guide describes how to build a test-driven plugin that will:
 
 * Extend core Ruby classes like Hash and String.
-* Add methods to ActiveRecord::Base in the tradition of the 'acts_as' plugins.
+* Add methods to `ActiveRecord::Base` in the tradition of the `acts_as` plugins.
 * Give you information about where to put generators in your plugin.
 
 For the purpose of this guide pretend for a moment that you are an avid bird watcher.
@@ -34,9 +34,15 @@ different rails applications using RubyGems and Bundler if desired.
 
 
 Rails ships with a `rails plugin new` command which creates a
- skeleton for developing any kind of Rails extension with the ability
- to run integration tests using a dummy Rails application. See usage
- and options by asking for help:
+skeleton for developing any kind of Rails extension with the ability
+to run integration tests using a dummy Rails application. Create your 
+plugin with the command:
+
+```bash
+$ rails plugin new yaffle
+```
+
+See usage and options by asking for help:
 
 ```bash
 $ rails plugin --help
@@ -68,7 +74,7 @@ In this example you will add a method to String named `to_squawk`. To begin, cre
 
 require 'test_helper'
 
-class CoreExtTest < Test::Unit::TestCase
+class CoreExtTest < ActiveSupport::TestCase
   def test_to_squawk_prepends_the_word_squawk
     assert_equal "squawk! Hello World", "Hello World".to_squawk
   end
@@ -126,8 +132,8 @@ $ rails console
 Add an "acts_as" Method to Active Record
 ----------------------------------------
 
-A common pattern in plugins is to add a method called 'acts_as_something' to models. In this case, you
-want to write a method called 'acts_as_yaffle' that adds a 'squawk' method to your Active Record models.
+A common pattern in plugins is to add a method called `acts_as_something` to models. In this case, you
+want to write a method called `acts_as_yaffle` that adds a `squawk` method to your Active Record models.
 
 To begin, set up your files so that you have:
 
@@ -136,7 +142,7 @@ To begin, set up your files so that you have:
 
 require 'test_helper'
 
-class ActsAsYaffleTest < Test::Unit::TestCase
+class ActsAsYaffleTest < ActiveSupport::TestCase
 end
 ```
 
@@ -162,9 +168,9 @@ end
 
 ### Add a Class Method
 
-This plugin will expect that you've added a method to your model named 'last_squawk'. However, the
-plugin users might have already defined a method on their model named 'last_squawk' that they use
-for something else. This plugin will allow the name to be changed by adding a class method called 'yaffle_text_field'.
+This plugin will expect that you've added a method to your model named `last_squawk`. However, the
+plugin users might have already defined a method on their model named `last_squawk` that they use
+for something else. This plugin will allow the name to be changed by adding a class method called `yaffle_text_field`.
 
 To start out, write a failing test that shows the behavior you'd like:
 
@@ -173,7 +179,7 @@ To start out, write a failing test that shows the behavior you'd like:
 
 require 'test_helper'
 
-class ActsAsYaffleTest < Test::Unit::TestCase
+class ActsAsYaffleTest < ActiveSupport::TestCase
 
   def test_a_hickwalls_yaffle_text_field_should_be_last_squawk
     assert_equal "last_squawk", Hickwall.yaffle_text_field
@@ -321,7 +327,7 @@ To start out, write a failing test that shows the behavior you'd like:
 # yaffle/test/acts_as_yaffle_test.rb
 require 'test_helper'
 
-class ActsAsYaffleTest < Test::Unit::TestCase
+class ActsAsYaffleTest < ActiveSupport::TestCase
 
   def test_a_hickwalls_yaffle_text_field_should_be_last_squawk
     assert_equal "last_squawk", Hickwall.yaffle_text_field

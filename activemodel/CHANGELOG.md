@@ -1,146 +1,39 @@
-## Rails 4.0.0 (unreleased) ##
+*   Fix `has_secure_password` to honor bcrypt-ruby's cost attribute.
 
+    *T.J. Schuck*
 
-## Rails 4.0.0.beta1 (February 25, 2013) ##
+*   Updated the `ActiveModel::Dirty#changed_attributes` method to be indifferent between using
+    symbols and strings as keys.
 
-*   Add `ActiveModel::Validations::AbsenceValidator`, a validator to check the
-    absence of attributes.
+    *William Myers*
 
-        class Person
-          include ActiveModel::Validations
-
-          attr_accessor :first_name
-          validates_absence_of :first_name
-        end
-
-        person = Person.new
-        person.first_name = "John"
-        person.valid?
-        # => false
-        person.errors.messages
-        # => {:first_name=>["must be blank"]}
-
-    *Roberto Vasquez Angel*
-
-*   `[attribute]_changed?` now returns `false` after a call to `reset_[attribute]!`.
-
-    *Renato Mascarenhas*
-
-*   Observers was extracted from Active Model as `rails-observers` gem.
-
-    *Rafael Mendonça França*
-
-*   Specify type of singular association during serialization.
-
-    *Steve Klabnik*
-
-*   Fixed length validator to correctly handle `nil`. Fixes #7180.
-
-    *Michal Zima*
-
-*   Removed dispensable `require` statements. Make sure to require `active_model` before requiring
-    individual parts of the framework.
-
-    *Yves Senn*
-
-*   Use BCrypt's `MIN_COST` in the test environment for speedier tests when using `has_secure_pasword`.
-
-    *Brian Cardarella + Jeremy Kemper + Trevor Turk*
-
-*   Add `ActiveModel::ForbiddenAttributesProtection`, a simple module to
-    protect attributes from mass assignment when non-permitted attributes are passed.
-
-    *DHH + Guillermo Iguaran*
-
-*   `ActiveModel::MassAssignmentSecurity` has been extracted from Active Model and the
-    `protected_attributes` gem should be added to Gemfile in order to use
-    `attr_accessible` and `attr_protected` macros in your models.
-
-    *Guillermo Iguaran*
-
-*   Due to a change in builder, `nil` and empty strings now generate
-    closed tags, so instead of this:
-
-        <pseudonyms nil=\"true\"></pseudonyms>
-
-    it generates this:
-
-        <pseudonyms nil=\"true\"/>
-
-    *Carlos Antonio da Silva*
-
-*   Inclusion/exclusion validators accept a method name passed as a symbol to the
-    `:in` option.
-
-    This allows to use dynamic inclusion/exclusion values using methods, besides
-    the current lambda/proc support.
-
-    *Gabriel Sobrinho*
-
-*   `ActiveModel::Validation#validates` ability to pass custom exception to the
-    `:strict` option.
+*   Added new API methods `reset_changes` and `changed_applied` to `ActiveModel::Dirty`
+    that control changes state. Previsously you needed to update internal
+    instance variables, but now API methods are available.
 
     *Bogdan Gusiev*
 
-*   Changed `ActiveModel::Serializers::Xml::Serializer#add_associations` to by default
-    propagate `:skip_types, :dasherize, :camelize` keys to included associations.
-    It can be overriden on each association by explicitly specifying the option on one
-    or more associations
+*   Fix has_secure_password. `password_confirmation` validations are triggered
+    even if no `password_confirmation` is set.
 
-    *Anthony Alberto*
+    *Vladimir Kiselev*
 
-*   Changed `ActiveModel::Serializers::JSON.include_root_in_json` default value to false.
-    Now, AM Serializers and AR objects have the same default behaviour. Fixes #6578.
+*   `inclusion` / `exclusion` validations with ranges will only use the faster
+    `Range#cover` for numerical ranges, and the more accurate `Range#include?`
+    for non-numerical ones.
 
-        class User < ActiveRecord::Base; end
+    Fixes range validations like `:a..:f` that used to pass with values like `:be`.
+    Fixes #10593
 
-        class Person
-          include ActiveModel::Model
-          include ActiveModel::AttributeMethods
-          include ActiveModel::Serializers::JSON
+    *Charles Bergeron*
 
-          attr_accessor :name, :age
+*   Fix regression in has_secure_password. When a password is set, but a
+    confirmation is an empty string, it would incorrectly save.
 
-          def attributes
-            instance_values
-          end
-        end
+    *Steve Klabnik* and *Phillip Calvin*
 
-        user.as_json
-        => {"id"=>1, "name"=>"Konata Izumi", "age"=>16, "awesome"=>true}
-        # root is not included
+*   Deprecate `Validator#setup`. This should be done manually now in the validator's constructor.
 
-        person.as_json
-        => {"name"=>"Francesco", "age"=>22}
-        # root is not included
+    *Nick Sutterer*
 
-    *Francesco Rodriguez*
-
-*   Passing false hash values to `validates` will no longer enable the corresponding validators.
-
-    *Steve Purcell*
-
-*   `ConfirmationValidator` error messages will attach to `:#{attribute}_confirmation` instead of `attribute`.
-
-    *Brian Cardarella*
-
-*   Added `ActiveModel::Model`, a mixin to make Ruby objects work with AP out of box.
-
-    *Guillermo Iguaran*
-
-*   `AM::Errors#to_json`: support `:full_messages` parameter.
-
-    *Bogdan Gusiev*
-
-*   Trim down Active Model API by removing `valid?` and `errors.full_messages`.
-
-    *José Valim*
-
-*   When `^` or `$` are used in the regular expression provided to `validates_format_of`
-    and the `:multiline` option is not set to true, an exception will be raised. This is
-    to prevent security vulnerabilities when using `validates_format_of`. The problem is
-    described in detail in the Rails security guide.
-
-    *Jan Berdajs + Egor Homakov*
-
-Please check [3-2-stable](https://github.com/rails/rails/blob/3-2-stable/activemodel/CHANGELOG.md) for previous changes.
+Please check [4-0-stable](https://github.com/rails/rails/blob/4-0-stable/activemodel/CHANGELOG.md) for previous changes.

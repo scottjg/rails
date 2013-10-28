@@ -125,30 +125,30 @@ class DirtyTest < ActiveRecord::TestCase
   end
 
   def test_time_attributes_changes_without_time_zone
-    target = Class.new(ActiveRecord::Base)
-    target.table_name = 'pirates'
+    with_timezone_config aware_attributes: false do
+      target = Class.new(ActiveRecord::Base)
+      target.table_name = 'pirates'
 
-    target.time_zone_aware_attributes = false
+      # New record - no changes.
+      pirate = target.new
+      assert !pirate.created_on_changed?
+      assert_nil pirate.created_on_change
 
-    # New record - no changes.
-    pirate = target.new
-    assert !pirate.created_on_changed?
-    assert_nil pirate.created_on_change
+      # Saved - no changes.
+      pirate.catchphrase = 'arrrr, time zone!!'
+      pirate.save!
+      assert !pirate.created_on_changed?
+      assert_nil pirate.created_on_change
 
-    # Saved - no changes.
-    pirate.catchphrase = 'arrrr, time zone!!'
-    pirate.save!
-    assert !pirate.created_on_changed?
-    assert_nil pirate.created_on_change
-
-    # Change created_on.
-    old_created_on = pirate.created_on
-    pirate.created_on = Time.now + 1.day
-    assert pirate.created_on_changed?
-    # kind_of does not work because
-    # ActiveSupport::TimeWithZone.name == 'Time'
-    assert_instance_of Time, pirate.created_on_was
-    assert_equal old_created_on, pirate.created_on_was
+      # Change created_on.
+      old_created_on = pirate.created_on
+      pirate.created_on = Time.now + 1.day
+      assert pirate.created_on_changed?
+      # kind_of does not work because
+      # ActiveSupport::TimeWithZone.name == 'Time'
+      assert_instance_of Time, pirate.created_on_was
+      assert_equal old_created_on, pirate.created_on_was
+    end
   end
 
 
@@ -213,9 +213,11 @@ class DirtyTest < ActiveRecord::TestCase
       topic = target.create
       assert_nil topic.written_on
 
-      topic.written_on = ""
-      assert_nil topic.written_on
-      assert !topic.written_on_changed?
+      ["", nil].each do |value|
+        topic.written_on = value
+        assert_nil topic.written_on
+        assert !topic.written_on_changed?
+      end
     end
   end
 
@@ -243,6 +245,21 @@ class DirtyTest < ActiveRecord::TestCase
     assert !pirate.changed?
   end
 
+  def test_float_zero_to_string_zero_not_marked_as_changed
+    data = NumericData.new :temperature => 0.0
+    data.save!
+
+    assert_not data.changed?
+
+    data.temperature = '0'
+    assert_empty data.changes
+
+    data.temperature = '0.0'
+    assert_empty data.changes
+
+    data.temperature = '0.00'
+    assert_empty data.changes
+  end
 
   def test_zero_to_blank_marked_as_changed
     pirate = Pirate.new
@@ -589,20 +606,6 @@ class DirtyTest < ActiveRecord::TestCase
       a.reload
       assert_not_nil a.id
     end
-  end
-
-  test "partial_updates config attribute is deprecated" do
-    klass = Class.new(ActiveRecord::Base)
-
-    assert klass.partial_writes?
-    assert_deprecated { assert klass.partial_updates? }
-    assert_deprecated { assert klass.partial_updates  }
-
-    assert_deprecated { klass.partial_updates = false }
-
-    assert !klass.partial_writes?
-    assert_deprecated { assert !klass.partial_updates? }
-    assert_deprecated { assert !klass.partial_updates  }
   end
 
   private

@@ -16,8 +16,9 @@ module ActionController
       @_partials = Hash.new(0)
       @_templates = Hash.new(0)
       @_layouts = Hash.new(0)
+      @_files = Hash.new(0)
 
-      ActiveSupport::Notifications.subscribe("render_template.action_view") do |name, start, finish, id, payload|
+      ActiveSupport::Notifications.subscribe("render_template.action_view") do |_name, _start, _finish, _id, payload|
         path = payload[:layout]
         if path
           @_layouts[path] += 1
@@ -27,7 +28,7 @@ module ActionController
         end
       end
 
-      ActiveSupport::Notifications.subscribe("!render_template.action_view") do |name, start, finish, id, payload|
+      ActiveSupport::Notifications.subscribe("!render_template.action_view") do |_name, _start, _finish, _id, payload|
         path = payload[:virtual_path]
         next unless path
         partial = path =~ /^.*\/_[^\/]*$/
@@ -38,6 +39,16 @@ module ActionController
         end
 
         @_templates[path] += 1
+      end
+
+      ActiveSupport::Notifications.subscribe("!render_template.action_view") do |_name, _start, _finish, _id, payload|
+        next if payload[:virtual_path] # files don't have virtual path
+
+        path = payload[:identifier]
+        if path
+          @_files[path] += 1
+          @_files[path.split("/").last] += 1
+        end
       end
     end
 
@@ -106,7 +117,7 @@ module ActionController
           end
         assert matches_template, msg
       when Hash
-        options.assert_valid_keys(:layout, :partial, :locals, :count)
+        options.assert_valid_keys(:layout, :partial, :locals, :count, :file)
 
         if options.key?(:layout)
           expected_layout = options[:layout]
@@ -121,6 +132,10 @@ module ActionController
           when nil, false
             assert(@_layouts.empty?, msg)
           end
+        end
+
+        if options[:file]
+          assert_includes @_files.keys, options[:file]
         end
 
         if expected_partial = options[:partial]
@@ -301,7 +316,7 @@ module ActionController
   #       assert_response :found
   #
   #       # Assert that the controller really put the book in the database.
-  #       assert_not_nil Book.find_by_title("Love Hina")
+  #       assert_not_nil Book.find_by(title: "Love Hina")
   #     end
   #   end
   #
@@ -436,39 +451,52 @@ module ActionController
 
       end
 
-      # Executes a request simulating GET HTTP method and set/volley the response
+      # Simulate a GET request with the given parameters.
+      #
+      # - +action+: The controller action to call.
+      # - +parameters+: The HTTP parameters that you want to pass. This may
+      #   be +nil+, a hash, or a string that is appropriately encoded
+      #   (<tt>application/x-www-form-urlencoded</tt> or <tt>multipart/form-data</tt>).
+      # - +session+: A hash of parameters to store in the session. This may be +nil+.
+      # - +flash+: A hash of parameters to store in the flash. This may be +nil+.
+      #
+      # You can also simulate POST, PATCH, PUT, DELETE, HEAD, and OPTIONS requests with
+      # +post+, +patch+, +put+, +delete+, +head+, and +options+.
+      #
+      # Note that the request method is not verified. The different methods are
+      # available to make the tests more expressive.
       def get(action, *args)
         process(action, "GET", *args)
       end
 
-      # Executes a request simulating POST HTTP method and set/volley the response
+      # Simulate a POST request with the given parameters and set/volley the response.
+      # See +get+ for more details.
       def post(action, *args)
         process(action, "POST", *args)
       end
 
-      # Executes a request simulating PATCH HTTP method and set/volley the response
+      # Simulate a PATCH request with the given parameters and set/volley the response.
+      # See +get+ for more details.
       def patch(action, *args)
         process(action, "PATCH", *args)
       end
 
-      # Executes a request simulating PUT HTTP method and set/volley the response
+      # Simulate a PUT request with the given parameters and set/volley the response.
+      # See +get+ for more details.
       def put(action, *args)
         process(action, "PUT", *args)
       end
 
-      # Executes a request simulating DELETE HTTP method and set/volley the response
+      # Simulate a DELETE request with the given parameters and set/volley the response.
+      # See +get+ for more details.
       def delete(action, *args)
         process(action, "DELETE", *args)
       end
 
-      # Executes a request simulating HEAD HTTP method and set/volley the response
+      # Simulate a HEAD request with the given parameters and set/volley the response.
+      # See +get+ for more details.
       def head(action, *args)
         process(action, "HEAD", *args)
-      end
-
-      # Executes a request simulating OPTIONS HTTP method and set/volley the response
-      def options(action, *args)
-        process(action, "OPTIONS", *args)
       end
 
       def xml_http_request(request_method, action, parameters = nil, session = nil, flash = nil)
@@ -496,7 +524,6 @@ module ActionController
 
       def process(action, http_method = 'GET', *args)
         check_required_ivars
-        http_method, args = handle_old_process_api(http_method, args, caller)
 
         if args.first.is_a?(String) && http_method != 'HEAD'
           @request.env['RAW_POST_DATA'] = args.shift
@@ -524,7 +551,7 @@ module ActionController
         parameters ||= {}
         controller_class_name = @controller.class.anonymous? ?
           "anonymous" :
-          @controller.class.name.underscore.sub(/_controller$/, '')
+          @controller.class.controller_path
 
         @request.assign_parameters(@routes, controller_class_name, action.to_s, parameters)
 
@@ -598,17 +625,6 @@ module ActionController
             raise "#{iv_name} is nil: make sure you set it in your test's setup method."
           end
         end
-      end
-
-      def handle_old_process_api(http_method, args, callstack)
-        # 4.0: Remove this method.
-        if http_method.is_a?(Hash)
-          ActiveSupport::Deprecation.warn("TestCase#process now expects the HTTP method as second argument: process(action, http_method, params, session, flash)", callstack)
-          args.unshift(http_method)
-          http_method = args.last.is_a?(String) ? args.last : "GET"
-        end
-
-        [http_method, args]
       end
 
       def build_request_uri(action, parameters)

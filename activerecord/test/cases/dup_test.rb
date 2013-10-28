@@ -110,7 +110,7 @@ module ActiveRecord
     def test_dup_validity_is_independent
       repair_validations(Topic) do
         Topic.validates_presence_of :title
-        topic = Topic.new("title" => "Litterature")
+        topic = Topic.new("title" => "Literature")
         topic.valid?
 
         duped = topic.dup
@@ -126,9 +126,9 @@ module ActiveRecord
 
     def test_dup_with_default_scope
       prev_default_scopes = Topic.default_scopes
-      Topic.default_scopes = [Topic.where(:approved => true)]
+      Topic.default_scopes = [proc { Topic.where(:approved => true) }]
       topic = Topic.new(:approved => false)
-      assert !topic.dup.approved?, "should not be overriden by default scopes"
+      assert !topic.dup.approved?, "should not be overridden by default scopes"
     ensure
       Topic.default_scopes = prev_default_scopes
     end

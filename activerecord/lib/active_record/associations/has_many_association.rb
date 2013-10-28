@@ -9,7 +9,7 @@ module ActiveRecord
 
       def handle_dependency
         case options[:dependent]
-        when :restrict, :restrict_with_exception
+        when :restrict_with_exception
           raise ActiveRecord::DeleteRestrictionError.new(reflection.name) unless empty?
 
         when :restrict_with_error
@@ -22,15 +22,17 @@ module ActiveRecord
         else
           if options[:dependent] == :destroy
             # No point in executing the counter update since we're going to destroy the parent anyway
-            load_target.each(&:mark_for_destruction)
+            load_target.each { |t| t.destroyed_by_association = reflection }
+            destroy_all
+          else
+            delete_all
           end
-
-          delete_all
         end
       end
 
       def insert_record(record, validate = true, raise = false)
         set_owner_attributes(record)
+        set_inverse_instance(record)
 
         if raise
           record.save!(:validate => validate)
@@ -57,8 +59,6 @@ module ActiveRecord
         def count_records
           count = if has_cached_counter?
             owner.send(:read_attribute, cached_counter_attribute_name)
-          elsif options[:counter_sql] || options[:finder_sql]
-            reflection.klass.count_by_sql(custom_counter_sql)
           else
             scope.count
           end
@@ -114,8 +114,7 @@ module ActiveRecord
             if records == :all
               scope = self.scope
             else
-              keys  = records.map { |r| r[reflection.association_primary_key] }
-              scope = self.scope.where(reflection.association_primary_key => keys)
+              scope = self.scope.where(reflection.klass.primary_key => records)
             end
 
             if method == :delete_all
@@ -127,7 +126,11 @@ module ActiveRecord
         end
 
         def foreign_key_present?
-          owner.attribute_present?(reflection.association_primary_key)
+          if reflection.klass.primary_key
+            owner.attribute_present?(reflection.association_primary_key)
+          else
+            false
+          end
         end
     end
   end

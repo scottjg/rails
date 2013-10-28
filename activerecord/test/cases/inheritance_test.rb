@@ -68,6 +68,7 @@ class InheritanceTest < ActiveRecord::TestCase
   end
 
   def test_company_descends_from_active_record
+    assert !ActiveRecord::Base.descends_from_active_record?
     assert AbstractCompany.descends_from_active_record?, 'AbstractCompany should descend from ActiveRecord::Base'
     assert Company.descends_from_active_record?, 'Company should descend from ActiveRecord::Base'
     assert !Class.new(Company).descends_from_active_record?, 'Company subclass should not descend from ActiveRecord::Base'
@@ -171,12 +172,41 @@ class InheritanceTest < ActiveRecord::TestCase
     assert_equal Firm, firm.class
   end
 
+  def test_new_with_abstract_class
+    e = assert_raises(NotImplementedError) do
+      AbstractCompany.new
+    end
+    assert_equal("AbstractCompany is an abstract class and can not be instantiated.", e.message)
+  end
+
+  def test_new_with_ar_base
+    e = assert_raises(NotImplementedError) do
+      ActiveRecord::Base.new
+    end
+    assert_equal("ActiveRecord::Base is an abstract class and can not be instantiated.", e.message)
+  end
+
   def test_new_with_invalid_type
     assert_raise(ActiveRecord::SubclassNotFound) { Company.new(:type => 'InvalidType') }
   end
 
   def test_new_with_unrelated_type
     assert_raise(ActiveRecord::SubclassNotFound) { Company.new(:type => 'Account') }
+  end
+
+  def test_new_with_complex_inheritance
+    assert_nothing_raised { Client.new(type: 'VerySpecialClient') }
+  end
+
+  def test_new_with_autoload_paths
+    path = File.expand_path('../../models/autoloadable', __FILE__)
+    ActiveSupport::Dependencies.autoload_paths << path
+
+    firm = Company.new(:type => 'ExtraFirm')
+    assert_equal ExtraFirm, firm.class
+  ensure
+    ActiveSupport::Dependencies.autoload_paths.reject! { |p| p == path }
+    ActiveSupport::Dependencies.clear
   end
 
   def test_inheritance_condition
@@ -283,8 +313,12 @@ class InheritanceTest < ActiveRecord::TestCase
     assert_kind_of SpecialSubscriber, SpecialSubscriber.find("webster132")
     assert_nothing_raised { s = SpecialSubscriber.new("name" => "And breaaaaathe!"); s.id = 'roger'; s.save }
   end
-end
 
+  def test_scope_inherited_properly
+    assert_nothing_raised { Company.of_first_firm }
+    assert_nothing_raised { Client.of_first_firm }
+  end
+end
 
 class InheritanceComputeTypeTest < ActiveRecord::TestCase
   fixtures :companies

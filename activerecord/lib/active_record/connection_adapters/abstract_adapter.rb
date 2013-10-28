@@ -18,6 +18,7 @@ module ActiveRecord
       autoload :ColumnDefinition
       autoload :TableDefinition
       autoload :Table
+      autoload :AlterTable
     end
 
     autoload_at 'active_record/connection_adapters/abstract/connection_pool' do
@@ -32,6 +33,7 @@ module ActiveRecord
       autoload :Quoting
       autoload :ConnectionPool
       autoload :QueryCache
+      autoload :Savepoints
     end
 
     autoload_at 'active_record/connection_adapters/abstract/transaction' do
@@ -94,10 +96,95 @@ module ActiveRecord
         @last_use            = false
         @logger              = logger
         @pool                = pool
-        @query_cache         = Hash.new { |h,sql| h[sql] = {} }
-        @query_cache_enabled = false
         @schema_cache        = SchemaCache.new self
         @visitor             = nil
+        @prepared_statements = false
+      end
+
+      def valid_type?(type)
+        true
+      end
+
+      class SchemaCreation
+        def initialize(conn)
+          @conn  = conn
+          @cache = {}
+        end
+
+        def accept(o)
+          m = @cache[o.class] ||= "visit_#{o.class.name.split('::').last}"
+          send m, o
+        end
+
+        def visit_AddColumn(o)
+          sql_type = type_to_sql(o.type.to_sym, o.limit, o.precision, o.scale)
+          sql = "ADD #{quote_column_name(o.name)} #{sql_type}"
+          add_column_options!(sql, column_options(o))
+        end
+
+        private
+
+        def visit_AlterTable(o)
+          sql = "ALTER TABLE #{quote_table_name(o.name)} "
+          sql << o.adds.map { |col| visit_AddColumn col }.join(' ')
+        end
+
+        def visit_ColumnDefinition(o)
+          sql_type = type_to_sql(o.type.to_sym, o.limit, o.precision, o.scale)
+          column_sql = "#{quote_column_name(o.name)} #{sql_type}"
+          add_column_options!(column_sql, column_options(o)) unless o.primary_key?
+          column_sql
+        end
+
+        def visit_TableDefinition(o)
+          create_sql = "CREATE#{' TEMPORARY' if o.temporary} TABLE "
+          create_sql << "#{quote_table_name(o.name)} ("
+          create_sql << o.columns.map { |c| accept c }.join(', ')
+          create_sql << ") #{o.options}"
+          create_sql
+        end
+
+        def column_options(o)
+          column_options = {}
+          column_options[:null] = o.null unless o.null.nil?
+          column_options[:default] = o.default unless o.default.nil?
+          column_options[:column] = o
+          column_options[:first] = o.first
+          column_options[:after] = o.after
+          column_options
+        end
+
+        def quote_column_name(name)
+          @conn.quote_column_name name
+        end
+
+        def quote_table_name(name)
+          @conn.quote_table_name name
+        end
+
+        def type_to_sql(type, limit, precision, scale)
+          @conn.type_to_sql type.to_sym, limit, precision, scale
+        end
+
+        def add_column_options!(sql, options)
+          sql << " DEFAULT #{@conn.quote(options[:default], options[:column])}" if options_include_default?(options)
+          # must explicitly check for :null to allow change_column to work on migrations
+          if options[:null] == false
+            sql << " NOT NULL"
+          end
+          if options[:auto_increment] == true
+            sql << " AUTO_INCREMENT"
+          end
+          sql
+        end
+
+        def options_include_default?(options)
+          options.include?(:default) && !(options[:null] == false && options[:default].nil?)
+        end
+      end
+
+      def schema_creation
+        SchemaCreation.new self
       end
 
       def lease
@@ -116,6 +203,18 @@ module ActiveRecord
 
       def expire
         @in_use = false
+      end
+
+      def unprepared_visitor
+        self.class::BindSubstitution.new self
+      end
+
+      def unprepared_statement
+        old_prepared_statements, @prepared_statements = @prepared_statements, false
+        old_visitor, @visitor = @visitor, unprepared_visitor
+        yield
+      ensure
+        @visitor, @prepared_statements = old_visitor, old_prepared_statements
       end
 
       # Returns the human-readable name of the adapter. Use mixed case - one
@@ -195,16 +294,30 @@ module ActiveRecord
         false
       end
 
+      # This is meant to be implemented by the adapters that support extensions
+      def disable_extension(name)
+      end
+
+      # This is meant to be implemented by the adapters that support extensions
+      def enable_extension(name)
+      end
+
       # A list of extensions, to be filled in by adapters that support them. At
       # the moment only postgresql does.
       def extensions
         []
       end
 
+      # A list of index algorithms, to be filled by adapters that support them.
+      # MySQL and PostgreSQL have support for them right now.
+      def index_algorithms
+        {}
+      end
+
       # QUOTING ==================================================
 
-      # Returns a bind substitution value given a +column+ and list of current
-      # +binds+.
+      # Returns a bind substitution value given a bind +index+ and +column+
+      # NOTE: The column param is currently being used by the sqlserver-adapter
       def substitute_at(column, index)
         Arel::Nodes::BindParam.new '?'
       end
@@ -283,27 +396,13 @@ module ActiveRecord
         @transaction.number
       end
 
-      def increment_open_transactions
-        ActiveSupport::Deprecation.warn "#increment_open_transactions is deprecated and has no effect"
+      def create_savepoint(name = nil)
       end
 
-      def decrement_open_transactions
-        ActiveSupport::Deprecation.warn "#decrement_open_transactions is deprecated and has no effect"
+      def rollback_to_savepoint(name = nil)
       end
 
-      def transaction_joinable=(joinable)
-        message = "#transaction_joinable= is deprecated. Please pass the :joinable option to #begin_transaction instead."
-        ActiveSupport::Deprecation.warn message
-        @transaction.joinable = joinable
-      end
-
-      def create_savepoint
-      end
-
-      def rollback_to_savepoint
-      end
-
-      def release_savepoint
+      def release_savepoint(name = nil)
       end
 
       def case_sensitive_modifier(node)
@@ -325,13 +424,14 @@ module ActiveRecord
 
       protected
 
-      def log(sql, name = "SQL", binds = [])
+      def log(sql, name = "SQL", binds = [], statement_name = nil)
         @instrumenter.instrument(
           "sql.active_record",
-          :sql           => sql,
-          :name          => name,
-          :connection_id => object_id,
-          :binds         => binds) { yield }
+          :sql            => sql,
+          :name           => name,
+          :connection_id  => object_id,
+          :statement_name => statement_name,
+          :binds          => binds) { yield }
       rescue => e
         message = "#{e.class.name}: #{e.message}: #{sql}"
         @logger.error message if @logger
@@ -342,7 +442,11 @@ module ActiveRecord
 
       def translate_exception(exception, message)
         # override in derived class
-        ActiveRecord::StatementInvalid.new(message)
+        ActiveRecord::StatementInvalid.new(message, exception)
+      end
+
+      def without_prepared_statement?(binds)
+        !@prepared_statements || binds.empty?
       end
     end
   end

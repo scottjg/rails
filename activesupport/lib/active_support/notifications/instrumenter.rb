@@ -2,7 +2,7 @@ require 'securerandom'
 
 module ActiveSupport
   module Notifications
-    # Instrumentors are stored in a thread local.
+    # Instrumenters are stored in a thread local.
     class Instrumenter
       attr_reader :id
 
@@ -17,7 +17,7 @@ module ActiveSupport
       def instrument(name, payload={})
         start name, payload
         begin
-          yield
+          yield payload
         rescue Exception => e
           payload[:exception] = [e.class.name, e.message]
           raise e
@@ -54,10 +54,11 @@ module ActiveSupport
         @transaction_id = transaction_id
         @end            = ending
         @children       = []
+        @duration       = nil
       end
 
       def duration
-        1000.0 * (self.end - time)
+        @duration ||= 1000.0 * (self.end - time)
       end
 
       def <<(event)

@@ -36,6 +36,11 @@
   name: Views
   documents:
     -
+      name: Action View Overview
+      url: action_view_overview.html
+      description: This guide provides an introduction to Action View and introduces a few of the more common view helpers.
+      work_in_progress: true
+    -
       name: Layouts and Rendering in Rails
       url: layouts_and_rendering.html
       description: This guide covers the basic layout features of Action Controller and Action View, including rendering and redirecting, using content_for blocks, and working with partials.
@@ -68,7 +73,6 @@
     -
       name: Action Mailer Basics
       url: action_mailer_basics.html
-      work_in_progress: true
       description: This guide describes how to use Action Mailer to send and receive emails.
     -
       name: Testing Rails Applications
@@ -145,6 +149,13 @@
       name: Ruby on Rails Guides Guidelines
       url: ruby_on_rails_guides_guidelines.html
       description: This guide documents the Ruby on Rails guides guidelines.
+-
+  name: Maintenance Policy
+  documents:
+    -
+      name: Maintenance Policy
+      url: maintenance_policy.html
+      description: What versions of Ruby on Rails are currently supported, and when to expect new versions.
 -
   name: Release Notes
   documents:

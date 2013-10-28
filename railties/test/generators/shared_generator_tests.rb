@@ -46,11 +46,6 @@ module SharedGeneratorTests
     assert_no_file "test"
   end
 
-  def test_options_before_application_name_raises_an_error
-    content = capture(:stderr){ run_generator(["--pretend", destination_root]) }
-    assert_match(/Options should be given after the \w+ name. For details run: rails( plugin new)? --help\n/, content)
-  end
-
   def test_name_collision_raises_an_error
     reserved_words = %w[application destroy plugin runner test]
     reserved_words.each do |reserved|
@@ -77,9 +72,9 @@ module SharedGeneratorTests
   end
 
   def test_template_raises_an_error_with_invalid_path
-    content = capture(:stderr){ run_generator([destination_root, "-m", "non/existant/path"]) }
+    content = capture(:stderr){ run_generator([destination_root, "-m", "non/existent/path"]) }
     assert_match(/The template \[.*\] could not be loaded/, content)
-    assert_match(/non\/existant\/path/, content)
+    assert_match(/non\/existent\/path/, content)
   end
 
   def test_template_is_executed_when_supplied

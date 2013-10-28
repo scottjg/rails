@@ -25,7 +25,6 @@ require 'active_support'
 require 'active_support/rails'
 require 'active_model'
 require 'arel'
-require 'active_record/deprecated_finders'
 
 require 'active_record/version'
 
@@ -35,8 +34,8 @@ module ActiveRecord
   autoload :Base
   autoload :Callbacks
   autoload :Core
-  autoload :CounterCache
   autoload :ConnectionHandling
+  autoload :CounterCache
   autoload :DynamicMatchers
   autoload :Explain
   autoload :Inheritance
@@ -50,12 +49,14 @@ module ActiveRecord
   autoload :Querying
   autoload :ReadonlyAttributes
   autoload :Reflection
+  autoload :RuntimeRegistry
   autoload :Sanitization
   autoload :Schema
   autoload :SchemaDumper
   autoload :SchemaMigration
   autoload :Scoping
   autoload :Serialization
+  autoload :StatementCache
   autoload :Store
   autoload :Timestamp
   autoload :Transactions
@@ -69,11 +70,12 @@ module ActiveRecord
 
     autoload :Aggregations
     autoload :Associations
-    autoload :AttributeMethods
     autoload :AttributeAssignment
+    autoload :AttributeMethods
     autoload :AutosaveAssociation
 
     autoload :Relation
+    autoload :AssociationRelation
     autoload :NullRelation
 
     autoload_under 'relation' do
@@ -145,7 +147,6 @@ module ActiveRecord
       'active_record/tasks/postgresql_database_tasks'
   end
 
-  autoload :TestCase
   autoload :TestFixtures, 'active_record/fixtures'
 
   def self.eager_load!

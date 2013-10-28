@@ -35,11 +35,11 @@ class User < ActiveRecord::Base
   before_validation :ensure_login_has_a_value
 
   protected
-  def ensure_login_has_a_value
-    if login.nil?
-      self.login = email unless email.blank?
+    def ensure_login_has_a_value
+      if login.nil?
+        self.login = email unless email.blank?
+      end
     end
-  end
 end
 ```
 
@@ -49,8 +49,8 @@ The macro-style class methods can also receive a block. Consider using this styl
 class User < ActiveRecord::Base
   validates :login, :email, presence: true
 
-  before_create do |user|
-    user.name = user.login.capitalize if user.name.blank?
+  before_create do
+    self.name = login.capitalize if name.blank?
   end
 end
 ```
@@ -65,13 +65,13 @@ class User < ActiveRecord::Base
   after_validation :set_location, on: [ :create, :update ]
 
   protected
-  def normalize_name
-    self.name = self.name.downcase.titleize
-  end
+    def normalize_name
+      self.name = self.name.downcase.titleize
+    end
 
-  def set_location
-    self.location = LocationService.query(self)
-  end
+    def set_location
+      self.location = LocationService.query(self)
+    end
 end
 ```
 
@@ -167,6 +167,7 @@ Additionally, the `after_find` callback is triggered by the following finder met
 * `all`
 * `first`
 * `find`
+* `find_by`
 * `find_by_*`
 * `find_by_*!`
 * `find_by_sql`
@@ -179,7 +180,7 @@ NOTE: The `find_by_*` and `find_by_*!` methods are dynamic finders generated aut
 Skipping Callbacks
 ------------------
 
-Just as with validations, it is also possible to skip callbacks. These methods should be used with caution, however, because important business rules and application logic may be kept in callbacks. Bypassing them without understanding the potential implications may lead to invalid data.
+Just as with validations, it is also possible to skip callbacks by using the following methods:
 
 * `decrement`
 * `decrement_counter`
@@ -194,6 +195,8 @@ Just as with validations, it is also possible to skip callbacks. These methods s
 * `update_all`
 * `update_counters`
 
+These methods should be used with caution, however, because important business rules and application logic may be kept in callbacks. Bypassing them without understanding the potential implications may lead to invalid data.
+
 Halting Execution
 -----------------
 
@@ -201,7 +204,7 @@ As you start registering new callbacks for your models, they will be queued for 
 
 The whole callback chain is wrapped in a transaction. If any _before_ callback method returns exactly `false` or raises an exception, the execution chain gets halted and a ROLLBACK is issued; _after_ callbacks can only accomplish that by raising an exception.
 
-WARNING. Raising an arbitrary exception may break code that expects `save` and its friends not to fail like that. The `ActiveRecord::Rollback` exception is thought precisely to tell Active Record a rollback is going on. That one is internally captured but not reraised.
+WARNING. Any exception that is not `ActiveRecord::Rollback` will be re-raised by Rails after the callback chain is halted. Raising an exception other than `ActiveRecord::Rollback` may break code that does not expect methods like `save` and `update_attributes` (which normally try to return `true` or `false`) to raise an exception.
 
 Relational Callbacks
 --------------------
@@ -342,7 +345,7 @@ By using the `after_commit` callback we can account for this case.
 
 ```ruby
 class PictureFile < ActiveRecord::Base
-  after_commit :delete_picture_file_from_disk, :on => [:destroy]
+  after_commit :delete_picture_file_from_disk, on: [:destroy]
 
   def delete_picture_file_from_disk
     if File.exist?(filepath)

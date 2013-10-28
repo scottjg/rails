@@ -3,13 +3,45 @@ require 'arel/visitors/bind_visitor'
 module ActiveRecord
   module ConnectionAdapters
     class AbstractMysqlAdapter < AbstractAdapter
-      class Column < ConnectionAdapters::Column # :nodoc:
-        attr_reader :collation, :strict
+      include Savepoints
 
-        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false)
+      class SchemaCreation < AbstractAdapter::SchemaCreation
+
+        def visit_AddColumn(o)
+          add_column_position!(super, column_options(o))
+        end
+
+        private
+        def visit_ChangeColumnDefinition(o)
+          column = o.column
+          options = o.options
+          sql_type = type_to_sql(o.type, options[:limit], options[:precision], options[:scale])
+          change_column_sql = "CHANGE #{quote_column_name(column.name)} #{quote_column_name(options[:name])} #{sql_type}"
+          add_column_options!(change_column_sql, options)
+          add_column_position!(change_column_sql, options)
+        end
+
+        def add_column_position!(sql, options)
+          if options[:first]
+            sql << " FIRST"
+          elsif options[:after]
+            sql << " AFTER #{quote_column_name(options[:after])}"
+          end
+          sql
+        end
+      end
+
+      def schema_creation
+        SchemaCreation.new self
+      end
+
+      class Column < ConnectionAdapters::Column # :nodoc:
+        attr_reader :collation, :strict, :extra
+
+        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = "")
           @strict    = strict
           @collation = collation
-
+          @extra     = extra
           super(name, default, sql_type, null)
         end
 
@@ -61,6 +93,8 @@ module ActiveRecord
 
         def extract_limit(sql_type)
           case sql_type
+          when /^enum\((.+)\)/i
+            $1.split(',').map{|enum| enum.strip.length - 2}.max
           when /blob|text/i
             case sql_type
             when /tiny/i
@@ -77,8 +111,6 @@ module ActiveRecord
           when /^mediumint/i; 3
           when /^smallint/i;  2
           when /^tinyint/i;   1
-          when /^enum\((.+)\)/i
-            $1.split(',').map{|enum| enum.strip.length - 2}.max
           else
             super
           end
@@ -130,6 +162,9 @@ module ActiveRecord
         :boolean     => { :name => "tinyint", :limit => 1 }
       }
 
+      INDEX_TYPES  = [:fulltext, :spatial]
+      INDEX_USINGS = [:btree, :hash]
+
       class BindSubstitution < Arel::Visitors::MySQL # :nodoc:
         include Arel::Visitors::BindVisitor
       end
@@ -141,9 +176,10 @@ module ActiveRecord
         @quoted_column_names, @quoted_table_names = {}, {}
 
         if self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements) { true })
+          @prepared_statements = true
           @visitor = Arel::Visitors::MySQL.new self
         else
-          @visitor = BindSubstitution.new self
+          @visitor = unprepared_visitor
         end
       end
 
@@ -157,11 +193,6 @@ module ActiveRecord
       end
 
       def supports_primary_key?
-        true
-      end
-
-      # Returns true, since this connection adapter supports savepoints.
-      def supports_savepoints?
         true
       end
 
@@ -187,6 +218,10 @@ module ActiveRecord
         NATIVE_DATABASE_TYPES
       end
 
+      def index_algorithms
+        { default: 'ALGORITHM = DEFAULT', copy: 'ALGORITHM = COPY', inplace: 'ALGORITHM = INPLACE' }
+      end
+
       # HELPER METHODS ===========================================
 
       # The two drivers have slightly different ways of yielding hashes of results, so
@@ -196,8 +231,8 @@ module ActiveRecord
       end
 
       # Overridden by the adapters to instantiate their specific Column type.
-      def new_column(field, default, type, null, collation) # :nodoc:
-        Column.new(field, default, type, null, collation)
+      def new_column(field, default, type, null, collation, extra = "") # :nodoc:
+        Column.new(field, default, type, null, collation, extra)
       end
 
       # Must return the Mysql error number from the exception, if the exception has an
@@ -209,8 +244,8 @@ module ActiveRecord
       # QUOTING ==================================================
 
       def quote(value, column = nil)
-        if value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
-          s = column.class.string_to_binary(value).unpack("H*")[0]
+        if value.kind_of?(String) && column && column.type == :binary
+          s = value.unpack("H*")[0]
           "x'#{s}'"
         elsif value.kind_of?(BigDecimal)
           value.to_s("F")
@@ -259,7 +294,7 @@ module ActiveRecord
         end
       rescue ActiveRecord::StatementInvalid => exception
         if exception.message.split(":").first =~ /Packets out of order/
-          raise ActiveRecord::StatementInvalid, "'Packets out of order' error was received from the database. Please update your mysql bindings (gem install mysql) and read http://dev.mysql.com/doc/mysql/en/password-hashing.html for more information. If you're on Windows, use the Instant Rails installer to get the updated mysql bindings."
+          raise ActiveRecord::StatementInvalid.new("'Packets out of order' error was received from the database. Please update your mysql bindings (gem install mysql) and read http://dev.mysql.com/doc/mysql/en/password-hashing.html for more information. If you're on Windows, use the Instant Rails installer to get the updated mysql bindings.", exception.original_exception)
         else
           raise
         end
@@ -302,18 +337,6 @@ module ActiveRecord
         # Transactions aren't supported
       end
 
-      def create_savepoint
-        execute("SAVEPOINT #{current_savepoint_name}")
-      end
-
-      def rollback_to_savepoint
-        execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
-      end
-
-      def release_savepoint
-        execute("RELEASE SAVEPOINT #{current_savepoint_name}")
-      end
-
       # In the simple case, MySQL allows us to place JOINs directly into the UPDATE
       # query. However, this does not allow for LIMIT, OFFSET and ORDER. To support
       # these, we must use a subquery.
@@ -332,25 +355,13 @@ module ActiveRecord
 
       # SCHEMA STATEMENTS ========================================
 
-      def structure_dump #:nodoc:
-        if supports_views?
-          sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"
-        else
-          sql = "SHOW TABLES"
-        end
-
-        select_all(sql, 'SCHEMA').map { |table|
-          table.delete('Table_type')
-          sql = "SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}"
-          exec_query(sql, 'SCHEMA').first['Create Table'] + ";\n\n"
-        }.join
-      end
-
       # Drops the database specified on the +name+ attribute
       # and creates it again using the provided +options+.
       def recreate_database(name, options = {})
         drop_database(name)
-        create_database(name, options)
+        sql = create_database(name, options)
+        reconnect!
+        sql
       end
 
       # Create a new MySQL database with optional <tt>:charset</tt> and <tt>:collation</tt>.
@@ -424,7 +435,11 @@ module ActiveRecord
             if current_index != row[:Key_name]
               next if row[:Key_name] == 'PRIMARY' # skip the primary key
               current_index = row[:Key_name]
-              indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [])
+
+              mysql_index_type = row[:Index_type].downcase.to_sym
+              index_type  = INDEX_TYPES.include?(mysql_index_type)  ? mysql_index_type : nil
+              index_using = INDEX_USINGS.include?(mysql_index_type) ? mysql_index_type : nil
+              indexes << IndexDefinition.new(row[:Table], row[:Key_name], row[:Non_unique].to_i == 0, [], [], nil, nil, index_type, index_using)
             end
 
             indexes.last.columns << row[:Column_name]
@@ -440,7 +455,8 @@ module ActiveRecord
         sql = "SHOW FULL FIELDS FROM #{quote_table_name(table_name)}"
         execute_and_free(sql, 'SCHEMA') do |result|
           each_hash(result).map do |field|
-            new_column(field[:Field], field[:Default], field[:Type], field[:Null] == "YES", field[:Collation])
+            field_name = set_field_encoding(field[:Field])
+            new_column(field_name, field[:Default], field[:Type], field[:Null] == "YES", field[:Collation], field[:Extra])
           end
         end
       end
@@ -473,10 +489,6 @@ module ActiveRecord
         rename_table_indexes(table_name, new_name)
       end
 
-      def add_column(table_name, column_name, type, options = {})
-        execute("ALTER TABLE #{quote_table_name(table_name)} #{add_column_sql(table_name, column_name, type, options)}")
-      end
-
       def change_column_default(table_name, column_name, default)
         column = column_for(table_name, column_name)
         change_column table_name, column_name, column.sql_type, :default => default
@@ -499,6 +511,11 @@ module ActiveRecord
       def rename_column(table_name, column_name, new_column_name) #:nodoc:
         execute("ALTER TABLE #{quote_table_name(table_name)} #{rename_column_sql(table_name, column_name, new_column_name)}")
         rename_column_indexes(table_name, column_name, new_column_name)
+      end
+
+      def add_index(table_name, column_name, options = {}) #:nodoc:
+        index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
+        execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} #{index_using} ON #{quote_table_name(table_name)} (#{index_columns})#{index_options} #{index_algorithm}"
       end
 
       # Maps logical Rails types to MySQL-specific data types.
@@ -586,6 +603,10 @@ module ActiveRecord
         self.class.type_cast_config_to_boolean(@config.fetch(:strict, true))
       end
 
+      def valid_type?(type)
+        !native_database_types[type].nil?
+      end
+
       protected
 
       # MySQL is too stupid to create a temporary table for use subquery, so we have
@@ -636,10 +657,9 @@ module ActiveRecord
       end
 
       def add_column_sql(table_name, column_name, type, options = {})
-        add_column_sql = "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        add_column_options!(add_column_sql, options)
-        add_column_position!(add_column_sql, options)
-        add_column_sql
+        td = create_table_definition table_name, options[:temporary], options[:options]
+        cd = td.new_column_definition(column_name, type, options)
+        schema_creation.visit_AddColumn cd
       end
 
       def change_column_sql(table_name, column_name, type, options = {})
@@ -653,26 +673,23 @@ module ActiveRecord
           options[:null] = column.null
         end
 
-        change_column_sql = "CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        add_column_options!(change_column_sql, options)
-        add_column_position!(change_column_sql, options)
-        change_column_sql
+        options[:name] = column.name
+        schema_creation.accept ChangeColumnDefinition.new column, type, options
       end
 
       def rename_column_sql(table_name, column_name, new_column_name)
-        options = {}
+        options = { name: new_column_name }
 
         if column = columns(table_name).find { |c| c.name == column_name.to_s }
           options[:default] = column.default
           options[:null] = column.null
+          options[:auto_increment] = (column.extra == "auto_increment")
         else
           raise ActiveRecordError, "No such column: #{table_name}.#{column_name}"
         end
 
         current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'", 'SCHEMA')["Type"]
-        rename_column_sql = "CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
-        add_column_options!(rename_column_sql, options)
-        rename_column_sql
+        schema_creation.accept ChangeColumnDefinition.new column, current_type, options
       end
 
       def remove_column_sql(table_name, column_name, type = nil, options = {})

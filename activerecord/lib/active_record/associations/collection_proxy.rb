@@ -33,7 +33,6 @@ module ActiveRecord
       def initialize(klass, association) #:nodoc:
         @association = association
         super klass, klass.arel_table
-        self.default_scoped = true
         merge! association.scope(nullify: false)
       end
 
@@ -83,16 +82,16 @@ module ActiveRecord
       #   #      #<Pet id: 3, name: "Choo-Choo">
       #   #    ]
       #
-      # Be careful because this also means you’re initializing a model
-      # object with only the fields that you’ve selected. If you attempt
-      # to access a field that is not in the initialized record you’ll
+      # Be careful because this also means you're initializing a model
+      # object with only the fields that you've selected. If you attempt
+      # to access a field that is not in the initialized record you'll
       # receive:
       #
       #   person.pets.select(:name).first.person_id
       #   # => ActiveModel::MissingAttributeError: missing attribute: person_id
       #
       # *Second:* You can pass a block so it can be used just like Array#select.
-      # This build an array of objects from the database for the scope,
+      # This builds an array of objects from the database for the scope,
       # converting them into an array and iterating through them using
       # Array#select.
       #
@@ -228,6 +227,7 @@ module ActiveRecord
       def build(attributes = {}, &block)
         @association.build(attributes, &block)
       end
+      alias_method :new, :build
 
       # Returns a new object of the collection type that has been instantiated with
       # attributes, linked to this object and that has already been saved (if it
@@ -281,7 +281,7 @@ module ActiveRecord
       # so method calls may be chained.
       #
       #   class Person < ActiveRecord::Base
-      #     pets :has_many
+      #     has_many :pets
       #   end
       #
       #   person.pets.size # => 0
@@ -303,7 +303,7 @@ module ActiveRecord
         @association.concat(*records)
       end
 
-      # Replace this collection with +other_array+. This will perform a diff
+      # Replaces this collection with +other_array+. This will perform a diff
       # and delete/add only records that have changed.
       #
       #   class Person < ActiveRecord::Base
@@ -417,13 +417,13 @@ module ActiveRecord
       #
       #   Pet.find(1, 2, 3)
       #   # => ActiveRecord::RecordNotFound
-      def delete_all
-        @association.delete_all
+      def delete_all(dependent = nil)
+        @association.delete_all(dependent)
       end
 
-      # Deletes the records of the collection directly from the database.
-      # This will _always_ remove the records ignoring the +:dependent+
-      # option.
+      # Deletes the records of the collection directly from the database
+      # ignoring the +:dependent+ option. It invokes +before_remove+,
+      # +after_remove+ , +before_destroy+ and +after_destroy+ callbacks.
       #
       #   class Person < ActiveRecord::Base
       #     has_many :pets
@@ -649,11 +649,12 @@ module ActiveRecord
       #   #      #<Pet name: "Fancy-Fancy">
       #   #    ]
       #
-      #   person.pets.select(:name).uniq
+      #   person.pets.select(:name).distinct
       #   # => [#<Pet name: "Fancy-Fancy">]
-      def uniq
-        @association.uniq
+      def distinct
+        @association.distinct
       end
+      alias uniq distinct
 
       # Count all records using SQL.
       #
@@ -668,8 +669,8 @@ module ActiveRecord
       #   #       #<Pet id: 2, name: "Spook", person_id: 1>,
       #   #       #<Pet id: 3, name: "Choo-Choo", person_id: 1>
       #   #    ]
-      def count(column_name = nil, options = {})
-        @association.count(column_name, options)
+      def count(column_name = nil)
+        @association.count(column_name)
       end
 
       # Returns the size of the collection. If the collection hasn't been loaded,
@@ -725,7 +726,7 @@ module ActiveRecord
       end
 
       # Returns +true+ if the collection is empty. If the collection has been
-      # loaded or the <tt>:counter_sql</tt> option is provided, it is equivalent
+      # loaded it is equivalent
       # to <tt>collection.size.zero?</tt>. If the collection has not been loaded,
       # it is equivalent to <tt>collection.exists?</tt>. If the collection has
       # not already been loaded and you are going to fetch the records anyway it
@@ -828,10 +829,8 @@ module ActiveRecord
       #   person.pets.include?(Pet.find(20)) # => true
       #   person.pets.include?(Pet.find(21)) # => false
       def include?(record)
-        @association.include?(record)
+        !!@association.include?(record)
       end
-
-      alias_method :new, :build
 
       def proxy_association
         @association
@@ -847,14 +846,8 @@ module ActiveRecord
 
       # Returns a <tt>Relation</tt> object for the records in this association
       def scope
-        association = @association
-
-        @association.scope.extending! do
-          define_method(:proxy_association) { association }
-        end
+        @association.scope
       end
-
-      # :nodoc:
       alias spawn scope
 
       # Equivalent to <tt>Array#==</tt>. Returns +true+ if the two arrays
@@ -924,7 +917,7 @@ module ActiveRecord
       alias_method :to_a, :to_ary
 
       # Adds one or more +records+ to the collection by setting their foreign keys
-      # to the association‘s primary key. Returns +self+, so several appends may be
+      # to the association's primary key. Returns +self+, so several appends may be
       # chained together.
       #
       #   class Person < ActiveRecord::Base
@@ -947,6 +940,11 @@ module ActiveRecord
         proxy_association.concat(records) && self
       end
       alias_method :push, :<<
+      alias_method :append, :<<
+
+      def prepend(*args)
+        raise NoMethodError, "prepend on association is not defined. Please use << or append"
+      end
 
       # Equivalent to +delete_all+. The difference is that returns +self+, instead
       # of an array with the deleted objects, so methods can be chained. See

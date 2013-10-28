@@ -326,6 +326,7 @@ module ActionController #:nodoc:
 
       if collector = retrieve_collector_from_mimes(&block)
         options = resources.size == 1 ? {} : resources.extract_options!
+        options = options.clone
         options[:default_response] = collector.response
         (options.delete(:responder) || self.class.responder).call(self, resources, options)
       end
@@ -364,9 +365,7 @@ module ActionController #:nodoc:
       format = collector.negotiate_format(request)
 
       if format
-        self.content_type ||= format.to_s
-        lookup_context.formats = [format.to_sym]
-        lookup_context.rendered_format = lookup_context.formats.first
+        _process_format(format)
         collector
       else
         raise ActionController::UnknownFormat

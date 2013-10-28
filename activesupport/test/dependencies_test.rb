@@ -1,7 +1,7 @@
 require 'abstract_unit'
 require 'pp'
 require 'active_support/dependencies'
-require 'dependecies_test_helpers'
+require 'dependencies_test_helpers'
 
 module ModuleWithMissing
   mattr_accessor :missing_count
@@ -20,7 +20,7 @@ class DependenciesTest < ActiveSupport::TestCase
     ActiveSupport::Dependencies.clear
   end
 
-  include DependeciesTestHelpers
+  include DependenciesTestHelpers
 
   def test_depend_on_path
     skip "LoadError#path does not exist" if RUBY_VERSION < '2.0.0'
@@ -33,6 +33,17 @@ class DependenciesTest < ActiveSupport::TestCase
       ActiveSupport::Dependencies.depend_on 'omgwtfbbq'
     end
     assert_equal expected.path, e.path
+  end
+
+  def test_require_dependency_accepts_an_object_which_implements_to_path
+    o = Object.new
+    def o.to_path; 'dependencies/service_one'; end
+    assert_nothing_raised {
+      require_dependency o
+    }
+    assert defined?(ServiceOne)
+  ensure
+    remove_constants(:ServiceOne)
   end
 
   def test_tracking_loaded_files
@@ -73,6 +84,14 @@ class DependenciesTest < ActiveSupport::TestCase
         assert !ActiveSupport::Dependencies.loaded.include?(filename)
         assert !ActiveSupport::Dependencies.history.include?(filename)
       end
+    end
+  end
+
+  def test_dependency_which_raises_doesnt_blindly_call_blame_file!
+    with_loading do
+      filename = 'dependencies/raises_exception_without_blame_file'
+
+      assert_raises(Exception) { require_dependency filename }
     end
   end
 
@@ -526,7 +545,6 @@ class DependenciesTest < ActiveSupport::TestCase
     m = Module.new
     m.module_eval "def a() CountingLoader; end"
     extend m
-    kls = nil
     with_autoloading_fixtures do
       kls = nil
       assert_nothing_raised { kls = a }
@@ -638,6 +656,14 @@ class DependenciesTest < ActiveSupport::TestCase
 
   ensure
     Object.class_eval { remove_const :E }
+  end
+
+  def test_constants_in_capitalized_nesting_marked_as_autoloaded
+    with_autoloading_fixtures do
+      ActiveSupport::Dependencies.load_missing_constant(HTML, "SomeClass")
+
+      assert ActiveSupport::Dependencies.autoloaded?("HTML::SomeClass")
+    end
   end
 
   def test_unloadable
@@ -878,7 +904,7 @@ class DependenciesTest < ActiveSupport::TestCase
   def test_autoload_doesnt_shadow_name_error
     with_autoloading_fixtures do
       Object.send(:remove_const, :RaisesNameError) if defined?(::RaisesNameError)
-      2.times do |i|
+      2.times do
         begin
           ::RaisesNameError::FooBarBaz.object_id
           flunk 'should have raised NameError when autoloaded file referenced FooBarBaz'

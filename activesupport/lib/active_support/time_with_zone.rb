@@ -292,16 +292,12 @@ module ActiveSupport
       end
     end
 
-    %w(year mon month day mday wday yday hour min sec to_date).each do |method_name|
+    %w(year mon month day mday wday yday hour min sec usec nsec to_date).each do |method_name|
       class_eval <<-EOV, __FILE__, __LINE__ + 1
         def #{method_name}    # def month
           time.#{method_name} #   time.month
         end                   # end
       EOV
-    end
-
-    def usec
-      time.respond_to?(:usec) ? time.usec : 0
     end
 
     def to_a
@@ -366,6 +362,8 @@ module ActiveSupport
     # TimeWithZone with the existing +time_zone+.
     def method_missing(sym, *args, &block)
       wrap_with_time_zone time.__send__(sym, *args, &block)
+    rescue NoMethodError => e
+      raise e, e.message.sub(time.inspect, self.inspect), e.backtrace
     end
 
     private

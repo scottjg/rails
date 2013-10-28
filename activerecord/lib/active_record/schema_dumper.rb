@@ -17,9 +17,19 @@ module ActiveRecord
     cattr_accessor :ignore_tables
     @@ignore_tables = []
 
-    def self.dump(connection=ActiveRecord::Base.connection, stream=STDOUT)
-      new(connection).dump(stream)
-      stream
+    class << self
+      def dump(connection=ActiveRecord::Base.connection, stream=STDOUT, config = ActiveRecord::Base)
+        new(connection, generate_options(config)).dump(stream)
+        stream
+      end
+
+      private
+        def generate_options(config)
+          {
+            table_name_prefix: config.table_name_prefix,
+            table_name_suffix: config.table_name_suffix
+          }
+        end
     end
 
     def dump(stream)
@@ -32,10 +42,11 @@ module ActiveRecord
 
     private
 
-      def initialize(connection)
+      def initialize(connection, options = {})
         @connection = connection
         @types = @connection.native_database_types
         @version = Migrator::current_version rescue nil
+        @options = options
       end
 
       def header(stream)
@@ -106,9 +117,13 @@ HEADER
           end
 
           tbl.print "  create_table #{remove_prefix_and_suffix(table).inspect}"
-          if columns.detect { |c| c.name == pk }
+          pkcol = columns.detect { |c| c.name == pk }
+          if pkcol
             if pk != 'id'
               tbl.print %Q(, primary_key: "#{pk}")
+            elsif pkcol.sql_type == 'uuid'
+              tbl.print ", id: :uuid"
+              tbl.print %Q(, default: "#{pkcol.default_function}") if pkcol.default_function
             end
           else
             tbl.print ", id: false"
@@ -118,7 +133,7 @@ HEADER
 
           # then dump all non-primary key columns
           column_specs = columns.map do |column|
-            raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" if @types[column.type].nil?
+            raise StandardError, "Unknown type '#{column.sql_type}' for column '#{column.name}'" unless @connection.valid_type?(column.type)
             next if column.name == pk
             @connection.column_spec(column, @types)
           end.compact
@@ -185,6 +200,10 @@ HEADER
 
             statement_parts << ('where: ' + index.where.inspect) if index.where
 
+            statement_parts << ('using: ' + index.using.inspect) if index.using
+
+            statement_parts << ('type: ' + index.type.inspect) if index.type
+
             '  ' + statement_parts.join(', ')
           end
 
@@ -194,7 +213,7 @@ HEADER
       end
 
       def remove_prefix_and_suffix(table)
-        table.gsub(/^(#{ActiveRecord::Base.table_name_prefix})(.+)(#{ActiveRecord::Base.table_name_suffix})$/,  "\\2")
+        table.gsub(/^(#{@options[:table_name_prefix]})(.+)(#{@options[:table_name_suffix]})$/,  "\\2")
       end
   end
 end

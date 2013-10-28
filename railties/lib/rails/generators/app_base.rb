@@ -18,6 +18,10 @@ module Rails
 
       argument :app_path, type: :string
 
+      def self.strict_args_position
+        false
+      end
+
       def self.add_shared_options_for(name)
         class_option :template,           type: :string, aliases: '-m',
                                           desc: "Path to some #{name} template (can be a filesystem path or URL)"
@@ -36,6 +40,9 @@ module Rails
 
         class_option :skip_active_record, type: :boolean, aliases: '-O', default: false,
                                           desc: 'Skip Active Record files'
+
+        class_option :skip_action_view,   type: :boolean, aliases: '-V', default: false,
+                                          desc: 'Skip Action View files'
 
         class_option :skip_sprockets,     type: :boolean, aliases: '-S', default: false,
                                           desc: 'Skip Sprockets files'
@@ -89,11 +96,9 @@ module Rails
       end
 
       def create_root
-        self.destination_root = File.expand_path(app_path, destination_root)
         valid_const?
 
         empty_directory '.'
-        set_default_accessors!
         FileUtils.cd(destination_root) unless options[:pretend]
       end
 
@@ -104,6 +109,7 @@ module Rails
       end
 
       def set_default_accessors!
+        self.destination_root = File.expand_path(app_path, destination_root)
         self.rails_template = case options[:template]
           when /^https?:\/\//
             options[:template]
@@ -115,35 +121,52 @@ module Rails
       end
 
       def database_gemfile_entry
-        options[:skip_active_record] ? "" : "gem '#{gem_for_database}'"
+        return [] if options[:skip_active_record]
+        GemfileEntry.version gem_for_database, nil,
+                            "Use #{options[:database]} as the database for Active Record"
       end
 
       def include_all_railties?
-        !options[:skip_active_record] && !options[:skip_test_unit] && !options[:skip_sprockets]
+        !options[:skip_active_record] && !options[:skip_action_view] && !options[:skip_test_unit] && !options[:skip_sprockets]
       end
 
       def comment_if(value)
         options[value] ? '# ' : ''
       end
 
+      class GemfileEntry < Struct.new(:name, :comment, :version, :options, :commented_out)
+        def initialize(name, comment, version, options = {}, commented_out = false)
+          super
+        end
+
+        def self.github(name, github, comment = nil)
+          new(name, comment, nil, github: github)
+        end
+
+        def self.version(name, version, comment = nil)
+          new(name, comment, version)
+        end
+
+        def self.path(name, path, comment = nil)
+          new(name, comment, nil, path: path)
+        end
+
+        def padding(max_width)
+          ' ' * (max_width - name.length + 2)
+        end
+      end
+
       def rails_gemfile_entry
         if options.dev?
-          <<-GEMFILE.strip_heredoc
-            gem 'rails',     path: '#{Rails::Generators::RAILS_DEV_PATH}'
-            gem 'arel',      github: 'rails/arel'
-            gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
-          GEMFILE
+          [GemfileEntry.path('rails', Rails::Generators::RAILS_DEV_PATH),
+           GemfileEntry.github('arel', 'rails/arel')]
         elsif options.edge?
-          <<-GEMFILE.strip_heredoc
-            gem 'rails',     github: 'rails/rails'
-            gem 'arel',      github: 'rails/arel'
-            gem 'activerecord-deprecated_finders', github: 'rails/activerecord-deprecated_finders'
-          GEMFILE
+          [GemfileEntry.github('rails', 'rails/rails'),
+           GemfileEntry.github('arel', 'rails/arel')]
         else
-          <<-GEMFILE.strip_heredoc
-            # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
-            gem 'rails', '#{Rails::VERSION::STRING}'
-          GEMFILE
+          [GemfileEntry.version('rails',
+                            Rails::VERSION::STRING,
+                            "Bundle edge Rails instead: gem 'rails', github: 'rails/rails'")]
         end
       end
 
@@ -175,56 +198,71 @@ module Rails
       end
 
       def assets_gemfile_entry
-        return if options[:skip_sprockets]
+        return [] if options[:skip_sprockets]
 
-        gemfile = if options.dev? || options.edge?
-          <<-GEMFILE
-            # Gems used only for assets and not required
-            # in production environments by default.
-            group :assets do
-              gem 'sprockets-rails', github: 'rails/sprockets-rails'
-              gem 'sass-rails',   github: 'rails/sass-rails'
-              gem 'coffee-rails', github: 'rails/coffee-rails'
-
-              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-              #{javascript_runtime_gemfile_entry}
-              gem 'uglifier', '>= 1.0.3'
-            end
-          GEMFILE
+        gems = []
+        if options.dev? || options.edge?
+          gems << GemfileEntry.github('sprockets-rails', 'rails/sprockets-rails',
+                                    'Use edge version of sprockets-rails')
+          gems << GemfileEntry.github('sass-rails', 'rails/sass-rails',
+                                    'Use SCSS for stylesheets')
         else
-          <<-GEMFILE
-            # Gems used only for assets and not required
-            # in production environments by default.
-            group :assets do
-              gem 'sass-rails',   '~> 4.0.0.beta1'
-              gem 'coffee-rails', '~> 4.0.0.beta1'
-
-              # See https://github.com/sstephenson/execjs#readme for more supported runtimes
-              #{javascript_runtime_gemfile_entry}
-              gem 'uglifier', '>= 1.0.3'
-            end
-          GEMFILE
+          gems << GemfileEntry.version('sass-rails',
+                                     '~> 4.0.0.rc1',
+                                     'Use SCSS for stylesheets')
         end
 
-        gemfile.strip_heredoc.gsub(/^[ \t]*$/, '')
+        gems << GemfileEntry.version('uglifier',
+                                   '>= 1.3.0',
+                                   'Use Uglifier as compressor for JavaScript assets')
+
+        gems
+      end
+
+      def jbuilder_gemfile_entry
+        comment = 'Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder'
+        GemfileEntry.version('jbuilder', '~> 1.2', comment)
+      end
+
+      def webconsole_gemfile_entry
+        comment = 'Run `rails console` in the browser. Read more: https://github.com/rails/web-console'
+        GemfileEntry.new('web-console', comment, nil, group: :development)
+      end
+
+      def sdoc_gemfile_entry
+        comment = 'bundle exec rake doc:rails generates the API under doc/api.'
+        GemfileEntry.new('sdoc', comment, nil, { :group => :doc, :require => false })
+      end
+
+      def coffee_gemfile_entry
+        comment = 'Use CoffeeScript for .js.coffee assets and views'
+        if options.dev? || options.edge?
+          GemfileEntry.github 'coffee-rails', 'rails/coffee-rails', comment
+        else
+          GemfileEntry.version 'coffee-rails', '~> 4.0.0', comment
+        end
       end
 
       def javascript_gemfile_entry
-        unless options[:skip_javascript]
-          <<-GEMFILE.strip_heredoc
-            gem '#{options[:javascript]}-rails'
+        if options[:skip_javascript]
+          []
+        else
+          gems = [coffee_gemfile_entry, javascript_runtime_gemfile_entry]
+          gems << GemfileEntry.version("#{options[:javascript]}-rails", nil,
+                                 "Use #{options[:javascript]} as the JavaScript library")
 
-            # Turbolinks makes following links in your web application faster. Read more: https://github.com/rails/turbolinks
-            gem 'turbolinks'
-          GEMFILE
+          gems << GemfileEntry.version("turbolinks", nil,
+            "Turbolinks makes following links in your web application faster. Read more: https://github.com/rails/turbolinks")
+          gems
         end
       end
 
       def javascript_runtime_gemfile_entry
+        comment = 'See https://github.com/sstephenson/execjs#readme for more supported runtimes'
         if defined?(JRUBY_VERSION)
-          "gem 'therubyrhino'\n"
+          GemfileEntry.version 'therubyrhino', comment, nil
         else
-          "# gem 'therubyracer', platforms: :ruby\n"
+          GemfileEntry.new 'therubyracer', comment, nil, { :platforms => :ruby }, true
         end
       end
 

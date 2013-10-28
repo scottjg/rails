@@ -14,24 +14,12 @@ module ActiveRecord
 
         class_attribute :partial_writes, instance_writer: false
         self.partial_writes = true
-
-        def self.partial_updates=(v); self.partial_writes = v; end
-        def self.partial_updates?; partial_writes?; end
-        def self.partial_updates; partial_writes; end
-
-        ActiveSupport::Deprecation.deprecate_methods(
-          singleton_class,
-          :partial_updates= => :partial_writes=,
-          :partial_updates? => :partial_writes?,
-          :partial_updates  => :partial_writes
-        )
       end
 
       # Attempts to +save+ the record and clears changed attributes if successful.
       def save(*)
         if status = super
-          @previously_changed = changes
-          @changed_attributes.clear
+          changes_applied
         end
         status
       end
@@ -39,16 +27,14 @@ module ActiveRecord
       # Attempts to <tt>save!</tt> the record and clears changed attributes if successful.
       def save!(*)
         super.tap do
-          @previously_changed = changes
-          @changed_attributes.clear
+          changes_applied
         end
       end
 
       # <tt>reload</tt> the record and clears changed attributes.
       def reload(*)
         super.tap do
-          @previously_changed.clear
-          @changed_attributes.clear
+          reset_changes
         end
       end
 
@@ -59,11 +45,11 @@ module ActiveRecord
 
         # The attribute already has an unsaved change.
         if attribute_changed?(attr)
-          old = @changed_attributes[attr]
-          @changed_attributes.delete(attr) unless _field_changed?(attr, old, value)
+          old = changed_attributes[attr]
+          changed_attributes.delete(attr) unless _field_changed?(attr, old, value)
         else
           old = clone_attribute_value(:read_attribute, attr)
-          @changed_attributes[attr] = old if _field_changed?(attr, old, value)
+          changed_attributes[attr] = old if _field_changed?(attr, old, value)
         end
 
         # Carry on.
@@ -107,7 +93,11 @@ module ActiveRecord
 
       def changes_from_zero_to_string?(old, value)
         # For columns with old 0 and value non-empty string
-        old == 0 && value.is_a?(String) && value.present? && value != '0'
+        old == 0 && value.is_a?(String) && value.present? && non_zero?(value)
+      end
+
+      def non_zero?(value)
+        value !~ /\A0+(\.0+)?\z/
       end
     end
   end

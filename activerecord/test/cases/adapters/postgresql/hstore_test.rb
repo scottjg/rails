@@ -7,6 +7,8 @@ require 'active_record/connection_adapters/postgresql_adapter'
 class PostgresqlHstoreTest < ActiveRecord::TestCase
   class Hstore < ActiveRecord::Base
     self.table_name = 'hstores'
+
+    store_accessor :settings, :language, :timezone
   end
 
   def setup
@@ -26,6 +28,7 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
     @connection.transaction do
       @connection.create_table('hstores') do |t|
         t.hstore 'tags', :default => ''
+        t.hstore 'settings'
       end
     end
     @column = Hstore.columns.find { |c| c.name == 'tags' }
@@ -40,29 +43,41 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
     assert @connection.extensions.include?('hstore'), "extension list should include hstore"
   end
 
-  def test_hstore_enabled
+  def test_disable_enable_hstore
     assert @connection.extension_enabled?('hstore')
-  end
-
-  def test_disable_hstore
-    if @connection.extension_enabled?('hstore')
-      @connection.disable_extension 'hstore'
-      assert_not @connection.extension_enabled?('hstore')
-    end
-  end
-
-  def test_enable_hstore
-    if @connection.extension_enabled?('hstore')
-      @connection.disable_extension 'hstore'
-    end
-
+    @connection.disable_extension 'hstore'
     assert_not @connection.extension_enabled?('hstore')
     @connection.enable_extension 'hstore'
     assert @connection.extension_enabled?('hstore')
+  ensure
+    # Restore column(s) dropped by `drop extension hstore cascade;`
+    load_schema
   end
 
   def test_column
     assert_equal :hstore, @column.type
+  end
+
+  def test_change_table_supports_hstore
+    @connection.transaction do
+      @connection.change_table('hstores') do |t|
+        t.hstore 'users', default: ''
+      end
+      Hstore.reset_column_information
+      column = Hstore.columns.find { |c| c.name == 'users' }
+      assert_equal :hstore, column.type
+
+      raise ActiveRecord::Rollback # reset the schema change
+    end
+  ensure
+    Hstore.reset_column_information
+  end
+
+  def test_cast_value_on_write
+    x = Hstore.new tags: {"bool" => true, "number" => 5}
+    assert_equal({"bool" => "true", "number" => "5"}, x.tags)
+    x.save
+    assert_equal({"bool" => "true", "number" => "5"}, x.reload.tags)
   end
 
   def test_type_cast_hstore
@@ -76,6 +91,24 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
     assert_equal({}, @column.type_cast(""))
     assert_equal({'key'=>nil}, @column.type_cast('key => NULL'))
     assert_equal({'c'=>'}','"a"'=>'b "a b'}, @column.type_cast(%q(c=>"}", "\"a\""=>"b \"a b")))
+  end
+
+  def test_with_store_accessors
+    x = Hstore.new(language: "fr", timezone: "GMT")
+    assert_equal "fr", x.language
+    assert_equal "GMT", x.timezone
+
+    x.save!
+    x = Hstore.first
+    assert_equal "fr", x.language
+    assert_equal "GMT", x.timezone
+
+    x.language = "de"
+    x.save!
+
+    x = Hstore.first
+    assert_equal "de", x.language
+    assert_equal "GMT", x.timezone
   end
 
   def test_gen1
@@ -172,6 +205,10 @@ class PostgresqlHstoreTest < ActiveRecord::TestCase
 
   def test_quoting_special_characters
     assert_cycle('ca' => 'cà', 'ac' => 'àc')
+  end
+
+  def test_multiline
+    assert_cycle("a\nb" => "c\nd")
   end
 
   private

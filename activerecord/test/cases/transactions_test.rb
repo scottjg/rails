@@ -117,6 +117,20 @@ class TransactionTest < ActiveRecord::TestCase
     assert !Topic.find(1).approved?
   end
 
+  def test_raising_exception_in_nested_transaction_restore_state_in_save
+    topic = Topic.new
+
+    def topic.after_save_for_transaction
+      raise 'Make the transaction rollback'
+    end
+
+    assert_raises(RuntimeError) do
+      Topic.transaction { topic.save }
+    end
+
+    assert topic.new_record?, "#{topic.inspect} should be new record"
+  end
+
   def test_update_should_rollback_on_failure
     author = Author.find(1)
     posts_count = author.posts.size
@@ -361,6 +375,36 @@ class TransactionTest < ActiveRecord::TestCase
     assert_equal "Three", @three
   end if Topic.connection.supports_savepoints?
 
+  def test_using_named_savepoints
+    Topic.transaction do
+      @first.approved  = true
+      @first.save!
+      Topic.connection.create_savepoint("first")
+
+      @first.approved  = false
+      @first.save!
+      Topic.connection.rollback_to_savepoint("first")
+      assert @first.reload.approved?
+
+      @first.approved  = false
+      @first.save!
+      Topic.connection.release_savepoint("first")
+      assert_not @first.reload.approved?
+    end
+  end if Topic.connection.supports_savepoints?
+
+  def test_releasing_named_savepoints
+    Topic.transaction do
+      Topic.connection.create_savepoint("another")
+      Topic.connection.release_savepoint("another")
+
+      # The savepoint is now gone and we can't remove it again.
+      assert_raises(ActiveRecord::StatementInvalid) do
+        Topic.connection.release_savepoint("another")
+      end
+    end
+  end
+
   def test_rollback_when_commit_raises
     Topic.connection.expects(:begin_db_transaction)
     Topic.connection.expects(:commit_db_transaction).raises('OH NOES')
@@ -377,7 +421,9 @@ class TransactionTest < ActiveRecord::TestCase
     topic = Topic.new(:title => 'test')
     topic.freeze
     e = assert_raise(RuntimeError) { topic.save }
-    assert_equal "can't modify frozen Hash", e.message
+    assert_match(/frozen/i, e.message) # Not good enough, but we can't do much
+                                       # about it since there is no specific error
+                                       # for frozen objects.
     assert !topic.persisted?, 'not persisted'
     assert_nil topic.id
     assert topic.frozen?, 'not frozen'
@@ -408,16 +454,6 @@ class TransactionTest < ActiveRecord::TestCase
     assert @first.persisted?, 'persisted'
     assert_not_nil @first.id
     assert !@second.destroyed?, 'not destroyed'
-  end
-
-  if current_adapter?(:PostgreSQLAdapter) && defined?(PGconn::PQTRANS_IDLE)
-    def test_outside_transaction_works
-      assert assert_deprecated { Topic.connection.outside_transaction? }
-      Topic.connection.begin_db_transaction
-      assert assert_deprecated { !Topic.connection.outside_transaction? }
-      Topic.connection.rollback_db_transaction
-      assert assert_deprecated { Topic.connection.outside_transaction? }
-    end
   end
 
   def test_sqlite_add_column_in_transaction
@@ -536,22 +572,22 @@ if current_adapter?(:PostgreSQLAdapter)
     # This will cause transactions to overlap and fail unless they are performed on
     # separate database connections.
     def test_transaction_per_thread
-      assert_nothing_raised do
-        threads = (1..3).map do
-          Thread.new do
-            Topic.transaction do
-              topic = Topic.find(1)
-              topic.approved = !topic.approved?
-              topic.save!
-              topic.approved = !topic.approved?
-              topic.save!
-            end
-            Topic.connection.close
-          end
-        end
+      skip "in memory db can't share a db between threads" if in_memory_db?
 
-        threads.each { |t| t.join }
+      threads = 3.times.map do
+        Thread.new do
+          Topic.transaction do
+            topic = Topic.find(1)
+            topic.approved = !topic.approved?
+            assert topic.save!
+            topic.approved = !topic.approved?
+            assert topic.save!
+          end
+          Topic.connection.close
+        end
       end
+
+      threads.each { |t| t.join }
     end
 
     # Test for dirty reads among simultaneous transactions.
@@ -602,15 +638,6 @@ if current_adapter?(:PostgreSQLAdapter)
       end
 
       assert_equal original_salary, Developer.find(1).salary
-    end
-
-    test "#transaction_joinable= is deprecated" do
-      Developer.transaction do
-        conn = Developer.connection
-        assert conn.current_transaction.joinable?
-        assert_deprecated { conn.transaction_joinable = false }
-        assert !conn.current_transaction.joinable?
-      end
     end
   end
 end

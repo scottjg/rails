@@ -225,9 +225,16 @@ module ActiveRecord
       Kernel.stubs(:system)
     end
 
-    def test_structure_dump
+    def test_structure_load
       filename = "awesome-file.sql"
-      Kernel.expects(:system).with("psql -f #{filename} my-app-db")
+      Kernel.expects(:system).with("psql -q -f #{filename} my-app-db")
+
+      ActiveRecord::Tasks::DatabaseTasks.structure_load(@configuration, filename)
+    end
+
+    def test_structure_load_accepts_path_with_spaces
+      filename = "awesome file.sql"
+      Kernel.expects(:system).with("psql -q -f awesome\\ file.sql my-app-db")
 
       ActiveRecord::Tasks::DatabaseTasks.structure_load(@configuration, filename)
     end

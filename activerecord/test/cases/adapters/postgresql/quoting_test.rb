@@ -44,6 +44,19 @@ module ActiveRecord
           c = Column.new(nil, 1, 'float')
           assert_equal "'Infinity'", @conn.quote(infinity, c)
         end
+
+        def test_quote_cast_numeric
+          fixnum = 666
+          c = Column.new(nil, nil, 'varchar')
+          assert_equal "'666'", @conn.quote(fixnum, c)
+          c = Column.new(nil, nil, 'text')
+          assert_equal "'666'", @conn.quote(fixnum, c)
+        end
+
+        def test_quote_time_usec
+          assert_equal "'1970-01-01 00:00:00.000000'", @conn.quote(Time.at(0))
+          assert_equal "'1970-01-01 00:00:00.000000'", @conn.quote(Time.at(0).to_datetime)
+        end
       end
     end
   end

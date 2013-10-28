@@ -5,7 +5,6 @@ This guide covers Rails integration with Rack and interfacing with other Rack co
 
 After reading this guide, you will know:
 
-* How to create Rails Metal applications.
 * How to use Rack Middlewares in your Rails applications.
 * Action Pack's internal Middleware stack.
 * How to define a custom Middleware stack.
@@ -28,7 +27,10 @@ Rails on Rack
 
 ### Rails Application's Rack Object
 
-`ApplicationName::Application` is the primary Rack application object of a Rails application. Any Rack compliant web server should be using `ApplicationName::Application` object to serve a Rails application.
+`ApplicationName::Application` is the primary Rack application object of a Rails
+application. Any Rack compliant web server should be using
+`ApplicationName::Application` object to serve a Rails
+application. `Rails.application` refers to the same application object.
 
 ### `rails server`
 
@@ -79,11 +81,11 @@ To use `rackup` instead of Rails' `rails server`, you can put the following insi
 
 ```ruby
 # Rails.root/config.ru
-require "config/environment"
+require ::File.expand_path('../config/environment', __FILE__)
 
 use Rack::Debugger
 use Rack::ContentLength
-run ApplicationName::Application
+run Rails.application
 ```
 
 And start the server:
@@ -101,7 +103,7 @@ $ rackup --help
 Action Dispatcher Middleware Stack
 ----------------------------------
 
-Many of Action Dispatchers's internal components are implemented as Rack middlewares. `Rails::Application` uses `ActionDispatch::MiddlewareStack` to combine various internal and external middlewares to form a complete Rails Rack application.
+Many of Action Dispatcher's internal components are implemented as Rack middlewares. `Rails::Application` uses `ActionDispatch::MiddlewareStack` to combine various internal and external middlewares to form a complete Rails Rack application.
 
 NOTE: `ActionDispatch::MiddlewareStack` is Rails equivalent of `Rack::Builder`, but built for better flexibility and more features to meet Rails' requirements.
 
@@ -116,6 +118,7 @@ $ rake middleware
 For a freshly generated Rails application, this might produce something like:
 
 ```ruby
+use Rack::Sendfile
 use ActionDispatch::Static
 use Rack::Lock
 use #<ActiveSupport::Cache::Strategy::LocalCache::Middleware:0x000000029a0838>
@@ -128,6 +131,7 @@ use ActionDispatch::DebugExceptions
 use ActionDispatch::RemoteIp
 use ActionDispatch::Reloader
 use ActionDispatch::Callbacks
+use ActiveRecord::Migration::CheckPending
 use ActiveRecord::ConnectionAdapters::ConnectionManagement
 use ActiveRecord::QueryCache
 use ActionDispatch::Cookies
@@ -221,9 +225,13 @@ config.middleware.delete "Rack::MethodOverride"
 
 Much of Action Controller's functionality is implemented as Middlewares. The following list explains the purpose of each of them:
 
+ **`Rack::Sendfile`**
+
+* Sets server specific X-Sendfile header. Configure this via `config.action_dispatch.x_sendfile_header` option.
+
  **`ActionDispatch::Static`**
 
-* Used to serve static assets. Disabled if `config.serve_static_assets` is true.
+* Used to serve static assets. Disabled if `config.serve_static_assets` is `false`.
 
  **`Rack::Lock`**
 
@@ -268,6 +276,10 @@ Much of Action Controller's functionality is implemented as Middlewares. The fol
  **`ActionDispatch::Callbacks`**
 
 * Runs the prepare callbacks before serving the request.
+
+ **`ActiveRecord::Migration::CheckPending`**
+
+* Checks pending migrations and raises `ActiveRecord::PendingMigrationError` if any migrations are pending.
 
  **`ActiveRecord::ConnectionAdapters::ConnectionManagement`**
 
@@ -318,13 +330,13 @@ The following shows how to replace use `Rack::Builder` instead of the Rails supp
 config.middleware.clear
 ```
 
-<br />
+<br>
 <strong>Add a `config.ru` file to `Rails.root`</strong>
 
 ```ruby
 # config.ru
 use MyOwnStackFromScratch
-run ApplicationName::Application
+run Rails.application
 ```
 
 Resources
@@ -332,7 +344,7 @@ Resources
 
 ### Learning Rack
 
-* [Official Rack Website](http://rack.github.com)
+* [Official Rack Website](http://rack.github.io)
 * [Introducing Rack](http://chneukirchen.org/blog/archive/2007/02/introducing-rack.html)
 * [Ruby on Rack #1 - Hello Rack!](http://m.onkey.org/ruby-on-rack-1-hello-rack)
 * [Ruby on Rack #2 - The Builder](http://m.onkey.org/ruby-on-rack-2-the-builder)

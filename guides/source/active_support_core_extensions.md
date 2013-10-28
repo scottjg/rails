@@ -10,7 +10,7 @@ After reading this guide, you will know:
 * What Core Extensions are.
 * How to load all extensions.
 * How to cherry-pick just the extensions you want.
-* What extensions ActiveSupport provides.
+* What extensions Active Support provides.
 
 --------------------------------------------------------------------------------
 
@@ -96,12 +96,13 @@ INFO: The predicate for strings uses the Unicode-aware character class `[:space:
 
 WARNING: Note that numbers are not mentioned. In particular, 0 and 0.0 are **not** blank.
 
-For example, this method from `ActionDispatch::Session::AbstractStore` uses `blank?` for checking whether a session key is present:
+For example, this method from `ActionController::HttpAuthentication::Token::ControllerMethods` uses `blank?` for checking whether a token is present:
 
 ```ruby
-def ensure_session_key!
-  if @key.blank?
-    raise ArgumentError, 'A key is required...'
+def authenticate(controller, &login_procedure)
+  token, options = token_and_options(controller.request)
+  unless token.blank?
+    login_procedure.call(token, options)
   end
 end
 ```
@@ -166,7 +167,7 @@ NOTE: Defined in `active_support/core_ext/object/duplicable.rb`.
 
 ### `deep_dup`
 
-The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
+The `deep_dup` method returns deep copy of a given object. Normally, when you `dup` an object that contains other objects, Ruby does not `dup` them, so it creates a shallow copy of the object. If you have an array with a string, for example, it will look like this:
 
 ```ruby
 array     = ['string']
@@ -418,6 +419,14 @@ TIP: Since `with_options` forwards calls to its receiver they can be nested. Eac
 
 NOTE: Defined in `active_support/core_ext/object/with_options.rb`.
 
+### JSON support
+
+Active Support provides a better implementation of `to_json` than the +json+ gem ordinarily provides for Ruby objects. This is because some classes, like +Hash+ and +OrderedHash+ needs special handling in order to provide a proper JSON representation.
+
+Active Support also provides an implementation of `as_json` for the <tt>Process::Status</tt> class.
+
+NOTE: Defined in `active_support/core_ext/object/to_json.rb`.
+
 ### Instance Variables
 
 Active Support provides several methods to ease access to instance variables.
@@ -435,6 +444,22 @@ class C
 end
 
 C.new(0, 1).instance_values # => {"x" => 0, "y" => 1}
+```
+
+NOTE: Defined in `active_support/core_ext/object/instance_variables.rb`.
+
+#### `instance_variable_names`
+
+The method `instance_variable_names` returns an array.  Each name includes the "@" sign.
+
+```ruby
+class C
+  def initialize(x, y)
+    @x, @y = x, y
+  end
+end
+
+C.new(0, 1).instance_variable_names # => ["@x", "@y"]
 ```
 
 NOTE: Defined in `active_support/core_ext/object/instance_variables.rb`.
@@ -476,12 +501,11 @@ NOTE: Defined in `active_support/core_ext/kernel/reporting.rb`.
 
 ### `in?`
 
-The predicate `in?` tests if an object is included in another object or a list of objects. An `ArgumentError` exception will be raised if a single argument is passed and it does not respond to `include?`.
+The predicate `in?` tests if an object is included in another object. An `ArgumentError` exception will be raised if the argument passed does not respond to `include?`.
 
 Examples of `in?`:
 
 ```ruby
-1.in?(1,2)          # => true
 1.in?([1,2])        # => true
 "lo".in?("hello")   # => true
 25.in?(30..50)      # => false
@@ -1039,6 +1063,8 @@ For convenience `class_attribute` also defines an instance predicate which is th
 
 When `:instance_reader` is `false`, the instance predicate returns a `NoMethodError` just like the reader method.
 
+If you do not want the instance predicate, pass `instance_predicate: false` and it will not be defined.
+
 NOTE: Defined in `active_support/core_ext/class/attribute.rb`
 
 #### `cattr_reader`, `cattr_writer`, and `cattr_accessor`
@@ -1223,6 +1249,18 @@ Calling `to_s` on a safe string returns a safe string, but coercion with `to_str
 
 Calling `dup` or `clone` on safe strings yields safe strings.
 
+### `remove`
+
+The method `remove` will remove all occurrences of the pattern:
+
+```ruby
+"Hello World".remove(/Hello /) => "World"
+```
+
+There's also the destructive version `String#remove!`.
+
+NOTE: Defined in `active_support/core_ext/string/filters.rb`.
+
 ### `squish`
 
 The method `squish` strips leading and trailing whitespace, and substitutes runs of whitespace with a single space each:
@@ -1344,7 +1382,7 @@ The second argument, `indent_string`, specifies which indent string to use. The 
 "foo".indent(2, "\t")    # => "\t\tfoo"
 ```
 
-While `indent_string` is tipically one space or tab, it may be any string.
+While `indent_string` is typically one space or tab, it may be any string.
 
 The third argument, `indent_empty_lines`, is a flag that says whether empty lines should be indented. Default is false.
 
@@ -1422,7 +1460,7 @@ The method `pluralize` returns the plural of its receiver:
 
 As the previous example shows, Active Support knows some irregular plurals and uncountable nouns. Built-in rules can be extended in `config/initializers/inflections.rb`. That file is generated by the `rails` command and has instructions in comments.
 
-`pluralize` can also take an optional `count` parameter.  If `count == 1` the singular form will be returned.  For any other value of `count` the plural form will be returned:
+`pluralize` can also take an optional `count` parameter. If `count == 1` the singular form will be returned. For any other value of `count` the plural form will be returned:
 
 ```ruby
 "dude".pluralize(0) # => "dudes"
@@ -1962,7 +2000,7 @@ Produce a string representation of a number in human-readable words:
 1234567890123456.to_s(:human)  # => "1.23 Quadrillion"
 ```
 
-NOTE: Defined in `active_support/core_ext/numeric/formatting.rb`.
+NOTE: Defined in `active_support/core_ext/numeric/conversions.rb`.
 
 Extensions to `Integer`
 -----------------------
@@ -2010,8 +2048,33 @@ NOTE: Defined in `active_support/core_ext/integer/inflections.rb`.
 
 Extensions to `BigDecimal`
 --------------------------
+### `to_s`
 
-...
+The method `to_s` is aliased to `to_formatted_s`. This provides a convenient way to display a BigDecimal value in floating-point notation:
+
+```ruby
+BigDecimal.new(5.00, 6).to_s  # => "5.0"
+```
+
+### `to_formatted_s`
+
+Te method `to_formatted_s` provides a default specifier of "F".  This means that a simple call to `to_formatted_s` or `to_s` will result in floating point representation instead of engineering notation:
+
+```ruby
+BigDecimal.new(5.00, 6).to_formatted_s  # => "5.0"
+```
+
+and that symbol specifiers are also supported:
+
+```ruby
+BigDecimal.new(5.00, 6).to_formatted_s(:db)  # => "5.0"
+```
+
+Engineering notation is still supported:
+
+```ruby
+BigDecimal.new(5.00, 6).to_formatted_s("e")  # => "0.5E1"
+```
 
 Extensions to `Enumerable`
 --------------------------
@@ -2198,7 +2261,7 @@ This method accepts three options:
 * `:words_connector`: What is used to join the elements of arrays with 3 or more elements, except for the last two. Default is ", ".
 * `:last_word_connector`: What is used to join the last items of an array with 3 or more elements. Default is ", and ".
 
-The defaults for these options can be localised, their keys are:
+The defaults for these options can be localized, their keys are:
 
 | Option                 | I18n key                            |
 | ---------------------- | ----------------------------------- |
@@ -2214,7 +2277,9 @@ NOTE: Defined in `active_support/core_ext/array/conversions.rb`.
 
 The method `to_formatted_s` acts like `to_s` by default.
 
-If the array contains items that respond to `id`, however, it may be passed the symbol `:db` as argument. That's typically used with collections of ARs. Returned strings are:
+If the array contains items that respond to `id`, however, the symbol
+`:db` may be passed as argument. That's typically used with
+collections of Active Record objects. Returned strings are:
 
 ```ruby
 [].to_formatted_s(:db)            # => "null"
@@ -2370,7 +2435,8 @@ NOTE: Defined in `active_support/core_ext/array/wrap.rb`.
 
 ### Duplicating
 
-The method `Array.deep_dup` duplicates itself and all objects inside recursively with ActiveSupport method `Object#deep_dup`. It works like `Array#map` with sending `deep_dup` method to each object inside.
+The method `Array.deep_dup` duplicates itself and all objects inside
+recursively with Active Support method `Object#deep_dup`. It works like `Array#map` with sending `deep_dup` method to each object inside.
 
 ```ruby
 array = [1, [2, 3]]
@@ -2379,7 +2445,7 @@ dup[1][2] = 4
 array[1][2] == nil   # => true
 ```
 
-NOTE: Defined in `active_support/core_ext/array/deep_dup.rb`.
+NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
 
 ### Grouping
 
@@ -2591,7 +2657,8 @@ NOTE: Defined in `active_support/core_ext/hash/deep_merge.rb`.
 
 ### Deep duplicating
 
-The method `Hash.deep_dup` duplicates itself and all keys and values inside recursively with ActiveSupport method `Object#deep_dup`. It works like `Enumerator#each_with_object` with sending `deep_dup` method to each pair inside.
+The method `Hash.deep_dup` duplicates itself and all keys and values
+inside recursively with Active Support method `Object#deep_dup`. It works like `Enumerator#each_with_object` with sending `deep_dup` method to each pair inside.
 
 ```ruby
 hash = { a: 1, b: { c: 2, d: [3, 4] } }
@@ -2604,45 +2671,7 @@ hash[:b][:e] == nil      # => true
 hash[:b][:d] == [3, 4]   # => true
 ```
 
-NOTE: Defined in `active_support/core_ext/hash/deep_dup.rb`.
-
-### Diffing
-
-The method `diff` returns a hash that represents a diff of the receiver and the argument with the following logic:
-
-* Pairs `key`, `value` that exist in both hashes do not belong to the diff hash.
-
-* If both hashes have `key`, but with different values, the pair in the receiver wins.
-
-* The rest is just merged.
-
-```ruby
-{a: 1}.diff(a: 1)
-# => {}, first rule
-
-{a: 1}.diff(a: 2)
-# => {:a=>1}, second rule
-
-{a: 1}.diff(b: 2)
-# => {:a=>1, :b=>2}, third rule
-
-{a: 1, b: 2, c: 3}.diff(b: 1, c: 3, d: 4)
-# => {:a=>1, :b=>2, :d=>4}, all rules
-
-{}.diff({})        # => {}
-{a: 1}.diff({})    # => {:a=>1}
-{}.diff(a: 1)      # => {:a=>1}
-```
-
-An important property of this diff hash is that you can retrieve the original hash by applying `diff` twice:
-
-```ruby
-hash.diff(hash2).diff(hash2) == hash
-```
-
-Diffing hashes may be useful for error messages related to expected option hashes for example.
-
-NOTE: Defined in `active_support/core_ext/hash/diff.rb`.
+NOTE: Defined in `active_support/core_ext/object/deep_dup.rb`.
 
 ### Working with Keys
 
@@ -2670,14 +2699,14 @@ NOTE: Defined in `active_support/core_ext/hash/except.rb`.
 The method `transform_keys` accepts a block and returns a hash that has applied the block operations to each of the keys in the receiver:
 
 ```ruby
-{nil => nil, 1 => 1, a: :a}.transform_keys{ |key| key.to_s.upcase }
+{nil => nil, 1 => 1, a: :a}.transform_keys { |key| key.to_s.upcase }
 # => {"" => nil, "A" => :a, "1" => 1}
 ```
 
 The result in case of collision is undefined:
 
 ```ruby
-{"a" => 1, a: 2}.transform_keys{ |key| key.to_s.upcase }
+{"a" => 1, a: 2}.transform_keys { |key| key.to_s.upcase }
 # => {"A" => 2}, in my test, can't rely on this result though
 ```
 
@@ -2685,11 +2714,11 @@ This method may be useful for example to build specialized conversions. For inst
 
 ```ruby
 def stringify_keys
-  transform_keys{ |key| key.to_s }
+  transform_keys { |key| key.to_s }
 end
 ...
 def symbolize_keys
-  transform_keys{ |key| key.to_sym rescue key }
+  transform_keys { |key| key.to_sym rescue key }
 end
 ```
 
@@ -2698,7 +2727,7 @@ There's also the bang variant `transform_keys!` that applies the block operation
 Besides that, one can use `deep_transform_keys` and `deep_transform_keys!` to perform the block operation on all the keys in the given hash and all the hashes nested into it. An example of the result is:
 
 ```ruby
-{nil => nil, 1 => 1, nested: {a: 3, 5 => 5}}.deep_transform_keys{ |key| key.to_s.upcase }
+{nil => nil, 1 => 1, nested: {a: 3, 5 => 5}}.deep_transform_keys { |key| key.to_s.upcase }
 # => {""=>nil, "1"=>1, "NESTED"=>{"A"=>3, "5"=>5}}
 ```
 
@@ -3777,13 +3806,13 @@ def default_helper_module!
   module_path = module_name.underscore
   helper module_path
 rescue MissingSourceFile => e
-  raise e unless e.is_missing? "#{module_path}_helper"
+  raise e unless e.is_missing? "helpers/#{module_path}_helper"
 rescue NameError => e
   raise e unless e.missing_name? "#{module_name}Helper"
 end
 ```
 
-NOTE: Defined in `active_support/core_ext/name_error.rb`.
+NOTE: Defined in `actionpack/lib/abstract_controller/helpers.rb`.
 
 Extensions to `LoadError`
 -------------------------
@@ -3806,4 +3835,4 @@ rescue NameError => e
 end
 ```
 
-NOTE: Defined in `active_support/core_ext/load_error.rb`.
+NOTE: Defined in `actionpack/lib/abstract_controller/helpers.rb`.

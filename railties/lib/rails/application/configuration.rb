@@ -5,7 +5,7 @@ require 'rails/engine/configuration'
 module Rails
   class Application
     class Configuration < ::Rails::Engine::Configuration
-      attr_accessor :asset_host, :assets, :autoflush_log,
+      attr_accessor :allow_concurrency, :asset_host, :assets, :autoflush_log,
                     :cache_classes, :cache_store, :consider_all_requests_local, :console,
                     :eager_load, :exceptions_app, :file_watcher, :filter_parameters,
                     :force_ssl, :helpers_paths, :logger, :log_formatter, :log_tags,
@@ -20,6 +20,7 @@ module Rails
       def initialize(*)
         super
         self.encoding = "utf-8"
+        @allow_concurrency             = nil
         @consider_all_requests_local   = false
         @filter_parameters             = []
         @filter_redirect               = []
@@ -60,7 +61,6 @@ module Rails
         @assets.cache_store              = [ :file_store, "#{root}/tmp/cache/assets/#{Rails.env}/" ]
         @assets.js_compressor            = nil
         @assets.css_compressor           = nil
-        @assets.initialize_on_precompile = true
         @assets.logger                   = nil
       end
 
@@ -87,25 +87,16 @@ module Rails
         end
       end
 
-      def threadsafe!
-        message = "config.threadsafe! is deprecated. Rails applications " \
-                  "behave by default as thread safe in production as long as config.cache_classes and " \
-                  "config.eager_load are set to true"
-        ActiveSupport::Deprecation.warn message
-        @cache_classes = true
-        @eager_load = true
-        self
-      end
-
       # Loads and returns the configuration of the database.
-      # First, looks at If ENV['DATABASE_URL'] if it's not present it uses the #paths["config/database"]
-      # The contents of the file are processed via ERB before being sent through YAML::load. 
       def database_configuration
-        if ENV['DATABASE_URL']
-          {Rails.env => ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver.connection_url_to_hash(ENV['DATABASE_URL']).stringify_keys}
+        yaml = paths["config/database"].first
+        if File.exists?(yaml)
+          require "erb"
+          YAML.load ERB.new(IO.read(yaml)).result
+        elsif ENV['DATABASE_URL']
+          nil
         else
-          require 'erb'
-          YAML.load ERB.new(IO.read(paths["config/database"].first)).result
+          raise "Could not load database configuration. No such file - #{yaml}"
         end
       rescue Psych::SyntaxError => e
         raise "YAML syntax error occurred while parsing #{paths["config/database"].first}. " \
@@ -149,9 +140,6 @@ module Rails
         end
       end
 
-      def whiny_nils=(*)
-        ActiveSupport::Deprecation.warn "config.whiny_nils option is deprecated and no longer works"
-      end
     end
   end
 end

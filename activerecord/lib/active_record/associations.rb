@@ -73,12 +73,6 @@ module ActiveRecord
     end
   end
 
-  class HasAndBelongsToManyAssociationForeignKeyNeeded < ActiveRecordError #:nodoc:
-    def initialize(reflection)
-      super("Cannot create self referential has_and_belongs_to_many association on '#{reflection.class_name rescue nil}##{reflection.name rescue nil}'. :association_foreign_key cannot be the same as the :foreign_key.")
-    end
-  end
-
   class EagerLoadPolymorphicError < ActiveRecordError #:nodoc:
     def initialize(reflection)
       super("Can not eagerly load the polymorphic association #{reflection.name.inspect}")
@@ -114,7 +108,6 @@ module ActiveRecord
 
     autoload :BelongsToAssociation,            'active_record/associations/belongs_to_association'
     autoload :BelongsToPolymorphicAssociation, 'active_record/associations/belongs_to_polymorphic_association'
-    autoload :HasAndBelongsToManyAssociation,  'active_record/associations/has_and_belongs_to_many_association'
     autoload :HasManyAssociation,              'active_record/associations/has_many_association'
     autoload :HasManyThroughAssociation,       'active_record/associations/has_many_through_association'
     autoload :HasOneAssociation,               'active_record/associations/has_one_association'
@@ -164,7 +157,7 @@ module ActiveRecord
     private
       # Returns the specified association instance if it responds to :loaded?, nil otherwise.
       def association_instance_get(name)
-        @association_cache[name.to_sym]
+        @association_cache[name]
       end
 
       # Set the specified association instance.
@@ -172,7 +165,7 @@ module ActiveRecord
         @association_cache[name] = association
       end
 
-    # Associations are a set of macro-like class methods for tying objects together through
+    # \Associations are a set of macro-like class methods for tying objects together through
     # foreign keys. They express relationships like "Project has one Project Manager"
     # or "Project belongs to a Portfolio". Each macro adds a number of methods to the
     # class which are specialized according to the collection or association symbol and the
@@ -241,6 +234,7 @@ module ActiveRecord
     #   others.destroy_all                |   X   |    X     |    X
     #   others.find(*args)                |   X   |    X     |    X
     #   others.exists?                    |   X   |    X     |    X
+    #   others.distinct                   |   X   |    X     |    X
     #   others.uniq                       |   X   |    X     |    X
     #   others.reset                      |   X   |    X     |    X
     #
@@ -364,11 +358,11 @@ module ActiveRecord
     # there is some special behavior you should be aware of, mostly involving the saving of
     # associated objects.
     #
-    # You can set the :autosave option on a <tt>has_one</tt>, <tt>belongs_to</tt>,
+    # You can set the <tt>:autosave</tt> option on a <tt>has_one</tt>, <tt>belongs_to</tt>,
     # <tt>has_many</tt>, or <tt>has_and_belongs_to_many</tt> association. Setting it
     # to +true+ will _always_ save the members, whereas setting it to +false+ will
-    # _never_ save the members. More details about :autosave option is available at
-    # autosave_association.rb .
+    # _never_ save the members. More details about <tt>:autosave</tt> option is available at
+    # AutosaveAssociation.
     #
     # === One-to-one associations
     #
@@ -401,7 +395,7 @@ module ActiveRecord
     #
     # == Customizing the query
     #
-    # Associations are built from <tt>Relation</tt>s, and you can use the <tt>Relation</tt> syntax
+    # \Associations are built from <tt>Relation</tt>s, and you can use the <tt>Relation</tt> syntax
     # to customize them. For example, to add a condition:
     #
     #   class Blog < ActiveRecord::Base
@@ -567,6 +561,8 @@ module ActiveRecord
     #   @group.avatars << Avatar.new   # this would work if User belonged_to Avatar rather than the other way around
     #   @group.avatars.delete(@group.avatars.last)  # so would this
     #
+    # == Setting Inverses
+    #
     # If you are using a +belongs_to+ on the join model, it is a good idea to set the
     # <tt>:inverse_of</tt> option on the +belongs_to+, which will mean that the following example
     # works correctly (where <tt>tags</tt> is a +has_many+ <tt>:through</tt> association):
@@ -583,7 +579,27 @@ module ActiveRecord
     #     belongs_to :tag, inverse_of: :taggings
     #   end
     #
-    # == Nested Associations
+    # If you do not set the <tt>:inverse_of</tt> record, the association will
+    # do its best to match itself up with the correct inverse. Automatic
+    # inverse detection only works on <tt>has_many</tt>, <tt>has_one</tt>, and
+    # <tt>belongs_to</tt> associations.
+    #
+    # Extra options on the associations, as defined in the
+    # <tt>AssociationReflection::INVALID_AUTOMATIC_INVERSE_OPTIONS</tt> constant, will
+    # also prevent the association's inverse from being found automatically.
+    #
+    # The automatic guessing of the inverse association uses a heuristic based
+    # on the name of the class, so it may not work for all associations,
+    # especially the ones with non-standard names.
+    #
+    # You can turn off the automatic detection of inverse associations by setting
+    # the <tt>:inverse_of</tt> option to <tt>false</tt> like so:
+    #
+    #   class Taggable < ActiveRecord::Base
+    #     belongs_to :tag, inverse_of: false
+    #   end
+    #
+    # == Nested \Associations
     #
     # You can actually specify *any* association with the <tt>:through</tt> option, including an
     # association which has a <tt>:through</tt> option itself. For example:
@@ -626,7 +642,7 @@ module ActiveRecord
     # add a <tt>Commenter</tt> in the example above, there would be no way to tell how to set up the
     # intermediate <tt>Post</tt> and <tt>Comment</tt> objects.
     #
-    # == Polymorphic Associations
+    # == Polymorphic \Associations
     #
     # Polymorphic associations on models are not restricted on what types of models they
     # can be associated with. Rather, they specify an interface that a +has_many+ association
@@ -788,7 +804,7 @@ module ActiveRecord
     # For example if all the addressables are either of class Person or Company then a total
     # of 3 queries will be executed. The list of addressable types to load is determined on
     # the back of the addresses loaded. This is not supported if Active Record has to fallback
-    # to the previous implementation of eager loading and will raise ActiveRecord::EagerLoadPolymorphicError.
+    # to the previous implementation of eager loading and will raise <tt>ActiveRecord::EagerLoadPolymorphicError</tt>.
     # The reason is that the parent model's type is a column value so its corresponding table
     # name cannot be put in the +FROM+/+JOIN+ clauses of that query.
     #
@@ -965,7 +981,7 @@ module ActiveRecord
     # For +has_and_belongs_to_many+, <tt>delete</tt> and <tt>destroy</tt> are the same: they
     # cause the records in the join table to be removed.
     #
-    # For +has_many+, <tt>destroy</tt> and <tt>destory_all</tt> will always call the <tt>destroy</tt> method of the
+    # For +has_many+, <tt>destroy</tt> and <tt>destroy_all</tt> will always call the <tt>destroy</tt> method of the
     # record(s) being removed so that callbacks are run. However <tt>delete</tt> and <tt>delete_all</tt> will either
     # do the deletion according to the strategy specified by the <tt>:dependent</tt> option, or
     # if no <tt>:dependent</tt> option is given, then it will follow the default strategy.
@@ -987,7 +1003,7 @@ module ActiveRecord
     # associated objects themselves. So with +has_and_belongs_to_many+ and +has_many+
     # <tt>:through</tt>, the join records will be deleted, but the associated records won't.
     #
-    # This makes sense if you think about it: if you were to call <tt>post.tags.delete(Tag.find_by_name('food'))</tt>
+    # This makes sense if you think about it: if you were to call <tt>post.tags.delete(Tag.find_by(name: 'food'))</tt>
     # you would want the 'food' tag to be unlinked from the post, rather than for the tag itself
     # to be removed from the database.
     #
@@ -1023,8 +1039,8 @@ module ActiveRecord
       #   An empty array is returned if none are found.
       # [collection<<(object, ...)]
       #   Adds one or more objects to the collection by setting their foreign keys to the collection's primary key.
-      #   Note that this operation instantly fires update sql without waiting for the save or update call on the
-      #   parent object.
+      #   Note that this operation instantly fires update SQL without waiting for the save or update call on the
+      #   parent object, unless the parent object is a new record.
       # [collection.delete(object, ...)]
       #   Removes one or more objects from the collection by setting their foreign keys to +NULL+.
       #   Objects will be in addition destroyed if they're associated with <tt>dependent: :destroy</tt>,
@@ -1059,10 +1075,10 @@ module ActiveRecord
       # [collection.size]
       #   Returns the number of associated objects.
       # [collection.find(...)]
-      #   Finds an associated object according to the same rules as ActiveRecord::Base.find.
+      #   Finds an associated object according to the same rules as <tt>ActiveRecord::Base.find</tt>.
       # [collection.exists?(...)]
       #   Checks whether an associated object with the given conditions exists.
-      #   Uses the same rules as ActiveRecord::Base.exists?.
+      #   Uses the same rules as <tt>ActiveRecord::Base.exists?</tt>.
       # [collection.build(attributes = {}, ...)]
       #   Returns one or more new objects of the collection type that have been instantiated
       #   with +attributes+ and linked to this object through a foreign key, but have not yet
@@ -1072,13 +1088,16 @@ module ActiveRecord
       #   with +attributes+, linked to this object through a foreign key, and that has already
       #   been saved (if it passed the validation). *Note*: This only works if the base model
       #   already exists in the DB, not if it is a new (unsaved) record!
+      # [collection.create!(attributes = {})]
+      #   Does the same as <tt>collection.create</tt>, but raises <tt>ActiveRecord::RecordInvalid</tt>
+      #   if the record is invalid.
       #
       # (*Note*: +collection+ is replaced with the symbol passed as the first argument, so
       # <tt>has_many :clients</tt> would add among others <tt>clients.empty?</tt>.)
       #
       # === Example
       #
-      # Example: A Firm class declares <tt>has_many :clients</tt>, which will add:
+      # A <tt>Firm</tt> class declares <tt>has_many :clients</tt>, which will add:
       # * <tt>Firm#clients</tt> (similar to <tt>Client.where(firm_id: id)</tt>)
       # * <tt>Firm#clients<<</tt>
       # * <tt>Firm#clients.delete</tt>
@@ -1093,6 +1112,7 @@ module ActiveRecord
       # * <tt>Firm#clients.exists?(name: 'ACME')</tt> (similar to <tt>Client.exists?(name: 'ACME', firm_id: firm.id)</tt>)
       # * <tt>Firm#clients.build</tt> (similar to <tt>Client.new("firm_id" => id)</tt>)
       # * <tt>Firm#clients.create</tt> (similar to <tt>c = Client.new("firm_id" => id); c.save; c</tt>)
+      # * <tt>Firm#clients.create!</tt> (similar to <tt>c = Client.new("firm_id" => id); c.save!</tt>)
       # The declaration can also include an options hash to specialize the behavior of the association.
       #
       # === Options
@@ -1111,14 +1131,14 @@ module ActiveRecord
       #   Controls what happens to the associated objects when
       #   their owner is destroyed. Note that these are implemented as
       #   callbacks, and Rails executes callbacks in order. Therefore, other
-      #   similar callbacks may affect the :dependent behavior, and the
-      #   :dependent behavior may affect other callbacks.
+      #   similar callbacks may affect the <tt>:dependent</tt> behavior, and the
+      #   <tt>:dependent</tt> behavior may affect other callbacks.
       #
-      #   * <tt>:destroy</tt> causes all the associated objects to also be destroyed
-      #   * <tt>:delete_all</tt> causes all the asssociated objects to be deleted directly from the database (so callbacks will not execute)
+      #   * <tt>:destroy</tt> causes all the associated objects to also be destroyed.
+      #   * <tt>:delete_all</tt> causes all the associated objects to be deleted directly from the database (so callbacks will not be executed).
       #   * <tt>:nullify</tt> causes the foreign keys to be set to +NULL+. Callbacks are not executed.
-      #   * <tt>:restrict_with_exception</tt> causes an exception to be raised if there are any associated records
-      #   * <tt>:restrict_with_error</tt> causes an error to be added to the owner if there are any associated objects
+      #   * <tt>:restrict_with_exception</tt> causes an exception to be raised if there are any associated records.
+      #   * <tt>:restrict_with_error</tt> causes an error to be added to the owner if there are any associated objects.
       #
       #   If using with the <tt>:through</tt> option, the association on the join model must be
       #   a +belongs_to+, and the records which get deleted are the join records, rather than
@@ -1158,8 +1178,8 @@ module ActiveRecord
       #   If true, always save the associated objects or destroy them if marked for destruction,
       #   when saving the parent object. If false, never save or destroy the associated objects.
       #   By default, only save associated objects that are new records. This option is implemented as a
-      #   before_save callback. Because callbacks are run in the order they are defined, associated objects
-      #   may need to be explicitly saved in any user-defined before_save callbacks.
+      #   +before_save+ callback. Because callbacks are run in the order they are defined, associated objects
+      #   may need to be explicitly saved in any user-defined +before_save+ callbacks.
       #
       #   Note that <tt>accepts_nested_attributes_for</tt> sets <tt>:autosave</tt> to <tt>true</tt>.
       # [:inverse_of]
@@ -1178,13 +1198,14 @@ module ActiveRecord
       #   has_many :reports, -> { readonly }
       #   has_many :subscribers, through: :subscriptions, source: :user
       def has_many(name, scope = nil, options = {}, &extension)
-        Builder::HasMany.build(self, name, scope, options, &extension)
+        reflection = Builder::HasMany.build(self, name, scope, options, &extension)
+        Reflection.add_reflection self, name, reflection
       end
 
       # Specifies a one-to-one association with another class. This method should only be used
       # if the other class contains the foreign key. If the current class contains the foreign key,
       # then you should use +belongs_to+ instead. See also ActiveRecord::Associations::ClassMethods's overview
-      # on when to use has_one and when to use belongs_to.
+      # on when to use +has_one+ and when to use +belongs_to+.
       #
       # The following methods for retrieval and query of a single associated object will be added:
       #
@@ -1231,7 +1252,7 @@ module ActiveRecord
       #   its owner is destroyed:
       #
       #   * <tt>:destroy</tt> causes the associated object to also be destroyed
-      #   * <tt>:delete</tt> causes the asssociated object to be deleted directly from the database (so callbacks will not execute)
+      #   * <tt>:delete</tt> causes the associated object to be deleted directly from the database (so callbacks will not execute)
       #   * <tt>:nullify</tt> causes the foreign key to be set to +NULL+. Callbacks are not executed.
       #   * <tt>:restrict_with_exception</tt> causes an exception to be raised if there is an associated record
       #   * <tt>:restrict_with_error</tt> causes an error to be added to the owner if there is an associated object
@@ -1281,7 +1302,8 @@ module ActiveRecord
       #   has_one :club, through: :membership
       #   has_one :primary_address, -> { where primary: true }, through: :addressables, source: :addressable
       def has_one(name, scope = nil, options = {})
-        Builder::HasOne.build(self, name, scope, options)
+        reflection = Builder::HasOne.build(self, name, scope, options)
+        Reflection.add_reflection self, name, reflection
       end
 
       # Specifies a one-to-one association with another class. This method should only be used
@@ -1352,7 +1374,7 @@ module ActiveRecord
       #   class is created and decremented when it's destroyed. This requires that a column
       #   named <tt>#{table_name}_count</tt> (such as +comments_count+ for a belonging Comment class)
       #   is used on the associate class (such as a Post class) - that is the migration for
-      #   <tt>#{table_name}_count</tt> is created on the associate class (such that Post.comments_count will
+      #   <tt>#{table_name}_count</tt> is created on the associate class (such that <tt>Post.comments_count</tt> will
       #   return the count cached, see note below). You can also specify a custom counter
       #   cache column by providing a column name instead of a +true+/+false+ value to this
       #   option (e.g., <tt>counter_cache: :my_custom_counter</tt>.)
@@ -1393,7 +1415,8 @@ module ActiveRecord
       #   belongs_to :company, touch: true
       #   belongs_to :company, touch: :employees_last_updated_at
       def belongs_to(name, scope = nil, options = {})
-        Builder::BelongsTo.build(self, name, scope, options)
+        reflection = Builder::BelongsTo.build(self, name, scope, options)
+        Reflection.add_reflection self, name, reflection
       end
 
       # Specifies a many-to-many relationship with another class. This associates two classes via an
@@ -1407,6 +1430,8 @@ module ActiveRecord
       # to generate a join table name of "papers_paper_boxes" because of the length of the name "paper_boxes",
       # but it in fact generates a join table name of "paper_boxes_papers". Be aware of this caveat, and use the
       # custom <tt>:join_table</tt> option if you need to.
+      # If your tables share a common prefix, it will only appear once at the beginning. For example,
+      # the tables "catalog_categories" and "catalog_products" generate a join table name of "catalog_categories_products".
       #
       # The join table should not have a primary key or a model associated with it. You must manually generate the
       # join table with a migration such as this:
@@ -1432,8 +1457,8 @@ module ActiveRecord
       # [collection<<(object, ...)]
       #   Adds one or more objects to the collection by creating associations in the join table
       #   (<tt>collection.push</tt> and <tt>collection.concat</tt> are aliases to this method).
-      #   Note that this operation instantly fires update sql without waiting for the save or update call on the
-      #   parent object.
+      #   Note that this operation instantly fires update SQL without waiting for the save or update call on the
+      #   parent object, unless the parent object is a new record.
       # [collection.delete(object, ...)]
       #   Removes one or more objects from the collection by removing their associations from the join table.
       #   This does not destroy the objects.
@@ -1455,10 +1480,10 @@ module ActiveRecord
       # [collection.find(id)]
       #   Finds an associated object responding to the +id+ and that
       #   meets the condition that it has to be associated with this object.
-      #   Uses the same rules as ActiveRecord::Base.find.
+      #   Uses the same rules as <tt>ActiveRecord::Base.find</tt>.
       # [collection.exists?(...)]
       #   Checks whether an associated object with the given conditions exists.
-      #   Uses the same rules as ActiveRecord::Base.exists?.
+      #   Uses the same rules as <tt>ActiveRecord::Base.exists?</tt>.
       # [collection.build(attributes = {})]
       #   Returns a new object of the collection type that has been instantiated
       #   with +attributes+ and linked to this object through the join table, but has not yet been saved.
@@ -1528,7 +1553,39 @@ module ActiveRecord
       #   has_and_belongs_to_many :categories, join_table: "prods_cats"
       #   has_and_belongs_to_many :categories, -> { readonly }
       def has_and_belongs_to_many(name, scope = nil, options = {}, &extension)
-        Builder::HasAndBelongsToMany.build(self, name, scope, options, &extension)
+        if scope.is_a?(Hash)
+          options = scope
+          scope   = nil
+        end
+
+        builder = Builder::HasAndBelongsToMany.new name, self, options
+
+        join_model = builder.through_model
+
+        middle_reflection = builder.middle_reflection join_model
+
+        Builder::HasMany.define_callbacks self, middle_reflection
+        Reflection.add_reflection self, middle_reflection.name, middle_reflection
+
+        include Module.new {
+          class_eval <<-RUBY, __FILE__, __LINE__ + 1
+          def destroy_associations
+            association(:#{middle_reflection.name}).delete_all(:delete_all)
+            association(:#{name}).reset
+            super
+          end
+          RUBY
+        }
+
+        hm_options = {}
+        hm_options[:through] = middle_reflection.name
+        hm_options[:source] = join_model.right_reflection.name
+
+        [:before_add, :after_add, :before_remove, :after_remove].each do |k|
+          hm_options[k] = options[k] if options.key? k
+        end
+
+        has_many name, scope, hm_options, &extension
       end
     end
   end

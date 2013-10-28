@@ -22,13 +22,32 @@ end
 
 begin
   require 'redcarpet'
-rescue Gem::LoadError
+rescue LoadError
   # This can happen if doc:guides is executed in an application.
   $stderr.puts('Generating guides requires Redcarpet 2.1.1+.')
   $stderr.puts(<<ERROR) if bundler?
 Please add
 
   gem 'redcarpet', '~> 2.1.1'
+
+to the Gemfile, run
+
+  bundle install
+
+and try again.
+ERROR
+  exit 1
+end
+
+begin
+  require 'nokogiri'
+rescue LoadError
+  # This can happen if doc:guides is executed in an application.
+  $stderr.puts('Generating guides requires Nokogiri.')
+  $stderr.puts(<<ERROR) if bundler?
+Please add
+
+  gem 'nokogiri'
 
 to the Gemfile, run
 

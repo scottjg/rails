@@ -3,8 +3,8 @@ module ActiveRecord
     extend ActiveSupport::Concern
 
     module ClassMethods
-      def quote_value(value, column = nil) #:nodoc:
-        connection.quote(value,column)
+      def quote_value(value, column) #:nodoc:
+        connection.quote(value, column)
       end
 
       # Used to sanitize objects before they're used in an SQL SELECT statement. Delegates to <tt>connection.quote</tt>.
@@ -86,10 +86,11 @@ module ActiveRecord
       #   { address: Address.new("123 abc st.", "chicago") }
       #     # => "address_street='123 abc st.' and address_city='chicago'"
       def sanitize_sql_hash_for_conditions(attrs, default_table_name = self.table_name)
+        attrs = PredicateBuilder.resolve_column_aliases self, attrs
         attrs = expand_hash_conditions_for_aggregates(attrs)
 
         table = Arel::Table.new(table_name, arel_engine).alias(default_table_name)
-        PredicateBuilder.build_from_hash(self.class, attrs, table).map { |b|
+        PredicateBuilder.build_from_hash(self, attrs, table).map { |b|
           connection.visitor.accept b
         }.join(' AND ')
       end
@@ -126,7 +127,17 @@ module ActiveRecord
         raise_if_bind_arity_mismatch(statement, statement.count('?'), values.size)
         bound = values.dup
         c = connection
-        statement.gsub('?') { quote_bound_value(bound.shift, c) }
+        statement.gsub('?') do
+          replace_bind_variable(bound.shift, c)
+        end
+      end
+
+      def replace_bind_variable(value, c = connection) #:nodoc:
+        if ActiveRecord::Relation === value
+          value.to_sql
+        else
+          quote_bound_value(value, c)
+        end
       end
 
       def replace_named_bind_variables(statement, bind_vars) #:nodoc:
@@ -134,7 +145,7 @@ module ActiveRecord
           if $1 == ':' # skip postgresql casts
             $& # return the whole match
           elsif bind_vars.include?(match = $2.to_sym)
-            quote_bound_value(bind_vars[match])
+            replace_bind_variable(bind_vars[match])
           else
             raise PreparedStatementInvalid, "missing value for :#{match} in #{statement}"
           end
