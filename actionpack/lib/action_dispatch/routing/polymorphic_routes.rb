@@ -161,13 +161,24 @@ module ActionDispatch
         end
 
         def build_named_route_call(records, inflection, options = {})
+          module_name = nil
+          module_regex = /^(.*)::(.*)$/
           if records.is_a?(Array)
             record = records.pop
             route = records.map do |parent|
               if parent.is_a?(Symbol) || parent.is_a?(String)
                 parent
               else
-                model_name_from_record_or_class(parent).singular_route_key
+                parent_model = model_name_from_record_or_class(parent)
+                if parent_model.to_s =~ module_regex
+                  if parent == records.first
+                    module_name = $1
+                  elsif module_name && module_name == $1
+                    return $2.underscore
+                  end
+                end
+                parent_model.singular_route_key
+
               end
             end
           else
@@ -178,10 +189,20 @@ module ActionDispatch
           if record.is_a?(Symbol) || record.is_a?(String)
             route << record
           elsif record
+            record_model = model_name_from_record_or_class(record)
+
             if inflection == :singular
-              route << model_name_from_record_or_class(record).singular_route_key
+              if module_name && record_model.to_s =~ module_regex && $1 == module_name
+                route << $2.underscore
+              else
+                route << record_model.singular_route_key
+              end
             else
-              route << model_name_from_record_or_class(record).route_key
+              if module_name && record_model.to_s =~ module_regex && $1 == module_name
+                route << $2.underscore.pluralize
+              else
+                route << record_model.route_key
+              end
             end
           else
             raise ArgumentError, "Nil location provided. Can't build URI."
