@@ -622,7 +622,7 @@ module ActionView
         end
 
         def stylesheet_tag(source, options)
-          tag("link", { "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen", "href" => html_escape(path_to_stylesheet(source)) }.merge(options), false, false)
+          tag("link", { "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen", "href" => path_to_stylesheet(source) }.merge(options), false, false)
         end
 
         def compute_javascript_paths(*args)
