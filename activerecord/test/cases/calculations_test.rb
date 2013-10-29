@@ -477,6 +477,11 @@ class CalculationsTest < ActiveRecord::TestCase
       Company.order(:id).limit(1).pluck
   end
 
+  def test_pluck_with_select
+    assert_equal ["37signals"],
+      Company.order(:id).select(:name).limit(1).pluck
+  end
+
   def test_pluck_type_cast
     topic = topics(:first)
     relation = Topic.where(:id => topic.id)

@@ -147,9 +147,11 @@ module ActiveRecord
         construct_relation_for_association_calculations.pluck(*column_names)
       else
         relation = spawn
-        relation.select_values = column_names.map { |cn|
-          columns_hash.key?(cn) ? arel_table[cn] : cn
-        }
+        unless column_names.empty?
+          relation.select_values = column_names.map { |cn|
+            columns_hash.key?(cn) ? arel_table[cn] : cn
+          }
+        end
         result = klass.connection.select_all(relation.arel, nil, bind_values)
         columns = result.columns.map do |key|
           klass.column_types.fetch(key) {
