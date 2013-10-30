@@ -7,7 +7,6 @@ module ActiveRecord
     # collections. See the class hierarchy in AssociationProxy.
     #
     #   CollectionAssociation:
-    #     HasAndBelongsToManyAssociation => has_and_belongs_to_many
     #     HasManyAssociation => has_many
     #       HasManyThroughAssociation + ThroughAssociation => has_many :through
     #
@@ -80,14 +79,13 @@ module ActiveRecord
           load_target.find(*args) { |*block_args| yield(*block_args) }
         else
           if options[:inverse_of] && loaded?
-            args = args.flatten
-            raise RecordNotFound, "Couldn't find #{scope.klass.name} without an ID" if args.blank?
-
+            args_flatten = args.flatten
+            raise RecordNotFound, "Couldn't find #{scope.klass.name} without an ID" if args_flatten.blank?
             result = find_by_scan(*args)
 
             result_size = Array(result).size
-            if !result || result_size != args.size
-              scope.raise_record_not_found_exception!(args, result_size, args.size)
+            if !result || result_size != args_flatten.size
+              scope.raise_record_not_found_exception!(args_flatten, result_size, args_flatten.size)
             else
               result
             end
@@ -197,9 +195,7 @@ module ActiveRecord
 
       # Count all records using SQL.  Construct options and pass them with
       # scope to the target class's +count+.
-      def count(column_name = nil, count_options = {})
-        column_name, count_options = nil, column_name if column_name.is_a?(Hash)
-
+      def count(column_name = nil)
         relation = scope
         if association_scope.distinct_value
           # This is needed because 'SELECT count(DISTINCT *)..' is not valid SQL.
@@ -554,14 +550,14 @@ module ActiveRecord
         # specified, then #find scans the entire collection.
         def find_by_scan(*args)
           expects_array = args.first.kind_of?(Array)
-          ids           = args.flatten.compact.map{ |arg| arg.to_i }.uniq
+          ids           = args.flatten.compact.map{ |arg| arg.to_s }.uniq
 
           if ids.size == 1
             id = ids.first
-            record = load_target.detect { |r| id == r.id }
+            record = load_target.detect { |r| id == r.id.to_s }
             expects_array ? [ record ] : record
           else
-            load_target.select { |r| ids.include?(r.id) }
+            load_target.select { |r| ids.include?(r.id.to_s) }
           end
         end
 

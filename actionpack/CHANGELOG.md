@@ -1,7 +1,103 @@
+*   Add `session#fetch` method
+
+    fetch behaves like [Hash#fetch](http://www.ruby-doc.org/core-1.9.3/Hash.html#method-i-fetch).  
+    It returns a value from the hash for the given key.
+    If the key can’t be found, there are several options:
+
+      * With no other arguments, it will raise an KeyError exception.
+      * If a default value is given, then that will be returned.
+      * If the optional code block is specified, then that will be run and its result returned.
+
+    *Damien Mathieu*
+
+*   Don't let strong parameters mutate the given hash via `fetch`
+
+    Create a new instance if the given parameter is a `Hash` instead of
+    passing it to the `convert_hashes_to_parameters` method since it is
+    overriding its default value.
+
+    *Brendon Murphy*, *Doug Cole*
+
+*   Add `params` option to `button_to` form helper, which renders the given hash
+    as hidden form fields.
+
+    *Andy Waite*
+
+*   Make assets helpers work in the controllers like it works in the views.
+
+    Example:
+
+        # config/application.rb
+        config.asset_host = 'http://mycdn.com'
+
+        ActionController::Base.helpers.asset_path('fallback.png')
+        # => http://mycdn.com/assets/fallback.png
+
+    Fixes #10051.
+
+    *Tima Maslyuchenko*
+
+*   Respect `SCRIPT_NAME` when using `redirect` with a relative path
+
+    Example:
+
+        # application routes.rb
+        mount BlogEngine => '/blog'
+
+        # engine routes.rb
+        get '/admin' => redirect('admin/dashboard')
+
+    This now redirects to the path `/blog/admin/dashboard`, whereas before it would've
+    generated an invalid url because there would be no slash between the host name and
+    the path. It also allows redirects to work where the application is deployed to a
+    subdirectory of a website.
+
+    Fixes #7977.
+
+    *Andrew White*
+
+*   Fixing repond_with working directly on the options hash
+    This fixes an issue where the respond_with worked directly with the given
+    options hash, so that if a user relied on it after calling respond_with,
+    the hash wouldn't be the same.
+
+    Fixes #12029.
+
+    *bluehotdog*
+
+*   Fix `ActionDispatch::RemoteIp::GetIp#calculate_ip` to only check for spoofing
+    attacks if both `HTTP_CLIENT_IP` and `HTTP_X_FORWARDED_FOR` are set.
+
+    Fixes #10844.
+
+    *Tamir Duberstein*
+
+*   Strong parameters should permit nested number as key.
+
+    Fixes #12293.
+
+    *kennyj*
+
+*   Fix regex used to detect URI schemes in `redirect_to` to be consistent with
+    RFC 3986.
+
+    *Derek Prior*
+
+*   Fix incorrect `assert_redirected_to` failure message for protocol-relative
+    URLs.
+
+    *Derek Prior*
+
+*   Fix an issue where router can't recognize downcased url encoding path.
+
+    Fixes #12269.
+
+    *kennyj*
+
 *   Fix custom flash type definition. Misusage of the `_flash_types` class variable
     caused an error when reloading controllers with custom flash types.
 
-    Fixes #12057
+    Fixes #12057.
 
     *Ricardo de Cillo*
 
@@ -22,21 +118,21 @@
 *   Fix an issue where :if and :unless controller action procs were being run
     before checking for the correct action in the :only and :unless options.
 
-    Fixes #11799
+    Fixes #11799.
 
     *Nicholas Jakobsen*
 
 *   Fix an issue where `assert_dom_equal` and `assert_dom_not_equal` were
     ignoring the passed failure message argument.
 
-    Fixes #11751
+    Fixes #11751.
 
     *Ryan McGeary*
 
 *   Allow REMOTE_ADDR, HTTP_HOST and HTTP_USER_AGENT to be overridden from
     the environment passed into `ActionDispatch::TestRequest.new`.
 
-    Fixes #11590
+    Fixes #11590.
 
     *Andrew White*
 
@@ -51,7 +147,7 @@
 *   Skip routes pointing to a redirect or mounted application when generating urls
     using an options hash as they aren't relevant and generate incorrect urls.
 
-    Fixes #8018
+    Fixes #8018.
 
     *Andrew White*
 
@@ -69,7 +165,7 @@
 *   Fix `ActionDispatch::ParamsParser#parse_formatted_parameters` to rewind body input stream on
     parsing json params.
 
-    Fixes #11345
+    Fixes #11345.
 
     *Yuri Bol*, *Paul Nikitochkin*
 
@@ -102,7 +198,7 @@
     was setting `request.formats` with an array containing a `nil` value, which
     raised an error when setting the controller formats.
 
-    Fixes #10965
+    Fixes #10965.
 
     *Becker*
 
@@ -111,7 +207,7 @@
     no `:to` present in the options hash so should only affect routes using the
     shorthand syntax (i.e. endpoint is inferred from the path).
 
-    Fixes #9856
+    Fixes #9856.
 
     *Yves Senn*, *Andrew White*
 

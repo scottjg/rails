@@ -29,7 +29,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :posts, :readers, :people, :comments, :authors, :categories, :taggings, :tags,
            :owners, :pets, :toys, :jobs, :references, :companies, :members, :author_addresses,
            :subscribers, :books, :subscriptions, :developers, :categorizations, :essays,
-           :categories_posts
+           :categories_posts, :clubs, :memberships
 
   # Dummies to force column loads so query counts are clean.
   def setup
@@ -37,8 +37,43 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     Reader.create :person_id => 0, :post_id => 0
   end
 
+  def test_preload_sti_rhs_class
+    developers = Developer.includes(:firms).all.to_a
+    assert_no_queries do
+      developers.each { |d| d.firms }
+    end
+  end
+
+  def test_preload_sti_middle_relation
+    club = Club.create!(name: 'Aaron cool banana club')
+    member1 = Member.create!(name: 'Aaron')
+    member2 = Member.create!(name: 'Cat')
+
+    SuperMembership.create! club: club, member: member1
+    CurrentMembership.create! club: club, member: member2
+
+    club1 = Club.includes(:members).find_by_id club.id
+    assert_equal [member1, member2].sort_by(&:id),
+                 club1.members.sort_by(&:id)
+  end
+
   def make_model(name)
     Class.new(ActiveRecord::Base) { define_singleton_method(:name) { name } }
+  end
+
+  def test_ordered_habtm
+    person_prime = Class.new(ActiveRecord::Base) do
+      def self.name; 'Person'; end
+
+      has_many :readers
+      has_many :posts, -> { order('posts.id DESC') }, :through => :readers
+    end
+    posts = person_prime.includes(:posts).first.posts
+
+    assert_operator posts.length, :>, 1
+    posts.each_cons(2) do |left,right|
+      assert_operator left.id, :>, right.id
+    end
   end
 
   def test_singleton_has_many_through
@@ -750,7 +785,7 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
     sarah = Person.create!(:first_name => 'Sarah', :primary_contact_id => people(:susan).id, :gender => 'F', :number1_fan_id => 1)
     john = Person.create!(:first_name => 'John', :primary_contact_id => sarah.id, :gender => 'M', :number1_fan_id => 1)
     assert_equal sarah.agents, [john]
-    assert_equal people(:susan).agents.map(&:agents).flatten, people(:susan).agents_of_agents
+    assert_equal people(:susan).agents.flat_map(&:agents), people(:susan).agents_of_agents
   end
 
   def test_associate_existing_with_nonstandard_primary_key_on_belongs_to
@@ -1049,5 +1084,9 @@ class HasManyThroughAssociationsTest < ActiveRecord::TestCase
 
     readers(:michael_authorless).update(first_post_id: 1)
     assert_equal [posts(:thinking)], person.reload.first_posts
+  end
+
+  def test_has_many_through_with_includes_in_through_association_scope
+    assert_not_empty posts(:welcome).author_address_extra_with_address
   end
 end

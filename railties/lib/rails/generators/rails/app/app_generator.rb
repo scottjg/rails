@@ -129,7 +129,9 @@ module Rails
     end
 
     def vendor_javascripts
-      empty_directory_with_keep_file 'vendor/assets/javascripts'
+      unless options[:skip_javascript]
+        empty_directory_with_keep_file 'vendor/assets/javascripts'
+      end
     end
 
     def vendor_stylesheets
@@ -162,6 +164,7 @@ module Rails
         end
       end
 
+      public_task :set_default_accessors!
       public_task :create_root
 
       def create_root_files
@@ -225,6 +228,12 @@ module Rails
         build(:leftovers)
       end
 
+      def delete_js_folder_skipping_javascript
+        if options[:skip_javascript]
+          remove_dir 'app/assets/javascripts'
+        end
+      end
+
       public_task :apply_rails_template, :run_bundle
 
     protected
@@ -239,7 +248,7 @@ module Rails
       end
 
       def app_name
-        @app_name ||= (defined_app_const_base? ? defined_app_name : File.basename(destination_root)).tr(".", "_")
+        @app_name ||= (defined_app_const_base? ? defined_app_name : File.basename(destination_root)).tr('\\', '').tr(". ", "_")
       end
 
       def defined_app_name
@@ -335,7 +344,7 @@ module Rails
 
         def handle_rails_rc!
           unless argv.delete("--no-rc")
-            insert_railsrc(railsrc)
+            insert_railsrc_into_argv!(railsrc)
           end
         end
 
@@ -347,7 +356,7 @@ module Rails
           end
         end
 
-        def insert_railsrc(railsrc)
+        def insert_railsrc_into_argv!(railsrc)
           if File.exist?(railsrc)
             extra_args_string = File.read(railsrc)
             extra_args = extra_args_string.split(/\n+/).map {|l| l.split}.flatten

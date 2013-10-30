@@ -856,7 +856,7 @@ module ActiveRecord
 
       where_values.reject! do |rel|
         case rel
-        when Arel::Nodes::In, Arel::Nodes::Equality
+        when Arel::Nodes::In, Arel::Nodes::NotIn, Arel::Nodes::Equality, Arel::Nodes::NotEqual
           subrelation = (rel.left.kind_of?(Arel::Attributes::Attribute) ? rel.left : rel.right)
           subrelation.name.to_sym == target_value_sym
         else
@@ -894,6 +894,13 @@ module ActiveRecord
     def build_where(opts, other = [])
       case opts
       when String, Array
+        #TODO: Remove duplication with: /activerecord/lib/active_record/sanitization.rb:113
+        values = Hash === other.first ? other.first.values : other
+
+        values.grep(ActiveRecord::Relation) do |rel|
+          self.bind_values += rel.bind_values
+        end
+
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
         opts = PredicateBuilder.resolve_column_aliases(klass, opts)
@@ -928,7 +935,7 @@ module ActiveRecord
           :string_join
         when Hash, Symbol, Array
           :association_join
-        when ActiveRecord::Associations::JoinDependency::JoinAssociation
+        when ActiveRecord::Associations::JoinDependency
           :stashed_join
         when Arel::Nodes::Join
           :join_node
@@ -950,10 +957,7 @@ module ActiveRecord
         join_list
       )
 
-      join_dependency.graft(*stashed_association_joins)
-
-      joins = join_dependency.join_associations.map!(&:join_constraints)
-      joins.flatten!
+      joins = join_dependency.join_constraints stashed_association_joins
 
       joins.each { |join| manager.from(join) }
 

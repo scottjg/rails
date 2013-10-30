@@ -11,6 +11,7 @@ require 'models/project'
 require 'models/developer'
 require 'models/customer'
 require 'models/toy'
+require 'models/matey'
 
 class FinderTest < ActiveRecord::TestCase
   fixtures :companies, :topics, :entrants, :developers, :developers_projects, :posts, :comments, :accounts, :authors, :customers, :categories, :categorizations
@@ -478,7 +479,7 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_condition_utc_time_interpolation_with_default_timezone_local
     with_env_tz 'America/New_York' do
-      with_active_record_default_timezone :local do
+      with_timezone_config default: :local do
         topic = Topic.first
         assert_equal topic, Topic.all.merge!(:where => ['written_on = ?', topic.written_on.getutc]).first
       end
@@ -487,7 +488,7 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_hash_condition_utc_time_interpolation_with_default_timezone_local
     with_env_tz 'America/New_York' do
-      with_active_record_default_timezone :local do
+      with_timezone_config default: :local do
         topic = Topic.first
         assert_equal topic, Topic.all.merge!(:where => {:written_on => topic.written_on.getutc}).first
       end
@@ -496,7 +497,7 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_condition_local_time_interpolation_with_default_timezone_utc
     with_env_tz 'America/New_York' do
-      with_active_record_default_timezone :utc do
+      with_timezone_config default: :utc do
         topic = Topic.first
         assert_equal topic, Topic.all.merge!(:where => ['written_on = ?', topic.written_on.getlocal]).first
       end
@@ -505,7 +506,7 @@ class FinderTest < ActiveRecord::TestCase
 
   def test_hash_condition_local_time_interpolation_with_default_timezone_utc
     with_env_tz 'America/New_York' do
-      with_active_record_default_timezone :utc do
+      with_timezone_config default: :utc do
         topic = Topic.first
         assert_equal topic, Topic.all.merge!(:where => {:written_on => topic.written_on.getlocal}).first
       end
@@ -858,6 +859,12 @@ class FinderTest < ActiveRecord::TestCase
     end
   ensure
     Toy.reset_primary_key
+  end
+
+  def test_find_without_primary_key
+    assert_raises(ActiveRecord::UnknownPrimaryKey) do
+      Matey.find(1)
+    end
   end
 
   def test_finder_with_offset_string

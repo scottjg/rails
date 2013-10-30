@@ -22,8 +22,8 @@ with Rails. However, to get the most out of it, you need to have some
 prerequisites installed:
 
 * The [Ruby](http://www.ruby-lang.org/en/downloads) language version 1.9.3 or newer
-* The [RubyGems](http://rubygems.org/) packaging system
-    * To learn more about RubyGems, please read the [RubyGems User Guide](http://docs.rubygems.org/read/book/1)
+* The [RubyGems](http://rubygems.org) packaging system
+    * To learn more about RubyGems, please read the [RubyGems Guides](http://guides.rubygems.org)
 * A working installation of the [SQLite3 Database](http://www.sqlite.org)
 
 Rails is a web application framework running on the Ruby programming language.
@@ -262,7 +262,7 @@ of code:
 ### Setting the Application Home Page
 
 Now that we have made the controller and view, we need to tell Rails when we
-want Hello Rails! to show up. In our case, we want it to show up when we
+want `Hello, Rails!` to show up. In our case, we want it to show up when we
 navigate to the root URL of our site, <http://localhost:3000>. At the moment,
 "Welcome Aboard" is occupying that spot.
 
@@ -522,6 +522,7 @@ Edit the `form_for` line inside `app/views/posts/new.html.erb` to look like this
 In this example, the `posts_path` helper is passed to the `:url` option.
 To see what Rails will do with this, we look back at the output of
 `rake routes`:
+
 ```bash
 $ rake routes
    Prefix Verb   URI Pattern               Controller#Action
@@ -535,6 +536,7 @@ edit_post GET    /posts/:id/edit(.:format) posts#edit
           DELETE /posts/:id(.:format)      posts#destroy
      root        /                         welcome#index
 ```
+
 The `posts_path` helper tells Rails to point the form
 to the URI Pattern associated with the `posts` prefix; and
 the form will (by default) send a `POST` request
@@ -687,7 +689,7 @@ invoking the command: `rake db:migrate RAILS_ENV=production`.
 
 ### Saving data in the controller
 
-Back in `posts_controller`, we need to change the `create` action
+Back in `PostsController`, we need to change the `create` action
 to use the new `Post` model to save the data in the database. Open `app/controllers/posts_controller.rb`
 and change the `create` action to look like this:
 
@@ -806,7 +808,7 @@ The route for this as per output of `rake routes` is:
 posts GET    /posts(.:format)          posts#index
 ```
 
-And an action for that route inside the `PostsController` in the `app/controllers/posts_controller.rb` file:
+Add the corresponding `index` action for that route inside the `PostsController` in the `app/controllers/posts_controller.rb` file:
 
 ```ruby
 def index
@@ -846,7 +848,7 @@ Open `app/views/welcome/index.html.erb` and modify it as follows:
 
 ```html+erb
 <h1>Hello, Rails!</h1>
-<%= link_to "My Blog", controller: "posts" %>
+<%= link_to 'My Blog', controller: 'posts' %>
 ```
 
 The `link_to` method is one of Rails' built-in view helpers. It creates a
@@ -1013,7 +1015,7 @@ errors with `@post.errors.full_messages`.
 arguments. If the number is greater than one, the string will be automatically
 pluralized.
 
-The reason why we added `@post = Post.new` in `posts_controller` is that
+The reason why we added `@post = Post.new` in the `PostsController` is that
 otherwise `@post` would be `nil` in our view, and calling
 `@post.errors.any?` would throw an error.
 
@@ -1031,7 +1033,7 @@ attempt to do just that on the new post form [(http://localhost:3000/posts/new)]
 We've covered the "CR" part of CRUD. Now let's focus on the "U" part, updating
 posts.
 
-The first step we'll take is adding an `edit` action to `posts_controller`.
+The first step we'll take is adding an `edit` action to the `PostsController`.
 
 ```ruby
 def edit
@@ -1132,7 +1134,7 @@ appear next to the "Show" link:
   <tr>
     <td><%= post.title %></td>
     <td><%= post.text %></td>
-    <td><%= link_to 'Show', post %></td>
+    <td><%= link_to 'Show', post_path(post) %></td>
     <td><%= link_to 'Edit', edit_post_path(post) %></td>
   </tr>
 <% end %>
@@ -1338,7 +1340,7 @@ class Comment < ActiveRecord::Base
 end
 ```
 
-This is very similar to the `post.rb` model that you saw earlier. The difference
+This is very similar to the `Post` model that you saw earlier. The difference
 is the line `belongs_to :post`, which sets up an Active Record _association_.
 You'll learn a little about associations in the next section of this guide.
 
@@ -1488,8 +1490,8 @@ So first, we'll wire up the Post show template
   </p>
 <% end %>
 
-<%= link_to 'Edit Post', edit_post_path(@post) %> |
-<%= link_to 'Back to Posts', posts_path %>
+<%= link_to 'Back', posts_path %>
+| <%= link_to 'Edit', edit_post_path(@post) %>
 ```
 
 This adds a form on the `Post` show page that creates a new comment by
@@ -1816,6 +1818,7 @@ class CommentsController < ApplicationController
     @post = Post.find(params[:post_id])
     ...
   end
+
   # snipped for brevity
 ```
 

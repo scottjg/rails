@@ -33,6 +33,7 @@ module ActiveRecord
       autoload :Quoting
       autoload :ConnectionPool
       autoload :QueryCache
+      autoload :Savepoints
     end
 
     autoload_at 'active_record/connection_adapters/abstract/transaction' do
@@ -395,13 +396,13 @@ module ActiveRecord
         @transaction.number
       end
 
-      def create_savepoint
+      def create_savepoint(name = nil)
       end
 
-      def rollback_to_savepoint
+      def rollback_to_savepoint(name = nil)
       end
 
-      def release_savepoint
+      def release_savepoint(name = nil)
       end
 
       def case_sensitive_modifier(node)
@@ -423,13 +424,14 @@ module ActiveRecord
 
       protected
 
-      def log(sql, name = "SQL", binds = [])
+      def log(sql, name = "SQL", binds = [], statement_name = nil)
         @instrumenter.instrument(
           "sql.active_record",
-          :sql           => sql,
-          :name          => name,
-          :connection_id => object_id,
-          :binds         => binds) { yield }
+          :sql            => sql,
+          :name           => name,
+          :connection_id  => object_id,
+          :statement_name => statement_name,
+          :binds          => binds) { yield }
       rescue => e
         message = "#{e.class.name}: #{e.message}: #{sql}"
         @logger.error message if @logger

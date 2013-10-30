@@ -1,3 +1,33 @@
+*   Removal of all javascript stuff (gems and files) when generating a new
+    application using the `--skip-javascript` option.
+
+    *Robin Dupret*
+
+*   Make the application name snake cased when it contains spaces
+
+    The application name is used to fill the `database.yml` and
+    `session_store.rb` files ; previously, if the provided name
+    contained whitespaces, it led to unexpected names in these files.
+
+    *Robin Dupret*
+
+*   Added `--model-name` option to `ScaffoldControllerGenerator`.
+
+    *yalab*
+
+*   Expose MiddlewareStack#unshift to environment configuration.
+
+    *Ben Pickles*
+
+*   Include `web-console` into newly generated applications' Gemfile.
+
+    *Genadi Samokovarov*
+
+*   `rails server` will only extend the logger to output to STDOUT
+     in development environment.
+
+    *Richard Schneeman*
+
 *   Don't require passing path to app before options in `rails new`
     and `rails plugin new`
 
