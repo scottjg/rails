@@ -54,7 +54,7 @@ module ActiveRecord
           else
             through_column = through_reflection.macro == :belongs_to ? through_reflection.association_primary_key : through_reflection.foreign_key
             source_column = source_reflection.macro == :belongs_to ? source_reflection.foreign_key : source_reflection.association_primary_key
-            through_options = {:select => [through_column, source_column]}
+            through_options = {:select => [source_reflection.active_record.primary_key, through_column, source_column]}
           end
 
           if options[:source_type]
