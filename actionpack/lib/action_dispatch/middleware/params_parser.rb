@@ -37,16 +37,18 @@ module ActionDispatch
 
         return false unless strategy
 
+        post_body = request.body
         case strategy
         when Proc
-          strategy.call(request.raw_post)
+          strategy.call(post_body.read)
         when :json
-          data = ActiveSupport::JSON.decode(request.raw_post)
+          data = ActiveSupport::JSON.decode(post_body.read)
           data = {:_json => data} unless data.is_a?(Hash)
           Request::Utils.deep_munge(data).with_indifferent_access
         else
           false
         end
+        post_body.rewind
       rescue Exception => e # JSON or Ruby code block errors
         logger(env).debug "Error occurred while parsing request parameters.\nContents:\n\n#{request.raw_post}"
 
