@@ -234,7 +234,7 @@ module Rails
         end
       end
 
-      public_task :apply_rails_template, :run_bundle
+      public_task :apply_rails_template, :run_bundle, :generate_spring_binstubs
 
     protected
 

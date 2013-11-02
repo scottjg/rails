@@ -26,8 +26,10 @@ module SharedGeneratorTests
     default_files.each { |path| assert_file path }
   end
 
-  def test_generation_runs_bundle_install
-    generator([destination_root]).expects(:bundle_command).with('install').once
+  def test_generation_runs_bundle_install_and_spring_binstub
+    generator([destination_root])
+    generator.expects(:bundle_command).with('install').once
+    generator.expects(:bundle_command).with('exec spring binstub --all').once
     quietly { generator.invoke_all }
   end
 

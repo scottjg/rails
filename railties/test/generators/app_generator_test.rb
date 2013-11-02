@@ -390,6 +390,19 @@ class AppGeneratorTest < Rails::Generators::TestCase
     assert_file "foo bar/config/initializers/session_store.rb", /key: '_foo_bar/
   end
 
+  def test_spring
+    run_generator
+    assert_file "Gemfile", /gem 'spring'/
+  end
+
+  def test_skip_spring
+    run_generator [destination_root, "--skip-spring"]
+
+    assert_file "Gemfile" do |content|
+      assert_no_match(/spring/, content)
+    end
+  end
+
 protected
 
   def action(*args, &block)
