@@ -163,10 +163,7 @@ module ActionView
 
   # An abstract class that implements a Resolver with path semantics.
   class PathResolver < Resolver #:nodoc:
-    #TODO: quick hack as we want variants to use "+" instead of "."
-    # :extname => "prefix"
     EXTENSIONS = { :locale => ".", :formats => ".", :variants => "+", :handlers => "." }
-    #EXTENSIONS = [:locale, :formats, :variants, :handlers]
     DEFAULT_PATTERN = ":prefix/:action{.:locale,}{.:formats,}{+:variants,}{.:handlers,}"
 
     def initialize(pattern=nil)
@@ -309,7 +306,7 @@ module ActionView
     def build_query(path, details)
       query = escape_entry(File.join(@path, path))
 
-      exts = Hash[EXTENSIONS.map{ |ext, prefix| [details[ext],prefix] }].map { |ext, prefix|
+      exts = Hash[EXTENSIONS.map{ |ext, prefix| [details[ext], prefix] }].map { |ext, prefix|
         "{#{ext.compact.uniq.map { |e| "#{prefix}#{e}," }.join}}"
       }.join
 
