@@ -73,7 +73,7 @@ module ActionController
       self.content_type = content_type if content_type
       self.headers["Location"] = url_for(location) if location
 
-      _process_variant(request.variant)
+      _process_variant(request ? request.variant : nil)
 
       super
     end
