@@ -36,6 +36,11 @@ class LookupContextTest < ActiveSupport::TestCase
     assert @lookup_context.formats.frozen?
   end
 
+  test "provides getters and setters for variants" do
+    @lookup_context.variants = [:mobile]
+    assert_equal [:mobile], @lookup_context.variants
+  end
+
   test "provides getters and setters for formats" do
     @lookup_context.formats = [:html]
     assert_equal [:html], @lookup_context.formats

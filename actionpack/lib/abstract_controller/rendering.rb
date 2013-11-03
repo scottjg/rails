@@ -21,6 +21,7 @@ module AbstractController
       options = _normalize_render(*args, &block)
       self.response_body = render_to_body(options)
       _process_format(rendered_format)
+      _process_variant(request.variant)
       self.response_body
     end
 
@@ -96,6 +97,9 @@ module AbstractController
     # Process the rendered format.
     # :api: private
     def _process_format(format)
+    end
+    
+    def _process_variant(variant)
     end
 
     # Normalize args and options.

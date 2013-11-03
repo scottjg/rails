@@ -93,7 +93,6 @@ class RespondToController < ActionController::Base
     end
   end
 
-
   def custom_constant_handling
     respond_to do |type|
       type.html   { render :text => "HTML"   }
@@ -143,6 +142,14 @@ class RespondToController < ActionController::Base
     respond_to do |type|
       type.html   { @type = "Firefox"; render :action => "iphone_with_html_response_type" }
       type.iphone { @type = "iPhone" ; render :action => "iphone_with_html_response_type" }
+    end
+  end
+
+  def variant_html_mobile
+    request.variant = :mobile
+
+    respond_to do |type|
+      type.html
     end
   end
 
@@ -489,5 +496,11 @@ class RespondToControllerTest < ActionController::TestCase
     assert_raises(ActionController::UnknownFormat) do
       get :using_defaults, :format => "invalidformat"
     end
+  end
+
+  def test_variant_html_mobile
+    get :variant_html_mobile
+    assert_equal "text/html", @response.content_type
+    assert_equal "mobile variant", @response.body
   end
 end

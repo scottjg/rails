@@ -102,6 +102,11 @@ module ActionView
         lookup_context.rendered_format = lookup_context.formats.first
       end
 
+      def _process_variant(variant)
+        super
+        lookup_context.variants = [variant]
+      end
+
       # Normalize args by converting render "foo" to render :action => "foo" and
       # render "foo/bar" to render :file => "foo/bar".
       # :api: private
