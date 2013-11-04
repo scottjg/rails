@@ -554,6 +554,19 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal [ Topic.find(1) ], [ Topic.find(2).topic ] & [ Topic.find(1) ]
   end
 
+  def test_successful_comparison_of_like_class_records
+    topic_1 = Topic.create!
+    topic_2 = Topic.create!
+
+    assert_equal [topic_2, topic_1].sort, [topic_1, topic_2]
+  end
+
+  def test_failed_comparison_of_unlike_class_records
+    assert_raises ArgumentError do
+      [ topics(:first), posts(:welcome) ].sort
+    end
+  end
+
   def test_create_without_prepared_statement
     topic = Topic.connection.unprepared_statement do
       Topic.create(:title => 'foo')
@@ -604,8 +617,23 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_unicode_column_name
+    Weird.reset_column_information
     weird = Weird.create(:なまえ => 'たこ焼き仮面')
     assert_equal 'たこ焼き仮面', weird.なまえ
+  end
+
+  def test_respect_internal_encoding
+    if current_adapter?(:PostgreSQLAdapter)
+      skip 'pg does not respect internal encoding and always returns utf8'
+    end
+    old_default_internal = Encoding.default_internal
+    silence_warnings { Encoding.default_internal = "EUC-JP" }
+
+    Weird.reset_column_information
+
+    assert_equal ["EUC-JP"], Weird.columns.map {|c| c.name.encoding.name }.uniq
+  ensure
+    silence_warnings { Encoding.default_internal = old_default_internal }
   end
 
   def test_non_valid_identifier_column_name

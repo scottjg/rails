@@ -184,6 +184,7 @@ task default: :test
         end
       end
 
+      public_task :set_default_accessors!
       public_task :create_root
 
       def create_root_files
@@ -319,7 +320,7 @@ task default: :test
         @application_definition ||= begin
 
           dummy_application_path = File.expand_path("#{dummy_path}/config/application.rb", destination_root)
-          unless options[:pretend] || !File.exists?(dummy_application_path)
+          unless options[:pretend] || !File.exist?(dummy_application_path)
             contents = File.read(dummy_application_path)
             contents[(contents.index(/module ([\w]+)\n(.*)class Application/m))..-1]
           end

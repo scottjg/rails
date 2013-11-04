@@ -311,58 +311,67 @@ module Rails
     #
     # This class should be called before the AppGenerator is required and started
     # since it configures and mutates ARGV correctly.
-    class AppPreparer # :nodoc
-      attr_reader :argv
-
+    class ARGVScrubber # :nodoc
       def initialize(argv = ARGV)
         @argv = argv
       end
 
       def prepare!
-        handle_version_request!(argv.first)
-        unless handle_invalid_command!(argv.first)
-          argv.shift
-          handle_rails_rc!
+        handle_version_request!(@argv.first)
+        handle_invalid_command!(@argv.first, @argv) do
+          handle_rails_rc!(@argv.drop(1))
         end
+      end
+
+      def self.default_rc_file
+        File.join(File.expand_path('~'), '.railsrc')
       end
 
       private
 
         def handle_version_request!(argument)
-          if ['--version', '-v'].include?(argv.first)
+          if ['--version', '-v'].include?(argument)
             require 'rails/version'
             puts "Rails #{Rails::VERSION::STRING}"
             exit(0)
           end
         end
 
-        def handle_invalid_command!(argument)
-          if argument != "new"
-            argv[0] = "--help"
-          end
-        end
-
-        def handle_rails_rc!
-          unless argv.delete("--no-rc")
-            insert_railsrc_into_argv!(railsrc)
-          end
-        end
-
-        def railsrc
-          if (customrc = argv.index{ |x| x.include?("--rc=") })
-            File.expand_path(argv.delete_at(customrc).gsub(/--rc=/, ""))
+        def handle_invalid_command!(argument, argv)
+          if argument == "new"
+            yield
           else
-            File.join(File.expand_path("~"), '.railsrc')
+            ['--help'] + argv.drop(1)
           end
         end
 
-        def insert_railsrc_into_argv!(railsrc)
-          if File.exist?(railsrc)
-            extra_args_string = File.read(railsrc)
-            extra_args = extra_args_string.split(/\n+/).map {|l| l.split}.flatten
-            puts "Using #{extra_args.join(" ")} from #{railsrc}"
-            argv.insert(1, *extra_args)
+        def handle_rails_rc!(argv)
+          if argv.find { |arg| arg == '--no-rc' }
+            argv.reject { |arg| arg == '--no-rc' }
+          else
+            railsrc(argv) { |rc_argv, rc| insert_railsrc_into_argv!(rc_argv, rc) }
           end
+        end
+
+        def railsrc(argv)
+          if (customrc = argv.index{ |x| x.include?("--rc=") })
+            fname = File.expand_path(argv[customrc].gsub(/--rc=/, ""))
+            yield(argv.take(customrc) + argv.drop(customrc + 1), fname)
+          else
+            yield argv, self.class.default_rc_file
+          end
+        end
+
+        def read_rc_file(railsrc)
+          extra_args = File.readlines(railsrc).flat_map(&:split)
+          puts "Using #{extra_args.join(" ")} from #{railsrc}"
+          extra_args
+        end
+
+        def insert_railsrc_into_argv!(argv, railsrc)
+          return argv unless File.exist?(railsrc)
+          extra_args = read_rc_file railsrc
+          argv.take(1) + extra_args + argv.drop(1)
         end
     end
   end

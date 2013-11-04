@@ -1,3 +1,51 @@
+*   `.unscope` now removes conditions specified in `default_scope`.
+
+    *Jon Leighton*
+
+*   Added ActiveRecord::QueryMethods#rewhere which will overwrite an existing, named where condition.
+
+	Examples:
+		
+    	Post.where(trashed: true).where(trashed: false)                       #=> WHERE `trashed` = 1 AND `trashed` = 0
+    	Post.where(trashed: true).rewhere(trashed: false)                     #=> WHERE `trashed` = 0
+    	Post.where(active: true).where(trashed: true).rewhere(trashed: false) #=> WHERE `active` = 1 AND `trashed` = 0
+
+	*DHH*
+
+*   Extend ActiveRecord::Base#cache_key to take an optional list of timestamp attributes of which the highest will be used.
+
+    Example:
+
+        # last_reviewed_at will be used, if that's more recent than updated_at, or vice versa
+        Person.find(5).cache_key(:updated_at, :last_reviewed_at)
+
+    *DHH*
+
+*   Added ActiveRecord::Base#enum for declaring enum attributes where the values map to integers in the database, but can be queried by name.
+
+    Example:
+
+        class Conversation < ActiveRecord::Base
+          enum status: [:active, :archived]
+        end
+
+        Conversation::STATUS # => { active: 0, archived: 1 }
+
+        # conversation.update! status: 0
+        conversation.active!
+        conversation.active? # => true
+        conversation.status  # => :active
+
+        # conversation.update! status: 1
+        conversation.archived!
+        conversation.archived? # => true
+        conversation.status    # => :archived
+
+        # conversation.update! status: 1
+        conversation.status = :archived
+
+    *DHH*
+
 *   ActiveRecord::Base#attribute_for_inspect now truncates long arrays (more than 10 elements)
 
     *Jan Bernacki*
@@ -10,6 +58,7 @@
     Fixed bug when providing `includes` in through association scope, and fetching targets.
 
     Example:
+
         class Vendor < ActiveRecord::Base
           has_many :relationships, -> { includes(:user) }
           has_many :users, through: :relationships
@@ -25,8 +74,7 @@
 
         vendor.users.to_a # => No exception is raised
 
-
-    Fixes: #12242, #9517, #10240
+    Fixes #12242, #9517, #10240.
 
     *Paul Nikitochkin*
 
@@ -213,18 +261,6 @@
     Fixes #10450.
 
     *kennyj*
-
-*   ActiveRecord::Base#<=> has been removed.  Primary keys may not be in order,
-    or even be numbers, so sorting by id doesn't make sense.  Please use `sort_by`
-    and specify the attribute you wish to sort with.  For example, change:
-
-      Post.all.to_a.sort
-
-    to:
-
-      Post.all.to_a.sort_by(&:id)
-
-    *Aaron Patterson*
 
 *   Fix: joins association, with defined in the scope block constraints by using several
     where constraints and at least of them is not `Arel::Nodes::Equality`,
@@ -545,11 +581,11 @@
     Method `delete_all` should not be invoking callbacks and this
     feature was deprecated in Rails 4.0. This is being removed.
     `delete_all` will continue to honor the `:dependent` option. However
-    if `:dependent` value is `:destroy` then the default deletion
+    if `:dependent` value is `:destroy` then the `:delete_all` deletion
     strategy for that collection will be applied.
 
     User can also force a deletion strategy by passing parameter to
-    `delete_all`. For example you can do `@post.comments.delete_all(:nullify)` .
+    `delete_all`. For example you can do `@post.comments.delete_all(:nullify)`.
 
     *Neeraj Singh*
 

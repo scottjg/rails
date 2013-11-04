@@ -5,6 +5,8 @@ require 'rails/version' unless defined?(Rails::VERSION)
 require 'rbconfig'
 require 'open-uri'
 require 'uri'
+require 'rails/generators/base'
+require 'active_support/core_ext/array/extract_options'
 
 module Rails
   module Generators
@@ -76,22 +78,45 @@ module Rails
       end
 
       def initialize(*args)
-        @original_wd = Dir.pwd
+        @original_wd   = Dir.pwd
+        @gem_filter    = lambda { |gem| true }
+        @extra_entries = []
         super
         convert_database_option_for_jruby
       end
 
     protected
 
+      def gemfile_entry(name, *args)
+        options = args.extract_options!
+        version = args.first
+        github = options[:github]
+        path   = options[:path]
+
+        if github
+          @extra_entries << GemfileEntry.github(name, github)
+        elsif path
+          @extra_entries << GemfileEntry.path(name, path)
+        else
+          @extra_entries << GemfileEntry.version(name, version)
+        end
+        self
+      end
+
       def gemfile_entries
-        @gemfile_entries ||= [
-          rails_gemfile_entry,
+        [ rails_gemfile_entry,
           database_gemfile_entry,
           assets_gemfile_entry,
           javascript_gemfile_entry,
           jbuilder_gemfile_entry,
-          webconsole_gemfile_entry,
-          sdoc_gemfile_entry].flatten
+          sdoc_gemfile_entry,
+          @extra_entries].flatten.find_all(&@gem_filter)
+      end
+
+      def add_gem_entry_filter
+        @gem_filter = lambda { |next_filter,entry|
+          yield(entry) && next_filter.call(entry)
+        }.curry[@gem_filter]
       end
 
       def builder
@@ -107,7 +132,6 @@ module Rails
       end
 
       def create_root
-        set_default_accessors!
         valid_const?
 
         empty_directory '.'
@@ -146,21 +170,21 @@ module Rails
         options[value] ? '# ' : ''
       end
 
-      class GemfileEntry < Struct.new(:name, :comment, :version, :options, :commented_out)
-        def initialize(name, comment, version, options = {}, commented_out = false)
+      class GemfileEntry < Struct.new(:name, :version, :comment, :options, :commented_out)
+        def initialize(name, version, comment, options = {}, commented_out = false)
           super
         end
 
         def self.github(name, github, comment = nil)
-          new(name, comment, nil, github: github)
+          new(name, nil, comment, github: github)
         end
 
         def self.version(name, version, comment = nil)
-          new(name, comment, version)
+          new(name, version, comment)
         end
 
         def self.path(name, path, comment = nil)
-          new(name, comment, nil, path: path)
+          new(name, nil, comment, path: path)
         end
 
         def padding(max_width)
@@ -236,14 +260,9 @@ module Rails
         GemfileEntry.version('jbuilder', '~> 1.2', comment)
       end
 
-      def webconsole_gemfile_entry
-        comment = 'Run `rails console` in the browser. Read more: https://github.com/rails/web-console'
-        GemfileEntry.new('web-console', comment, nil, group: :development)
-      end
-
       def sdoc_gemfile_entry
         comment = 'bundle exec rake doc:rails generates the API under doc/api.'
-        GemfileEntry.new('sdoc', comment, nil, { :group => :doc, :require => false })
+        GemfileEntry.new('sdoc', nil, comment, { group: :doc, require: false })
       end
 
       def coffee_gemfile_entry
@@ -272,9 +291,9 @@ module Rails
       def javascript_runtime_gemfile_entry
         comment = 'See https://github.com/sstephenson/execjs#readme for more supported runtimes'
         if defined?(JRUBY_VERSION)
-          GemfileEntry.version 'therubyrhino', comment, nil
+          GemfileEntry.version 'therubyrhino', nil, comment
         else
-          GemfileEntry.new 'therubyracer', comment, nil, { :platforms => :ruby }, true
+          GemfileEntry.new 'therubyracer', nil, comment, { platforms: :ruby }, true
         end
       end
 
