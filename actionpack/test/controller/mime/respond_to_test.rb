@@ -153,6 +153,16 @@ class RespondToController < ActionController::Base
     end
   end
 
+  def variant_html_tablet_phone
+    respond_to do |type|
+      type.html do |html|
+        require 'pry'; binding.pry
+        html.tablet { render text: "tablet" }
+        html.phone  { render text: "phone" }
+      end
+    end
+  end
+
   protected
     def set_layout
       case action_name
@@ -502,5 +512,19 @@ class RespondToControllerTest < ActionController::TestCase
     get :variant_html_mobile
     assert_equal "text/html", @response.content_type
     assert_equal "mobile variant", @response.body
+  end
+
+  def test_variant_html_phone
+    @request.variant = :phone
+    get :variant_html_tablet_phone
+    assert_equal "text/html", @response.content_type
+    assert_equal "phone", @response.body
+  end
+
+  def test_variant_html_tablet
+    @request.variant = :tablet
+    get :variant_html_tablet_phone
+    assert_equal "text/html", @response.content_type
+    assert_equal "tablet", @response.body
   end
 end
