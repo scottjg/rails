@@ -1,3 +1,13 @@
+*   Added `ActiveRecord::Base.no_touching`, which allows ignoring touch on models.
+
+    Examples:
+
+      Post.no_touching do
+        Post.first.touch
+      end
+
+    *DHH*, *Damien Mathieu*
+
 *   `.unscope` now removes conditions specified in `default_scope`.
 
     *Jon Leighton*
