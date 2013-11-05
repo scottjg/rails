@@ -300,4 +300,24 @@ class ErrorsTest < ActiveModel::TestCase
     person.errors.expects(:generate_message).with(:name, :blank, { message: 'custom' })
     person.errors.add_on_blank :name, message: 'custom'
   end
+
+  test "+ concatenates two sets of errors" do
+    errors1 = ActiveModel::Errors.new(self)
+    errors2 = ActiveModel::Errors.new(self)
+    errors1.add(:foo, 'bar')
+    errors2.add(:bar, 'omg')
+    errors2.add(:foo, 'omg')
+    errors2.add(:bar, 'omg')
+    assert_equal((errors1 + errors2).messages, { foo: ['bar', 'omg'], bar: ['omg', 'omg'] })
+  end
+
+  test "| unions two sets of errors" do
+    errors1 = ActiveModel::Errors.new(self)
+    errors2 = ActiveModel::Errors.new(self)
+    errors1.add(:foo, 'bar')
+    errors2.add(:bar, 'omg')
+    errors2.add(:foo, 'omg')
+    errors2.add(:bar, 'omg')
+    assert_equal((errors1 | errors2).messages, { foo: ['bar', 'omg'], bar: ['omg'] })
+  end
 end

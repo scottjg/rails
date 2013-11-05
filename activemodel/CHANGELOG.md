@@ -1,3 +1,7 @@
+*   Allow merging of two ActiveModel::Errors using the concatenation and union operators.
+
+    *Matthew Daubert*
+
 *   Fix `has_secure_password` to honor bcrypt-ruby's cost attribute.
 
     *T.J. Schuck*

@@ -261,6 +261,21 @@ module ActiveModel
       end
     end
 
+    # Returns a new Errors object built by concatenating the two Errors.
+    def +(other)
+      self.class.new(@base).tap do |union|
+        each(&union.method(:add))
+        other.each(&union.method(:add))
+      end
+    end
+
+    # Returns a new Errors object built by joining the two Errors excluding any duplicate messages.
+    def |(other)
+      (self + other).tap do |union|
+        union.messages.each_value(&:uniq!)
+      end
+    end
+
     # Adds +message+ to the error messages on +attribute+. More than one error
     # can be added to the same +attribute+. If no +message+ is supplied,
     # <tt>:invalid</tt> is assumed.
