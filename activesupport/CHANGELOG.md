@@ -1,3 +1,8 @@
+*   Removed circular reference protection in JSON encoder, deprecated
+    ActiveSupport::JSON::Encoding::CircularReferenceError.
+
+    *Godfrey Chan*, *Sergio Campamá*
+
 *   Added Numeric#in_milliseconds, like 1.hour.in_milliseconds, so we can feed them to JavaScript functions like getTime().
 
 	*DHH*
