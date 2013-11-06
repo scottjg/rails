@@ -117,6 +117,17 @@ class TimestampTest < ActiveRecord::TestCase
     assert_equal @previously_updated_at, @developer.updated_at
   end
 
+  def test_no_touching_threadsafe
+    Thread.new do
+      Developer.no_touching do
+        sleep(1)
+      end
+    end
+
+    @developer.touch
+    assert_not_equal @previously_updated_at, @developer.updated_at
+  end
+
   def test_saving_a_record_with_a_belongs_to_that_specifies_touching_the_parent_should_update_the_parent_updated_at
     pet   = Pet.first
     owner = pet.owner
