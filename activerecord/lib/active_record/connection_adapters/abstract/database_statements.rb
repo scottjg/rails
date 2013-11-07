@@ -5,6 +5,7 @@ module ActiveRecord
       def to_sql(arel, binds = [])
         if arel.respond_to?(:ast)
           visitor.accept(arel.ast) do
+            binds = [""] if binds.empty?
             quote(*binds.shift.reverse)
           end
         else
