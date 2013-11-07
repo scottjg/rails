@@ -24,7 +24,7 @@ Engines are also closely related to plugins where the two share a common `lib` d
 
 The engine that will be created in this guide will be called "blorgh". The engine will provide blogging functionality to its host applications, allowing for new posts and comments to be created. At the beginning of this guide, you will be working solely within the engine itself, but in later sections you'll see how to hook it into an application.
 
-Engines can also be isolated from their host applications. This means that an application with a path such as `posts_path` provided by a routing helper can have an engine that provides a path also called `posts_path`, and the two would not clash. Along with this, controllers, models and table names are also namespaced. You'll see how to do this later in this guide.
+Engines can also be isolated from their host applications. This means that an application with a path such as `posts_path` provided by a routing helper can have an engine that provides a path also called `posts_path`, and the two would not clash. Along with this, controllers, models, and table names are also namespaced. You'll see how to do this later in this guide.
 
 It's important to keep in mind at all times that the application should **always** take precedence over its engines. An application is the object that has final say in what goes on in the universe (with the universe being the application's environment) where the engine should only be enhancing it, rather than changing it drastically.
 
