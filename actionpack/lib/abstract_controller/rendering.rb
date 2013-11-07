@@ -1,5 +1,6 @@
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
+require 'set'
 
 module AbstractController
   class DoubleRenderError < Error
@@ -12,11 +13,6 @@ module AbstractController
 
   module Rendering
     extend ActiveSupport::Concern
-
-    included do
-      class_attribute :protected_instance_variables
-      self.protected_instance_variables = []
-    end
 
     # Normalize arguments, options and then delegates render_to_body and
     # sticks the result in self.response_body.
@@ -55,21 +51,23 @@ module AbstractController
       Mime::TEXT
     end
 
-    DEFAULT_PROTECTED_INSTANCE_VARIABLES = %w(
+    DEFAULT_PROTECTED_INSTANCE_VARIABLES = Set.new %w(
       @_action_name @_response_body @_formats @_prefixes @_config
       @_view_context_class @_view_renderer @_lookup_context
-    )
+      @_routes @_db_runtime
+    ).map(&:to_sym)
 
     # This method should return a hash with assigns.
     # You can overwrite this configuration per controller.
     # :api: public
     def view_assigns
-      hash = {}
-      variables  = instance_variables
-      variables -= protected_instance_variables
-      variables -= DEFAULT_PROTECTED_INSTANCE_VARIABLES
-      variables.each { |name| hash[name[1..-1]] = instance_variable_get(name) }
-      hash
+      protected_vars = _protected_ivars
+      variables      = instance_variables
+
+      variables.reject! { |s| protected_vars.include? s }
+      variables.each_with_object({}) { |name, hash|
+        hash[name.slice(1, name.length)] = instance_variable_get(name)
+      }
     end
 
     # Normalize args by converting render "foo" to render :action => "foo" and
@@ -106,6 +104,10 @@ module AbstractController
       options = _normalize_args(*args, &block)
       _normalize_options(options)
       options
+    end
+
+    def _protected_ivars # :nodoc:
+      DEFAULT_PROTECTED_INSTANCE_VARIABLES
     end
   end
 end

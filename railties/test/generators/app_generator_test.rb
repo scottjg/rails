@@ -156,6 +156,52 @@ class AppGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  def test_add_gemfile_entry
+    template = Tempfile.open 'my_template'
+    template.puts 'gemfile_entry "tenderlove"'
+    template.flush
+
+    run_generator([destination_root, "-m", template.path])
+    assert_file "Gemfile", /tenderlove/
+  ensure
+    template.close
+    template.unlink
+  end
+
+  def test_add_skip_entry
+    template = Tempfile.open 'my_template'
+    template.puts 'add_gem_entry_filter { |gem| gem.name != "jbuilder" }'
+    template.flush
+
+    run_generator([destination_root, "-m", template.path])
+    assert_file "Gemfile" do |contents|
+      assert_no_match 'jbuilder', contents
+    end
+  ensure
+    template.close
+    template.unlink
+  end
+
+  def test_application_html_checks_gems
+    template = Tempfile.open 'my_template'
+    template.puts 'add_gem_entry_filter { |gem| gem.name != "turbolinks" }'
+    template.flush
+
+    run_generator([destination_root, "-m", template.path])
+    assert_file "Gemfile" do |contents|
+      assert_no_match 'turbolinks', contents
+    end
+    assert_file "Gemfile" do |contents|
+      assert_no_match 'turbolinks', contents
+    end
+    assert_file "app/views/layouts/application.html.erb" do |contents|
+      assert_no_match 'turbolinks', contents
+    end
+  ensure
+    template.close
+    template.unlink
+  end
+
   def test_config_another_database
     run_generator([destination_root, "-d", "mysql"])
     assert_file "config/database.yml", /mysql/

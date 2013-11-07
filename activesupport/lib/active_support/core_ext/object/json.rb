@@ -1,7 +1,14 @@
 # Hack to load json gem first so we can overwrite its to_json.
 require 'json'
 require 'bigdecimal'
+require 'active_support/core_ext/big_decimal/conversions' # for #to_s
+require 'active_support/core_ext/hash/except'
+require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/object/instance_variables'
 require 'time'
+require 'active_support/core_ext/time/conversions'
+require 'active_support/core_ext/date_time/conversions'
+require 'active_support/core_ext/date/conversions'
 
 # The JSON gem adds a few modules to Ruby core classes containing :to_json definition, overwriting
 # their default behavior. That said, we need to define the basic to_json method in all of them,
@@ -20,16 +27,16 @@ end
 class Object
   def as_json(options = nil) #:nodoc:
     if respond_to?(:to_hash)
-      to_hash
+      to_hash.as_json(options)
     else
-      instance_values
+      instance_values.as_json(options)
     end
   end
 end
 
 class Struct #:nodoc:
   def as_json(options = nil)
-    Hash[members.zip(values)]
+    Hash[members.zip(values)].as_json(options)
   end
 end
 
@@ -91,7 +98,7 @@ end
 
 class Float
   # Encoding Infinity or NaN to JSON should return "null". The default returns
-  # "Infinity" or "NaN" which breaks parsing the JSON. E.g. JSON.parse('[NaN]').
+  # "Infinity" or "NaN" which are not valid JSON.
   def as_json(options = nil) #:nodoc:
     finite? ? self : nil
   end
@@ -139,14 +146,11 @@ end
 
 class Array
   def as_json(options = nil) #:nodoc:
-    # use encoder as a proxy to call as_json on all elements, to protect from circular references
-    encoder = options && options[:encoder] || ActiveSupport::JSON::Encoding::Encoder.new(options)
-    map { |v| encoder.as_json(v, options) }
+    map { |v| v.as_json(options && options.dup) }
   end
 
   def encode_json(encoder) #:nodoc:
-    # we assume here that the encoder has already run as_json on self and the elements, so we run encode_json directly
-    "[#{map { |v| v.encode_json(encoder) } * ','}]"
+    "[#{map { |v| v.as_json.encode_json(encoder) } * ','}]"
   end
 end
 
@@ -165,19 +169,11 @@ class Hash
       self
     end
 
-    # use encoder as a proxy to call as_json on all values in the subset, to protect from circular references
-    encoder = options && options[:encoder] || ActiveSupport::JSON::Encoding::Encoder.new(options)
-    Hash[subset.map { |k, v| [k.to_s, encoder.as_json(v, options)] }]
+    Hash[subset.map { |k, v| [k.to_s, v.as_json(options && options.dup)] }]
   end
 
   def encode_json(encoder) #:nodoc:
-    # values are encoded with use_options = false, because we don't want hash representations from ActiveModel to be
-    # processed once again with as_json with options, as this could cause unexpected results (i.e. missing fields);
-
-    # on the other hand, we need to run as_json on the elements, because the model representation may contain fields
-    # like Time/Date in their original (not jsonified) form, etc.
-
-    "{#{map { |k,v| "#{encoder.encode(k.to_s)}:#{encoder.encode(v, false)}" } * ','}}"
+    "{#{map { |k,v| "#{k.as_json.encode_json(encoder)}:#{v.as_json.encode_json(encoder)}" } * ','}}"
   end
 end
 

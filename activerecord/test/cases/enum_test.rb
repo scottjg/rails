@@ -1,7 +1,7 @@
 require 'cases/helper'
 require 'models/book'
 
-class StoreTest < ActiveRecord::TestCase
+class EnumTest < ActiveRecord::TestCase
   fixtures :books
 
   setup do
@@ -17,8 +17,8 @@ class StoreTest < ActiveRecord::TestCase
   end
 
   test "query state with symbol" do
-    assert_equal :proposed, @book.status
-    assert_equal :unread, @book.read_status
+    assert_equal "proposed", @book.status
+    assert_equal "unread", @book.read_status
   end
 
   test "find via scope" do
@@ -36,13 +36,31 @@ class StoreTest < ActiveRecord::TestCase
     assert @book.written?
   end
 
-  test "constant" do
-    assert_equal 0, Book::STATUS[:proposed]
-    assert_equal 1, Book::STATUS[:written]
-    assert_equal 2, Book::STATUS[:published]
+  test "enum methods are overwritable" do
+    assert_equal "do publish work...", @book.published!
+    assert @book.published?
+  end
 
-    assert_equal 0, Book::READ_STATUS[:unread]
-    assert_equal 2, Book::READ_STATUS[:reading]
-    assert_equal 3, Book::READ_STATUS[:read]
+  test "direct assignment" do
+    @book.status = :written
+    assert @book.written?
+  end
+
+  test "assign string value" do
+    @book.status = "written"
+    assert @book.written?
+  end
+
+  test "assign non existing value raises an error" do
+    e = assert_raises(ArgumentError) do
+      @book.status = :unknown
+    end
+    assert_equal "'unknown' is not a valid status", e.message
+  end
+
+  test "constant to access the mapping" do
+    assert_equal 0, Book::STATUS[:proposed]
+    assert_equal 1, Book::STATUS["written"]
+    assert_equal 2, Book::STATUS[:published]
   end
 end
