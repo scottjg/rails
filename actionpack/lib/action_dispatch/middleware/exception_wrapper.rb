@@ -10,7 +10,8 @@ module ActionDispatch
       'AbstractController::ActionNotFound'         => :not_found,
       'ActionController::MethodNotAllowed'         => :method_not_allowed,
       'ActionController::NotImplemented'           => :not_implemented,
-      'ActionController::InvalidAuthenticityToken' => :unprocessable_entity
+      'ActionController::InvalidAuthenticityToken' => :unprocessable_entity,
+      'ActionDispatch::ParamsParser::ParseError'   => :bad_request
     )
 
     cattr_accessor :rescue_templates
