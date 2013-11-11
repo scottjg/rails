@@ -97,9 +97,6 @@ module AbstractController
     # :api: private
     def _process_format(format)
     end
-    
-    def _process_variant(variant)
-    end
 
     # Normalize args and options.
     # :api: private

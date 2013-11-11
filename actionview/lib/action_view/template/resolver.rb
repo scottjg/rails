@@ -241,7 +241,9 @@ module ActionView
       end
 
       handler = Template.handler_for_extension(extension)
-      format  = pieces.last && Template::Types[pieces.last]
+      format  = pieces.last && pieces.last.split("+", 2).first # remove variant from format
+      format  = format && Template::Types[format]
+
       [handler, format]
     end
   end

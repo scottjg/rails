@@ -54,6 +54,7 @@ module Mime
     cattr_reader :html_types
 
     attr_reader :symbol
+    attr_accessor :variant
 
     @register_callbacks = []
 
@@ -227,10 +228,15 @@ module Mime
     def initialize(string, symbol = nil, synonyms = [])
       @symbol, @synonyms = symbol, synonyms
       @string = string
+      @variant = nil
     end
 
     def to_s
-      @string
+      # if variant.present?
+      #   "#{@string}+#{@variant}"
+      # else
+        @string
+      # end
     end
 
     def to_str
@@ -271,7 +277,6 @@ module Mime
     def html?
       @@html_types.include?(to_sym) || @string =~ /html/
     end
-
 
     private
 

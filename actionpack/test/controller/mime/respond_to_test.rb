@@ -513,7 +513,7 @@ class RespondToControllerTest < ActionController::TestCase
 
   def test_variant_set_in_request
     get :variant_set_in_request
-    #assert_equal "text/html", @response.content_type # TODO: fix this. doesn't work for some reason when doing implicit render.
+    assert_equal "text/html", @response.content_type
     assert_equal "mobile", @response.body
   end
 

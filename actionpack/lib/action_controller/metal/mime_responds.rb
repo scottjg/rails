@@ -360,7 +360,7 @@ module ActionController #:nodoc:
     # is available.
     def retrieve_collector_from_mimes(mimes=nil, &block) #:nodoc:
       mimes ||= collect_mimes_from_class_level
-      collector = Collector.new(mimes)
+      collector = Collector.new(mimes, request.variant)
       block.call(collector) if block_given?
       format = collector.negotiate_format(request)
 
@@ -396,9 +396,11 @@ module ActionController #:nodoc:
     # request, with this response then being accessible by calling #response.
     class Collector
       include AbstractController::Collector
-      attr_accessor :format
 
-      def initialize(mimes)
+      attr_accessor :format, :default_variant
+
+      def initialize(mimes, default_variant = nil)
+        @default_variant = default_variant
         @responses = {}
         mimes.each { |mime| send(mime) }
       end
@@ -412,8 +414,10 @@ module ActionController #:nodoc:
       end
       alias :all :any
 
-      def custom(mime_type, &block)
+      def custom(mime_type, variant = nil, &block)
         mime_type = Mime::Type.lookup(mime_type.to_s) unless mime_type.is_a?(Mime::Type)
+        mime_type.variant = default_variant
+
         @responses[mime_type] ||= block
       end
 
