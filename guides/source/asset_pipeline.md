@@ -84,7 +84,7 @@ Fingerprinting is enabled by default for production and disabled for all other e
 More reading:
 
 * [Optimize caching](http://code.google.com/speed/page-speed/docs/caching.html)
-* [Revving Filenames: don’t use querystring](http://www.stevesouders.com/blog/2008/08/23/revving-filenames-dont-use-querystring/)
+* [Revving Filenames: don't use querystring](http://www.stevesouders.com/blog/2008/08/23/revving-filenames-dont-use-querystring/)
 
 
 How to Use the Asset Pipeline
@@ -249,10 +249,10 @@ When using the asset pipeline, paths to assets must be re-written and `sass-rail
 * `image-url("rails.png")` becomes `url(/assets/rails.png)`
 * `image-path("rails.png")` becomes `"/assets/rails.png"`.
 
-The more generic form can also be used but the asset path and class must both be specified:
+The more generic form can also be used:
 
-* `asset-url("rails.png", image)` becomes `url(/assets/rails.png)`
-* `asset-path("rails.png", image)` becomes `"/assets/rails.png"`
+* `asset-url("rails.png")` becomes `url(/assets/rails.png)`
+* `asset-path("rails.png")` becomes `"/assets/rails.png"`
 
 #### JavaScript/CoffeeScript and ERB
 

@@ -1,4 +1,105 @@
-## unreleased ##
+*   Fix `simple_format` escapes own output when passing `sanitize: true`
+
+    *Paul Seidemann*
+
+*   Don't let strong parameters mutate the given hash via `fetch`
+
+    Create a new instance if the given parameter is a `Hash` instead of
+    passing it to the `convert_hashes_to_parameters` method since it is
+    overriding its default value.
+
+    *Brendon Murphy*, *Doug Cole*
+
+
+## Rails 4.0.1 (November 01, 2013) ##
+
+*   Respect `SCRIPT_NAME` when using `redirect` with a relative path
+
+    Example:
+        # application routes.rb
+        mount BlogEngine => '/blog'
+
+        # engine routes.rb
+        get '/admin' => redirect('admin/dashboard')
+
+    This now redirects to the path `/blog/admin/dashboard`, whereas before it would've
+    generated an invalid url because there would be no slash between the host name and
+    the path. It also allows redirects to work where the application is deployed to a
+    subdirectory of a website.
+
+    Fixes #7977.
+
+    *Andrew White*
+
+*   Fix `ActionDispatch::RemoteIp::GetIp#calculate_ip` to only check for spoofing
+    attacks if both `HTTP_CLIENT_IP` and `HTTP_X_FORWARDED_FOR` are set.
+
+    Fixes #10844.
+
+    *Tamir Duberstein*
+
+*   Strong parameters should permit nested number as key.
+
+    Fixes #12293.
+
+    *kennyj*
+
+*   Fix `collection_check_boxes` generated hidden input to use the name attribute provided
+    in the options hash.
+
+    *Angel N. Sciortino*
+
+*   Fix some edge cases for AV `select` helper with `:selected` option
+
+    *Bogdan Gusiev*
+
+*   Handle `:namespace` form option in collection labels
+
+    *Vasiliy Ermolovich*
+
+*   Fix an issue where router can't recognize downcased url encoding path.
+
+    Fixes #12269.
+
+    *kennyj*
+
+*   Fix custom flash type definition. Misusage of the `_flash_types` class variable
+    caused an error when reloading controllers with custom flash types.
+
+    Fixes #12057.
+
+    *Ricardo de Cillo*
+
+*   Do not break params filtering on `nil` values.
+
+    Fixes #12149.
+
+    *Vasiliy Ermolovich*
+
+*   Fix `excerpt` when `:separator` is `nil`.
+
+    *Paul Nikitochkin*
+
+*   Make Live Streaming work with basic authentication or builder.
+
+    Fixes #10984.
+
+    *Aaron Patterson*
+
+*   Always use `Rack::Sendfile` to make possible to it be automatically
+    configured by the webserver.
+
+    Fixes #11440.
+
+    *Martin Schürrer*
+
+*   Flag cookies as secure with ignore case in `ActionDispatch::SSL`.
+
+    *Yamagishi Kazutoshi*
+
+*   Don't include STS header in non-HTTPS responses.
+
+    *Geoff Buesing*
 
 *   Fix an issue where rails raise exception about missing helper where it
     should throw `LoadError`. When helper file exists and only loaded file from

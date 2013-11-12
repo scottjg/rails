@@ -112,7 +112,7 @@ module ActiveRecord
         elsif abstract_class?
           "#{super}(abstract)"
         elsif !connected?
-          "#{super}(no database connection)"
+          "#{super} (call '#{super}.connection' to establish a connection)"
         elsif table_exists?
           attr_list = columns.map { |c| "#{c.name}: #{c.type}" } * ', '
           "#{super}(#{attr_list})"
@@ -167,19 +167,22 @@ module ActiveRecord
     # ==== Example:
     #   # Instantiates a single new object
     #   User.new(first_name: 'Jamie')
-    def initialize(attributes = nil)
+    def initialize(attributes = nil, options = {})
       defaults = self.class.column_defaults.dup
       defaults.each { |k, v| defaults[k] = v.dup if v.duplicable? }
 
       @attributes   = self.class.initialize_attributes(defaults)
-      @columns_hash = self.class.column_types.dup
+      @column_types_override = nil
+      @column_types = self.class.column_types
 
       init_internals
       init_changed_attributes
       ensure_proper_type
       populate_with_current_scope_attributes
 
-      assign_attributes(attributes) if attributes
+      # +options+ argument is only needed to make protected_attributes gem easier to hook.
+      # Remove it when we drop support to this gem.
+      init_attributes(attributes, options) if attributes
 
       yield self if block_given?
       run_callbacks :initialize unless _initialize_callbacks.empty?
@@ -197,7 +200,8 @@ module ActiveRecord
     #   post.title # => 'hello world'
     def init_with(coder)
       @attributes   = self.class.initialize_attributes(coder['attributes'])
-      @columns_hash = self.class.column_types.merge(coder['column_types'] || {})
+      @column_types_override = coder['column_types']
+      @column_types = self.class.column_types
 
       init_internals
 
@@ -448,6 +452,12 @@ module ActiveRecord
         attr, orig_value = c.name, c.default
         @changed_attributes[attr] = orig_value if _field_changed?(attr, orig_value, @attributes[attr])
       end
+    end
+
+    # This method is needed to make protected_attributes gem easier to hook.
+    # Remove it when we drop support to this gem.
+    def init_attributes(attributes, options)
+      assign_attributes(attributes)
     end
   end
 end

@@ -1,10 +1,232 @@
-## unreleased ##
 *   Perform necessary deeper encoding when hstore is inside an array, and return the
     hstores as HashWithIndifferentAccess to be consistent with other forms.
 
     Fixes: #11135
 
     *Josh Goodall*
+
+*   Prevent the counter cache from being decremented twice when destroying
+    a record on a has_many :through association.
+
+    Fixes #11079.
+
+    *Dmitry Dedov*
+
+*   Fix bug where has_one associaton record update result in crash, when replaced with itself.
+
+    Fixes #12834.
+
+    *Denis Redozubov*, *Sergio Cambra*
+
+*   Fix uninitialized constant TransactionState error when Marshall.load is used on an Active Record result.
+
+    Fixes #12790.
+
+    *Jason Ayre*
+
+*   Do not add to scope includes values from through associations.
+    Fixed bug when providing `includes` in through association scope, and fetching targets.
+
+    Example:
+        class Vendor < ActiveRecord::Base
+          has_many :relationships, -> { includes(:user) }
+          has_many :users, through: :relationships
+        end
+
+        vendor = Vendor.first
+
+        # Before
+
+        vendor.users.to_a # => Raises exception: not found `:user` for `User`
+
+        # After
+
+        vendor.users.to_a # => No exception is raised
+
+
+    Fixes #12242, #9517, #10240.
+
+    *Paul Nikitochkin*
+
+*   Save `has_one` association when primary key is manually set.
+
+    Fixes #12302.
+
+    *Lauro Caetano*
+
+*    Allow any version of BCrypt when using `has_secury_password`.
+
+     *Mike Perham*
+
+*   Assign inet/cidr attribute with `nil` value for invalid address.
+
+    Example:
+
+        record = User.new
+
+        record.logged_in_from_ip # is type of an inet or a cidr
+
+        # Before:
+        record.logged_in_from_ip = 'bad ip address' # raise exception
+
+        # After:
+        record.logged_in_from_ip = 'bad ip address' # do not raise exception
+        record.logged_in_from_ip # => nil
+        record.logged_in_from_ip_before_type_cast # => 'bad ip address'
+
+    *Paul Nikitochkin*
+
+*   `rake db:structure:dump` no longer crashes when the port was specified as `Fixnum`.
+
+    *Kenta Okamoto*
+
+*   Fix a bug where rake db:structure:load crashed when the path contained
+    spaces.
+
+    *Kevin Mook*
+
+*   `ActiveRecord::QueryMethods#unscope` unscopes negative equality
+
+    Allows you to call `#unscope` on a relation with negative equality
+    operators, i.e. `Arel::Nodes::NotIn` and `Arel::Nodes::NotEqual` that have
+    been generated through the use of `where.not`.
+
+    *Eric Hankins*
+
+
+## Rails 4.0.1 (November 01, 2013) ##
+
+*   `NullRelation#pluck` takes a list of columns
+
+    The method signature in `NullRelation` was updated to mimic that in
+    `Calculations`.
+
+    *Derek Prior*
+
+*   `scope_chain` should not be mutated for other reflections.
+
+    Currently `scope_chain` uses same array for building different
+    `scope_chain` for different associations. During processing
+    these arrays are sometimes mutated and because of in-place
+    mutation the changed `scope_chain` impacts other reflections.
+
+    Fix is to dup the value before adding to the `scope_chain`.
+
+    Fixes #3882.
+
+    *Neeraj Singh*
+
+*   Prevent the inversed association from being reloaded on save.
+
+    Fixes #9499.
+
+    *Dmitry Polushkin*
+
+*   `Relation#order` quotes the column name if you pass a `Symbol`.
+    Fixes #11870.
+
+    Example:
+
+        # Before
+        Post.order(:id).to_sql == '... ORDER BY "posts".id ASC'
+
+        # After
+        Post.order(:id).to_sql == '... ORDER BY "posts"."id" ASC'
+
+    *Yves Senn*
+
+*   Generate subquery for `Relation` if it passed as array condition for `where`
+    method.
+
+    Example:
+
+        # Before
+        Blog.where('id in (?)', Blog.where(id: 1))
+        # =>  SELECT "blogs".* FROM "blogs"  WHERE "blogs"."id" = 1
+        # =>  SELECT "blogs".* FROM "blogs"  WHERE (id IN (1))
+
+        # After
+        Blog.where('id in (?)', Blog.where(id: 1).select(:id))
+        # =>  SELECT "blogs".* FROM "blogs"
+        #     WHERE "blogs"."id" IN (SELECT "blogs"."id" FROM "blogs"  WHERE "blogs"."id" = 1)
+
+    Fixes #12415.
+
+    *Paul Nikitochkin*
+
+*   For missed association exception message
+    which is raised in `ActiveRecord::Associations::Preloader` class
+    added owner record class name in order to simplify to find problem code.
+
+    *Paul Nikitochkin*
+
+*   Fixes bug when using includes combined with select, the select statement was overwritten.
+
+    Fixes #11773.
+
+    *Edo Balvers*
+
+*   Objects instantiated using a null relationship will now retain the
+    attributes of the where clause.
+
+    Fixes #11676, #11675, #11376.
+
+    *Paul Nikitochkin*, *Peter Brown*, *Nthalk*
+
+*   Fixed `ActiveRecord::Associations::CollectionAssociation#find`
+    when using `has_many` association with `:inverse_of` and finding an array of one element,
+    it should return an array of one element too.
+
+    *arthurnn*
+
+*   Callbacks on has_many should access the in memory parent if a inverse_of is set.
+
+    *arthurnn*
+
+*   Migration dump UUID default functions to schema.rb.
+
+    Fixes #10751.
+
+    *kennyj*
+
+*   Fixed a bug in `ActiveRecord::Associations::CollectionAssociation#find_by_scan`
+    when using `has_many` association with `:inverse_of` option and UUID primary key.
+
+    Fixes #10450.
+
+    *kennyj*
+
+*   Fix: joins association, with defined in the scope block constraints by using several
+    where constraints and at least of them is not `Arel::Nodes::Equality`,
+    generates invalid SQL expression.
+
+    Fixes: #11963
+
+    *Paul Nikitochkin*
+
+*   Make possible to run SQLite rake tasks without the `Rails` constant defined.
+
+    *Damien Mathieu*
+
+*   Allow Relation#from to accept other relations with bind values.
+
+    *Ryan Wallace*
+
+*   Make `find_in_batches` and `find_each` work without a logger.
+
+    *Dmitry Polushkin*
+
+*   Fix inserts with prepared statements disabled.
+
+    Fixes #12023.
+
+    *Rafael Mendonça França*
+
+*   Setting a has_one association on a new record no longer causes an empty
+    transaction.
+
+    *Dylan Thacker-Smith*
+>>>>>>> 4-0-stable
 
 *   Fix `AR::Relation#merge` sometimes failing to preserve `readonly(false)` flag.
 
@@ -64,6 +286,8 @@
 
     This also affects order defined in `default_scope` or any kind of associations.
 
+    *Rafael Mendonça França*
+
 *   When using optimistic locking, `update` was not passing the column to `quote_value`
     to allow the connection adapter to properly determine how to quote the value. This was
     affecting certain databases that use specific column types.
@@ -96,7 +320,7 @@
 *   Remove extra select and update queries on `save`/`touch`/`destroy` Active Record model
     with belongs to reflection with option `touch: true`.
 
-    Fixes: #11288.
+    Fixes #11288.
 
     *Paul Nikitochkin*
 
@@ -137,23 +361,6 @@
 
 *   Fix mysql2 adapter raises the correct exception when executing a query on a
     closed connection.
-
-    *Yves Senn*
-
-*   Remove column restrictions for `count`, let the database raise if the SQL is
-    invalid. The previos behavior was untested and surprising for the user.
-
-    Fixes #5554.
-
-    Example:
-
-        User.select("name, username").count
-        # Before => SELECT count(*) FROM users
-        # After => ActiveRecord::StatementInvalid
-
-        # you can still use `count(:all)` to perform a query unrelated to the
-        # selected columns
-        User.select("name, username").count(:all) # => SELECT count(*) FROM users
 
     *Yves Senn*
 

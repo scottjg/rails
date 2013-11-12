@@ -285,8 +285,10 @@ module ActiveRecord
       references!(references) if references.any?
 
       # if a symbol is given we prepend the quoted table name
-      args = args.map { |arg|
-        arg.is_a?(Symbol) ? "#{quoted_table_name}.#{arg} ASC" : arg
+      args = args.map! { |arg|
+        arg.is_a?(Symbol) ?
+          Arel::Nodes::Ascending.new(klass.arel_table[arg]) :
+          arg
       }
 
       self.order_values += args
@@ -847,7 +849,7 @@ module ActiveRecord
 
       where_values.reject! do |rel|
         case rel
-        when Arel::Nodes::In, Arel::Nodes::Equality
+        when Arel::Nodes::In, Arel::Nodes::NotIn, Arel::Nodes::Equality, Arel::Nodes::NotEqual
           subrelation = (rel.left.kind_of?(Arel::Attributes::Attribute) ? rel.left : rel.right)
           subrelation.name.to_sym == target_value_sym
         else
@@ -875,19 +877,25 @@ module ActiveRecord
     end
 
     def collapse_wheres(arel, wheres)
-      equalities = wheres.grep(Arel::Nodes::Equality)
-
-      arel.where(Arel::Nodes::And.new(equalities)) unless equalities.empty?
-
-      (wheres - equalities).each do |where|
+      predicates = wheres.map do |where|
+        next where if ::Arel::Nodes::Equality === where
         where = Arel.sql(where) if String === where
-        arel.where(Arel::Nodes::Grouping.new(where))
+        Arel::Nodes::Grouping.new(where)
       end
+
+      arel.where(Arel::Nodes::And.new(predicates)) if predicates.present?
     end
 
     def build_where(opts, other = [])
       case opts
       when String, Array
+        #TODO: Remove duplication with: /activerecord/lib/active_record/sanitization.rb:113
+        values = Hash === other.first ? other.first.values : other
+
+        values.grep(ActiveRecord::Relation) do |rel|
+          self.bind_values += rel.bind_values
+        end
+
         [@klass.send(:sanitize_sql, other.empty? ? opts : ([opts] + other))]
       when Hash
         attributes = @klass.send(:expand_hash_conditions_for_aggregates, opts)
@@ -907,6 +915,7 @@ module ActiveRecord
       case opts
       when Relation
         name ||= 'subquery'
+        self.bind_values = opts.bind_values + self.bind_values
         opts.arel.as(name.to_s)
       else
         opts

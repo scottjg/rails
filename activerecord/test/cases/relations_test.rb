@@ -139,6 +139,13 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal relation.to_a, Topic.select('a.*').from(relation, :a).to_a
   end
 
+  def test_finding_with_subquery_with_binds
+    relation = Post.first.comments
+    assert_equal relation.to_a, Comment.select('*').from(relation).to_a
+    assert_equal relation.to_a, Comment.select('subquery.*').from(relation).to_a
+    assert_equal relation.to_a, Comment.select('a.*').from(relation, :a).to_a
+  end
+
   def test_finding_with_conditions
     assert_equal ["David"], Author.where(:name => 'David').map(&:name)
     assert_equal ['Mary'],  Author.where(["name = ?", 'Mary']).map(&:name)
@@ -168,6 +175,10 @@ class RelationTest < ActiveRecord::TestCase
     topics = Topic.order(:id => :asc).reverse_order
     assert_equal 4, topics.to_a.size
     assert_equal topics(:fourth).title, topics.first.title
+  end
+
+  def test_order_with_hash_and_symbol_generates_the_same_sql
+    assert_equal Topic.order(:id).to_sql, Topic.order(id: :asc).to_sql
   end
 
   def test_raising_exception_on_invalid_hash_params
@@ -258,7 +269,7 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_none_chained_to_methods_firing_queries_straight_to_db
     assert_no_queries do
-      assert_equal [],    Developer.none.pluck(:id) # => uses select_all
+      assert_equal [],    Developer.none.pluck(:id, :name)
       assert_equal 0,     Developer.none.delete_all
       assert_equal 0,     Developer.none.update_all(:name => 'David')
       assert_equal 0,     Developer.none.delete(1)
@@ -286,6 +297,10 @@ class RelationTest < ActiveRecord::TestCase
   def test_null_relation_metadata_methods
     assert_equal "", Developer.none.to_sql
     assert_equal({}, Developer.none.where_values_hash)
+  end
+
+  def test_null_relation_where_values_hash
+    assert_equal({ 'salary' => 100_000 }, Developer.none.where(salary: 100_000).where_values_hash)
   end
 
   def test_joins_with_nil_argument
@@ -465,6 +480,14 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal Developer.where(name: 'David').map(&:id).sort, developers
   end
 
+  def test_includes_with_select
+    query = Post.select('comments_count AS ranking').order('ranking').includes(:comments)
+      .where(comments: { id: 1 })
+
+    assert_equal ['comments_count AS ranking'], query.select_values
+    assert_equal 1, query.to_a.size
+  end
+
   def test_loading_with_one_association
     posts = Post.preload(:comments)
     post = posts.find { |p| p.id == 1 }
@@ -597,6 +620,36 @@ class RelationTest < ActiveRecord::TestCase
       relation = Author.where(:id => Author.where(:id => david.id))
       assert_equal [david], relation.to_a
     }
+
+    assert_queries(1) {
+      relation = Author.where('id in (?)', Author.where(id: david).select(:id))
+      assert_equal [david], relation.to_a
+    }
+
+    assert_queries(1) do
+      relation = Author.where('id in (:author_ids)', author_ids: Author.where(id: david).select(:id))
+      assert_equal [david], relation.to_a
+    end
+  end
+
+  def test_find_all_using_where_with_relation_with_bound_values
+    david = authors(:david)
+    davids_posts = david.posts.order(:id).to_a
+
+    assert_queries(1) do
+      relation = Post.where(id: david.posts.select(:id))
+      assert_equal davids_posts, relation.order(:id).to_a
+    end
+
+    assert_queries(1) do
+      relation = Post.where('id in (?)', david.posts.select(:id))
+      assert_equal davids_posts, relation.order(:id).to_a, 'should process Relation as bind variables'
+    end
+
+    assert_queries(1) do
+      relation = Post.where('id in (:post_ids)', post_ids: david.posts.select(:id))
+      assert_equal davids_posts, relation.order(:id).to_a, 'should process Relation as named bind variables'
+    end
   end
 
   def test_find_all_using_where_with_relation_and_alternate_primary_key
@@ -1546,7 +1599,7 @@ class RelationTest < ActiveRecord::TestCase
     assert merged.to_sql.include?("wtf")
     assert merged.to_sql.include?("bbq")
   end
- 
+
   def test_merging_removes_lhs_bind_parameters
     left  = Post.where(id: Arel::Nodes::BindParam.new('?'))
     column = Post.columns_hash['id']

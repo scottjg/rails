@@ -692,7 +692,7 @@ module ActionView
       #
       # Note that fields_for will automatically generate a hidden field
       # to store the ID of the record. There are circumstances where this
-      # hidden field is not needed and you can pass <tt>hidden_field_id: false</tt>
+      # hidden field is not needed and you can pass <tt>include_id: false</tt>
       # to prevent fields_for from rendering it automatically.
       def fields_for(record_name, record_object = nil, options = {}, &block)
         builder = instantiate_builder(record_name, record_object, options)
@@ -1172,7 +1172,7 @@ module ActionView
     # methods in the +FormHelper+ module. This class, however, allows you to
     # call methods with the model object you are building the form for.
     #
-    # You can create your own custom FormBuilder templates by subclasses this
+    # You can create your own custom FormBuilder templates by subclassing this
     # class. For example:
     #
     #   class MyFormBuilder < ActionView::Helpers::FormBuilder
@@ -1507,7 +1507,7 @@ module ActionView
       #
       # Note that fields_for will automatically generate a hidden field
       # to store the ID of the record. There are circumstances where this
-      # hidden field is not needed and you can pass <tt>hidden_field_id: false</tt>
+      # hidden field is not needed and you can pass <tt>include_id: false</tt>
       # to prevent fields_for from rendering it automatically.
       def fields_for(record_name, record_object = nil, fields_options = {}, &block)
         fields_options, record_object = record_object, nil if record_object.is_a?(Hash) && record_object.extractable_options?

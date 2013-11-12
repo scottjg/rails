@@ -8,7 +8,7 @@ require 'railties/lib/rails/api/task'
 desc "Build gem files for all projects"
 task :build => "all:build"
 
-desc "Release all gems to gemcutter and create a tag"
+desc "Release all gems to rubygems and create a tag"
 task :release => "all:release"
 
 PROJECTS = %w(activesupport activemodel actionpack actionmailer activerecord railties)
@@ -36,15 +36,7 @@ task :smoke do
 end
 
 desc "Install gems for all projects."
-task :install => :build do
-  version = File.read("RAILS_VERSION").strip
-  (PROJECTS - ["railties"]).each do |project|
-    puts "INSTALLING #{project}"
-    system("gem install #{project}/pkg/#{project}-#{version}.gem --local --no-ri --no-rdoc")
-  end
-  system("gem install railties/pkg/railties-#{version}.gem --local --no-ri --no-rdoc")
-  system("gem install pkg/rails-#{version}.gem --local --no-ri --no-rdoc")
-end
+task :install => "all:install"
 
 desc "Generate documentation for the Rails framework"
 if ENV['EDGE']

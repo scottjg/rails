@@ -39,6 +39,7 @@ module ActiveRecord
       autoload :ClosedTransaction
       autoload :RealTransaction
       autoload :SavepointTransaction
+      autoload :TransactionState
     end
 
     # Active Record supports multiple database systems. AbstractAdapter and
@@ -99,6 +100,7 @@ module ActiveRecord
         @query_cache_enabled = false
         @schema_cache        = SchemaCache.new self
         @visitor             = nil
+        @prepared_statements = false
       end
 
       def valid_type?(type)
@@ -197,10 +199,11 @@ module ActiveRecord
       end
 
       def unprepared_statement
-        old, @visitor = @visitor, unprepared_visitor
+        old_prepared_statements, @prepared_statements = @prepared_statements, false
+        old_visitor, @visitor = @visitor, unprepared_visitor
         yield
       ensure
-        @visitor = old
+        @visitor, @prepared_statements = old_visitor, old_prepared_statements
       end
 
       # Returns the human-readable name of the adapter. Use mixed case - one
@@ -442,6 +445,10 @@ module ActiveRecord
       def translate_exception(exception, message)
         # override in derived class
         ActiveRecord::StatementInvalid.new(message, exception)
+      end
+
+      def without_prepared_statement?(binds)
+        !@prepared_statements || binds.empty?
       end
     end
   end

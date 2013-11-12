@@ -279,11 +279,7 @@ module ActiveRecord
       end
 
       def exec_query(sql, name = 'SQL', binds = [])
-        # If the configuration sets prepared_statements:false, binds will
-        # always be empty, since the bind variables will have been already
-        # substituted and removed from binds by BindVisitor, so this will
-        # effectively disable prepared statement usage completely.
-        if binds.empty?
+        if without_prepared_statement?(binds)
           result_set, affected_rows = exec_without_stmt(sql, name)
         else
           result_set, affected_rows = exec_stmt(sql, name, binds)
@@ -563,7 +559,7 @@ module ActiveRecord
       def set_field_encoding field_name
         field_name.force_encoding(client_encoding)
         if internal_enc = Encoding.default_internal
-          field_name = field_name.encoding(internal_enc)
+          field_name = field_name.encode!(internal_enc)
         end
         field_name
       end
