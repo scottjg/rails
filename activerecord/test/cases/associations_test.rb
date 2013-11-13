@@ -20,10 +20,18 @@ require 'models/molecule'
 require 'models/electron'
 require 'models/man'
 require 'models/interest'
+require 'models/contract'
 
 class AssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :developers_projects,
            :computers, :people, :readers
+
+  def test_association_query_methods
+    company = Company.create!(:name => 'Example')
+    assert !company.contracts?
+    company.contracts.create
+    assert company.contracts?
+  end
 
   def test_eager_loading_should_not_change_count_of_children
     liquid = Liquid.create(:name => 'salty')
