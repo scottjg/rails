@@ -102,8 +102,8 @@ module ActiveRecord
     #
     # Attributes marked as readonly are silently ignored if the record is
     # being updated.
-    def save(*)
-      create_or_update
+    def save(options={})
+      create_or_update(options)
     rescue ActiveRecord::RecordInvalid
       false
     end
@@ -124,8 +124,8 @@ module ActiveRecord
     #
     # Attributes marked as readonly are silently ignored if the record is
     # being updated.
-    def save!(*)
-      create_or_update || raise(RecordNotSaved)
+    def save!(options={})
+      create_or_update(options) || raise(RecordNotSaved)
     end
 
     # Deletes the record in the database and freezes this instance to
@@ -473,29 +473,36 @@ module ActiveRecord
       relation
     end
 
-    def create_or_update
+    def create_or_update(options)
       raise ReadOnlyRecord if readonly?
-      result = new_record? ? create_record : update_record
+      result = new_record? ? create_record(options) : update_record(options)
       result != false
     end
 
     # Updates the associated record with values matching those of the instance attributes.
     # Returns the number of affected rows.
-    def update_record(attribute_names = @attributes.keys)
+    def update_record(options)
+      attribute_names = @attributes.keys
       attributes_values = arel_attributes_with_values_for_update(attribute_names)
+
+      conditions = options.fetch(:where) { self.class.unscoped }
+
       if attributes_values.empty?
         0
       else
-        self.class.unscoped.update_record attributes_values, id, id_was
+        self.class.unscoped.merge(conditions).update_record attributes_values, id, id_was
       end
     end
 
     # Creates a record with values matching those of the instance attributes
     # and returns its id.
-    def create_record(attribute_names = @attributes.keys)
+    def create_record(options)
+      attribute_names = @attributes.keys
       attributes_values = arel_attributes_with_values_for_create(attribute_names)
 
-      new_id = self.class.unscoped.insert attributes_values
+      conditions = options.fetch(:where) { self.class.unscoped }
+
+      new_id = self.class.unscoped.merge(conditions).insert attributes_values
       self.id ||= new_id if self.class.primary_key
 
       @new_record = false

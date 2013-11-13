@@ -58,6 +58,7 @@ module ActiveRecord
         im.values = Arel.sql(connection.empty_insert_statement_value)
       else
         im.insert substitutes
+        im.wheres = arel.constraints
       end
 
       @klass.connection.insert(
@@ -69,9 +70,12 @@ module ActiveRecord
         binds)
     end
 
-    def update_record(values, id, id_was) # :nodoc:
+    def update_record(values, id, id_was, options={}) # :nodoc:
       substitutes, binds = substitute_values values
-      um = @klass.unscoped.where(@klass.arel_table[@klass.primary_key].eq(id_was || id)).arel.compile_update(substitutes)
+
+      update_conditions = options.fetch(:where) { @klass.unscoped }
+
+      um = @klass.unscoped.merge(update_conditions).where(@klass.arel_table[@klass.primary_key].eq(id_was || id)).arel.compile_update(substitutes)
 
       @klass.connection.update(
         um,
