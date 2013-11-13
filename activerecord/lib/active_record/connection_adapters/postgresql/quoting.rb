@@ -44,7 +44,7 @@ module ActiveRecord
             when 'json' then super(PostgreSQLColumn.json_to_string(value), column)
             else super
             end
-          when IPAddr
+          when IP
             case sql_type
             when 'inet', 'cidr' then super(PostgreSQLColumn.cidr_to_string(value), column)
             else super
@@ -113,7 +113,7 @@ module ActiveRecord
             when 'json' then PostgreSQLColumn.json_to_string(value)
             else super(value, column)
             end
-          when IPAddr
+          when IP
             return super(value, column) unless ['inet','cidr'].include? column.sql_type
             PostgreSQLColumn.cidr_to_string(value)
           else

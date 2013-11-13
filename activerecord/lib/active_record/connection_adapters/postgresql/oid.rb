@@ -239,7 +239,7 @@ module ActiveRecord
         class Cidr < Type
           def type_cast(value)
             return if value.nil?
-
+            
             ConnectionAdapters::PostgreSQLColumn.string_to_cidr value
           end
         end
