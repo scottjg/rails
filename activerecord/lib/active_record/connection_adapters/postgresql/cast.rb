@@ -101,7 +101,7 @@ module ActiveRecord
             nil
           elsif String === string
             begin
-              IPAddr.new(string)
+              IP.new(string)
             rescue ArgumentError
               nil
             end
@@ -111,7 +111,7 @@ module ActiveRecord
         end
 
         def cidr_to_string(object)
-          if IPAddr === object
+          if IP === object
             "#{object.to_s}/#{object.instance_variable_get(:@mask_addr).to_s(2).count('1')}"
           else
             object
