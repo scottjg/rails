@@ -72,6 +72,18 @@ class SafeBufferTest < ActiveSupport::TestCase
     assert !altered_buffer.html_safe?
   end
 
+  test "Should substitute matching backreferences" do
+    result = 'foo and bar'.html_safe.sub(/(foo).+(bar)/, '\1--\2')
+
+    assert_equal 'foo--bar', result
+  end
+
+  test "Should substitute matching backreferences in block mode" do
+    result = 'foo and bar'.html_safe.sub(/(foo).+(bar)/) { "#{ $1 }--#{ $2 }" } 
+
+    assert_equal 'foo--bar', result
+  end
+
   test "Should not return safe buffer from gsub!" do
     @buffer.gsub!('', 'asdf')
     assert_equal 'asdf', @buffer
