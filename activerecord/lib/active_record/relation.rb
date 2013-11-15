@@ -282,6 +282,7 @@ module ActiveRecord
         stmt.set Arel.sql(@klass.send(:sanitize_sql_for_assignment, updates))
         stmt.table(table)
         stmt.key = table[primary_key]
+        stmt.lock(self.lock_value) if self.lock_value
 
         if joins_values.any?
           @klass.connection.join_to_update(stmt, arel)
