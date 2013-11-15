@@ -28,7 +28,7 @@ module ActiveRecord
       return true if new_record?
       current_time = current_time_from_proper_timezone
       attribute_name = attribute || (respond_to?(:updated_at) ? "updated_at" : nil) || (respond_to?(:updated_on) ? "updated_on" : nil)
-      update_all({attribute_name => current_time}, {:id => id})
+      self.class.update_all({attribute_name => current_time}, {:id => id})
     end
 
 
