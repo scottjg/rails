@@ -15,7 +15,7 @@ module ActiveRecord
       base.class_inheritable_accessor :record_timestamps, :instance_writer => false
       base.record_timestamps = true
     end
-    
+
     # Saves the record with the updated_at/on attributes set to the current time.
     # If the save fails because of validation errors, an ActiveRecord::RecordInvalid exception is raised.
     # If an attribute name is passed, that attribute is used for the touch instead of the updated_at/on attributes.
@@ -34,7 +34,7 @@ module ActiveRecord
         write_attribute('updated_on', current_time) if respond_to?(:updated_on)
       end
 
-      save!
+      save(false)
     end
 
 
@@ -63,7 +63,7 @@ module ActiveRecord
 
         update_without_timestamps(*args)
       end
-      
+
       def current_time_from_proper_timezone
         self.class.default_timezone == :utc ? Time.now.utc : Time.now
       end
