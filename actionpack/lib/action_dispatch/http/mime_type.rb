@@ -231,12 +231,13 @@ module Mime
       @variant = nil
     end
 
-    def to_s
-      # if variant.present?
-      #   "#{@string}+#{@variant}"
-      # else
+    def to_s(format = :default)
+      case format
+      when :default
         @string
-      # end
+      when :with_variant
+        "#{@string}+#{@variant}"
+      end
     end
 
     def to_str

@@ -360,8 +360,8 @@ module ActionController #:nodoc:
     # is available.
     def retrieve_collector_from_mimes(mimes=nil, &block) #:nodoc:
       mimes ||= collect_mimes_from_class_level
-      collector = Collector.new(mimes, request.variant)
-      block.call(collector) if block_given?
+      collector = Collector.new(mimes)
+      yield collector if block_given? # yield vs. block.call ? reseach this pls
       format = collector.negotiate_format(request)
 
       if format
@@ -397,10 +397,9 @@ module ActionController #:nodoc:
     class Collector
       include AbstractController::Collector
 
-      attr_accessor :format, :default_variant
+      attr_accessor :format
 
-      def initialize(mimes, default_variant = nil)
-        @default_variant = default_variant
+      def initialize(mimes)
         @responses = {}
         mimes.each { |mime| send(mime) }
       end
@@ -414,11 +413,22 @@ module ActionController #:nodoc:
       end
       alias :all :any
 
-      def custom(mime_type, variant = nil, &block)
+      def custom(mime_type, &block)
         mime_type = Mime::Type.lookup(mime_type.to_s) unless mime_type.is_a?(Mime::Type)
-        mime_type.variant = default_variant
 
-        @responses[mime_type] ||= block
+        variant_collector = VariantCollector.new
+        yield variant_collector if block_given?
+
+        if variant_collector.any?
+          variant_collector.variants.each do |variant, variant_block|
+            mime_type = mime_type.dup
+            mime_type.variant = variant
+
+            @responses[mime_type] ||= variant_block
+          end
+        else
+          @responses[mime_type] ||= block
+        end
       end
 
       def response
@@ -426,7 +436,23 @@ module ActionController #:nodoc:
       end
 
       def negotiate_format(request)
-        @format = request.negotiate_mime(@responses.keys)
+        @format = request.negotiate_mime(@responses.keys, request.variant)
+      end
+
+      class VariantCollector
+        attr_accessor :variants
+
+        def initialize
+          self.variants = {}
+        end
+
+        def method_missing(name, &block)
+          self.variants[name] = block if block_given?
+        end
+
+        def any?
+          self.variants.present?
+        end
       end
     end
   end
