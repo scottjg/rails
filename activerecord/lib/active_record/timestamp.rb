@@ -25,16 +25,10 @@ module ActiveRecord
     #   product.touch               # updates updated_at
     #   product.touch(:designed_at) # updates the designed_at attribute
     def touch(attribute = nil)
+      return true if new_record?
       current_time = current_time_from_proper_timezone
-
-      if attribute
-        write_attribute(attribute, current_time)
-      else
-        write_attribute('updated_at', current_time) if respond_to?(:updated_at)
-        write_attribute('updated_on', current_time) if respond_to?(:updated_on)
-      end
-
-      save(false)
+      attribute_name = attribute || (respond_to?(:updated_at) ? "updated_at" : nil) || (respond_to?(:updated_on) ? "updated_on" : nil)
+      update_all({attribute_name => current_time}, {:id => id})
     end
 
 
