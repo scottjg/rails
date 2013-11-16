@@ -203,6 +203,7 @@ ActiveRecord::Schema.define do
   create_table :contracts, force: true do |t|
     t.integer :developer_id
     t.integer :company_id
+    t.integer :value
   end
 
   create_table :customers, force: true do |t|

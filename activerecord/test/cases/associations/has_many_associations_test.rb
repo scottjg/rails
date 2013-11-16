@@ -460,6 +460,14 @@ class HasManyAssociationsTest < ActiveRecord::TestCase
     assert_equal ['id'], posts(:welcome).comments.select(:id).first.attributes.keys
   end
 
+  def test_select_field
+    company = Company.create(name: 'Acme')
+    company.contracts << Contract.create(value: 20)
+
+    assert_equal 20, company.contracts.first.value
+    assert_equal 20, company.contracts.select(:value).first.value
+  end
+
   def test_adding
     force_signal37_to_load_all_clients_of_firm
     natural = Client.new("name" => "Natural Company")
